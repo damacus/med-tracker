@@ -122,17 +122,60 @@ pub async fn update(
         });
     }
     let attributes = input::attributes(body).map_err(failure)?;
+    let input = input::parse_input(attributes)
+        .map_err(failure)?
+        .validated()?;
     let mut fields = fields_from_record(&row);
-    input::apply_attributes(
+    command::apply_input(
         tenant.transaction(),
         tenant,
-        attributes,
+        &input,
         &mut fields,
         Some(&row),
     )
     .await?
     .map_err(failure)?;
     fields.validate().map_err(failure)?;
+    update_fields(tenant, row, before, snapshot, fields, provenance).await
+}
+pub(crate) async fn update_input(
+    tenant: &TenantTransaction,
+    id: &str,
+    input: ValidatedScheduleInput,
+    etag: Option<&str>,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    authorize_update(tenant, id).await?;
+    let row = find(tenant, id, true).await?;
+    let before = project(tenant, row.clone()).await?;
+    let snapshot = representation(&row).0["data"].clone();
+    if etag.is_some_and(|value| !value.is_empty() && value != before.1) {
+        return Err(OperationError::Conflict {
+            code: "conflict".into(),
+            details: json!({"error":"Record has changed since it was last read"}),
+        });
+    }
+    let mut fields = fields_from_record(&row);
+    command::apply_input(
+        tenant.transaction(),
+        tenant,
+        &input,
+        &mut fields,
+        Some(&row),
+    )
+    .await?
+    .map_err(failure)?;
+    fields.validate().map_err(failure)?;
+    update_fields(tenant, row, before, snapshot, fields, provenance).await
+}
+async fn update_fields(
+    tenant: &TenantTransaction,
+    row: schedule::Model,
+    before: (Value, String),
+    snapshot: Value,
+    fields: ScheduleFields,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
     if fields == fields_from_record(&row) {
         return Ok(before);
     }

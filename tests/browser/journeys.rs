@@ -292,6 +292,10 @@ async fn barcode_miss_flows_into_manual_medication_wizard() {
                 .to_be_visible()
                 .await
                 .unwrap();
+            page.get_by_label("Person", true)
+                .select_option("73001", None)
+                .await
+                .unwrap();
             page.get_by_label("Dose", true)
                 .fill("1", None)
                 .await
@@ -350,8 +354,147 @@ async fn barcode_miss_flows_into_manual_medication_wizard() {
                 .await
                 .unwrap();
             harness::capture(page, "barcode-miss-desktop").await;
+            page.goto(
+                &format!(
+                    "{}/households/persistence-fixture/people/73001/treatments",
+                    journey.origin
+                ),
+                None,
+            )
+            .await
+            .unwrap();
+            expect(page.locator("main"))
+                .to_contain_text("Scanner manual tablets")
+                .await
+                .unwrap();
         })
     })
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn treatment_forms_create_and_edit_without_losing_clinical_fields() {
+    harness::journey(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        |journey| {
+            Box::pin(async move {
+                let page = &journey.page;
+                harness::sign_in(journey).await;
+                page.goto(
+                    &format!(
+                        "{}/households/persistence-fixture/people/73001/treatments/schedules/new",
+                        journey.origin
+                    ),
+                    None,
+                )
+                .await
+                .unwrap();
+                page.get_by_label("Medication", true)
+                    .select_option("80001", None)
+                    .await
+                    .unwrap();
+                page.get_by_label("Dose amount", true)
+                    .fill("0.10", None)
+                    .await
+                    .unwrap();
+                page.get_by_label("Dose unit", true)
+                    .select_option("tablet", None)
+                    .await
+                    .unwrap();
+                page.get_by_label("Start date", true)
+                    .fill("2026-10-22", None)
+                    .await
+                    .unwrap();
+                page.get_by_label("End date", true)
+                    .fill("2026-11-22", None)
+                    .await
+                    .unwrap();
+                page.get_by_label("Times", true)
+                    .fill("08:00, 20:00", None)
+                    .await
+                    .unwrap();
+                page.get_by_role(AriaRole::Button, named("Add schedule"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                let schedule = page.locator("section[aria-labelledby='schedules-heading'] article");
+                expect(page.locator("section[aria-labelledby='schedules-heading'] article"))
+                    .to_contain_text("0.1 tablet")
+                    .await
+                    .unwrap();
+                expect(page.locator("section[aria-labelledby='schedules-heading'] article"))
+                    .to_contain_text("08:00, 20:00")
+                    .await
+                    .unwrap();
+                page.screenshot_to_file(
+                    Path::new(
+                        "docs/screenshots/browser-journeys/typed-treatment-schedule-desktop.png",
+                    ),
+                    None,
+                )
+                .await
+                .unwrap();
+                schedule
+                    .get_by_role(AriaRole::Link, named("Edit schedule"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                page.set_viewport_size(Viewport {
+                    width: 390,
+                    height: 844,
+                })
+                .await
+                .unwrap();
+                page.get_by_label("Notes", true)
+                    .fill("Typed schedule edit", None)
+                    .await
+                    .unwrap();
+                page.get_by_role(AriaRole::Button, named("Edit schedule"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                expect(page.locator("section[aria-labelledby='schedules-heading'] article"))
+                    .to_contain_text("Typed schedule edit")
+                    .await
+                    .unwrap();
+                expect(page.locator("section[aria-labelledby='schedules-heading'] article"))
+                    .to_contain_text("08:00, 20:00")
+                    .await
+                    .unwrap();
+                page.screenshot_to_file(
+                    Path::new(
+                        "docs/screenshots/browser-journeys/typed-treatment-schedule-mobile.png",
+                    ),
+                    ScreenshotOptions::builder().full_page(true).build(),
+                )
+                .await
+                .unwrap();
+                let assignment =
+                    page.locator("section[aria-labelledby='assignments-heading'] article");
+                assignment
+                    .get_by_role(AriaRole::Link, named("Edit assignment"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                page.get_by_label("Notes", true)
+                    .fill("Typed assignment edit", None)
+                    .await
+                    .unwrap();
+                page.get_by_role(AriaRole::Button, named("Edit assignment"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                expect(page.locator("section[aria-labelledby='assignments-heading'] article"))
+                    .to_contain_text("Typed assignment edit")
+                    .await
+                    .unwrap();
+            })
+        },
+    )
     .await;
 }
 

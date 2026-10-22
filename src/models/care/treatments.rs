@@ -1,4 +1,5 @@
 use loco_rs::model::TenantQueryExt;
+mod command;
 mod input;
 pub mod lifecycle;
 pub(crate) mod projection;
@@ -6,7 +7,12 @@ mod retirement;
 mod source_stock;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::{administration, doses::CredentialProvenance, medications},
+    care::{
+        administration,
+        doses::CredentialProvenance,
+        medications,
+        treatment_command::{DosageOptionId, DoseCycle, MedicationId, PersonId, ScheduleType},
+    },
     entities::{api_change_event, dosage, household, medication, person, schedule},
     errors::OperationError,
 };
@@ -107,17 +113,34 @@ pub async fn authorize_person(
     tenant: &TenantTransaction,
     body: &Value,
 ) -> Result<(), OperationError> {
+    lock_household(tenant).await?;
+    let attributes = input::attributes(body).map_err(failure)?;
+    let id = attributes
+        .get("person_id")
+        .ok_or_else(|| failure(InputFailure::Invalid("person_id", "can't be blank")))?;
+    let id = input::identifier(id, "person_id").map_err(failure)?;
+    authorize_person_id_after_lock(tenant, id).await
+}
+async fn authorize_person_id(tenant: &TenantTransaction, id: &str) -> Result<(), OperationError> {
+    lock_household(tenant).await?;
+    authorize_person_id_after_lock(tenant, id).await
+}
+async fn lock_household(tenant: &TenantTransaction) -> Result<(), OperationError> {
     household::Entity::find_by_id(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
     access::recheck(tenant).await?;
-    let attributes = input::attributes(body).map_err(failure)?;
-    let id = attributes
-        .get("person_id")
-        .ok_or_else(|| failure(InputFailure::Invalid("person_id", "can't be blank")))?;
-    let id = input::identifier(id, "person_id").map_err(failure)?;
+    Ok(())
+}
+async fn authorize_person_id_after_lock(
+    tenant: &TenantTransaction,
+    id: &str,
+) -> Result<(), OperationError> {
+    if !valid_identifier(id) {
+        return Err(failure(InputFailure::Invalid("person_id", "is invalid")));
+    }
     let row = find_person(tenant.transaction(), tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;
@@ -133,11 +156,39 @@ pub async fn create(
 ) -> Result<(Value, String), OperationError> {
     authorize_person(tenant, body).await?;
     let attributes = input::attributes(body).map_err(failure)?;
+    let input = input::parse_input(attributes)
+        .map_err(failure)?
+        .validated()?;
     let mut fields = ScheduleFields::new();
-    input::apply_attributes(tenant.transaction(), tenant, attributes, &mut fields, None)
+    command::apply_input(tenant.transaction(), tenant, &input, &mut fields, None)
         .await?
         .map_err(failure)?;
     fields.validate().map_err(failure)?;
+    create_fields(tenant, fields, provenance).await
+}
+pub(crate) async fn create_input(
+    tenant: &TenantTransaction,
+    input: ValidatedScheduleInput,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    let id = input
+        .as_ref()
+        .person_id
+        .as_ref()
+        .ok_or_else(|| failure(InputFailure::Invalid("person_id", "can't be blank")))?;
+    authorize_person_id(tenant, id.as_str()).await?;
+    let mut fields = ScheduleFields::new();
+    command::apply_input(tenant.transaction(), tenant, &input, &mut fields, None)
+        .await?
+        .map_err(failure)?;
+    fields.validate().map_err(failure)?;
+    create_fields(tenant, fields, provenance).await
+}
+async fn create_fields(
+    tenant: &TenantTransaction,
+    fields: ScheduleFields,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
     let now = Utc::now().naive_utc();
     let mut active = schedule::ActiveModel {
         household_id: Set(tenant.scope().household_id),
@@ -238,6 +289,77 @@ enum InputFailure {
     NotFound,
     Invalid(&'static str, &'static str),
     InvalidFields(Value),
+}
+
+#[derive(Default)]
+pub(crate) struct ScheduleInput {
+    pub(crate) person_id: Option<PersonId>,
+    pub(crate) medication_id: Option<MedicationId>,
+    pub(crate) source_dosage_option_id: Option<DosageOptionId>,
+    pub(crate) dose_amount: Option<Decimal>,
+    pub(crate) dose_unit: Option<String>,
+    pub(crate) frequency: Option<String>,
+    pub(crate) start_date: Option<NaiveDate>,
+    pub(crate) end_date: Option<NaiveDate>,
+    pub(crate) notes: Option<String>,
+    pub(crate) max_daily_doses: Option<i32>,
+    pub(crate) min_hours_between_doses: Option<Option<i32>>,
+    pub(crate) dose_cycle: Option<DoseCycle>,
+    pub(crate) schedule_type: Option<ScheduleType>,
+    pub(crate) schedule_config: Option<Value>,
+}
+pub(crate) struct ValidatedScheduleInput(ScheduleInput);
+
+impl ScheduleInput {
+    pub(crate) fn validated(self) -> Result<ValidatedScheduleInput, OperationError> {
+        if self.dose_amount.is_some_and(|amount| {
+            amount <= Decimal::ZERO || storage_decimal(amount, 8, 2).is_none()
+        }) {
+            return Err(failure(InputFailure::Invalid(
+                "dose_amount",
+                "must fit two decimal places",
+            )));
+        }
+        if self
+            .dose_unit
+            .as_ref()
+            .is_some_and(|unit| !UNITS.contains(&unit.as_str()))
+        {
+            return Err(failure(InputFailure::Invalid("dose_unit", "is invalid")));
+        }
+        if self.max_daily_doses.is_some_and(|value| value <= 0) {
+            return Err(failure(InputFailure::Invalid(
+                "max_daily_doses",
+                "must be positive",
+            )));
+        }
+        if self
+            .min_hours_between_doses
+            .is_some_and(|value| value.is_some_and(|hours| hours <= 0))
+        {
+            return Err(failure(InputFailure::Invalid(
+                "min_hours_between_doses",
+                "must be a whole positive number",
+            )));
+        }
+        if self
+            .schedule_config
+            .as_ref()
+            .is_some_and(|config| !input::valid_config(config))
+        {
+            return Err(failure(InputFailure::Invalid(
+                "schedule_config",
+                "is invalid",
+            )));
+        }
+        Ok(ValidatedScheduleInput(self))
+    }
+}
+
+impl ValidatedScheduleInput {
+    pub(crate) fn as_ref(&self) -> &ScheduleInput {
+        &self.0
+    }
 }
 
 #[derive(PartialEq)]

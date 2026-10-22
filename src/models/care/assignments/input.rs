@@ -15,15 +15,12 @@ pub(super) fn required_string(
         .map_or(Some(None), |value| value.map(Some))
 }
 
-pub(super) fn identifier(attributes: &Map<String, Value>, name: &str) -> Option<Option<String>> {
+pub(super) fn identifier<T: FromStr<Err = ()>>(
+    attributes: &Map<String, Value>,
+    name: &str,
+) -> Option<Option<T>> {
     let value = required_string(attributes, name)?;
-    if value
-        .as_deref()
-        .is_some_and(|value| !valid_identifier(value))
-    {
-        return None;
-    }
-    Some(value)
+    value.map(|value| value.parse::<T>()).transpose().ok()
 }
 
 pub(super) fn optional_string(
