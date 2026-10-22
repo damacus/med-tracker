@@ -1792,14 +1792,16 @@ paths:
     delete:
       operationId: deleteLocation
       tags: [Household, Locations]
-      summary: Delete storage only when retained history permits it.
+      summary: Delete an empty storage location without administration history.
       description: |
         Only an active household owner or administrator can delete an in-scope location,
-        using the current If-Match ETag. Direct or indirect medication takes, saved dose
-        outcomes, or medication pause periods retained through the location's medications,
-        schedules or person assignments prevent deletion with 422. Otherwise the location,
-        its memberships, medications, dosage options, schedules and person assignments are
-        removed atomically. A failed deletion leaves every related row unchanged.
+        using the current If-Match ETag. Any medication stored at the location prevents
+        deletion with 422; move the medication to another location first. Administration
+        history retaining this taken-from location also prevents deletion with 422, even
+        after current stock has moved. Medication, stock, dosage options, schedules, person
+        assignments and administration history are never deleted by this operation. An
+        empty location without historical references and its obsolete membership links
+        are removed atomically. A failed deletion leaves every related row unchanged.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/resource_id"
@@ -1810,7 +1812,7 @@ paths:
             type: string
       responses:
         "204":
-          description: Delete storage only when retained history permits it.
+          description: Empty storage location deleted without changing medication or care records.
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -4123,23 +4125,24 @@ paths:
         - Household
         - Portability
       summary: Export an encrypted portable household bundle.
+      description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/portable_passphrase"
         - name: version
           in: query
-          description: Portable export format. Omit or use `1` for the original format; use `2` to include pause history.
+          description: Portable export format. Omit or use `1` for the original format; `2` includes pause history; `3` retains clinical history and inventory locations without person-to-location memberships.
           schema:
             type: string
-            enum: ["1", "2"]
+            enum: ["1", "2", "3"]
             default: "1"
         - name: portable_format
           in: query
           required: false
-          description: Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape.
+          description: Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape.
           schema:
             type: string
-            enum: [medtracker.portable.v1, medtracker.portable.v2]
+            enum: [medtracker.portable.v1, medtracker.portable.v2, medtracker.portable.v3]
             default: medtracker.portable.v1
       responses:
         "200":
@@ -4167,6 +4170,7 @@ paths:
         - Household
         - Synchronization
       summary: Read a plaintext mobile sync snapshot over authenticated transport.
+      description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise this snapshot. This remains a household-scoped reader.
       parameters:
         - $ref: "#/components/parameters/household_id"
       responses:
@@ -4193,6 +4197,7 @@ paths:
         - Household
         - Portability
       summary: Validate an encrypted portable import without writing data.
+      description: Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422; v3 omits that obsolete field. Inventory and historical administration location references remain supported.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/portable_passphrase"
@@ -4228,6 +4233,7 @@ paths:
         - Household
         - Portability
       summary: Apply an encrypted portable import transactionally.
+      description: Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422 before writes; v3 omits that obsolete field. No person-to-location memberships are restored.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/portable_passphrase"
@@ -4267,6 +4273,7 @@ paths:
         - Household
         - Portability
       summary: Export household data in a selected backup/profile mode.
+      description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - name: mode
@@ -9120,6 +9127,7 @@ components:
               - medtracker.portable.v1
               - medtracker.portable.encrypted.v1
               - medtracker.portable.v2
+              - medtracker.portable.v3
         backups:
           $ref: "#/components/schemas/CapabilityBackups"
         fhir:

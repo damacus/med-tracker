@@ -131,7 +131,7 @@ open class SynchronizationApi(basePath: kotlin.String = defaultBasePath, client:
     /**
      * GET /households/{household_id}/mobile_snapshot
      * Read a plaintext mobile sync snapshot over authenticated transport.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise this snapshot. This remains a household-scoped reader.
      * @param householdId 
      * @return PortableSnapshotResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -163,7 +163,7 @@ open class SynchronizationApi(basePath: kotlin.String = defaultBasePath, client:
     /**
      * GET /households/{household_id}/mobile_snapshot
      * Read a plaintext mobile sync snapshot over authenticated transport.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise this snapshot. This remains a household-scoped reader.
      * @param householdId 
      * @return ApiResponse<PortableSnapshotResponse?>
      * @throws IllegalStateException If the request is not correctly configured
