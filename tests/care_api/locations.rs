@@ -1,5 +1,166 @@
 use super::contract::{assert_value, contract, resolve};
 use super::*;
+use med_tracker::models::entities::{
+    api_change_event, api_tombstone, dosage, location, location_membership, medication,
+    medication_take, person_medication, schedule, version,
+};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
+
+async fn location_deletion_state(app: &Application) -> Value {
+    let db = &app.fixture.admin;
+    json!({
+        "medications": medication::Entity::find().all(db).await.unwrap(),
+        "dosages": dosage::Entity::find().all(db).await.unwrap(),
+        "assignments": person_medication::Entity::find().all(db).await.unwrap(),
+        "schedules": schedule::Entity::find().all(db).await.unwrap(),
+        "takes": medication_take::Entity::find().all(db).await.unwrap(),
+        "locations": location::Entity::find().all(db).await.unwrap(),
+        "memberships": location_membership::Entity::find().all(db).await.unwrap(),
+        "versions": version::Entity::find().all(db).await.unwrap(),
+        "tombstones": api_tombstone::Entity::find().all(db).await.unwrap(),
+        "changes": api_change_event::Entity::find().all(db).await.unwrap(),
+    })
+}
+
+#[tokio::test]
+async fn location_deletion_preserves_referenced_stock_and_care_and_replays_rejection() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let resource = format!("{}/api/v1/households/72001/locations/79001", app.origin);
+    let read = app
+        .client
+        .get(&resource)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let etag = read
+        .headers()
+        .get("etag")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let before = location_deletion_state(&app).await;
+    let mut replies = Vec::new();
+    for _ in 0..2 {
+        let reply = app
+            .client
+            .delete(&resource)
+            .bearer_auth(&token)
+            .header("if-match", &etag)
+            .header("idempotency-key", "referenced-location-delete")
+            .send()
+            .await
+            .unwrap();
+        replies.push((
+            reply.status().as_u16(),
+            reply.headers().contains_key("idempotency-replayed"),
+            reply.json::<Value>().await.unwrap_or(Value::Null),
+        ));
+    }
+    let after = location_deletion_state(&app).await;
+    let sync = app.client.post(format!("{}/api/v1/households/72001/sync/batches", app.origin))
+        .bearer_auth(&token)
+        .json(&json!({"batch":{"operations":[{"resource_type":"location", "action":"delete", "id":"79001", "if_match":etag}]}}))
+        .send().await.unwrap();
+    let sync_status = sync.status().as_u16();
+    let after_sync = location_deletion_state(&app).await;
+    app.close().await;
+    assert_eq!(replies[0].0, 422);
+    assert_eq!(replies[1].0, 422);
+    assert!(!replies[0].1);
+    assert!(replies[1].1);
+    assert_eq!(replies[0].2["error"]["code"], replies[1].2["error"]["code"]);
+    assert_eq!(
+        replies[0].2["error"]["errors"],
+        replies[1].2["error"]["errors"]
+    );
+    assert_eq!(
+        replies[0].2["error"]["errors"]["location"][0],
+        "cannot be deleted while medications are stored here; move them to another location first"
+    );
+    assert_eq!(before, after);
+    assert_eq!(sync_status, 422);
+    assert_eq!(before, after_sync);
+}
+
+#[tokio::test]
+async fn location_deletion_preserves_historical_location_after_stock_is_relabelled() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let now = chrono::Utc::now().naive_utc();
+    location::ActiveModel {
+        id: Set(79002),
+        household_id: Set(72001),
+        name: Set("New stock label".into()),
+        portable_id: Set("new-stock-label".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    medication_take::ActiveModel {
+        household_id: Set(72001),
+        person_medication_id: Set(Some(81001)),
+        dose_amount: Set(Some("2".parse().unwrap())),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(now)),
+        taken_from_medication_id: Set(Some(80001)),
+        taken_from_location_id: Set(Some(79001)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    medication::Entity::update_many()
+        .col_expr(
+            medication::Column::LocationId,
+            sea_orm::sea_query::Expr::value(79002),
+        )
+        .filter(medication::Column::Id.eq(80001))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let resource = format!("{}/api/v1/households/72001/locations/79001", app.origin);
+    let read = app
+        .client
+        .get(&resource)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let etag = read
+        .headers()
+        .get("etag")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let before = location_deletion_state(&app).await;
+    let reply = app
+        .client
+        .delete(&resource)
+        .bearer_auth(&token)
+        .header("if-match", etag)
+        .send()
+        .await
+        .unwrap();
+    let status = reply.status().as_u16();
+    let body: Value = reply.json().await.unwrap_or(Value::Null);
+    let after = location_deletion_state(&app).await;
+    app.close().await;
+    assert_eq!(status, 422);
+    assert_eq!(
+        body["error"]["errors"]["location"][0],
+        "cannot be deleted while administration history references it"
+    );
+    assert_eq!(before, after);
+}
 
 #[tokio::test]
 async fn location_api_concurrent_key_replays_one_effect() {

@@ -150,15 +150,6 @@ pub async fn retire(
     retire_with_event(tenant, id, etag, provenance, "api_destroy").await
 }
 
-pub(crate) async fn retire_cascade(
-    tenant: &TenantTransaction,
-    id: &str,
-    provenance: Option<&CredentialProvenance>,
-    event: &str,
-) -> Result<(), OperationError> {
-    retire_with_event(tenant, id, None, provenance, event).await
-}
-
 async fn retire_with_event(
     tenant: &TenantTransaction,
     id: &str,
