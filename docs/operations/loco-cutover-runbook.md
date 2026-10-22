@@ -1,35 +1,99 @@
-# Loco cutover and saved-state rollback
+# Fresh Rust rollout notes
 
-This procedure applies only after the complete replacement has passed its release gates and the owner has separately authorised a live cutover. The rehearsal uses synthetic data and an owned PostgreSQL 18 project. It does not connect to production.
+Root Loco uses PostgreSQL 18 and a new empty database. Follow
+[ADR 0016](../adrs/0016-fresh-rust-without-legacy-compatibility.md): Rails is
+read-only reference; there is no Rails data import, credential migration, populated
+schema adoption or reverse migration. Never reset or silently adopt an existing
+database.
 
-## Rehearsal gate
+The owner applies the image/version upgrade through the deployment's normal
+controller. There is no separate rehearsal, runtime evidence dossier or final
+acceptance project. Observe normal startup and application behaviour during the
+release, and fix concrete defects through the normal engineering workflow.
+This document does not authorise a rollout, shutdown, data change or deployment.
 
-Run `task release:rehearse`. The Task builds the current Rails test image through `task rails:test:build CONTRACT_PROJECT=mtloco-rollback-image`, records the immutable image ID of `mtloco-rollback-image-web-test`, and passes that ID to the Rails journey. It creates an isolated PostgreSQL 18 project, provisions the Rails baseline, and seeds the existing synthetic household and medication fixtures. The script checks all four PostgreSQL client binaries and the server are version 18, rejects a non-loopback endpoint and an unowned project name, and checks that no Rails or Loco database client remains connected. It saves a full custom-format pre-Loco dump and records a digest of the complete plain dump with PostgreSQL's fixed comparison-only restrict key.
+## Image and configuration
 
-The rehearsal adopts the schema, runs the Loco dose journey on that same populated database, and requires the Loco process to exit. It checks for connected writers again, drops and recreates only its owned `medtracker_reference` database, and restores the independent saved dump with its original object ownership, grants and row security policies. Database roles remain in the same isolated PostgreSQL project throughout the rehearsal; a separate global-object digest checks that their definitions and memberships did not change. Complete database and global-object digests must match the pre-Loco state before Rails runs. The Rails journey signs in with the saved credential, reads the household dashboard, and records a dose. The owned project and temporary dump are removed after success or failure. The dump is never a production backup.
+- Build runnable root-Loco server and worker images for `linux/amd64` and
+  `linux/arm64` under [#2723](https://github.com/damacus/med-tracker/issues/2723)
+  and [#2724](https://github.com/damacus/med-tracker/issues/2724). Include TLS trust
+  roots, fonts/PDF support, timezone data, templates and static assets. The current
+  [publishing workflow](../../.github/workflows/docker-publish.yml) builds
+  `rails/`; its image is not the Loco replacement.
+- Use the selected version or immutable image reference in the existing deployment
+  configuration. Keep server and worker versions compatible with the schema.
+  No final root-Loco image reference is supplied by this guide.
+- Use [`config/production.yaml`](../../config/production.yaml) as the Rust settings
+  reference. Set the public origin with `MEDTRACKER_PUBLIC_HOST`, `PORT` and the
+  appropriate `BINDING`; keep production secure cookies enabled. Provision a
+  persistent 64-byte Base64 `MEDTRACKER_SESSION_KEY` through the secret store,
+  shared across replicas. Do not use fixture keys or copy Rails credentials.
+- Keep setup credentials separate from the restricted runtime `DATABASE_URL`.
+  The runtime login inherits `med_tracker_app`, has no owner-role membership or
+  superuser/`BYPASSRLS` privileges, and serves both application and queue access.
+  Keep production automatic migration, truncation and recreation disabled.
+- Configure private storage consistently across replicas: avatars use
+  `ACTIVE_STORAGE_S3_*`; dm+d uses `S3_ENDPOINT`, `S3_BUCKET`, `AWS_REGION`
+  and its access/secret keys. Keep secrets in the deployment secret store and
+  preserve existing objects. Configure enabled mail/push delivery and the
+  registration, session/token lifetime, timezone and dose-signing settings.
+- The root `worker` Task starts a worker **and** scheduler. The `scheduler` Task
+  is another scheduler entry point. Choose one scheduler owner; avoid starting
+  both unintentionally. Current schedules cover support expiry, dm+d,
+  browser reminders and medication-review refresh.
 
-The Loco journey must show a single dose and audit after duplicate replay, stock reduced once, and cross-household denial. Broader release evidence must cover native sign-in and dose use, fresh offline replay, worker restart, session and token invalidation, passkey replacement and recovery, and underlying file access. A missing journey or Task fails the rehearsal. A passing orchestration test alone does not satisfy the release gate.
+## Rollout
 
-## Before a live cutover
+The owner chooses the environment, version and time and uses the deployment's
+existing upgrade path. If Flux owns the deployment, change its declared
+configuration through the normal GitOps flow; do not bypass it with an invented
+Helm or kubectl procedure.
 
-Record the approved image digest for each production architecture, server and worker startup results, the exact schema revision, current backups, a restoration target, and the chosen cutover time. Confirm complete capability acceptance, both scratch runtime checks, hosted CI, and `task release:rehearse` on the reviewed commit. Keep the reviewable result and approval separate from execution.
+1. Confirm the intended fresh Rust database and storage configuration. Initial
+   schema installation uses root `db:migrate` with a separate
+   `MIGRATION_DATABASE_URL`; see [database setup](../testing.md#loco-database-setup).
+   Stop if the target is populated or unclear. `db:seed`/`db:prepare` load
+   synthetic fixtures for development/test, not production users.
+2. Keep retained Rails/reference databases and secrets separate. Where an existing
+   public service is being replaced, stop or isolate its web, worker and scheduler
+   writers as part of the owner's normal switch. Do not point them at the Rust
+   database, import their queue or migrate their credentials.
+3. Apply the approved image/configuration upgrade. Start the intended server,
+   worker and single scheduler through the existing controller. Observe normal
+   startup, sign-in and medication operations while releasing. Existing tests and
+   CI remain the normal checks for the deliverables being changed; do not create
+   a second release-acceptance exercise.
 
-Tell affected users that old sessions and tokens will expire. Historical passwords and MFA enrolments may need secure reset or new enrolment. Unsupported passkeys, including PS256, require replacement; supported keys on mixed accounts remain usable. Do not bypass MFA during recovery. Old download links, system export formats, offline queues, and push subscriptions may need renewal. Existing clinical records, identifiers, audit history, and underlying files must remain intact through adoption.
+## Stop and recovery
 
-## Cut over after approval
+If the release fails, the owner uses the same deployment controller to stop or
+revert the affected rollout. Stop the Rust web, worker and scheduler writers
+before any separately approved database recovery. Preserve the Rust database,
+queue, objects and audit history; do not reset them to make startup pass.
 
-1. Stop Rails web servers, separately deployed workers and schedulers. Verify that no Rails writer retains a database session and that pending jobs are within the accepted loss boundary.
-2. Freeze the rollback replica so it stops following, or take and verify an independent pre-Loco full database dump. Preserve that state and the matching Rails image and credentials outside the Loco write path. Record its immutable identity and a restore test.
-3. Check the deployed Loco image digest and required credentials, host settings, connection limits, storage, TLS, PDF fonts, timezone assets, and server and worker health. Adopt the schema with the approved migration Task and verify ledger and data checks before allowing traffic.
-4. Start Loco server, workers and schedules only after Rails writers are stopped. Prove exclusive writer ownership. Check fresh sign-in and recovery, household isolation, clinical dose and audit, native API, browser, notifications, and worker restart. Record a go/no-go decision against the approved release evidence.
+Reverting an image is safe only when it is compatible with the current Rust
+schema and configuration. If data recovery is needed, use an approved
+Rust-compatible backup/target and the owner's explicit data-loss decision.
+Do not restore over active writers or assume a Kubernetes/Helm version rollback
+reverses database changes. Rails cannot read Rust-created data through a reverse
+migration, and automatic saved-state Rails restoration is not part of this plan.
 
-Do not use the synthetic rehearsal commands or its disposable credentials against a live database.
+## Existing scope decisions
 
-## Roll back after approval
+The owner accepted [Slice 7](https://github.com/damacus/med-tracker/issues/2654)
+for its delivered queue, mail, push, notification, import, refresh, expiry and
+scheduling behaviour. Additional speculative acceptance, per-worker stop/restart
+and SIGTERM rehearsals are waived. Retain current permissions, atomic mail,
+replay and duplicate safety; fix concrete defects if they emerge.
 
-1. Stop Loco web servers, workers and schedulers. Verify that no Loco writer retains a session before restoring data.
-2. Restore the independent pre-Loco dump to a separate Rails target, or promote the replica that was frozen before Loco wrote. Check the saved snapshot identity, schema, credential state, record IDs and audit history. Never restore over an active Loco writer.
-3. Start Rails web servers, workers and schedulers against that restored target. Prove sign-in, household reads, dose writes and audit recording on the restored state before routing traffic back.
-4. Record the rollback time and the accepted data gap. New data created during the Loco period may be discarded or ignored. Lossless rollback and Rails compatibility with Loco-created records are outside the approved contract.
-
-No production shutdown, restore, routing change or deployment is authorised by this runbook.
+Native delivery, browser offline work, new export products/workers
+([#2699](https://github.com/damacus/med-tracker/issues/2699)), canary/demo jobs
+([#1780](https://github.com/damacus/med-tracker/issues/1780)), and optional
+FHIR/SMART/MCP/provider work remain deferred. Preserve retained Rust restore/sync
+and public API contracts. Physical notification checks
+([#2559](https://github.com/damacus/med-tracker/issues/2559)) remain deferred until
+after deployment; provider acceptance does not prove display. Broader mail/SMTP
+capture remains [#2844](https://github.com/damacus/med-tracker/issues/2844)/
+[#2845](https://github.com/damacus/med-tracker/issues/2845), and physical scanner
+camera checking remains [#2524](https://github.com/damacus/med-tracker/issues/2524).
+These are their existing scope decisions, not new release gates.

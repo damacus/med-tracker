@@ -19,6 +19,7 @@ nav = [
     { "Quick Start" = "quick-start.md" },
     { "Self-Hosting Setup" = "self-hosting.md" },
     { Deployment = "deployment.md" },
+    { "Fresh Rust rollout" = "operations/loco-cutover-runbook.md" },
     { Testing = "testing.md" },
     { "Required CI checks" = "development/ci.md" },
     { "MCP Integration" = "mcp.md" },

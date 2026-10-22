@@ -1,9 +1,12 @@
 # Deployment
 
-The published product image remains Rails while the Loco migration is in
-progress. Root `task release-image` is gated until complete migration acceptance.
-The Rails rollback uses profiles in `rails/compose.yaml` for development,
-testing, and local validation of the production image.
+The existing container-publishing workflow builds Rails. Root Loco is the fresh
+Rust application; use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md)
+for its image, configuration, database and recovery guidance. There is no separate
+rehearsal or runtime evidence dossier before the owner's normal version upgrade.
+
+The Rails Compose and operator commands below remain reference material. They
+are not the Rust rollout procedure.
 
 ## Loco authentication secrets
 
@@ -24,8 +27,8 @@ recovery. A backup code completes the second sign-in step and cannot sign in
 alone. Passkey-only accounts add a password before enabling the native TOTP
 plugin. New authenticator enrolments require verification before activation.
 
-Loco authentication does not need Rails secrets. Preserve the independently saved
-Rails rollback credentials and secrets separately. See the
+Loco authentication does not need Rails secrets. Keep retained Rails reference
+credentials and secrets separate from the Rust deployment. See the
 [authentication guide](two-factor-authentication.md) for native account flows.
 
 Production browser, CSRF and Better Auth cookies share the validated secure-cookie
@@ -45,89 +48,30 @@ ID.
 
 Better Auth’s native passkey plugin owns registration, verification and storage.
 Users register new Loco passkeys. Historical Rails credentials remain separate
-rollback data. The browser
+reference data. The browser
 client uses standard `PublicKeyCredential` JSON conversion methods; browsers
 without those methods cannot complete this flow.
 
-### Approved cutover decision: unsupported passkeys
+## Fresh Rust release scope
 
-**Decision approved by the project owner on 6 October 2026:** drop support for
-historical passkey algorithms that the maintained Rust library cannot verify,
-including Rails' PS256 default. This is a conscious compatibility break. Do not
-add custom cryptographic verification or bypass authentication to preserve them.
+[ADR 0016](adrs/0016-fresh-rust-without-legacy-compatibility.md) supersedes the
+earlier populated-schema adoption, credential migration and saved-state Rails
+rollback design. Start with a new empty PostgreSQL 18 database and fresh Rust
+credentials. Historical passkeys are not imported, regardless of algorithm.
+Do not reset existing databases or assume Rails can consume Rust-created data.
 
-The subsequent Better Auth decision requires replacement of all historical
-passkeys, including keys whose algorithms were otherwise supported. Users must
-complete the secure onboarding/recovery flow and register a new supported key.
-Keep historical records in the independently saved Rails rollback state. Counting
-affected production accounts is not a cutover gate. This decision authorises no
-live credential changes or deletion.
+Use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md) for the
+normal image/version upgrade, writer ownership, configuration and stop/recovery
+boundaries. The owner observes runtime behaviour during release; no standalone
+rehearsal, final evidence dossier or duplicate application-acceptance project is
+required. Keep normal tests/CI for changed deliverables and fix concrete defects.
+Deployment remains a separate owner action.
 
-## Approved cutover and rollback design
-
-On 6 October 2026, the owner approved rollback to the independently preserved
-pre-cutover database state. All data created during the Loco period may be dropped
-or ignored if rollback is needed. Rails compatibility with Loco-created data and
-lossless post-cutover rollback are not required.
-
-Before switching, save a production database dump or preserve a replica. The saved
-state must be independent of subsequent Loco writes. Stop replication before Loco
-starts writing if the rollback copy is a replica. Prove restoration and Rails
-operation on representative saved data during the disposable rehearsal; retain
-the exact Rails image/configuration and restore procedure for the authorised switch.
-
-Scale Rails servers to zero before Loco starts. Stop separately deployed Rails
-workers and schedulers too, prevent new scheduled jobs, and verify that no Rails
-process can continue writing. Only the intended application may own writes.
-If rollback is required, stop Loco servers, workers and schedulers first, restore
-the saved pre-cutover state, then turn Rails back on against that state.
-
-Loss of pending or failed Rails jobs is accepted. Do not transfer the old queue or
-reconcile every old delivery as a cutover prerequisite. Correct Loco jobs,
-permissions, retries, duplicate suppression, restart recovery and shutdown behaviour
-remain required.
-
-Invalidate existing sessions and tokens at cutover; historical continuity is not
-required. Prove the invalidation mechanism on synthetic credentials, using fresh
-Loco credentials and configured native MFA. Previously issued
-download links may expire. Preserve underlying files and data and issue new authorised
-links. Historical system export formats and pre-cutover offline queues need not be
-carried over; new exports and future offline replay still require working Loco flows.
-
-The identity delivery uses unmodified published Better Auth Rust releases inside
-MedTracker. Separate identity services, copied library source, local patches and
-custom authentication stores remain rejected. Use native credential management,
-including current-password confirmation when disabling MFA. Preserve all Rails
-rollback credentials in the independently saved state. Verify native sign-in,
-password recovery, optional MFA, passkeys and session management before cutover.
-No live changes are authorised by this decision.
-
-Browser pages use daisyUI and clear Loco routes. Keep the same colour schemes,
-required information, actions and accessibility; exact Rails pixels, CSS values,
-theme exports and historical browser URLs are not acceptance requirements. Users
-may enable push notifications again; new subscriptions, preferences and delivery
-must work. PDF reports must match the existing appearance. Inspect the current
-renderer, fonts and retained Rust implementation before selecting a renderer, and
-verify it inside the final scratch image.
-
-FHIR/SMART, MCP, AI and external medication lookup are deferred from the first
-production release. They remain part of the complete migration objective. Exact
-AI/lookup provider configuration parity is unnecessary. Core medication entry and
-care workflows remain required. Report core production readiness separately from
-completion of every migration capability.
-
-The subsequent first-release scope decision requires automated NHS dm+d import/
-reconciliation and scanner, medication reviews with background refresh, complete
-platform administration, time-limited support access, household export/closure/
-retention holds/permanent deletion, avatar uploads, complete device/session management
-and automatic live dose/stock updates. Catalogue/scanner and reviews remain core
-despite optional AI/provider lookup deferral. First production does not require
-browser offline capture, portable imports or acceptance of both native apps. These
-remain in the full migration goal; public API correctness stays required.
-
-These are approved design and acceptance decisions. They do not authorise stopping
-production, copying live data, deleting data or deploying now. The saved-state
-rehearsal and the complete Loco release still need evidence before live approval.
+The owner has accepted the delivered Slice 7 worker/notification scope and waived
+extra process stop/restart and SIGTERM rehearsals. Native/offline work, new export
+products, canary jobs and optional integrations retain their explicit deferrals.
+Physical notification checks remain deferred until after deployment. These
+decisions do not claim inbox receipt, device display or unperformed checks.
 
 ## Invitation email transactions
 
