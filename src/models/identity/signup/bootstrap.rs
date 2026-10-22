@@ -2,7 +2,7 @@ use super::*;
 use serde_json::json;
 
 pub(super) async fn household(
-    transaction: &DatabaseTransaction,
+    transaction: &impl sea_orm::ConnectionTrait,
     account_id: i64,
     name: &str,
     settings: Option<&serde_json::Value>,
@@ -29,7 +29,7 @@ pub(super) async fn household(
 }
 
 pub(super) async fn owner(
-    transaction: &DatabaseTransaction,
+    transaction: &impl sea_orm::ConnectionTrait,
     actor: &SignupInvitationContext,
     household_id: i64,
     name: &str,

@@ -2,14 +2,9 @@
 
 pub mod prelude;
 
-pub mod account_identities;
 pub mod account_lockouts;
 pub mod account_login_failures;
-pub mod account_otp_keys;
-pub mod account_recovery_codes;
 pub mod account_webauthn_auth_challenges;
-pub mod account_webauthn_keys;
-pub mod account_webauthn_user_ids;
 pub mod accounts;
 pub mod active_storage_attachments;
 pub mod active_storage_blobs;
@@ -40,15 +35,8 @@ pub mod household_memberships;
 pub mod household_purge_runs;
 pub mod household_retention_holds;
 pub mod households;
-pub mod identity_api_keys;
-pub mod identity_device_codes;
 pub mod identity_onboarding;
-pub mod identity_passkeys;
-pub mod identity_provider_accounts;
 pub mod identity_rate_limits;
-pub mod identity_sessions;
-pub mod identity_two_factors;
-pub mod identity_verifications;
 pub mod location_memberships;
 pub mod locations;
 pub mod medication_dose_occurrences;

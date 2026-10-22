@@ -7,6 +7,13 @@
   "automergeType": "pr",
   "ignoreTests": false,
   "platformAutomerge": false,
+  "packageRules": [
+    {
+      "matchManagers": ["cargo"],
+      "matchDepNames": ["better-auth", "better-auth-core", "better-auth-seaorm"],
+      "groupName": "Better Auth Rust"
+    }
+  ],
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,

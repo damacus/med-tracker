@@ -177,11 +177,12 @@ async fn household_manager_removes_local_link_without_withdrawing_personal_decla
         let (subject,id)=declaration(&app,&token).await?;
         authority(&app,&token,subject,true).await?;
         app.fixture.admin.execute_unprepared(
-            "INSERT INTO public.people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Synthetic local manager',0,true,now(),now());
-             INSERT INTO public.accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71992,73992,'local-guardian-manager@example.test',crypt('password',gen_salt('bf',4)),2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77992,73992,'local-guardian-manager@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+            "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Synthetic local manager','1990-01-01',0,true,now(),now());
+             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71992,73992,'local-guardian-manager@example.test',2,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77992,73992,'local-guardian-manager@example.test',true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74992,72001,73992,'administrator','active',now(),now(),now())"
         ).await?;
+        crate::fixtures::seed_native_password(&app.fixture.admin,71992).await;
         let cookie=sign_in(&app,71992,"local-guardian-manager@example.test").await;
         let (cookies,page)=form_page(&app,&cookie,&format!("/households/persistence-fixture/people/{subject}/carer_relationships")).await;
         let csrf=hidden_field(&page,"authenticity_token");

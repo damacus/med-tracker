@@ -105,23 +105,22 @@ impl Hooks for App {
             .await
             .map_err(|_| Error::string("Browser session configuration is unavailable"))?;
         if let Some(layers) = layers {
-            let mut config = better_auth::AuthConfig {
-                secret: layers.identity_secret.clone(),
-                ..Default::default()
-            };
-            config.session.cookie_secure = layers.secure;
+            let mut config = better_auth::AuthConfig::default();
+            config.secret = layers.identity_secret.clone();
+            config.advanced.use_secure_cookies = Some(layers.secure);
             ctx.shared_store.insert(layers);
             config.base_url = format!(
                 "{}/api/auth",
                 ctx.config.server.full_url().trim_end_matches('/')
-            );
-            config.trusted_origins = vec![ctx.config.server.full_url()];
+            )
+            .into();
+            config.trusted_origins = Some(vec![ctx.config.server.full_url()].into());
             config.password.require_uppercase = false;
             config.password.require_lowercase = false;
             config.password.require_numbers = false;
             config.password.require_special = false;
             let store = std::sync::Arc::new(
-                crate::models::identity::better_auth::ClinicalStore::new(ctx.db.clone())
+                crate::models::identity::better_auth::IdentityPolicy::new(ctx.db.clone())
                     .with_settings(ctx.config.settings.clone()),
             );
             let service = crate::models::identity::better_auth::build(config, store)

@@ -1,3 +1,5 @@
+#[path = "support/db.rs"]
+mod db;
 #[path = "support/fixtures.rs"]
 pub mod fixtures;
 #[allow(dead_code)]
@@ -20,7 +22,6 @@ async fn fixture_slices_preserve_baseline_and_care_memberships() {
         .unwrap()
         .unwrap();
     assert_eq!(account.status, 1);
-    assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
     assert_eq!(
         household_memberships::Entity::find()
             .count(&db)
@@ -257,6 +258,37 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             "Expected additive member directory key: {key}"
         );
     }
+    if let Some(path) = std::env::var_os("NATIVE_AUTH_CATALOG_CAPTURE") {
+        let path = std::path::PathBuf::from(path);
+        assert!(path.is_absolute() && path.is_dir());
+        std::fs::write(
+            path.join("native-auth-catalog-before.json"),
+            serde_json::to_vec_pretty(&expected).unwrap(),
+        )
+        .unwrap();
+        std::fs::write(
+            path.join("native-auth-catalog-after.json"),
+            serde_json::to_vec_pretty(actual).unwrap(),
+        )
+        .unwrap();
+    }
+    let native: CanonicalIdentityCatalogue = serde_json::from_str(include_str!(
+        "../migration/native-authentication-catalog.json"
+    ))?;
+    for key in native.removed {
+        assert!(
+            expected.remove(&key).is_some(),
+            "Expected retired native-auth key: {key}"
+        );
+    }
+    for (key, value) in native.changed {
+        assert_ne!(
+            expected.get(&key),
+            Some(&value),
+            "Expected changed native-auth key: {key}"
+        );
+        expected.insert(key, value);
+    }
     let differences: Vec<_> = expected
         .keys()
         .chain(actual.keys())
@@ -275,13 +307,13 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         differences.join("\n")
     );
     let ledger = ledger_rows(&db).await;
-    assert_eq!(ledger.len(), 14);
+    assert_eq!(ledger.len(), 15);
     assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
     assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
     assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
     assert_eq!(
         ledger.last().map(|row| row.0.as_str()),
-        Some("m20261021_000014_member_directory_identity")
+        Some("m20261021_000015_native_authentication")
     );
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(catalog(&db).await, before);
@@ -427,7 +459,6 @@ async fn development_seed_creates_a_usable_account_and_household() {
         .unwrap()
         .unwrap();
     assert_eq!(account.email, "persistence@example.test");
-    assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
     let tenant = access::begin(
         &db,
         &HouseholdScope {
@@ -463,6 +494,59 @@ async fn development_seed_creates_a_usable_account_and_household() {
             .is_err()
     );
     db.close().await.unwrap();
+    let seeded =
+        db::OwnedDatabase::clone(&owned_url, &database, "seed_login_", "seed_runtime_").await;
+    let mut config = Config::new(&Environment::Test).unwrap();
+    config.database.uri = seeded.runtime_uri.clone();
+    let Some(loco_rs::config::QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue.uri = seeded.runtime_uri.clone();
+    let boot = med_tracker::app::App::boot(
+        loco_rs::boot::StartMode::ServerOnly,
+        &Environment::Test,
+        config,
+    )
+    .await
+    .unwrap();
+    let mut server = loco_rs::TestServer::new(
+        boot.router
+            .unwrap()
+            .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .unwrap();
+    server.save_cookies();
+    let login = server
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&serde_json::json!({"email":"persistence@example.test","password":"password"}))
+        .await;
+    assert_eq!(login.status_code(), 200, "{}", login.text());
+    assert_eq!(
+        login.json::<serde_json::Value>()["user"]["id"]
+            .to_string()
+            .trim_matches('"'),
+        "71001"
+    );
+    let session = server.get("/api/auth/get-session").await;
+    assert_eq!(session.status_code(), 200, "{}", session.text());
+    assert_eq!(
+        session.json::<serde_json::Value>()["user"]["id"]
+            .to_string()
+            .trim_matches('"'),
+        "71001"
+    );
+    let medicines = server
+        .get("/households/persistence-fixture/medications")
+        .await;
+    assert_eq!(medicines.status_code(), 200, "{}", medicines.text());
+    assert!(medicines.text().contains("Synthetic"));
+    drop(server);
+    if let Some(queue) = boot.app_context.queue_provider.as_ref() {
+        queue.shutdown().unwrap();
+    }
+    boot.app_context.db.close().await.unwrap();
+    seeded.close().await;
 }
 
 #[tokio::test]
@@ -510,6 +594,16 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
         .unwrap();
     let uri = template::owned_database_url();
     let (base, _) = uri.rsplit_once('/').unwrap();
+    let baseline: i64 = db
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS entries FROM audit_ledger_entries",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "entries")
+        .unwrap();
     let mut writers = tokio::task::JoinSet::new();
     for _ in 0..6 {
         let uri = format!("{base}/{database}");
@@ -534,14 +628,17 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
     while let Some(result) = writers.join_next().await {
         result.unwrap();
     }
+    let clinical = db.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM security_audit_events WHERE event_type='migration-proof') AS security,(SELECT count(*) FROM versions WHERE item_type='Medication' AND item_id=80001 AND event='update') AS medications")).await.unwrap().unwrap();
+    assert_eq!(clinical.try_get::<i64>("", "security").unwrap(), 6);
+    assert_eq!(clinical.try_get::<i64>("", "medications").unwrap(), 6);
     let row = db.query_one_raw(Statement::from_string(DbBackend::Postgres, r#"
         SELECT count(*)::bigint AS entries,
             bool_and(sequence = ordinal AND previous_hash IS NOT DISTINCT FROM previous_entry_hash) AS linked,
             bool_and(entry_hash = digest(convert_to('medtracker.audit.ledger.v1' || chr(31) || chain_key || chr(31) || chain_epoch::text || chr(31) || sequence::text || chr(31), 'UTF8') || COALESCE(previous_hash, '\x'::bytea) || canonical_payload, 'sha256')) AS hashes,
             bool_and(retain_until >= occurred_at + interval '9 years') AS retained
-        FROM (SELECT *, row_number() OVER (ORDER BY sequence) AS ordinal, lag(entry_hash) OVER (ORDER BY sequence) AS previous_entry_hash FROM audit_ledger_entries) entries
+        FROM (SELECT *, row_number() OVER (PARTITION BY chain_key,chain_epoch ORDER BY sequence) AS ordinal, lag(entry_hash) OVER (PARTITION BY chain_key,chain_epoch ORDER BY sequence) AS previous_entry_hash FROM audit_ledger_entries) entries
     "#)).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "entries").unwrap(), 12);
+    assert_eq!(row.try_get::<i64>("", "entries").unwrap(), baseline + 12);
     for column in ["linked", "hashes", "retained"] {
         assert!(
             row.try_get::<bool>("", column).unwrap(),
@@ -549,7 +646,7 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
         );
     }
     let pending: i64 = db.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT count(*)::bigint AS pending FROM audit_export_deliveries WHERE status='pending' AND audit_ledger_entry_id IS NOT NULL")).await.unwrap().unwrap().try_get("", "pending").unwrap();
-    assert_eq!(pending, 12);
+    assert_eq!(pending, baseline + 12);
     db.execute_unprepared("DELETE FROM security_audit_events; DELETE FROM versions")
         .await
         .unwrap();
@@ -563,7 +660,7 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
         .unwrap()
         .try_get("", "retained")
         .unwrap();
-    assert_eq!(retained, 12);
+    assert_eq!(retained, baseline + 12);
     db.close().await.unwrap();
 }
 
@@ -629,4 +726,49 @@ async fn owned_postgres_fixture() {
         Ok("1"),
         "Forced persistence fixture failure"
     );
+}
+
+#[tokio::test]
+async fn native_migration_refuses_authentication_rows_hidden_by_legacy_rls() {
+    for setup in [
+        "INSERT INTO identity_verifications(id,identifier,value,expires_at) VALUES('orphan-verification','synthetic-orphan','synthetic-value',now()+interval '1 hour')",
+        "INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73990,'Legacy hash sentinel',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77990,73990,'legacy-hash@example.test','synthetic-legacy-hash',now(),now())",
+    ] {
+        let db = restored_database().await;
+        migration::Migrator::up(&db, Some(14)).await.unwrap();
+        db.execute_unprepared("RESET ROLE").await.unwrap();
+        db.execute_unprepared(setup).await.unwrap();
+        let before = catalog(&db).await;
+        let ledger = ledger_rows(&db).await;
+        let admin_count = db.query_one_raw(migration::sea_orm::Statement::from_string(migration::sea_orm::DbBackend::Postgres,"SELECT (SELECT count(*) FROM identity_verifications)+(SELECT count(*) FROM users) AS records")).await.unwrap().unwrap().try_get::<i64>("","records").unwrap();
+        assert_eq!(admin_count, 1);
+        db.execute_unprepared("SET ROLE med_tracker_owner")
+            .await
+            .unwrap();
+        let owner_count = db.query_one_raw(migration::sea_orm::Statement::from_string(migration::sea_orm::DbBackend::Postgres,"SELECT (SELECT count(*) FROM identity_verifications)+(SELECT count(*) FROM users) AS records")).await.unwrap().unwrap().try_get::<i64>("","records").unwrap();
+        assert_eq!(
+            owner_count,
+            if setup.starts_with("INSERT INTO identity_verifications") {
+                0
+            } else {
+                1
+            },
+            "Expected actual legacy authentication visibility for the inherited migration role"
+        );
+        let result = migration::Migrator::up(&db, None).await;
+        db.execute_unprepared("RESET ROLE").await.unwrap();
+        let error =
+            result.expect_err("Native schema must refuse existing hidden authentication data");
+        assert!(
+            error
+                .to_string()
+                .contains("Native authentication requires a new empty database"),
+            "Expected explicit native population refusal, got {error}"
+        );
+        assert_eq!(catalog(&db).await, before);
+        assert_eq!(ledger_rows(&db).await, ledger);
+        let row = db.query_one_raw(migration::sea_orm::Statement::from_string(migration::sea_orm::DbBackend::Postgres,"SELECT (SELECT count(*) FROM identity_verifications)+(SELECT count(*) FROM users) AS preserved")).await.unwrap().unwrap();
+        assert_eq!(row.try_get::<i64>("", "preserved").unwrap(), 1);
+        db.close().await.unwrap();
+    }
 }

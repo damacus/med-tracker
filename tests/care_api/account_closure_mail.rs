@@ -9,7 +9,7 @@ async fn prepare(app: &Application) -> (String, String) {
          INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,revoked_at,created_at,updated_at) VALUES(78002,72001,74002,73999,'manage','self',NULL,now(),now()),(78003,72002,74003,73001,'manage','self',NULL,now(),now()),(78004,72002,74003,73999,'view','family_member',now()-interval '1 day',now()-interval '2 days',now()-interval '1 day');
          INSERT INTO native_device_tokens(account_id,device_token,platform,created_at,updated_at) VALUES(71001,'closure-device','ios',now(),now());
          INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://example.test/closure','synthetic-key','synthetic-auth',now(),now());
-         INSERT INTO identity_api_keys(id,account_id,key_hash,payload) VALUES('closure-key',71001,'closure-hash','{\"enabled\":true}');
+         INSERT INTO identity_api_keys(id,reference_id,key,config_id,enabled,rate_limit_enabled,created_at,updated_at) VALUES(99001,71001,'closure-hash','medtracker-personal',true,false,now(),now());
          INSERT INTO account_active_session_keys(account_id,session_id,created_at,last_use) VALUES(71001,'closure-session',now(),now())"
     ).await.unwrap();
     let cookie = sign_in(app, 71001, "persistence@example.test").await;
@@ -41,7 +41,7 @@ async fn state(app: &Application) -> Value {
         'api_sessions',(SELECT jsonb_agg(to_jsonb(s) ORDER BY id) FROM api_sessions s WHERE account_id=71001),
         'app_tokens',(SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM api_app_tokens t WHERE account_id=71001),
         'oauth',(SELECT jsonb_agg(jsonb_build_array(id,revoked_at) ORDER BY id) FROM oauth_grants WHERE account_id=71001),
-        'keys',(SELECT jsonb_agg(to_jsonb(k) ORDER BY id) FROM identity_api_keys k WHERE account_id=71001),
+        'keys',(SELECT jsonb_agg(to_jsonb(k) ORDER BY id) FROM identity_api_keys k WHERE reference_id=71001),
         'sessions',(SELECT jsonb_agg(jsonb_build_array(id,active) ORDER BY id) FROM identity_sessions WHERE account_id=71001),
         'registry',(SELECT jsonb_agg(session_id ORDER BY session_id) FROM account_active_session_keys WHERE account_id=71001),
         'push',(SELECT jsonb_agg(to_jsonb(p) ORDER BY id) FROM push_subscriptions p WHERE account_id=71001),
@@ -181,6 +181,11 @@ async fn account_closure_mail_success_and_replay() {
     assert_eq!(response.status(), reqwest::StatusCode::OK);
     assert!(response.headers().contains_key("set-cookie"));
     assert_eq!(notices_and_audits(&app).await, (1, 1));
+    let key_notices=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS count FROM pg_loco_queue WHERE task_data->>'subject'='API key revoked'")).await.unwrap().unwrap().try_get::<i64>("","count").unwrap();
+    assert_eq!(
+        key_notices, 0,
+        "account closure sends one account notice rather than per-key revocation notices"
+    );
     let after = state(&app).await;
     assert_bearers(&app, reqwest::StatusCode::UNAUTHORIZED).await;
     assert_eq!(after["account"], 3);
@@ -217,7 +222,7 @@ async fn account_closure_mail_success_and_replay() {
     for credential in after["oauth"].as_array().unwrap() {
         assert!(!credential[1].is_null());
     }
-    assert_eq!(after["keys"][0]["payload"]["enabled"], false);
+    assert_eq!(after["keys"][0]["enabled"], false);
     for session in after["sessions"].as_array().unwrap() {
         assert_eq!(session[1], false);
     }

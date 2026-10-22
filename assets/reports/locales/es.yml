@@ -1987,7 +1987,7 @@ es:
       keys_hint: "Las claves usan los permisos seleccionados dentro de tu acceso actual al hogar. Sus permisos, hogares, nombre y caducidad no pueden cambiarse. Revoca y sustituye una clave para cambiar su acceso."
       key_copy_hint: "Copia esta clave en tu integración ahora. No volverá a mostrarse."
       key_copy_short: "Copia esta clave ahora. No volverá a mostrarse."
-      passkey_hint: "Registra esta clave de acceso en los cinco minutos posteriores a confirmar tu identidad."
+      passkey_hint: "Pon un nombre a esta clave de acceso y usa tu dispositivo para verificar tu identidad."
       provider_hint: "Vuelve a iniciar sesión con ZITADEL usando tu correo verificado de MedTracker. Tus métodos de inicio de sesión locales seguirán disponibles."
       provider_error_hint: "El proveedor no pudo verificar este inicio de sesión. Inténtalo de nuevo o usa tu contraseña, clave de acceso o código de recuperación local."
       expires: "Caduca el %{date}."

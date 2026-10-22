@@ -115,7 +115,7 @@ async fn guardian_foreign_household_participation_reveals_subject_but_not_declar
         app.fixture.admin.execute_unprepared(
             "INSERT INTO public.people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73994,'Synthetic foreign household actor',0,true,now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71994,73994,'guardian-storage-foreign@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77994,73994,'guardian-storage-foreign@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77994,73994,'guardian-storage-foreign@example.test',true,now(),now());
              INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72994,71994,'Synthetic foreign care household','guardian-storage-foreign','UTC',now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74994,72994,73994,'member','active',now(),now(),now())"
         ).await?;

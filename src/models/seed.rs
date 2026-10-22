@@ -2,7 +2,7 @@ use std::path::Path;
 
 use loco_rs::{Error, Result, app::AppContext, environment::Environment};
 use migration::MigratorTrait;
-use sea_orm::EntityTrait;
+use sea_orm::{ConnectionTrait, EntityTrait};
 
 use super::_entities::{
     accounts, household_memberships, households, locations, medications, people,
@@ -41,6 +41,14 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
     }
     load!(people);
     load!(accounts);
+    loco_rs::db::seed::<super::identity::better_auth::schema::account::ActiveModel>(
+        &ctx.db,
+        &base.join("auth_credentials.yaml").to_string_lossy(),
+    )
+    .await?;
+    ctx.db
+        .execute_unprepared("UPDATE public.accounts SET email_verified=(status=2)")
+        .await?;
     load!(households);
     load!(users);
     load!(household_memberships);
@@ -80,10 +88,6 @@ mod tests {
         check!(locations);
         check!(medications);
         check!(person_medications);
-        let accounts: Vec<accounts::Model> =
-            serde_yaml_ng::from_str(include_str!("../fixtures/accounts.yaml")).unwrap();
-        let users: Vec<users::Model> =
-            serde_yaml_ng::from_str(include_str!("../fixtures/users.yaml")).unwrap();
         let medications: Vec<medications::Model> =
             serde_yaml_ng::from_str(include_str!("../fixtures/medications.yaml")).unwrap();
         let treatments: Vec<person_medications::Model> =
@@ -93,12 +97,6 @@ mod tests {
         }
         for treatment in treatments {
             assert_eq!(treatment.administration_kind, 1);
-        }
-        for account in accounts {
-            assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
-        }
-        for user in users {
-            assert!(bcrypt::verify("password", user.password_digest.as_deref().unwrap()).unwrap());
         }
     }
 }

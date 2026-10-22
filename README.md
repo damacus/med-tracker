@@ -39,6 +39,9 @@ The accepted fresh Rust architecture is recorded in
 [ADRs 0013–0016](docs/design.md#accepted-rust-direction). These decisions do not
 certify implementation acceptance.
 
+Root Rust builds need ICU 78 (`brew install icu4c@78` on macOS).
+Ubuntu 26.04 CI already provides ICU 78; Task commands supply its environment.
+
 Use `task deps` once to resolve dependencies, `task build` to compile and `task ci`
 to verify Loco. Set `DATABASE_URL` to a dedicated PostgreSQL 18 database and run
 `task dev`. Startup does not migrate, truncate or recreate the product schema.

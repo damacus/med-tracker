@@ -1,45 +1,35 @@
+use better_auth::{AuthConfig, AuthError, AuthResult, BetterAuth};
 use std::sync::Arc;
 
-use ::better_auth::{
-    AuthConfig, AuthError, AuthResult, BetterAuth,
-    plugins::{
-        EmailPasswordPlugin, EmailVerificationPlugin, OrganizationConfig, OrganizationPlugin,
-        SessionManagementPlugin, TwoFactorPlugin, organization::RolePermissions,
-    },
-};
-use url::Url;
-
-mod confirmation;
 mod credentials;
-mod email_change;
 mod http;
 mod limits;
 mod mail;
+mod native_hooks;
+mod native_instance;
+mod native_mail;
 pub mod oidc;
 mod onboarding;
 mod operations;
-mod passkeys;
+mod passwordless_registration;
 mod passwords;
+mod policy;
+pub use policy::IdentityPolicy;
+mod passkey_policy;
+mod passkeys;
 pub mod personal_keys;
-mod recovery;
-mod regeneration;
 mod request;
-mod schema;
+pub(crate) mod schema;
 pub mod security;
 mod sessions;
-mod store;
+mod totp;
 pub use http::boundary as http_boundary;
 pub(crate) use http::normalize_cookie_headers;
-mod legacy_totp;
-mod recovery_email;
-mod totp;
-pub use confirmation::confirmation_email;
 pub use passwords::validate_new_password;
-pub use recovery_email::confirmation_label as recovery_confirmation_label;
+pub(crate) use policy::clinical_id;
+pub(crate) use request::trusted;
 pub use request::{BrowserIdentity, browser_identity, dispatch, router};
-pub use schema::ClinicalAuthSchema;
-pub use store::ClinicalStore;
-pub(crate) use store::clinical_id;
+pub use schema::AccountSchema as ClinicalAuthSchema;
 
 pub(crate) fn session_digest(token: &str) -> String {
     crate::models::identity::store::digest(token)
@@ -48,8 +38,14 @@ pub(crate) fn session_digest(token: &str) -> String {
 #[derive(Clone)]
 pub struct IdentityService {
     auth: Arc<BetterAuth<ClinicalAuthSchema>>,
-    pub store: Arc<ClinicalStore>,
+    pub policy: Arc<IdentityPolicy>,
     pub provider: Option<oidc::Provider>,
+}
+
+impl axum::extract::FromRef<IdentityService> for Arc<BetterAuth<ClinicalAuthSchema>> {
+    fn from_ref(service: &IdentityService) -> Self {
+        service.auth.clone()
+    }
 }
 
 impl std::ops::Deref for IdentityService {
@@ -59,96 +55,21 @@ impl std::ops::Deref for IdentityService {
     }
 }
 
-pub async fn build(
-    mut config: AuthConfig,
-    store: Arc<ClinicalStore>,
-) -> AuthResult<IdentityService> {
-    let provider = oidc::Provider::configured(&config.base_url, store.settings())?;
-    let mut origin = Url::parse(&config.base_url)
-        .map_err(|_| AuthError::internal("Invalid configured identity origin"))?;
-    origin.set_path("/");
-    config.session.cookie_cache = None;
-    config.session.bearer = None;
-    config.session.expires_in = chrono::Duration::days(7);
-    config.session.additional_fields.insert(
-        "clinical_session_purpose".into(),
-        better_auth_core::config::SessionFieldConfig {
-            field_name: None,
-            input: false,
-            returned: true,
-        },
-    );
-    config.session.additional_fields.insert(
-        "legacy_factor_pending".into(),
-        better_auth_core::config::SessionFieldConfig {
-            field_name: None,
-            input: false,
-            returned: true,
-        },
-    );
-    config.session.additional_fields.insert(
-        "authentication_method".into(),
-        better_auth_core::config::SessionFieldConfig {
-            field_name: None,
-            input: false,
-            returned: true,
-        },
-    );
-    let mut organization = OrganizationConfig {
-        allow_user_to_create_organization: false,
-        creator_role: "owner".into(),
-        disable_organization_deletion: true,
-        membership_limit: None,
-        invitation_limit: None,
-        ..OrganizationConfig::default()
-    };
-    organization.roles.insert(
-        "administrator".into(),
-        RolePermissions {
-            organization: vec!["update".into()],
-            member: vec!["create".into(), "update".into(), "delete".into()],
-            invitation: vec!["create".into(), "cancel".into()],
-            api_key: Vec::new(),
-        },
-    );
-    let verification = || {
-        EmailVerificationPlugin::new()
-            .auto_sign_in_after_verification(true)
-            .require_verification_for_signin(true)
-            .custom_send_verification_email(Arc::new(mail::VerificationMailer(store.clone())))
-    };
-    let instance = BetterAuth::<ClinicalAuthSchema>::new(config)
-        .store_arc(store.clone())
-        .plugin(request::ClinicalRequest)
-        .plugin(sessions::Sessions(store.clone()))
-        .plugin(onboarding::Onboarding(store.clone()))
-        .plugin(recovery::Recovery(store.clone()))
-        .plugin(confirmation::Confirmation(store.clone()))
-        .plugin(operations::Operations(store.clone()))
-        .plugin(credentials::Credentials(store.clone()))
-        .plugin(personal_keys::PersonalKeys(store.clone()))
-        .plugin(email_change::EmailChange(store.clone()))
-        .plugin(regeneration::Regeneration(store.clone()))
-        .plugin(totp::Totp(store.clone()))
-        .plugin(
-            EmailPasswordPlugin::new()
-                .password_hasher(Arc::new(passwords::CompatibleHasher))
-                .password_min_length(15)
-                .password_max_length(1024)
-                .auto_sign_in(false)
-                .require_email_verification(true)
-                .with_email_verification(Arc::new(verification())),
-        )
-        .plugin(verification())
-        .plugin(SessionManagementPlugin::new())
-        .plugin(TwoFactorPlugin::new())
-        .plugin(passkeys::Passkeys::new(&origin, store.clone())?)
-        .plugin(OrganizationPlugin::with_config(organization))
-        .build()
-        .await?;
+pub async fn build(config: AuthConfig, policy: Arc<IdentityPolicy>) -> AuthResult<IdentityService> {
+    let base_url = config
+        .base_url
+        .as_static()
+        .ok_or_else(|| AuthError::internal("Identity URL unavailable"))?;
+    let provider = oidc::Provider::configured(base_url, policy.settings())?;
+    let native = native_instance::build(
+        config,
+        policy.clone(),
+        provider.as_ref().map(oidc::Provider::plugin),
+    )
+    .await?;
     Ok(IdentityService {
-        auth: Arc::new(instance),
-        store,
+        auth: Arc::new(native),
+        policy,
         provider,
     })
 }

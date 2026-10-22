@@ -9,7 +9,6 @@ use axum::{
 use axum_csrf::CsrfToken;
 use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
-use better_auth_core::store::SessionStore;
 use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
 
 pub async fn index(
@@ -149,7 +148,6 @@ pub struct Creation {
 
 pub async fn create(
     State(ctx): State<AppContext>,
-    Extension(service): Extension<crate::models::identity::better_auth::IdentityService>,
     session: Session<SessionPgPool>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
@@ -197,12 +195,11 @@ pub async fn create(
         Ok(household) => household,
         Err(error) => return authentication_error(error),
     };
-    if service
-        .store
-        .update_session_active_organization(
-            principal.session_token(),
-            Some(&household.id.to_string()),
-        )
+    let Ok(created_id) = household.id.to_string().parse::<HouseholdId>() else {
+        return unavailable();
+    };
+    if principal
+        .select_household(&ctx.db, created_id)
         .await
         .is_err()
     {
@@ -227,7 +224,6 @@ pub async fn create(
 
 pub async fn select(
     State(ctx): State<AppContext>,
-    Extension(service): Extension<crate::models::identity::better_auth::IdentityService>,
     session: Session<SessionPgPool>,
     token: CsrfToken,
     form: std::result::Result<AxumForm<Selection>, axum::extract::rejection::FormRejection>,
@@ -244,43 +240,12 @@ pub async fn select(
             Ok(principal) => principal,
             Err(error) => return authentication_error(error),
         };
-    let households = match principal.households(&ctx.db).await {
-        Ok(households) => households,
-        Err(error) => return authentication_error(error),
-    };
     let Ok(household_id) = form.household_id.parse::<HouseholdId>() else {
         return (StatusCode::NOT_FOUND, [(header::CACHE_CONTROL, "no-store")]).into_response();
     };
-    let Some(household) = households
-        .iter()
-        .find(|household| household.id == household_id.get())
-    else {
-        return (StatusCode::NOT_FOUND, [(header::CACHE_CONTROL, "no-store")]).into_response();
-    };
-    let selected = service
-        .store
-        .update_session_active_organization(
-            principal.session_token(),
-            Some(&household_id.to_string()),
-        )
-        .await;
-    match selected {
-        Ok(_) => (
-            StatusCode::SEE_OTHER,
-            [
-                (
-                    header::LOCATION,
-                    format!("/households/{}/dashboard", household.slug),
-                ),
-                (header::CACHE_CONTROL, "no-store".to_owned()),
-            ],
-        )
-            .into_response(),
-        Err(error) => (
-            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::SERVICE_UNAVAILABLE),
-            [(header::CACHE_CONTROL, "no-store")],
-        )
-            .into_response(),
+    match principal.select_household(&ctx.db, household_id).await {
+        Ok(household) => redirect(&format!("/households/{}/dashboard", household.slug)),
+        Err(error) => authentication_error(error),
     }
 }
 

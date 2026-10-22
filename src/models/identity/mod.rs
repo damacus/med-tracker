@@ -17,7 +17,6 @@ pub mod resource;
 pub mod signup;
 mod store;
 pub(crate) mod time_zone;
-pub mod totp;
 
 use crate::models::entities::oauth_application;
 use input::Input;

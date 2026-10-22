@@ -10,14 +10,6 @@
     <input class="input input-bordered w-full" id="new_email" name="new_email" type="email" autocomplete="email" required>
     <button class="btn shell-primary" type="submit">{{ flow.continue }}</button>
   </form>
-  {% elif mode == "confirm" %}
-  <p>{{ flow.email_confirm_hint }}</p>
-  <form method="post" action="/account/security/email/confirm">
-    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-    <input type="hidden" name="operation_id" value="{{ operation_id }}">
-    <input type="hidden" name="token" value="{{ proof }}">
-    <button class="btn shell-primary" type="submit">{{ flow.verify_email }}</button>
-  </form>
   {% else %}
   <p>{{ flow.email_pending_hint }}</p>
   {% endif %}

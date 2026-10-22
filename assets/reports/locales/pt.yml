@@ -2323,7 +2323,7 @@ pt:
       keys_hint: "As chaves usam as permissões selecionadas dentro do seu acesso atual ao agregado familiar. As permissões, agregados, nome e validade não podem ser alterados. Revogue e substitua uma chave para alterar o acesso."
       key_copy_hint: "Copie esta chave para a sua integração agora. Não será mostrada novamente."
       key_copy_short: "Copie esta chave agora. Não será mostrada novamente."
-      passkey_hint: "Registe esta chave de acesso nos cinco minutos após confirmar a sua identidade."
+      passkey_hint: "Dê um nome a esta chave de acesso e, em seguida, use o seu dispositivo para verificar a sua identidade."
       provider_hint: "Inicie sessão novamente com ZITADEL usando o email verificado do MedTracker. Os métodos de início de sessão locais continuam disponíveis."
       provider_error_hint: "O fornecedor não conseguiu verificar este início de sessão. Tente novamente ou use a palavra-passe, chave de acesso ou código de recuperação local."
       expires: "Expira em %{date}."
