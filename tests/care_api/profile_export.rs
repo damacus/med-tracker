@@ -6,7 +6,7 @@ use med_tracker::models::{
 use std::io::{Cursor, Read};
 
 #[tokio::test]
-async fn profile_export_uses_manage_grants_and_creates_a_readable_zip_without_identity_secrets() {
+async fn profile_export_preserves_self_and_creates_a_zip_without_identity_secrets() {
     let app = Application::new().await;
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
@@ -20,13 +20,8 @@ async fn profile_export_uses_manage_grants_and_creates_a_readable_zip_without_id
         .unwrap();
     tenant.commit().await.unwrap();
     let value: Value = serde_json::from_slice(&download.bytes).unwrap();
-    assert!(
-        value["records"]
-            .as_object()
-            .unwrap()
-            .values()
-            .all(|rows| rows.as_array().unwrap().is_empty())
-    );
+    assert_eq!(value["records"]["people"].as_array().unwrap().len(), 1);
+    assert_eq!(value["records"]["people"][0]["name"], "Synthetic adult");
     app.fixture
         .admin
         .execute_unprepared("UPDATE person_access_grants SET access_level='manage' WHERE id=78001")
@@ -63,7 +58,7 @@ async fn profile_export_uses_manage_grants_and_creates_a_readable_zip_without_id
         .unwrap();
     tenant.commit().await.unwrap();
     let expired: Value = serde_json::from_slice(&expired.bytes).unwrap();
-    assert!(expired["records"]["people"].as_array().unwrap().is_empty());
+    assert_eq!(expired["records"]["people"], value["records"]["people"]);
     app.fixture
         .admin
         .execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001")
