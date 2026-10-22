@@ -2010,7 +2010,7 @@ ga:
       keys_hint: "Úsáideann eochracha na ceadanna roghnaithe laistigh de do rochtain reatha ar theaghlaigh. Ní féidir a gceadanna, teaghlaigh, ainm ná dáta éaga a athrú. Cúlghair eochair agus cuir ceann nua ina háit chun a rochtain a athrú."
       key_copy_hint: "Cóipeáil an eochair seo chuig do chomhtháthú anois. Ní thaispeánfar arís í."
       key_copy_short: "Cóipeáil an eochair seo anois. Ní thaispeánfar arís í."
-      passkey_hint: "Cláraigh an phaseochair seo laistigh de chúig nóiméad tar éis d’aitheantas a dheimhniú."
+      passkey_hint: "Tabhair ainm don phaseochair seo, ansin úsáid do ghléas chun d’aitheantas a dheimhniú."
       provider_hint: "Sínigh isteach arís le ZITADEL ag úsáid do sheoladh ríomhphoist fíoraithe MedTracker. Fanfaidh do mhodhanna áitiúla sínithe isteach ar fáil."
       provider_error_hint: "Níorbh fhéidir leis an soláthraí an síniú isteach seo a fhíorú. Bain triail eile as nó úsáid do phasfhocal áitiúil, paseochair nó cód athshlánaithe."
       expires: "Éagann ar %{date}."

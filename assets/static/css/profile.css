@@ -20,8 +20,6 @@
 .profile-panel-content .profile-notifications { padding-top: 1rem; }
 .profile-section summary > span:not([data-profile-avatar]) { display: block; margin-top: .25rem; color: var(--on-surface-variant); }
 .profile-security-method + .profile-security-method { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
-.profile-security-flow .modal-box { width: min(100% - 1rem, 40rem); max-width: 40rem; }
-.profile-security-flow .card { border: 0; box-shadow: none; }
 .profile-mobile-shortcuts { display: none; }
 .profile-mobile-shortcuts a { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; border-radius: 1rem; font-size: .75rem; font-weight: 600; }
 .profile-mobile-shortcuts a[aria-current] { background: var(--secondary-container); color: var(--on-secondary-container); }

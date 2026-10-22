@@ -454,7 +454,7 @@ pub(crate) async fn verify_account_actor(
 }
 
 pub(crate) async fn verify_account(
-    transaction: &DatabaseTransaction,
+    transaction: &impl ConnectionTrait,
     account_id: i64,
 ) -> Result<(), OperationError> {
     let account = account::Entity::find_by_id(account_id)

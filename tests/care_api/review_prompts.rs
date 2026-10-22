@@ -1166,9 +1166,11 @@ async fn review_prompts_require_adult_actor_and_other_person_manage_access() {
         .as_u16();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE people SET person_type=1,has_capacity=false WHERE id=73001")
+        .execute_unprepared("UPDATE people SET person_type=1,has_capacity=false,date_of_birth=(CURRENT_DATE-interval '10 years')::date WHERE id=73001")
         .await
         .unwrap();
+    let setup=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT date_of_birth>(CURRENT_DATE-interval '18 years')::date AND person_type=1 AND NOT has_capacity AS minor FROM people WHERE id=73001")).await.unwrap().unwrap();
+    assert!(setup.try_get::<bool>("", "minor").unwrap());
     let minor = app
         .client
         .get(prompts(&app, ""))

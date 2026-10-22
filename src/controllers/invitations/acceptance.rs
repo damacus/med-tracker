@@ -1,6 +1,5 @@
 use super::*;
 use crate::models::identity::{browser, resource::AuthenticationError};
-use better_auth_core::store::SessionStore;
 use serde::Deserialize;
 
 struct Invitation {
@@ -90,7 +89,6 @@ pub(super) async fn preview(
 
 pub(super) async fn accept(
     State(ctx): State<AppContext>,
-    Extension(service): Extension<crate::models::identity::better_auth::IdentityService>,
     session: Session<SessionPgPool>,
     (request, headers): (Option<Extension<LocoRequestId>>, axum::http::HeaderMap),
     token: CsrfToken,
@@ -165,18 +163,33 @@ pub(super) async fn accept(
             StatusCode::SERVICE_UNAVAILABLE,
         );
     };
-    if let Err(error) = service
-        .store
-        .update_session_active_organization(principal.session_token(), Some(&home.id.to_string()))
-        .await
-    {
+    let Ok(household_id) = home
+        .id
+        .to_string()
+        .parse::<crate::models::ids::HouseholdId>()
+    else {
         return selection_recovery(
             &view,
             &token,
             &form.token,
             language,
             explicit_language,
-            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::SERVICE_UNAVAILABLE),
+            StatusCode::SERVICE_UNAVAILABLE,
+        );
+    };
+    if let Err(error) = principal.select_household(&ctx.db, household_id).await {
+        let status = match error {
+            AuthenticationError::Unauthenticated => StatusCode::UNAUTHORIZED,
+            AuthenticationError::Forbidden => StatusCode::FORBIDDEN,
+            _ => StatusCode::SERVICE_UNAVAILABLE,
+        };
+        return selection_recovery(
+            &view,
+            &token,
+            &form.token,
+            language,
+            explicit_language,
+            status,
         );
     }
     (

@@ -15,6 +15,7 @@ use crate::models::identity::better_auth::{
 
 #[derive(Deserialize)]
 pub(super) struct Start {
+    current_password: String,
     new_password: String,
     authenticity_token: String,
 }
@@ -67,8 +68,6 @@ pub(crate) fn render_named(
     data["passkey_proof"] = json!(methods.1);
     data["oidc_proof"] = json!(methods.2);
     data["operation_label"] = json!(operation_label);
-    data["recovery_codes"] = json!([]);
-    data["generation"] = json!("");
     match super::security_locale::view(view, "identity_onboarding/password.html", data) {
         Ok(response) => (
             status,
@@ -141,8 +140,8 @@ pub(super) async fn start(
     }
     let request = request(
         &headers,
-        "/security/password/start",
-        json!({"new_password":form.new_password}),
+        "/change-password",
+        json!({"currentPassword":form.current_password,"newPassword":form.new_password}),
     );
     match dispatch(
         &service,
@@ -151,35 +150,15 @@ pub(super) async fn start(
     )
     .await
     {
-        Ok(response) if response.status == 200 => {
-            let Ok(body) = serde_json::from_slice::<serde_json::Value>(&response.body) else {
-                return super::rendering::unavailable();
-            };
-            let Some(id) = body.get("operation_id").and_then(serde_json::Value::as_str) else {
-                return super::rendering::unavailable();
-            };
-            if body["email_proof"].as_bool() == Some(true) {
-                return super::password_email::render(
-                    &view,
-                    token,
-                    id,
-                    None,
-                    None,
-                    "Confirm password change",
-                );
+        Ok(response) if response.status < 400 => {
+            let mut redirect = super::rendering::redirect("/account/security");
+            for value in response.headers.get_all("set-cookie") {
+                let Ok(value) = value.parse() else {
+                    return super::rendering::unavailable();
+                };
+                redirect.headers_mut().append(header::SET_COOKIE, value);
             }
-            render(
-                &view,
-                token,
-                Some(id),
-                None,
-                StatusCode::OK,
-                (
-                    body["password_proof"].as_bool() == Some(true),
-                    body["passkey_proof"].as_bool() == Some(true),
-                    body["oidc_proof"].as_bool() == Some(true),
-                ),
-            )
+            redirect
         }
         _ => render(
             &view,
@@ -216,11 +195,7 @@ pub(super) async fn confirm(
     .await
     {
         Ok(response) if response.status == 200 => {
-            let body =
-                serde_json::from_slice::<serde_json::Value>(&response.body).unwrap_or_default();
-            if body["recoveryCodes"].is_array() {
-                return super::credentials::recovery_codes(&view, &body);
-            }
+            let body = response.body.json().ok().flatten().unwrap_or_default();
             if body["apiKey"].is_string() {
                 return super::keys::result(&view, &body);
             }

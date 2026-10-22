@@ -18,7 +18,7 @@ concurrency:
 jobs:
   loco_lint:
     name: Rust lint and formatting
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     env:
       CARGO_INCREMENTAL: "0"
@@ -39,12 +39,15 @@ jobs:
         with:
           shared-key: loco-tests-v1
       - name: Install cargo-machete
-        run: cargo install cargo-machete --locked --version 0.9.2
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
+        with:
+          tool: cargo-machete@0.9.2
+          fallback: none
       - run: task fmt lint
 
   loco_unit:
     name: Rust and JavaScript unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     env:
       CARGO_INCREMENTAL: "0"
@@ -60,7 +63,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
           toolchain: stable
-      - uses: taiki-e/install-action@9252097d36d2d3618ad98f5d873696a962b6897c
+      - name: Install nextest
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
+        with:
+          tool: cargo-nextest@0.9.149
+          fallback: cargo-binstall
+        env:
+          BINSTALL_STRATEGIES: crate-meta-data
+      - name: Verify nextest checksum
+        run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
@@ -68,12 +79,12 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           shared-key: loco-tests-v1
+          cache-bin: false
       - run: task test:unit
 
   loco_integration:
-    needs: [loco_lint, loco_unit]
     name: API, security and database integration tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     services:
       postgres:
@@ -123,8 +134,12 @@ jobs:
       - name: Install nextest
         uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
         with:
-          tool: cargo-nextest@0.9.148
-          fallback: none
+          tool: cargo-nextest@0.9.149
+          fallback: cargo-binstall
+        env:
+          BINSTALL_STRATEGIES: crate-meta-data
+      - name: Verify nextest checksum
+        run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
@@ -132,6 +147,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           shared-key: loco-tests-v1
+          cache-bin: false
       - name: Start RustFS and provision reference database
         run: |
           docker compose -f compose.yaml --env-file /dev/null -p mtloco-ci --profile fixture-storage up -d --wait rustfs
@@ -143,9 +159,8 @@ jobs:
       - run: task test:integration
 
   loco_browser:
-    needs: [loco_lint, loco_unit]
     name: Browser journeys
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     services:
       postgres:
@@ -179,8 +194,12 @@ jobs:
       - name: Install nextest
         uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
         with:
-          tool: cargo-nextest@0.9.148
-          fallback: none
+          tool: cargo-nextest@0.9.149
+          fallback: cargo-binstall
+        env:
+          BINSTALL_STRATEGIES: crate-meta-data
+      - name: Verify nextest checksum
+        run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
@@ -188,6 +207,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           shared-key: loco-tests-v1
+          cache-bin: false
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: |
@@ -218,6 +238,7 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           workspaces: client-tools
+          cache-bin: false
       - name: Install Task
         uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
@@ -225,11 +246,19 @@ jobs:
           repo-token: ${{ github.token }}
       - name: Install Fish and private Secret Service test tools
         run: sudo apt-get update && sudo apt-get install --yes fish dbus gnome-keyring libsecret-tools
+      - name: Install nextest
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
+        with:
+          tool: cargo-nextest@0.9.149
+          fallback: cargo-binstall
+        env:
+          BINSTALL_STRATEGIES: crate-meta-data
+      - name: Verify nextest checksum
+        run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
       - name: Install Rust client verification tools
         uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
         with:
           tool: |
-            cargo-nextest@0.9.148
             cargo-machete@0.9.2
             cargo-deny@0.20.2
           fallback: none

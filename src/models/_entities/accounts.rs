@@ -8,34 +8,23 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i64,
-    pub created_at: DateTime,
+    pub created_at: DateTimeUtc,
     pub email: String,
     pub name: Option<String>,
-    pub password_hash: Option<String>,
     #[sea_orm(unique)]
     pub person_id: i64,
     #[sea_orm(column_type = "JsonBinary")]
     pub preferences: Json,
     pub status: i32,
-    pub updated_at: DateTime,
+    pub updated_at: DateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::account_identities::Entity")]
-    AccountIdentities,
     #[sea_orm(has_one = "super::account_lockouts::Entity")]
     AccountLockouts,
     #[sea_orm(has_one = "super::account_login_failures::Entity")]
     AccountLoginFailures,
-    #[sea_orm(has_one = "super::account_otp_keys::Entity")]
-    AccountOtpKeys,
-    #[sea_orm(has_many = "super::account_recovery_codes::Entity")]
-    AccountRecoveryCodes,
-    #[sea_orm(has_many = "super::account_webauthn_keys::Entity")]
-    AccountWebauthnKeys,
-    #[sea_orm(has_many = "super::account_webauthn_user_ids::Entity")]
-    AccountWebauthnUserIds,
     #[sea_orm(has_many = "super::api_app_tokens::Entity")]
     ApiAppTokens,
     #[sea_orm(has_many = "super::api_change_events::Entity")]
@@ -54,20 +43,8 @@ pub enum Relation {
     HouseholdPurgeRuns,
     #[sea_orm(has_many = "super::households::Entity")]
     Households,
-    #[sea_orm(has_many = "super::identity_api_keys::Entity")]
-    IdentityApiKeys,
-    #[sea_orm(has_many = "super::identity_device_codes::Entity")]
-    IdentityDeviceCodes,
     #[sea_orm(has_one = "super::identity_onboarding::Entity")]
     IdentityOnboarding,
-    #[sea_orm(has_many = "super::identity_passkeys::Entity")]
-    IdentityPasskeys,
-    #[sea_orm(has_many = "super::identity_provider_accounts::Entity")]
-    IdentityProviderAccounts,
-    #[sea_orm(has_one = "super::identity_two_factors::Entity")]
-    IdentityTwoFactors,
-    #[sea_orm(has_many = "super::identity_verifications::Entity")]
-    IdentityVerifications,
     #[sea_orm(has_many = "super::native_device_tokens::Entity")]
     NativeDeviceTokens,
     #[sea_orm(has_many = "super::notification_deliveries::Entity")]
@@ -92,12 +69,6 @@ pub enum Relation {
     SecurityAuditEvents,
 }
 
-impl Related<super::account_identities::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::AccountIdentities.def()
-    }
-}
-
 impl Related<super::account_lockouts::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::AccountLockouts.def()
@@ -107,30 +78,6 @@ impl Related<super::account_lockouts::Entity> for Entity {
 impl Related<super::account_login_failures::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::AccountLoginFailures.def()
-    }
-}
-
-impl Related<super::account_otp_keys::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::AccountOtpKeys.def()
-    }
-}
-
-impl Related<super::account_recovery_codes::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::AccountRecoveryCodes.def()
-    }
-}
-
-impl Related<super::account_webauthn_keys::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::AccountWebauthnKeys.def()
-    }
-}
-
-impl Related<super::account_webauthn_user_ids::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::AccountWebauthnUserIds.def()
     }
 }
 
@@ -188,45 +135,9 @@ impl Related<super::households::Entity> for Entity {
     }
 }
 
-impl Related<super::identity_api_keys::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentityApiKeys.def()
-    }
-}
-
-impl Related<super::identity_device_codes::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentityDeviceCodes.def()
-    }
-}
-
 impl Related<super::identity_onboarding::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::IdentityOnboarding.def()
-    }
-}
-
-impl Related<super::identity_passkeys::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentityPasskeys.def()
-    }
-}
-
-impl Related<super::identity_provider_accounts::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentityProviderAccounts.def()
-    }
-}
-
-impl Related<super::identity_two_factors::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentityTwoFactors.def()
-    }
-}
-
-impl Related<super::identity_verifications::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentityVerifications.def()
     }
 }
 

@@ -31,6 +31,7 @@ pub async fn seed_persistence(db: &DatabaseConnection) {
         people::ActiveModel {
             id: Set(73001),
             name: Set("Synthetic adult".into()),
+            date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(1985, 2, 3)),
             person_type: Set(0),
             has_capacity: Set(true),
             created_at: Set(now()),
@@ -64,15 +65,16 @@ pub async fn seed_persistence(db: &DatabaseConnection) {
         id: Set(71001),
         person_id: Set(73001),
         email: Set("persistence@example.test".into()),
-        password_hash: Set(Some(password_hash())),
+
         status: Set(1),
-        created_at: Set(now()),
-        updated_at: Set(now()),
+        created_at: Set(now().and_utc()),
+        updated_at: Set(now().and_utc()),
         ..Default::default()
     })
     .exec(db)
     .await
     .expect("seed account");
+    seed_native_password(db, 71001).await;
 
     households::Entity::insert(households::ActiveModel {
         id: Set(72001),
@@ -151,11 +153,12 @@ async fn seed_verified_user(db: &DatabaseConnection) {
     let mut account = account.into_active_model();
     account.status = Set(2);
     account.update(db).await.expect("verify fixture account");
+    seed_native_password(db, 71001).await;
     users::Entity::insert(users::ActiveModel {
         id: Set(77001),
         person_id: Set(73001),
         email_address: Set("persistence@example.test".into()),
-        password_digest: Set(Some(password_hash())),
+
         created_at: Set(now()),
         updated_at: Set(now()),
         ..Default::default()
@@ -408,26 +411,25 @@ pub async fn seed_browser_rows(db: &DatabaseConnection) {
         id: Set(71002),
         person_id: Set(73005),
         email: Set("foreign@example.test".into()),
-        password_hash: Set(Some(password_hash())),
+
         status: Set(2),
-        created_at: Set(now()),
-        updated_at: Set(now()),
+        created_at: Set(now().and_utc()),
+        updated_at: Set(now().and_utc()),
         ..Default::default()
     })
     .exec(db)
     .await
     .expect("seed foreign account");
+    seed_native_password(db, 71002).await;
 
     identity_onboarding::Entity::insert_many([
         identity_onboarding::ActiveModel {
             account_id: Set(71001),
-            recovery_saved_at: Set(Some(now_tz())),
-            ..Default::default()
+            completed_at: Set(Some(now_tz())),
         },
         identity_onboarding::ActiveModel {
             account_id: Set(71002),
-            recovery_saved_at: Set(Some(now_tz())),
-            ..Default::default()
+            completed_at: Set(Some(now_tz())),
         },
     ])
     .exec(db)
@@ -498,15 +500,16 @@ pub async fn seed_foreign_household(db: &DatabaseConnection, household_id: i64) 
         id: Set(71999),
         person_id: Set(73999),
         email: Set("other-care-household@example.test".into()),
-        password_hash: Set(Some(password_hash())),
+
         status: Set(2),
-        created_at: Set(now()),
-        updated_at: Set(now()),
+        created_at: Set(now().and_utc()),
+        updated_at: Set(now().and_utc()),
         ..Default::default()
     })
     .exec(db)
     .await
     .expect("seed foreign care account");
+    seed_native_password(db, 71999).await;
 
     households::Entity::insert(households::ActiveModel {
         id: Set(household_id),
@@ -625,14 +628,15 @@ pub async fn seed_tenant_access(db: &DatabaseConnection) {
         person_id: Set(73004),
         email: Set("other@example.test".into()),
         status: Set(2),
-        password_hash: Set(Some(password_hash())),
-        created_at: Set(now()),
-        updated_at: Set(now()),
+
+        created_at: Set(now().and_utc()),
+        updated_at: Set(now().and_utc()),
         ..Default::default()
     })
     .exec(db)
     .await
     .expect("seed other account");
+    seed_native_password(db, 71002).await;
     households::Entity::insert(households::ActiveModel {
         id: Set(72002),
         name: Set("Other household".into()),
@@ -661,7 +665,7 @@ pub async fn seed_tenant_access(db: &DatabaseConnection) {
         id: Set(77002),
         person_id: Set(73004),
         email_address: Set("other@example.test".into()),
-        password_digest: Set(Some(password_hash())),
+
         created_at: Set(now()),
         updated_at: Set(now()),
         ..Default::default()
@@ -683,4 +687,22 @@ pub async fn seed_tenant_access(db: &DatabaseConnection) {
     .exec(db)
     .await
     .expect("seed other self grant");
+}
+
+pub async fn seed_native_password(db: &DatabaseConnection, account: i64) {
+    use sea_orm::{ConnectionTrait, DbBackend, Statement};
+    let hash: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(include_str!("../../src/fixtures/auth_credentials.yaml"))
+            .expect("native credential fixture");
+    let hash = hash[0]["password"]
+        .as_str()
+        .expect("native fixture password hash");
+    db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres, "INSERT INTO auth_credentials(account_id,provider_id,user_id,password,created_at,updated_at) VALUES($1,'credential',$2,$3,now(),now()) ON CONFLICT(provider_id,account_id) DO UPDATE SET password=EXCLUDED.password", [account.to_string().into(),account.into(),hash.into()])).await.expect("seed native credential");
+    db.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "UPDATE accounts SET email_verified=(status=2) WHERE id=$1",
+        [account.into()],
+    ))
+    .await
+    .expect("seed native verification status");
 }

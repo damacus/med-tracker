@@ -1,104 +1,74 @@
 # Passkeys
 
-MedTracker supports passkey sign-in through Rodauth and WebAuthn. A passkey can
-use a device unlock method, a password manager, or a compatible security key.
+MedTracker uses Better Auth's native passkey plugin. A passkey can use a device
+unlock method, a password manager or a compatible security key. Loco starts with
+fresh authentication data; passkeys registered in Rails are not imported.
 
 ## Before you begin
 
-Passkeys are bound to the site that created them. Production deployments must
-set `APP_URL` to the public HTTPS origin, such as
-`https://medtracker.example.com`. MedTracker uses this value for both the
-WebAuthn origin and relying-party ID.
+Passkeys are bound to the site that created them. Configure Loco's public server
+origin, including `MEDTRACKER_PUBLIC_HOST` in production, to match the URL people
+actually use. Production requires HTTPS. The authentication plugin derives its
+WebAuthn origin and relying-party host from that configured origin.
 
-Changing the hostname or scheme after users register passkeys can stop those
-passkeys from working. Plan a hostname change before registration starts.
-
-WebAuthn is available on secure origins. Browsers also allow local development
-on `localhost`.
+Changing the hostname or scheme after registration can stop existing passkeys
+from working. Plan hostname changes before registration starts. Browsers permit
+local development on `localhost`.
 
 ## Add a passkey
 
-1. Sign in with your existing method.
-2. Open **Profile**.
-3. Find **Two-Factor Authentication**, then **Passkeys**.
-4. Select **Add a passkey**.
-5. Confirm your password when MedTracker asks for it.
-6. Follow the browser or device prompt.
-7. Give the passkey a name that identifies the device or password manager.
+1. Sign in and open **Account security**.
+2. Select **Add passkey**.
+3. Follow the browser or device prompt.
+4. Give the passkey a name that identifies the device or password manager.
 
-MedTracker requires user verification during passkey registration and sign-in.
-The authenticator must confirm the user with its supported unlock method.
+Initial account setup can also enrol a passkey after email verification.
+MedTracker requires user verification during registration and sign-in, and
+requests a discoverable credential. Complete the authenticator's device-unlock
+or user-verification prompt.
 
-Register more than one sign-in method before relying on a passkey. This reduces
+Keep another sign-in method available before relying on a passkey. This reduces
 the risk of losing access when a device is unavailable.
 
 ## Sign in with a passkey
 
-Open the login page and select **Sign in with a passkey**. Choose the passkey in
-the browser or device prompt and complete user verification.
-
-Passkey autofill is also enabled. A supported browser can offer a MedTracker
-passkey from the email field.
-
-The browser controls whether a synced passkey or cross-device sign-in is
+Choose passkey sign-in on the login page. Select the passkey in the browser or
+device prompt and complete user verification. Browser and password-manager
+support determines whether autofill, a synced passkey or cross-device sign-in is
 available. MedTracker does not copy private keys between devices.
 
 ## Remove a passkey
 
-1. Sign in and open **Profile**.
-2. Find the passkey under **Two-Factor Authentication**.
-3. Select **Remove** beside that passkey.
-4. Complete the fresh authentication check when prompted.
-
-Removing a passkey does not remove other passkeys, an authenticator app, or
-recovery codes.
+Open **Account security** and select **Remove passkey** beside the credential.
+Removing a passkey does not remove other credentials or change household
+permissions.
 
 ## Recovery
 
-Keep another sign-in method available. MedTracker supports authenticator-app
-codes and recovery codes alongside passkeys.
+Use another configured sign-in method if a passkey is unavailable. Native MFA
+backup codes complete a second-factor challenge after the first sign-in step;
+they cannot sign in alone. Email password recovery does not remove configured
+MFA. See the [authentication and recovery guide](two-factor-authentication.md).
 
-Recovery codes are single-use secrets. Store them outside MedTracker and away
-from the device that holds the passkey. Generating a new set invalidates the
-old set.
-
-If every sign-in method is unavailable, use the account recovery process or
-contact the deployment administrator.
+Keep backup codes outside MedTracker and away from the authenticator device. If
+every configured method is unavailable, contact the deployment administrator.
 
 ## Troubleshooting
 
 ### The browser does not offer a passkey
 
-- Confirm that you opened the same HTTPS origin used when the passkey was
-  registered.
+- Open the same HTTPS origin used when the passkey was registered.
 - Check that the browser and device support WebAuthn.
-- Try the explicit **Sign in with a passkey** action instead of autofill.
+- Try explicit passkey sign-in instead of autofill.
+- Complete the device-unlock or user-verification prompt.
 
 ### The origin or relying-party ID does not match
 
-Check `APP_URL`. It must contain the exact public scheme and host used by the
-application. Restart the application after changing the value.
+Check Loco's configured public server origin and production
+`MEDTRACKER_PUBLIC_HOST`. The browser URL and configured scheme, host and public
+port must agree. Restart the application after changing its configuration.
 
-Do not weaken WebAuthn origin checks to work around a proxy or hostname error.
-Correct the public URL and proxy configuration instead.
+### A device or password manager was lost
 
-### A passkey device is lost
-
-Use another registered passkey, an authenticator-app code, or a recovery code.
-After signing in, remove the lost device's passkey and add a replacement.
-
-## Current security settings
-
-MedTracker configures passkeys as discoverable credentials and requires user
-verification. The application stores each credential's public key and usage
-counter. The authenticator keeps the private key.
-
-The application does not require an authenticator vendor or request
-direct attestation. Deployment administrators should not claim that MedTracker
-has verified the hardware model behind a passkey.
-
-## Related guides
-
-- [Two-factor authentication](two-factor-authentication.md)
-- [OpenID Connect setup](oidc-setup.md)
-- [Self-hosting](self-hosting.md)
+Sign in with another configured method, remove the unavailable passkey, then add
+its replacement. Do not change the public hostname as a recovery shortcut.

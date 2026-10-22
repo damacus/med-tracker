@@ -2,7 +2,6 @@ use super::*;
 use crate::models::entities::{
     account, api_change_event, membership, person, security_audit_event, version,
 };
-use sea_orm::DatabaseTransaction;
 
 pub(super) enum PersonOrigin {
     Existing,
@@ -10,7 +9,7 @@ pub(super) enum PersonOrigin {
 }
 
 pub(crate) async fn apply(
-    db: &DatabaseTransaction,
+    db: &impl sea_orm::ConnectionTrait,
     actor: &super::acceptance::AcceptanceActor,
     source: &person::Model,
     inviter: &membership::Model,
@@ -30,7 +29,7 @@ pub(crate) async fn apply(
 }
 
 pub(super) async fn apply_to_person(
-    db: &DatabaseTransaction,
+    db: &impl sea_orm::ConnectionTrait,
     actor: &super::acceptance::AcceptanceActor,
     subject: person::Model,
     inviter: &membership::Model,

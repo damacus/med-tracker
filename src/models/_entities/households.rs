@@ -65,8 +65,6 @@ pub enum Relation {
     HouseholdPurgeRuns,
     #[sea_orm(has_many = "super::household_retention_holds::Entity")]
     HouseholdRetentionHolds,
-    #[sea_orm(has_many = "super::identity_sessions::Entity")]
-    IdentitySessions,
     #[sea_orm(has_many = "super::location_memberships::Entity")]
     LocationMemberships,
     #[sea_orm(has_many = "super::locations::Entity")]
@@ -206,12 +204,6 @@ impl Related<super::household_purge_runs::Entity> for Entity {
 impl Related<super::household_retention_holds::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::HouseholdRetentionHolds.def()
-    }
-}
-
-impl Related<super::identity_sessions::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentitySessions.def()
     }
 }
 

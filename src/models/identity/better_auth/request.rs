@@ -14,85 +14,17 @@ use better_auth_core::{
 };
 use loco_rs::controller::middleware::request_id::LocoRequestId;
 
-use super::{ClinicalAuthSchema, IdentityService, store::clinical_id};
+use super::{ClinicalAuthSchema, IdentityService, policy::clinical_id};
 
 #[derive(Clone)]
 pub(super) struct AuthenticatedRequest {
     pub account_id: i64,
     pub session_token: String,
-    pub request_id: String,
-    pub active_household_id: Option<i64>,
 }
 
 struct RequestContext {
     request_id: String,
     principal: Option<AuthenticatedRequest>,
-    recovery_issuance_account: Option<i64>,
-    totp_failure_status: Option<u16>,
-    support_expiry_denial: bool,
-    password_login: bool,
-    email_change: Option<(String, String)>,
-}
-
-pub(super) fn allow_email_change(account: &str, email: &str) -> AuthResult<()> {
-    REQUEST
-        .try_with(|state| state.borrow_mut().email_change = Some((account.into(), email.into())))
-        .map_err(|_| AuthError::internal("Identity request context missing"))
-}
-
-pub(super) fn email_change_allowed(account: &str, email: &str) -> bool {
-    REQUEST
-        .try_with(|state| {
-            state
-                .borrow()
-                .email_change
-                .as_ref()
-                .is_some_and(|(allowed_account, allowed_email)| {
-                    allowed_account == account && allowed_email == email
-                })
-        })
-        .unwrap_or(false)
-}
-
-pub(super) fn password_login() -> bool {
-    REQUEST
-        .try_with(|state| state.borrow().password_login)
-        .unwrap_or(false)
-}
-
-pub(super) fn persist_totp_failure(status: u16) -> AuthResult<()> {
-    REQUEST
-        .try_with(|state| state.borrow_mut().totp_failure_status = Some(status))
-        .map_err(|_| AuthError::internal("Identity request context missing"))
-}
-
-pub(super) fn persist_support_expiry() -> AuthResult<()> {
-    REQUEST
-        .try_with(|state| state.borrow_mut().support_expiry_denial = true)
-        .map_err(|_| AuthError::internal("Identity request context missing"))
-}
-
-fn commits_status(status: u16) -> bool {
-    status < 400
-        || REQUEST
-            .try_with(|state| {
-                let state = state.borrow();
-                state.totp_failure_status == Some(status)
-                    || (status == 403 && state.support_expiry_denial)
-            })
-            .unwrap_or(false)
-}
-
-pub(super) fn allow_recovery_issuance(account_id: i64) -> AuthResult<()> {
-    REQUEST
-        .try_with(|state| state.borrow_mut().recovery_issuance_account = Some(account_id))
-        .map_err(|_| AuthError::internal("Identity request context missing"))
-}
-
-pub(super) fn recovery_issuance_allowed(account_id: i64) -> bool {
-    REQUEST
-        .try_with(|state| state.borrow().recovery_issuance_account == Some(account_id))
-        .unwrap_or(false)
 }
 
 tokio::task_local! {
@@ -113,11 +45,10 @@ pub(super) fn request_id() -> Option<String> {
         .ok()
 }
 
-pub(super) struct ClinicalRequest;
+pub(super) struct ClinicalRequest(pub std::sync::Arc<super::IdentityPolicy>);
 
 pub enum BrowserIdentity {
     SignedOut,
-    PendingFactor,
     Enrolment {
         user: better_auth_core::wire::UserView,
         session: better_auth_core::wire::SessionView,
@@ -132,24 +63,22 @@ pub async fn browser_identity(
     service: &IdentityService,
     request: &AuthRequest,
 ) -> AuthResult<BrowserIdentity> {
-    match service
+    let authoritative = match service
         .context()
         .require_authoritative_session(request)
         .await
     {
-        Ok((_, session))
-            if session
-                .additional_fields
-                .get("legacy_factor_pending")
-                .and_then(serde_json::Value::as_bool)
-                == Some(true) =>
-        {
-            Ok(BrowserIdentity::PendingFactor)
-        }
+        Ok((user, session)) => match service.policy.admit_session(&session).await {
+            Ok(()) => Ok((user, session)),
+            Err(error) => Err(error),
+        },
+        Err(error) => Err(error),
+    };
+    match authoritative {
         Ok((user, session)) => match session
             .additional_fields
             .get("clinical_session_purpose")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
         {
             Some("authenticated") => Ok(BrowserIdentity::Authenticated { user, session }),
             Some("enrolment") => Ok(BrowserIdentity::Enrolment { user, session }),
@@ -162,10 +91,10 @@ pub async fn browser_identity(
     }
 }
 
-fn has_clinical_assurance(fields: &serde_json::Map<String, serde_json::Value>) -> bool {
+fn has_clinical_assurance(fields: &better_auth_core::FieldMap) -> bool {
     fields
         .get("clinical_session_purpose")
-        .and_then(serde_json::Value::as_str)
+        .and_then(better_auth_core::FieldValue::as_str)
         == Some("authenticated")
 }
 
@@ -186,37 +115,50 @@ impl AuthPlugin<ClinicalAuthSchema> for ClinicalRequest {
     ) -> AuthResult<Option<BeforeRequestAction>> {
         let totp = matches!(
             request.path(),
-            "/security/api-key/revoke"
-                | "/security/email/confirm"
+            "/security/api-key/create"
+                | "/security/api-key/revoke"
                 | "/security/session/revoke"
-                | "/security/recovery/acknowledge"
                 | "/security/operation/start"
-                | "/security/password/email/confirm"
                 | "/security/totp/start"
                 | "/security/totp/finish"
                 | "/security/totp/login"
-                | "/security/totp/disable/start"
                 | "/security/totp/disable/confirm"
                 | "/security/passkey/start"
                 | "/security/passkey/confirm"
         );
         if !totp
+            && !request.path().starts_with("/reset-password/")
             && !matches!(
                 request.path(),
                 "/onboarding/signup"
+                    | "/sign-up/email"
+                    | "/verify-email"
+                    | "/change-email"
+                    | "/change-password"
+                    | "/unlink-account"
+                    | "/passkey/delete-passkey"
+                    | "/verify-password"
+                    | "/request-password-reset"
+                    | "/reset-password"
+                    | "/sign-in/social"
+                    | "/link-social"
+                    | "/callback/zitadel"
+                    | "/two-factor/enable"
+                    | "/two-factor/disable"
+                    | "/two-factor/verify-totp"
+                    | "/two-factor/verify-backup-code"
+                    | "/two-factor/generate-backup-codes"
                     | "/send-verification-email"
                     | "/onboarding/confirm-email"
                     | "/sign-in/email"
-                    | "/recovery/login"
                     | "/passkey/generate-authenticate-options"
                     | "/passkey/verify-authentication"
                     | "/passkey/generate-register-options"
                     | "/passkey/verify-registration"
-                    | "/onboarding/recovery-codes"
                     | "/onboarding/complete"
                     | "/get-session"
+                    | "/revoke-session"
                     | "/sign-out"
-                    | "/security/password/start"
                     | "/security/password/confirm"
             )
         {
@@ -224,15 +166,53 @@ impl AuthPlugin<ClinicalAuthSchema> for ClinicalRequest {
                 "This account operation is unavailable",
             ));
         }
-        let principal = match context.require_authoritative_session(request).await {
+        if matches!(
+            request.path(),
+            "/sign-up/email" | "/reset-password" | "/change-password"
+        ) {
+            let body: serde_json::Value = request.body_as_json()?;
+            if let Some(password) = body
+                .get(
+                    if request.path() == "/reset-password" || request.path() == "/change-password" {
+                        "newPassword"
+                    } else {
+                        "password"
+                    },
+                )
+                .and_then(serde_json::Value::as_str)
+            {
+                super::validate_new_password(password).map_err(AuthError::validation)?;
+            }
+        }
+        let authoritative = match context.require_authoritative_session(request).await {
+            Ok((user, session)) => {
+                self.0.admit_session(&session).await?;
+                let onboarding = request.path().starts_with("/reset-password/")
+                    || matches!(
+                        request.path(),
+                        "/request-password-reset"
+                            | "/reset-password"
+                            | "/onboarding/complete"
+                            | "/passkey/generate-register-options"
+                            | "/passkey/verify-registration"
+                            | "/get-session"
+                            | "/sign-out"
+                            | "/verify-email"
+                            | "/send-verification-email"
+                    );
+                if !has_clinical_assurance(&session.additional_fields) && !onboarding {
+                    return Err(AuthError::forbidden(
+                        "Complete account setup before changing security settings",
+                    ));
+                }
+                Ok((user, session))
+            }
+            Err(error) => Err(error),
+        };
+        let principal = match authoritative {
             Ok((user, session)) if has_clinical_assurance(&session.additional_fields) => Some((
-                clinical_id(&user.id)?,
-                session.token,
-                session
-                    .active_organization_id
-                    .as_deref()
-                    .map(clinical_id)
-                    .transpose()?,
+                clinical_id(&user.id.display_string()?)?,
+                session.token.typed()?.clone(),
             )),
             Ok(_) => None,
             Err(AuthError::Unauthenticated | AuthError::SessionNotFound) => None,
@@ -242,13 +222,9 @@ impl AuthPlugin<ClinicalAuthSchema> for ClinicalRequest {
             .try_with(|state| {
                 let mut state = state.borrow_mut();
                 state.principal =
-                    principal.map(|(account_id, session_token, active_household_id)| {
-                        AuthenticatedRequest {
-                            account_id,
-                            session_token,
-                            active_household_id,
-                            request_id: state.request_id.clone(),
-                        }
+                    principal.map(|(account_id, session_token)| AuthenticatedRequest {
+                        account_id,
+                        session_token,
                     });
             })
             .map_err(|_| AuthError::internal("Identity request context missing"))?;
@@ -268,9 +244,45 @@ pub fn router(service: IdentityService) -> Router {
     service
         .auth
         .clone()
-        .axum_router()
-        .with_state(service.auth.clone())
+        .axum_router_with_state::<IdentityService>()
+        .route(
+            "/security/session/revoke",
+            axum::routing::post(revoke_session),
+        )
+        .route("/onboarding/signup", axum::routing::post(revoke_session))
+        .route(
+            "/security/password/confirm",
+            axum::routing::post(revoke_session),
+        )
+        .route(
+            "/security/passkey/start",
+            axum::routing::post(revoke_session),
+        )
+        .route(
+            "/security/passkey/confirm",
+            axum::routing::post(revoke_session),
+        )
+        .route("/security/totp/start", axum::routing::post(revoke_session))
+        .route("/security/totp/finish", axum::routing::post(revoke_session))
+        .route("/security/totp/login", axum::routing::post(revoke_session))
+        .route(
+            "/security/totp/disable/confirm",
+            axum::routing::post(revoke_session),
+        )
+        .with_state(service.clone())
         .layer(middleware::from_fn_with_state(service, request_context))
+}
+
+async fn revoke_session(
+    State(service): State<IdentityService>,
+    axum::Extension(request): axum::Extension<AuthRequest>,
+) -> Response {
+    let request_id = request_id().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    match dispatch(&service, request, request_id).await {
+        Ok(response) => better_auth_core::error::materialize_axum_response(response)
+            .unwrap_or_else(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response()),
+        Err(error) => error.into_response(),
+    }
 }
 
 async fn request_context(
@@ -304,22 +316,45 @@ async fn request_context(
         })
         .collect();
     preflight.body = Some(body.to_vec());
-    match super::limits::check(&service, &preflight).await {
-        Ok(Some(response)) => {
-            let mut builder = axum::http::Response::builder().status(response.status);
-            for (name, value) in response.headers.iter() {
-                builder = builder.header(name, value);
+    preflight.query = parts
+        .uri
+        .query()
+        .map(|query| {
+            serde_urlencoded::from_str::<std::collections::HashMap<String, String>>(query)
+                .map(serde_json::to_value)
+        })
+        .transpose()
+        .map_err(|_| ())
+        .ok()
+        .flatten()
+        .and_then(Result::ok);
+    let dispatched = matches!(
+        preflight.path(),
+        "/security/session/revoke"
+            | "/onboarding/signup"
+            | "/security/password/confirm"
+            | "/security/passkey/start"
+            | "/security/passkey/confirm"
+            | "/security/totp/start"
+            | "/security/totp/finish"
+            | "/security/totp/login"
+            | "/security/totp/disable/confirm"
+    );
+    if !dispatched {
+        match super::limits::check(&service, &preflight).await {
+            Ok(Some(response)) => {
+                return better_auth_core::error::materialize_axum_response(response)
+                    .unwrap_or_else(|_| {
+                        axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                    });
             }
-            return builder
-                .body(axum::body::Body::from(response.body))
-                .unwrap_or_else(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response());
+            Err(error) => return error.into_response(),
+            Ok(None) => {}
         }
-        Err(error) => return error.into_response(),
-        Ok(None) => {}
     }
-    let request = Request::from_parts(parts, axum::body::Body::from(body));
+    let mut request = Request::from_parts(parts, axum::body::Body::from(body));
+    request.extensions_mut().insert(preflight.clone());
     let signup = request.uri().path().ends_with("/onboarding/signup");
-    let password_login = request.uri().path().ends_with("/sign-in/email");
     let request_id = request
         .extensions()
         .get::<LocoRequestId>()
@@ -330,17 +365,8 @@ async fn request_context(
             RefCell::new(RequestContext {
                 request_id,
                 principal: None,
-                recovery_issuance_account: None,
-                totp_failure_status: None,
-                support_expiry_denial: false,
-                password_login,
-                email_change: None,
             }),
-            service
-                .store
-                .atomic(async { Ok(next.run(request).await) }, |response| {
-                    commits_status(response.status().as_u16())
-                }),
+            async { Ok::<_, AuthError>(next.run(request).await) },
         )
         .await
     {
@@ -358,52 +384,88 @@ async fn request_context(
     }
 }
 
-pub async fn dispatch(
+pub fn dispatch(
     service: &IdentityService,
     request: AuthRequest,
     request_id: String,
-) -> AuthResult<AuthResponse> {
-    if let Some(response) = super::limits::check(service, &request).await? {
-        return Ok(response);
-    }
-    let signup = request.path == "/onboarding/signup";
-    let password_login = request.path == "/sign-in/email";
-    let result = REQUEST
-        .scope(
-            RefCell::new(RequestContext {
-                request_id,
-                principal: None,
-                recovery_issuance_account: None,
-                totp_failure_status: None,
-                support_expiry_denial: false,
-                password_login,
-                email_change: None,
-            }),
-            service
-                .store
-                .atomic(service.handle_request(request), |response| {
-                    commits_status(response.status)
-                }),
-        )
-        .await;
-    match result {
-        Err(AuthError::Conflict(_)) if signup => Ok(AuthResponse::json(
-            200,
-            &serde_json::json!({"status":true}),
-        )?),
-        Ok(response) if signup && response.status == 409 => Ok(AuthResponse::json(
-            200,
-            &serde_json::json!({"status":true}),
-        )?),
-        Ok(mut response) if response.status >= 500 => {
-            response.headers.remove("set-cookie");
-            Ok(response)
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = AuthResult<AuthResponse>> + Send + '_>> {
+    Box::pin(async move {
+        if let Some(response) = super::limits::check(service, &request).await? {
+            return Ok(response);
         }
-        result => result,
-    }
+        let signup = request.path == "/onboarding/signup";
+        let result = REQUEST
+            .scope(
+                RefCell::new(RequestContext {
+                    request_id,
+                    principal: None,
+                }),
+                async {
+                    if matches!(
+                        request.path(),
+                        "/security/session/revoke"
+                            | "/onboarding/signup"
+                            | "/security/password/confirm"
+                            | "/security/passkey/start"
+                            | "/security/passkey/confirm"
+                            | "/security/totp/start"
+                            | "/security/totp/finish"
+                            | "/security/totp/login"
+                            | "/security/totp/disable/confirm"
+                    ) {
+                        use better_auth_core::middleware::Middleware;
+                        let csrf = better_auth_core::middleware::CsrfMiddleware::new(
+                            better_auth_core::middleware::CsrfConfig::new(),
+                            service.context().config.clone(),
+                        );
+                        if let Some(response) = csrf.before_request(&request).await? {
+                            return Ok(response);
+                        }
+                        ClinicalRequest(service.policy.clone())
+                            .before_request(&request, service.context())
+                            .await?;
+                        return match request.path() {
+                            "/security/session/revoke" => {
+                                super::sessions::revoke(service, &request).await
+                            }
+                            "/onboarding/signup" => {
+                                super::onboarding::signup(service, &request).await
+                            }
+                            "/security/password/confirm" => {
+                                super::operations::handle(service, &request).await
+                            }
+                            "/security/passkey/start" => {
+                                super::passkeys::start(service, &request).await
+                            }
+                            "/security/passkey/confirm" => {
+                                super::passkeys::confirm(service, &request).await
+                            }
+                            _ => super::totp::handle(service, &request).await,
+                        };
+                    }
+                    service.handle_request(request).await
+                },
+            )
+            .await;
+        match result {
+            Err(AuthError::Conflict(_)) if signup => Ok(AuthResponse::json(
+                200,
+                &serde_json::json!({"status":true}),
+            )?),
+            Ok(response) if signup && response.status == 409 => Ok(AuthResponse::json(
+                200,
+                &serde_json::json!({"status":true}),
+            )?),
+            Ok(mut response) if response.status >= 500 => {
+                response.headers.remove("set-cookie");
+                Ok(response)
+            }
+            result => result,
+        }
+    })
 }
 
-pub(super) async fn trusted<T>(
+pub(crate) async fn trusted<T>(
     service: &IdentityService,
     request: &AuthRequest,
     request_id: String,
@@ -414,21 +476,13 @@ pub(super) async fn trusted<T>(
             RefCell::new(RequestContext {
                 request_id,
                 principal: None,
-                recovery_issuance_account: None,
-                totp_failure_status: None,
-                support_expiry_denial: false,
-                password_login: false,
-                email_change: None,
             }),
-            service.store.atomic(
-                async {
-                    ClinicalRequest
-                        .before_request(request, service.context())
-                        .await?;
-                    work.await
-                },
-                |_| true,
-            ),
+            async {
+                ClinicalRequest(service.policy.clone())
+                    .before_request(request, service.context())
+                    .await?;
+                work.await
+            },
         )
         .await
 }
@@ -436,7 +490,8 @@ pub(super) async fn trusted<T>(
 #[cfg(test)]
 mod tests {
     use super::has_clinical_assurance;
-    use serde_json::{Map, Value};
+    use better_auth_core::{FieldMap, FieldValue};
+    use serde_json::Value;
 
     #[test]
     fn only_explicit_authenticated_sessions_admit_clinical_requests() {
@@ -446,15 +501,15 @@ mod tests {
             Value::String("enrolment".into()),
             Value::String("pending".into()),
         ] {
-            assert!(!has_clinical_assurance(&Map::from_iter([(
+            assert!(!has_clinical_assurance(&FieldMap::from_iter([(
                 "clinical_session_purpose".into(),
-                value
+                FieldValue::from_json(value).unwrap()
             )])));
         }
-        assert!(!has_clinical_assurance(&Map::new()));
-        assert!(has_clinical_assurance(&Map::from_iter([(
+        assert!(!has_clinical_assurance(&FieldMap::new()));
+        assert!(has_clinical_assurance(&FieldMap::from_iter([(
             "clinical_session_purpose".into(),
-            Value::String("authenticated".into())
+            FieldValue::from_json(Value::String("authenticated".into())).unwrap()
         )])));
     }
 }
