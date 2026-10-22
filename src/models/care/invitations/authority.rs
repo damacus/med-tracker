@@ -3,10 +3,9 @@ use crate::models::{
     access, authorization,
     entities::{account, membership},
 };
-use sea_orm::DatabaseTransaction;
 
 pub(super) async fn authorize(
-    db: &DatabaseTransaction,
+    db: &impl sea_orm::ConnectionTrait,
     inviter: &membership::Model,
     invitation: &household_invitation::Model,
 ) -> Result<(), OperationError> {

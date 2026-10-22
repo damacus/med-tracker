@@ -1,5 +1,38 @@
 # OpenID Connect Setup
 
+## Rust/Loco with Better Auth
+
+Loco uses Better Auth’s native OAuth plugin for ZITADEL browser sign-in. Configure
+these values through the deployment secret store and `config/*.yaml`:
+
+| Variable | Purpose |
+| --- | --- |
+| `MEDTRACKER_ZITADEL_ISSUER` | HTTPS issuer with OpenID discovery metadata. |
+| `MEDTRACKER_ZITADEL_CLIENT_ID` | Confidential web application client ID. |
+| `MEDTRACKER_ZITADEL_CLIENT_SECRET` | Server-side client secret. |
+| `MEDTRACKER_PUBLIC_HOST` | Canonical public application host and scheme. |
+
+Register `/auth/zitadel/callback` at the exact configured public application
+origin, including its public port when present. Better Auth owns discovery,
+authorisation-code exchange, PKCE, nonce and ID-token validation. The provider
+must supply the requested `openid`, `email` and `profile` claims.
+
+Existing accounts link ZITADEL explicitly through **Account security**; matching
+email addresses alone do not link accounts. New registrations collect the
+required name, date of birth and invitation details before provider sign-in and
+remain subject to MedTracker’s registration policy. Provider identity grants no
+household membership or clinical access.
+
+Verify new registration, existing-account sign-in, explicit linking/unlinking,
+callback rejection and household access against the intended provider. A working
+web login does not prove the complete mobile authorisation journey. Never put
+the confidential provider secret in a mobile client.
+
+The remaining sections describe the separate Rails reference application. Their
+`OIDC_*` variables and `/auth/oidc/callback` route do not configure Loco.
+
+## Rails reference
+
 MedTracker can use an OpenID Connect (OIDC) provider for browser sign-in. The
 provider must publish discovery metadata and support the authorization code
 flow.

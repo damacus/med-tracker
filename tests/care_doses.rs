@@ -418,6 +418,15 @@ async fn dose_take_ambiguous_and_insufficient_tracked_options_roll_back() {
                 .await
                 .unwrap();
         }
+        let baseline=fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS total,count(*) FILTER(WHERE item_type='NativeAuthentication') AS native_authentication FROM versions")).await.unwrap().unwrap();
+        let baseline_versions: i64 = baseline.try_get("", "total").unwrap();
+        assert!(baseline_versions > 0);
+        assert_eq!(
+            baseline_versions,
+            baseline
+                .try_get::<i64>("", "native_authentication")
+                .unwrap()
+        );
         assert!(matches!(
             take(&fixture, command()).await,
             Err(OperationError::Validation { .. })
@@ -432,7 +441,7 @@ async fn dose_take_ambiguous_and_insufficient_tracked_options_roll_back() {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(row.try_get::<i64>("", "total").unwrap(), 0);
+        assert_eq!(row.try_get::<i64>("", "total").unwrap(), baseline_versions);
         fixture.close().await;
     }
 }

@@ -2331,7 +2331,7 @@ en:
       keys_hint: "Keys use the selected permissions within your current household access. Their permissions, households, name and expiry cannot be changed. Revoke and replace a key to change its access."
       key_copy_hint: "Copy this key to your integration now. It will not be shown again."
       key_copy_short: "Copy this key now. It will not be shown again."
-      passkey_hint: "Register this passkey within five minutes of confirming your identity."
+      passkey_hint: "Name this passkey, then use your device to verify your identity."
       provider_hint: "Sign in again with ZITADEL using your verified MedTracker email address. Your local sign-in methods will remain available."
       provider_error_hint: "The provider could not verify this sign-in. Try again or use your local password, passkey or recovery code."
       expires: "Expires %{date}."

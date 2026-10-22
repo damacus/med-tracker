@@ -1,6 +1,6 @@
 use super::{
-    ClinicalAuthSchema, ClinicalStore, IdentityService,
-    store::{clinical_id, context, database_error, statement},
+    ClinicalAuthSchema, IdentityPolicy, IdentityService,
+    policy::{clinical_id, context, database_error, statement},
 };
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
@@ -13,9 +13,9 @@ use better_auth::plugins::{
 };
 use better_auth_core::{
     AuthContext, AuthError, AuthPlugin, AuthRequest, AuthResponse, AuthResult, AuthRoute,
-    HttpMethod, UpdateApiKey, store::JoinValue, wire::UserView,
+    HttpMethod, UpdateApiKey, wire::UserView,
 };
-use sea_orm::ConnectionTrait;
+use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
@@ -57,7 +57,7 @@ fn plugin() -> ApiKeyPlugin {
 }
 
 pub(super) async fn validate(
-    store: &ClinicalStore,
+    store: &IdentityPolicy,
     user: &UserView,
     input: &Creation,
 ) -> AuthResult<()> {
@@ -90,12 +90,12 @@ pub(super) async fn validate(
         )
         .await?;
         transaction.query_one_raw(statement("SELECT id FROM public.households WHERE id=$1 AND status='active' AND lifecycle_state='active' FOR SHARE", [household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
-        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [clinical_id(user.id.typed()?)?.into(), household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
+        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [clinical_id(&user.id.display_string()?)?.into(), household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
         let membership = access::verify_membership(
             &transaction,
             &HouseholdScope {
                 actor: Actor {
-                    account_id: clinical_id(user.id.typed()?)?,
+                    account_id: clinical_id(&user.id.display_string()?)?,
                 },
                 household_id: household,
                 request_id: super::request::request_id().unwrap_or_default(),
@@ -118,7 +118,7 @@ pub(super) async fn validate(
 }
 
 pub(super) async fn create(
-    store: &ClinicalStore,
+    store: &IdentityPolicy,
     ctx: &AuthContext<ClinicalAuthSchema>,
     user: &UserView,
     input: &Creation,
@@ -129,7 +129,7 @@ pub(super) async fn create(
             ctx,
             &CreateKeyRequest {
                 config_id: Some(CONFIG.into()),
-                user_id: Some(user.id.typed()?.clone()),
+                user_id: Some(user.id.display_string()?.clone()),
                 name: Some(input.name.trim().into()),
                 expires_in: Some(f64::from(input.expires_days) * 86_400.0),
                 permissions: Some(HashMap::from([(
@@ -141,7 +141,6 @@ pub(super) async fn create(
             },
         )
         .await?;
-    super::mail::notice(store, user, "API key created", "A personal API key was created for your MedTracker account. Review its access in account security.").await?;
     AuthResponse::json(
         200,
         &json!({"status":true,"apiKey":issued.key,"name":input.name,"expiresAt":issued.api_key.expires_at}),
@@ -155,19 +154,16 @@ pub async fn listing(
 ) -> AuthResult<Value> {
     super::request::trusted(service, request, request_id, async {
         let (user, session) = service.context().require_authoritative_session(request).await?;
-        let transaction = service.store.transaction().await?;
-        service.store.lock_security_session(&transaction, &session).await?;
-        let keys = service.store.list_enabled_personal_api_keys(user.id.typed()?).await?.into_iter().map(|key| json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request,"permissions":key.permissions})).collect::<Vec<_>>();
-        let households = service.context().database.list_user_organizations(user.id.typed()?).await?.into_iter().map(|relation| match relation {
-            JoinValue::One(Some(fields)) => fields.json().map(Value::Object),
-            _ => Err(AuthError::internal("Organization relationship unavailable")),
-        }).collect::<AuthResult<Vec<_>>>()?;
+        let transaction = service.policy.transaction().await?;
+        service.policy.require_security_session(&transaction, &session).await?;
+        let keys = inventory(&transaction, clinical_id(&user.id.display_string()?)?).await?.into_iter().map(|key| json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request,"permissions":key.permissions})).collect::<Vec<_>>();
+        let households = transaction.query_all_raw(statement("SELECT h.id,h.name,h.slug FROM households h JOIN household_memberships m ON m.household_id=h.id JOIN accounts a ON a.person_id=m.person_id WHERE a.id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY h.name,h.id", [clinical_id(&user.id.display_string()?)?.into()])).await.map_err(database_error)?.into_iter().map(|row| -> AuthResult<Value> { Ok(json!({"id":row.try_get::<i64>("","id").map_err(database_error)?.to_string(),"name":row.try_get::<String>("","name").map_err(database_error)?,"slug":row.try_get::<String>("","slug").map_err(database_error)?})) }).collect::<AuthResult<Vec<_>>>()?;
         transaction.commit().await.map_err(database_error)?;
         Ok(json!({"keys":keys,"households":households}))
     }).await
 }
 
-pub(super) struct PersonalKeys(pub Arc<ClinicalStore>);
+pub(super) struct PersonalKeys(pub Arc<IdentityPolicy>);
 
 #[async_trait]
 impl AuthPlugin<ClinicalAuthSchema> for PersonalKeys {
@@ -175,18 +171,44 @@ impl AuthPlugin<ClinicalAuthSchema> for PersonalKeys {
         "clinical-personal-api-keys"
     }
     fn routes(&self) -> Vec<AuthRoute> {
-        vec![AuthRoute::post(
-            "/security/api-key/revoke",
-            "revoke_personal_api_key",
-        )]
+        vec![
+            AuthRoute::post("/security/api-key/create", "create_personal_api_key"),
+            AuthRoute::post("/security/api-key/revoke", "revoke_personal_api_key"),
+        ]
     }
     async fn on_request(
         &self,
         request: &AuthRequest,
         ctx: &AuthContext<ClinicalAuthSchema>,
     ) -> AuthResult<Option<AuthResponse>> {
-        if request.method != HttpMethod::Post || request.path != "/security/api-key/revoke" {
+        if request.method != HttpMethod::Post
+            || !matches!(
+                request.path.as_str(),
+                "/security/api-key/create" | "/security/api-key/revoke"
+            )
+        {
             return Ok(None);
+        }
+        if request.path == "/security/api-key/create" {
+            let input: Creation = request
+                .body_as_json()
+                .map_err(|_| AuthError::bad_request("Invalid key creation"))?;
+            let (user, session) = ctx.require_authoritative_session(request).await?;
+            let transaction = self.0.transaction().await?;
+            self.0
+                .require_security_session(&transaction, &session)
+                .await?;
+            transaction
+                .query_one_raw(statement(
+                    "SELECT id FROM accounts WHERE id=$1 AND status=2 FOR NO KEY UPDATE",
+                    [clinical_id(&user.id.display_string()?)?.into()],
+                ))
+                .await
+                .map_err(database_error)?
+                .ok_or(AuthError::Unauthenticated)?;
+            let response = create(&self.0, ctx, &user, &input).await?;
+            transaction.commit().await.map_err(database_error)?;
+            return Ok(Some(response));
         }
         #[derive(Deserialize)]
         #[serde(deny_unknown_fields)]
@@ -216,13 +238,6 @@ impl AuthPlugin<ClinicalAuthSchema> for PersonalKeys {
                 },
             )
             .await?;
-        super::mail::notice(
-            &self.0,
-            &user,
-            "API key revoked",
-            "A personal API key was revoked from your MedTracker account.",
-        )
-        .await?;
         transaction.commit().await.map_err(database_error)?;
         Ok(Some(AuthResponse::json(200, &json!({"status":true}))?))
     }
@@ -271,17 +286,22 @@ pub(crate) async fn authenticate(
         })?;
     let reference_id = key
         .reference_id
-        .typed()
+        .display_string()
         .map_err(|_| AuthenticationError::Unauthenticated)?;
-    let account_id = clinical_id(reference_id).map_err(|_| AuthenticationError::Unauthenticated)?;
+    let account_id =
+        clinical_id(&reference_id).map_err(|_| AuthenticationError::Unauthenticated)?;
     let transaction = service
-        .store
+        .policy
         .transaction()
         .await
         .map_err(|_| AuthenticationError::Unavailable)?;
-    context(&transaction, "med_tracker.current_account_id", reference_id)
-        .await
-        .map_err(|_| AuthenticationError::Unavailable)?;
+    context(
+        &transaction,
+        "med_tracker.current_account_id",
+        &reference_id,
+    )
+    .await
+    .map_err(|_| AuthenticationError::Unavailable)?;
     let row = transaction
         .query_one_raw(statement(
             "SELECT preferences FROM public.accounts WHERE id=$1 AND status=2",
@@ -293,7 +313,7 @@ pub(crate) async fn authenticate(
     let preferences: Value = row
         .try_get("", "preferences")
         .map_err(|_| AuthenticationError::Unavailable)?;
-    let time_zone = super::super::time_zone::preferred(&preferences, service.store.settings())?;
+    let time_zone = super::super::time_zone::preferred(&preferences, service.policy.settings())?;
     transaction
         .commit()
         .await
@@ -301,9 +321,8 @@ pub(crate) async fn authenticate(
     Ok(Principal {
         id: key
             .id
-            .typed()
-            .map_err(|_| AuthenticationError::Unauthenticated)?
-            .clone(),
+            .display_string()
+            .map_err(|_| AuthenticationError::Unauthenticated)?,
         account_id,
         permission: permission.into(),
         time_zone,
@@ -326,17 +345,12 @@ impl Principal {
             .map_err(|_| AuthenticationError::Unavailable)?
             .ok_or(AuthenticationError::Unauthenticated)?;
         transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [self.account_id.into(), scope.household_id.into()])).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Forbidden)?;
-        let row = transaction.query_one_raw(statement("SELECT payload FROM public.identity_api_keys WHERE id=$1 AND account_id=$2 AND expires_at>clock_timestamp() AND payload->>'configId'=$3 AND payload->>'enabled'='true' FOR SHARE", [self.id.clone().into(), self.account_id.into(), CONFIG.into()])).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
-        let payload: Value = row
-            .try_get("", "payload")
-            .map_err(|_| AuthenticationError::Unavailable)?;
-        let metadata: Value = serde_json::from_str(
-            payload
-                .get("metadata")
-                .and_then(Value::as_str)
-                .ok_or(AuthenticationError::Forbidden)?,
-        )
-        .map_err(|_| AuthenticationError::Forbidden)?;
+        let row = transaction.query_one_raw(statement("SELECT metadata,permissions FROM public.identity_api_keys WHERE id=$1 AND reference_id=$2 AND expires_at>clock_timestamp() AND config_id=$3 AND enabled FOR SHARE", [clinical_id(&self.id).map_err(|_| AuthenticationError::Unauthenticated)?.into(), self.account_id.into(), CONFIG.into()])).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
+        let metadata: String = row
+            .try_get("", "metadata")
+            .map_err(|_| AuthenticationError::Forbidden)?;
+        let metadata: Value =
+            serde_json::from_str(&metadata).map_err(|_| AuthenticationError::Forbidden)?;
         if !metadata["households"].as_array().is_some_and(|values| {
             values
                 .iter()
@@ -344,13 +358,11 @@ impl Principal {
         }) {
             return Err(AuthenticationError::Forbidden);
         }
-        let permissions: Value = serde_json::from_str(
-            payload
-                .get("permissions")
-                .and_then(Value::as_str)
-                .ok_or(AuthenticationError::Forbidden)?,
-        )
-        .map_err(|_| AuthenticationError::Forbidden)?;
+        let permissions: String = row
+            .try_get("", "permissions")
+            .map_err(|_| AuthenticationError::Forbidden)?;
+        let permissions: Value =
+            serde_json::from_str(&permissions).map_err(|_| AuthenticationError::Forbidden)?;
         if !permissions["medtracker"].as_array().is_some_and(|values| {
             self.permission
                 .split(',')
@@ -387,4 +399,38 @@ pub(crate) fn permission(method: &axum::http::Method, route: &str) -> Option<&'s
         return Some("doses:write");
     }
     Some("care:write")
+}
+
+pub(super) struct KeySummary {
+    pub id: String,
+    pub name: Option<String>,
+    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_request: Option<chrono::DateTime<chrono::Utc>>,
+    pub permissions: Option<String>,
+}
+
+pub(super) async fn inventory(
+    db: &impl ConnectionTrait,
+    account_id: i64,
+) -> AuthResult<Vec<KeySummary>> {
+    use super::schema::api_key::{Column, Entity};
+    let rows = Entity::find()
+        .filter(Column::ReferenceId.eq(account_id))
+        .filter(Column::ConfigId.eq(CONFIG))
+        .filter(Column::Enabled.eq(true))
+        .order_by_asc(Column::CreatedAt)
+        .order_by_asc(Column::Id)
+        .all(db)
+        .await
+        .map_err(database_error)?;
+    Ok(rows
+        .into_iter()
+        .map(|key| KeySummary {
+            id: key.id.to_string(),
+            name: key.name,
+            expires_at: key.expires_at,
+            last_request: key.last_request,
+            permissions: key.permissions,
+        })
+        .collect())
 }

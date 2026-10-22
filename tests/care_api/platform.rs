@@ -60,7 +60,7 @@ pub(super) async fn admin_session(app: &Application) -> String {
 }
 
 pub(super) async fn sign_in(app: &Application, account_id: i64, email: &str) -> String {
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES({account_id},now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO identity_onboarding(account_id,completed_at) VALUES({account_id},now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()")).await.unwrap();
     let service = app
         .context
         .shared_store
@@ -104,9 +104,10 @@ async fn synthetic_account(
     email: &str,
     status: i32,
 ) {
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES({person_id},'Synthetic platform member',0,true,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES({account_id},{person_id},'Synthetic platform member','{email}',crypt('password',gen_salt('bf',4)),{status},now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES({user_id},{person_id},'{email}',crypt('password',gen_salt('bf',4)),true,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES({person_id},'Synthetic platform member','1990-01-01',0,true,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES({account_id},{person_id},'Synthetic platform member','{email}',{status},now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO users(id,person_id,email_address,active,created_at,updated_at) VALUES({user_id},{person_id},'{email}',true,now(),now())")).await.unwrap();
+    crate::fixtures::seed_native_password(&app.fixture.admin, account_id).await;
 }
 
 pub(super) async fn operation_start(
@@ -1161,7 +1162,7 @@ async fn platform_users_page_shows_user_state_and_action_forms() {
 #[tokio::test]
 async fn platform_users_page_links_are_bounded() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) SELECT 90000+i,format('Synthetic bulk person %s',i),0,true,now(),now() FROM generate_series(1,300) i; INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) SELECT 80000+i,90000+i,format('Synthetic bulk person %s',i),format('bulk-%s@example.test',i),crypt('password',gen_salt('bf',4)),2,now(),now() FROM generate_series(1,300) i").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) SELECT 90000+i,format('Synthetic bulk person %s',i),0,true,now(),now() FROM generate_series(1,300) i; INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) SELECT 80000+i,90000+i,format('Synthetic bulk person %s',i),format('bulk-%s@example.test',i),2,now(),now() FROM generate_series(1,300) i").await.unwrap();
     let cookie = admin_session(&app).await;
     let (_cookies, body) =
         form_page(&app, &cookie, "/platform/users?page=9223372036854775807").await;
@@ -1702,10 +1703,11 @@ async fn household_member(
     role: &str,
 ) {
     let (account_id, person_id, user_id, membership_id, household_id) = ids;
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES({person_id},'{name}',0,true,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES({account_id},{person_id},'{name}','{email}',crypt('password',gen_salt('bf',4)),2,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES({user_id},{person_id},'{email}',crypt('password',gen_salt('bf',4)),true,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES({person_id},'{name}','1990-01-01',0,true,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES({account_id},{person_id},'{name}','{email}',2,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO users(id,person_id,email_address,active,created_at,updated_at) VALUES({user_id},{person_id},'{email}',true,now(),now())")).await.unwrap();
     app.fixture.admin.execute_unprepared(&format!("INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES({membership_id},{household_id},{person_id},'{role}','active',now(),now(),now())")).await.unwrap();
+    crate::fixtures::seed_native_password(&app.fixture.admin, account_id).await;
 }
 
 async fn recovery_household(app: &Application) {

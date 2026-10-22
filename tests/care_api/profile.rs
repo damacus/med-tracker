@@ -799,7 +799,7 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
     use better_auth_core::{AuthRequest, HttpMethod};
     use med_tracker::models::identity::better_auth::{IdentityService, dispatch};
     app.fixture.admin.execute_unprepared(
-        "INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=EXCLUDED.recovery_saved_at",
+        "INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=EXCLUDED.completed_at",
     ).await.unwrap();
     let service = app.context.shared_store.get::<IdentityService>().unwrap();
     let origin = url::Url::parse(service.context().config.base_url.as_static().unwrap())
@@ -825,52 +825,17 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
         .collect::<Vec<_>>()
         .join("; ");
     assert!(!cookie.is_empty());
-    let mut start = AuthRequest::new(HttpMethod::Post, "/security/operation/start");
-    start
+    let mut create = AuthRequest::new(HttpMethod::Post, "/security/api-key/create");
+    create
         .headers
         .insert("content-type".into(), "application/json".into());
-    start.headers.insert("cookie".into(), cookie.clone());
-    start.headers.insert("origin".into(), origin.clone());
-    start.body = Some(serde_json::to_vec(&json!({"action":"create_api_key","key":{"name":name,"households":[72001],"permissions":["care:read","care:write"],"expires_days":1}})).unwrap());
-    let started = dispatch(&service, start, "synthetic-profile-personal-start".into())
+    create.headers.insert("cookie".into(), cookie);
+    create.headers.insert("origin".into(), origin);
+    create.body=Some(serde_json::to_vec(&json!({"name":name,"households":[72001],"permissions":["care:read","care:write"],"expires_days":1})).unwrap());
+    let issued = dispatch(&service, create, "synthetic-profile-personal-create".into())
         .await
         .unwrap();
-    if started.status != 200 {
-        let error: Value = started.body.json().unwrap().unwrap();
-        panic!(
-            "Personal key operation setup rejected: status={}, code={}, message={}",
-            started.status, error["code"], error["message"]
-        );
-    }
-    let started: Value = started.body.json().unwrap().unwrap();
-    let mut confirm = AuthRequest::new(HttpMethod::Post, "/security/password/confirm");
-    confirm
-        .headers
-        .insert("content-type".into(), "application/json".into());
-    confirm.headers.insert("cookie".into(), cookie);
-    confirm.headers.insert("origin".into(), origin);
-    confirm.body = Some(
-        serde_json::to_vec(&json!({"operation_id":started["operation_id"],"password":"password"}))
-            .unwrap(),
-    );
-    let issued = dispatch(
-        &service,
-        confirm,
-        "synthetic-profile-personal-confirm".into(),
-    )
-    .await
-    .unwrap();
-    if issued.status != 200 {
-        let issued = issued.into_http_response().unwrap();
-        let error: Value = issued.body.json().unwrap().unwrap_or_default();
-        panic!(
-            "Personal key confirmation setup rejected: status={}, location={:?}, code={}, message={}",
-            issued.status,
-            issued.headers.get("location"),
-            error["code"],
-            error["message"]
-        );
-    }
+    assert_eq!(issued.status, 200, "native personal-key creation failed");
     let issued: Value = issued.body.json().unwrap().unwrap();
     issued["apiKey"].as_str().unwrap().to_owned()
 }
@@ -914,7 +879,11 @@ async fn personal_key_profile_and_preferences_overlap_and_revoked_keys_cannot_re
         assert_eq!(profile.unwrap().status().as_u16(), 200);
         assert_eq!(preferences.unwrap().status().as_u16(), 200);
     }
-    app.fixture.admin.execute_unprepared("UPDATE identity_api_keys SET payload=jsonb_set(payload,'{enabled}','false') WHERE account_id=71001").await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE identity_api_keys SET enabled=false WHERE reference_id=71001")
+        .await
+        .unwrap();
     for (resource, body, key, token) in [
         (
             "profile",
@@ -1019,6 +988,11 @@ async fn profile_application() -> Application {
 async fn profile_requires_a_date_of_birth_and_rejects_incomplete_records_without_writes() {
     let app = Application::new().await;
     let token = app.token().await;
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE people SET date_of_birth=NULL WHERE id=73001")
+        .await
+        .unwrap();
     let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
     let read = app
         .client

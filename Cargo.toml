@@ -37,9 +37,10 @@ bcrypt = "=0.19.3"
 better-auth = { version = "=1.0.0-alpha.5", default-features = false, features = [
     "axum",
     "rustls",
+    "seaorm2",
 ] }
 better-auth-core = { version = "=1.0.0-alpha.5" }
-openidconnect = "=4.0.1"
+better-auth-seaorm = "=1.0.0-alpha.5"
 cedar-policy = { version = "=4.13.0", default-features = false }
 headers = "=0.4.2"
 hex = "=0.4.3"
@@ -49,18 +50,12 @@ image = { version = "=0.25.10", default-features = false, features = [
     "webp",
 ] }
 hmac = "=0.13.0"
-totp-rs = { version = "=6.0.0", features = ["otpauth"] }
 oxide-auth = "=0.6.1"
 oxide-auth-async = "=0.2.1"
 serde_urlencoded = "=0.7.1"
 url = "=2.5.8"
-subtle = "=2.6.1"
 pbkdf2 = "=0.13.0"
-webauthn-rs-core = "=0.5.5"
-webauthn-rs = { version = "=0.5.5", features = [
-    "danger-allow-state-serialisation",
-    "conditional-ui",
-] }
+
 web-push = { version = "=0.11.0", default-features = false, features = [
     "hyper-client",
 ] }
@@ -68,7 +63,6 @@ reqwest = { version = "=0.13.5", default-features = false, features = [
     "json",
     "rustls",
 ] }
-serde_cbor_2 = "0.13"
 getrandom = "=0.4.3"
 ulid = "=3.0.0"
 chrono = { version = "0.4", features = ["serde"] }
@@ -109,6 +103,8 @@ migration = { path = "migration" }
 ignore-tables = "account_active_session_keys,account_login_change_keys,account_password_reset_keys,account_remember_keys,account_verification_keys"
 
 [dev-dependencies]
+josekit = "=0.10.3"
+base32 = "=0.5.1"
 iri-string = { version = "=0.7.14", default-features = false }
 loco-rs = { version = "=1.2.0", default-features = false, features = [
     "testing",
@@ -126,3 +122,6 @@ playwright-rs = { version = "=0.20.1", default-features = false, features = [
     "ring",
     "rustls-tls-webpki-roots",
 ] }
+
+[profile.dev.package.scrypt]
+opt-level = 3

@@ -1223,6 +1223,7 @@ dependencies = [
  "base64 0.22.1",
  "better-auth-api",
  "better-auth-core",
+ "better-auth-seaorm",
  "chrono",
  "clap",
  "http-body-util",
@@ -1277,7 +1278,7 @@ dependencies = [
  "sha3 0.12.0",
  "thiserror 2.0.21",
  "tokio",
- "totp-rs 5.7.2",
+ "totp-rs",
  "tracing",
  "url",
  "urlencoding",
@@ -1351,6 +1352,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18ab007d7904a1fbbbcc7e1ccabc3361d28de2c9ab910adda6c03601174f153c"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "better-auth-seaorm"
+version = "1.0.0-alpha.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac731dba3d0137e354526af4b673272348399428b4b25d8e8ffb285b931164c3"
+dependencies = [
+ "async-trait",
+ "better-auth-core",
+ "better-auth-seaorm-macros",
+ "chrono",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "better-auth-seaorm-macros"
+version = "1.0.0-alpha.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a46376fec9829bd655917235f60a578f8a35ae771a9e00af59dbf16bda4c355"
+dependencies = [
+ "better-auth-schema-registry",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "serde-rename-rule",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -4115,15 +4149,6 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "itertools"
-version = "0.10.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
@@ -4543,6 +4568,7 @@ version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1f111c8c41e7c61a49cd34e44c7619462967221a6443b0ec299e0ac30cfb9b1"
 dependencies = [
+ "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -4806,10 +4832,12 @@ dependencies = [
  "axum_csrf",
  "axum_session",
  "axum_session_sqlx",
+ "base32",
  "base64 0.23.1",
  "bcrypt",
  "better-auth",
  "better-auth-core",
+ "better-auth-seaorm",
  "bytes",
  "cedar-policy",
  "chrono",
@@ -4821,12 +4849,12 @@ dependencies = [
  "hmac 0.13.0",
  "image",
  "iri-string",
+ "josekit",
  "loco-rs",
  "md-5",
  "migration",
  "opendal",
  "opendal-http-transport-reqwest",
- "openidconnect",
  "oxide-auth",
  "oxide-auth-async",
  "pbkdf2",
@@ -4838,25 +4866,20 @@ dependencies = [
  "scraper 0.29.0",
  "sea-orm",
  "serde",
- "serde_cbor_2",
  "serde_json",
  "serde_urlencoded",
  "serde_yaml_ng",
  "sghtmltopdf",
  "sha2 0.11.1",
  "slug",
- "subtle",
  "tempfile",
  "tokio",
- "totp-rs 6.0.0",
  "tower-http 0.7.1",
  "tracing",
  "ulid 3.0.0",
  "url",
  "uuid",
  "web-push",
- "webauthn-rs",
- "webauthn-rs-core",
  "zip",
 ]
 
@@ -5244,26 +5267,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oauth2"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51e219e79014df21a225b1860a479e2dcd7cbd9130f4defd4bd0e191ea31d67d"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "getrandom 0.2.17",
- "http 1.5.0",
- "rand 0.8.8",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "serde_path_to_error",
- "sha2 0.10.9",
- "thiserror 1.0.69",
- "url",
-]
-
-[[package]]
 name = "object"
 version = "0.39.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5399,37 +5402,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "openidconnect"
-version = "4.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d8c6709ba2ea764bbed26bce1adf3c10517113ddea6f2d4196e4851757ef2b2"
-dependencies = [
- "base64 0.21.7",
- "chrono",
- "dyn-clone",
- "ed25519-dalek",
- "hmac 0.12.1",
- "http 1.5.0",
- "itertools 0.10.5",
- "log",
- "oauth2",
- "p256",
- "p384",
- "rand 0.8.8",
- "rsa",
- "serde",
- "serde-value",
- "serde_json",
- "serde_path_to_error",
- "serde_plain",
- "serde_with",
- "sha2 0.10.9",
- "subtle",
- "thiserror 1.0.69",
- "url",
-]
-
-[[package]]
 name = "openssl"
 version = "0.10.81"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5477,15 +5449,6 @@ name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
-
-[[package]]
-name = "ordered-float"
-version = "2.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68f19d67e5a2795c94e73e0bb1cc1a7edeb2e28efd39e2e1c9b7a40c1108b11c"
-dependencies = [
- "num-traits",
-]
 
 [[package]]
 name = "ordered-float"
@@ -7319,8 +7282,9 @@ version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "546040c653a705e60ec65ecd3191a809603734bebbc225775916dea9ae409b31"
 dependencies = [
+ "bigdecimal",
  "chrono",
- "ordered-float 4.6.0",
+ "ordered-float",
  "rust_decimal",
  "sea-query-derive",
  "serde_json",
@@ -7507,14 +7471,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde-value"
-version = "0.7.0"
+name = "serde-rename-rule"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
-dependencies = [
- "ordered-float 2.10.1",
- "serde",
-]
+checksum = "b8a059d895f1a31dd928f40abbea4e7177e3d8ff3aa4152fdb7a396ae1ef63a3"
 
 [[package]]
 name = "serde_cbor_2"
@@ -7569,15 +7529,6 @@ dependencies = [
  "itoa",
  "serde",
  "serde_core",
-]
-
-[[package]]
-name = "serde_plain"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ce1fc6db65a611022b23a0dec6975d63fb80a302cb3388835ff02c097258d50"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -8056,6 +8007,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05b44e85bf579a8eeb4ceaa77a3a523baf2bf0e9bac7e40f405d537b5d2d5ccb"
 dependencies = [
  "base64 0.22.1",
+ "bigdecimal",
  "bytes",
  "cfg-if",
  "chrono",
@@ -8133,6 +8085,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90b8020fe17c5f2c245bfa2505d7ef59c5604839527c740266ad2214acebea27"
 dependencies = [
+ "bigdecimal",
  "bitflags 2.13.2",
  "byteorder",
  "bytes",
@@ -8165,6 +8118,7 @@ checksum = "87a2bdd6e83f6b3ea525ca9fee568030508b58355a43d0b2c1674d5f79dcd65e"
 dependencies = [
  "atoi 2.0.0",
  "base64 0.22.1",
+ "bigdecimal",
  "bitflags 2.13.2",
  "byteorder",
  "chrono",
@@ -8181,6 +8135,7 @@ dependencies = [
  "log",
  "md-5",
  "memchr",
+ "num-bigint 0.4.8",
  "rand 0.10.3",
  "rust_decimal",
  "serde",
@@ -8883,24 +8838,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "totp-rs"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49d0f9b7aa5def86d3a8d8ba926fe8c1990924dd715d2b5fc54a4aa3788c11c1"
-dependencies = [
- "base32",
- "constant_time_eq 0.4.2",
- "hmac 0.13.0",
- "percent-encoding",
- "rand 0.10.3",
- "serde",
- "sha1 0.11.0",
- "sha2 0.11.1",
- "url",
- "zeroize",
-]
-
-[[package]]
 name = "tower"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9595,20 +9532,6 @@ dependencies = [
  "serde",
  "tracing",
  "uuid",
-]
-
-[[package]]
-name = "webauthn-rs"
-version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c548915e0e92ee946bbf2aecf01ea21bef53d974b0793cc6732ba81a03fc422"
-dependencies = [
- "base64urlsafedata",
- "serde",
- "tracing",
- "url",
- "uuid",
- "webauthn-rs-core",
 ]
 
 [[package]]

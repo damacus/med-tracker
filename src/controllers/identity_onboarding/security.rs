@@ -24,21 +24,18 @@ pub(super) async fn settings(
     let Ok(BrowserIdentity::Authenticated { user, session }) = identity else {
         return super::rendering::redirect("/login");
     };
-    let Ok(user_id) = user.id.typed() else {
+    let Ok(user_id) = user.id.display_string() else {
         return super::rendering::unavailable();
     };
-    let Ok(sessions) = service.context().database.get_user_sessions(user_id).await else {
+    let Ok(account_id) = clinical_id(&user_id) else {
         return super::rendering::unavailable();
     };
-    let Ok(accounts) = service.context().database.get_user_accounts(user_id).await else {
-        return super::rendering::unavailable();
-    };
-    let Ok(passkeys) = service
-        .context()
-        .database
-        .list_passkeys_by_user(user_id)
-        .await
+    let Ok(inventory) =
+        crate::models::identity::better_auth::security::inventory(&ctx.db, account_id).await
     else {
+        return super::rendering::unavailable();
+    };
+    let Ok(accounts) = service.context().database.get_user_accounts(&user_id).await else {
         return super::rendering::unavailable();
     };
     let Ok(authenticity_token) = token.authenticity_token() else {
@@ -50,13 +47,10 @@ pub(super) async fn settings(
         return super::rendering::unavailable();
     };
     data["email"] = json!(email);
-    let Ok(retained_factor) = service.store.retained_factor_enabled(user_id).await else {
-        return super::rendering::unavailable();
-    };
     let Ok(factor_enabled) = user.two_factor_enabled.typed() else {
         return super::rendering::unavailable();
     };
-    data["totp"] = json!(factor_enabled.unwrap_or(false) || retained_factor);
+    data["totp"] = json!(factor_enabled.unwrap_or(false));
     data["password"] = json!(
         accounts
             .iter()
@@ -69,21 +63,18 @@ pub(super) async fn settings(
             .any(|account| account.provider_id.as_str() == Some("zitadel"))
     );
     data["provider_available"] = json!(service.provider.is_some());
+    data["can_unlink_provider"] = json!(accounts.len() > 1);
     data["passkeys"] = json!(
-        passkeys
+        inventory.passkeys
             .into_iter()
-            .map(|key| json!({"id":key.id,"name":key.name.typed().ok().cloned().flatten().unwrap_or_else(|| "Passkey".into())}))
+            .map(|key| json!({"id":key.id.to_string(),"name":key.name.unwrap_or_else(|| "Passkey".into())}))
             .collect::<Vec<_>>()
     );
-    let Ok(sessions) = sessions.into_iter().map(|entry| -> better_auth_core::AuthResult<serde_json::Value> {
-        let created = entry.created_at.typed()?.to_datetime()?.ok_or_else(|| better_auth_core::AuthError::internal("Invalid session date"))?;
-        let expires = entry.expires_at.typed()?.to_datetime()?.ok_or_else(|| better_auth_core::AuthError::internal("Invalid session date"))?;
-        Ok(json!({"id":entry.id,"current":entry.id == session.id,"created":created.format("%d %b %Y %H:%M UTC").to_string(),"expires":expires.format("%d %b %Y %H:%M UTC").to_string()}))
-    }).collect::<better_auth_core::AuthResult<Vec<_>>>() else { return super::rendering::unavailable(); };
-    data["sessions"] = json!(sessions);
-    let Ok(account_id) = clinical_id(user_id) else {
+    let Ok(current_id) = session.id.display_string().and_then(|id| clinical_id(&id)) else {
         return super::rendering::unavailable();
     };
+    let sessions=inventory.sessions.into_iter().map(|entry| json!({"id":entry.id.to_string(),"current":entry.id == current_id,"created":entry.created_at.format("%d %b %Y %H:%M UTC").to_string(),"expires":entry.expires_at.format("%d %b %Y %H:%M UTC").to_string()})).collect::<Vec<_>>();
+    data["sessions"] = json!(sessions);
     let (mut platform_admin, mut support_access) = (false, false);
     if let Ok(transaction) = platform::begin(&ctx.db).await {
         platform_admin = platform::administrator(&transaction, account_id)

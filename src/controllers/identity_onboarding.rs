@@ -23,8 +23,7 @@ mod keys;
 mod oidc;
 mod passkeys;
 mod password;
-mod password_email;
-mod recovery;
+mod password_reset;
 mod rendering;
 mod security;
 mod security_locale;
@@ -38,9 +37,16 @@ pub(crate) use password::render_named;
 pub fn routes() -> Routes {
     Routes::new()
         .add("/create-account", get(create_form).post(create))
+        .add(
+            "/reset-password",
+            get(password_reset::show).post(password_reset::request),
+        )
+        .add(
+            "/reset-password/confirm",
+            get(password_reset::confirmation).post(password_reset::reset),
+        )
         .add("/auth/passkey/setup", get(passkeys::setup))
         .add("/auth/passkey/complete", get(passkeys::complete))
-        .add("/recovery-login", get(recovery::form).post(recovery::login))
         .add("/account/security", get(security::settings))
         .add("/account/security/keys", get(keys::show).post(keys::create))
         .add("/account/security/keys/revoke", post(keys::revoke))
@@ -52,16 +58,16 @@ pub fn routes() -> Routes {
         )
         .add("/account/security/provider/link", get(oidc::link))
         .add(
+            "/account/security/provider/confirm",
+            get(oidc::complete_operation),
+        )
+        .add(
             "/account/security/email",
             get(email_change::show).post(email_change::start),
         )
         .add(
             "/account/security/email/pending",
             get(email_change::pending),
-        )
-        .add(
-            "/account/security/email/confirm",
-            get(email_change::confirmation).post(email_change::confirm),
         )
         .add("/account/security/session/revoke", post(security::revoke))
         .add(
@@ -80,10 +86,6 @@ pub fn routes() -> Routes {
             "/account/security/password/confirm",
             post(password::confirm),
         )
-        .add(
-            "/account/security/password/email",
-            get(password_email::show).post(password_email::confirm),
-        )
         .add("/account/security/operation", post(credentials::start))
         .add("/account/support", get(support::page))
         .add("/account/support/approve", post(support::approve))
@@ -91,6 +93,10 @@ pub fn routes() -> Routes {
         .add("/account/security/passkey", get(credentials::passkey))
         .add("/account/security/totp", get(totp::show).post(totp::start))
         .add("/account/security/totp/finish", post(totp::finish))
+        .add(
+            "/account/security/totp/backup-codes",
+            post(totp::regenerate),
+        )
         .add("/auth/totp", get(totp::login_form).post(totp::login))
         .add("/account/security/totp/disable", post(totp::disable_start))
         .add(
@@ -111,7 +117,6 @@ async fn create_form(
     match browser_identity(&service, &passkeys::request(&headers)).await {
         Ok(BrowserIdentity::Authenticated { .. }) => return rendering::redirect("/"),
         Ok(BrowserIdentity::Enrolment { .. }) => return rendering::redirect("/auth/passkey/setup"),
-        Ok(BrowserIdentity::PendingFactor) => return rendering::redirect("/auth/totp"),
         Ok(BrowserIdentity::SignedOut) => {}
         Err(_) => return rendering::unavailable(),
     }
@@ -171,7 +176,6 @@ async fn create(
     match browser_identity(&service, &passkeys::request(&headers)).await {
         Ok(BrowserIdentity::Authenticated { .. }) => return rendering::redirect("/"),
         Ok(BrowserIdentity::Enrolment { .. }) => return rendering::redirect("/auth/passkey/setup"),
-        Ok(BrowserIdentity::PendingFactor) => return rendering::redirect("/auth/totp"),
         Ok(BrowserIdentity::SignedOut) => {}
         Err(_) => return rendering::unavailable(),
     }

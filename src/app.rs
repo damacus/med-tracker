@@ -120,7 +120,7 @@ impl Hooks for App {
             config.password.require_numbers = false;
             config.password.require_special = false;
             let store = std::sync::Arc::new(
-                crate::models::identity::better_auth::ClinicalStore::new(ctx.db.clone())
+                crate::models::identity::better_auth::IdentityPolicy::new(ctx.db.clone())
                     .with_settings(ctx.config.settings.clone()),
             );
             let service = crate::models::identity::better_auth::build(config, store)

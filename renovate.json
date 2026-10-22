@@ -10,7 +10,7 @@
   "packageRules": [
     {
       "matchManagers": ["cargo"],
-      "matchDepNames": ["better-auth", "better-auth-core"],
+      "matchDepNames": ["better-auth", "better-auth-core", "better-auth-seaorm"],
       "groupName": "Better Auth Rust"
     }
   ],

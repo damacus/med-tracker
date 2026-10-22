@@ -12,7 +12,8 @@ use crate::{fixtures, harness};
 async fn account_only_household_entry_works_with_keyboard_at_desktop_and_mobile_sizes() {
     harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
         Box::pin(async move {
-            journey.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,preferences,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,'{\"time_zone\":\"Europe/London\"}',now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now()); DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(true,now(),now())").await.unwrap();
+            journey.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,preferences,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,'{\"time_zone\":\"Europe/London\"}',now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(true,now(),now())").await.unwrap();
+            crate::fixtures::seed_native_password(&journey.admin, 71050).await;
             let page = &journey.page;
             page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
             page.get_by_label("Email address", true).fill("household-entry@example.test", None).await.unwrap();
@@ -46,7 +47,8 @@ async fn account_only_household_entry_works_with_keyboard_at_desktop_and_mobile_
 async fn account_only_invitation_opens_dashboard_at_desktop_and_mobile_sizes() {
     harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
         Box::pin(async move {
-            journey.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await.unwrap();
+            journey.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await.unwrap();
+            crate::fixtures::seed_native_password(&journey.admin, 71050).await;
             let invitation = "browser-account-only-invitation";
             let digest = hex::encode(sha2::Sha256::digest(invitation.as_bytes()));
             journey.admin.execute_raw(sea_orm::Statement::from_sql_and_values(sea_orm::DbBackend::Postgres,
@@ -101,7 +103,7 @@ async fn household_member_table_and_confirmation_at_desktop_and_mobile() {
     ] {
         harness::journey(viewport, |journey| {
             Box::pin(async move {
-                journey.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73006,'Hidden person name',0,true,now(),now()),(73016,'Accountless dependant',1,false,now(),now()); INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES(71006,73006,'Inactive member','inactive@example.test',NULL,2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74006,72001,73006,'member','suspended',now(),now(),now()),(74016,72001,73016,'member','suspended',now(),now(),now())").await.unwrap();
+                journey.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73006,'Hidden person name',0,true,now(),now()),(73016,'Accountless dependant',1,false,now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71006,73006,'Inactive member','inactive@example.test',2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74006,72001,73006,'member','suspended',now(),now(),now()),(74016,72001,73016,'member','suspended',now(),now(),now())").await.unwrap();
                 harness::sign_in(journey).await;
                 let page = &journey.page;
                 page.goto(&format!("{}/households/persistence-fixture/admin/users?status=suspended", journey.origin), None).await.unwrap();

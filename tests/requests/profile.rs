@@ -132,7 +132,7 @@ pub(super) async fn mobile_token(fixture: &Fixture) -> String {
 }
 
 pub(super) async fn seed_credentials(fixture: &Fixture) {
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign profile member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES(71002,73005,'foreign-profile@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign profile household','foreign-profile','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner','active',now(),now(),now())").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign profile member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73005,'foreign-profile@example.test',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign profile household','foreign-profile','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner','active',now(),now(),now())").await.unwrap();
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88031,71001,74001,$1,'profile-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())",[hex::encode(Sha256::digest(b"profile-session")).into()])).await.unwrap();
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES(88032,71001,74001,'Profile app',$1,1,now()+interval '1 month',now(),now(),now())",[hex::encode(Sha256::digest(b"profile-app")).into()])).await.unwrap();
 }
@@ -178,6 +178,11 @@ async fn profile_reads_scope_real_credentials_and_serialize_private_response() {
     let (fixture, boot) = boot_fixture().await;
     seed_credentials(&fixture).await;
     let mobile = mobile_token(&fixture).await;
+    fixture
+        .admin
+        .execute_unprepared("UPDATE people SET date_of_birth=NULL WHERE id=73001")
+        .await
+        .unwrap();
     let server = server(&boot);
     let missing_birth = send(
         &server,

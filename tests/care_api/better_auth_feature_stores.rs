@@ -1,317 +1,62 @@
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use better_auth::plugins::{
-    ApiKeyPlugin,
-    api_key::{ApiKeyVerificationError, VerifyApiKey},
-};
-use better_auth_core::types::UpdatePasskeyAuthentication;
-use better_auth_core::{
-    AuthError, CreateTwoFactor, FieldMap, FieldValue, SchemaValue,
-    store::{ApiKeyStore, ApiKeyUsageWrite, PasskeyStore, TwoFactorStore},
-};
+use super::Application;
 use chrono::{Duration, Utc};
-use med_tracker::models::{
-    _entities::{identity_api_keys, identity_passkeys},
-    identity::better_auth::ClinicalStore,
+use med_tracker::models::entities::identity_session;
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement, sea_query::Expr,
 };
-use sea_orm::{ActiveModelTrait, ConnectionTrait, DatabaseConnection, DbBackend, Set, Statement};
-use serde_json::json;
-use sha2::{Digest, Sha256};
+use serde_json::{Value, json};
 
-use super::{Application, fixture::Fixture};
-
-async fn seed_key(fixture: &Fixture, id: &str, expiry: chrono::DateTime<Utc>, remaining: f64) {
-    seed_key_with_hash(
-        fixture,
-        id,
-        &format!("{id}-hash"),
-        expiry,
-        remaining,
-        "test",
-    )
-    .await;
-}
-
-async fn seed_key_with_hash(
-    fixture: &Fixture,
-    id: &str,
-    hash: &str,
-    expiry: chrono::DateTime<Utc>,
-    remaining: f64,
-    config_id: &str,
-) {
-    let now = Utc::now();
-    let (permissions, metadata) = if config_id == "medtracker-personal" {
-        (
-            Some(json!({"medtracker":["care:read"]}).to_string()),
-            Some(json!({"households":[72001]}).to_string()),
-        )
-    } else {
-        (None, None)
-    };
-    identity_api_keys::ActiveModel {
-        id: Set(id.to_owned()),
-        account_id: Set(71001),
-        key_hash: Set(hash.to_owned()),
-        expires_at: Set(Some(expiry.fixed_offset())),
-        payload: Set(json!({
-            "id": id, "key": hash, "referenceId": "71001",
-            "configId": config_id, "enabled": true, "rateLimitEnabled": true,
-            "remaining": remaining, "refillAmount": null,
-            "requestCount": 0.0, "rateLimitMax": 2.0, "rateLimitTimeWindow": 60_000.0,
-            "permissions": permissions, "metadata": metadata,
-            "createdAt": now.to_rfc3339(), "updatedAt": now.to_rfc3339(),
-            "expiresAt": expiry.to_rfc3339()
-        })),
-    }
-    .insert(&fixture.admin)
-    .await
-    .unwrap();
-}
-
-#[tokio::test]
-async fn fresh_and_baseline_issued_keys_preserve_typed_dates_and_public_use() {
-    use med_tracker::models::_entities::{identity_onboarding, people};
-
-    let app = Application::new().await;
-    let native_signup = app.client.post(format!("{}/api/auth/sign-up/email", app.origin)).header("origin", app.context.config.server.full_url()).json(&json!({"name":"Native signup","email":"native-unavailable@example.test","password":"Native-passphrase-42"})).send().await.unwrap();
-    assert_eq!(native_signup.status().as_u16(), 403);
-    people::ActiveModel {
-        id: Set(73001),
-        date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(1985, 2, 3)),
-        ..Default::default()
-    }
-    .update(&app.fixture.admin)
-    .await
-    .unwrap();
-    let personal = super::profile::issue_profile_personal_key(&app, "Native date roundtrip").await;
-    identity_onboarding::ActiveModel {
-        account_id: Set(71001),
-        recovery_saved_at: Set(None),
-        ..Default::default()
-    }
-    .update(&app.fixture.admin)
-    .await
-    .unwrap();
-    let login = app
-        .client
-        .post(format!("{}/api/auth/sign-in/email", app.origin))
-        .header("origin", app.context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(login.status().as_u16(), 200);
-    let cookie = login
+fn cookies(response: &reqwest::Response) -> String {
+    response
         .headers()
         .get_all("set-cookie")
         .iter()
         .map(|value| value.to_str().unwrap().split(';').next().unwrap())
         .collect::<Vec<_>>()
-        .join("; ");
-    for path in [
-        "/organization/list-user-invitations",
-        "/organization/list-members?organizationId=72001",
-    ] {
-        let response = app
-            .client
-            .get(format!("{}/api/auth{path}", app.origin))
-            .header("cookie", &cookie)
-            .send()
-            .await
-            .unwrap();
-        assert_eq!(response.status().as_u16(), 403);
-    }
-    let issued = app
-        .client
-        .post(format!("{}/api/auth/onboarding/recovery-codes", app.origin))
-        .header("origin", app.context.config.server.full_url())
-        .header("cookie", cookie)
-        .json(&json!({}))
-        .send()
-        .await
-        .unwrap();
-    let issued_status = issued.status().as_u16();
-    let body: serde_json::Value = issued.json().await.unwrap();
-    assert_eq!(issued_status, 200, "{body}");
-    assert_eq!(body["recoveryCodes"].as_array().unwrap().len(), 10);
-    let rows = app
-        .fixture
-        .admin
-        .query_all_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT payload FROM identity_api_keys WHERE account_id=71001 ORDER BY id",
-        ))
-        .await
-        .unwrap();
-    assert_eq!(rows.len(), 11);
-    let mut personal_count = 0;
-    let mut recovery_count = 0;
-    for row in rows {
-        let mut payload: serde_json::Value = row.try_get("", "payload").unwrap();
-        let key: better_auth_core::ApiKey = serde_json::from_value(payload.clone()).unwrap();
-        assert!(
-            key.created_at
-                .typed()
-                .unwrap()
-                .to_datetime()
-                .unwrap()
-                .is_some()
-        );
-        assert!(
-            key.updated_at
-                .typed()
-                .unwrap()
-                .to_datetime()
-                .unwrap()
-                .is_some()
-        );
-        for field in [&key.last_refill_at, &key.last_request] {
-            if !field.is_undefined()
-                && let Some(date) = field.typed().unwrap()
-            {
-                assert!(date.to_datetime().unwrap().is_some());
-            }
-        }
-        match key.config_id.typed().unwrap().as_str() {
-            "medtracker-personal" => {
-                personal_count += 1;
-                assert!(
-                    key.expires_at
-                        .typed()
-                        .unwrap()
-                        .as_ref()
-                        .unwrap()
-                        .to_datetime()
-                        .unwrap()
-                        .is_some()
-                );
-            }
-            "medtracker-recovery" => {
-                recovery_count += 1;
-                assert!(key.expires_at.typed().unwrap().is_none());
-            }
-            other => panic!("Unexpected key configuration {other}"),
-        }
-        for field in [
-            "createdAt",
-            "updatedAt",
-            "expiresAt",
-            "lastRequest",
-            "lastRefillAt",
-        ] {
-            if let Some(value) = payload[field].as_str() {
-                let date = chrono::DateTime::parse_from_rfc3339(value)
-                    .unwrap()
-                    .with_timezone(&Utc);
-                payload[field] = json!(date.to_rfc3339());
-            }
-        }
-        let native: better_auth_core::ApiKey = serde_json::from_value(payload.clone()).unwrap();
-        assert!(native.created_at.typed().is_err());
-        identity_api_keys::ActiveModel {
-            id: Set(key.id.typed().unwrap().clone()),
-            payload: Set(payload),
-            ..Default::default()
-        }
-        .update(&app.fixture.admin)
-        .await
-        .unwrap();
-        let loaded = ClinicalStore::new(app.fixture.runtime.clone())
-            .get_api_key_by_id(key.id.typed().unwrap())
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(
-            loaded.created_at.typed().unwrap(),
-            key.created_at.typed().unwrap()
-        );
-        assert_eq!(
-            loaded.updated_at.typed().unwrap(),
-            key.updated_at.typed().unwrap()
-        );
-        assert_eq!(
-            loaded.expires_at.typed().unwrap(),
-            key.expires_at.typed().unwrap()
-        );
-    }
-    assert_eq!((personal_count, recovery_count), (1, 10));
-    identity_onboarding::ActiveModel {
-        account_id: Set(71001),
-        recovery_saved_at: Set(Some(Utc::now().fixed_offset())),
-        ..Default::default()
-    }
-    .update(&app.fixture.admin)
-    .await
+        .join("; ")
+}
+
+fn code(uri: &str) -> String {
+    let uri = url::Url::parse(uri).unwrap();
+    let secret = uri
+        .query_pairs()
+        .find(|(key, _)| key == "secret")
+        .unwrap()
+        .1
+        .into_owned();
+    let secret = String::from_utf8(
+        base32::decode(base32::Alphabet::Rfc4648 { padding: false }, &secret).unwrap(),
+    )
     .unwrap();
-    let accepted = app
-        .client
-        .get(format!("{}/api/v1/households/72001/profile", app.origin))
-        .bearer_auth(personal)
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(accepted.status().as_u16(), 200);
-    let recovered = app
-        .client
-        .post(format!("{}/api/auth/recovery/login", app.origin))
+    better_auth::plugins::TwoFactorPlugin::new()
+        .generate_totp(&secret)
+        .unwrap()
+}
+
+async fn login(app: &Application) -> reqwest::Response {
+    app.client
+        .post(format!("{}/api/auth/sign-in/email", app.origin))
         .header("origin", app.context.config.server.full_url())
-        .json(&json!({"code":body["recoveryCodes"][0]}))
+        .json(&json!({"email":"persistence@example.test","password":"password"}))
         .send()
         .await
-        .unwrap();
-    assert_eq!(recovered.status().as_u16(), 200);
-    app.close().await;
+        .unwrap()
 }
 
 #[tokio::test]
 async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() {
-    use med_tracker::models::_entities::{
-        identity_onboarding, identity_two_factors, people, versions,
-    };
-    use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
-
-    let cookies = |response: &reqwest::Response| {
-        response
-            .headers()
-            .get_all("set-cookie")
-            .iter()
-            .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-            .collect::<Vec<_>>()
-            .join("; ")
-    };
     let app = Application::new().await;
-    people::ActiveModel {
-        id: Set(73001),
-        date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(1985, 2, 3)),
-        ..Default::default()
-    }
-    .update(&app.fixture.admin)
-    .await
-    .unwrap();
-    identity_onboarding::ActiveModel {
-        account_id: Set(71001),
-        recovery_saved_at: Set(Some(Utc::now().fixed_offset())),
-        ..Default::default()
-    }
-    .insert(&app.fixture.admin)
-    .await
-    .unwrap();
-    let login = app
-        .client
-        .post(format!("{}/api/auth/sign-in/email", app.origin))
-        .header("origin", app.context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
-        .send()
+    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let selected = identity_session::Entity::update_many()
+        .col_expr(
+            identity_session::Column::ActiveHouseholdId,
+            Expr::value(72001_i64),
+        )
+        .filter(identity_session::Column::UserId.eq(71001_i64))
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
-    assert_eq!(login.status().as_u16(), 200);
-    let cookie = login
-        .headers()
-        .get_all("set-cookie")
-        .iter()
-        .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-        .collect::<Vec<_>>()
-        .join("; ");
+    assert_eq!(selected.rows_affected, 1);
     let mut pending = Vec::new();
     for _ in 0..2 {
         let response = app
@@ -323,181 +68,205 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
             .send()
             .await
             .unwrap();
-        let status = response.status().as_u16();
-        let body: serde_json::Value = response.json().await.unwrap();
-        assert_eq!(status, 200, "{body}");
+        let status = response.status();
+        let body: Value = response.json().await.unwrap();
+        assert_eq!(status.as_u16(), 200, "{body}");
+        assert_eq!(body["backupCodes"].as_array().unwrap().len(), 10);
+        assert!(body["totpURI"].as_str().unwrap().contains("MedTracker"));
         pending.push(body);
     }
-    let uri = url::Url::parse(pending[1]["totpURI"].as_str().unwrap()).unwrap();
-    let secret = uri
-        .query_pairs()
-        .find(|(name, _)| name == "secret")
-        .unwrap()
-        .1
-        .into_owned();
-    let code = totp_rs::Builder::new()
-        .with_algorithm(totp_rs::Algorithm::SHA1)
-        .with_digits(6)
-        .with_step_duration(30)
-        .with_skew(0)
-        .with_secret(totp_rs::Secret::try_from_base32(secret).unwrap())
-        .build_noncompliant()
-        .generate_current()
-        .to_string();
+    let current_code = code(pending[1]["totpURI"].as_str().unwrap());
     let rejected = app
         .client
         .post(format!("{}/api/auth/security/totp/finish", app.origin))
         .header("origin", app.context.config.server.full_url())
         .header("cookie", &cookie)
-        .json(&json!({"operation_id":pending[1]["operation_id"],"code":"invalid"}))
+        .json(&json!({"code":"invalid"}))
         .send()
         .await
         .unwrap();
     assert!(rejected.status().is_client_error());
-    assert!(!rejected.headers().contains_key("set-cookie"));
-    assert!(
-        identity_onboarding::Entity::find_by_id(71001)
-            .one(&app.fixture.admin)
-            .await
-            .unwrap()
-            .unwrap()
-            .legacy_totp_disabled_at
-            .is_none()
-    );
-    assert_eq!(
-        versions::Entity::find()
-            .filter(versions::Column::ItemType.eq("AuthenticationToken"))
-            .filter(versions::Column::ItemId.eq(71001))
-            .filter(versions::Column::Event.eq("auth_token/totp/enabled"))
-            .count(&app.fixture.admin)
-            .await
-            .unwrap(),
-        0
-    );
-    let mut enrolled_cookie = String::new();
-    for (operation, expected) in [(&pending[0], 401), (&pending[1], 200), (&pending[1], 401)] {
-        let response = app
-            .client
-            .post(format!("{}/api/auth/security/totp/finish", app.origin))
-            .header("origin", app.context.config.server.full_url())
-            .header("cookie", &cookie)
-            .json(&json!({"operation_id":operation["operation_id"],"code":code}))
-            .send()
-            .await
-            .unwrap();
-        let status = response.status().as_u16();
-        if status == 200 {
-            enrolled_cookie = response
-                .headers()
-                .get_all("set-cookie")
-                .iter()
-                .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-                .collect::<Vec<_>>()
-                .join("; ");
-        }
-        let text = response.text().await.unwrap();
-        assert_eq!(status, expected, "{text}");
-    }
-    let factors = identity_two_factors::Entity::find()
-        .filter(identity_two_factors::Column::AccountId.eq(71001))
+    let state = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT two_factor_enabled FROM accounts WHERE id=71001",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!state.try_get::<bool>("", "two_factor_enabled").unwrap());
+    let enrolled = app
+        .client
+        .post(format!("{}/api/auth/security/totp/finish", app.origin))
+        .header("origin", app.context.config.server.full_url())
+        .header("cookie", &cookie)
+        .json(&json!({"code":current_code}))
+        .send()
+        .await
+        .unwrap();
+    let status = enrolled.status();
+    let enrolled_cookie = cookies(&enrolled);
+    let body: Value = enrolled.json().await.unwrap();
+    assert_eq!(status.as_u16(), 200, "{body}");
+    let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT a.two_factor_enabled,f.verified FROM accounts a JOIN identity_two_factors f ON f.account_id=a.id WHERE a.id=71001")).await.unwrap().unwrap();
+    assert!(state.try_get::<bool>("", "two_factor_enabled").unwrap());
+    assert!(state.try_get::<bool>("", "verified").unwrap());
+    let rotated = identity_session::Entity::find()
+        .filter(identity_session::Column::UserId.eq(71001_i64))
         .all(&app.fixture.admin)
         .await
         .unwrap();
-    assert_eq!(factors.len(), 1);
-    assert!(factors[0].verified);
-    assert!(
-        identity_onboarding::Entity::find_by_id(71001)
-            .one(&app.fixture.admin)
-            .await
-            .unwrap()
-            .unwrap()
-            .legacy_totp_disabled_at
-            .is_some()
-    );
-    assert_eq!(
-        versions::Entity::find()
-            .filter(versions::Column::ItemType.eq("AuthenticationToken"))
-            .filter(versions::Column::ItemId.eq(71001))
-            .filter(versions::Column::Event.eq("auth_token/totp/enabled"))
-            .count(&app.fixture.admin)
-            .await
-            .unwrap(),
-        1
-    );
-    let current: serde_json::Value = app
+    assert_eq!(rotated.len(), 1);
+    assert_eq!(rotated[0].active_household_id, Some(72001));
+    let current = app
         .client
         .get(format!("{}/api/auth/get-session", app.origin))
         .header("cookie", &enrolled_cookie)
         .send()
         .await
-        .unwrap()
-        .json()
+        .unwrap();
+    assert_eq!(current.status().as_u16(), 200);
+    let current: Value = current.json().await.unwrap();
+    assert_eq!(current["session"]["active_household_id"], "72001");
+    assert!(
+        current["session"]
+            .get("activeOrganizationId")
+            .is_none_or(Value::is_null)
+    );
+    let home = app
+        .client
+        .get(format!("{}/", app.origin))
+        .header("cookie", &enrolled_cookie)
+        .send()
         .await
         .unwrap();
-    assert_eq!(current["user"]["twoFactorEnabled"], true, "{current}");
-    let old: serde_json::Value = app
+    assert_eq!(home.status().as_u16(), 200);
+    assert_eq!(
+        home.url().path(),
+        "/households/persistence-fixture/dashboard"
+    );
+    let old = app
         .client
         .get(format!("{}/api/auth/get-session", app.origin))
         .header("cookie", &cookie)
         .send()
         .await
-        .unwrap()
-        .json()
-        .await
         .unwrap();
-    assert!(old.is_null(), "{old}");
-    let login = app
+    assert!(old.json::<Value>().await.unwrap().is_null());
+    let first_totp = login(&app).await;
+    let totp_cookie = cookies(&first_totp);
+    let challenge: Value = first_totp.json().await.unwrap();
+    assert_eq!(challenge["twoFactorRedirect"], true);
+    let totp_login = app
         .client
-        .post(format!("{}/api/auth/sign-in/email", app.origin))
+        .post(format!("{}/api/auth/security/totp/login", app.origin))
         .header("origin", app.context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .header("cookie", totp_cookie)
+        .json(&json!({"code":current_code}))
         .send()
         .await
         .unwrap();
-    assert_eq!(login.status().as_u16(), 200);
-    let pending_cookie = cookies(&login);
-    let login_body: serde_json::Value = login.json().await.unwrap();
-    assert_eq!(login_body["twoFactorRedirect"], true, "{login_body}");
+    let status = totp_login.status();
+    let totp_session = cookies(&totp_login);
+    let body: Value = totp_login.json().await.unwrap();
+    assert_eq!(status.as_u16(), 200, "{body}");
+    let live = app
+        .client
+        .get(format!("{}/api/auth/get-session", app.origin))
+        .header("cookie", totp_session)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(live.status().as_u16(), 200);
+    assert!(live.json::<Value>().await.unwrap()["session"].is_object());
+    let first = login(&app).await;
+    assert_eq!(first.status().as_u16(), 200);
+    let pending_cookie = cookies(&first);
+    let body: Value = first.json().await.unwrap();
+    assert_eq!(body["twoFactorRedirect"], true, "{body}");
+    let backup = pending[1]["backupCodes"][0].as_str().unwrap();
     let proved = app
         .client
         .post(format!("{}/api/auth/security/totp/login", app.origin))
         .header("origin", app.context.config.server.full_url())
-        .header("cookie", pending_cookie)
-        .json(&json!({"code":code}))
+        .header("cookie", &pending_cookie)
+        .json(&json!({"backup":true,"code":backup}))
         .send()
         .await
         .unwrap();
-    assert_eq!(proved.status().as_u16(), 200);
-    assert!(proved.headers().get_all("set-cookie").iter().count() >= 2);
-    let authenticated_cookie = cookies(&proved);
-    let authenticated: serde_json::Value = app
+    let status = proved.status();
+    let proof_cookie = cookies(&proved);
+    let body: Value = proved.json().await.unwrap();
+    assert_eq!(status.as_u16(), 200, "{body}");
+    let authenticated = app
         .client
         .get(format!("{}/api/auth/get-session", app.origin))
-        .header("cookie", authenticated_cookie)
+        .header("cookie", proof_cookie)
         .send()
+        .await
+        .unwrap();
+    assert_eq!(authenticated.status().as_u16(), 200);
+    assert_eq!(
+        authenticated.json::<Value>().await.unwrap()["user"]["twoFactorEnabled"],
+        true
+    );
+    let replay_challenge = login(&app).await;
+    let replay_cookie = cookies(&replay_challenge);
+    let replay = app
+        .client
+        .post(format!("{}/api/auth/security/totp/login", app.origin))
+        .header("origin", app.context.config.server.full_url())
+        .header("cookie", replay_cookie)
+        .json(&json!({"backup":true,"code":backup}))
+        .send()
+        .await
+        .unwrap();
+    assert!(replay.status().is_client_error());
+    let before = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT backup_codes FROM identity_two_factors WHERE account_id=71001",
+        ))
         .await
         .unwrap()
-        .json()
-        .await
+        .unwrap()
+        .try_get::<String>("", "backup_codes")
         .unwrap();
-    assert_eq!(
-        authenticated["user"]["twoFactorEnabled"], true,
-        "{authenticated}"
-    );
-    let disable = app
-        .client
-        .post(format!(
-            "{}/api/auth/security/totp/disable/start",
-            app.origin
+    app.fixture.admin.execute_unprepared("INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'native-mfa-lock',now()+interval '1 hour')").await.unwrap();
+    for path in ["/two-factor/generate-backup-codes", "/two-factor/disable"] {
+        let denied = app
+            .client
+            .post(format!("{}/api/auth{path}", app.origin))
+            .header("origin", app.context.config.server.full_url())
+            .header("cookie", &enrolled_cookie)
+            .json(&json!({"password":"password"}))
+            .send()
+            .await
+            .unwrap();
+        assert!(denied.status().is_client_error());
+    }
+    let after = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT backup_codes FROM identity_two_factors WHERE account_id=71001",
         ))
-        .header("origin", app.context.config.server.full_url())
-        .header("cookie", &enrolled_cookie)
-        .json(&json!({}))
-        .send()
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<String>("", "backup_codes")
+        .unwrap();
+    assert_eq!(before, after);
+    app.fixture
+        .admin
+        .execute_unprepared("DELETE FROM account_lockouts WHERE account_id=71001")
         .await
         .unwrap();
-    assert_eq!(disable.status().as_u16(), 200);
-    let operation: serde_json::Value = disable.json().await.unwrap();
     let disabled = app
         .client
         .post(format!(
@@ -506,546 +275,494 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
         ))
         .header("origin", app.context.config.server.full_url())
         .header("cookie", &enrolled_cookie)
-        .json(&json!({"operation_id":operation["operation_id"],"password":"password","code":code}))
+        .json(&json!({"password":"password"}))
         .send()
         .await
         .unwrap();
-    assert_eq!(disabled.status().as_u16(), 200);
+    let status = disabled.status();
     let disabled_cookie = cookies(&disabled);
+    let body: Value = disabled.json().await.unwrap();
+    assert_eq!(status.as_u16(), 200, "{body}");
+    let disabled_state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT a.two_factor_enabled,(SELECT count(*) FROM identity_two_factors WHERE account_id=a.id) AS factors FROM accounts a WHERE a.id=71001")).await.unwrap().unwrap();
     assert!(
-        identity_two_factors::Entity::find()
-            .filter(identity_two_factors::Column::AccountId.eq(71001))
-            .all(&app.fixture.admin)
-            .await
+        !disabled_state
+            .try_get::<bool>("", "two_factor_enabled")
             .unwrap()
-            .is_empty()
     );
-    assert!(
-        identity_onboarding::Entity::find_by_id(71001)
-            .one(&app.fixture.admin)
-            .await
-            .unwrap()
-            .unwrap()
-            .legacy_totp_disabled_at
-            .is_some()
-    );
-    assert_eq!(
-        versions::Entity::find()
-            .filter(versions::Column::ItemType.eq("AuthenticationToken"))
-            .filter(versions::Column::ItemId.eq(71001))
-            .filter(versions::Column::Event.eq("auth_token/totp/disabled"))
-            .count(&app.fixture.admin)
-            .await
-            .unwrap(),
-        1
-    );
-    let current: serde_json::Value = app
+    assert_eq!(disabled_state.try_get::<i64>("", "factors").unwrap(), 0);
+    let current = app
         .client
         .get(format!("{}/api/auth/get-session", app.origin))
         .header("cookie", disabled_cookie)
         .send()
         .await
-        .unwrap()
-        .json()
-        .await
         .unwrap();
-    assert_eq!(current["user"]["twoFactorEnabled"], false, "{current}");
-    let old: serde_json::Value = app
+    assert_eq!(
+        current.json::<Value>().await.unwrap()["user"]["twoFactorEnabled"],
+        false
+    );
+    let old = app
         .client
         .get(format!("{}/api/auth/get-session", app.origin))
-        .header("cookie", enrolled_cookie)
+        .header("cookie", &enrolled_cookie)
         .send()
         .await
-        .unwrap()
-        .json()
-        .await
         .unwrap();
-    assert!(old.is_null(), "{old}");
+    assert!(old.json::<Value>().await.unwrap().is_null());
     app.close().await;
 }
 
 #[tokio::test]
-async fn malformed_or_identity_factor_record_patches_are_rejected() {
-    let store = ClinicalStore::new(DatabaseConnection::default());
-    let id: SchemaValue<String> = "unused".to_owned().into();
-    let bad =
-        |name: &str| FieldMap::from([(name.to_owned(), FieldValue::String("malformed".into()))]);
-    assert!(
-        TwoFactorStore::update_two_factor_record(&store, &id, bad("verified"))
-            .await
-            .is_err()
-    );
-    assert!(
-        TwoFactorStore::update_two_factor_record(&store, &id, bad("userId"))
-            .await
-            .is_err()
-    );
-}
-
-#[tokio::test]
-async fn api_key_expiry_cutoff_cannot_delete_live_credentials() {
-    let fixture = Fixture::new().await;
-    seed_key(
-        &fixture,
-        "expired-cutoff",
-        Utc::now() - Duration::minutes(2),
-        1.0,
-    )
-    .await;
-    seed_key(
-        &fixture,
-        "live-cutoff",
-        Utc::now() + Duration::minutes(2),
-        1.0,
-    )
-    .await;
-    let store = ClinicalStore::new(fixture.runtime.clone());
-    let cutoff = Utc::now() - Duration::minutes(1);
-    assert_eq!(
-        ApiKeyStore::delete_expired_api_keys_before(&store, cutoff.into())
-            .await
-            .unwrap(),
-        1
-    );
-    let future = Utc::now() + Duration::minutes(1);
-    assert!(
-        ApiKeyStore::delete_expired_api_keys_before(&store, future.into())
-            .await
-            .is_err()
-    );
-    assert!(
-        fixture
-            .runtime
-            .query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "SELECT public.identity_delete_expired_api_keys($1)",
-                [future.into()]
-            ))
-            .await
-            .is_err()
-    );
-    assert!(
-        fixture
-            .runtime
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT public.identity_delete_expired_api_keys(NULL::timestamptz)",
-            ))
-            .await
-            .is_err()
-    );
-    let row = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM public.identity_api_keys WHERE id='live-cutoff'",
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
-    fixture.close().await;
-}
-
-#[tokio::test]
-async fn unauthenticated_exhausted_key_deletion_is_rejected() {
-    let fixture = Fixture::new().await;
-    seed_key(
-        &fixture,
-        "exhausted-direct-delete",
-        Utc::now() + Duration::minutes(2),
-        0.0,
-    )
-    .await;
-    let store = ClinicalStore::new(fixture.runtime.clone());
-    let result =
-        ApiKeyStore::delete_api_key(&store, &"exhausted-direct-delete".to_owned().into()).await;
-    assert!(matches!(result, Err(AuthError::Unauthenticated)));
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM public.identity_api_keys WHERE id='exhausted-direct-delete'"))
-        .await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
-    fixture.close().await;
-}
-
-#[tokio::test]
-async fn zero_quota_verification_denies_and_preserves_the_key() {
+async fn zero_quota_personal_key_public_replay_is_denied_with_redacted_errors() {
     let app = Application::new().await;
-    let secret = format!("recovery_{}", "a".repeat(64));
-    let hash = URL_SAFE_NO_PAD.encode(Sha256::digest(secret.as_bytes()));
-    seed_key_with_hash(
-        &app.fixture,
-        "exhausted-verification",
-        &hash,
-        Utc::now() + Duration::minutes(5),
-        0.0,
-        "test",
-    )
-    .await;
     let service = app
         .context
         .shared_store
         .get::<med_tracker::models::identity::better_auth::IdentityService>()
         .unwrap();
-    let plugin = ApiKeyPlugin::builder()
-        .config_id("test".to_owned())
-        .key_length(64)
-        .prefix("recovery_".to_owned())
-        .store_starting_characters(false)
-        .build();
-    let result = plugin
-        .verify_api_key(
-            &VerifyApiKey {
-                key: &secret,
-                config_id: Some("test"),
-                permissions: None,
+    let issued = service
+        .api_keys()
+        .unwrap()
+        .create(
+            "71001",
+            better_auth::server_api::CreateKeyOptions {
+                config_id: Some("medtracker-personal".into()),
+                name: Some("Exhausted synthetic key".into()),
+                expires_in: Some(Duration::days(1).num_seconds() as f64),
+                remaining: Some(0.0),
+                metadata: Some(json!({"households":[72001]})),
+                permissions: Some(std::collections::HashMap::from([(
+                    "medtracker".into(),
+                    vec!["care:read".into()],
+                )])),
+                ..Default::default()
             },
-            service.context(),
         )
-        .await;
-    assert!(matches!(
-        result,
-        Err(ApiKeyVerificationError::Rejected(
-            AuthError::Unauthenticated
-        ))
-    ));
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM public.identity_api_keys WHERE id=$1 AND (payload->>'remaining')::double precision=0",
-        ["exhausted-verification".into()])).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
-    app.close().await;
-}
-
-#[tokio::test]
-async fn zero_quota_recovery_code_public_replay_is_denied_without_deletion() {
-    let app = Application::new().await;
-    let secret = format!("recovery_{}", "b".repeat(64));
-    let hash = URL_SAFE_NO_PAD.encode(Sha256::digest(secret.as_bytes()));
-    seed_key_with_hash(
-        &app.fixture,
-        "exhausted-public-recovery",
-        &hash,
-        Utc::now() + Duration::minutes(5),
-        0.0,
-        "medtracker-recovery",
-    )
-    .await;
-    let endpoint = format!("{}/api/auth/recovery/login", app.origin);
-    let mut first_body = None;
+        .await
+        .unwrap();
+    let secret = issued.key;
+    let mut first = None;
     for _ in 0..2 {
         let response = app
             .client
-            .post(&endpoint)
-            .header("origin", &app.origin)
-            .json(&json!({"code":secret}))
-            .send()
-            .await
-            .unwrap();
-        assert_eq!(response.status().as_u16(), 401);
-        let body: serde_json::Value = response.json().await.unwrap();
-        assert_eq!(body["code"], "INVALID_EMAIL_OR_PASSWORD");
-        if let Some(first) = &first_body {
-            assert_eq!(&body, first);
-        }
-        first_body = Some(body);
-    }
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM public.identity_api_keys WHERE id=$1 AND (payload->>'remaining')::double precision=0",
-        ["exhausted-public-recovery".into()])).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
-    app.close().await;
-}
-
-#[tokio::test]
-async fn zero_quota_personal_key_public_replay_is_denied_without_deletion() {
-    let app = Application::new().await;
-    let secret = format!("medtracker_{}", "c".repeat(64));
-    let hash = URL_SAFE_NO_PAD.encode(Sha256::digest(secret.as_bytes()));
-    seed_key_with_hash(
-        &app.fixture,
-        "exhausted-public-personal",
-        &hash,
-        Utc::now() + Duration::minutes(5),
-        0.0,
-        "medtracker-personal",
-    )
-    .await;
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
-    let mut first_body = None;
-    let mut first_request_id = None;
-    for _ in 0..2 {
-        let response = app
-            .client
-            .get(&endpoint)
+            .get(format!("{}/api/v1/households/72001/profile", app.origin))
             .bearer_auth(&secret)
             .send()
             .await
             .unwrap();
         assert_eq!(response.status().as_u16(), 401);
-        let mut body: serde_json::Value = response.json().await.unwrap();
-        assert!(body.is_object());
+        let mut body: Value = response.json().await.unwrap();
         assert!(!body.to_string().contains(&secret));
         let request_id = body["error"]["request_id"].as_str().unwrap().to_owned();
         assert!(!request_id.is_empty());
-        if let Some(first) = &first_request_id {
+        if let Some(first) = &first {
             assert_ne!(&request_id, first);
         }
-        first_request_id = Some(request_id);
+        first = Some(request_id);
         body["error"].as_object_mut().unwrap().remove("request_id");
         assert_eq!(
             body,
             json!({"error":{"code":"unauthorized","message":"Authentication required"}})
         );
-        if let Some(first) = &first_body {
-            assert_eq!(&body, first);
-        }
-        first_body = Some(body);
     }
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM public.identity_api_keys WHERE id=$1 AND (payload->>'remaining')::double precision=0",
-        ["exhausted-public-personal".into()])).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    assert!(
+        issued
+            .api_key
+            .expires_at
+            .typed()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .to_datetime()
+            .unwrap()
+            .unwrap()
+            > Utc::now()
+    );
     app.close().await;
 }
 
 #[tokio::test]
-async fn api_key_usage_writes_reject_stale_windows_and_exhausted_counters() {
-    let fixture = Fixture::new().await;
-    seed_key(
-        &fixture,
-        "usage-guard",
-        Utc::now() + Duration::minutes(5),
-        2.0,
-    )
-    .await;
-    let store = ClinicalStore::new(fixture.runtime.clone());
-    let id = "usage-guard".to_owned().into();
-    let first = ApiKeyStore::write_api_key_usage(&store, &id, ApiKeyUsageWrite::Decrement)
-        .await
-        .unwrap()
+async fn native_personal_key_scoped_reads_writes_and_live_membership_denial() {
+    let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
+    let service = app
+        .context
+        .shared_store
+        .get::<med_tracker::models::identity::better_auth::IdentityService>()
         .unwrap();
-    assert_eq!(first.remaining.typed().unwrap(), &Some(1.0));
-    let second = ApiKeyStore::write_api_key_usage(&store, &id, ApiKeyUsageWrite::Decrement)
-        .await
+    let issued = service
+        .api_keys()
         .unwrap()
+        .create(
+            "71001",
+            better_auth::server_api::CreateKeyOptions {
+                config_id: Some("medtracker-personal".into()),
+                name: Some("Scoped synthetic key".into()),
+                expires_in: Some(Duration::days(1).num_seconds() as f64),
+                metadata: Some(json!({"households":[72001]})),
+                permissions: Some(std::collections::HashMap::from([(
+                    "medtracker".into(),
+                    vec!["care:read".into(), "care:write".into()],
+                )])),
+                ..Default::default()
+            },
+        )
+        .await
         .unwrap();
-    assert_eq!(second.remaining.typed().unwrap(), &Some(0.0));
-    assert!(
-        ApiKeyStore::write_api_key_usage(&store, &id, ApiKeyUsageWrite::Decrement)
-            .await
-            .unwrap()
-            .is_none()
-    );
-    let now = Utc::now();
-    assert!(
-        ApiKeyStore::write_api_key_usage(
-            &store,
-            &id,
-            ApiKeyUsageWrite::StartWindow {
-                previous_before: None,
-                at: now,
-            }
-        )
+    let secret = issued.key;
+    let read = app
+        .client
+        .get(format!("{}/api/v1/households/72001/profile", app.origin))
+        .bearer_auth(&secret)
+        .send()
         .await
-        .unwrap()
-        .is_some()
-    );
-    assert!(
-        ApiKeyStore::write_api_key_usage(
-            &store,
-            &id,
-            ApiKeyUsageWrite::StartWindow {
-                previous_before: None,
-                at: now,
-            }
-        )
-        .await
-        .unwrap()
-        .is_none()
-    );
-    assert!(
-        ApiKeyStore::write_api_key_usage(
-            &store,
-            &id,
-            ApiKeyUsageWrite::IncrementWindow {
-                previous_after: (now - Duration::minutes(1)).into(),
-                maximum: 2.0.into(),
-                at: now,
-            }
-        )
-        .await
-        .unwrap()
-        .is_some()
-    );
-    assert!(
-        ApiKeyStore::write_api_key_usage(
-            &store,
-            &id,
-            ApiKeyUsageWrite::IncrementWindow {
-                previous_after: (now - Duration::minutes(1)).into(),
-                maximum: 2.0.into(),
-                at: now,
-            }
-        )
-        .await
-        .unwrap()
-        .is_none()
-    );
-    let row = ApiKeyStore::get_api_key_by_id(&store, "usage-guard")
-        .await
-        .unwrap()
         .unwrap();
-    assert_eq!(row.remaining.typed().unwrap(), &Some(0.0));
-    assert_eq!(row.request_count.typed().unwrap(), &Some(2.0));
-    let refill = |previous| ApiKeyUsageWrite::Refill {
-        previous,
-        remaining: 1.0,
-        at: now,
-    };
-    assert!(
-        ApiKeyStore::write_api_key_usage(&store, &id, refill(FieldValue::Null))
-            .await
-            .unwrap()
-            .is_none()
-    );
-    assert!(
-        ApiKeyStore::write_api_key_usage(&store, &id, refill(FieldValue::Undefined))
-            .await
-            .unwrap()
-            .is_some()
-    );
-    assert!(
-        ApiKeyStore::write_api_key_usage(&store, &id, refill(FieldValue::Undefined))
-            .await
-            .unwrap()
-            .is_none()
-    );
-    assert!(
-        ApiKeyStore::write_api_key_usage(&store, &id, refill(FieldValue::Null))
-            .await
-            .unwrap()
-            .is_none()
-    );
-    assert!(
-        ApiKeyStore::write_api_key_usage(&store, &id, refill((now - Duration::minutes(1)).into()))
-            .await
-            .unwrap()
-            .is_none()
-    );
-    fixture.close().await;
+    let status = read.status();
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(status.as_u16(), 200, "{body}");
+    assert!(!body.to_string().contains(&secret));
+    let write = app
+        .client
+        .patch(format!("{}/api/v1/households/72001/profile", app.origin))
+        .bearer_auth(&secret)
+        .header("idempotency-key", "native-key-profile-write")
+        .json(&json!({"profile":{"time_zone":"Europe/London"}}))
+        .send()
+        .await
+        .unwrap();
+    let status = write.status();
+    let body: Value = write.json().await.unwrap();
+    assert_eq!(status.as_u16(), 200, "{body}");
+    let stored = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT preferences->>'time_zone' AS zone FROM accounts WHERE id=71001",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<String>("", "zone")
+        .unwrap();
+    assert_eq!(stored, "Europe/London");
+    let foreign = app
+        .client
+        .get(format!("{}/api/v1/households/72002/profile", app.origin))
+        .bearer_auth(&secret)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(foreign.status().as_u16(), 403);
+    let revoked = app
+        .fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74001",
+        )
+        .await
+        .unwrap();
+    assert_eq!(revoked.rows_affected(), 1);
+    let denied = app
+        .client
+        .get(format!("{}/api/v1/households/72001/profile", app.origin))
+        .bearer_auth(&secret)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(denied.status().as_u16(), 403);
+    app.close().await;
+}
+
+async fn key_lifecycle_state(app: &Application) -> Value {
+    app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT jsonb_build_object('keys',(SELECT jsonb_agg(to_jsonb(k) ORDER BY id) FROM identity_api_keys k WHERE reference_id=71001),'audits',(SELECT jsonb_agg(to_jsonb(v) ORDER BY id) FROM versions v WHERE event LIKE 'native_auth/api_key/%'),'notices',(SELECT jsonb_agg(to_jsonb(q) ORDER BY id) FROM pg_loco_queue q WHERE task_data->>'subject' IN('API key created','API key revoked'))) AS state"
+    )).await.unwrap().unwrap().try_get("","state").unwrap()
+}
+
+async fn create_lifecycle_key(app: &Application, cookie: &str) -> reqwest::Response {
+    app.client.post(format!("{}/api/auth/security/api-key/create",app.origin))
+        .header("origin",app.context.config.server.full_url()).header("cookie",cookie)
+        .json(&json!({"name":"Atomic lifecycle key","households":[72001],"permissions":["care:read"],"expires_days":30})).send().await.unwrap()
 }
 
 #[tokio::test]
-async fn positive_passkey_counter_cannot_be_replayed() {
-    let fixture = Fixture::new().await;
-    let now = Utc::now().fixed_offset();
-    identity_passkeys::ActiveModel {
-        id: Set("counter-passkey".into()),
-        account_id: Set(71001),
-        name: Set(None),
-        public_key: Set("public-key".into()),
-        credential_id: Set("counter-credential".into()),
-        counter: Set("1".parse().unwrap()),
-        device_type: Set("singleDevice".into()),
-        backed_up: Set(false),
-        transports: Set(None),
-        credential: Set("opaque-one".into()),
-        aaguid: Set(None),
-        created_at: Set(now),
-        updated_at: Set(now),
-    }
-    .insert(&fixture.admin)
-    .await
-    .unwrap();
-    let store = ClinicalStore::new(fixture.runtime.clone());
-    let id = "counter-passkey".to_owned().into();
-    let update = |counter, credential: &str| UpdatePasskeyAuthentication::Legacy {
-        credential: credential.into(),
-        counter,
-        backed_up: false,
-        device_type: "singleDevice".into(),
-    };
+async fn native_personal_key_lifecycle_rolls_back_notice_and_audit() {
+    let app = Application::new().await;
+    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let before = key_lifecycle_state(&app).await;
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE key_failure_reached; GRANT USAGE,SELECT ON SEQUENCE key_failure_reached TO med_tracker_app; CREATE FUNCTION reject_key_notice() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('public.key_failure_reached'); RAISE EXCEPTION 'synthetic key notice failure' USING ERRCODE='23514'; END $$; CREATE TRIGGER reject_key_notice BEFORE INSERT ON pg_loco_queue FOR EACH ROW WHEN(NEW.task_data->>'subject' IN('API key created','API key revoked')) EXECUTE FUNCTION reject_key_notice()").await.unwrap();
+    let rejected = create_lifecycle_key(&app, &cookie).await;
+    assert_eq!(rejected.status().as_u16(), 500);
     assert!(
-        PasskeyStore::update_passkey_authentication_optional(&store, &id, update(1, "replay"))
+        app.fixture
+            .admin
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT is_called FROM key_failure_reached"
+            ))
             .await
             .unwrap()
-            .is_none()
-    );
-    assert!(
-        PasskeyStore::update_passkey_authentication_optional(&store, &id, update(2, "opaque-two"))
-            .await
             .unwrap()
-            .is_some()
-    );
-    assert!(
-        PasskeyStore::update_passkey_authentication_optional(&store, &id, update(2, "replay"))
-            .await
+            .try_get::<bool>("", "is_called")
             .unwrap()
-            .is_none()
     );
-    let row = PasskeyStore::get_passkey_by_id(&store, "counter-passkey")
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(row.counter.typed().unwrap(), &2);
-    assert_eq!(row.credential.typed().unwrap(), "opaque-two");
-    fixture.close().await;
-}
-
-#[tokio::test]
-async fn backup_code_compare_exchange_rejects_replay_and_lock_counts_failures() {
-    let fixture = Fixture::new().await;
-    let store = ClinicalStore::new(fixture.runtime.clone());
-    let factor = TwoFactorStore::create_two_factor(
-        &store,
-        CreateTwoFactor {
-            user_id: "71001".into(),
-            secret: "encrypted-test-secret".into(),
-            backup_codes: "first".into(),
-            verified: true,
-            additional_fields: FieldMap::new(),
-        },
-    )
-    .await
-    .unwrap();
-    assert!(
-        TwoFactorStore::compare_exchange_two_factor_backup_codes(
-            &store,
-            &factor.id,
-            &"first".into(),
-            "second".into()
-        )
-        .await
-        .unwrap()
-    );
-    assert!(
-        !TwoFactorStore::compare_exchange_two_factor_backup_codes(
-            &store,
-            &factor.id,
-            &"first".into(),
-            "third".into()
-        )
-        .await
-        .unwrap()
-    );
-    let lock = || Ok((Utc::now() + Duration::minutes(5)).into());
-    TwoFactorStore::record_two_factor_failure(&store, &factor.id, 2, &lock)
-        .await
-        .unwrap();
-    TwoFactorStore::record_two_factor_failure(&store, &factor.id, 2, &lock)
-        .await
-        .unwrap();
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT failed_verification_count, locked_until, backup_codes FROM public.identity_two_factors WHERE account_id=71001")).await.unwrap().unwrap();
     assert_eq!(
-        row.try_get::<i64>("", "failed_verification_count").unwrap(),
-        2
+        key_lifecycle_state(&app).await,
+        before,
+        "key, notice and audit must all roll back"
     );
-    assert!(
-        row.try_get::<Option<chrono::DateTime<Utc>>>("", "locked_until")
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER reject_key_notice ON pg_loco_queue")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("REVOKE INSERT ON public.versions FROM med_tracker_app")
+        .await
+        .unwrap();
+    let audit_rejected = create_lifecycle_key(&app, &cookie).await;
+    assert_eq!(audit_rejected.status().as_u16(), 500);
+    assert_eq!(
+        key_lifecycle_state(&app).await,
+        before,
+        "failed key audit must roll back native insertion"
+    );
+    app.fixture
+        .admin
+        .execute_unprepared("GRANT INSERT ON public.versions TO med_tracker_app")
+        .await
+        .unwrap();
+    let issued = create_lifecycle_key(&app, &cookie).await;
+    assert_eq!(issued.status().as_u16(), 200);
+    let body: Value = issued.json().await.unwrap();
+    let secret = body["apiKey"].as_str().unwrap();
+    assert!(secret.starts_with("medtracker_"));
+    let created = key_lifecycle_state(&app).await;
+    assert_eq!(created["keys"].as_array().unwrap().len(), 1);
+    assert_eq!(created["audits"].as_array().unwrap().len(), 1);
+    assert_eq!(created["audits"][0]["event"], "native_auth/api_key/created");
+    assert_eq!(created["notices"].as_array().unwrap().len(), 1);
+    assert!(!serde_json::to_string(&created).unwrap().contains(secret));
+    assert_eq!(
+        created["keys"][0]["metadata"],
+        serde_json::to_string(&json!({"households":[72001]})).unwrap()
+    );
+    let key_id = created["keys"][0]["id"].as_i64().unwrap().to_string();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER reject_key_notice BEFORE INSERT ON pg_loco_queue FOR EACH ROW WHEN(NEW.task_data->>'subject'='API key revoked') EXECUTE FUNCTION reject_key_notice()").await.unwrap();
+    let revoke = || {
+        app.client
+            .post(format!("{}/api/auth/security/api-key/revoke", app.origin))
+            .header("origin", app.context.config.server.full_url())
+            .header("cookie", &cookie)
+            .json(&json!({"key_id":key_id}))
+            .send()
+    };
+    assert_eq!(revoke().await.unwrap().status().as_u16(), 500);
+    assert_eq!(
+        key_lifecycle_state(&app).await,
+        created,
+        "failed revocation notice must preserve enabled key and audit"
+    );
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER reject_key_notice ON pg_loco_queue")
+        .await
+        .unwrap();
+    assert_eq!(revoke().await.unwrap().status().as_u16(), 200);
+    let revoked = key_lifecycle_state(&app).await;
+    assert_eq!(revoked["keys"][0]["enabled"], false);
+    assert_eq!(revoked["audits"].as_array().unwrap().len(), 2);
+    assert_eq!(revoked["notices"].as_array().unwrap().len(), 2);
+    assert_eq!(revoked["audits"][1]["event"], "native_auth/api_key/updated");
+    assert_eq!(revoke().await.unwrap().status().as_u16(), 200);
+    assert_eq!(
+        key_lifecycle_state(&app).await,
+        revoked,
+        "idempotent revoke must not repeat lifecycle side effects"
+    );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn native_personal_key_create_retains_authoritative_admission_and_typed_scopes() {
+    let app = Application::new().await;
+    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let input = json!({"name":"Admission key","households":[72001],"permissions":["care:read"],"expires_days":30});
+    let before = key_lifecycle_state(&app).await;
+    let anonymous = app
+        .client
+        .post(format!("{}/api/auth/security/api-key/create", app.origin))
+        .header("origin", app.context.config.server.full_url())
+        .json(&input)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(anonymous.status().as_u16(), 401);
+    let csrf = app
+        .client
+        .post(format!("{}/api/auth/security/api-key/create", app.origin))
+        .header("origin", "https://foreign.example.test")
+        .header("cookie", &cookie)
+        .json(&input)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(csrf.status().as_u16(), 403);
+    for injected in [
+        json!({"userId":"71002"}),
+        json!({"configId":"other"}),
+        json!({"metadata":{"households":[72002]}}),
+        json!({"remaining":100}),
+    ] {
+        let mut body = input.clone();
+        body.as_object_mut()
             .unwrap()
-            .is_some()
+            .extend(injected.as_object().unwrap().clone());
+        let denied = app
+            .client
+            .post(format!("{}/api/auth/security/api-key/create", app.origin))
+            .header("origin", app.context.config.server.full_url())
+            .header("cookie", &cookie)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(denied.status().as_u16(), 400);
+    }
+    for (field, value) in [
+        ("households", json!([72002])),
+        ("permissions", json!(["unsupported:write"])),
+        ("expires_days", json!(366)),
+    ] {
+        let mut body = input.clone();
+        body[field] = value;
+        let denied = app
+            .client
+            .post(format!("{}/api/auth/security/api-key/create", app.origin))
+            .header("origin", app.context.config.server.full_url())
+            .header("cookie", &cookie)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        assert!(denied.status().is_client_error());
+    }
+    let bypass = app
+        .client
+        .post(format!("{}/api/auth/api-key/create", app.origin))
+        .header("origin", app.context.config.server.full_url())
+        .header("cookie", &cookie)
+        .json(&json!({"name":"Bypass key"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(bypass.status().as_u16(), 403);
+    for (mutation, restore) in [
+        (
+            "UPDATE identity_sessions SET purpose='enrolment' WHERE account_id=71001",
+            "UPDATE identity_sessions SET purpose='authenticated' WHERE account_id=71001",
+        ),
+        (
+            "UPDATE accounts SET status=3 WHERE id=71001",
+            "UPDATE accounts SET status=2 WHERE id=71001",
+        ),
+        (
+            "INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'key-admission',now()+interval '1 hour')",
+            "DELETE FROM account_lockouts WHERE account_id=71001",
+        ),
+        (
+            "UPDATE identity_sessions SET expires_at=now()-interval '1 minute' WHERE account_id=71001",
+            "UPDATE identity_sessions SET expires_at=now()+interval '1 day' WHERE account_id=71001",
+        ),
+    ] {
+        app.fixture
+            .admin
+            .execute_unprepared(mutation)
+            .await
+            .unwrap();
+        let denied = app
+            .client
+            .post(format!("{}/api/auth/security/api-key/create", app.origin))
+            .header("origin", app.context.config.server.full_url())
+            .header("cookie", &cookie)
+            .json(&input)
+            .send()
+            .await
+            .unwrap();
+        assert!(denied.status().is_client_error(), "{}", denied.status());
+        app.fixture.admin.execute_unprepared(restore).await.unwrap();
+    }
+    assert_eq!(key_lifecycle_state(&app).await, before);
+    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let allowed = create_lifecycle_key(&app, &cookie).await;
+    assert_eq!(allowed.status().as_u16(), 200);
+    let body: Value = allowed.json().await.unwrap();
+    let secret = body["apiKey"].as_str().unwrap();
+    let before_use = key_lifecycle_state(&app).await;
+    let clinical = app
+        .client
+        .get(format!("{}/api/v1/households/72001/profile", app.origin))
+        .bearer_auth(secret)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(clinical.status().as_u16(), 200);
+    let after_use = key_lifecycle_state(&app).await;
+    assert_eq!(after_use["audits"], before_use["audits"]);
+    assert_eq!(after_use["notices"], before_use["notices"]);
+    assert!(
+        !serde_json::to_string(&after_use["audits"])
+            .unwrap()
+            .contains(secret)
     );
-    assert_eq!(row.try_get::<String>("", "backup_codes").unwrap(), "second");
-    fixture.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn native_personal_key_create_waits_for_account_closure_and_rechecks_status() {
+    use sea_orm::TransactionTrait;
+    let app = Application::new().await;
+    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let transaction = app.fixture.admin.begin().await.unwrap();
+    transaction
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT id FROM accounts WHERE id=71001 FOR UPDATE",
+        ))
+        .await
+        .unwrap();
+    let client = app.client.clone();
+    let origin = app.origin.clone();
+    let public = app.context.config.server.full_url();
+    let create = tokio::spawn(async move {
+        client.post(format!("{origin}/api/auth/security/api-key/create")).header("origin",public).header("cookie",cookie).json(&json!({"name":"Concurrent close key","households":[72001],"permissions":["care:read"],"expires_days":30})).send().await.unwrap()
+    });
+    let waited=tokio::time::timeout(std::time::Duration::from_secs(5),async {
+        loop {
+            let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%FOR NO KEY UPDATE%') AS waited")).await.unwrap().unwrap();
+            if row.try_get::<bool>("","waited").unwrap() {break;}
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }).await;
+    transaction
+        .execute_unprepared("UPDATE accounts SET status=3 WHERE id=71001")
+        .await
+        .unwrap();
+    transaction.commit().await.unwrap();
+    let response = tokio::time::timeout(std::time::Duration::from_secs(5), create)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        waited.is_ok(),
+        "key creation must serialise with account closure"
+    );
+    assert_eq!(response.status().as_u16(), 401);
+    let state = key_lifecycle_state(&app).await;
+    assert!(state["keys"].is_null());
+    assert!(state["notices"].is_null());
+    assert!(state["audits"].is_null());
+    app.close().await;
 }

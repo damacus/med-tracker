@@ -1,47 +1,39 @@
 use super::*;
-use med_tracker::models::identity::signup::{self, AccountProfile, SignupInput};
-use sea_orm::TransactionTrait;
 
 #[tokio::test]
 async fn account_creation_initialises_timezone_for_password_and_passkey_signup() {
-    let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(false,now(),now())").await.unwrap();
-    signup::create(
-        &fixture.runtime,
-        &SignupInput {
-            invitation_token: String::new(),
-            email: "password-owner@example.test".into(),
-            name: "New household owner".into(),
-            date_of_birth: "1990-01-01".into(),
-            password: "Synthetic-password-123!".into(),
-            password_confirm: "Synthetic-password-123!".into(),
-        },
-        "https://medtracker.example.test",
-        Some("password-signup-timezone"),
-        crate::template::test_settings().as_ref(),
-    )
-    .await
-    .unwrap();
-    let transaction = fixture.runtime.begin().await.unwrap();
-    signup::provision_account_in(
-        &transaction,
-        &AccountProfile {
-            email: "passkey-owner@example.test".into(),
-            name: "Passkey household owner".into(),
-            date_of_birth: chrono::NaiveDate::from_ymd_opt(1990, 1, 1).unwrap(),
-            invitation_token: None,
-        },
-        "passkey-signup-timezone",
-        crate::template::test_settings().as_ref(),
-    )
-    .await
-    .unwrap();
-    transaction.commit().await.unwrap();
-    for (email, name) in [
-        ("password-owner@example.test", "New household owner"),
-        ("passkey-owner@example.test", "Passkey household owner"),
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared("DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(false,now(),now())").await.unwrap();
+    for (email, name, credential) in [
+        (
+            "password-owner@example.test",
+            "New household owner",
+            "password",
+        ),
+        (
+            "passkey-owner@example.test",
+            "Passkey household owner",
+            "passkey",
+        ),
     ] {
-        let row = fixture
+        let mut input =
+            json!({"email":email,"name":name,"date_of_birth":"1990-01-01","credential":credential});
+        if credential == "password" {
+            input["password"] = json!("Synthetic-password-123!");
+        }
+        let response = app
+            .client
+            .post(format!("{}/api/auth/onboarding/signup", app.origin))
+            .header("origin", app.context.config.server.full_url())
+            .json(&input)
+            .send()
+            .await
+            .unwrap();
+        let status = response.status();
+        let body = response.text().await.unwrap();
+        assert_eq!(status.as_u16(), 200, "{body}");
+        let row = app
+            .fixture
             .admin
             .query_one_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
@@ -51,15 +43,15 @@ async fn account_creation_initialises_timezone_for_password_and_passkey_signup()
             .await
             .unwrap()
             .unwrap();
-        let stored = row.try_get::<String>("", "zone").unwrap();
         assert_eq!(
             row.try_get::<Option<String>>("", "name")
                 .unwrap()
                 .as_deref(),
             Some(name)
         );
+        let stored = row.try_get::<String>("", "zone").unwrap();
         let expected = std::env::var("TZ").unwrap_or_else(|_| "UTC".into());
         assert_eq!(stored.trim_start_matches("Etc/"), expected, "{email}");
     }
-    fixture.close().await;
+    app.close().await;
 }

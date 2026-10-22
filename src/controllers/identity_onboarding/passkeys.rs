@@ -27,15 +27,15 @@ pub(super) async fn setup(
 ) -> Response {
     match browser_identity(&service, &request(&headers)).await {
         Ok(BrowserIdentity::Enrolment { user, .. }) => {
-            let Ok(user_id) = user.id.typed() else {
+            let Ok(user_id) = user.id.display_string() else {
                 return super::rendering::unavailable();
             };
-            match service.context().database.get_user_accounts(user_id).await {
+            match service.context().database.get_user_accounts(&user_id).await {
                 Ok(accounts) => {
                     let Ok(passkeys) = service
                         .context()
                         .database
-                        .list_passkeys_by_user(user_id)
+                        .list_passkeys_by_user(&user_id)
                         .await
                     else {
                         return super::rendering::unavailable();
@@ -44,8 +44,8 @@ pub(super) async fn setup(
                         &view,
                         !passkeys.is_empty()
                             || accounts.iter().any(|account| {
-                                account.provider_id.as_str() == Some("credential")
-                                    && account.password.typed().is_ok_and(Option::is_some)
+                                account.provider_id.as_str() != Some("credential")
+                                    || account.password.typed().is_ok_and(Option::is_some)
                             }),
                     )
                 }
@@ -53,7 +53,6 @@ pub(super) async fn setup(
             }
         }
         Ok(BrowserIdentity::Authenticated { .. }) => super::rendering::redirect("/"),
-        Ok(BrowserIdentity::PendingFactor) => super::rendering::redirect("/auth/totp"),
         Ok(BrowserIdentity::SignedOut) => super::rendering::redirect("/login"),
         Err(_) => super::rendering::unavailable(),
     }
@@ -69,7 +68,6 @@ pub(super) async fn complete(
             crate::controllers::auth::authenticated_redirect(&session)
         }
         Ok(BrowserIdentity::Enrolment { .. }) => super::rendering::redirect("/auth/passkey/setup"),
-        Ok(BrowserIdentity::PendingFactor) => super::rendering::redirect("/auth/totp"),
         Ok(BrowserIdentity::SignedOut) => super::rendering::redirect("/login"),
         Err(_) => super::rendering::unavailable(),
     }

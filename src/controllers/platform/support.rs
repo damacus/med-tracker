@@ -115,8 +115,8 @@ async fn platform_account(
     };
     let account_id = user
         .id
-        .typed()
-        .and_then(|id| clinical_id(id))
+        .display_string()
+        .and_then(|id| clinical_id(&id))
         .map_err(|_| Box::new(unavailable()))?;
     Ok((account_id, session))
 }
