@@ -13,6 +13,18 @@ fn grant(level: &str) -> Value {
 }
 
 #[test]
+fn legacy_manage_grants_never_authorise_another_person() {
+    for role in ["owner", "administrator", "member"] {
+        assert!(!evaluate(
+            member(role),
+            subject(),
+            "manage_person",
+            grant("manage")
+        ));
+    }
+}
+
+#[test]
 fn embedded_schema_and_policies_validate_strictly() {
     let (schema, _) =
         Schema::from_cedarschema_str(include_str!("schema.cedarschema")).expect("embedded schema");
@@ -83,13 +95,12 @@ fn guardian_recovery_requires_current_same_household_manager_and_minor() {
 }
 
 #[test]
-fn person_participation_self_and_legacy_manage_preserve_separate_authorities() {
+fn person_participation_and_self_preserve_separate_authorities() {
     for role in ["owner", "administrator", "member"] {
         for (action, facts) in [
             ("view_person", json!({"participating":true})),
             ("record_person", json!({"participating":true})),
             ("manage_self", json!({"own":true})),
-            ("manage_person", grant("manage")),
         ] {
             assert!(evaluate(member(role), subject(), action, facts.clone()));
             assert!(!evaluate(member(role), subject(), action, json!({})));
@@ -125,7 +136,7 @@ fn person_participation_self_and_legacy_manage_preserve_separate_authorities() {
 }
 
 #[test]
-fn grants_are_bound_to_household_membership_person_and_live_expiry() {
+fn retired_grant_action_denies_even_complete_current_facts() {
     for (field, value) in [
         ("household_id", json!(22)),
         ("membership_id", json!(12)),
@@ -141,7 +152,7 @@ fn grants_are_bound_to_household_membership_person_and_live_expiry() {
             facts
         ));
     }
-    for (deadline, expected) in [(99, false), (100, false), (101, true)] {
+    for (deadline, expected) in [(99, false), (100, false), (101, false)] {
         let mut facts = grant("manage");
         facts["expiring"] = json!(true);
         facts["expires_at"] = json!(deadline);
@@ -326,7 +337,7 @@ fn malformed_or_unknown_requests_fail_closed() {
     missing.as_object_mut().unwrap().remove("status");
     assert!(!evaluate(missing, subject(), "manage_household", json!({})));
     let mut invalid = grant("manage");
-    assert!(evaluate(
+    assert!(!evaluate(
         member("owner"),
         subject(),
         "manage_person",

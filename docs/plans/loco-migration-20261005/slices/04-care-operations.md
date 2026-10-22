@@ -10,6 +10,55 @@ Loco controllers expose API routes without embedding business logic or calling a
 
 ## Global constraints
 
+### Current bounded delivery: legacy Manage removal (#2682, 22 October 2026)
+
+Reference: main `e624f628f`, ADRs 0013–0016 and the issue's explicit remaining
+runtime callers. Active household participants retain View/Record. Manage belongs
+to canonical self or a current eligible declared guardian; owner, administrator
+and member roles with legacy-only grants cannot manage someone else's care.
+Grant rows and historical attribution remain unchanged. Person creation remains
+a household-manager action. This does not implement shared-plan disclosure,
+departure, optional inventory locations, new exports or production deployment.
+
+One writer owns access/Cedar/care projections and their tests. OAuth consent
+work is independently owned in identity/controller files. Reuse the current
+guardian declaration locking, eligibility and RLS checks rather than introduce
+another authority. Source review uses Astra because this changes authorisation;
+normal model routing applies (93% allowance remaining at selection).
+
+Observed RED: `task test:unit FILTER=legacy_manage_grants_never_authorise_another_person`
+failed on the old Cedar permit, Nextest `f140f12e-6d90-40f7-90d3-d8588561accf`.
+API regressions cover legacy-only role capabilities, treatment reads/writes and
+unchanged clinical/sync/outbox state; declaration-only schedule and assignment
+flags must match direct write authority. Retain revocation, expiry, lockout,
+withdrawal, supersession, replay and rollback cases. Browser coverage checks
+the denied treatment edit controls at 1440×1000 and 390×844 against the existing
+treatment layout and approved permission difference.
+
+The Cedar matrix passed 11/11 after removal (Nextest
+`61526b0c-0a5a-4b86-806e-931ceca00799`), with JavaScript unit checks and doctests
+passing through the same Task. Documentation builds. Independent Astra security
+review and affected re-review cleared the source after correcting obsolete grant
+expectations, public creation wording, denial-audit coverage and withdrawn-guardian
+projection coverage. `task check` passed all targets. Focused full-App authority
+checks passed 2/2 (`e1b558f6-7ab8-42b0-b56b-eab62123e85b`), including attributable
+denial audit, stock preservation, creation denial and withdrawal of treatment flags.
+The desktop/mobile browser journey passed 1/1
+(`a685d992-115b-49ff-a96a-4473529dbcf1`), including keyboard focus and no horizontal
+overflow. Captures are `docs/screenshots/browser-journeys/legacy-manage-denied-*.png`.
+Vanilla Astra, UI Professional and Accessibility independently passed the scoped
+visible change against retained main treatment captures and the unchanged Tera
+template. Reference people/doses differ, so this is not exact pixel parity. The
+pre-existing stacked mobile navigation is unchanged. Accessibility review used
+template, screenshots and keyboard evidence; no live axe/Lighthouse or screen-reader
+conformance is claimed. Final `task ci` passed: 153 Rust unit cases, 19 JavaScript
+checks, 33 browser journeys, 1,159 integration cases and template concurrency,
+alongside formatting, strict Clippy and dependency checks. Disposable acceptance
+resources were removed. Publication is next; no merge or deployment is claimed.
+An additional source review found no introduced lock cycle between treatment
+projection, guardian withdrawal and recovery; this was a lock-order assessment,
+not a new concurrency test.
+
 First production must include complete platform administration, time-limited support
 access and household export/closure/retention holds/permanent deletion. These are
 core security outcomes, not optional follow-ups. Automated NHS dm+d import/

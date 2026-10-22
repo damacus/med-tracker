@@ -8,24 +8,11 @@ entity Membership {
 entity Resource { id: Long, household_id: Long };
 entity Account { id: Long, active: Bool, platform_admin: Bool };
 entity Platform { id: Long };
-type Grant = {
-    household_id: Long,
-    membership_id: Long,
-    person_id: Long,
-    level: String,
-    revoked: Bool,
-    expiring: Bool,
-    expires_at: Long,
-    now: Long
-};
 action "manage_household" appliesTo {
     principal: Membership, resource: Resource, context: {}
 };
 action "view_person", "record_person" appliesTo {
     principal: Membership, resource: Resource, context: { participating: Bool }
-};
-action "manage_person" appliesTo {
-    principal: Membership, resource: Resource, context: Grant
 };
 action "manage_self" appliesTo {
     principal: Membership, resource: Resource, context: { own: Bool }

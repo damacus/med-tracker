@@ -400,12 +400,43 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
     let grants = app.fixture.admin.execute_unprepared("INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,expires_at,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now()+interval '1 hour',now(),now()),(78003,72001,74001,73003,'manage','parent',now()+interval '1 hour',now(),now())").await.unwrap();
     assert_eq!(grants.rows_affected(), 2);
     let authorized_effects_before = import_effects(&app).await;
-    let roundtrip = app
+    let legacy_roundtrip = app
         .client
         .post(import_url(&app, "portable_imports/dry_run"))
         .bearer_auth(&token)
         .header(PASSPHRASE_HEADER, PASSPHRASE)
         .json(&json!({"bundle": exported}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(legacy_roundtrip.status().as_u16(), 403);
+    assert_eq!(import_effects(&app).await, authorized_effects_before);
+    use med_tracker::models::entities::membership;
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, sea_query::Expr};
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Role, Expr::value("member"))
+        .filter(membership::Column::Id.eq(74001))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let self_bundle = export_bundle(&app, &token).await;
+    let own_records = portable_crypto::decrypt(&self_bundle, PASSPHRASE).unwrap();
+    assert_eq!(
+        own_records["records"]["people"].as_array().unwrap().len(),
+        1
+    );
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Role, Expr::value("administrator"))
+        .filter(membership::Column::Id.eq(74001))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let roundtrip = app
+        .client
+        .post(import_url(&app, "portable_imports/dry_run"))
+        .bearer_auth(&token)
+        .header(PASSPHRASE_HEADER, PASSPHRASE)
+        .json(&json!({"bundle":self_bundle}))
         .send()
         .await
         .unwrap();

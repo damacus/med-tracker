@@ -341,13 +341,13 @@ async fn assert_person_access_controls(
 }
 
 #[tokio::test]
-async fn person_access_rechecks_live_grants() {
+async fn person_access_ignores_legacy_grants_before_and_after_revocation() {
     let fixture = Fixture::new().await;
     seed_accountless_manage_grant(&fixture).await;
     let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
-    assert_person_access_controls(&transaction, true).await;
+    assert_person_access_controls(&transaction, false).await;
     fixture
         .admin
         .execute_unprepared(
@@ -375,14 +375,14 @@ async fn runtime_role_cannot_alter_schema_or_migration_history() {
 }
 
 #[tokio::test]
-async fn cedar_person_access_uses_current_grant_level_and_database_expiry() {
+async fn cedar_person_access_never_uses_legacy_grant_level_or_expiry() {
     let fixture = Fixture::new().await;
     seed_accountless_manage_grant(&fixture).await;
     let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
-    assert_person_access_controls(&transaction, true).await;
-    for (level, other_manage) in [("view", false), ("record", false), ("manage", true)] {
+    assert_person_access_controls(&transaction, false).await;
+    for level in ["view", "record", "manage"] {
         fixture
             .admin
             .execute_raw(Statement::from_sql_and_values(
@@ -392,12 +392,12 @@ async fn cedar_person_access_uses_current_grant_level_and_database_expiry() {
             ))
             .await
             .unwrap();
-        assert_person_access_controls(&transaction, other_manage).await;
+        assert_person_access_controls(&transaction, false).await;
     }
     fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id IN (78001,78003)").await.unwrap();
     assert_person_access_controls(&transaction, false).await;
     fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '1 day' WHERE id IN (78001,78003)").await.unwrap();
-    assert_person_access_controls(&transaction, true).await;
+    assert_person_access_controls(&transaction, false).await;
     transaction.rollback().await.unwrap();
     fixture.close().await;
 }

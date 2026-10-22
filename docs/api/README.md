@@ -203,6 +203,16 @@ location-management permission and manage access to the selected person,
 including on cached replay. Membership changes remain online-only because
 they affect visibility.
 
+## Care management authority
+
+Active household members can view and record care for participating people.
+Managing a person's care requires canonical self authority or a current eligible
+guardian declaration. Household roles and historical person-access grants do not
+permit editing another person's care. Capability `manage_ids` and treatment
+`can_manage` flags reflect this rule; writes recheck it. Creating a dependent
+requires household owner or administrator authority and the existing explicit
+initial guardian declaration.
+
 ## Medicine reviews
 
 The review queue is available at

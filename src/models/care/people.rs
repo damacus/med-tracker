@@ -55,10 +55,7 @@ pub(crate) fn age(date: NaiveDate, today: NaiveDate) -> i32 {
 }
 pub async fn can_create(tenant: &TenantTransaction) -> Result<bool, OperationError> {
     access::recheck(tenant).await?;
-    if access::can_manage_household(tenant) {
-        return Ok(true);
-    }
-    access::has_existing_manage_grant(tenant).await
+    Ok(access::can_manage_household(tenant))
 }
 pub async fn can_manage(tenant: &TenantTransaction, id: i64) -> Result<bool, OperationError> {
     access::can_access_person(tenant, id, PersonAccess::Manage).await

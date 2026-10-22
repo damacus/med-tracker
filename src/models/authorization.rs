@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 use super::{
     access::PersonAccess,
-    entities::{account, grant, membership, person, platform_admin},
+    entities::{account, membership, person, platform_admin},
 };
 
 #[cfg(test)]
@@ -147,38 +147,6 @@ pub(crate) fn household_manager(member: &membership::Model, household_id: i64) -
         json!({"id":household_id,"household_id":household_id}),
         "manage_household",
         json!({}),
-    )
-}
-
-pub(crate) fn person_access(
-    member: &membership::Model,
-    subject: &person::Model,
-    grant: &grant::Model,
-    access: PersonAccess,
-    now: chrono::NaiveDateTime,
-) -> bool {
-    if matches!(access, PersonAccess::View | PersonAccess::Record) {
-        return participating_person_access(member, subject, access);
-    }
-    own_person_manage(member, subject) || granted_person_manage(member, subject, grant, now)
-}
-
-pub(crate) fn granted_person_manage(
-    member: &membership::Model,
-    subject: &person::Model,
-    grant: &grant::Model,
-    now: chrono::NaiveDateTime,
-) -> bool {
-    evaluate(
-        member_facts(member),
-        json!({"id":subject.id,"household_id":member.household_id}),
-        "manage_person",
-        json!({
-            "household_id":grant.household_id,"membership_id":grant.household_membership_id,
-            "person_id":grant.person_id,"level":grant.access_level,"revoked":grant.revoked_at.is_some(),
-            "expiring":grant.expires_at.is_some(),"expires_at":grant.expires_at.map_or(0,|time|time.and_utc().timestamp_micros()),
-            "now":now.and_utc().timestamp_micros()
-        }),
     )
 }
 

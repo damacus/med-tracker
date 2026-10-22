@@ -2,12 +2,10 @@ use super::source_stock::source_stock;
 use super::*;
 use crate::models::{
     authorization,
-    entities::{grant, membership, pause_period, person_medication},
+    entities::{membership, pause_period, person_medication},
 };
 use chrono::NaiveDate;
 use loco_rs::model::TenantQueryExt;
-use sea_orm::sea_query::{Expr, ExprTrait};
-use sea_orm::{Condition, ConnectionTrait, DbBackend, Statement};
 use std::collections::{HashMap, HashSet};
 fn timestamp(value: chrono::NaiveDateTime) -> String {
     value.format("%Y-%m-%dT%H:%M:%SZ").to_string()
@@ -56,7 +54,7 @@ async fn source_context(
     let medication_ids: Vec<i64> = sources.iter().map(|source| source.medication_id).collect();
     let subjects =
         crate::models::access::person_queries::household_participants(context.scope().household_id)
-            .filter(person::Column::Id.is_in(person_ids.clone()))
+            .filter(person::Column::Id.is_in(person_ids))
             .all(db)
             .await
             .map_err(database_error)?;
@@ -73,31 +71,6 @@ async fn source_context(
         .into_iter()
         .map(|medication| (medication.id, medication))
         .collect();
-    let permission_grants = grant::Entity::find()
-        .in_tenant(context.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(context.membership().id))
-        .filter(grant::Column::PersonId.is_in(person_ids))
-        .filter(grant::Column::AccessLevel.eq("manage"))
-        .filter(grant::Column::RevokedAt.is_null())
-        .filter(
-            Condition::any()
-                .add(grant::Column::ExpiresAt.is_null())
-                .add(
-                    Expr::col((grant::Entity, grant::Column::ExpiresAt))
-                        .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
-                ),
-        )
-        .all(db)
-        .await
-        .map_err(database_error)?;
-    let clock = db
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT timezone('UTC', clock_timestamp()) AS now",
-        ))
-        .await?
-        .ok_or(OperationError::Unavailable)?;
-    let now: chrono::NaiveDateTime = clock.try_get("", "now")?;
     let recordable_people = subjects
         .iter()
         .filter(|subject| {
@@ -109,29 +82,10 @@ async fn source_context(
         })
         .map(|subject| subject.id)
         .collect();
-    let manageable_people = permission_grants
-        .iter()
-        .filter(|record| {
-            subjects
-                .iter()
-                .find(|subject| subject.id == record.person_id)
-                .is_some_and(|subject| {
-                    authorization::person_access(
-                        context.membership(),
-                        subject,
-                        record,
-                        PersonAccess::Manage,
-                        now,
-                    )
-                })
-        })
-        .map(|record| record.person_id)
-        .chain(
-            subjects
-                .iter()
-                .filter(|subject| authorization::own_person_manage(context.membership(), subject))
-                .map(|subject| subject.id),
-        )
+    let manageable_people = access::people_with_access(context, PersonAccess::Manage)
+        .await?
+        .into_iter()
+        .map(|subject| subject.id)
         .collect();
     let eligible_stock = source_stock(
         db,

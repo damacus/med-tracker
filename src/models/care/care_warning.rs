@@ -45,16 +45,10 @@ pub async fn project(
         .await?
         .into_iter()
         .collect();
-    let manageable = access::managed_people(tenant.membership());
-    let manageable: HashSet<i64> = access::person_queries::household_people(tenant.scope())
-        .select_only()
-        .column(person::Column::Id)
-        .filter(person::Column::Id.in_subquery(manageable))
-        .filter(person::Column::Id.is_in(rows.iter().map(|row| row.id)))
-        .into_tuple::<i64>()
-        .all(tenant.transaction())
+    let manageable: HashSet<i64> = access::people_with_access(tenant, access::PersonAccess::Manage)
         .await?
         .into_iter()
+        .map(|subject| subject.id)
         .collect();
     Ok(rows
         .into_iter()
