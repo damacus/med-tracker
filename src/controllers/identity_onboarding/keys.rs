@@ -78,12 +78,12 @@ pub(super) async fn create(
         expires_days,
     };
     let mut request = super::passkeys::request(&headers);
-    request.path = "/security/operation/start".into();
+    request.path = "/security/api-key/create".into();
     request.method = better_auth_core::HttpMethod::Post;
     request
         .headers
         .insert("content-type".into(), "application/json".into());
-    request.body = serde_json::to_vec(&json!({"action":"create_api_key","key":key})).ok();
+    request.body = serde_json::to_vec(&key).ok();
     match dispatch(
         &service,
         request,
@@ -92,24 +92,8 @@ pub(super) async fn create(
     .await
     {
         Ok(response) if response.status == 200 => {
-            let body =
-                serde_json::from_slice::<serde_json::Value>(&response.body).unwrap_or_default();
-            let Some(id) = body["operation_id"].as_str() else {
-                return super::rendering::unavailable();
-            };
-            super::password::render_named(
-                &view,
-                csrf,
-                Some(id),
-                None,
-                StatusCode::OK,
-                (
-                    body["password_proof"].as_bool() == Some(true),
-                    body["passkey_proof"].as_bool() == Some(true),
-                    body["oidc_proof"].as_bool() == Some(true),
-                ),
-                "creating a personal API key",
-            )
+            let body = response.body.json().ok().flatten().unwrap_or_default();
+            result(&view, &body)
         }
         _ => (
             StatusCode::BAD_REQUEST,

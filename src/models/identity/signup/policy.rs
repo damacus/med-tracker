@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) async fn open(
-    transaction: &DatabaseTransaction,
+    transaction: &impl sea_orm::ConnectionTrait,
     settings: Option<&serde_json::Value>,
 ) -> Result<bool, SignupError> {
     if let Some(value) = crate::models::settings::node(settings, &["registration", "invite_only"])

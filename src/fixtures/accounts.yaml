@@ -2,7 +2,6 @@
   person_id: 73001
   email: "persistence@example.test"
   status: 2
-  created_at: "2026-10-06T00:00:00"
-  updated_at: "2026-10-06T00:00:00"
+  created_at: "2026-10-06T00:00:00Z"
+  updated_at: "2026-10-06T00:00:00Z"
   preferences: {}
-  password_hash: "$2a$04$UuTkLRZZ6QofpDOlMz32MuuxEHA43WOemOYHPz6.SjsVsyO1tDU96"

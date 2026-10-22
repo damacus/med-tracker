@@ -12,7 +12,6 @@ pub struct Model {
     pub created_at: DateTime,
     #[sea_orm(unique)]
     pub email_address: String,
-    pub password_digest: Option<String>,
     #[sea_orm(unique)]
     pub person_id: i64,
     pub updated_at: DateTime,

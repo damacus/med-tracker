@@ -67,7 +67,13 @@ pub(super) async fn resend(
     .await
     {
         Ok(response) if response.status < 500 => super::rendering::sent(&view),
-        Err(error) if error.status_code() < 500 => super::rendering::sent(&view),
+        Err(error)
+            if error
+                .status_code()
+                .is_ok_and(|status| status.typed().is_ok_and(|value| *value < 500)) =>
+        {
+            super::rendering::sent(&view)
+        }
         Ok(response) => {
             tracing::warn!(
                 status = response.status,
@@ -76,7 +82,7 @@ pub(super) async fn resend(
             super::rendering::unavailable()
         }
         Err(error) => {
-            tracing::warn!(status = error.status_code(), "Verification resend failed");
+            tracing::warn!(status = ?error.status_code(), "Verification resend failed");
             super::rendering::unavailable()
         }
     }

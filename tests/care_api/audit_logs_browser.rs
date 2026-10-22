@@ -5,7 +5,7 @@ async fn browser_session(app: &Application) -> Result<String, Box<dyn Error>> {
     app.fixture
         .admin
         .execute_unprepared(
-            "INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()",
+            "INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()",
         )
         .await?;
     let response = app

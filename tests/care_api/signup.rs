@@ -1,86 +1,133 @@
-use super::fixture::Fixture;
-use med_tracker::models::identity::signup::{self, SignupInput};
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
+use super::*;
 
-fn input(email: &str) -> SignupInput {
-    SignupInput {
-        invitation_token: String::new(),
-        email: email.into(),
-        name: "New household owner".into(),
-        date_of_birth: "1990-01-01".into(),
-        password: "synthetic-signup-1!".into(),
-        password_confirm: "synthetic-signup-1!".into(),
-    }
+async fn open_registration(app: &Application) {
+    app.fixture.admin.execute_unprepared("DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(false,now(),now())").await.unwrap();
 }
 
-async fn open_registration(fixture: &Fixture) {
-    fixture
-        .admin
-        .execute_unprepared("DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(false,now(),now())")
+async fn signup(app: &Application, email: &str, credential: &str) -> reqwest::Response {
+    let mut input = json!({"name":"New household owner","email":email,"date_of_birth":"1990-01-01","credential":credential});
+    if credential == "password" {
+        input["password"] = json!("synthetic-signup-1!");
+    }
+    app.client
+        .post(format!("{}/api/auth/onboarding/signup", app.origin))
+        .header("origin", app.context.config.server.full_url())
+        .json(&input)
+        .send()
         .await
-        .unwrap();
+        .unwrap()
 }
 
 #[tokio::test]
 async fn signup_create_saves_canonical_account_and_queued_verification_together() {
-    let fixture = Fixture::new().await;
-    open_registration(&fixture).await;
-    signup::create(
-        &fixture.runtime,
-        &input("signup-owner@example.test"),
-        "https://app.example.test",
-        Some("signup-canonical"),
-        crate::template::test_settings().as_ref(),
-    )
-    .await
-    .unwrap();
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT a.status, a.password_hash IS NOT NULL AS has_password, u.password_digest IS NOT NULL AS has_digest, p.person_type, p.has_capacity, m.role, (SELECT count(*) FROM person_access_grants g WHERE g.household_membership_id=m.id AND g.person_id=p.id) AS grants, (SELECT count(*) FROM account_verification_keys k WHERE k.account_id=a.id) AS keys, (SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=a.email AND q.task_data->>'text' LIKE '%/verify-account?key=%') AS messages, (SELECT count(*) FROM identity_sessions s WHERE s.account_id=a.id) AS sessions FROM accounts a JOIN people p ON p.id=a.person_id JOIN users u ON u.person_id=p.id JOIN household_memberships m ON m.person_id=a.person_id WHERE a.email='signup-owner@example.test'"
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i32>("", "status").unwrap(), 1);
-    assert!(row.try_get::<bool>("", "has_password").unwrap());
-    assert!(row.try_get::<bool>("", "has_digest").unwrap());
-    assert_eq!(row.try_get::<i32>("", "person_type").unwrap(), 0);
-    assert!(row.try_get::<bool>("", "has_capacity").unwrap());
-    assert_eq!(row.try_get::<String>("", "role").unwrap(), "owner");
-    assert_eq!(row.try_get::<i64>("", "grants").unwrap(), 0);
-    assert_eq!(row.try_get::<i64>("", "keys").unwrap(), 1);
-    assert_eq!(row.try_get::<i64>("", "messages").unwrap(), 1);
-    assert_eq!(row.try_get::<i64>("", "sessions").unwrap(), 0);
-    fixture.close().await;
+    let app = Application::new().await;
+    open_registration(&app).await;
+    for (email, credential) in [
+        ("signup-owner@example.test", "password"),
+        ("signup-passkey@example.test", "passkey"),
+    ] {
+        let response = signup(&app, email, credential).await;
+        let status = response.status();
+        let body = response.text().await.unwrap();
+        assert_eq!(status.as_u16(), 200, "{body}");
+        let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT a.status,NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='accounts' AND column_name='password_hash') AS no_password,NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='password_digest') AS no_digest,p.person_type,p.has_capacity,m.role,(SELECT count(*) FROM auth_credentials c WHERE c.user_id=a.id) AS credentials,(SELECT count(*) FROM person_access_grants g WHERE g.household_membership_id=m.id AND g.person_id=p.id) AS grants,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=a.email AND q.task_data->>'subject'='Verify your account') AS messages,(SELECT count(*) FROM identity_sessions s WHERE s.account_id=a.id) AS sessions FROM accounts a JOIN people p ON p.id=a.person_id JOIN users u ON u.person_id=p.id JOIN household_memberships m ON m.person_id=a.person_id WHERE a.email=$1",[email.into()])).await.unwrap().unwrap();
+        assert_eq!(row.try_get::<i32>("", "status").unwrap(), 1);
+        assert!(row.try_get::<bool>("", "no_password").unwrap());
+        assert!(row.try_get::<bool>("", "no_digest").unwrap());
+        assert_eq!(row.try_get::<i32>("", "person_type").unwrap(), 0);
+        assert!(row.try_get::<bool>("", "has_capacity").unwrap());
+        assert_eq!(row.try_get::<String>("", "role").unwrap(), "owner");
+        assert_eq!(
+            row.try_get::<i64>("", "credentials").unwrap(),
+            i64::from(credential == "password")
+        );
+        assert_eq!(row.try_get::<i64>("", "grants").unwrap(), 0);
+        assert_eq!(row.try_get::<i64>("", "messages").unwrap(), 1);
+        assert_eq!(row.try_get::<i64>("", "sessions").unwrap(), 0);
+        if credential == "password" {
+            let duplicate = signup(&app, email, credential).await;
+            let status = duplicate.status();
+            let body = duplicate.text().await.unwrap();
+            assert_eq!(status.as_u16(), 200, "{body}");
+            let unchanged=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM accounts WHERE email=$1) AS accounts,(SELECT count(*) FROM pg_loco_queue WHERE task_data->>'to'=$1) AS messages",[email.into()])).await.unwrap().unwrap();
+            assert_eq!(unchanged.try_get::<i64>("", "accounts").unwrap(), 1);
+            assert_eq!(unchanged.try_get::<i64>("", "messages").unwrap(), 1);
+        }
+    }
+    app.close().await;
 }
 
 #[tokio::test]
 async fn signup_create_queue_failure_rolls_back_account_household_and_verification() {
-    let fixture = Fixture::new().await;
-    open_registration(&fixture).await;
-    fixture.admin.execute_unprepared("CREATE SEQUENCE signup_queue_attempt; GRANT USAGE ON SEQUENCE signup_queue_attempt TO med_tracker_app; CREATE FUNCTION reject_signup_queue() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('signup_queue_attempt'); RAISE EXCEPTION 'synthetic mail queue failure'; END $$; CREATE TRIGGER reject_signup_queue BEFORE INSERT ON pg_loco_queue FOR EACH ROW EXECUTE FUNCTION reject_signup_queue()")
-        .await.unwrap();
-    assert!(
-        signup::create(
-            &fixture.runtime,
-            &input("rolled-back-owner@example.test"),
-            "https://app.example.test",
-            Some("signup-rollback"),
-            crate::template::test_settings().as_ref(),
-        )
+    let app = Application::new().await;
+    open_registration(&app).await;
+    let state_sql = "SELECT jsonb_build_object('accounts',(SELECT count(*) FROM accounts),'people',(SELECT count(*) FROM people),'users',(SELECT count(*) FROM users),'households',(SELECT count(*) FROM households),'memberships',(SELECT count(*) FROM household_memberships),'credentials',(SELECT count(*) FROM auth_credentials),'verifications',(SELECT count(*) FROM identity_verifications),'versions',(SELECT count(*) FROM versions),'audits',(SELECT count(*) FROM security_audit_events),'changes',(SELECT count(*) FROM api_change_events),'queue',(SELECT count(*) FROM pg_loco_queue)) AS state";
+    let before: Value = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(DbBackend::Postgres, state_sql))
         .await
-        .is_err()
-    );
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT is_called FROM signup_queue_attempt) AS reached_queue, (SELECT count(*) FROM accounts WHERE email='rolled-back-owner@example.test') AS accounts, (SELECT count(*) FROM people WHERE email='rolled-back-owner@example.test') AS people, (SELECT count(*) FROM households WHERE name='New household owner Household') AS households, (SELECT count(*) FROM account_verification_keys k JOIN accounts a ON a.id=k.account_id WHERE a.email='rolled-back-owner@example.test') AS verifications, (SELECT count(*) FROM versions WHERE request_id='signup-rollback') AS versions, (SELECT count(*) FROM security_audit_events WHERE request_id='signup-rollback') AS audits, (SELECT count(*) FROM api_change_events WHERE request_id='signup-rollback') AS changes"
-    )).await.unwrap().unwrap();
-    assert!(row.try_get::<bool>("", "reached_queue").unwrap());
-    for field in [
-        "accounts",
-        "people",
-        "households",
-        "verifications",
-        "versions",
-        "audits",
-        "changes",
+        .unwrap()
+        .unwrap()
+        .try_get("", "state")
+        .unwrap();
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE signup_queue_attempt; GRANT USAGE ON SEQUENCE signup_queue_attempt TO med_tracker_app; CREATE FUNCTION reject_signup_queue() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('signup_queue_attempt'); RAISE EXCEPTION 'synthetic mail queue failure'; END $$; CREATE TRIGGER reject_signup_queue BEFORE INSERT ON pg_loco_queue FOR EACH ROW EXECUTE FUNCTION reject_signup_queue()").await.unwrap();
+    let mut outcomes = Vec::new();
+    for (email, credential) in [
+        ("rolled-back-password@example.test", "password"),
+        ("rolled-back-passkey@example.test", "passkey"),
     ] {
-        assert_eq!(row.try_get::<i64>("", field).unwrap(), 0, "{field}");
+        let response = signup(&app, email, credential).await;
+        let status = response.status();
+        let body = response.text().await.unwrap();
+        outcomes.push((credential, status, body));
+        let after: Value = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_string(DbBackend::Postgres, state_sql))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get("", "state")
+            .unwrap();
+        assert_eq!(before, after);
     }
-    fixture.close().await;
+    let reached = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT last_value FROM signup_queue_attempt",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<i64>("", "last_value")
+        .unwrap();
+    assert_eq!(reached, 2);
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER reject_signup_queue ON pg_loco_queue")
+        .await
+        .unwrap();
+    for (email, credential) in [
+        ("rolled-back-password@example.test", "password"),
+        ("rolled-back-passkey@example.test", "passkey"),
+    ] {
+        let retry = signup(&app, email, credential).await;
+        let status = retry.status();
+        let body = retry.text().await.unwrap();
+        assert_eq!(status.as_u16(), 200, "{body}");
+        let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM accounts WHERE email=$1) AS accounts,(SELECT count(*) FROM pg_loco_queue WHERE task_data->>'to'=$1) AS messages",[email.into()])).await.unwrap().unwrap();
+        assert_eq!(row.try_get::<i64>("", "accounts").unwrap(), 1);
+        assert_eq!(row.try_get::<i64>("", "messages").unwrap(), 1);
+    }
+    app.close().await;
+    assert!(
+        outcomes
+            .iter()
+            .all(|(_, status, _)| status.is_server_error()),
+        "queue failure outcomes: {outcomes:?}"
+    );
 }

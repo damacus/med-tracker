@@ -16,7 +16,8 @@ pub mod m20261016_000011_account_avatars;
 pub mod m20261016_000012_support_expiry;
 pub mod m20261017_000013_guardian_declarations;
 pub mod m20261021_000014_member_directory_identity;
-pub mod m20261021_000015_invitation_mail_attempts;
+pub mod m20261021_000015_native_authentication;
+pub mod m20261021_000016_invitation_mail_attempts;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
 pub struct Migrator;
@@ -40,7 +41,8 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261016_000012_support_expiry::Migration),
             Box::new(m20261017_000013_guardian_declarations::Migration),
             Box::new(m20261021_000014_member_directory_identity::Migration),
-            Box::new(m20261021_000015_invitation_mail_attempts::Migration),
+            Box::new(m20261021_000015_native_authentication::Migration),
+            Box::new(m20261021_000016_invitation_mail_attempts::Migration),
         ]
     }
 }

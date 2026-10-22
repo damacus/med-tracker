@@ -6,6 +6,10 @@ pub mod fixtures;
 mod harness;
 #[path = "browser/journeys.rs"]
 mod journeys;
+#[path = "browser/native_auth.rs"]
+mod native_auth;
+#[path = "browser/native_auth_forms.rs"]
+mod native_auth_forms;
 #[path = "support/template.rs"]
 mod template;
 
