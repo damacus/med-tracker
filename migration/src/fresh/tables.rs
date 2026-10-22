@@ -29,38 +29,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
-            .table(Alias::new("account_identities"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(
-                ColumnDef::new(Alias::new("account_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .default(Expr::cust("CURRENT_TIMESTAMP"))
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("provider")).string().not_null())
-            .col(ColumnDef::new(Alias::new("uid")).string().not_null())
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .default(Expr::cust("CURRENT_TIMESTAMP"))
-                    .not_null(),
-            )
-            .primary_key(
-                Index::create()
-                    .name("account_identities_pkey")
-                    .col(Alias::new("id")),
-            )
-            .to_owned(),
-    )
-    .await?;
-    create_table(
-        manager,
-        Table::create()
             .table(Alias::new("account_lockouts"))
             .col(
                 ColumnDef::new(Alias::new("account_id"))
@@ -154,32 +122,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
-            .table(Alias::new("account_otp_keys"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(ColumnDef::new(Alias::new("key")).string().not_null())
-            .col(
-                ColumnDef::new(Alias::new("last_use"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .default(Expr::cust("CURRENT_TIMESTAMP"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("num_failures"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .primary_key(
-                Index::create()
-                    .name("account_otp_keys_pkey")
-                    .col(Alias::new("id")),
-            )
-            .to_owned(),
-    )
-    .await?;
-    create_table(
-        manager,
-        Table::create()
             .table(Alias::new("account_password_reset_keys"))
             .col(
                 ColumnDef::new(Alias::new("account_id"))
@@ -205,21 +147,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .col(
                 ColumnDef::new(Alias::new("updated_at"))
                     .custom(Alias::new("timestamp(6) without time zone")),
-            )
-            .to_owned(),
-    )
-    .await?;
-    create_table(
-        manager,
-        Table::create()
-            .table(Alias::new("account_recovery_codes"))
-            .col(ColumnDef::new(Alias::new("code")).string().not_null())
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .primary_key(
-                Index::create()
-                    .name("account_recovery_codes_pkey")
-                    .col(Alias::new("id"))
-                    .col(Alias::new("code")),
             )
             .to_owned(),
     )
@@ -309,88 +236,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
-            .table(Alias::new("account_webauthn_keys"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(
-                ColumnDef::new(Alias::new("account_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .default(Expr::cust("CURRENT_TIMESTAMP"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("last_use"))
-                    .custom(Alias::new("timestamp(6) without time zone")),
-            )
-            .col(ColumnDef::new(Alias::new("nickname")).string())
-            .col(ColumnDef::new(Alias::new("public_key")).string().not_null())
-            .col(
-                ColumnDef::new(Alias::new("sign_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .default(Expr::cust("CURRENT_TIMESTAMP"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("webauthn_id"))
-                    .string()
-                    .not_null(),
-            )
-            .primary_key(
-                Index::create()
-                    .name("account_webauthn_keys_pkey")
-                    .col(Alias::new("id")),
-            )
-            .to_owned(),
-    )
-    .await?;
-    create_table(
-        manager,
-        Table::create()
-            .table(Alias::new("account_webauthn_user_ids"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(
-                ColumnDef::new(Alias::new("account_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .default(Expr::cust("CURRENT_TIMESTAMP"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .default(Expr::cust("CURRENT_TIMESTAMP"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("webauthn_id"))
-                    .string()
-                    .not_null(),
-            )
-            .primary_key(
-                Index::create()
-                    .name("account_webauthn_user_ids_pkey")
-                    .col(Alias::new("id")),
-            )
-            .to_owned(),
-    )
-    .await?;
-    create_table(
-        manager,
-        Table::create()
             .table(Alias::new("accounts"))
             .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
             .col(
@@ -400,16 +245,11 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             )
             .col(
                 ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
+                    .timestamp_with_time_zone()
                     .not_null(),
             )
-            .col(
-                ColumnDef::new(Alias::new("email"))
-                    .custom(Alias::new("citext"))
-                    .not_null(),
-            )
+            .col(ColumnDef::new(Alias::new("email")).text().not_null())
             .col(ColumnDef::new(Alias::new("name")).string())
-            .col(ColumnDef::new(Alias::new("password_hash")).string())
             .col(
                 ColumnDef::new(Alias::new("preferences"))
                     .json_binary()
@@ -424,8 +264,27 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             )
             .col(
                 ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
+                    .timestamp_with_time_zone()
                     .not_null(),
+            )
+            .col(
+                ColumnDef::new(Alias::new("email_verified"))
+                    .boolean()
+                    .not_null()
+                    .default(false),
+            )
+            .col(ColumnDef::new(Alias::new("image")).text())
+            .col(
+                ColumnDef::new(Alias::new("two_factor_enabled"))
+                    .boolean()
+                    .not_null()
+                    .default(false),
+            )
+            .col(
+                ColumnDef::new(Alias::new("metadata"))
+                    .json_binary()
+                    .not_null()
+                    .default(Expr::val("{}").cast_as(Alias::new("jsonb"))),
             )
             .primary_key(Index::create().name("accounts_pkey").col(Alias::new("id")))
             .to_owned(),
@@ -3434,7 +3293,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .string()
                     .not_null(),
             )
-            .col(ColumnDef::new(Alias::new("password_digest")).string())
             .col(
                 ColumnDef::new(Alias::new("person_id"))
                     .big_integer()

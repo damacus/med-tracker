@@ -541,19 +541,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_foreign_key(
             ForeignKey::create()
-                .name("fk_rails_2586b16017")
-                .from(
-                    Alias::new("account_webauthn_keys"),
-                    Alias::new("account_id"),
-                )
-                .to(Alias::new("accounts"), Alias::new("id"))
-                .on_delete(ForeignKeyAction::Cascade)
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
                 .name("fk_rails_27447b69f8")
                 .from(
                     Alias::new("audit_export_deliveries"),
@@ -794,19 +781,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_foreign_key(
             ForeignKey::create()
-                .name("fk_rails_742fee62ad")
-                .from(
-                    Alias::new("account_webauthn_user_ids"),
-                    Alias::new("account_id"),
-                )
-                .to(Alias::new("accounts"), Alias::new("id"))
-                .on_delete(ForeignKeyAction::Cascade)
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
                 .name("fk_rails_75bd8b3918")
                 .from(
                     Alias::new("security_audit_events"),
@@ -837,15 +811,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     Alias::new("person_medication_id"),
                 )
                 .to(Alias::new("person_medications"), Alias::new("id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_rails_823f8d7a81")
-                .from(Alias::new("account_otp_keys"), Alias::new("id"))
-                .to(Alias::new("accounts"), Alias::new("id"))
                 .to_owned(),
         )
         .await?;
@@ -900,16 +865,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     Alias::new("source_dosage_option_id"),
                 )
                 .to(Alias::new("dosages"), Alias::new("id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_rails_8868aa7ac0")
-                .from(Alias::new("account_identities"), Alias::new("account_id"))
-                .to(Alias::new("accounts"), Alias::new("id"))
-                .on_delete(ForeignKeyAction::Cascade)
                 .to_owned(),
         )
         .await?;
@@ -1389,15 +1344,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     Alias::new("account_verification_keys"),
                     Alias::new("account_id"),
                 )
-                .to(Alias::new("accounts"), Alias::new("id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_rails_ef43948844")
-                .from(Alias::new("account_recovery_codes"), Alias::new("id"))
                 .to(Alias::new("accounts"), Alias::new("id"))
                 .to_owned(),
         )
