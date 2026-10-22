@@ -38,7 +38,7 @@ class LocoImageTest(unittest.TestCase):
                 "POSTGRES_HOST_AUTH_METHOD=trust",
                 "--env",
                 "POSTGRES_DB=medtracker_image",
-                "postgres:18-alpine",
+                "postgres:18-alpine@sha256:898c60cb390d1085bc97bdd6a1ae968757421df394b071848b52b1c09c89d6a5",
             )
             containers.append(database)
             for _ in range(60):
@@ -66,6 +66,8 @@ class LocoImageTest(unittest.TestCase):
                 "--network",
                 prefix,
                 "--read-only",
+                "--cap-drop=ALL",
+                "--security-opt=no-new-privileges=true",
                 "--tmpfs",
                 "/tmp:uid=65532,gid=65532",
                 "--env",
@@ -181,6 +183,8 @@ class LocoImageTest(unittest.TestCase):
                     "--pull=never",
                     "--network=none",
                     "--read-only",
+                    "--cap-drop=ALL",
+                    "--security-opt=no-new-privileges=true",
                     self.image,
                     *arguments,
                 )
@@ -215,6 +219,9 @@ class LocoImageTest(unittest.TestCase):
                 "bin/sh",
                 "usr/bin/cargo",
                 "usr/bin/node",
+                "usr/local/cargo/bin/cargo",
+                "usr/local/bin/node",
+                "root/.cargo/bin/cargo",
                 "app/.env",
                 "app/.git/config",
                 "app/rails/config/ai_medication_sources.yml",

@@ -11,10 +11,31 @@ production configuration, Tera templates, static assets and PDF fonts. It runs a
 UID/GID 65532, without a shell or compiler.
 
 The **Loco Linux images** workflow builds and checks amd64 and arm64 on native
-runners. Dispatch it with **publish** enabled to publish a multi-platform
-`ghcr.io/damacus/med-tracker-loco:sha-<commit>` image after both checks pass.
+runners. Dispatch it **from main** with **publish** enabled to publish a
+multi-platform `ghcr.io/damacus/med-tracker-loco:sha-<commit>` image after both
+checks pass. Publication verifies checksums, image IDs and architectures of the
+saved tested images, pushes those images, and joins their registry digests into
+the multi-platform manifest. The publication job has no source checkout, build
+or application execution. Pull requests and dispatches from other branches have
+no package write permission and cannot publish. Transferred image archives
+expire after one day.
 The existing Rails image publisher remains separate. Publishing an image does
 not deploy it.
+
+`task image:check` compares the image's pinned Rust compiler with the compiler
+selected by the application's stable CI policy, its Node major with `mise.toml`
+and app CI, and its Task version with app CI. The image uses Rust 1.99.1;
+`Cargo.toml`'s `rust-version` remains the minimum supported compiler. A new stable
+release makes the alignment check fail until the Rust image version and verified
+digest are updated. Node 24 and Task 3.52.0 match the application's selections.
+The build frontend, base images, BuildKit daemon and workflow actions are pinned
+by digest or commit. CI verifies Task 3.52.0 and Buildx 0.38.1 binaries against
+committed checksums before running them. BuildKit 0.34.1 runs without the default
+host-network and insecure-security entitlements.
+Cargo and npm use their lockfiles; npm dependency install scripts are disabled.
+Build caches are separated by architecture and contain no deployment credentials.
+The smoke checks use a read-only filesystem with all capabilities dropped and
+privilege escalation disabled. They pin their disposable PostgreSQL image too.
 
 Use the same image with these commands (arguments follow the image name):
 
@@ -39,3 +60,9 @@ volume is needed for configured object storage. Mount an alternate production
 configuration at `/app/config/production.yaml` if the deployment needs settings
 not exposed by the packaged configuration. Run a single scheduler independently
 of worker replicas; do not also enable `--scheduler` on those workers.
+
+Configure the container platform to probe the server's HTTP `/health` endpoint
+on port 5150 and supervise the worker and scheduler processes separately. The
+scratch image has no embedded Docker `HEALTHCHECK`: executing an HTTP probe
+inside it would require adding another executable. Trivy reports this as a low
+severity configuration finding; platform probes provide the health check.

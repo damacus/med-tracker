@@ -1,15 +1,16 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 FROM node:24-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY assets/ assets/
 RUN ./node_modules/.bin/tailwindcss -i assets/static/css/app.css -o assets/static/css/compiled.css --minify \
     && cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js
 
-FROM rust:1.94.1-slim-trixie@sha256:cf09adf8c3ebaba10779e5c23ff7fe4df4cccdab8a91f199b0c142c53fef3e1a AS toolchain
+FROM rust:1.99.1-slim-trixie@sha256:aab42391a986424e22d6a3ec14f37bc6dd3dacff4d457ca7cccd781e02297cc6 AS toolchain
 FROM ubuntu:26.04@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944 AS build
 ARG CARGO_BUILD_JOBS=2
+ARG TARGETARCH
 RUN apt-get update && apt-get install --yes --no-install-recommends \
     build-essential ca-certificates clang libclang-dev libicu-dev libssl-dev pkg-config tzdata \
     && rm -rf /var/lib/apt/lists/*
@@ -26,9 +27,9 @@ COPY migration/ migration/
 COPY src/ src/
 COPY assets/ assets/
 COPY rails/config/ai_medication_sources.yml rails/config/medication_review_labels.yml rails/config/
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/app/target,sharing=locked \
+RUN --mount=type=cache,id=loco-registry-${TARGETARCH},target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=loco-git-${TARGETARCH},target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=loco-target-${TARGETARCH},target=/app/target,sharing=locked \
     cargo build --locked --release --bin med-tracker \
     && install -Dm755 target/release/med-tracker /rootfs/app/med-tracker
 RUN ldd /rootfs/app/med-tracker > /tmp/dependencies \
