@@ -225,6 +225,16 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
         .unwrap()
         .status()
         .as_u16();
+    let malformed_denied = app
+        .client
+        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .bearer_auth(&token)
+        .json(&json!({"schedule":{"person_id":"73001","start_date":"2026-1-2"}}))
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .as_u16();
     let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT notes,(SELECT is_called FROM synthetic_schedule_audit_reached) AS reached,(SELECT count(*) FROM versions WHERE item_type='Schedule' AND event='update') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Schedule' AND action='update') AS changes FROM schedules WHERE id=$1",[id.into()])).await.unwrap().unwrap();
     let notes: Option<String> = row.try_get("", "notes").unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
@@ -232,8 +242,15 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
     let changes: i64 = row.try_get("", "changes").unwrap();
     app.close().await;
     assert_eq!(
-        (first, replay_status, failed, self_replay_status, denied),
-        (200, 200, 500, 200, 403)
+        (
+            first,
+            replay_status,
+            failed,
+            self_replay_status,
+            denied,
+            malformed_denied
+        ),
+        (200, 200, 500, 200, 403, 403)
     );
     assert!(replayed && reached);
     assert_eq!(notes.as_deref(), Some("Synthetic lifecycle"));

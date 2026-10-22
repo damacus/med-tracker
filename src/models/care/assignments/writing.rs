@@ -84,9 +84,37 @@ pub async fn create(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
     authorize_create(tenant, body).await?;
-    let attrs = Attributes::parse(body, true).map_err(|_| invalid())?;
-    let person = person(tenant, attrs.person_id.as_deref().ok_or_else(invalid)?).await?;
-    let medication = medicine(tenant, attrs.medication_id.as_deref().ok_or_else(invalid)?).await?;
+    let attrs = Attributes::parse(body, true)
+        .map_err(|_| invalid())?
+        .validated(true)?;
+    create_attributes(tenant, attrs.into_inner(), provenance).await
+}
+pub(crate) async fn create_input(
+    tenant: &TenantTransaction,
+    attrs: ValidatedAssignmentInput,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    lock_household(tenant).await?;
+    let id = attrs.0.person_id.as_ref().ok_or_else(invalid)?;
+    let row = person(tenant, id.as_str()).await?;
+    access::require_person_access(tenant, row.id, PersonAccess::Manage).await?;
+    create_attributes(tenant, attrs.into_inner(), provenance).await
+}
+async fn create_attributes(
+    tenant: &TenantTransaction,
+    attrs: Attributes,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    let person = person(
+        tenant,
+        attrs.person_id.as_ref().ok_or_else(invalid)?.as_str(),
+    )
+    .await?;
+    let medication = medicine(
+        tenant,
+        attrs.medication_id.as_ref().ok_or_else(invalid)?.as_str(),
+    )
+    .await?;
     if person_medication::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(person.id))
@@ -98,7 +126,14 @@ pub async fn create(
     {
         return Err(invalid());
     }
-    let selected = option(tenant, attrs.source_dosage_option_id.as_deref()).await?;
+    let selected = option(
+        tenant,
+        attrs
+            .source_dosage_option_id
+            .as_ref()
+            .map(DosageOptionId::as_str),
+    )
+    .await?;
     let (amount, unit, source) = dosing::resolved_dose(
         tenant.transaction(),
         tenant,
@@ -118,7 +153,10 @@ pub async fn create(
         .await?
         .map_or(1, |row| row.position + 1);
     let now = Utc::now().naive_utc();
-    let kind = attrs.administration_kind.unwrap_or(1);
+    let kind = attrs
+        .administration_kind
+        .map(AdministrationKind::database)
+        .unwrap_or(1);
     let hours = attrs.min_hours_between_doses.unwrap_or(None);
     let hours = if kind == 0 && attrs.max_daily_doses == Some(1) && hours == Some(24) {
         None
@@ -139,7 +177,7 @@ pub async fn create(
         notes: Set(attrs.notes),
         max_daily_doses: Set(attrs.max_daily_doses),
         min_hours_between_doses: Set(hours),
-        dose_cycle: Set(attrs.dose_cycle),
+        dose_cycle: Set(attrs.dose_cycle.map(DoseCycle::database)),
         position: Set(position),
         created_at: Set(now),
         updated_at: Set(now),
@@ -149,6 +187,7 @@ pub async fn create(
     .await?;
     finish(tenant, row, None, "create", &person.portable_id, provenance).await
 }
+
 pub async fn update(
     tenant: &TenantTransaction,
     id: &str,
@@ -166,9 +205,56 @@ pub async fn update(
             details: json!({"error":"Record has changed since it was last read"}),
         });
     }
-    let attrs = Attributes::parse(body, false).map_err(|_| invalid())?;
-    if let Some(id) = attrs.person_id.as_deref()
-        && person(tenant, id).await?.id != row.person_id
+    let attrs = Attributes::parse(body, false)
+        .map_err(|_| invalid())?
+        .validated(false)?;
+    update_attributes(
+        tenant,
+        row,
+        before,
+        clinical_before,
+        attrs.into_inner(),
+        provenance,
+    )
+    .await
+}
+pub(crate) async fn update_input(
+    tenant: &TenantTransaction,
+    id: &str,
+    attrs: ValidatedAssignmentInput,
+    etag: Option<&str>,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    authorize_update(tenant, id).await?;
+    let row = reading::find(tenant, id, true).await?;
+    let before = reading::project(tenant, row.clone()).await?;
+    let clinical_before = clinical_snapshot(&row);
+    if etag.is_some_and(|etag| !etag.is_empty() && etag != before.1) {
+        return Err(OperationError::Conflict {
+            code: "conflict".into(),
+            details: json!({"error":"Record has changed since it was last read"}),
+        });
+    }
+    update_attributes(
+        tenant,
+        row,
+        before,
+        clinical_before,
+        attrs.into_inner(),
+        provenance,
+    )
+    .await
+}
+async fn update_attributes(
+    tenant: &TenantTransaction,
+    row: person_medication::Model,
+    before: (Value, String),
+    clinical_before: Value,
+    attrs: Attributes,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    if let Some(id) = attrs.person_id.as_ref()
+        && person(tenant, id.as_str()).await?.id != row.person_id
     {
         return Err(invalid());
     }
@@ -177,7 +263,8 @@ pub async fn update(
         tenant,
         attrs
             .medication_id
-            .as_deref()
+            .as_ref()
+            .map(MedicationId::as_str)
             .unwrap_or(&row.medication_id.to_string()),
     )
     .await?;
@@ -194,7 +281,14 @@ pub async fn update(
         return Err(invalid());
     }
     let selected = if attrs.source_dosage_option_id.is_some() {
-        option(tenant, attrs.source_dosage_option_id.as_deref()).await?
+        option(
+            tenant,
+            attrs
+                .source_dosage_option_id
+                .as_ref()
+                .map(DosageOptionId::as_str),
+        )
+        .await?
     } else if let Some(id) = row.source_dosage_option_id {
         dosage::Entity::find_by_id(id)
             .in_tenant(tenant.scope().household_id)
@@ -214,7 +308,10 @@ pub async fn update(
     )
     .await?
     .ok_or_else(invalid)?;
-    let kind = attrs.administration_kind.unwrap_or(row.administration_kind);
+    let kind = attrs
+        .administration_kind
+        .map(AdministrationKind::database)
+        .unwrap_or(row.administration_kind);
     let maximum = attrs.max_daily_doses.or(row.max_daily_doses);
     let minimum = attrs
         .min_hours_between_doses
@@ -232,7 +329,7 @@ pub async fn update(
         && row.notes == attrs.notes.clone().or(row.notes.clone())
         && row.max_daily_doses == maximum
         && row.min_hours_between_doses == minimum
-        && row.dose_cycle == attrs.dose_cycle.or(row.dose_cycle)
+        && row.dose_cycle == attrs.dose_cycle.map(DoseCycle::database).or(row.dose_cycle)
     {
         return Ok(before);
     }
@@ -245,7 +342,7 @@ pub async fn update(
         active.notes = Set(Some(value));
     }
     if let Some(value) = attrs.administration_kind {
-        active.administration_kind = Set(value);
+        active.administration_kind = Set(value.database());
     }
     if let Some(value) = attrs.max_daily_doses {
         active.max_daily_doses = Set(Some(value));
@@ -254,7 +351,7 @@ pub async fn update(
         active.min_hours_between_doses = Set(value);
     }
     if let Some(value) = attrs.dose_cycle {
-        active.dose_cycle = Set(Some(value));
+        active.dose_cycle = Set(Some(value.database()));
     }
     active.min_hours_between_doses = Set(minimum);
     active.updated_at = Set(Utc::now().naive_utc());

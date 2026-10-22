@@ -1,5 +1,4 @@
 use super::*;
-use loco_rs::model::TenantQueryExt;
 
 pub(super) fn identifier<'a>(
     value: &'a Value,
@@ -210,177 +209,128 @@ pub(super) fn valid_taper_step(value: &Value) -> bool {
     })
 }
 
-pub(super) async fn apply_attributes(
-    db: &DatabaseTransaction,
-    context: &AuthContext,
-    attributes: &Map<String, Value>,
-    fields: &mut ScheduleFields,
-    existing: Option<&schedule::Model>,
-) -> Result<Result<(), InputFailure>, ApiError> {
-    if let Some(value) = attributes.get("person_id") {
-        let id = match identifier(value, "person_id") {
-            Ok(id) => id,
-            Err(error) => return Ok(Err(error)),
-        };
-        let Some(person) = find_person(db, context, id).await? else {
-            return Ok(Err(InputFailure::NotFound));
-        };
-        if !person_access(db, context, person.id, false).await? {
-            return Ok(Err(InputFailure::NotFound));
-        }
-        if existing.is_some_and(|existing| existing.person_id != person.id) {
-            return Ok(Err(InputFailure::Invalid("person_id", "cannot be changed")));
-        }
-        fields.person_id = Some(person.id);
-    }
-    if let Some(value) = attributes.get("medication_id") {
-        let id = match identifier(value, "medication_id") {
-            Ok(id) => id,
-            Err(error) => return Ok(Err(error)),
-        };
-        let Some(medication) = visible_medication(db, context, id).await? else {
-            return Ok(Err(InputFailure::NotFound));
-        };
-        fields.medication_id = Some(medication.id);
-    }
-    if let Some(value) = attributes.get("source_dosage_option_id") {
-        if value.is_null() {
-            return Ok(Err(InputFailure::Invalid(
-                "source_dosage_option_id",
-                "must be a string",
-            )));
-        } else {
-            let id = match identifier(value, "source_dosage_option_id") {
-                Ok(id) => id,
-                Err(error) => return Ok(Err(error)),
-            };
-            let Some(option) = find_dosage(db, context, id).await? else {
-                return Ok(Err(InputFailure::NotFound));
-            };
-            fields.source_dosage_option_id = Some(option.id);
-        }
-    }
-    if let Some(value) = attributes.get("dose_amount") {
-        match parse_amount(value) {
-            Ok(amount) => fields.dose_amount = Some(amount),
-            Err(error) => return Ok(Err(error)),
-        }
-    }
-    if let Some(value) = attributes.get("dose_unit") {
-        let Some(unit) = value.as_str() else {
-            return Ok(Err(InputFailure::Invalid("dose_unit", "must be a string")));
-        };
-        if !UNITS.contains(&unit) {
-            return Ok(Err(InputFailure::Invalid("dose_unit", "is invalid")));
-        }
-        fields.dose_unit = Some(unit.to_owned());
-    }
-    for (key, destination) in [
-        ("frequency", &mut fields.frequency),
-        ("notes", &mut fields.notes),
-    ] {
-        if let Some(value) = attributes.get(key) {
-            if let Some(value) = value.as_str() {
-                *destination = Some(value.to_owned());
-            } else {
-                return Ok(Err(InputFailure::Invalid(
-                    "schedule",
-                    "contains an invalid string",
-                )));
+pub(super) fn parse_input(attributes: &Map<String, Value>) -> Result<ScheduleInput, InputFailure> {
+    let parse_id = |field: &'static str| {
+        attributes
+            .get(field)
+            .map(|value| identifier(value, field))
+            .transpose()
+    };
+    let person_id = parse_id("person_id")?
+        .map(|value| {
+            value
+                .parse::<PersonId>()
+                .map_err(|_| InputFailure::Invalid("person_id", "is invalid"))
+        })
+        .transpose()?;
+    let medication_id = parse_id("medication_id")?
+        .map(|value| {
+            value
+                .parse::<MedicationId>()
+                .map_err(|_| InputFailure::Invalid("medication_id", "is invalid"))
+        })
+        .transpose()?;
+    let source_dosage_option_id = parse_id("source_dosage_option_id")?
+        .map(|value| {
+            value
+                .parse::<DosageOptionId>()
+                .map_err(|_| InputFailure::Invalid("source_dosage_option_id", "is invalid"))
+        })
+        .transpose()?;
+    let dose_amount = attributes
+        .get("dose_amount")
+        .map(parse_amount)
+        .transpose()?;
+    let dose_unit = attributes
+        .get("dose_unit")
+        .map(|value| {
+            let unit = value
+                .as_str()
+                .ok_or(InputFailure::Invalid("dose_unit", "must be a string"))?;
+            if !UNITS.contains(&unit) {
+                return Err(InputFailure::Invalid("dose_unit", "is invalid"));
             }
-        }
-    }
-    if let Some(value) = attributes.get("start_date") {
-        match parse_date(value, "start_date") {
-            Ok(date) => fields.start_date = Some(date),
-            Err(error) => return Ok(Err(error)),
-        }
-    }
-    if let Some(value) = attributes.get("end_date") {
-        match parse_date(value, "end_date") {
-            Ok(date) => fields.end_date = Some(date),
-            Err(error) => return Ok(Err(error)),
-        }
-    }
-    if let Some(value) = attributes.get("max_daily_doses") {
-        let Some(amount) = value
-            .as_i64()
-            .filter(|amount| *amount > 0 && *amount <= i32::MAX as i64)
-        else {
-            return Ok(Err(InputFailure::Invalid(
-                "max_daily_doses",
-                "must be positive",
-            )));
-        };
-        fields.max_daily_doses = Some(amount as i32);
-    }
-    if let Some(value) = attributes.get("min_hours_between_doses") {
-        match parse_interval(value) {
-            Ok(interval) => fields.min_hours_between_doses = interval,
-            Err(error) => return Ok(Err(error)),
-        }
-    }
-    if let Some(value) = attributes.get("dose_cycle") {
-        fields.dose_cycle = match value.as_str() {
-            Some("daily") => Some(0),
-            Some("weekly") => Some(1),
-            Some("monthly") => Some(2),
-            _ => return Ok(Err(InputFailure::Invalid("dose_cycle", "is invalid"))),
-        };
-    }
-    if let Some(value) = attributes.get("schedule_type") {
-        fields.schedule_type = match value.as_str() {
-            Some("daily") => 0,
-            Some("multiple_daily") => 1,
-            Some("weekly") => 2,
-            Some("specific_dates") => 3,
-            Some("prn") => 4,
-            Some("tapering") => 5,
-            Some("every_other_day") => 6,
-            _ => return Ok(Err(InputFailure::Invalid("schedule_type", "is invalid"))),
-        };
-    }
-    if let Some(value) = attributes.get("schedule_config") {
-        if !valid_config(value) {
-            return Ok(Err(InputFailure::Invalid("schedule_config", "is invalid")));
-        }
-        fields.schedule_config = value.clone();
-    }
-    if let Some(option_id) = fields.source_dosage_option_id {
-        let Some(option) = dosage::Entity::find_by_id(option_id)
-            .one(db)
-            .await
-            .map_err(database_error)?
-        else {
-            return Ok(Err(InputFailure::NotFound));
-        };
-        if Some(option.medication_id) != fields.medication_id
-            || Some(option.amount) != fields.dose_amount
-            || fields.dose_unit.as_deref() != Some(option.unit.as_str())
-        {
-            return Ok(Err(InputFailure::Invalid(
-                "source_dosage_option",
-                "must match the selected medication and dose",
-            )));
-        }
-    } else if existing.is_none()
-        && let (Some(medication_id), Some(amount), Some(unit)) = (
-            fields.medication_id,
-            fields.dose_amount,
-            fields.dose_unit.as_deref(),
-        )
-    {
-        let matches = dosage::Entity::find()
-            .in_tenant(context.scope().household_id)
-            .filter(dosage::Column::MedicationId.eq(medication_id))
-            .filter(dosage::Column::Amount.eq(amount))
-            .filter(dosage::Column::Unit.eq(unit))
-            .all(db)
-            .await
-            .map_err(database_error)?;
-        if matches.len() == 1 {
-            fields.source_dosage_option_id = Some(matches[0].id);
-        }
-    }
-    Ok(Ok(()))
+            Ok(unit.to_owned())
+        })
+        .transpose()?;
+    let parse_text = |field| {
+        attributes
+            .get(field)
+            .map(|value| {
+                value
+                    .as_str()
+                    .map(str::to_owned)
+                    .ok_or(InputFailure::Invalid(
+                        "schedule",
+                        "contains an invalid string",
+                    ))
+            })
+            .transpose()
+    };
+    let frequency = parse_text("frequency")?;
+    let notes = parse_text("notes")?;
+    let start_date = attributes
+        .get("start_date")
+        .map(|value| parse_date(value, "start_date"))
+        .transpose()?;
+    let end_date = attributes
+        .get("end_date")
+        .map(|value| parse_date(value, "end_date"))
+        .transpose()?;
+    let max_daily_doses = attributes
+        .get("max_daily_doses")
+        .map(|value| {
+            value
+                .as_i64()
+                .filter(|amount| *amount > 0 && *amount <= i32::MAX as i64)
+                .map(|amount| amount as i32)
+                .ok_or(InputFailure::Invalid("max_daily_doses", "must be positive"))
+        })
+        .transpose()?;
+    let min_hours_between_doses = attributes
+        .get("min_hours_between_doses")
+        .map(parse_interval)
+        .transpose()?;
+    let dose_cycle = attributes
+        .get("dose_cycle")
+        .map(|value| {
+            value
+                .as_str()
+                .and_then(DoseCycle::parse)
+                .ok_or(InputFailure::Invalid("dose_cycle", "is invalid"))
+        })
+        .transpose()?;
+    let schedule_type = attributes
+        .get("schedule_type")
+        .map(|value| {
+            value
+                .as_str()
+                .and_then(ScheduleType::parse)
+                .ok_or(InputFailure::Invalid("schedule_type", "is invalid"))
+        })
+        .transpose()?;
+    let schedule_config = attributes
+        .get("schedule_config")
+        .map(|value| {
+            valid_config(value)
+                .then(|| value.clone())
+                .ok_or(InputFailure::Invalid("schedule_config", "is invalid"))
+        })
+        .transpose()?;
+    Ok(ScheduleInput {
+        person_id,
+        medication_id,
+        source_dosage_option_id,
+        dose_amount,
+        dose_unit,
+        frequency,
+        start_date,
+        end_date,
+        notes,
+        max_daily_doses,
+        min_hours_between_doses,
+        dose_cycle,
+        schedule_type,
+        schedule_config,
+    })
 }
