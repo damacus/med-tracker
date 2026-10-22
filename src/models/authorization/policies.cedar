@@ -19,16 +19,6 @@ when {
     principal.status == "active" && !principal.revoked && context.participating
 };
 
-permit(principal, action == Action::"manage_person", resource)
-when {
-    principal.household_id == resource.household_id &&
-    principal.status == "active" && !principal.revoked &&
-    context.household_id == resource.household_id &&
-    context.membership_id == principal.id && context.person_id == resource.id &&
-    !context.revoked && (!context.expiring || context.expires_at > context.now) &&
-    context.level == "manage"
-};
-
 permit(principal, action == Action::"manage_self", resource)
 when {
     principal.household_id == resource.household_id &&

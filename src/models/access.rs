@@ -4,14 +4,14 @@ use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend,
     EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, Statement, TransactionTrait,
-    sea_query::{Expr, ExprTrait},
+    sea_query::Expr,
 };
 
 use super::{
     authorization,
     entities::{
-        account, account_lockout, grant, household, medication, membership, person,
-        person_medication, schedule, user,
+        account, account_lockout, household, medication, membership, person, person_medication,
+        schedule, user,
     },
     errors::OperationError,
 };
@@ -171,17 +171,7 @@ pub(crate) async fn can_access_person(
     {
         return Ok(true);
     }
-    let record = grant::Entity::find()
-        .in_tenant(transaction.scope.household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(membership.id))
-        .filter(grant::Column::PersonId.eq(person_id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .one(transaction.transaction())
-        .await?;
-    let now = database_time(transaction).await?;
-    Ok(record.is_some_and(|record| {
-        authorization::person_access(membership, &subject, &record, access, now)
-    }))
+    Ok(false)
 }
 
 pub(crate) async fn has_person_access(
@@ -210,39 +200,7 @@ pub(crate) async fn has_person_access(
     {
         return Ok(true);
     }
-    has_existing_manage_grant(transaction).await
-}
-
-pub(crate) async fn has_existing_manage_grant(
-    transaction: &TenantTransaction,
-) -> Result<bool, OperationError> {
-    recheck(transaction).await?;
-    let grants = grant::Entity::find()
-        .in_tenant(transaction.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(transaction.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .all(transaction.transaction())
-        .await?;
-    let people = person_queries::household_people(transaction.scope())
-        .filter(
-            person::Column::Id.is_in(
-                grants
-                    .iter()
-                    .map(|record| record.person_id)
-                    .collect::<Vec<_>>(),
-            ),
-        )
-        .all(transaction.transaction())
-        .await?;
-    let now = database_time(transaction).await?;
-    Ok(grants.iter().any(|record| {
-        people
-            .iter()
-            .find(|subject| subject.id == record.person_id)
-            .is_some_and(|subject| {
-                authorization::granted_person_manage(transaction.membership(), subject, record, now)
-            })
-    }))
+    Ok(false)
 }
 
 pub(crate) async fn people_with_access(
@@ -257,19 +215,10 @@ pub(crate) async fn people_with_access(
             .await?);
     }
     let declared = super::care::guardian_declarations::manageable_subjects(transaction).await?;
-    let grants = grant::Entity::find()
-        .in_tenant(transaction.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(transaction.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .all(transaction.transaction())
-        .await?;
     let mut people = person_queries::household_people(transaction.scope())
         .filter(
             person::Column::Id.is_in(
-                grants
-                    .iter()
-                    .map(|row| row.person_id)
-                    .chain(std::iter::once(transaction.membership().person_id))
+                std::iter::once(transaction.membership().person_id)
                     .chain(declared.iter().copied())
                     .collect::<Vec<_>>(),
             ),
@@ -277,37 +226,11 @@ pub(crate) async fn people_with_access(
         .order_by_asc(person::Column::Name)
         .all(transaction.transaction())
         .await?;
-    let now = database_time(transaction).await?;
     people.retain(|subject| {
         authorization::own_person_manage(transaction.membership(), subject)
             || declared.contains(&subject.id)
-            || grants.iter().any(|grant| {
-                grant.person_id == subject.id
-                    && authorization::person_access(
-                        transaction.membership(),
-                        subject,
-                        grant,
-                        access,
-                        now,
-                    )
-            })
     });
     Ok(people)
-}
-
-async fn database_time(
-    transaction: &TenantTransaction,
-) -> Result<chrono::NaiveDateTime, OperationError> {
-    transaction
-        .transaction()
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT timezone('UTC', clock_timestamp()) AS now",
-        ))
-        .await?
-        .ok_or(OperationError::Unavailable)?
-        .try_get("", "now")
-        .map_err(Into::into)
 }
 
 pub async fn recheck(transaction: &TenantTransaction) -> Result<(), OperationError> {
@@ -388,27 +311,6 @@ pub(crate) fn participating_people(
     person_queries::household_participants(membership.household_id)
         .select_only()
         .column(person::Column::Id)
-        .into_query()
-}
-
-pub(crate) fn managed_people(
-    membership: &membership::Model,
-) -> sea_orm::sea_query::SelectStatement {
-    grant::Entity::find()
-        .select_only()
-        .column(grant::Column::PersonId)
-        .in_tenant(membership.household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(membership.id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .filter(grant::Column::AccessLevel.eq("manage"))
-        .filter(
-            Condition::any()
-                .add(grant::Column::ExpiresAt.is_null())
-                .add(
-                    Expr::col(grant::Column::ExpiresAt)
-                        .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
-                ),
-        )
         .into_query()
 }
 

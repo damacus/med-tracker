@@ -84,7 +84,7 @@ async fn ui_capabilities_keep_self_manage_after_grant_withdrawal_and_recheck_mem
         .as_u16();
     app.close().await;
     assert_eq!(member_status, 200);
-    assert_eq!(member_body["data"]["people"]["create"], true);
+    assert_eq!(member_body["data"]["people"]["create"], false);
     assert_eq!(member_body["data"]["people"]["manage_ids"], json!([73001]));
     assert_eq!(member_body["data"]["locations"]["create"], false);
     assert_eq!(member_body["data"]["medications"]["update"], false);

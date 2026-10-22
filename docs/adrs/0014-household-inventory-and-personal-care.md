@@ -82,6 +82,12 @@ care with another household. Household role and manager status do not establish
 guardian authority. Only the person or an explicitly authorised guardian may
 change a shared treatment plan, including its medicine, dose, schedule or pause.
 
+Legacy per-person grants remain historical records and confer no runtime Manage
+authority, regardless of their level, expiry or relationship label. Direct writes,
+aggregate capabilities and treatment edit controls use the same current self or
+eligible declaration-backed guardian authority. Creating a dependent follows the
+household management rule; a legacy grant cannot permit creation.
+
 Preserve automatic notifications for dependants authorised through an explicit
 guardian relationship, and retain each account's own preferences. Notifications
 about another non-dependent person require an explicit per-person opt-in from the

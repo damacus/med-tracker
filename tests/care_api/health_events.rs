@@ -391,7 +391,7 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
             "manage",
             73002,
             true,
-            true,
+            false,
         ),
         (
             "clinician",
@@ -412,7 +412,15 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
             true,
             false,
         ),
-        ("parent", "member", "parent", "manage", 73002, true, true),
+        (
+            "legacy_parent",
+            "member",
+            "parent",
+            "manage",
+            73002,
+            true,
+            false,
+        ),
         (
             "participant_without_manage",
             "member",

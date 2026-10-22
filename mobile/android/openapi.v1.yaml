@@ -74,6 +74,10 @@ tags:
       same database transaction; repeating an idempotent logout adds no event.
   - name: People
     description: |
+      Active household membership permits viewing and recording care for participating people.
+      Manage authority requires canonical self or a current eligible guardian declaration;
+      household roles and historical person-access grants do not authorise another
+      person's care edits. Person creation requires household owner or administrator authority.
       Household people and current-profile operations. Age and person-type
       validation use the current date in the application timezone (TZ, default
       UTC), independently of the authenticated account's timezone. Profile
@@ -87,7 +91,7 @@ tags:
       household owners and administrators can create, update or delete locations and
       location memberships. A bearer API credential does not convey browser support-session
       authority. A membership change additionally needs canonical self authority or
-      an existing valid Manage authority for the selected
+      current eligible declared guardian authority for the selected
       person. A person outside the caller's view scope is not found (404); a visible person
       without Manage authority is forbidden (403). Missing or invalid credentials return 401,
       a denied household returns 403, and a resource outside the authorized household scope
@@ -614,8 +618,8 @@ paths:
         - People
       summary: Create a person in the household.
       description: |
-        Requires an active household owner or administrator, or a member with an
-        existing Manage authority in this household. The actor must be an eligible
+        Requires an active household owner or administrator; ordinary members cannot
+        create people through historical grants. The actor must be an eligible
         adult with capacity. Creation is only for a new accountless minor or
         dependent adult, with exact true initial_guardian_declaration. Capable adults
         must use their own accounts. The guardian is derived from the authenticated
@@ -704,7 +708,7 @@ paths:
         - People
       summary: Update a person.
       description: |
-        Requires canonical self authority or existing valid Manage authority for an
+        Requires canonical self authority or current eligible declared guardian authority for an
         active household participant. A person outside
         the actor's visible scope returns 404; a visible person without manage
         access returns 403. Supplied attributes are merged with the existing
@@ -1618,7 +1622,7 @@ paths:
       summary: Read permissions for household management controls.
       description: |
         Rust browser capability discovery. Returned permissions use the same current
-        membership, canonical self and existing valid Manage authority as mutations.
+        membership, canonical self and current eligible declared guardian authority as mutations.
         These hints never replace mutation
         authorization. This additive operation is currently implemented by Rust.
       parameters:
@@ -1876,7 +1880,7 @@ paths:
       description: |
         Only an active household owner or administrator can assign a person to an in-scope
         location. The person must be an active household participant visible to the caller,
-        with canonical self authority or existing valid Manage authority;
+        with canonical self authority or current eligible declared guardian authority;
         a person outside view scope returns 404, while a visible person without manage
         access returns 403. Replaying the same assignment returns the existing resource.
       parameters:
@@ -1921,7 +1925,7 @@ paths:
       description: |
         Only an active household owner or administrator can remove an assignment from an
         in-scope location. The assigned person must be an active household participant
-        visible to the caller, with canonical self authority or existing valid Manage
+        visible to the caller, with canonical self or current eligible declared guardian
         authority; out-of-scope person or assignment returns 404, and a visible
         person without manage access returns 403.
       parameters:
@@ -7313,6 +7317,7 @@ components:
                 create:
                   type: boolean
                 manage_ids:
+                  description: Participating self and people covered by current eligible guardian declarations; legacy grants confer no Manage authority.
                   type: array
                   items:
                     $ref: "#/components/schemas/NumericId"
@@ -8221,6 +8226,7 @@ components:
           type: boolean
         can_manage:
           type: boolean
+          description: Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority.
         can_record:
           type: boolean
           readOnly: true
@@ -8651,6 +8657,7 @@ components:
           type: boolean
         can_manage:
           type: boolean
+          description: Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority.
         can_record:
           type: boolean
           readOnly: true
