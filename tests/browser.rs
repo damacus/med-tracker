@@ -24,3 +24,6 @@ mod administration_polish;
 
 #[path = "browser/member_details.rs"]
 mod member_details;
+
+#[path = "browser/invitation_management.rs"]
+mod invitation_management;

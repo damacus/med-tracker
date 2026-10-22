@@ -43,9 +43,10 @@
 .admin-table thead { font-size:.6875rem; color:var(--on-surface-variant); }
 .admin-table tbody tr:hover { background:var(--surface-container-low); }
 .admin-invitations { display:grid; gap:.625rem; margin-top:1rem; }
-.admin-invitations .card-body { display:grid; grid-template-columns:minmax(0,1fr) auto; padding:1.25rem; gap:.375rem 1rem; font-size:.8125rem; }
+.admin-invitations .card-body { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); padding:1.25rem; gap:.375rem 1rem; font-size:.8125rem; }
 .admin-invitations .card-title { font-size:.875rem; }
-.admin-invitations .card-body > div { grid-column:2; grid-row:1/4; align-self:center; }
+.admin-invitations .invitation-delivery { grid-column:2; grid-row:1/5; align-self:start; min-width:0; }
+.admin-invitations .invitation-actions { grid-column:1/-1; grid-row:5; margin-top:.5rem; }
 .admin-invitations .card-body > p { grid-column:1; }
 .platform-page-header h1 { font-size:1.5rem; }
 .platform-page-header { margin-bottom:1.25rem; }

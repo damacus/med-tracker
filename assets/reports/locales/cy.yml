@@ -559,6 +559,28 @@ cy:
       index:
         title: Gwahoddiadau
         subtitle: Gwahoddwch ddefnyddwyr newydd i ymuno â MedTracker.
+        created: "Crëwyd:"
+        filters:
+          heading: "Chwilio gwahoddiadau"
+          search: "Mae'r e-bost yn cynnwys"
+          all_roles: "Pob rôl"
+          status: "Statws y gwahoddiad"
+          all_statuses: "Pob statws"
+          apply: "Gosod hidlyddion"
+          clear: "Clirio hidlyddion"
+        delivery:
+          heading: "Ymgais e-bost ddiweddaraf"
+          explanation: "Mae anfon at y darparwr yn golygu bod y darparwr post wedi derbyn y neges. Nid yw'n cadarnhau ei bod wedi cyrraedd y derbynnydd."
+          retry: "Defnyddiwch Ail-anfon i greu dolen newydd. Bydd y ddolen flaenorol yn stopio gweithio."
+          status:
+            unknown: "Heb ei olrhain"
+            queued: "Yn y ciw"
+            sent_to_provider: "Anfonwyd at y darparwr"
+            failed: "Wedi methu"
+          category:
+            unavailable: "Nid yw'r gwahoddiad neu'r awdurdod anfon ar gael bellach. Os yw'r awdurdod wedi newid, canslwch y gwahoddiad hwn a chreu un newydd."
+            provider_unavailable: "Ni allai'r darparwr post dderbyn yr ymgais hon."
+            uncertain: "Efallai bod anfon wedi dechrau. Ni chaiff yr ymgais hon ei hanfon eto."
         recent: Gwahoddiadau diweddar
         resend: Ail-anfon
         cancel: Canslo

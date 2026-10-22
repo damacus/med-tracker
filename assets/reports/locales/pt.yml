@@ -566,6 +566,28 @@ pt:
       index:
         title: Convites
         subtitle: Convide novos utilizadores para aderirem ao MedTracker.
+        created: "Criado:"
+        filters:
+          heading: "Pesquisar convites"
+          search: "O email contém"
+          all_roles: "Todas as funções"
+          status: "Estado do convite"
+          all_statuses: "Todos os estados"
+          apply: "Aplicar filtros"
+          clear: "Limpar filtros"
+        delivery:
+          heading: "Última tentativa de email"
+          explanation: "Enviado ao fornecedor significa que o fornecedor de email aceitou a mensagem. Não confirma a entrega ao destinatário."
+          retry: "Use Reenviar para emitir uma nova ligação. A ligação anterior deixará de funcionar."
+          status:
+            unknown: "Sem registo"
+            queued: "Em fila"
+            sent_to_provider: "Enviado ao fornecedor"
+            failed: "Falhou"
+          category:
+            unavailable: "O convite ou a autorização de envio já não está disponível. Se a autorização mudou, cancele este convite e crie um novo."
+            provider_unavailable: "O fornecedor de email não conseguiu aceitar esta tentativa."
+            uncertain: "O envio pode ter começado. Esta tentativa não será enviada novamente."
         recent: Convites recentes
         resend: Reenviar
         cancel: Cancelar

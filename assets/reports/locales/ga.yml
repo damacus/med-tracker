@@ -342,6 +342,28 @@ ga:
       index:
         title: Cuirí
         subtitle: Tabhair cuireadh d'úsáideoirí nua páirt a ghlacadh i MedTracker.
+        created: "Cruthaithe:"
+        filters:
+          heading: "Cuardaigh cuirí"
+          search: "Tá sa ríomhphost"
+          all_roles: "Gach ról"
+          status: "Stádas an chuiridh"
+          all_statuses: "Gach stádas"
+          apply: "Cuir scagairí i bhfeidhm"
+          clear: "Glan scagairí"
+        delivery:
+          heading: "An iarracht ríomhphoist is déanaí"
+          explanation: "Ciallaíonn seolta chuig an soláthraí gur ghlac an soláthraí ríomhphoist leis an teachtaireacht. Ní dheimhníonn sé gur seachadadh í don fhaighteoir."
+          retry: "Úsáid Seol arís chun nasc nua a eisiúint. Stopfaidh an nasc roimhe sin ag obair."
+          status:
+            unknown: "Gan rianú"
+            queued: "Sa scuaine"
+            sent_to_provider: "Seolta chuig an soláthraí"
+            failed: "Teipthe"
+          category:
+            unavailable: "Níl an cuireadh nó an t-údarás seolta ar fáil a thuilleadh. Má tá an t-údarás athraithe, cealaigh an cuireadh seo agus cruthaigh ceann nua."
+            provider_unavailable: "Níorbh fhéidir leis an soláthraí ríomhphoist glacadh leis an iarracht seo."
+            uncertain: "Seans gur thosaigh an seoladh. Ní sheolfar an iarracht seo arís."
         recent: Cuirí le déanaí
         resend: Athsheol
         cancel: Cealaigh

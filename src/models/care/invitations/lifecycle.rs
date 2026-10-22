@@ -8,6 +8,7 @@ async fn current(
     tenant: &TenantTransaction,
     id: i64,
 ) -> Result<household_invitation::Model, OperationError> {
+    crate::models::care::sync::lock(tenant).await?;
     administration::authorize(tenant).await?;
     household_invitation::Entity::find_by_id(id)
         .in_tenant(tenant.scope().household_id)
@@ -86,6 +87,7 @@ pub async fn resend(
     target.query_pairs_mut().append_pair("token", &token);
     delivery::enqueue(
         tenant,
+        &row,
         Email {
             to: row.email.clone(),
             subject: "MedTracker household invitation".into(),

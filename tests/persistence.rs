@@ -258,6 +258,14 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             "Expected additive member directory key: {key}"
         );
     }
+    for (key, value) in serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(
+        include_str!("../migration/invitation-mail-attempts-catalog.json"),
+    )? {
+        assert!(
+            expected.insert(key.clone(), value).is_none(),
+            "Expected additive invitation attempt key: {key}"
+        );
+    }
     if let Some(path) = std::env::var_os("NATIVE_AUTH_CATALOG_CAPTURE") {
         let path = std::path::PathBuf::from(path);
         assert!(path.is_absolute() && path.is_dir());
@@ -307,13 +315,15 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         differences.join("\n")
     );
     let ledger = ledger_rows(&db).await;
-    assert_eq!(ledger.len(), 15);
+    assert_eq!(ledger.len(), 16);
     assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
     assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
     assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
+    assert_eq!(ledger[13].0, "m20261021_000014_member_directory_identity");
+    assert_eq!(ledger[14].0, "m20261021_000015_native_authentication");
     assert_eq!(
         ledger.last().map(|row| row.0.as_str()),
-        Some("m20261021_000015_native_authentication")
+        Some("m20261021_000016_invitation_mail_attempts")
     );
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(catalog(&db).await, before);

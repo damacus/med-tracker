@@ -146,6 +146,9 @@ impl Hooks for App {
             .register(crate::models::care::browser_push::scheduler::ReminderWorker::build(ctx))
             .await?;
         queue
+            .register(crate::models::care::invitations::delivery::InvitationMailWorker::build(ctx))
+            .await?;
+        queue
             .register(loco_rs::mailer::MailerWorker::build(ctx))
             .await?;
         queue

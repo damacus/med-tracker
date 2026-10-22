@@ -47,10 +47,7 @@ async fn index(
         }
     };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(query.language)
-        .with_explicit_language(query.explicit_language)
-        .with_cursor(query.cursor)
-        .with_notice(query.notice)
+        .with_query(query)
         .index(None, None)
         .await
 }
@@ -63,9 +60,17 @@ async fn create(
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
+    let query = match form_context(&draft) {
+        Ok(query) => query,
+        Err(_) => {
+            return super::administration::presentation_invalid_link(
+                &view,
+                &axum::http::HeaderMap::new(),
+            );
+        }
+    };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(field(&draft, "lang"))
-        .with_explicit_language(draft.iter().any(|(key, _)| key == "lang"))
+        .with_query(query)
         .save(page::Change::Create, draft)
         .await
 }
@@ -78,9 +83,17 @@ async fn resend(
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
+    let query = match form_context(&draft) {
+        Ok(query) => query,
+        Err(_) => {
+            return super::administration::presentation_invalid_link(
+                &view,
+                &axum::http::HeaderMap::new(),
+            );
+        }
+    };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(field(&draft, "lang"))
-        .with_explicit_language(draft.iter().any(|(key, _)| key == "lang"))
+        .with_query(query)
         .save(page::Change::Resend(id), draft)
         .await
 }
@@ -93,9 +106,17 @@ async fn cancel(
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
+    let query = match form_context(&draft) {
+        Ok(query) => query,
+        Err(_) => {
+            return super::administration::presentation_invalid_link(
+                &view,
+                &axum::http::HeaderMap::new(),
+            );
+        }
+    };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(field(&draft, "lang"))
-        .with_explicit_language(draft.iter().any(|(key, _)| key == "lang"))
+        .with_query(query)
         .save(page::Change::Cancel(id), draft)
         .await
 }
@@ -174,6 +195,7 @@ struct IndexQuery {
     explicit_language: bool,
     cursor: Option<invitations::browser::BrowseCursor>,
     notice: Option<page::Notice>,
+    filters: invitations::browser::BrowseFilters,
 }
 
 fn index_query(
@@ -183,8 +205,11 @@ fn index_query(
     let mut language = None;
     let mut cursor = None;
     let mut notice = None;
+    let mut search = None;
+    let mut role = None;
+    let mut status = None;
     for (key, value) in url::form_urlencoded::parse(raw.unwrap_or_default().as_bytes()) {
-        if value.len() > 128 {
+        if value.len() > 256 {
             return Err(OperationError::NotFound);
         }
         match key.as_ref() {
@@ -197,6 +222,9 @@ fn index_query(
             "cursor" if cursor.is_none() => {
                 cursor = Some(invitations::browser::BrowseCursor::parse(&value)?)
             }
+            "q" if search.is_none() => search = Some(value.into_owned()),
+            "role" if role.is_none() => role = Some(value.into_owned()),
+            "status" if status.is_none() => status = Some(value.into_owned()),
             "notice" if notice.is_none() => {
                 notice = Some(page::Notice::parse(&value).ok_or(OperationError::NotFound)?);
             }
@@ -210,5 +238,21 @@ fn index_query(
         explicit_language: explicit,
         cursor,
         notice,
+        filters: invitations::browser::BrowseFilters::parse(
+            search.as_deref().unwrap_or_default(),
+            role.as_deref().unwrap_or_default(),
+            status.as_deref().unwrap_or_default(),
+        )?,
     })
+}
+
+fn form_context(draft: &[(String, String)]) -> Result<IndexQuery, OperationError> {
+    let mut query = url::form_urlencoded::Serializer::new(String::new());
+    for (name, value) in draft
+        .iter()
+        .filter(|(name, _)| matches!(name.as_str(), "q" | "role" | "status" | "cursor" | "lang"))
+    {
+        query.append_pair(name, value);
+    }
+    index_query(Some(&query.finish()), &axum::http::HeaderMap::new())
 }

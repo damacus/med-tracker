@@ -564,6 +564,28 @@ es:
       index:
         title: Invitaciones
         subtitle: Invita a nuevos usuarios a unirse a MedTracker.
+        created: "Creada:"
+        filters:
+          heading: "Buscar invitaciones"
+          search: "El correo contiene"
+          all_roles: "Todos los roles"
+          status: "Estado de la invitación"
+          all_statuses: "Todos los estados"
+          apply: "Aplicar filtros"
+          clear: "Borrar filtros"
+        delivery:
+          heading: "Último intento de correo"
+          explanation: "Enviado al proveedor significa que el proveedor de correo aceptó el mensaje. No confirma la entrega al destinatario."
+          retry: "Use Reenviar para emitir un enlace nuevo. El enlace anterior dejará de funcionar."
+          status:
+            unknown: "Sin seguimiento"
+            queued: "En cola"
+            sent_to_provider: "Enviado al proveedor"
+            failed: "Fallido"
+          category:
+            unavailable: "La invitación o la autorización de envío ya no está disponible. Si la autorización ha cambiado, cancele esta invitación y cree una nueva."
+            provider_unavailable: "El proveedor de correo no pudo aceptar este intento."
+            uncertain: "Es posible que el envío haya comenzado. Este intento no se enviará de nuevo."
         recent: Invitaciones recientes
         resend: Reenviar
         cancel: Cancelar

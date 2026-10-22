@@ -25,7 +25,7 @@
       {% for event in history %}<li class="shell-panel" data-member-event="{{ event.summary.id }}">
         <div class="flex flex-wrap justify-between gap-2"><h3>{{ detail_labels.events[event.kind] }}</h3><span class="admin-chip">{{ detail_labels.outcomes[event.outcome] }}</span></div>
         <p class="mt-2"><time datetime="{{ event.occurred_at_iso }}">{{ event.occurred_at_display }}</time></p>
-        <p class="mt-2">{% if event.actor_name %}<strong>{{ event.actor_name }}</strong>{% else %}{{ event.summary.actor }}{% endif %}</p>
+        <p class="mt-2">{% if event.actor_name %}<strong>{{ event.actor_name }}</strong> · {% endif %}{{ event.summary.actor }}</p>
         {% if event.outcome == "rejected" or event.outcome == "failure" %}<p class="mt-3 font-semibold">{{ detail_labels.not_applied }}</p>{% endif %}
         <dl class="member-facts mt-3">{% for change in event.changes %}<dt>{{ member_labels[change.kind] }}</dt><dd>{% if change.kind == "role" %}{% if change.previous %}{{ labels.admin.labels.membership_roles[change.previous] }}{% else %}—{% endif %} → {% if change.next %}{{ labels.admin.labels.membership_roles[change.next] }}{% else %}—{% endif %}{% else %}{% if change.previous %}{{ member_labels[change.previous] }}{% else %}—{% endif %} → {% if change.next %}{{ member_labels[change.next] }}{% else %}—{% endif %}{% endif %}</dd>{% endfor %}</dl>
         <a class="link inline-block mt-3" href="/households/{{ slug }}/admin/audit_logs/{{ event.summary.id }}{{ language_suffix }}">{{ admin_labels.overview.view_event }}</a>
