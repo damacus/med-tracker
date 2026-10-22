@@ -93,6 +93,13 @@ interactive use.
 Commands that require unsupported backend features fail with
 `unsupported_by_server` after checking `GET /api/v1/capabilities`.
 
+For non-managers, portable exports, backup exports and mobile snapshots contain
+the account's own participating person and dependants covered by current eligible
+guardian declarations in the requested household. Legacy per-person Manage grants
+do not add people to these payloads. Withdrawal of a guardian declaration removes
+that dependant from subsequent reads. These household-scoped endpoints do not
+provide personal history across households after departure.
+
 ## Portable Import Passphrases
 
 Portable import commands accept passphrases through stdin only:

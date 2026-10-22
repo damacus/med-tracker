@@ -25,6 +25,12 @@ the old household retains events recorded there and immutable attribution, but
 receives no future updates. Guardian authority must be explicit, not inferred
 from household management.
 
+For non-managers, existing household-scoped portability readers select the
+account's own participating person and dependants covered by current eligible
+guardian declarations. Legacy per-person Manage grants do not establish this
+authority. This rule does not turn a household reader into a cross-household
+personal-history reader or establish global disclosure authority for managers.
+
 When an adult creates a new accountless dependent, that adult declares themselves
 the initial guardian. Record a declaration, not verified legal status. A successor
 guardian is normally authorised by an existing guardian. For a minor with no

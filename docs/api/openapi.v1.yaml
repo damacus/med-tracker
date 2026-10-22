@@ -4119,6 +4119,7 @@ paths:
         - Household
         - Portability
       summary: Export an encrypted portable household bundle.
+      description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/portable_passphrase"
@@ -4163,6 +4164,7 @@ paths:
         - Household
         - Synchronization
       summary: Read a plaintext mobile sync snapshot over authenticated transport.
+      description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise this snapshot. This remains a household-scoped reader.
       parameters:
         - $ref: "#/components/parameters/household_id"
       responses:
@@ -4263,6 +4265,7 @@ paths:
         - Household
         - Portability
       summary: Export household data in a selected backup/profile mode.
+      description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - name: mode

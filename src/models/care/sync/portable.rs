@@ -2,7 +2,7 @@ use super::*;
 use crate::models::entities::{location, location_membership, membership, notification_preference};
 use chrono::NaiveDateTime;
 use loco_rs::model::TenantQueryExt;
-use sea_orm::Condition;
+use sea_orm::{Condition, QueryTrait};
 use sha2::{Digest, Sha256};
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
@@ -164,29 +164,25 @@ async fn scoped_payload(
 ) -> Result<AppliedBatch, OperationError> {
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
-    let mut people = visible_people(tenant).await?;
-    if exporting && !access::can_manage_household(tenant) {
-        let manageable = crate::models::entities::grant::Entity::find()
-            .in_tenant(household_id)
-            .filter(
-                crate::models::entities::grant::Column::HouseholdMembershipId
-                    .eq(tenant.membership().id),
-            )
-            .filter(crate::models::entities::grant::Column::AccessLevel.eq("manage"))
-            .filter(crate::models::entities::grant::Column::RevokedAt.is_null())
+    let people = if exporting && !access::can_manage_household(tenant) {
+        let dependent_ids =
+            crate::models::care::guardian_declarations::manageable_subjects(tenant).await?;
+        let own = access::person_queries::account_person(tenant.scope().actor)
+            .select_only()
+            .column(person::Column::Id)
+            .into_query();
+        access::person_queries::household_participants(household_id)
             .filter(
                 Condition::any()
-                    .add(crate::models::entities::grant::Column::ExpiresAt.is_null())
-                    .add(
-                        crate::models::entities::grant::Column::ExpiresAt
-                            .gt(Utc::now().naive_utc()),
-                    ),
+                    .add(person::Column::Id.in_subquery(own))
+                    .add(person::Column::Id.is_in(dependent_ids)),
             )
+            .order_by_asc(person::Column::Id)
             .all(db)
-            .await?;
-        let ids: HashSet<i64> = manageable.iter().map(|grant| grant.person_id).collect();
-        people.retain(|person| ids.contains(&person.id));
-    }
+            .await?
+    } else {
+        visible_people(tenant).await?
+    };
     let person_ids: Vec<i64> = people.iter().map(|person| person.id).collect();
     let schedules = schedule::Entity::find()
         .in_tenant(household_id)
