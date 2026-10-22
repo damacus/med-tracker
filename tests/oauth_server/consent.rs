@@ -156,12 +156,38 @@ async fn close(fixture: Fixture, boot: BootResult) {
 }
 
 async fn sign_in(request: &TestServer, boot: &BootResult) {
+    sign_in_at(request, boot, "shared sign-in").await;
+}
+
+async fn sign_in_at(request: &TestServer, boot: &BootResult, stage: &str) {
     let signed_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
         .json(&json!({"email":"persistence@example.test","password":"password"}))
         .await;
-    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+    let request_id = signed_in
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("absent");
+    let content_type = signed_in
+        .headers()
+        .get("content-type")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("absent");
+    let error_code = serde_json::from_str::<serde_json::Value>(&signed_in.text())
+        .ok()
+        .and_then(|body| {
+            body.get("code")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_owned)
+        })
+        .unwrap_or_else(|| "absent".into());
+    assert_eq!(
+        signed_in.status_code(),
+        200,
+        "stage={stage} request_id={request_id} content_type={content_type} error_code={error_code}"
+    );
 }
 
 async fn select(request: &TestServer, household_id: &str) -> String {
@@ -418,7 +444,7 @@ async fn changed_permissions_or_household_lifecycle_invalidates_displayed_consen
         let (fixture, boot) = boot().await;
         let mut request = server(&boot);
         request.save_cookies();
-        sign_in(&request, &boot).await;
+        sign_in_at(&request, &boot, changed).await;
         select(&request, "72002").await;
         let shown = consent(&request).await;
         if changed == "permissions" {
