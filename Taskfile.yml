@@ -274,12 +274,24 @@ tasks:
       - task: foundation:db-up
         vars:
           FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - task: foundation:storage-up
+        vars:
+          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
       - >-
         sh -eu -c '
         db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
+        storage_endpoint="http://$(task foundation:storage-port FOUNDATION_PROJECT="$1")";
+        task foundation:storage-init STORAGE_ENDPOINT="$storage_endpoint";
         unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG DOCKER_TLS_VERIFY DOCKER_CERT_PATH;
         export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
         export MEDTRACKER_OWNED_DATABASE=1;
+        export MEDTRACKER_OWNED_STORAGE=1;
+        export ACTIVE_STORAGE_S3_ENDPOINT="$storage_endpoint";
+        export ACTIVE_STORAGE_S3_BUCKET=medtracker-fixture;
+        export ACTIVE_STORAGE_S3_REGION=us-east-1;
+        export ACTIVE_STORAGE_S3_ACCESS_KEY_ID=storage-smoke-access;
+        export ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY=storage-smoke-secret;
+        export ACTIVE_STORAGE_S3_FORCE_PATH_STYLE=true;
         cargo nextest run --locked --test browser --run-ignored only --no-tests=fail --test-threads 2 "$2";
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}}
   test:acceptance:

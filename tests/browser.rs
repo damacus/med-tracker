@@ -27,3 +27,6 @@ mod member_details;
 
 #[path = "browser/invitation_management.rs"]
 mod invitation_management;
+
+#[path = "browser/polish_followups.rs"]
+mod polish_followups;

@@ -66,6 +66,16 @@ Seven synthetic screenshots under docs/screenshots/invitation-management cover14
 
 The cumulative CI browser run exposed an interaction-readiness boundary after resend. A held interaction.js response proved that new HTML can appear before deferred dialog handlers load; after navigation readiness the same keyboard action opens the target dialog and Escape restores its opener. The journey now waits for existing navigation readiness after resend and duplicate-email validation, preserving dialog content, focus assertions and timeouts. The interrupted cumulative run reached1043/1093 integration tests with only that browser failure recorded; complete final acceptance remains controller-owned.
 
+## Shared-layout review follow-ups
+
+A separate follow-up fixes stale sidebar avatars after asynchronous profile saves, strict explicit language handling for the main People browser routes/forms/pagination, and the overview expired-invitation link. Real avatar upload/removal updates sidebar, header and profile images without replacing the document/account dialog. Browser Tasks now provision disposable RustFS using the existing integration pattern so that journey uses real storage.
+
+People card counts now use two grouped typed SQL projections with the same canonical source/medicine scopes and exact existing per-source semantics: active/non-retired sources, inclusive schedule dates in the configured care timezone, and inactive-as-paused exclusion. Counts deliberately remain per source rather than distinct medicines. Restricted request acceptance covers repeated sources for one medicine, date/inactive/retired exclusions, a non-UTC care date and foreign-household sources. The count baseline passed before optimization, then the same acceptance passed afterward.
+
+The current member table already has visible mobile Email/Role/Status labels; its source and retained mobile capture were checked and left unchanged. Cedar still denies delegate_person, so the care-warning assignment action is not exposed and was not fabricated or changed. The visible People detail carer link uses its existing locale parameter and the real read route renders Spanish. No guardian-recovery, membership-policy or public API change is included.
+
+Focused requests passed3/3, final new browser journeys2/2, existing related People/admin browser checks8/8, frontend19/19, strict lint, formatting and five-locale synchronization. Four synthetic desktop/mobile captures live under docs/screenshots/polish-followups/. Independent review, combined CI and publication remain controller-owned.
+
 ## Invitation hosted-review corrections
 
 A deterministic duplicate-worker regression exposed a healthy send being suppressed between durable start and send. Household/invitation locks now remain held while a short separate restricted transaction commits the start marker; the outer transaction then locks the attempt and rechecks authority before sending. An interrupted committed start remains uncertain and is never automatically resent. This uses two application database connections briefly. Pool acquisition uses the existing five-second bound; failure before send records unavailable without a start marker, so the existing cancel/new-invitation recovery stays visible.

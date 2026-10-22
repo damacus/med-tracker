@@ -6,6 +6,7 @@
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="shell-panel mt-6"><div class="card-body">
     <form id="person-form" method="post" action="{{ action }}" class="grid gap-6">
+      {% if language_explicit | default(value=false) %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <fieldset class="grid gap-4 border-b border-base-300 pb-6">
         <legend class="text-lg font-semibold mb-3">{{ labels.people.index.identity }}</legend>
