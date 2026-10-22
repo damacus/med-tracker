@@ -52,7 +52,7 @@ async fn parent_assignment_fixture(app: &super::Application) {
          INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78005,72001,74001,73002,'manage','parent',now(),now());
          INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic candidate',0,true,now(),now());
          INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71003,73004,'Synthetic candidate','parent-candidate@example.test',2,now(),now());
-         INSERT INTO users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77002,73004,'parent-candidate@example.test',crypt('password',gen_salt('bf',4)),now(),now());
+         INSERT INTO users(id,person_id,email_address,created_at,updated_at) VALUES(77002,73004,'parent-candidate@example.test',now(),now());
          INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now());"
     ).await.unwrap();
 }

@@ -1,40 +1,16 @@
+use super::browser;
+use crate::models::{care::invitations, errors::OperationError};
+use chrono::{Months, NaiveDate, Utc};
+use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use std::collections::BTreeMap;
 
-use axum_session::Session;
-use axum_session_sqlx::SessionPgPool;
-use chrono::{Months, NaiveDate, Utc};
-use loco_rs::{
-    bgworker::BackgroundWorker,
-    mailer::{DEFAULT_MAILER_PRIORITY, Email, MailerWorker},
-};
-use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, Statement};
-use serde::Deserialize;
-
-use super::browser::{self, SignInOutcome};
-use crate::models::{care::invitations, errors::OperationError};
-
 mod bootstrap;
+mod native;
 mod policy;
 mod provisioning;
+pub(crate) use native::{complete_native_profile, prepare_native_profile};
 pub(crate) use provisioning::profile_errors;
-pub use provisioning::{AccountProfile, ProvisionedAccount, provision_account_in};
-mod resend;
-
-pub use resend::{VerificationResend, resend_verification};
-mod tokens;
-
-#[derive(Deserialize)]
-pub struct SignupInput {
-    #[serde(default)]
-    pub invitation_token: String,
-    #[serde(default)]
-    pub email: String,
-    pub name: String,
-    pub date_of_birth: String,
-    pub password: String,
-    #[serde(rename = "password-confirm")]
-    pub password_confirm: String,
-}
+pub use provisioning::{AccountProfile, ProvisionedAccount};
 
 #[derive(Debug)]
 pub enum SignupError {
@@ -76,211 +52,12 @@ impl SignupInvitationContext {
     }
 }
 
-pub async fn create(
-    db: &DatabaseConnection,
-    input: &SignupInput,
-    origin: &str,
-    request_id: Option<&str>,
-    settings: Option<&serde_json::Value>,
-) -> Result<(), SignupError> {
-    let birth = validate(input)?;
-    let password = input.password.clone();
-    let hash = tokio::task::spawn_blocking(move || bcrypt::hash(password, bcrypt::DEFAULT_COST))
-        .await
-        .map_err(unavailable)?
-        .map_err(unavailable)?;
-    let transaction = browser::transaction(db).await.map_err(unavailable)?;
-    let profile = AccountProfile {
-        email: input.email.clone(),
-        name: input.name.clone(),
-        date_of_birth: birth,
-        invitation_token: Some(input.invitation_token.clone()),
-    };
-    let provisioned = provisioning::provision_with_password_in(
-        &transaction,
-        &profile,
-        Some(&hash),
-        request_id,
-        settings,
-    )
-    .await?;
-    let account_id = provisioned.account_id;
-    let email = provisioned.email;
-    let key = tokens::random_key()?;
-    transaction.execute_raw(sql("INSERT INTO account_verification_keys(account_id,key,created_at,updated_at) VALUES($1,$2,now(),now())", [account_id.into(),key.clone().into()])).await.map_err(unavailable)?;
-    browser::record_auth_token(
-        &transaction,
-        account_id,
-        "verification_key",
-        "created",
-        request_id,
-    )
-    .await
-    .map_err(unavailable)?;
-    queue_verification(&transaction, account_id, email, &key, origin, settings).await?;
-    transaction.commit().await.map_err(unavailable)?;
-    Ok(())
-}
-
-fn initial_preferences(
+pub(crate) fn initial_preferences(
     settings: Option<&serde_json::Value>,
 ) -> Result<serde_json::Value, SignupError> {
     let zone =
         super::time_zone::preferred(&serde_json::json!({}), settings).map_err(unavailable)?;
     Ok(serde_json::json!({"time_zone": zone.to_string()}))
-}
-
-async fn queue_verification(
-    transaction: &DatabaseTransaction,
-    account_id: i64,
-    email: String,
-    key: &str,
-    origin: &str,
-    settings: Option<&serde_json::Value>,
-) -> Result<(), SignupError> {
-    let mut link = url::Url::parse(origin).map_err(unavailable)?;
-    link.set_path("/verify-account");
-    link.set_query(None);
-    link.query_pairs_mut()
-        .append_pair("key", &tokens::link_token(account_id, key, settings)?);
-    let email = Email {
-        to: email,
-        subject: "Verify your account".into(),
-        text: format!(
-            "An email has been sent to you with a link to verify your account. Verify your account: {link}"
-        ),
-        ..Default::default()
-    };
-    let payload = serde_json::to_value(email).map_err(unavailable)?;
-    transaction.execute_raw(sql("INSERT INTO pg_loco_queue(id,task_data,name,run_at,priority) VALUES($1,$2,$3,clock_timestamp(),$4)", [ulid::Ulid::generate().to_string().into(),payload.into(),MailerWorker::class_name().into(),DEFAULT_MAILER_PRIORITY.into()])).await.map_err(unavailable)?;
-    Ok(())
-}
-
-pub async fn valid_key(
-    db: &DatabaseConnection,
-    token: &str,
-    settings: Option<&serde_json::Value>,
-) -> Result<bool, SignupError> {
-    let transaction = browser::transaction(db).await.map_err(unavailable)?;
-    match matching_account(&transaction, token, settings).await {
-        Ok(_) => Ok(true),
-        Err(SignupError::InvalidKey) => Ok(false),
-        Err(error) => Err(error),
-    }
-}
-
-pub async fn verify(
-    db: &DatabaseConnection,
-    session: &Session<SessionPgPool>,
-    token: &str,
-    request_id: Option<&str>,
-    settings: Option<&serde_json::Value>,
-) -> Result<SignInOutcome, SignupError> {
-    let transaction = browser::transaction(db).await.map_err(unavailable)?;
-    let account_id = matching_account(&transaction, token, settings).await?;
-    transaction
-        .execute_raw(sql(
-            "UPDATE accounts SET status=2,updated_at=now() WHERE id=$1 AND status=1",
-            [account_id.into()],
-        ))
-        .await
-        .map_err(unavailable)?;
-    transaction.execute_raw(sql("UPDATE account_verification_keys SET key=$2,email_last_sent=now()-interval '310 seconds',updated_at=now() WHERE account_id=$1", [account_id.into(),tokens::random_key()?.into()])).await.map_err(unavailable)?;
-    browser::record_auth_token(
-        &transaction,
-        account_id,
-        "verification_key",
-        "revoked",
-        request_id,
-    )
-    .await
-    .map_err(unavailable)?;
-    browser::complete_primary_authentication(transaction, session, account_id)
-        .await
-        .map_err(unavailable)
-}
-
-async fn matching_account(
-    transaction: &DatabaseTransaction,
-    token: &str,
-    settings: Option<&serde_json::Value>,
-) -> Result<i64, SignupError> {
-    let account_id = tokens::account_id(token).ok_or(SignupError::InvalidKey)?;
-    let account = transaction
-        .query_one_raw(sql(
-            "SELECT id FROM accounts WHERE id=$1 AND status=1 FOR UPDATE",
-            [account_id.into()],
-        ))
-        .await
-        .map_err(unavailable)?;
-    if account.is_none() {
-        return Err(SignupError::InvalidKey);
-    }
-    let rows = transaction
-        .query_all_raw(sql(
-            "SELECT key FROM account_verification_keys WHERE account_id=$1 FOR UPDATE",
-            [account_id.into()],
-        ))
-        .await
-        .map_err(unavailable)?;
-    if rows.len() != 1 {
-        return Err(SignupError::InvalidKey);
-    }
-    let key: String = rows[0].try_get("", "key").map_err(unavailable)?;
-    if tokens::matches(token, &key, settings)? {
-        Ok(account_id)
-    } else {
-        Err(SignupError::InvalidKey)
-    }
-}
-
-fn validate(input: &SignupInput) -> Result<NaiveDate, SignupError> {
-    let mut errors = BTreeMap::<String, Vec<String>>::new();
-    let mut error = |field: &str, message: &str| {
-        errors.entry(field.into()).or_default().push(message.into());
-    };
-    if input.name.trim().is_empty() {
-        error("name", "must be present");
-    }
-    let birth = NaiveDate::parse_from_str(&input.date_of_birth, "%Y-%m-%d").ok();
-    match birth {
-        None if input.date_of_birth.is_empty() => error("date_of_birth", "must be present"),
-        None => error("date_of_birth", "must be a valid date"),
-        Some(birth)
-            if Utc::now()
-                .date_naive()
-                .checked_sub_months(Months::new(18 * 12))
-                .is_none_or(|latest| birth > latest) =>
-        {
-            error(
-                "date_of_birth",
-                "Children must be added by a parent or carer.",
-            )
-        }
-        _ => {}
-    }
-    if input.password != input.password_confirm {
-        error("password-confirm", "does not match password");
-    }
-    if input.password.chars().count() < 12 {
-        error("password", "must be at least 12 characters");
-    }
-    if input.password.len() > 72 {
-        error("password", "must be at most 72 bytes");
-    }
-    if !input.password.bytes().any(|byte| byte.is_ascii_digit())
-        || !input
-            .password
-            .chars()
-            .any(|character| !character.is_ascii_alphanumeric())
-    {
-        error("password", "requires one number and one special character");
-    }
-    if errors.is_empty() {
-        birth.ok_or(SignupError::Unavailable)
-    } else {
-        Err(SignupError::Invalid(errors))
-    }
 }
 
 fn operation_error(error: OperationError) -> SignupError {

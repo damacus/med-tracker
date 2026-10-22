@@ -53,6 +53,9 @@ runtime credentials, template-cloned PostgreSQL and ConnectInfo where needed.
 Retain socket-specific coverage, real RLS, email stub/outbox and audit assertions.
 Never enable global truncation or use administrator credentials at runtime.
 
+Use published release versions for package dependencies, never Git SHA or unreleased
+branch dependencies. Retain committed lockfiles and artifact integrity checksums.
+
 Use maintained protocol and crypto libraries. Search dependencies before custom
 security code; document an exact limitation and interoperability/negative tests
 if custom work is unavoidable. Better Auth is not proved faulty. Keep live

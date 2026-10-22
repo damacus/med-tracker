@@ -106,12 +106,12 @@ async fn select_first_household(app: &Application) -> Result<String, Box<dyn Err
     Ok(super::super::platform::response_cookies(&cookie, &response))
 }
 
-async fn session_households(app: &Application) -> Result<Vec<(String, i64)>, DbErr> {
+async fn session_households(app: &Application) -> Result<Vec<(i64, i64)>, DbErr> {
     app.fixture.admin.query_all_raw(Statement::from_string(
         DbBackend::Postgres,
         "SELECT id,active_household_id FROM identity_sessions WHERE account_id=71001 AND active AND purpose='authenticated' ORDER BY id",
     )).await?.into_iter().map(|row| Ok((
-        row.try_get::<String>("", "id")?,
+        row.try_get::<i64>("", "id")?,
         row.try_get::<i64>("", "active_household_id")?,
     ))).collect()
 }

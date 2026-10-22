@@ -15,10 +15,11 @@
     try {
       const operation_id = button.dataset.operation;
       const challenge = await send('/api/auth/security/passkey/start', { operation_id });
-      const response = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(challenge.publicKey) });
+      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(challenge);
+      publicKey.userVerification = 'required';
+      const response = await navigator.credentials.get({ publicKey });
       if (!response) throw new Error((labels.passkey_proof_cancelled || "Passkey confirmation was cancelled."));
-      const result = await send('/api/auth/security/passkey/confirm', { operation_id, challenge_id: challenge.challenge_id, response: response.toJSON() });
-      if (Array.isArray(result.recoveryCodes)) { document.dispatchEvent(new CustomEvent('recovery-generated', { detail: result })); return; }
+      const result = await send('/api/auth/security/passkey/confirm', { operation_id, response: response.toJSON() });
       if (typeof result.apiKey === 'string') {
         const section = document.createElement('section');
         section.className = 'card shell-card max-w-xl mx-auto p-6 space-y-4';

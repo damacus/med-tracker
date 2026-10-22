@@ -35,7 +35,8 @@ async fn sign_in_account_only(request: &TestServer, boot: &BootResult) {
 async fn verified_account_without_user_or_membership_creates_first_household() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
     fixture.admin.execute_unprepared("DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(true,now(),now())").await?;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,preferences,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,'{\"time_zone\":\"Europe/London\"}',now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,preferences,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,'{\"time_zone\":\"Europe/London\"}',now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in_account_only(&request, &boot).await;
@@ -83,7 +84,8 @@ async fn verified_account_without_user_or_membership_creates_first_household() -
 async fn held_or_archived_household_membership_allows_new_selectable_household() -> TestResult {
     for inactive_state in ["held", "archived"] {
         let (fixture, boot) = boot_browser_fixture().await;
-        fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72050,71050,'Previous household','previous-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74050,72050,73050,'owner','active',now(),now(),now())").await?;
+        fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72050,71050,'Previous household','previous-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74050,72050,73050,'owner','active',now(),now(),now())").await?;
+        crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
         let inactive_sql = if inactive_state == "held" {
             "UPDATE households SET lifecycle_state='held' WHERE id=72050"
         } else {
@@ -136,7 +138,7 @@ async fn held_or_archived_household_membership_allows_new_selectable_household()
 #[tokio::test]
 async fn existing_member_invalid_creation_post_does_not_render_empty_chooser() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
@@ -161,7 +163,8 @@ async fn existing_member_invalid_creation_post_does_not_render_empty_chooser() -
 #[tokio::test]
 async fn supplementary_plane_name_above_browser_utf16_limit_is_accepted() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in_account_only(&request, &boot).await;
@@ -193,7 +196,8 @@ async fn supplementary_plane_name_above_browser_utf16_limit_is_accepted() -> Tes
 #[tokio::test]
 async fn verified_account_without_user_or_membership_accepts_invitation() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72050,71050,'Departed household','departed-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,revoked_at,joined_at,created_at,updated_at) VALUES(74050,72050,73050,'member','revoked',now(),now()-interval '1 day',now(),now())").await?;
+    fixture.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72050,71050,'Departed household','departed-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,revoked_at,joined_at,created_at,updated_at) VALUES(74050,72050,73050,'member','revoked',now(),now()-interval '1 day',now(),now())").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let invitation = "account-only-household-invitation";
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO household_invitations(household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(72001,'household-entry@example.test','member',$1,74001,now()+interval '7 days',now(),now())",
@@ -249,7 +253,8 @@ async fn verified_account_without_user_or_membership_accepts_invitation() -> Tes
 #[tokio::test]
 async fn first_household_creation_rejects_invalid_input_csrf_and_expired_session() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in_account_only(&request, &boot).await;
@@ -303,7 +308,8 @@ async fn first_household_creation_rejects_invalid_input_csrf_and_expired_session
 #[tokio::test]
 async fn concurrent_first_household_submissions_create_only_one_membership() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let mut first = server(&boot);
     first.save_cookies();
     let mut second = server(&boot);
@@ -351,7 +357,8 @@ async fn concurrent_first_household_submissions_create_only_one_membership() -> 
 #[tokio::test]
 async fn revoked_last_membership_allows_new_household_without_restoring_access() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in_account_only(&request, &boot).await;
@@ -410,7 +417,8 @@ async fn revoked_last_membership_allows_new_household_without_restoring_access()
 #[tokio::test]
 async fn first_household_creation_rolls_back_when_audit_fails() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now()); CREATE FUNCTION reject_first_household_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.actor_account_id=71050 AND NEW.event_type='household_access.membership_created' THEN RAISE EXCEPTION 'synthetic audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_first_household_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_first_household_audit()").await?;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); CREATE FUNCTION reject_first_household_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.actor_account_id=71050 AND NEW.event_type='household_access.membership_created' THEN RAISE EXCEPTION 'synthetic audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_first_household_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_first_household_audit()").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in_account_only(&request, &boot).await;
@@ -435,7 +443,8 @@ async fn first_household_creation_rolls_back_when_audit_fails() -> TestResult {
 #[tokio::test]
 async fn committed_household_survives_current_session_selection_failure() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now()); CREATE FUNCTION reject_first_household_selection() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.account_id=71050 AND NEW.active_household_id IS DISTINCT FROM OLD.active_household_id THEN RAISE EXCEPTION 'synthetic selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_first_household_selection BEFORE UPDATE ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_first_household_selection()").await?;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); CREATE FUNCTION reject_first_household_selection() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.account_id=71050 AND NEW.active_household_id IS DISTINCT FROM OLD.active_household_id THEN RAISE EXCEPTION 'synthetic selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_first_household_selection BEFORE UPDATE ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_first_household_selection()").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in_account_only(&request, &boot).await;
@@ -469,7 +478,8 @@ async fn committed_household_survives_current_session_selection_failure() -> Tes
 #[tokio::test]
 async fn account_only_invitation_rechecks_csrf_expiry_and_inviter_authority() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await?;
+    fixture.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
+    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
     let invitation = "account-only-household-invitation";
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO household_invitations(household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(72001,'household-entry@example.test','member',$1,74001,now()+interval '7 days',now(),now())",
@@ -528,7 +538,7 @@ fn authenticity_token(html: &str) -> Option<&str> {
 #[tokio::test]
 async fn signed_in_without_active_household_reaches_initial_selection() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
@@ -581,7 +591,7 @@ async fn signed_in_without_active_household_reaches_initial_selection() -> TestR
 #[tokio::test]
 async fn household_selection_requires_csrf_and_does_not_change_session() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
@@ -637,7 +647,7 @@ async fn household_selection_requires_csrf_and_does_not_change_session() -> Test
 #[tokio::test]
 async fn household_selection_requires_current_account_and_session() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
@@ -673,7 +683,7 @@ async fn household_selection_requires_current_account_and_session() -> TestResul
 #[tokio::test]
 async fn household_selection_is_independent_for_two_browser_sessions() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,(SELECT person_id FROM accounts WHERE id=71001),'member',now(),now(),now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,(SELECT person_id FROM accounts WHERE id=71001),'member',now(),now(),now())").await?;
     let mut first = server(&boot);
     first.save_cookies();
     let mut second = server(&boot);
@@ -785,15 +795,6 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
         "{}",
         second_session.text()
     );
-    assert_eq!(
-        first_session.json::<Value>()["session"]["activeOrganizationId"],
-        "72001"
-    );
-    assert_eq!(
-        second_session.json::<Value>()["session"]["activeOrganizationId"],
-        "72002"
-    );
-
     let selections = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
         "SELECT count(*) FILTER (WHERE active_household_id=72001) AS first, count(*) FILTER (WHERE active_household_id=72002) AS second FROM identity_sessions WHERE account_id=71001 AND active"
     )).await?.ok_or("selected sessions must be present")?;
@@ -808,7 +809,7 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
 #[tokio::test]
 async fn household_selection_rechecks_membership_and_household_state() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Another household','another-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,(SELECT person_id FROM accounts WHERE id=71001),'member',now(),now(),now()); INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Foreign household selector','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73992,'foreign-selector@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72003,71002,'Foreign household','foreign-selector-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,(SELECT person_id FROM accounts WHERE id=71002),'owner',now(),now(),now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Another household','another-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,(SELECT person_id FROM accounts WHERE id=71001),'member',now(),now(),now()); INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Foreign household selector','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71002,73992,'foreign-selector@example.test',2,now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72003,71002,'Foreign household','foreign-selector-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,(SELECT person_id FROM accounts WHERE id=71002),'owner',now(),now(),now())").await?;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
@@ -870,7 +871,7 @@ async fn household_selection_rechecks_membership_and_household_state() -> TestRe
 #[tokio::test]
 async fn household_revocation_serializes_with_selection() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
@@ -925,7 +926,8 @@ async fn household_revocation_serializes_with_selection() -> TestResult {
     let (denied, observed) = tokio::join!(selection, release);
     assert!(
         observed?,
-        "selection must wait on the revoking membership row"
+        "selection must wait on the revoking membership row; actual HTTP {}",
+        denied.status_code()
     );
     assert!(denied.status_code().is_client_error(), "{}", denied.text());
     assert_eq!(denied.header("cache-control"), "no-store");

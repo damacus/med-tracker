@@ -1,8 +1,4 @@
 pub use super::_entities::account_lockouts as account_lockout;
-pub use super::_entities::account_otp_keys as otp_key;
-pub use super::_entities::account_recovery_codes as recovery_code;
-pub use super::_entities::account_webauthn_keys as webauthn_key;
-pub use super::_entities::account_webauthn_user_ids as webauthn_user_id;
 pub use super::_entities::accounts as account;
 pub use super::_entities::active_storage_attachments as active_storage_attachment;
 pub use super::_entities::active_storage_blobs as active_storage_blob;
@@ -68,3 +64,7 @@ pub mod active_session_key {
 
     impl ActiveModelBehavior for ActiveModel {}
 }
+
+pub use super::identity::better_auth::schema::{
+    api_key as identity_api_key, passkey as identity_passkey, session as identity_session,
+};

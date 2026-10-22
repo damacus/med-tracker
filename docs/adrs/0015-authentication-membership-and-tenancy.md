@@ -1,39 +1,71 @@
 # ADR 0015: Authentication, membership and tenancy responsibilities
 
 - Status
-  Proposed (organisation-plugin replacement boundary)
+  Accepted direction; implementation requires verification
 - Date
-  2026-10-15
+  2026-10-21
 
 ## Context
 
-Better Auth RS is pinned to `9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281`.
-It has not been proved faulty. The root integration uses its organisation plugin
-and adapters under `src/models/identity/better_auth/`. The pinned invitation
-acceptance path makes separate writes for membership and invitation status;
-those writes alone cannot guarantee an atomic domain acceptance operation.
+MedTracker needs maintained authentication protocols and one authority for
+household membership. The previous integration implemented Better Auth's storage
+interfaces itself and used organisation adapters for application membership.
+That approach added code which MedTracker would have to maintain.
+
+The owner approved replacing the authentication schema and endpoint wiring with
+Better Auth's native schema and plugins. Authentication data compatibility is not
+required. This does not authorise resetting a populated database or deploying the
+replacement.
 
 ## Decision
 
-Accepted constraints: reuse maintained authentication/protocol libraries. Household
-membership, care disclosure, live revocation checks and RLS have one explicit
-application authority. Organisation adapters must not create a second membership
-source. Keep atomic domain boundaries wherever the pinned plugin cannot provide
-them. Preserve the current secure canonical adapters and atomic invitation domain
-operation rather than replacing them with plugin separate writes. In particular,
-`src/models/identity/better_auth/store/members.rs::create_member` rejects direct
-membership creation and requires atomic invitation acceptance or registration.
+Use the published Rust `better-auth`, `better-auth-core` and
+`better-auth-seaorm` releases at `1.0.0-alpha.5`. Package dependencies use released
+versions, without Git SHA pins, unreleased branches, vendored authentication code
+or local patches to the library.
 
-The exact organisation-plugin removal or replacement boundary remains **Proposed**.
-Do not interpret this record as an approved instruction to remove the plugin or
-restrict it to authentication only. Verify library capabilities and negative
-security tests before choosing a replacement.
+Use Better Auth's SeaORM store and supported plugins for passwords, email
+verification and password recovery, sessions, passkeys, MFA, provider sign-in and
+personal API keys. Default to stock Better Auth behaviour and native credential
+management when provided, including native current-password confirmation for
+disabling MFA. Remove the custom authentication store and historical
+credential, token and date compatibility. Application transport may adapt native
+endpoints to existing pages; it must retain CSRF, origin and authentication checks, native protocol
+checks and all response cookies.
+
+Map the native User to the canonical `accounts` table and native provider Account
+to `auth_credentials`. Retain the existing `users` row only as the clinical profile
+required by current care foreign keys and access queries, without credentials or
+authentication authority. This change does not complete the wider clinical
+identity refactor.
+
+Preserve required passkey user verification through the public native
+after-verification hooks, using the library's verified metadata. Request required
+user verification and discoverable credentials through standard browser options.
+Do not copy WebAuthn parsing or verification to enforce application policy.
+
+Use native MFA backup codes after the first sign-in step and native email/password
+recovery. Standalone sign-in with a recovery code is deliberately removed, as
+approved by the owner. Personal API keys remain a separate feature. Their creation
+uses the native authenticated-session flow, with application household scopes and
+permissions, without an additional application proof ceremony. Key lifecycle
+notices and subject audit remain atomic with the native database write.
+
+Authentication audit may record the affected account or session atomically, with
+trusted HTTP actor and request events recorded separately. Clinical and household
+audit requirements are unchanged. Do not add custom authentication storage merely
+to reproduce the previous audit linkage.
 
 Authentication proves account identity. Application membership decides household
-participation; disclosure authority decides cross-household sharing. Session active
-household selection cannot grant membership. Every request and mutation rechecks
-current authority; RLS, audit attribution, replay protection, stock atomicity and
-mail outbox remain mandatory.
+participation; disclosure authority decides cross-household sharing. Keep these
+rules in existing domain operations and PostgreSQL RLS. Do not mount a second
+organisation membership authority. Session household selection cannot grant
+membership. Every clinical request and mutation rechecks current authority.
+
+Keep domain transaction boundaries, including invitation acceptance, account
+closure, mail outbox, audit, replay protection and stock deduction. Compose
+ordinary domain writes with supported native transaction hooks where required;
+do not introduce another authentication-store proxy or transaction framework.
 
 Account-profile access does not grant global clinical-history access. A global
 self-history reader derives the subject from the authenticated account and
@@ -49,15 +81,16 @@ self identity. Historical reads preserve original attribution and require a
 separate account-owned clinical-access audit, without inventing a household.
 These are implementation constraints, not evidence that the reader is complete.
 
-## Alternatives
-
-Blind plugin removal discards maintained capabilities without evidence. Separate
-organisation membership tables create conflicting authorities. Separate acceptance
-writes can leave partial membership. None is accepted as the replacement design.
-
 ## Consequences
 
-Retain the current secure adapter while investigating the narrow limitation.
-Future approval needs transaction/rollback, replay, revocation and cross-tenant
-tests plus a documented supported library boundary. This ADR neither certifies
-new behaviour nor claims Better Auth is defective.
+Native authentication tables use restricted runtime grants and the native store's
+endpoint access controls, without the old adapter's per-account authentication-table
+RLS. The native store persists its session tokens directly; the old custom digest
+representation is removed. Verify cross-account HTTP denial and keep usable tokens
+out of inventories, errors and logs. Audit references remain digested. Clinical
+and household data retain their restricted runtime roles and RLS checks.
+
+Verify real signup and sign-in, native recovery, passkeys, MFA, provider callbacks,
+session expiry and revocation, personal-key permissions, cross-account denial,
+replay and domain rollback using the application and disposable PostgreSQL.
+Architecture acceptance alone does not prove feature preservation or completion.

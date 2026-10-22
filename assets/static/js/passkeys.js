@@ -18,13 +18,14 @@ document.querySelector('[data-passkey-login]')?.addEventListener('click', async 
     const optionsResponse = await fetch('/api/auth/passkey/generate-authenticate-options', { credentials: 'same-origin', cache: 'no-store' });
     if (!optionsResponse.ok) throw Error('Unavailable');
     const options = await optionsResponse.json();
-    const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(options.publicKey);
+    const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(options);
+    publicKey.userVerification = "required";
     const credential = await navigator.credentials.get({ publicKey });
     await window.medTrackerBeginPushTransition();
     transitionStarted = true;
     const response = await fetch('/api/auth/passkey/verify-authentication', {
       method: 'POST', credentials: 'same-origin', cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(credential.toJSON()),
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ response: credential.toJSON() }),
     });
     if (!response.ok) throw Error('Unavailable');
     window.location.assign('/auth/passkey/complete');

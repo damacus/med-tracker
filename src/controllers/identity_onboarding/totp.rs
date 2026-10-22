@@ -10,7 +10,7 @@ use axum::{
 use axum_csrf::CsrfToken;
 use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
-use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
+use loco_rs::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -19,41 +19,78 @@ pub(super) struct Input {
     authenticity_token: String,
     password: Option<String>,
     code: Option<String>,
-    operation_id: Option<String>,
+    backup: Option<bool>,
+    saved: Option<String>,
 }
 
 fn render(
     view: &TeraView,
-    token: CsrfToken,
+    csrf: CsrfToken,
     mode: &str,
-    operation: Option<&str>,
-    secret: Option<&str>,
+    setup: Option<&serde_json::Value>,
     error: Option<&str>,
 ) -> Response {
-    let Ok(authenticity_token) = token.authenticity_token() else {
+    let Ok(token) = csrf.authenticity_token() else {
         return super::rendering::unavailable();
     };
     let mut data = crate::controllers::medications::rendering::appearance_context();
     data["title"] = json!(match mode {
         "login" => "Verify your identity",
         "disable" => "Disable authenticator app",
+        "backup" | "regenerate" => "Replace backup codes",
         _ => "Enable authenticator app",
     });
     data["mode"] = json!(mode);
-    data["operation_id"] = json!(operation);
-    data["secret"] = json!(secret);
     data["error"] = json!(error);
-    data["authenticity_token"] = json!(authenticity_token);
+    data["authenticity_token"] = json!(token);
+    let uri = setup
+        .and_then(|body| body["totpURI"].as_str())
+        .and_then(|value| url::Url::parse(value).ok());
+    data["secret"] = json!(uri.as_ref().and_then(|uri| {
+        uri.query_pairs()
+            .find(|(key, _)| key == "secret")
+            .map(|(_, value)| value.into_owned())
+    }));
+    data["backup_codes"] = setup
+        .and_then(|body| body.get("backupCodes"))
+        .cloned()
+        .unwrap_or_else(|| json!([]));
     match super::security_locale::view(view, "identity_onboarding/totp.html", data) {
-        Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        Ok(response) => (csrf, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => super::rendering::unavailable(),
     }
+}
+
+fn cookies(mut response: Response, native: &better_auth_core::AuthResponse) -> Response {
+    for value in native.headers.get_all("set-cookie") {
+        let Ok(value) = value.parse() else {
+            return super::rendering::unavailable();
+        };
+        response.headers_mut().append(header::SET_COOKIE, value);
+    }
+    response
+}
+
+async fn execute(
+    service: &IdentityService,
+    headers: &HeaderMap,
+    path: &str,
+    body: serde_json::Value,
+) -> better_auth_core::AuthResult<better_auth_core::AuthResponse> {
+    let mut request = super::passkeys::request(headers);
+    request.method = better_auth_core::HttpMethod::Post;
+    request.path = path.into();
+    request
+        .headers
+        .insert("content-type".into(), "application/json".into());
+    request.body = Some(serde_json::to_vec(&body)?);
+    dispatch(service, request, uuid::Uuid::new_v4().to_string()).await
 }
 
 pub(super) async fn show(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    token: CsrfToken,
+    csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     if !matches!(
@@ -62,137 +99,95 @@ pub(super) async fn show(
     ) {
         return super::rendering::redirect("/login");
     }
-    render(&view, token, "start", None, None, None)
+    render(&view, csrf, "start", None, None)
 }
-
 pub(super) async fn login_form(
-    token: CsrfToken,
+    csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    render(&view, token, "login", None, None, None)
-}
-
-async fn execute(
-    service: &IdentityService,
-    headers: &HeaderMap,
-    path: &str,
-    data: serde_json::Value,
-    request_id: Option<Extension<LocoRequestId>>,
-) -> better_auth_core::AuthResult<better_auth_core::AuthResponse> {
-    let mut request = super::passkeys::request(headers);
-    request.method = better_auth_core::HttpMethod::Post;
-    request.path = path.into();
-    request
-        .headers
-        .insert("content-type".into(), "application/json".into());
-    request.body = serde_json::to_vec(&data).ok();
-    dispatch(
-        service,
-        request,
-        crate::controllers::medications::request_id(request_id),
-    )
-    .await
-}
-
-fn with_cookies(mut response: Response, result: &better_auth_core::AuthResponse) -> Response {
-    for cookie in result.headers.get_all("set-cookie") {
-        let Ok(value) = cookie.parse() else {
-            return super::rendering::unavailable();
-        };
-        response.headers_mut().append(header::SET_COOKIE, value);
-    }
-    response
+    render(&view, csrf, "login", None, None)
 }
 
 pub(super) async fn start(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    request_id: Option<Extension<LocoRequestId>>,
-    token: CsrfToken,
+    csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Form(input): Form<Input>,
 ) -> Response {
-    if token.verify(&input.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-    if let Ok(result) = execute(
-        &service,
-        &headers,
-        "/security/totp/start",
-        json!({"password":input.password.unwrap_or_default()}),
-        request_id,
-    )
-    .await
-        && result.status == 200
-    {
-        let Ok(body) = serde_json::from_slice::<serde_json::Value>(&result.body) else {
-            return super::rendering::unavailable();
-        };
-        let Some(id) = body.get("operation_id").and_then(serde_json::Value::as_str) else {
-            return super::rendering::unavailable();
-        };
-        let Some(uri) = body
-            .get("totpURI")
-            .and_then(serde_json::Value::as_str)
-            .and_then(|uri| url::Url::parse(uri).ok())
-        else {
-            return super::rendering::unavailable();
-        };
-        let secret = uri
-            .query_pairs()
-            .find(|(key, _)| key == "secret")
-            .map(|(_, value)| value.into_owned());
-        return render(&view, token, "finish", Some(id), secret.as_deref(), None);
-    }
-    render(
-        &view,
-        token,
-        "start",
-        None,
-        None,
-        Some("Authentication failed. Check your current password."),
-    )
-}
-
-pub(super) async fn finish(
-    Extension(service): Extension<IdentityService>,
-    headers: HeaderMap,
-    request_id: Option<Extension<LocoRequestId>>,
-    token: CsrfToken,
-    ViewEngine(view): ViewEngine<TeraView>,
-    Form(input): Form<Input>,
-) -> Response {
-    if token.verify(&input.authenticity_token).is_err() {
+    if csrf.verify(&input.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
     match execute(
         &service,
         &headers,
-        "/security/totp/finish",
-        json!({"code":input.code.unwrap_or_default(),"operation_id":input.operation_id}),
-        request_id,
+        "/security/totp/start",
+        json!({"password":input.password.unwrap_or_default()}),
     )
     .await
     {
-        Ok(result) if result.status == 200 => {
-            with_cookies(super::rendering::redirect("/account/security"), &result)
+        Ok(native) if native.status < 400 => {
+            let Ok(Some(body)) = native.body.json() else {
+                return super::rendering::unavailable();
+            };
+            cookies(render(&view, csrf, "finish", Some(&body), None), &native)
         }
-        Ok(result) => with_cookies(
+        _ => render(
+            &view,
+            csrf,
+            "start",
+            None,
+            Some("Authentication failed. Check your current password."),
+        ),
+    }
+}
+
+pub(super) async fn finish(
+    Extension(service): Extension<IdentityService>,
+    headers: HeaderMap,
+    csrf: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    Form(input): Form<Input>,
+) -> Response {
+    if csrf.verify(&input.authenticity_token).is_err() {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    if input.saved.as_deref() != Some("yes") {
+        return render(
+            &view,
+            csrf,
+            "finish",
+            None,
+            Some(
+                "Save your backup codes before continuing. Restart setup to generate a new set if necessary.",
+            ),
+        );
+    }
+    match execute(
+        &service,
+        &headers,
+        "/security/totp/finish",
+        json!({"code":input.code.unwrap_or_default()}),
+    )
+    .await
+    {
+        Ok(native) if native.status < 400 => {
+            cookies(super::rendering::redirect("/account/security"), &native)
+        }
+        Ok(native) => cookies(
             render(
                 &view,
-                token,
+                csrf,
                 "finish",
-                input.operation_id.as_deref(),
                 None,
                 Some("Invalid authentication code. Check your app and retry."),
             ),
-            &result,
+            &native,
         ),
         Err(_) => render(
             &view,
-            token,
+            csrf,
             "finish",
-            input.operation_id.as_deref(),
             None,
             Some("Invalid authentication code. Check your app and retry."),
         ),
@@ -202,58 +197,44 @@ pub(super) async fn finish(
 pub(super) async fn login(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    request_id: Option<Extension<LocoRequestId>>,
     session: Session<SessionPgPool>,
-    token: CsrfToken,
+    csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Form(input): Form<Input>,
 ) -> Response {
-    if token.verify(&input.authenticity_token).is_err() {
+    if csrf.verify(&input.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
     match execute(
         &service,
         &headers,
         "/security/totp/login",
-        json!({"code":input.code.unwrap_or_default()}),
-        request_id,
+        json!({"code":input.code.unwrap_or_default(),"backup":input.backup.unwrap_or(false)}),
     )
     .await
     {
-        Ok(result) if result.status == 200 => with_cookies(
+        Ok(native) if native.status < 400 => cookies(
             crate::controllers::auth::authenticated_redirect(&session),
-            &result,
+            &native,
         ),
-        Ok(result) => {
-            let cleared = result
-                .headers
-                .get_all("set-cookie")
-                .any(|cookie| cookie.contains("Max-Age=0"));
-            let response = if result.status == 400 || cleared {
-                super::rendering::redirect("/login")
-            } else {
-                render(
-                    &view,
-                    token,
-                    "login",
-                    None,
-                    None,
-                    Some("Invalid authentication code. Check your app and retry."),
-                )
-            };
-            with_cookies(response, &result)
-        }
-        Err(
-            better_auth_core::AuthError::Unauthenticated
-            | better_auth_core::AuthError::SessionNotFound,
-        ) => super::rendering::redirect("/login"),
+        Ok(native) => cookies(
+            render(
+                &view,
+                csrf,
+                "login",
+                None,
+                Some(
+                    "The code is invalid or expired. Try a fresh code or another unused backup code.",
+                ),
+            ),
+            &native,
+        ),
         Err(_) => render(
             &view,
-            token,
+            csrf,
             "login",
             None,
-            None,
-            Some("Authentication is unavailable. Try signing in again."),
+            Some("The code is invalid or expired. Try a fresh code or another unused backup code."),
         ),
     }
 }
@@ -261,53 +242,84 @@ pub(super) async fn login(
 pub(super) async fn disable_start(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    request_id: Option<Extension<LocoRequestId>>,
-    token: CsrfToken,
+    csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Form(input): Form<Input>,
 ) -> Response {
-    if token.verify(&input.authenticity_token).is_err() {
+    if csrf.verify(&input.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
-    if let Ok(result) = execute(
-        &service,
-        &headers,
-        "/security/totp/disable/start",
-        json!({}),
-        request_id,
-    )
-    .await
-        && result.status == 200
-    {
-        let Ok(body) = serde_json::from_slice::<serde_json::Value>(&result.body) else {
-            return super::rendering::unavailable();
-        };
-        let Some(id) = body.get("operation_id").and_then(serde_json::Value::as_str) else {
-            return super::rendering::unavailable();
-        };
-        return render(&view, token, "disable", Some(id), None, None);
+    match browser_identity(&service, &super::passkeys::request(&headers)).await {
+        Ok(BrowserIdentity::Authenticated { user, .. })
+            if user.two_factor_enabled.typed().ok().copied().flatten() == Some(true) =>
+        {
+            render(&view, csrf, "disable", None, None)
+        }
+        _ => super::rendering::redirect("/account/security"),
     }
-    super::rendering::redirect("/account/security")
 }
 
 pub(super) async fn disable_confirm(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    request_id: Option<Extension<LocoRequestId>>,
-    token: CsrfToken,
+    csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Form(input): Form<Input>,
 ) -> Response {
-    if token.verify(&input.authenticity_token).is_err() {
+    if csrf.verify(&input.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
-    if let Ok(result) = execute(&service, &headers, "/security/totp/disable/confirm", json!({"code":input.code.unwrap_or_default(),"password":input.password.unwrap_or_default(),"operation_id":input.operation_id}), request_id).await && result.status == 200 { return with_cookies(super::rendering::redirect("/account/security"), &result); }
-    render(
-        &view,
-        token,
-        "disable",
-        input.operation_id.as_deref(),
-        None,
-        Some("Authentication failed. Check your current password and authentication code."),
+    match execute(
+        &service,
+        &headers,
+        "/security/totp/disable/confirm",
+        json!({"password":input.password.unwrap_or_default()}),
     )
+    .await
+    {
+        Ok(native) if native.status < 400 => {
+            cookies(super::rendering::redirect("/account/security"), &native)
+        }
+        _ => render(
+            &view,
+            csrf,
+            "disable",
+            None,
+            Some("Authentication failed. Check your current password."),
+        ),
+    }
+}
+
+pub(super) async fn regenerate(
+    Extension(service): Extension<IdentityService>,
+    headers: HeaderMap,
+    csrf: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    Form(input): Form<Input>,
+) -> Response {
+    if csrf.verify(&input.authenticity_token).is_err() {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    match execute(
+        &service,
+        &headers,
+        "/two-factor/generate-backup-codes",
+        json!({"password":input.password.unwrap_or_default()}),
+    )
+    .await
+    {
+        Ok(native) if native.status < 400 => {
+            let Ok(Some(body)) = native.body.json() else {
+                return super::rendering::unavailable();
+            };
+            cookies(render(&view, csrf, "backup", Some(&body), None), &native)
+        }
+        _ => render(
+            &view,
+            csrf,
+            "regenerate",
+            None,
+            Some("Backup codes could not be replaced. Check your current password."),
+        ),
+    }
 }

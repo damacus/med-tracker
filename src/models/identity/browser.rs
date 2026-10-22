@@ -4,22 +4,18 @@ use axum_session_sqlx::SessionPgPool;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, QuerySelect, Statement, TransactionTrait,
+    QueryFilter, QuerySelect, Statement, TransactionTrait, sea_query::Expr,
 };
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
-mod otp;
-pub mod passkeys;
-mod recovery;
-pub use otp::{challenge, has_pending_challenge, verify as verify_otp};
-pub use recovery::{challenge as recovery_challenge, verify as verify_recovery};
+mod audit;
 
 use super::{resource::AuthenticationError, store::Lifetime};
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
     care::doses::{CredentialMethod, CredentialProvenance},
-    entities::{account, household},
+    entities::{account, household, identity_session, membership},
+    ids::HouseholdId,
     settings,
 };
 
@@ -31,13 +27,6 @@ struct Identity {
     additional_factor_verified: bool,
     #[serde(default)]
     better_auth: bool,
-}
-
-pub enum SignInOutcome {
-    Authenticated,
-    OtpRequired,
-    RecoveryRequired,
-    PasskeyRequired,
 }
 
 pub struct BrowserPrincipal {
@@ -121,7 +110,7 @@ impl BrowserPrincipal {
                 query,
                 [
                     self.account_id().into(),
-                    token_digest(&self.identity.registry_key).into(),
+                    self.identity.registry_key.clone().into(),
                 ],
             ))
             .await
@@ -250,6 +239,55 @@ impl BrowserPrincipal {
         Ok(households)
     }
 
+    pub(crate) async fn select_household(
+        &self,
+        db: &DatabaseConnection,
+        household_id: HouseholdId,
+    ) -> Result<BrowserHousehold, AuthenticationError> {
+        let transaction = transaction(db).await?;
+        let account = validate(&transaction, &self.identity, false).await?;
+        membership::Entity::find()
+            .filter(membership::Column::PersonId.eq(account.person_id))
+            .filter(membership::Column::HouseholdId.eq(household_id.get()))
+            .filter(membership::Column::Status.eq("active"))
+            .filter(membership::Column::RevokedAt.is_null())
+            .lock(sea_orm::sea_query::LockType::Share)
+            .one(&transaction)
+            .await
+            .map_err(unavailable)?
+            .ok_or(AuthenticationError::Forbidden)?;
+        let household = household::Entity::find_by_id(household_id.get())
+            .filter(household::Column::Status.eq("active"))
+            .filter(household::Column::LifecycleState.eq("active"))
+            .lock(sea_orm::sea_query::LockType::Share)
+            .one(&transaction)
+            .await
+            .map_err(unavailable)?
+            .ok_or(AuthenticationError::Forbidden)?;
+        let updated = identity_session::Entity::update_many()
+            .col_expr(
+                identity_session::Column::ActiveHouseholdId,
+                Expr::value(household.id),
+            )
+            .filter(identity_session::Column::UserId.eq(account.id))
+            .filter(identity_session::Column::Token.eq(self.session_token()))
+            .filter(identity_session::Column::Active.eq(true))
+            .filter(identity_session::Column::ClinicalSessionPurpose.eq("authenticated"))
+            .filter(identity_session::Column::ExpiresAt.gt(chrono::Utc::now()))
+            .exec(&transaction)
+            .await
+            .map_err(unavailable)?;
+        if updated.rows_affected != 1 {
+            return Err(AuthenticationError::Unauthenticated);
+        }
+        transaction.commit().await.map_err(unavailable)?;
+        Ok(BrowserHousehold {
+            id: household.id,
+            name: household.name,
+            slug: household.slug,
+        })
+    }
+
     pub async fn active_household(
         &self,
         db: &DatabaseConnection,
@@ -257,8 +295,8 @@ impl BrowserPrincipal {
         let transaction = transaction(db).await?;
         validate(&transaction, &self.identity, false).await?;
         let row = transaction.query_one_raw(sql(
-            "SELECT h.id,h.name,h.slug FROM public.identity_sessions s JOIN public.households h ON h.id=s.active_household_id JOIN public.household_memberships m ON m.household_id=h.id AND m.person_id=(SELECT a.person_id FROM public.accounts a WHERE a.id=s.account_id) WHERE s.account_id=$1 AND s.token=$2 AND s.active AND s.purpose='authenticated' AND s.expires_at>clock_timestamp() AND s.created_at>clock_timestamp()-interval '30 days' AND h.status='active' AND h.lifecycle_state='active' AND m.status='active' AND m.revoked_at IS NULL",
-            [self.account_id().into(), token_digest(self.session_token()).into()],
+            "SELECT h.id,h.name,h.slug FROM public.identity_sessions s JOIN public.households h ON h.id=s.active_household_id JOIN public.household_memberships m ON m.household_id=h.id AND m.person_id=(SELECT a.person_id FROM public.accounts a WHERE a.id=s.account_id) WHERE s.account_id=$1 AND s.token=$2 AND s.active AND s.purpose='authenticated' AND s.expires_at>clock_timestamp() AND h.status='active' AND h.lifecycle_state='active' AND m.status='active' AND m.revoked_at IS NULL",
+            [self.account_id().into(), self.session_token().into()],
         )).await.map_err(unavailable)?;
         let household = row
             .map(|row| {
@@ -341,7 +379,7 @@ async fn validate(
         ))
         .await
         .map_err(unavailable)?;
-    let valid = transaction.query_one_raw(sql("SELECT account_id FROM public.identity_sessions WHERE account_id=$1 AND token=$2 AND active AND purpose='authenticated' AND expires_at>clock_timestamp() AND created_at>clock_timestamp()-interval '30 days' FOR SHARE", [identity.account_id.into(), token_digest(&identity.registry_key).into()])).await.map_err(unavailable)?;
+    let valid = transaction.query_one_raw(sql("SELECT account_id FROM public.identity_sessions WHERE account_id=$1 AND token=$2 AND active AND purpose='authenticated' AND expires_at>clock_timestamp() FOR SHARE", [identity.account_id.into(), identity.registry_key.clone().into()])).await.map_err(unavailable)?;
     if valid.is_none() {
         return Err(AuthenticationError::Unauthenticated);
     }
@@ -378,83 +416,6 @@ pub async fn authenticate(
     })
 }
 
-pub async fn sign_in(
-    db: &DatabaseConnection,
-    session: &Session<SessionPgPool>,
-    email: String,
-    password: String,
-) -> Result<SignInOutcome, AuthenticationError> {
-    if email.len() > 320 || password.len() > 1024 {
-        return Err(AuthenticationError::Unauthenticated);
-    }
-    let transaction = transaction(db).await?;
-    let account = account::Entity::find()
-        .filter(account::Column::Email.eq(email))
-        .filter(account::Column::Status.eq(2))
-        .lock_exclusive()
-        .one(&transaction)
-        .await
-        .map_err(unavailable)?;
-    let hash = account
-        .as_ref()
-        .and_then(|account| account.password_hash.clone())
-        .unwrap_or_else(|| "$2b$12$zzzzzzzzzzzzzzzzzzzzzuD0kNWzTTXJvCDkBPuJKtf5Hh4bS5Mk2".into());
-    let valid = tokio::task::spawn_blocking(move || bcrypt::verify(password, &hash))
-        .await
-        .map_err(unavailable)?
-        .map_err(unavailable)?;
-    let account = account.ok_or(AuthenticationError::Unauthenticated)?;
-    if !valid {
-        let result = transaction.query_one_raw(sql("INSERT INTO account_login_failures (account_id, number, created_at, updated_at) VALUES ($1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (account_id) DO UPDATE SET number = account_login_failures.number + 1, updated_at = CURRENT_TIMESTAMP RETURNING number", [account.id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;
-        let failures: i32 = result.try_get("", "number").map_err(unavailable)?;
-        if failures >= 5 {
-            transaction.execute_raw(sql("INSERT INTO account_lockouts (account_id, deadline, key, created_at, updated_at) VALUES ($1, CURRENT_TIMESTAMP + interval '30 minutes', $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (account_id) DO UPDATE SET deadline = EXCLUDED.deadline, updated_at = CURRENT_TIMESTAMP", [account.id.into(), uuid::Uuid::new_v4().to_string().into()])).await.map_err(unavailable)?;
-        }
-        transaction.commit().await.map_err(unavailable)?;
-        return Err(AuthenticationError::Unauthenticated);
-    }
-    complete_primary_authentication(transaction, session, account.id).await
-}
-
-pub(super) async fn complete_primary_authentication(
-    transaction: DatabaseTransaction,
-    session: &Session<SessionPgPool>,
-    account_id: i64,
-) -> Result<SignInOutcome, AuthenticationError> {
-    access::verify_account(&transaction, account_id)
-        .await
-        .map_err(super::resource::operation_error)?;
-    let factor = transaction.query_one_raw(sql("SELECT EXISTS (SELECT 1 FROM account_otp_keys WHERE id=$1) AS otp, EXISTS (SELECT 1 FROM account_webauthn_keys WHERE account_id=$1) AS passkey, timezone('UTC',clock_timestamp()) AS authenticated_at", [account_id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;
-    let authenticated_at = factor
-        .try_get("", "authenticated_at")
-        .map_err(unavailable)?;
-    if factor.try_get::<bool>("", "otp").map_err(unavailable)? {
-        otp::begin(transaction, session, account_id, authenticated_at).await?;
-        return Ok(SignInOutcome::OtpRequired);
-    }
-    if factor.try_get::<bool>("", "passkey").map_err(unavailable)? {
-        let recovery = transaction
-            .query_one_raw(sql(
-                "SELECT EXISTS (SELECT 1 FROM account_recovery_codes WHERE id=$1) AS present",
-                [account_id.into()],
-            ))
-            .await
-            .map_err(unavailable)?
-            .ok_or(AuthenticationError::Unavailable)?;
-        if recovery
-            .try_get::<bool>("", "present")
-            .map_err(unavailable)?
-        {
-            otp::begin(transaction, session, account_id, authenticated_at).await?;
-            return Ok(SignInOutcome::RecoveryRequired);
-        }
-        otp::begin(transaction, session, account_id, authenticated_at).await?;
-        return Ok(SignInOutcome::PasskeyRequired);
-    }
-    issue_session(transaction, session, account_id, authenticated_at, false).await?;
-    Ok(SignInOutcome::Authenticated)
-}
-
 pub(super) async fn record_auth_token(
     transaction: &DatabaseTransaction,
     account_id: i64,
@@ -462,58 +423,7 @@ pub(super) async fn record_auth_token(
     action: &str,
     request_id: Option<&str>,
 ) -> Result<(), AuthenticationError> {
-    passkeys::audit::record(transaction, account_id, token_type, action, request_id).await
-}
-
-async fn issue_session(
-    transaction: DatabaseTransaction,
-    session: &Session<SessionPgPool>,
-    account_id: i64,
-    authenticated_at: chrono::NaiveDateTime,
-    additional_factor_verified: bool,
-) -> Result<(), AuthenticationError> {
-    let registry_key = hex::encode(Sha256::digest(uuid::Uuid::new_v4().as_bytes()));
-    transaction.execute_raw(sql("INSERT INTO account_active_session_keys (account_id, session_id, created_at, last_use) VALUES ($1, $2, $3, timezone('UTC', clock_timestamp()))", [account_id.into(), registry_key.clone().into(), authenticated_at.into()])).await.map_err(unavailable)?;
-    transaction
-        .execute_raw(sql(
-            "DELETE FROM account_login_failures WHERE account_id = $1",
-            [account_id.into()],
-        ))
-        .await
-        .map_err(unavailable)?;
-    transaction.commit().await.map_err(unavailable)?;
-    session.renew();
-    session.set_store(true);
-    session.remove("otp_pending");
-    session.set(
-        "identity",
-        Identity {
-            account_id,
-            registry_key,
-            additional_factor_verified,
-            better_auth: false,
-        },
-    );
-    Ok(())
-}
-
-pub async fn sign_out(
-    db: &DatabaseConnection,
-    session: &Session<SessionPgPool>,
-) -> Result<(), AuthenticationError> {
-    if let Some(identity) = session.get::<Identity>("identity") {
-        let transaction = transaction(db).await?;
-        transaction
-            .execute_raw(sql(
-                "DELETE FROM account_active_session_keys WHERE account_id = $1 AND session_id = $2",
-                [identity.account_id.into(), identity.registry_key.into()],
-            ))
-            .await
-            .map_err(unavailable)?;
-        transaction.commit().await.map_err(unavailable)?;
-    }
-    session.destroy();
-    Ok(())
+    audit::record(transaction, account_id, token_type, action, request_id).await
 }
 
 #[derive(Clone)]
@@ -583,25 +493,25 @@ async fn identity_bridge(
             user,
             session: identity,
         }) => {
-            let Ok(account_id) = user.id.parse() else {
+            let Ok(account_id) = user.id.display_string().and_then(|id| {
+                id.parse()
+                    .map_err(|_| better_auth_core::AuthError::InvalidCredentials)
+            }) else {
+                return axum::http::StatusCode::UNAUTHORIZED.into_response();
+            };
+            let Ok(registry_key) = identity.token.typed().cloned() else {
                 return axum::http::StatusCode::UNAUTHORIZED.into_response();
             };
             session.set(
                 "identity",
                 Identity {
                     account_id,
-                    registry_key: identity.token,
+                    registry_key,
                     additional_factor_verified: true,
                     better_auth: true,
                 },
             );
             session.set_store(true);
-        }
-        Ok(super::better_auth::BrowserIdentity::PendingFactor) => {
-            session.remove("identity");
-            if request.uri().path() == "/" {
-                destination = Some("/auth/totp");
-            }
         }
         Ok(super::better_auth::BrowserIdentity::Enrolment { .. }) => {
             session.remove("identity");
@@ -619,11 +529,10 @@ async fn identity_bridge(
     } else {
         next.run(request).await
     };
-    let Ok(mut finalized) =
-        better_auth_core::AuthResponse::json(response.status().as_u16(), &serde_json::Value::Null)
-    else {
-        return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
-    };
+    let mut finalized = better_auth_core::AuthResponse::native(
+        response.status().as_u16(),
+        better_auth_core::FieldValue::Undefined,
+    );
     for cookie in response.headers().get_all(axum::http::header::SET_COOKIE) {
         let Ok(value) = cookie.to_str() else {
             return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
@@ -634,7 +543,6 @@ async fn identity_bridge(
         .context()
         .session_manager()
         .finish_response(&auth, &mut finalized)
-        .await
         .is_err()
     {
         return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();

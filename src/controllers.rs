@@ -21,7 +21,6 @@ pub mod oauth_server;
 pub mod people;
 pub mod platform;
 pub mod profile;
-pub mod signup;
 pub mod treatments;
 
 #[allow(

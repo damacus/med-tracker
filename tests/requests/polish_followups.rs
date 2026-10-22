@@ -10,7 +10,7 @@ async fn signed_in_with_zone(zone: &str) -> (Fixture, BootResult, TestServer) {
         config.settings.get_or_insert_with(|| json!({}))["time_zone"] = json!(zone);
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] = json!({"key":base64::engine::general_purpose::STANDARD.encode([7_u8;64]),"secure":false});
     }).await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await.unwrap();
     let mut request = server(&boot);
     request.save_cookies();
     assert_eq!(

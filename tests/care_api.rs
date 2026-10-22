@@ -20,6 +20,8 @@ mod audit_logs_browser;
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]
 mod avatar_storage;
+#[path = "care_api/better_auth_feature_stores.rs"]
+mod better_auth_feature_stores;
 #[path = "care_api/better_auth_invitations.rs"]
 mod better_auth_invitations;
 #[path = "care_api/better_auth_store.rs"]
@@ -70,6 +72,12 @@ mod medication_reads;
 mod mobile_snapshot;
 #[path = "care_api/native_device_tokens.rs"]
 mod native_device_tokens;
+#[path = "care_api/native_email_change.rs"]
+mod native_email_change;
+#[path = "care_api/native_oidc.rs"]
+mod native_oidc;
+#[path = "care_api/native_password_reset.rs"]
+mod native_password_reset;
 #[path = "care_api/nhs_dmd.rs"]
 mod nhs_dmd;
 #[path = "care_api/notification_preferences.rs"]
@@ -476,6 +484,15 @@ async fn authenticated_foreign_household_and_revoked_membership_have_no_effects(
 async fn failed_clinical_audit_rolls_back_effects_but_records_http_attempt() {
     let app = Application::new().await;
     let token = app.token().await;
+    let baseline=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS total,count(*) FILTER(WHERE item_type='NativeAuthentication') AS native_authentication FROM versions")).await.unwrap().unwrap();
+    let baseline_versions: i64 = baseline.try_get("", "total").unwrap();
+    assert!(baseline_versions > 0);
+    assert_eq!(
+        baseline_versions,
+        baseline
+            .try_get::<i64>("", "native_authentication")
+            .unwrap()
+    );
     app.fixture.admin.execute_unprepared("CREATE FUNCTION synthetic_care_api_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationTake' THEN RAISE EXCEPTION 'synthetic clinical audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER synthetic_care_api_audit_failure BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION synthetic_care_api_audit_failure()").await.unwrap();
     let reply = app
         .client
@@ -510,7 +527,7 @@ async fn failed_clinical_audit_rolls_back_effects_but_records_http_attempt() {
             .contains("synthetic clinical audit rejection")
     );
     assert_eq!(effect, (0, "10.00".into(), 0, 0));
-    assert_eq!(versions, 0);
+    assert_eq!(versions, baseline_versions);
     assert_eq!(attempts, 1);
 }
 

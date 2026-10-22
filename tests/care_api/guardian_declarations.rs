@@ -58,9 +58,9 @@ async fn identity(app: &Application) -> Result<Value, DbErr> {
           'sessions',(SELECT count(*) FROM public.api_sessions),
           'keys',(SELECT count(*) FROM public.identity_api_keys),
           'grants',(SELECT count(*) FROM public.oauth_grants),
-          'passwords',(SELECT encode(digest(COALESCE(string_agg(id::text||':'||COALESCE(password_hash,''),',' ORDER BY id),''),'sha256'),'hex') FROM public.accounts),
+          'passwords',(SELECT encode(digest(COALESCE(string_agg(id::text||':'||COALESCE(password,''),',' ORDER BY id),''),'sha256'),'hex') FROM public.auth_credentials),
           'passkeys',(SELECT encode(digest(COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.id)::text,'[]'),'sha256'),'hex') FROM public.identity_passkeys p),
-          'providers',(SELECT encode(digest(COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.id)::text,'[]'),'sha256'),'hex') FROM public.identity_provider_accounts p),
+          'providers',(SELECT encode(digest(COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.id)::text,'[]'),'sha256'),'hex') FROM public.auth_credentials p),
           'bindings',(SELECT jsonb_agg(jsonb_build_array(id,person_id) ORDER BY id) FROM public.accounts)
         ) AS state"))
         .await?

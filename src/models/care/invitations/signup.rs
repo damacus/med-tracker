@@ -4,10 +4,10 @@ use crate::models::{
     identity::signup::SignupInvitationContext,
 };
 use loco_rs::model::TenantQueryExt;
-use sea_orm::{ConnectionTrait, DatabaseTransaction, DbBackend, QuerySelect, Statement};
+use sea_orm::{DbBackend, QuerySelect, Statement};
 
 pub(crate) async fn signup_invitation(
-    transaction: &DatabaseTransaction,
+    transaction: &impl sea_orm::ConnectionTrait,
     token: &str,
 ) -> Result<household_invitation::Model, OperationError> {
     if token.trim().is_empty() {
@@ -61,7 +61,7 @@ pub(crate) async fn signup_invitation(
 }
 
 pub async fn accept_signup(
-    transaction: &DatabaseTransaction,
+    transaction: &impl sea_orm::ConnectionTrait,
     context: &SignupInvitationContext,
     token: &str,
     request_id: &str,

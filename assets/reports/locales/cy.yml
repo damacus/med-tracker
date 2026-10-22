@@ -2037,7 +2037,7 @@ cy:
       keys_hint: "Mae allweddi’n defnyddio’r caniatadau a ddewiswyd o fewn eich mynediad presennol at aelwydydd. Ni ellir newid eu caniatadau, aelwydydd, enw na dyddiad dod i ben. Dirymwch allwedd a chreu un newydd i newid ei mynediad."
       key_copy_hint: "Copïwch yr allwedd hon i’ch integreiddiad nawr. Ni chaiff ei dangos eto."
       key_copy_short: "Copïwch yr allwedd hon nawr. Ni chaiff ei dangos eto."
-      passkey_hint: "Cofrestrwch yr allwedd basio hon o fewn pum munud i gadarnhau eich hunaniaeth."
+      passkey_hint: "Rhowch enw i’r allwedd basio hon, yna defnyddiwch eich dyfais i gadarnhau eich hunaniaeth."
       provider_hint: "Mewngofnodwch eto gyda ZITADEL gan ddefnyddio eich cyfeiriad e-bost MedTracker wedi’i ddilysu. Bydd eich dulliau mewngofnodi lleol yn aros ar gael."
       provider_error_hint: "Ni allai’r darparwr ddilysu’r mewngofnodi hwn. Ceisiwch eto neu defnyddiwch eich cyfrinair lleol, allwedd basio neu god adfer."
       expires: "Yn dod i ben %{date}."
