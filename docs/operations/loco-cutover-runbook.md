@@ -14,19 +14,18 @@ This document does not authorise a rollout, shutdown, data change or deployment.
 
 ## Image and configuration
 
-- Build runnable root-Loco server and worker images for `linux/amd64` and
-  `linux/arm64` under [#2723](https://github.com/damacus/med-tracker/issues/2723)
-  and [#2724](https://github.com/damacus/med-tracker/issues/2724). Include TLS trust
-  roots, fonts/PDF support, timezone data, templates and static assets. The current
-  [publishing workflow](../../.github/workflows/docker-publish.yml) builds
-  `rails/`; its image is not the Loco replacement.
+- Root-Loco server, worker and scheduler images now have native `linux/amd64`
+  and `linux/arm64` build and smoke-check coverage. Follow
+  [Loco Linux images](loco-images.md) to publish the tested images through the
+  main-branch manual workflow. The separate Rails publisher does not produce
+  the Loco image. Publication is not deployment.
 - Use the selected version or immutable image reference in the existing deployment
   configuration. Keep server and worker versions compatible with the schema.
   No final root-Loco image reference is supplied by this guide.
 - Use [`config/production.yaml`](../../config/production.yaml) as the Rust settings
   reference. Set the public origin with `MEDTRACKER_PUBLIC_HOST`, `PORT` and the
   appropriate `BINDING`; keep production secure cookies enabled. Provision a
-  persistent 64-byte Base64 `MEDTRACKER_SESSION_KEY` through the secret store,
+  persistent `AUTH_SESSION_SECRET` and 64-byte Base64 `MEDTRACKER_SESSION_KEY` through the secret store,
   shared across replicas. Do not use fixture keys or copy Rails credentials.
 - Keep setup credentials separate from the restricted runtime `DATABASE_URL`.
   The runtime login inherits `med_tracker_app`, has no owner-role membership or

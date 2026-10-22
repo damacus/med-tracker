@@ -9,6 +9,13 @@ recording, stock tracking, reminders, and auditable history.
     Do not depend on it for clinical decisions, emergency information, or your
     sole medication reminders.
 
+## Rust 0.6 release preparation
+
+Read the [0.6 release notes](releases/0.6.md) before setting up the fresh Rust
+application. It uses a new empty PostgreSQL 18 database and fresh credentials.
+Existing Rails data and credentials are not imported. The notes distinguish
+merged features from unfinished work and do not announce a deployment.
+
 ## Try the self-hosted beta
 
 Start with the [self-hosting guide](self-hosting.md) for private local
@@ -42,11 +49,10 @@ or unredacted logs publicly.
 ## 🛠️ For Developers
 *These guides are for those setting up, customizing, or contributing to the MedTracker codebase.*
 
-- [**Technical Quick Start**](quick-start.md): run the full stack with Docker.
-- [Testing Guide](testing.md): run the RSpec and Capybara/Playwright test suites.
-- [RubyUI comparison](ruby-ui-comparison.md): compare generated RubyUI files before choosing a manual update.
+- [**Technical Quick Start**](quick-start.md): run the root Rust application locally.
+- [Testing Guide](testing.md): run Rust unit, integration and Playwright browser checks.
 - [Design & Architecture](design.md): explore the domain model and safety guardrails.
-- [Bounded Context Map](adrs/0009-bounded-context-map.md): see present domain ownership and dependency direction in the Rails modular monolith.
+- [Fresh Rust architecture](adrs/0016-fresh-rust-without-legacy-compatibility.md): current runtime and data boundaries.
 - [Proposed record lifecycle](operations/record-lifecycle.md): review the
   unimplemented design for medication, person, and location retirement.
 - [Audit & Compliance](audit-trail.md): details on versioning and data history.
@@ -65,7 +71,7 @@ or unredacted logs publicly.
 - [Production Upload Storage](adrs/0008-production-upload-storage.md): understand optional Disk and S3 modes, topology, and migration boundaries.
 - [Upload Storage Backup and Restore](operations/upload-storage-backup-and-restore.md): record and verify backend-aware recovery sets.
 - [Home-Ops Portable Storage Handoff](operations/home-ops-portable-storage-handoff.md): apply the deployment inputs and maintenance gates safely.
-- [Pre-0.5 database upgrade](pre-0-5-database-upgrade.md): bootstrap existing PostgreSQL databases before the household/RLS cutover.
+- [Fresh Rust rollout](operations/loco-cutover-runbook.md): configure a new installation and understand stop/recovery boundaries.
 
 ---
 

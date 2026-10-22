@@ -1,7 +1,8 @@
 # Deployment
 
-The existing container-publishing workflow builds Rails. Root Loco is the fresh
-Rust application; use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md)
+The Loco Linux images workflow builds and checks the Rust image; publication
+is a separate manual step. The existing Rails publisher remains separate.
+Root Loco is the fresh Rust application; use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md)
 for its image, configuration, database and recovery guidance. There is no separate
 rehearsal or runtime evidence dossier before the owner's normal version upgrade.
 

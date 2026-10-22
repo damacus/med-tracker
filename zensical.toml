@@ -9,6 +9,7 @@ site_dir = "site"
 
 nav = [
   { Home = "index.md" },
+  { "0.6 Release Notes" = "releases/0.6.md" },
   { "🏠 For Families" = [
     { "Quick Setup" = "families/quick-setup.md" },
     { "Add your first medicine" = "families/adding-first-medicine.md" },
@@ -21,6 +22,7 @@ nav = [
     { Deployment = "deployment.md" },
     { "Fresh Rust rollout" = "operations/loco-cutover-runbook.md" },
     { Testing = "testing.md" },
+    { "Maintaining release notes" = "development/release-notes.md" },
     { "Required CI checks" = "development/ci.md" },
     { "MCP Integration" = "mcp.md" },
     { "API Contract Conventions" = "api/README.md" },
