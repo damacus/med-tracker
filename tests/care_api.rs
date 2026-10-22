@@ -442,6 +442,70 @@ async fn authenticated_take_replay_and_stock_adjustment_use_real_loco_routes() {
 }
 
 #[tokio::test]
+async fn malformed_dose_retry_conflicts_only_for_an_accessible_used_uuid() {
+    use med_tracker::models::entities::membership;
+    use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/medication_takes", app.origin);
+    let first = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .json(&take_body())
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(first.status().as_u16(), 201);
+    let committed = app.fixture.effect().await;
+    let mut statuses = Vec::new();
+    for (field, malformed) in [("taken_at", "not-a-time"), ("dose_amount", "not-a-decimal")] {
+        for used in [true, false] {
+            let mut body = take_body();
+            body["medication_take"][field] = json!(malformed);
+            body["medication_take"]["client_uuid"] = json!(if used {
+                "006B49D9-1DA2-42F1-800B-8C80867AEE1C"
+            } else {
+                "006b49d9-1da2-42f1-800b-8c80867aee1d"
+            });
+            let response = app
+                .client
+                .post(&endpoint)
+                .bearer_auth(&token)
+                .json(&body)
+                .send()
+                .await
+                .unwrap();
+            statuses.push(response.status().as_u16());
+            assert_eq!(app.fixture.effect().await, committed);
+        }
+    }
+    let member = membership::Entity::find_by_id(74001)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let mut revoked: membership::ActiveModel = member.into();
+    revoked.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    revoked.update(&app.fixture.admin).await.unwrap();
+    let mut denied_body = take_body();
+    denied_body["medication_take"]["taken_at"] = json!("not-a-time");
+    let denied = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .json(&denied_body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(denied.status().as_u16(), 403);
+    assert_eq!(app.fixture.effect().await, committed);
+    app.close().await;
+    assert_eq!(statuses, [409, 422, 409, 422]);
+}
+
+#[tokio::test]
 async fn authenticated_foreign_household_and_revoked_membership_have_no_effects() {
     let app = Application::new().await;
     app.fixture.seed_foreign_household(99999).await;

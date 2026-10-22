@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn take(body: Value) -> std::result::Result<doses::Take, response::Failure> {
+pub(super) fn take(body: Value) -> std::result::Result<doses::TakeAttempt, response::Failure> {
     let attributes = body
         .get("medication_take")
         .and_then(Value::as_object)
@@ -67,7 +67,7 @@ pub(super) fn take(body: Value) -> std::result::Result<doses::Take, response::Fa
         expected_effective_amount: None,
         expected_effective_unit: None,
     }
-    .validate()
+    .attempt()
     .map_err(response::operation)
 }
 

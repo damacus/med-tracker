@@ -361,9 +361,9 @@ async fn take(
     let result = async {
         let detail = browser_query::detail(&tenant, &id, principal.time_zone()).await?;
         let input = forms::take(&detail, &draft, principal.time_zone())?;
-        doses::execute_in_timezone(
+        doses::execute_attempt_in_timezone(
             &tenant,
-            doses::Command::Take(input),
+            input,
             principal.time_zone(),
             Some(principal.provenance()),
         )

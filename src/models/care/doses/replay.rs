@@ -9,6 +9,35 @@ pub(super) async fn replay_matches(
     take: &medication_take::Model,
     command: &Take,
 ) -> Result<bool, ApiError> {
+    let (stored_kind, stored_id, stored_portable_id) =
+        authorize_existing_take(db, context, household_id, take).await?;
+    let source_matches = match (&command.source, stored_kind) {
+        (DoseSource::Schedule(ScheduleId(id)), "schedule")
+        | (DoseSource::Assignment(AssignmentId(id)), "person_medication") => {
+            id.matches(stored_id, &stored_portable_id)
+        }
+        _ => false,
+    };
+    let time_matches = Some(command.taken_at) == take.taken_at;
+    let amount_matches = command
+        .dose_amount
+        .is_none_or(|amount| Some(amount) == take.dose_amount);
+    let unit_matches = command
+        .dose_unit
+        .as_deref()
+        .is_none_or(|unit| Some(unit) == take.dose_unit.as_deref());
+    let stock_matches = command
+        .taken_from_medication_id
+        .is_none_or(|id| Some(id.0) == take.taken_from_medication_id);
+    Ok(source_matches && time_matches && amount_matches && unit_matches && stock_matches)
+}
+
+pub(super) async fn authorize_existing_take(
+    db: &DatabaseTransaction,
+    context: &DoseContext<'_>,
+    household_id: i64,
+    take: &medication_take::Model,
+) -> Result<(&'static str, i64, String), ApiError> {
     let stored_source = if let Some(id) = take.schedule_id {
         schedule::Entity::find_by_id(id)
             .one(db)
@@ -38,25 +67,7 @@ pub(super) async fn replay_matches(
     if !allowed_person(db, context, stored_person, true).await? {
         return Err(OperationError::Forbidden);
     }
-    let source_matches = match (&command.source, stored_kind) {
-        (DoseSource::Schedule(ScheduleId(id)), "schedule")
-        | (DoseSource::Assignment(AssignmentId(id)), "person_medication") => {
-            id.matches(stored_id, &stored_portable_id)
-        }
-        _ => false,
-    };
-    let time_matches = Some(command.taken_at) == take.taken_at;
-    let amount_matches = command
-        .dose_amount
-        .is_none_or(|amount| Some(amount) == take.dose_amount);
-    let unit_matches = command
-        .dose_unit
-        .as_deref()
-        .is_none_or(|unit| Some(unit) == take.dose_unit.as_deref());
-    let stock_matches = command
-        .taken_from_medication_id
-        .is_none_or(|id| Some(id.0) == take.taken_from_medication_id);
-    Ok(source_matches && time_matches && amount_matches && unit_matches && stock_matches)
+    Ok((stored_kind, stored_id, stored_portable_id))
 }
 
 pub(super) async fn lock_client_uuid(
