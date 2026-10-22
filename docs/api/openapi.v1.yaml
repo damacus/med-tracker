@@ -1788,14 +1788,16 @@ paths:
     delete:
       operationId: deleteLocation
       tags: [Household, Locations]
-      summary: Delete storage only when retained history permits it.
+      summary: Delete an empty storage location without administration history.
       description: |
         Only an active household owner or administrator can delete an in-scope location,
-        using the current If-Match ETag. Direct or indirect medication takes, saved dose
-        outcomes, or medication pause periods retained through the location's medications,
-        schedules or person assignments prevent deletion with 422. Otherwise the location,
-        its memberships, medications, dosage options, schedules and person assignments are
-        removed atomically. A failed deletion leaves every related row unchanged.
+        using the current If-Match ETag. Any medication stored at the location prevents
+        deletion with 422; move the medication to another location first. Administration
+        history retaining this taken-from location also prevents deletion with 422, even
+        after current stock has moved. Medication, stock, dosage options, schedules, person
+        assignments and administration history are never deleted by this operation. An
+        empty location without historical references and its obsolete membership links
+        are removed atomically. A failed deletion leaves every related row unchanged.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/resource_id"
@@ -1806,7 +1808,7 @@ paths:
             type: string
       responses:
         "204":
-          description: Delete storage only when retained history permits it.
+          description: Empty storage location deleted without changing medication or care records.
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":

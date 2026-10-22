@@ -17,6 +17,13 @@ Households own medication inventory and stock. Locations are optional physical
 storage labels within a household, with no memberships or permissions. Inventory
 must work without creating any location.
 
+Deleting a storage location never deletes medication, stock, schedules,
+assignments or administration history. Reject deletion while any medication is
+stored there or an administration retains that taken-from location, including
+after current stock has moved. An empty location without historical references
+may be deleted. Making medication locations optional and detaching stock are
+separate work; deletion does not implement either operation.
+
 Portable v3 omits person-to-location membership links. Imports reject v1/v2
 bundles with non-empty `people.location_portable_ids` with an actionable error;
 obsolete membership metadata is not retained or silently discarded. Inventory

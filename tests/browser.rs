@@ -32,3 +32,6 @@ mod invitation_management;
 mod bulk_members;
 #[path = "browser/polish_followups.rs"]
 mod polish_followups;
+
+#[path = "browser/storage_location_deletion.rs"]
+mod storage_location_deletion;

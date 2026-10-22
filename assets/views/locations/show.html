@@ -23,7 +23,8 @@
   <dialog id="delete-location" class="modal" aria-labelledby="delete-location-title">
     <div class="modal-box">
       <h2 id="delete-location-title" class="text-xl font-semibold">Delete Location</h2>
-      <p class="mt-4">Delete {{ location.name }} and its medications? Locations with administration history cannot be deleted.</p>
+      <p class="mt-4">Delete {{ location.name }}?</p>
+      <p class="mt-4">Only empty locations without administration history can be deleted. Medications and care records are never deleted with a location.</p>
       <form method="post" action="/households/{{ slug }}/locations/{{ location.id }}/destroy" class="modal-action">
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
         <input type="hidden" name="etag" value="{{ etag }}">

@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::entities::{api_tombstone, location_membership, medication};
+use crate::models::entities::{api_tombstone, location_membership, medication, medication_take};
 use loco_rs::model::TenantQueryExt;
 use sea_orm::QueryOrder;
 
@@ -129,22 +129,31 @@ pub async fn retire(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
     let found = locked(tenant, id, etag).await?;
-    let medicines = medication::Entity::find()
+    if medication::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(medication::Column::LocationId.eq(found.id))
-        .order_by_asc(medication::Column::Id)
-        .lock_exclusive()
-        .all(tenant.transaction())
+        .one(tenant.transaction())
         .await
-        .map_err(|_| OperationError::Unavailable)?;
-    for medicine in medicines {
-        crate::models::care::medications::crud::retire_cascade(
-            tenant,
-            &medicine.id.to_string(),
-            provenance,
-            "destroy",
-        )
-        .await?;
+        .map_err(OperationError::from)?
+        .is_some()
+    {
+        return Err(invalid(
+            "location",
+            "cannot be deleted while medications are stored here; move them to another location first",
+        ));
+    }
+    if medication_take::Entity::find()
+        .in_tenant(tenant.scope().household_id)
+        .filter(medication_take::Column::TakenFromLocationId.eq(found.id))
+        .one(tenant.transaction())
+        .await
+        .map_err(OperationError::from)?
+        .is_some()
+    {
+        return Err(invalid(
+            "location",
+            "cannot be deleted while administration history references it",
+        ));
     }
     let memberships = location_membership::Entity::find()
         .in_tenant(tenant.scope().household_id)
