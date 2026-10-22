@@ -211,6 +211,18 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
         row["dose"],
         format!("{} {}", preview.amount.unwrap(), preview.unit.unwrap())
     );
+    assert!(matches!(
+        med_tracker::models::care::doses::browser_preview(
+            &tenant,
+            80001,
+            "schedule",
+            "../invalid",
+            &format!("{today}T00:00"),
+            chrono_tz::UTC,
+        )
+        .await,
+        Err(med_tracker::models::errors::OperationError::NotFound)
+    ));
     tenant.commit().await.unwrap();
     app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84992,72001,83992,3,'tablet',timezone('UTC',now()),now(),now())").await.unwrap();
     let data = snapshot(&app).await;

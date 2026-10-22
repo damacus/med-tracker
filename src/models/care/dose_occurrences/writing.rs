@@ -305,25 +305,28 @@ pub async fn change(
                     return Err(invalid("taken_at", "does not match the occurrence window"));
                 }
             }
-            let command = doses::Command::Take(doses::Take {
-                source_type: source.kind().name().into(),
-                source_id: source.portable_id().into(),
-                taken_at: attrs["taken_at"].as_str().unwrap_or_default().into(),
-                client_uuid: attrs
-                    .get("client_uuid")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned),
-                dose_amount: attrs
-                    .get("dose_amount")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned),
-                dose_unit: None,
-                taken_from_medication_id: attrs
-                    .get("taken_from_medication_id")
-                    .and_then(Value::as_i64),
-                expected_effective_amount: None,
-                expected_effective_unit: None,
-            });
+            let command = doses::Command::Take(
+                doses::TakeInput {
+                    source_type: source.kind().name().into(),
+                    source_id: source.portable_id().into(),
+                    taken_at: attrs["taken_at"].as_str().unwrap_or_default().into(),
+                    client_uuid: attrs
+                        .get("client_uuid")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned),
+                    dose_amount: attrs
+                        .get("dose_amount")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned),
+                    dose_unit: None,
+                    taken_from_medication_id: attrs
+                        .get("taken_from_medication_id")
+                        .and_then(Value::as_i64),
+                    expected_effective_amount: None,
+                    expected_effective_unit: None,
+                }
+                .validate()?,
+            );
             let outcome = doses::execute_in_timezone(
                 tenant,
                 command,

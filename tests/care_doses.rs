@@ -4,10 +4,11 @@ pub mod fixtures;
 mod template;
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
-    care::doses::{self, Command, Outcome, Take},
+    care::doses::{self, Command, Outcome, TakeInput as Take},
+    entities::person_medication,
     errors::OperationError,
 };
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, EntityTrait, Statement};
 
 struct Fixture {
     admin: DatabaseConnection,
@@ -81,8 +82,8 @@ fn scope() -> HouseholdScope {
     }
 }
 
-fn command() -> Command {
-    Command::Take(Take {
+fn take_input() -> Take {
+    Take {
         client_uuid: Some("006b49d9-1da2-42f1-800b-8c80867aee1c".into()),
         source_type: "person_medication".into(),
         source_id: "81001".into(),
@@ -92,7 +93,11 @@ fn command() -> Command {
         taken_from_medication_id: Some(80001),
         expected_effective_amount: None,
         expected_effective_unit: None,
-    })
+    }
+}
+
+fn command() -> Command {
+    Command::Take(take_input().validate().unwrap())
 }
 
 async fn take(fixture: &Fixture, command: Command) -> Result<Outcome, OperationError> {
@@ -121,6 +126,38 @@ async fn dose_take_atomically_records_stock_and_clinical_audit() {
 }
 
 #[tokio::test]
+async fn dose_take_portable_source_and_microsecond_decimal_retry_has_one_effect() {
+    let fixture = Fixture::new().await;
+    let assignment = person_medication::Entity::find_by_id(81001)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let mut first = take_input();
+    first.source_id = assignment.portable_id;
+    first.taken_at = "2026-10-05T11:00:00.123456+01:00".into();
+    first.dose_amount = Some("2.00".into());
+    let Outcome::Created(record) = take(&fixture, Command::Take(first.clone().validate().unwrap()))
+        .await
+        .unwrap()
+    else {
+        panic!("portable source dose was not created")
+    };
+    assert_eq!(
+        record.taken_at.unwrap().to_string(),
+        "2026-10-05 10:00:00.123456"
+    );
+    first.taken_at = "2026-10-05T10:00:00.123456Z".into();
+    first.dose_amount = Some("2.0".into());
+    assert!(
+        matches!(take(&fixture, Command::Take(first.validate().unwrap())).await,
+        Ok(Outcome::Replayed(replay)) if replay.id == record.id)
+    );
+    assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn dose_take_duplicate_replay_does_not_repeat_clinical_effects() {
     let fixture = Fixture::new().await;
     assert!(matches!(
@@ -139,10 +176,10 @@ async fn dose_take_duplicate_replay_does_not_repeat_clinical_effects() {
 async fn dose_take_rejects_payload_mismatch_without_writes() {
     let fixture = Fixture::new().await;
     assert!(take(&fixture, command()).await.is_ok());
-    let Command::Take(mut changed) = command();
+    let mut changed = take_input();
     changed.dose_amount = Some("3".into());
     assert!(matches!(
-        take(&fixture, Command::Take(changed)).await,
+        take(&fixture, Command::Take(changed.validate().unwrap())).await,
         Err(OperationError::Conflict { .. })
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -284,9 +321,9 @@ async fn dose_take_unrelated_unique_collision_is_not_a_replay_conflict() {
         Ok(Outcome::Created(_))
     ));
     fixture.admin.execute_unprepared("CREATE FUNCTION public.synthetic_portable_collision() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.portable_id := (SELECT portable_id FROM medication_takes LIMIT 1); RETURN NEW; END $$; CREATE TRIGGER synthetic_portable_collision BEFORE INSERT ON medication_takes FOR EACH ROW EXECUTE FUNCTION public.synthetic_portable_collision()").await.unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.client_uuid = Some("22222222-2222-4222-8222-222222222222".into());
-    let result = take(&fixture, Command::Take(input)).await;
+    let result = take(&fixture, Command::Take(input.validate().unwrap())).await;
     assert_eq!(
         result.unwrap_err(),
         OperationError::Unavailable,
@@ -310,12 +347,12 @@ async fn dose_take_omitted_replay_options_preserve_original_after_default_change
         )
         .await
         .unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.dose_amount = None;
     input.dose_unit = None;
     input.taken_from_medication_id = None;
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, Command::Take(input.validate().unwrap())).await,
         Ok(Outcome::Replayed(_))
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -330,7 +367,7 @@ async fn dose_take_explicit_replay_options_must_match_stored_effect() {
         Ok(Outcome::Created(_))
     ));
     for field in ["amount", "unit", "location"] {
-        let Command::Take(mut input) = command();
+        let mut input = take_input();
         match field {
             "amount" => input.dose_amount = Some("3".into()),
             "unit" => input.dose_unit = Some("capsule".into()),
@@ -338,7 +375,7 @@ async fn dose_take_explicit_replay_options_must_match_stored_effect() {
         }
         assert!(
             matches!(
-                take(&fixture, Command::Take(input)).await,
+                take(&fixture, Command::Take(input.validate().unwrap())).await,
                 Err(OperationError::Conflict { .. })
             ),
             "{field}"
@@ -377,17 +414,17 @@ async fn dose_take_paused_and_retired_sources_have_no_clinical_effect() {
 async fn dose_take_multiple_locations_require_selection_and_preserve_other_stock() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79002,72001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80002,72001,79002,'Synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81002,72001,73001,80002,2,'tablet',1,now(),now())").await.unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.taken_from_medication_id = None;
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, Command::Take(input.validate().unwrap())).await,
         Err(OperationError::Validation { .. })
     ));
     assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.taken_from_medication_id = Some(80002);
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, Command::Take(input.validate().unwrap())).await,
         Ok(Outcome::Created(_))
     ));
     assert_eq!(fixture.effect().await, (1, "10.00".into(), 1, 1));
@@ -469,11 +506,11 @@ async fn dose_take_schedule_date_kinds_and_taper_amounts() {
     ] {
         let fixture = Fixture::new().await;
         fixture.admin.execute_unprepared(&format!("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,'2026-10-05','2026-10-10',2,'tablet',{kind},'{config}',now(),now())")).await.unwrap();
-        let Command::Take(mut input) = command();
+        let mut input = take_input();
         input.source_type = "schedule".into();
         input.source_id = "83001".into();
         input.dose_amount = None;
-        let result = take(&fixture, Command::Take(input)).await;
+        let result = take(&fixture, Command::Take(input.validate().unwrap())).await;
         if allowed {
             let Ok(Outcome::Created(row)) = result else {
                 panic!("Expected supported schedule {kind}: {result:?}")
@@ -490,9 +527,9 @@ async fn dose_take_schedule_date_kinds_and_taper_amounts() {
 #[tokio::test]
 async fn public_take_keeps_an_explicit_amount_override_without_browser_confirmation() {
     let fixture = Fixture::new().await;
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.dose_amount = Some("3".into());
-    let outcome = take(&fixture, Command::Take(input)).await;
+    let outcome = take(&fixture, Command::Take(input.validate().unwrap())).await;
     let Ok(Outcome::Created(record)) = outcome else {
         panic!("Expected public dose override: {outcome:?}");
     };
@@ -516,11 +553,11 @@ async fn dose_take_timing_cycle_and_minimum_interval_deny_extra_effects() {
             take(&fixture, command()).await,
             Ok(Outcome::Created(_))
         ));
-        let Command::Take(mut input) = command();
+        let mut input = take_input();
         input.client_uuid = None;
         input.taken_at = "2026-10-05T11:00:00Z".into();
         assert!(matches!(
-            take(&fixture, Command::Take(input)).await,
+            take(&fixture, Command::Take(input.validate().unwrap())).await,
             Err(OperationError::Validation { .. })
         ));
         assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -538,11 +575,11 @@ async fn dose_take_timing_cycle_and_minimum_interval_deny_extra_effects() {
         take(&fixture, command()).await,
         Ok(Outcome::Created(_))
     ));
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.client_uuid = None;
     input.taken_at = "2026-10-05T11:00:00Z".into();
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, Command::Take(input.validate().unwrap())).await,
         Err(OperationError::Validation { .. })
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -553,16 +590,20 @@ async fn dose_take_timing_cycle_and_minimum_interval_deny_extra_effects() {
 async fn dose_take_request_timezone_selects_near_midnight_schedule_date() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared(r#"INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,'2026-09-28','2026-09-30',2,'tablet',2,'{"weekdays":["tuesday"]}',now(),now())"#).await.unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.source_type = "schedule".into();
     input.source_id = "83001".into();
     input.taken_at = "2026-09-28T23:30:00Z".into();
     let tenant = access::begin(&fixture.runtime, &scope(), None)
         .await
         .unwrap();
-    let utc =
-        doses::execute_in_timezone(&tenant, Command::Take(input.clone()), chrono_tz::UTC, None)
-            .await;
+    let utc = doses::execute_in_timezone(
+        &tenant,
+        Command::Take(input.clone().validate().unwrap()),
+        chrono_tz::UTC,
+        None,
+    )
+    .await;
     assert!(matches!(utc, Err(OperationError::Validation { .. })));
     tenant.rollback().await.unwrap();
     let tenant = access::begin(&fixture.runtime, &scope(), None)
@@ -570,7 +611,7 @@ async fn dose_take_request_timezone_selects_near_midnight_schedule_date() {
         .unwrap();
     let london = doses::execute_in_timezone(
         &tenant,
-        Command::Take(input),
+        Command::Take(input.validate().unwrap()),
         chrono_tz::Europe::London,
         None,
     )
@@ -637,12 +678,12 @@ async fn dose_take_request_timezone_controls_daily_weekly_monthly_and_dst_cycles
             ))
             .await
             .unwrap();
-        let Command::Take(mut input) = command();
+        let mut input = take_input();
         input.taken_at = first.into();
         assert!(matches!(
             take_in_timezone(
                 &fixture,
-                Command::Take(input.clone()),
+                Command::Take(input.clone().validate().unwrap()),
                 chrono_tz::Europe::London
             )
             .await,
@@ -650,8 +691,12 @@ async fn dose_take_request_timezone_controls_daily_weekly_monthly_and_dst_cycles
         ));
         input.client_uuid = None;
         input.taken_at = second.into();
-        let result =
-            take_in_timezone(&fixture, Command::Take(input), chrono_tz::Europe::London).await;
+        let result = take_in_timezone(
+            &fixture,
+            Command::Take(input.validate().unwrap()),
+            chrono_tz::Europe::London,
+        )
+        .await;
         if allowed {
             assert!(matches!(result, Ok(Outcome::Created(_))));
             assert_eq!(fixture.effect().await, (2, "6.00".into(), 2, 2));
@@ -670,19 +715,19 @@ async fn dose_take_request_timezone_controls_daily_weekly_monthly_and_dst_cycles
 async fn dose_take_member_uses_assignment_stock_and_excludes_unlinked_match() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79002,72001,'Unlinked synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_by_membership_id,created_at,updated_at) VALUES(80002,72001,79002,'Synthetic tablets',20,2,'tablet',74001,now(),now())").await.unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.taken_from_medication_id = None;
-    let created = take(&fixture, Command::Take(input)).await;
+    let created = take(&fixture, Command::Take(input.validate().unwrap())).await;
     let Ok(Outcome::Created(record)) = created else {
         panic!("The canonical member could not take linked stock: {created:?}");
     };
     assert_eq!(record.taken_from_medication_id, Some(80001));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.client_uuid = None;
     input.taken_from_medication_id = Some(80002);
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, Command::Take(input.validate().unwrap())).await,
         Err(OperationError::Validation { .. })
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -717,9 +762,9 @@ async fn dose_take_rejects_unrepresentable_tracked_aggregate_without_effects() {
 }
 
 fn uuid_command(client_uuid: String) -> Command {
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.client_uuid = Some(client_uuid);
-    Command::Take(input)
+    Command::Take(input.validate().unwrap())
 }
 
 #[tokio::test]
@@ -841,19 +886,19 @@ async fn dose_take_conformance_backdated_interval_preserves_preceding_neighbour_
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("UPDATE person_medications SET max_daily_doses=4,min_hours_between_doses=4 WHERE id=81001").await.unwrap();
     for time in ["2026-10-05T10:00:00Z", "2026-10-05T18:00:00Z"] {
-        let Command::Take(mut input) = command();
+        let mut input = take_input();
         input.client_uuid = None;
         input.taken_at = time.into();
         assert!(matches!(
-            take(&fixture, Command::Take(input)).await,
+            take(&fixture, Command::Take(input.validate().unwrap())).await,
             Ok(Outcome::Created(_))
         ));
     }
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.client_uuid = None;
     input.taken_at = "2026-10-05T16:00:00Z".into();
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, Command::Take(input.validate().unwrap())).await,
         Ok(Outcome::Created(_))
     ));
     assert_eq!(fixture.effect().await, (3, "4.00".into(), 3, 3));
@@ -865,7 +910,7 @@ async fn dose_take_review_skipped_midnight_keeps_local_daily_cycles_separate() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("UPDATE person_medications SET max_daily_doses=1,min_hours_between_doses=0,dose_cycle=0 WHERE id=81001").await.unwrap();
     for time in ["2025-09-07T02:30:00Z", "2025-09-07T04:30:00Z"] {
-        let Command::Take(mut input) = command();
+        let mut input = take_input();
         input.client_uuid = None;
         input.taken_at = time.into();
         let tenant = access::begin(&fixture.runtime, &scope(), None)
@@ -873,7 +918,7 @@ async fn dose_take_review_skipped_midnight_keeps_local_daily_cycles_separate() {
             .unwrap();
         let result = doses::execute_in_timezone(
             &tenant,
-            Command::Take(input),
+            Command::Take(input.validate().unwrap()),
             chrono_tz::America::Santiago,
             None,
         )
@@ -921,22 +966,37 @@ async fn dose_take_keeps_elapsed_cooldown_distinct_from_local_calendar_limits_an
         .await
         .unwrap();
 
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.client_uuid = None;
     input.taken_at = "2026-10-05T21:00:00Z".into();
-    let outcome = take_in_zone(&fixture, Command::Take(input), chrono_tz::Europe::London).await;
+    let outcome = take_in_zone(
+        &fixture,
+        Command::Take(input.validate().unwrap()),
+        chrono_tz::Europe::London,
+    )
+    .await;
     assert!(matches!(outcome, Ok(Outcome::Created(_))));
 
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.client_uuid = None;
     input.taken_at = "2026-10-06T01:00:00Z".into();
-    let outcome = take_in_zone(&fixture, Command::Take(input), chrono_tz::Europe::London).await;
+    let outcome = take_in_zone(
+        &fixture,
+        Command::Take(input.validate().unwrap()),
+        chrono_tz::Europe::London,
+    )
+    .await;
     assert!(matches!(outcome, Err(OperationError::Validation { .. })));
 
-    let Command::Take(mut input) = command();
+    let mut input = take_input();
     input.client_uuid = None;
     input.taken_at = "2026-10-06T03:00:00Z".into();
-    let outcome = take_in_zone(&fixture, Command::Take(input), chrono_tz::Europe::London).await;
+    let outcome = take_in_zone(
+        &fixture,
+        Command::Take(input.validate().unwrap()),
+        chrono_tz::Europe::London,
+    )
+    .await;
     assert!(matches!(outcome, Ok(Outcome::Created(_))));
 
     fixture
@@ -962,7 +1022,7 @@ async fn dose_take_keeps_elapsed_cooldown_distinct_from_local_calendar_limits_an
     };
     let outcome = take_in_zone(
         &fixture,
-        Command::Take(taper_take1),
+        Command::Take(taper_take1.validate().unwrap()),
         chrono_tz::Europe::London,
     )
     .await;
@@ -981,7 +1041,7 @@ async fn dose_take_keeps_elapsed_cooldown_distinct_from_local_calendar_limits_an
     };
     let outcome = take_in_zone(
         &fixture,
-        Command::Take(taper_attempt),
+        Command::Take(taper_attempt.validate().unwrap()),
         chrono_tz::Europe::London,
     )
     .await;
@@ -1000,7 +1060,7 @@ async fn dose_take_keeps_elapsed_cooldown_distinct_from_local_calendar_limits_an
     };
     let outcome = take_in_zone(
         &fixture,
-        Command::Take(taper_take2),
+        Command::Take(taper_take2.validate().unwrap()),
         chrono_tz::Europe::London,
     )
     .await;

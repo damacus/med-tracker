@@ -14,25 +14,7 @@ pub(super) fn valid_numeric_10_2(amount: Decimal) -> bool {
     amount > Decimal::ZERO && amount.normalize().scale() <= 2 && amount < Decimal::from(100_000_000)
 }
 
-pub(super) fn decimal_from_json(value: Option<&Value>) -> Result<Option<Decimal>, ApiError> {
-    let Some(value) = value else {
-        return Ok(None);
-    };
-    if value.as_str().is_none() {
-        return Err(error(ErrorKind::Validation, "dose_amount must be a string"));
-    }
-    let amount = parse_decimal(value)
-        .ok_or_else(|| error(ErrorKind::Validation, "Invalid dose configured"))?;
-    if !valid_numeric_10_2(amount) {
-        return Err(error(ErrorKind::Validation, "Invalid dose configured"));
-    }
-    Ok(Some(amount))
-}
-
-pub(super) fn parse_input_time(value: Option<&Value>) -> Result<NaiveDateTime, ApiError> {
-    let raw = value
-        .and_then(Value::as_str)
-        .ok_or_else(|| error(ErrorKind::Validation, "taken_at is invalid"))?;
+pub(super) fn parse_input_time(raw: &str) -> Result<NaiveDateTime, ApiError> {
     DateTime::parse_from_rfc3339(raw)
         .ok()
         .and_then(|value| DateTime::<Utc>::from_timestamp_micros(value.timestamp_micros()))
@@ -40,30 +22,20 @@ pub(super) fn parse_input_time(value: Option<&Value>) -> Result<NaiveDateTime, A
         .ok_or_else(|| error(ErrorKind::Validation, "taken_at is invalid"))
 }
 
-fn string_field<'a>(value: &'a Value, field: &str) -> Result<&'a str, ApiError> {
-    value
-        .get(field)
-        .and_then(Value::as_str)
-        .filter(|value| !value.is_empty())
-        .ok_or(OperationError::NotFound)
-}
-
 pub(super) async fn prepare(
     db: &DatabaseTransaction,
     context: &DoseContext<'_>,
     household_id: i64,
-    attributes: &Value,
+    command: &Take,
 ) -> Result<ProposedTake, TakeFailure> {
-    let kind = string_field(attributes, "source_type")?;
-    let source_id = string_field(attributes, "source_id")?;
-    let mut source = source(db, context, household_id, kind, source_id).await?;
+    let mut source = source(db, context, household_id, &command.source).await?;
     if source.retired {
         return Err(OperationError::NotFound.into());
     }
     if !allowed_person(db, context, source.person_id, true).await? {
         return Err(OperationError::Forbidden.into());
     }
-    let taken_at = parse_input_time(attributes.get("taken_at"))?;
+    let taken_at = command.taken_at;
     if taken_at > Utc::now().naive_utc() + Duration::hours(1) {
         return Err(error(
             ErrorKind::Validation,
@@ -86,16 +58,9 @@ pub(super) async fn prepare(
         .into());
     }
     effective_source(&mut source, effective_date);
-    if attributes.get("expected_effective_amount").is_some()
-        || attributes.get("expected_effective_unit").is_some()
-    {
-        let expected_amount = attributes
-            .get("expected_effective_amount")
-            .and_then(Value::as_str)
-            .and_then(|value| Decimal::from_str(value).ok());
-        let expected_unit = attributes
-            .get("expected_effective_unit")
-            .and_then(Value::as_str);
+    if command.expected_effective_amount.is_some() || command.expected_effective_unit.is_some() {
+        let expected_amount = command.expected_effective_amount;
+        let expected_unit = command.expected_effective_unit.as_deref();
         if expected_amount != source.dose_amount || expected_unit != source.dose_unit.as_deref() {
             return Err(OperationError::Conflict {
                 code: "dose_changed".into(),
@@ -104,13 +69,8 @@ pub(super) async fn prepare(
             .into());
         }
     }
-    if attributes.get("dose_amount").is_some_and(Value::is_number) {
-        return Err(TakeFailure {
-            error: error(ErrorKind::Validation, "dose_amount must be a string"),
-            cause: Some(TakeFailureCause::NumericDoseAmount),
-        });
-    }
-    let amount = decimal_from_json(attributes.get("dose_amount"))?
+    let amount = command
+        .dose_amount
         .or(source.dose_amount)
         .ok_or_else(|| error(ErrorKind::Validation, "Invalid dose configured"))?;
     if !valid_numeric_10_2(amount) {
@@ -173,16 +133,7 @@ pub(super) async fn prepare(
             cause: Some(TakeFailureCause::OutOfStock),
         });
     }
-    let selected_id = attributes
-        .get("taken_from_medication_id")
-        .and_then(Value::as_i64);
-    if attributes.get("taken_from_medication_id").is_some() && selected_id.is_none() {
-        return Err(error(
-            ErrorKind::Validation,
-            "Selected location is unavailable for this medication.",
-        )
-        .into());
-    }
+    let selected_id = command.taken_from_medication_id.map(|id| id.0);
     let selected = if let Some(id) = selected_id {
         matching
             .into_iter()

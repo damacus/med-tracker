@@ -21,7 +21,7 @@ use crate::models::{
 use audit::{StockVersionChange, record_domain_audit, stock_version};
 use changes::{SyncRecord, record_change};
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone, Utc};
-use input::{ProposedTake, decimal_from_json, parse_input_time, prepare};
+use input::{ProposedTake, prepare};
 use locking::lock_row;
 use persistence::insert_take;
 use replay::{existing_take, lock_client_uuid, replay_matches};
@@ -44,13 +44,13 @@ pub(crate) use stock::same_stock_signature;
 pub(crate) use timing::dashboard_timing;
 use timing::{applies_on, timing_allowed};
 use uuid::Uuid;
-use validation::parse_decimal;
+use validation::parse_decimal_str;
 pub(crate) use validation::valid_identifier;
 
 type ApiError = OperationError;
 
 #[derive(Clone, Debug)]
-pub struct Take {
+pub struct TakeInput {
     pub client_uuid: Option<String>,
     pub source_type: String,
     pub source_id: String,
@@ -60,6 +60,208 @@ pub struct Take {
     pub taken_from_medication_id: Option<i64>,
     pub expected_effective_amount: Option<String>,
     pub expected_effective_unit: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SourceId {
+    Database(i64),
+    Portable(String),
+}
+
+impl SourceId {
+    fn parse(value: &str) -> Result<Self, OperationError> {
+        if !valid_identifier(value) {
+            return Err(error(ErrorKind::Validation, "invalid medication source"));
+        }
+        Ok(value
+            .parse::<i64>()
+            .map_or_else(|_| Self::Portable(value.to_owned()), Self::Database))
+    }
+
+    fn matches(&self, id: i64, portable_id: &str) -> bool {
+        match self {
+            Self::Database(value) => *value == id,
+            Self::Portable(value) => value == portable_id,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScheduleId(SourceId);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AssignmentId(SourceId);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DoseSource {
+    Schedule(ScheduleId),
+    Assignment(AssignmentId),
+}
+
+impl DoseSource {
+    fn parse(kind: &str, id: &str) -> Result<Self, OperationError> {
+        if kind.trim().is_empty() {
+            return Err(error(ErrorKind::Validation, "invalid medication source"));
+        }
+        let id = SourceId::parse(id)?;
+        match kind {
+            "schedule" => Ok(Self::Schedule(ScheduleId(id))),
+            "person_medication" => Ok(Self::Assignment(AssignmentId(id))),
+            _ => Err(OperationError::NotFound),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MedicationId(i64);
+
+#[derive(Clone, Debug)]
+pub struct Take {
+    client_uuid: Option<Uuid>,
+    source: DoseSource,
+    taken_at: NaiveDateTime,
+    dose_amount: Option<Decimal>,
+    dose_unit: Option<String>,
+    taken_from_medication_id: Option<MedicationId>,
+    expected_effective_amount: Option<Decimal>,
+    expected_effective_unit: Option<String>,
+}
+
+impl TakeInput {
+    pub fn validate(self) -> Result<Take, OperationError> {
+        let source = DoseSource::parse(&self.source_type, &self.source_id)?;
+        let taken_at = input::parse_input_time(&self.taken_at)?;
+        let client_uuid = self
+            .client_uuid
+            .as_deref()
+            .map(Uuid::parse_str)
+            .transpose()
+            .map_err(|_| error(ErrorKind::Validation, "invalid client_uuid"))?;
+        let dose_amount = self
+            .dose_amount
+            .as_deref()
+            .map(|value| {
+                let amount = parse_decimal_str(value)
+                    .ok_or_else(|| error(ErrorKind::Validation, "Invalid dose configured"))?;
+                if !input::valid_numeric_10_2(amount) {
+                    return Err(error(ErrorKind::Validation, "Invalid dose configured"));
+                }
+                Ok(amount)
+            })
+            .transpose()?;
+        if self.dose_unit.as_deref().is_some_and(str::is_empty) {
+            return Err(error(ErrorKind::Validation, "invalid dose_unit"));
+        }
+        let taken_from_medication_id = self
+            .taken_from_medication_id
+            .map(|id| {
+                (id > 0)
+                    .then_some(MedicationId(id))
+                    .ok_or_else(|| error(ErrorKind::Validation, "invalid taken_from_medication_id"))
+            })
+            .transpose()?;
+        let expected_effective_amount = self
+            .expected_effective_amount
+            .as_deref()
+            .map(Decimal::from_str)
+            .transpose()
+            .map_err(|_| error(ErrorKind::Validation, "Invalid dose configured"))?;
+        Ok(Take {
+            client_uuid,
+            source,
+            taken_at,
+            dose_amount,
+            dose_unit: self.dose_unit,
+            taken_from_medication_id,
+            expected_effective_amount,
+            expected_effective_unit: self.expected_effective_unit,
+        })
+    }
+}
+
+#[cfg(test)]
+mod typed_take_tests {
+    use super::*;
+
+    fn input() -> TakeInput {
+        TakeInput {
+            client_uuid: Some("006B49D9-1DA2-42F1-800B-8C80867AEE1C".into()),
+            source_type: "schedule".into(),
+            source_id: "0199a4b5-c6d7-8e9f-a012-3456789abcde".into(),
+            taken_at: "2026-10-05T11:00:00.123456+01:00".into(),
+            dose_amount: Some("2.30".into()),
+            dose_unit: Some("tablet".into()),
+            taken_from_medication_id: Some(80001),
+            expected_effective_amount: None,
+            expected_effective_unit: None,
+        }
+    }
+
+    #[test]
+    fn take_validation_preserves_portable_source_microseconds_and_exact_amount() {
+        let command = input().validate().unwrap();
+        assert_eq!(
+            command.client_uuid.unwrap().hyphenated().to_string(),
+            "006b49d9-1da2-42f1-800b-8c80867aee1c"
+        );
+        assert!(matches!(
+            command.source,
+            DoseSource::Schedule(ScheduleId(SourceId::Portable(_)))
+        ));
+        assert_eq!(command.taken_at.to_string(), "2026-10-05 10:00:00.123456");
+        assert_eq!(
+            command.dose_amount.unwrap(),
+            Decimal::from_str_exact("2.30").unwrap()
+        );
+    }
+
+    #[test]
+    fn take_validation_rejects_invalid_source_time_uuid_and_exact_amount() {
+        let mut malformed = input();
+        malformed.source_id = "../other-household".into();
+        assert!(matches!(
+            malformed.validate(),
+            Err(OperationError::Validation { .. })
+        ));
+        let mut malformed = input();
+        malformed.source_type = "other".into();
+        assert!(matches!(
+            malformed.validate(),
+            Err(OperationError::NotFound)
+        ));
+        let mut malformed = input();
+        malformed.taken_at = "2026-10-05 11:00".into();
+        assert!(matches!(
+            malformed.validate(),
+            Err(OperationError::Validation { .. })
+        ));
+        let mut malformed = input();
+        malformed.client_uuid = Some("invalid".into());
+        assert!(matches!(
+            malformed.validate(),
+            Err(OperationError::Validation { .. })
+        ));
+        for amount in ["-1", "1.234", "100000000", "1e2", "+1"] {
+            let mut malformed = input();
+            malformed.dose_amount = Some(amount.into());
+            assert!(
+                matches!(malformed.validate(), Err(OperationError::Validation { .. })),
+                "accepted {amount}"
+            );
+        }
+        let mut malformed = input();
+        malformed.dose_unit = Some(String::new());
+        assert!(matches!(
+            malformed.validate(),
+            Err(OperationError::Validation { .. })
+        ));
+        let mut malformed = input();
+        malformed.taken_from_medication_id = Some(0);
+        assert!(matches!(
+            malformed.validate(),
+            Err(OperationError::Validation { .. })
+        ));
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -104,12 +306,12 @@ pub async fn browser_preview(
         provenance: None,
         zone,
     };
+    let requested_source = DoseSource::parse(kind, id).map_err(|_| OperationError::NotFound)?;
     let source = source(
         tenant.transaction(),
         &context,
         tenant.scope().household_id,
-        kind,
-        id,
+        &requested_source,
     )
     .await?;
     if source.medication_id != medication_id {
@@ -204,7 +406,6 @@ fn database_error(_: sea_orm::DbErr) -> OperationError {
 
 enum TakeFailureCause {
     Paused,
-    NumericDoseAmount,
     OutOfStock,
 }
 struct TakeFailure {
@@ -222,7 +423,6 @@ impl TakeFailure {
         if let (Some(cause), OperationError::Validation { details }) = (self.cause, &mut error) {
             details["code"] = json!(match cause {
                 TakeFailureCause::Paused => "paused",
-                TakeFailureCause::NumericDoseAmount => "numeric_dose_amount",
                 TakeFailureCause::OutOfStock => "out_of_stock",
             });
         }
@@ -244,25 +444,6 @@ pub async fn execute_in_timezone(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Outcome, OperationError> {
     let Command::Take(take) = command;
-    let mut attributes = json!({"source_type": take.source_type, "source_id": take.source_id, "taken_at": take.taken_at});
-    if let Some(value) = take.client_uuid {
-        attributes["client_uuid"] = json!(value);
-    }
-    if let Some(value) = take.dose_amount {
-        attributes["dose_amount"] = json!(value);
-    }
-    if let Some(value) = take.dose_unit {
-        attributes["dose_unit"] = json!(value);
-    }
-    if let Some(value) = take.taken_from_medication_id {
-        attributes["taken_from_medication_id"] = json!(value);
-    }
-    if let Some(value) = take.expected_effective_amount {
-        attributes["expected_effective_amount"] = json!(value);
-    }
-    if let Some(value) = take.expected_effective_unit {
-        attributes["expected_effective_unit"] = json!(value);
-    }
     let context = DoseContext {
         tenant,
         provenance,
@@ -272,7 +453,7 @@ pub async fn execute_in_timezone(
         tenant.transaction(),
         &context,
         tenant.scope().household_id,
-        &json!({"medication_take": attributes}),
+        &take,
         &tenant.scope().request_id,
     )
     .await

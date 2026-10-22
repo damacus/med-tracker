@@ -2,7 +2,7 @@ use crate::models::{
     access::TenantTransaction,
     care::{
         browser_query::{Assignment, Detail},
-        doses::Take,
+        doses::{Take, TakeInput},
     },
     errors::OperationError,
 };
@@ -80,7 +80,7 @@ pub fn take(
         optional(draft, "dose_unit").ok_or_else(|| OperationError::Validation {
             details: serde_json::json!({"error":"Dose confirmation is incomplete."}),
         })?;
-    Ok(Take {
+    TakeInput {
         client_uuid: optional(draft, "client_uuid"),
         source_type: field(draft, "source_type").into(),
         source_id: field(draft, "source_id").into(),
@@ -90,7 +90,8 @@ pub fn take(
         taken_from_medication_id: Some(stock_id),
         expected_effective_amount: Some(confirmed_amount),
         expected_effective_unit: Some(confirmed_unit),
-    })
+    }
+    .validate()
 }
 
 pub fn can_adjust(tenant: &TenantTransaction) -> bool {

@@ -56,7 +56,7 @@ pub(super) fn take(body: Value) -> std::result::Result<doses::Take, response::Fa
                 response::Failure::validation("invalid taken_from_medication_id")
             })?),
         };
-    Ok(doses::Take {
+    doses::TakeInput {
         client_uuid,
         source_type: source_type.into(),
         source_id: source_id.into(),
@@ -66,7 +66,9 @@ pub(super) fn take(body: Value) -> std::result::Result<doses::Take, response::Fa
         taken_from_medication_id,
         expected_effective_amount: None,
         expected_effective_unit: None,
-    })
+    }
+    .validate()
+    .map_err(response::operation)
 }
 
 fn optional_string(

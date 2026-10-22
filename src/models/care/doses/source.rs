@@ -160,15 +160,16 @@ pub(super) async fn source(
     db: &DatabaseTransaction,
     context: &DoseContext<'_>,
     household_id: i64,
-    kind: &str,
-    id: &str,
+    source: &DoseSource,
 ) -> Result<Source, ApiError> {
-    match kind {
-        "person_medication" => {
+    match source {
+        DoseSource::Assignment(AssignmentId(id)) => {
             let mut query = person_medication::Entity::find().in_tenant(household_id);
-            query = match id.parse::<i64>() {
-                Ok(id) => query.filter(person_medication::Column::Id.eq(id)),
-                Err(_) => query.filter(person_medication::Column::PortableId.eq(id)),
+            query = match id {
+                SourceId::Database(id) => query.filter(person_medication::Column::Id.eq(*id)),
+                SourceId::Portable(id) => {
+                    query.filter(person_medication::Column::PortableId.eq(id))
+                }
             };
             let value = query
                 .one(db)
@@ -180,11 +181,11 @@ pub(super) async fn source(
             }
             Ok(source_from_assignment(value))
         }
-        "schedule" => {
+        DoseSource::Schedule(ScheduleId(id)) => {
             let mut query = schedule::Entity::find().in_tenant(household_id);
-            query = match id.parse::<i64>() {
-                Ok(id) => query.filter(schedule::Column::Id.eq(id)),
-                Err(_) => query.filter(schedule::Column::PortableId.eq(id)),
+            query = match id {
+                SourceId::Database(id) => query.filter(schedule::Column::Id.eq(*id)),
+                SourceId::Portable(id) => query.filter(schedule::Column::PortableId.eq(id)),
             };
             let value = query
                 .one(db)
@@ -196,7 +197,6 @@ pub(super) async fn source(
             }
             Ok(source_from_schedule(value))
         }
-        _ => Err(OperationError::NotFound),
     }
 }
 
