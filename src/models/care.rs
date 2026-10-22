@@ -30,6 +30,7 @@ pub mod reports;
 pub mod review_prompts;
 pub mod stock_check;
 pub mod sync;
+pub(crate) mod treatment_command;
 pub mod treatments;
 pub mod ui_capabilities;
 

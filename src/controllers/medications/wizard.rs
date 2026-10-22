@@ -459,7 +459,7 @@ async fn save(
                 if supplement { "routine" } else { "as_needed" }.into(),
             );
         }
-        let body = crate::controllers::treatments::forms::body(
+        let input = crate::controllers::treatments::forms::body(
             if direct {
                 crate::controllers::treatments::Kind::Assignment
             } else {
@@ -469,10 +469,13 @@ async fn save(
             &plan,
             None,
         )?;
-        if direct {
-            assignments::create(tenant, &body, Some(principal.provenance())).await?;
-        } else {
-            treatments::create(tenant, &body, Some(principal.provenance())).await?;
+        match input {
+            crate::controllers::treatments::forms::FormInput::Assignment(input) => {
+                assignments::create_input(tenant, input, Some(principal.provenance())).await?;
+            }
+            crate::controllers::treatments::forms::FormInput::Schedule(input) => {
+                treatments::create_input(tenant, input, Some(principal.provenance())).await?;
+            }
         }
     }
     Ok((record.id, record.name.unwrap_or_default()))

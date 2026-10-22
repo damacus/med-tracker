@@ -157,6 +157,32 @@ before replay comparison, whereas the earlier internal replay path could return
 conflict (409). OpenAPI does not specify this malformed replay edge case. Valid
 replay and differing valid payload conflicts retain their existing behaviour.
 
+### Typed treatment forms (#2870, local candidate on 22 October 2026)
+
+Reference: `main` at `c4c5fc88bc41a09d5c0119fe260ed91f22915b60`. Treatment
+create/edit forms and the medication wizard construct validated schedule or
+assignment inputs with distinct person, medication and dosage-option selectors,
+exact Decimal amounts, dates and enum kinds. API/sync adapters parse into the
+same typed resolver at their existing authorization/replay/ETag boundaries.
+Persisted configuration, audit snapshots, wire projections and templates retain
+their legitimate JSON. Pause/resume and unrelated JSON hand-offs remain outside
+this issue; no UI or wire-field change is intended.
+
+Sol owned implementation and independent review because omitted/cleared fields
+and validation ordering required judgement. Review found no remaining actionable
+finding. Focused browser schedule create/edit, assignment edit and wizard-person
+linkage passed; desktop/mobile screenshots were inspected. Focused schedule
+lifecycle (including revoked access before malformed input), treatment creation,
+assignment and sync checks passed. Type-contract and strict-date regressions were
+observed failing before their fixes. Root `task ci` passed on this frozen source:
+151 unit tests, 1,148 integration-suite cases, 29 browser journeys and template
+concurrency, alongside formatting, Clippy and dependency checks. The documentation
+build passed. Publication remains next; no merge or deployment is claimed.
+
+Syntactic parsing now precedes database resolution within authorized schedule
+requests. When several fields are invalid, the reported error may therefore
+change; authorization, replay, ETag ordering and single-field validation remain.
+
 ## Approved completion plan — 7 October 2026
 
 This section supersedes conflicting older behaviour in this plan. The owner confirmed the complete plan after questions Q1–Q17. Finish the existing auth PR first; invitations remain there. Only after accepted auth is on main, deliver two independent PRs based on main: platform administration/support, then household lifecycle. Other migration work stays paused. No deployment or live-data action is authorised.

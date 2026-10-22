@@ -249,28 +249,29 @@ impl<'a> Page<'a> {
                 &draft,
                 record.as_ref().map(|value| &value.0["data"]),
             ) {
-                Ok(body) => match (kind, id) {
-                    (Kind::Schedule, None) => {
-                        treatments::create(&tenant, &body, Some(principal.provenance())).await
+                Ok(input) => match (input, id) {
+                    (forms::FormInput::Schedule(input), None) => {
+                        treatments::create_input(&tenant, input, Some(principal.provenance())).await
                     }
-                    (Kind::Schedule, Some(id)) => {
-                        treatments::lifecycle::update(
+                    (forms::FormInput::Schedule(input), Some(id)) => {
+                        treatments::lifecycle::update_input(
                             &tenant,
                             id,
-                            &body,
+                            input,
                             browser_forms::optional(&draft, "etag").as_deref(),
                             Some(principal.provenance()),
                         )
                         .await
                     }
-                    (Kind::Assignment, None) => {
-                        assignments::create(&tenant, &body, Some(principal.provenance())).await
+                    (forms::FormInput::Assignment(input), None) => {
+                        assignments::create_input(&tenant, input, Some(principal.provenance()))
+                            .await
                     }
-                    (Kind::Assignment, Some(id)) => {
-                        assignments::update(
+                    (forms::FormInput::Assignment(input), Some(id)) => {
+                        assignments::update_input(
                             &tenant,
                             id,
-                            &body,
+                            input,
                             browser_forms::optional(&draft, "etag").as_deref(),
                             Some(principal.provenance()),
                         )

@@ -1,4 +1,7 @@
 use super::*;
+use crate::models::care::treatment_command::{
+    AdministrationKind, DosageOptionId, DoseCycle, MedicationId, PersonId, ScheduleType,
+};
 
 pub(super) fn defaults(record: Option<&Value>) -> HashMap<String, String> {
     let mut draft = HashMap::from([
@@ -107,65 +110,135 @@ pub(super) fn defaults(record: Option<&Value>) -> HashMap<String, String> {
     draft
 }
 
+pub(crate) enum FormInput {
+    Schedule(treatments::ValidatedScheduleInput),
+    Assignment(assignments::ValidatedAssignmentInput),
+}
+
 pub(crate) fn body(
     kind: Kind,
     person_id: &str,
     draft: &HashMap<String, String>,
     existing: Option<&Value>,
-) -> Result<Value, OperationError> {
-    let mut attrs = serde_json::Map::new();
-    attrs.insert("person_id".into(), json!(person_id));
-    for field in [
-        "medication_id",
-        "source_dosage_option_id",
-        "dose_amount",
-        "dose_unit",
-        "dose_cycle",
-        "notes",
-        "min_hours_between_doses",
-    ] {
-        if let Some(value) = browser_forms::optional(draft, field) {
-            if field == "min_hours_between_doses"
-                && !whole_hours_or_unchanged(&value, existing.and_then(|record| record.get(field)))
-            {
-                return Err(invalid(field, "must be a whole number"));
-            }
-            attrs.insert(field.into(), json!(value));
-        }
-    }
-    if draft.contains_key("notes") {
-        attrs.insert("notes".into(), json!(browser_forms::field(draft, "notes")));
-    }
-    if draft.contains_key("min_hours_between_doses")
-        && browser_forms::optional(draft, "min_hours_between_doses").is_none()
+) -> Result<FormInput, OperationError> {
+    let person_id = person_id
+        .parse::<PersonId>()
+        .map_err(|_| invalid("person_id", "is invalid"))?;
+    let medication_id = browser_forms::optional(draft, "medication_id")
+        .map(|value| {
+            value
+                .parse::<MedicationId>()
+                .map_err(|_| invalid("medication_id", "is invalid"))
+        })
+        .transpose()?;
+    let source_dosage_option_id = browser_forms::optional(draft, "source_dosage_option_id")
+        .map(|value| {
+            value
+                .parse::<DosageOptionId>()
+                .map_err(|_| invalid("source_dosage_option_id", "is invalid"))
+        })
+        .transpose()?;
+    let dose_amount = browser_forms::optional(draft, "dose_amount")
+        .map(|value| {
+            value
+                .parse::<sea_orm::prelude::Decimal>()
+                .map_err(|_| invalid("dose_amount", "must be a decimal string"))
+        })
+        .transpose()?;
+    let dose_unit = browser_forms::optional(draft, "dose_unit");
+    let dose_cycle = browser_forms::optional(draft, "dose_cycle")
+        .map(|value| DoseCycle::parse(&value).ok_or_else(|| invalid("dose_cycle", "is invalid")))
+        .transpose()?;
+    let notes = draft
+        .contains_key("notes")
+        .then(|| browser_forms::field(draft, "notes").to_owned());
+    let min_hours_between_doses = if let Some(value) =
+        browser_forms::optional(draft, "min_hours_between_doses")
     {
-        attrs.insert("min_hours_between_doses".into(), Value::Null);
-    }
-    if let Some(value) = browser_forms::optional(draft, "max_daily_doses") {
-        attrs.insert(
-            "max_daily_doses".into(),
-            json!(
-                value
-                    .parse::<i64>()
-                    .map_err(|_| invalid("max_daily_doses", "must be a whole number"))?
-            ),
-        );
-    }
+        if !whole_hours_or_unchanged(
+            &value,
+            existing.and_then(|record| record.get("min_hours_between_doses")),
+        ) {
+            return Err(invalid("min_hours_between_doses", "must be a whole number"));
+        }
+        let value = value
+            .parse::<sea_orm::prelude::Decimal>()
+            .ok()
+            .filter(|value| *value > sea_orm::prelude::Decimal::ZERO && value.fract().is_zero())
+            .and_then(|value| value.normalize().to_string().parse::<i32>().ok())
+            .ok_or_else(|| invalid("min_hours_between_doses", "must be a whole positive number"))?;
+        Some(Some(value))
+    } else if draft.contains_key("min_hours_between_doses") {
+        Some(None)
+    } else {
+        None
+    };
+    let max_daily_doses = browser_forms::optional(draft, "max_daily_doses")
+        .map(|value| {
+            value
+                .parse::<i64>()
+                .map_err(|_| invalid("max_daily_doses", "must be a whole number"))
+                .and_then(|value| {
+                    i32::try_from(value)
+                        .ok()
+                        .filter(|value| *value > 0)
+                        .ok_or_else(|| invalid("max_daily_doses", "must be positive"))
+                })
+        })
+        .transpose()?;
     match kind {
         Kind::Schedule => {
-            for field in ["frequency", "start_date", "end_date", "schedule_type"] {
-                attrs.insert(field.into(), json!(browser_forms::field(draft, field)));
-            }
-            attrs.insert("schedule_config".into(), configuration(draft, existing)?);
+            let parse_date = |field| {
+                let raw = browser_forms::field(draft, field);
+                if raw.len() != 10 {
+                    return Err(invalid(field, "must be a date"));
+                }
+                chrono::NaiveDate::parse_from_str(raw, "%Y-%m-%d")
+                    .map_err(|_| invalid(field, "must be a date"))
+            };
+            let schedule_type = ScheduleType::parse(browser_forms::field(draft, "schedule_type"))
+                .ok_or_else(|| invalid("schedule_type", "is invalid"))?;
+            Ok(FormInput::Schedule(
+                treatments::ScheduleInput {
+                    person_id: Some(person_id),
+                    medication_id,
+                    source_dosage_option_id,
+                    dose_amount,
+                    dose_unit,
+                    frequency: Some(browser_forms::field(draft, "frequency").to_owned()),
+                    start_date: Some(parse_date("start_date")?),
+                    end_date: Some(parse_date("end_date")?),
+                    notes,
+                    max_daily_doses,
+                    min_hours_between_doses,
+                    dose_cycle,
+                    schedule_type: Some(schedule_type),
+                    schedule_config: Some(configuration(draft, existing)?),
+                }
+                .validated()?,
+            ))
         }
         Kind::Assignment => {
-            attrs.insert(
-                "administration_kind".into(),
-                json!(browser_forms::field(draft, "administration_kind")),
-            );
+            let administration_kind =
+                AdministrationKind::parse(browser_forms::field(draft, "administration_kind"))
+                    .ok_or_else(|| invalid("administration_kind", "is invalid"))?;
+            Ok(FormInput::Assignment(
+                assignments::Attributes {
+                    person_id: Some(person_id),
+                    medication_id,
+                    source_dosage_option_id,
+                    dose_amount,
+                    dose_unit,
+                    administration_kind: Some(administration_kind),
+                    notes,
+                    max_daily_doses,
+                    min_hours_between_doses,
+                    dose_cycle,
+                }
+                .validated(existing.is_none())?,
+            ))
         }
     }
-    Ok(json!({kind.envelope():attrs}))
 }
 
 fn invalid(field: &str, message: &str) -> OperationError {
@@ -353,4 +426,55 @@ pub(crate) fn configuration(
         config.insert("taper_steps".into(), json!(steps));
     }
     Ok(Value::Object(config))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sea_orm::prelude::Decimal;
+
+    #[test]
+    fn form_builds_typed_schedule_with_exact_amount_and_date() {
+        let draft = HashMap::from([
+            ("medication_id".into(), "80001".into()),
+            ("dose_amount".into(), "0.10".into()),
+            ("dose_unit".into(), "tablet".into()),
+            ("start_date".into(), "2026-10-22".into()),
+            ("end_date".into(), "2026-11-22".into()),
+            ("schedule_type".into(), "daily".into()),
+            ("times".into(), "08:00".into()),
+            ("step_count".into(), "0".into()),
+        ]);
+        let FormInput::Schedule(input) = body(Kind::Schedule, "73001", &draft, None).unwrap()
+        else {
+            panic!("expected schedule input");
+        };
+        assert_eq!(
+            input.as_ref().dose_amount,
+            Some("0.10".parse::<Decimal>().unwrap())
+        );
+        assert_eq!(
+            input.as_ref().start_date,
+            Some("2026-10-22".parse().unwrap())
+        );
+        assert_eq!(
+            input.as_ref().schedule_config.as_ref().unwrap()["times"],
+            json!(["08:00"])
+        );
+    }
+
+    #[test]
+    fn form_rejects_non_padded_schedule_dates() {
+        let draft = HashMap::from([
+            ("medication_id".into(), "80001".into()),
+            ("dose_amount".into(), "1".into()),
+            ("dose_unit".into(), "tablet".into()),
+            ("start_date".into(), "2026-1-2".into()),
+            ("end_date".into(), "2026-11-22".into()),
+            ("schedule_type".into(), "daily".into()),
+            ("step_count".into(), "0".into()),
+        ]);
+        let result = body(Kind::Schedule, "73001", &draft, None);
+        assert!(matches!(result, Err(OperationError::Validation { .. })));
+    }
 }
