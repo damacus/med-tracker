@@ -14,8 +14,9 @@ variable is absent. Do not use that development key in production.
 
 Loco uses Better Auth’s native schema, store and authentication plugins. It starts
 with fresh authentication data: Rails passwords, authenticator enrolments,
-passkeys, sessions and recovery tokens are not imported. The native migration
-refuses a populated authentication database; it does not reset or adopt one.
+passkeys, sessions and recovery tokens are not imported. Schema setup creates the
+native tables directly, without transitional credential tables or auth-data
+conversion. Use a new empty database; setup does not reset or adopt a populated one.
 Provisioning or replacing any populated database requires separate approval.
 
 Users enrol native credentials and use native MFA backup codes or email/password

@@ -58,7 +58,6 @@ CREATE INDEX idx_on_pharmacologic_classes_df53f96090 ON public.medication_review
 
 CREATE UNIQUE INDEX idx_one_active_retention_hold_per_household ON public.household_retention_holds USING btree (household_id) WHERE ((status)::text = 'active'::text);
 
-CREATE UNIQUE INDEX index_accounts_on_email ON public.accounts USING btree (email) WHERE (status = ANY (ARRAY[1, 2]));
 
 CREATE UNIQUE INDEX index_accounts_on_person_id ON public.accounts USING btree (person_id);
 

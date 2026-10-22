@@ -1,13 +1,3 @@
-CREATE SEQUENCE public.account_identities_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.account_identities_id_seq OWNER TO med_tracker_owner;
-
 CREATE SEQUENCE public.account_lockouts_account_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -28,16 +18,6 @@ CREATE SEQUENCE public.account_login_failures_account_id_seq
 
 ALTER SEQUENCE public.account_login_failures_account_id_seq OWNER TO med_tracker_owner;
 
-CREATE SEQUENCE public.account_otp_keys_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.account_otp_keys_id_seq OWNER TO med_tracker_owner;
-
 CREATE SEQUENCE public.account_webauthn_auth_challenges_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -47,26 +27,6 @@ CREATE SEQUENCE public.account_webauthn_auth_challenges_id_seq
 
 
 ALTER SEQUENCE public.account_webauthn_auth_challenges_id_seq OWNER TO med_tracker_owner;
-
-CREATE SEQUENCE public.account_webauthn_keys_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.account_webauthn_keys_id_seq OWNER TO med_tracker_owner;
-
-CREATE SEQUENCE public.account_webauthn_user_ids_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.account_webauthn_user_ids_id_seq OWNER TO med_tracker_owner;
 
 CREATE SEQUENCE public.accounts_id_seq
     START WITH 1
@@ -668,19 +628,11 @@ CREATE SEQUENCE public.versions_id_seq
 
 ALTER SEQUENCE public.versions_id_seq OWNER TO med_tracker_owner;
 
-ALTER SEQUENCE public.account_identities_id_seq OWNED BY public.account_identities.id;
-
 ALTER SEQUENCE public.account_lockouts_account_id_seq OWNED BY public.account_lockouts.account_id;
 
 ALTER SEQUENCE public.account_login_failures_account_id_seq OWNED BY public.account_login_failures.account_id;
 
-ALTER SEQUENCE public.account_otp_keys_id_seq OWNED BY public.account_otp_keys.id;
-
 ALTER SEQUENCE public.account_webauthn_auth_challenges_id_seq OWNED BY public.account_webauthn_auth_challenges.id;
-
-ALTER SEQUENCE public.account_webauthn_keys_id_seq OWNED BY public.account_webauthn_keys.id;
-
-ALTER SEQUENCE public.account_webauthn_user_ids_id_seq OWNED BY public.account_webauthn_user_ids.id;
 
 ALTER SEQUENCE public.accounts_id_seq OWNED BY public.accounts.id;
 
@@ -802,19 +754,11 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 ALTER SEQUENCE public.versions_id_seq OWNED BY public.versions.id;
 
-ALTER TABLE ONLY public.account_identities ALTER COLUMN id SET DEFAULT nextval('public.account_identities_id_seq'::regclass);
-
 ALTER TABLE ONLY public.account_lockouts ALTER COLUMN account_id SET DEFAULT nextval('public.account_lockouts_account_id_seq'::regclass);
 
 ALTER TABLE ONLY public.account_login_failures ALTER COLUMN account_id SET DEFAULT nextval('public.account_login_failures_account_id_seq'::regclass);
 
-ALTER TABLE ONLY public.account_otp_keys ALTER COLUMN id SET DEFAULT nextval('public.account_otp_keys_id_seq'::regclass);
-
 ALTER TABLE ONLY public.account_webauthn_auth_challenges ALTER COLUMN id SET DEFAULT nextval('public.account_webauthn_auth_challenges_id_seq'::regclass);
-
-ALTER TABLE ONLY public.account_webauthn_keys ALTER COLUMN id SET DEFAULT nextval('public.account_webauthn_keys_id_seq'::regclass);
-
-ALTER TABLE ONLY public.account_webauthn_user_ids ALTER COLUMN id SET DEFAULT nextval('public.account_webauthn_user_ids_id_seq'::regclass);
 
 ALTER TABLE ONLY public.accounts ALTER COLUMN id SET DEFAULT nextval('public.accounts_id_seq'::regclass);
 
