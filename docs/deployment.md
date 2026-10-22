@@ -1,12 +1,20 @@
 # Deployment
 
-The existing container-publishing workflow builds Rails. Root Loco is the fresh
-Rust application; use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md)
+The Loco Linux images workflow builds and checks the Rust image; publication
+is a separate manual step. The existing Rails publisher remains separate.
+Root Loco is the fresh Rust application; use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md)
 for its image, configuration, database and recovery guidance. There is no separate
 rehearsal or runtime evidence dossier before the owner's normal version upgrade.
 
 The Rails Compose and operator commands below remain reference material. They
 are not the Rust rollout procedure.
+
+There is no supported rollback from 0.6 to Rails. A full Rails export at the
+transition is an operator action, not an automatic import or a claim that an
+export has already happened. Any retained Rails site contains only its
+pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
+returning to the old site would not carry those records back. These notes do
+not promise that Rails can import that export or provide a lossless switchback.
 
 ## Loco authentication secrets
 
