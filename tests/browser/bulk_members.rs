@@ -1,7 +1,65 @@
 use crate::harness::{self, named};
+use med_tracker::models::entities::{membership, person, security_audit_event};
 use playwright_rs::expect;
 use playwright_rs::protocol::{Animations, AriaRole, Page, ScreenshotOptions, Viewport};
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
+use sea_orm::sea_query::Expr;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
+};
+
+async fn add_members(admin: &sea_orm::DatabaseConnection, range: std::ops::RangeInclusive<i64>) {
+    for n in range {
+        let now = chrono::Utc::now().naive_utc();
+        let name = match n {
+            1 => "Bulk Alpha".to_owned(),
+            2 => "Bulk Beta".to_owned(),
+            _ => format!("Bulk Member {n}"),
+        };
+        person::ActiveModel {
+            id: Set(73500 + n),
+            name: Set(name),
+            person_type: Set(0),
+            has_capacity: Set(true),
+            portable_id: Set(uuid::Uuid::new_v4().to_string()),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(admin)
+        .await
+        .unwrap();
+        membership::ActiveModel {
+            id: Set(74500 + n),
+            household_id: Set(72001),
+            person_id: Set(73500 + n),
+            role: Set("member".into()),
+            status: Set(if n == 2 { "suspended" } else { "active" }.into()),
+            joined_at: Set(now),
+            created_at: Set(now),
+            updated_at: Set(now),
+            permissions_version: Set(1),
+            ..Default::default()
+        }
+        .insert(admin)
+        .await
+        .unwrap();
+    }
+}
+async fn cancellation_state(admin: &sea_orm::DatabaseConnection) -> (Vec<membership::Model>, u64) {
+    let states = membership::Entity::find()
+        .filter(membership::Column::Id.is_in([74501, 74502]))
+        .order_by_asc(membership::Column::Id)
+        .all(admin)
+        .await
+        .unwrap();
+    let audits = security_audit_event::Entity::find()
+        .filter(security_audit_event::Column::HouseholdId.eq(72001))
+        .filter(security_audit_event::Column::EventType.eq("household_access.membership_changed"))
+        .count(admin)
+        .await
+        .unwrap();
+    (states, audits)
+}
 
 async fn capture(page: &Page, name: &str) {
     expect(page.locator("body[data-navigation-ready]"))
@@ -36,7 +94,9 @@ async fn capture(page: &Page, name: &str) {
 #[ignore = "browser journeys run through task test:browser"]
 async fn bulk_member_selection_confirmation_partial_retry_and_responsive_journey() {
     harness::journey(Viewport{width:1440,height:1000},|journey|Box::pin(async move {
-        journey.admin.execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) SELECT 73500+n,CASE n WHEN 1 THEN 'Bulk Alpha' WHEN 2 THEN 'Bulk Beta' ELSE 'Bulk Member '||n END,0,true,now(),now() FROM generate_series(1,3) n; INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) SELECT 74500+n,72001,73500+n,'member',CASE n WHEN 2 THEN 'suspended' ELSE 'active' END,now(),now(),now() FROM generate_series(1,3) n").await.unwrap();
+        membership::Entity::update_many().col_expr(membership::Column::Role, Expr::value("owner"))
+            .filter(membership::Column::Id.eq(74001)).exec(&journey.admin).await.unwrap();
+        add_members(&journey.admin, 1..=3).await;
         harness::sign_in(journey).await;
         let page=&journey.page;
         let listing=format!("{}/households/persistence-fixture/admin/users?q=Bulk&lang=en",journey.origin);
@@ -46,7 +106,7 @@ async fn bulk_member_selection_confirmation_partial_retry_and_responsive_journey
             capture(page,&format!("selection-{width}")).await;
             assert!(page.evaluate::<(),bool>("() => getComputedStyle(document.querySelector('thead')).display !== 'none' && [...document.querySelectorAll('thead th')].every(th=>th.scope==='col') && document.querySelector('td[headers]').getAttribute('headers').includes('member-row-')",None).await.unwrap());
         }
-        journey.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) SELECT 73500+n,'Bulk Member '||n,0,true,now(),now() FROM generate_series(4,27) n; INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) SELECT 74500+n,72001,73500+n,'member','active',now(),now(),now() FROM generate_series(4,27) n").await.unwrap();
+        add_members(&journey.admin, 4..=27).await;
         page.goto(&listing,None).await.unwrap();
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         page.get_by_label("Select everyone on this page",true).press("Space",None).await.unwrap();
@@ -65,8 +125,7 @@ async fn bulk_member_selection_confirmation_partial_retry_and_responsive_journey
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         page.get_by_label("Select Bulk Alpha",true).press("Space",None).await.unwrap();
         page.get_by_label("Select Bulk Beta",true).press("Space",None).await.unwrap();
-        let unchanged_sql="SELECT jsonb_build_object('states',(SELECT jsonb_agg(jsonb_build_array(id,status,permissions_version,updated_at) ORDER BY id) FROM household_memberships WHERE id IN (74501,74502)),'audits',(SELECT count(*) FROM security_audit_events WHERE household_id=72001 AND event_type='household_access.membership_changed' AND metadata->>'target_membership_id' IN ('74501','74502'))) AS snapshot";
-        let before_cancel:serde_json::Value=journey.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,unchanged_sql)).await.unwrap().unwrap().try_get("","snapshot").unwrap();
+        let before_cancel = cancellation_state(&journey.admin).await;
         page.get_by_role(AriaRole::Button,named("Suspend selected")).press("Enter",None).await.unwrap();
         expect(page.get_by_role(AriaRole::Button,named("Confirm Suspend"))).to_be_visible().await.unwrap();
         page.get_by_role(AriaRole::Link,named("Back to members")).press("Enter",None).await.unwrap();
@@ -75,7 +134,7 @@ async fn bulk_member_selection_confirmation_partial_retry_and_responsive_journey
             assert!(page.url().contains(context),"missing returned context {context}: {}",page.url());
         }
         assert_eq!(page.evaluate::<(),i64>("() => document.querySelectorAll('input[name=membership_ids]:checked').length",None).await.unwrap(),0);
-        let after_cancel:serde_json::Value=journey.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,unchanged_sql)).await.unwrap().unwrap().try_get("","snapshot").unwrap();
+        let after_cancel = cancellation_state(&journey.admin).await;
         assert_eq!(after_cancel,before_cancel,"cancelling preview must not change member state or target audit");
         page.get_by_label("Select Bulk Alpha",true).press("Space",None).await.unwrap();
         page.get_by_label("Select Bulk Beta",true).press("Space",None).await.unwrap();

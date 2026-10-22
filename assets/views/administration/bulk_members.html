@@ -9,6 +9,7 @@
 <form method="post" action="/households/{{ slug }}/admin/users/bulk{% if confirmed %}/preview{% endif %}" class="shell-panel p-4 mt-5">
 <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
 <input type="hidden" name="action" value="{{ action }}">
+{% if review_id %}<input type="hidden" name="review_id" value="{{ review_id }}">{% endif %}
 {% for field in ["q","role","status","sort","direction","page","lang"] %}{% if context[field] is defined %}<input type="hidden" name="{{ field }}" value="{{ context[field] }}">{% endif %}{% endfor %}
 {% if not confirmed %}<input type="hidden" name="confirmation" value="{{ action }}">{% endif %}
 <ul class="divide-y divide-base-300">

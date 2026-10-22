@@ -1,9 +1,10 @@
 use super::*;
 use administration::member_browser::{self, MemberQuery, MembershipId};
 use administration::memberships::{self, LifecycleAction};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(Clone, Copy, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum Action {
     Suspend,
@@ -36,6 +37,7 @@ struct Submission {
     context: HashMap<String, String>,
     query: MemberQuery,
     language: &'static str,
+    review_id: Option<Uuid>,
 }
 impl Submission {
     fn parse(
@@ -67,6 +69,7 @@ impl Submission {
                 "direction",
                 "page",
                 "lang",
+                "review_id",
             ]
             .contains(&key.as_str())
                 || context.insert(key, value).is_some()
@@ -86,12 +89,20 @@ impl Submission {
             None => "en",
         };
         let query = MemberQuery::from_form(&context)?;
+        let review_id = context
+            .get("review_id")
+            .map(|value| Uuid::parse_str(value).map_err(|_| invalid()))
+            .transpose()?;
+        if confirmed && review_id.is_none() {
+            return Err(invalid());
+        }
         Ok(Self {
             ids,
             action,
             context,
             query,
             language,
+            review_id,
         })
     }
 }
@@ -100,6 +111,96 @@ fn invalid() -> OperationError {
         details: json!({"errors":{"base":["Select between 1 and 25 distinct memberships and a valid action."]}}),
     }
 }
+const REVIEW_KEY: &str = "bulk_member_review";
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum ReviewStage {
+    Reviewed,
+    Retry,
+}
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct ReviewBinding {
+    account: i64,
+    household: i64,
+    session_digest: String,
+}
+#[derive(Serialize, Deserialize)]
+struct ReviewFlow {
+    id: Uuid,
+    binding: ReviewBinding,
+    stage: ReviewStage,
+    ids: Vec<MembershipId>,
+    action: Action,
+    query: MemberQuery,
+    language: String,
+    expires_at: chrono::DateTime<chrono::Utc>,
+}
+pub(super) fn clear_review(session: &Session<SessionPgPool>) {
+    session.remove(REVIEW_KEY);
+}
+fn save_review(
+    session: &Session<SessionPgPool>,
+    submission: &Submission,
+    binding: &ReviewBinding,
+    ids: Vec<MembershipId>,
+    stage: ReviewStage,
+) -> Uuid {
+    let id = Uuid::new_v4();
+    session.set(
+        REVIEW_KEY,
+        ReviewFlow {
+            id,
+            binding: binding.clone(),
+            stage,
+            ids,
+            action: submission.action,
+            query: submission.query.clone(),
+            language: submission.language.to_owned(),
+            expires_at: chrono::Utc::now() + chrono::Duration::minutes(15),
+        },
+    );
+    session.set_store(true);
+    id
+}
+fn consume_review(
+    session: &Session<SessionPgPool>,
+    submission: &Submission,
+    binding: &ReviewBinding,
+    confirmed: bool,
+) -> std::result::Result<(), OperationError> {
+    let flow = session
+        .get_remove::<ReviewFlow>(REVIEW_KEY)
+        .ok_or_else(invalid)?;
+    let expected_stage = if confirmed {
+        ReviewStage::Reviewed
+    } else {
+        ReviewStage::Retry
+    };
+    let mut expected = flow.ids.iter().map(|id| id.get()).collect::<Vec<_>>();
+    let mut supplied = submission.ids.iter().map(|id| id.get()).collect::<Vec<_>>();
+    expected.sort_unstable();
+    supplied.sort_unstable();
+    let ids_match = if confirmed {
+        expected == supplied
+    } else {
+        supplied.iter().all(|id| expected.contains(id))
+    };
+    if Some(flow.id) != submission.review_id
+        || flow.binding != *binding
+        || flow.stage != expected_stage
+        || flow.expires_at <= chrono::Utc::now()
+        || flow.action != submission.action
+        || flow.query != submission.query
+        || flow.language != submission.language
+        || expected.is_empty()
+        || expected.len() > 25
+        || expected.iter().any(|id| *id <= 0)
+        || !ids_match
+    {
+        return Err(invalid());
+    }
+    Ok(())
+}
+
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 enum Outcome {
@@ -123,6 +224,8 @@ struct Snapshot {
     actor_membership: i64,
     account: i64,
     household_name: String,
+    binding: ReviewBinding,
+    review_id: Option<Uuid>,
 }
 
 struct BulkPage<'a> {
@@ -186,12 +289,34 @@ async fn snapshot(
     slug: &str,
     request: &str,
     submission: &Submission,
+    confirmed: bool,
 ) -> std::result::Result<Snapshot, OperationError> {
     let (principal, tenant) = begin(ctx, session, slug, request)
         .await
         .map_err(authentication_operation)?;
     administration::authorize(&tenant).await?;
-    let members = member_browser::selected(&tenant, &submission.ids).await?;
+    let binding = ReviewBinding {
+        account: principal.account_id(),
+        household: tenant.scope().household_id,
+        session_digest: crate::models::identity::better_auth::session_digest(
+            principal.session_token(),
+        ),
+    };
+    let members = if confirmed || submission.review_id.is_some() {
+        consume_review(session, submission, &binding, confirmed)?;
+        member_browser::selected(&tenant, &submission.ids).await?
+    } else {
+        let page = member_browser::list(&tenant, &submission.query).await?;
+        if page.page != submission.query.page
+            || !submission
+                .ids
+                .iter()
+                .all(|id| page.members.iter().any(|member| member.id == *id))
+        {
+            return Err(invalid());
+        }
+        page.members
+    };
     let household_name = administration::overview::household_name(&tenant).await?;
     let actor_membership = tenant.membership().id;
     let account = principal.account_id();
@@ -213,6 +338,8 @@ async fn snapshot(
         actor_membership,
         account,
         household_name,
+        binding,
+        review_id: None,
     })
 }
 fn authentication_operation(error: AuthenticationError) -> OperationError {
@@ -245,7 +372,7 @@ async fn run(page: BulkPage<'_>, fields: Vec<(String, String)>, confirmed: bool)
     {
         return presentation_error(view, submission.language, OperationError::Forbidden);
     }
-    let mut snapshot = match snapshot(ctx, session, slug, &request, &submission).await {
+    let mut snapshot = match snapshot(ctx, session, slug, &request, &submission, confirmed).await {
         Ok(value) => value,
         Err(error) => return presentation_error(view, submission.language, error),
     };
@@ -347,6 +474,32 @@ async fn run(page: BulkPage<'_>, fields: Vec<(String, String)>, confirmed: bool)
             };
         }
     }
+    let retry_ids = snapshot
+        .targets
+        .iter()
+        .filter(|target| !matches!(target.outcome, Some(Outcome::Changed)))
+        .map(|target| target.id)
+        .collect::<Vec<_>>();
+    snapshot.review_id = if !confirmed {
+        Some(save_review(
+            session,
+            &submission,
+            &snapshot.binding,
+            submission.ids.clone(),
+            ReviewStage::Reviewed,
+        ))
+    } else if can_manage && !retry_ids.is_empty() {
+        Some(save_review(
+            session,
+            &submission,
+            &snapshot.binding,
+            retry_ids,
+            ReviewStage::Retry,
+        ))
+    } else {
+        clear_review(session);
+        None
+    };
     render(
         view,
         token,
@@ -420,6 +573,7 @@ fn render(
                 .any(|target| !matches!(target.outcome, Some(Outcome::Changed)))
     );
     data["context"] = json!(submission.context);
+    data["review_id"] = json!(snapshot.review_id);
     data["return_url"] = json!(format!(
         "/households/{slug}/admin/users{}",
         submission.query.suffix(

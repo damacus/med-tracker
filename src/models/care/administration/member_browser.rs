@@ -1,9 +1,10 @@
 use crate::models::{access::TenantTransaction, errors::OperationError};
 use sea_orm::{ConnectionTrait, DbBackend, Statement};
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_json::json;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum MemberRole {
     #[default]
     All,
@@ -31,7 +32,8 @@ impl Serialize for MemberRole {
         })
     }
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum MemberStatus {
     #[default]
     All,
@@ -60,7 +62,7 @@ impl Serialize for MemberStatus {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct MembershipId(i64);
 impl MembershipId {
@@ -99,7 +101,8 @@ impl LegacyUserId {
         self.0
     }
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum MemberSort {
     #[default]
     Name,
@@ -107,14 +110,15 @@ pub enum MemberSort {
     Role,
     Status,
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SortDirection {
     #[default]
     Asc,
     Desc,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MemberQuery {
     pub return_to_member: bool,
     pub search: String,
@@ -426,26 +430,45 @@ pub async fn selected(
     tenant: &TenantTransaction,
     ids: &[MembershipId],
 ) -> Result<Vec<MemberRow>, OperationError> {
+    use crate::models::entities::membership;
+    use sea_orm::sea_query::{
+        Alias, Expr, ExprTrait, Func, IntoIden, JoinType, Order, Query, TableRef,
+    };
     if ids.is_empty() || ids.len() > 25 {
         return Err(OperationError::Unavailable);
     }
     super::authorize(tenant).await?;
-    let placeholders = (2..ids.len() + 2)
-        .map(|i| format!("${i}"))
-        .collect::<Vec<_>>()
-        .join(",");
-    let sql = format!(
-        "SELECT m.id,identity.name,identity.email,m.role,m.status FROM household_memberships m JOIN med_tracker.member_directory_identity() identity ON identity.membership_id=m.id WHERE m.household_id=$1 AND m.id IN ({placeholders}) ORDER BY m.id LIMIT 25"
-    );
-    let mut values: Vec<sea_orm::Value> = vec![tenant.scope().household_id.into()];
-    values.extend(ids.iter().map(|id| id.get().into()));
+    let identity = Alias::new("identity");
+    let mut query = Query::select();
+    query
+        .column((membership::Entity, membership::Column::Id))
+        .column((identity.clone(), Alias::new("name")))
+        .column((identity.clone(), Alias::new("email")))
+        .column((membership::Entity, membership::Column::Role))
+        .column((membership::Entity, membership::Column::Status))
+        .from(membership::Entity)
+        .join(
+            JoinType::InnerJoin,
+            TableRef::FunctionCall(
+                Func::cust(Alias::new("med_tracker.member_directory_identity")),
+                identity.clone().into_iden(),
+            ),
+            Expr::col((identity, Alias::new("membership_id")))
+                .equals((membership::Entity, membership::Column::Id)),
+        )
+        .and_where(
+            Expr::col((membership::Entity, membership::Column::HouseholdId))
+                .eq(tenant.scope().household_id),
+        )
+        .and_where(
+            Expr::col((membership::Entity, membership::Column::Id))
+                .is_in(ids.iter().map(|id| id.get())),
+        )
+        .order_by((membership::Entity, membership::Column::Id), Order::Asc)
+        .limit(25);
     tenant
         .transaction()
-        .query_all_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            sql,
-            values,
-        ))
+        .query_all(&query)
         .await?
         .into_iter()
         .map(member_row)

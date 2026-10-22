@@ -1,6 +1,11 @@
 use super::administration_overview::{authenticity_token, select_household};
 use super::*;
 use base64::Engine as _;
+use med_tracker::models::entities::{
+    account_lockout, household, membership, person, security_audit_event,
+};
+use sea_orm::sea_query::{Expr, ExprTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -11,13 +16,151 @@ async fn setup() -> (Fixture, BootResult, TestServer) {
             json!({"key":key,"secure":false});
     })
     .await;
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73061,'Bulk Alpha',0,true,now(),now()),(73062,'Bulk Beta',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74061,72001,73061,'member','active',now(),now(),now()),(74062,72001,73062,'member','suspended',now(),now(),now())").await.unwrap();
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Role, Expr::value("owner"))
+        .filter(membership::Column::Id.eq(74001))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    add_member(&fixture, 73061, 74061, "Bulk Alpha", "active")
+        .await
+        .unwrap();
+    add_member(&fixture, 73062, 74062, "Bulk Beta", "suspended")
+        .await
+        .unwrap();
     let mut request = server(&boot);
     request.save_cookies();
     select_household(&request, &fixture, &boot).await.unwrap();
     (fixture, boot, request)
 }
 
+async fn add_member(
+    fixture: &Fixture,
+    person_id: i64,
+    id: i64,
+    name: &str,
+    status: &str,
+) -> TestResult {
+    let now = chrono::Utc::now().naive_utc();
+    person::ActiveModel {
+        id: Set(person_id),
+        name: Set(name.into()),
+        person_type: Set(0),
+        has_capacity: Set(true),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    membership::ActiveModel {
+        id: Set(id),
+        household_id: Set(72001),
+        person_id: Set(person_id),
+        role: Set("member".into()),
+        status: Set(status.into()),
+        permissions_version: Set(1),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    Ok(())
+}
+fn field(html: &str, name: &str) -> String {
+    let document = scraper::Html::parse_document(html);
+    let selector = scraper::Selector::parse(&format!("input[name='{name}']")).unwrap();
+    document
+        .select(&selector)
+        .next()
+        .and_then(|input| input.value().attr("value"))
+        .unwrap()
+        .to_owned()
+}
+async fn review(request: &TestServer, csrf: &str, ids: &[&str], action: &str) -> Reply {
+    review_context(request, csrf, ids, action, "Bulk", None).await
+}
+async fn review_context(
+    request: &TestServer,
+    csrf: &str,
+    ids: &[&str],
+    action: &str,
+    query: &str,
+    review_id: Option<&str>,
+) -> Reply {
+    let mut fields = vec![
+        ("authenticity_token".to_owned(), csrf.to_owned()),
+        ("action".into(), action.into()),
+        ("q".into(), query.into()),
+        ("status".into(), "all".into()),
+        ("sort".into(), "name".into()),
+        ("direction".into(), "desc".into()),
+        ("page".into(), "1".into()),
+        ("lang".into(), "en".into()),
+    ];
+    if let Some(id) = review_id {
+        fields.push(("review_id".into(), id.into()));
+    }
+    fields.extend(
+        ids.iter()
+            .map(|id| ("membership_ids".into(), (*id).to_owned())),
+    );
+    let response = request
+        .post("/households/persistence-fixture/admin/users/bulk/preview")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&fields)
+        .await;
+    Reply {
+        status: response.status_code().as_u16(),
+        body: response.text(),
+    }
+}
+async fn apply_review(
+    request: &TestServer,
+    csrf: &str,
+    ids: &[&str],
+    action: &str,
+    review_id: &str,
+) -> Reply {
+    apply_context(request, csrf, ids, action, review_id, "Bulk").await
+}
+async fn apply_context(
+    request: &TestServer,
+    csrf: &str,
+    ids: &[&str],
+    action: &str,
+    review_id: &str,
+    query: &str,
+) -> Reply {
+    let mut fields = vec![
+        ("authenticity_token".to_string(), csrf.to_string()),
+        ("action".into(), action.into()),
+        ("confirmation".into(), action.into()),
+        ("review_id".into(), review_id.into()),
+        ("q".into(), query.into()),
+        ("status".into(), "all".into()),
+        ("sort".into(), "name".into()),
+        ("direction".into(), "desc".into()),
+        ("page".into(), "1".into()),
+        ("lang".into(), "en".into()),
+    ];
+    fields.extend(
+        ids.iter()
+            .map(|id| ("membership_ids".into(), (*id).to_owned())),
+    );
+    let response = request
+        .post("/households/persistence-fixture/admin/users/bulk")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&fields)
+        .await;
+    Reply {
+        status: response.status_code().as_u16(),
+        body: response.text(),
+    }
+}
 #[tokio::test]
 async fn bulk_member_preview_confirms_named_targets_without_mutation() -> TestResult {
     let (fixture, boot, request) = setup().await;
@@ -39,7 +182,7 @@ async fn bulk_member_preview_confirms_named_targets_without_mutation() -> TestRe
     );
 
     let listing = request
-        .get("/households/persistence-fixture/admin/users?status=active&lang=en")
+        .get("/households/persistence-fixture/admin/users?status=all&lang=en")
         .await;
     let html = listing.text();
     let token = authenticity_token(&html).ok_or("csrf missing")?;
@@ -51,7 +194,7 @@ async fn bulk_member_preview_confirms_named_targets_without_mutation() -> TestRe
             ("action", "suspend"),
             ("membership_ids", "74061"),
             ("membership_ids", "74062"),
-            ("status", "active"),
+            ("status", "all"),
             ("lang", "en"),
         ])
         .await;
@@ -59,15 +202,7 @@ async fn bulk_member_preview_confirms_named_targets_without_mutation() -> TestRe
     assert!(preview.text().contains("Bulk Alpha"));
     assert!(preview.text().contains("Bulk Beta"));
     assert!(preview.text().contains("Confirm Suspend"));
-    let row = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status FROM household_memberships WHERE id=74061",
-        ))
-        .await?
-        .ok_or("state missing")?;
-    assert_eq!(row.try_get::<String>("", "status")?, "active");
+    assert_eq!(status(&fixture, 74061).await, "active");
     drop(request);
     close(fixture, boot).await;
     Ok(())
@@ -91,58 +226,89 @@ impl Reply {
         &self.body
     }
 }
-async fn submit(request: &TestServer, token: &str, ids: &[&str], action: &str) -> Reply {
-    let mut fields = vec![
-        ("authenticity_token".to_string(), token.to_string()),
-        ("action".into(), action.into()),
-        ("confirmation".into(), action.into()),
-        ("q".into(), "Bulk".into()),
-        ("status".into(), "active".into()),
-        ("sort".into(), "name".into()),
-        ("direction".into(), "desc".into()),
-        ("page".into(), "2".into()),
-        ("lang".into(), "en".into()),
-    ];
-    fields.extend(
-        ids.iter()
-            .map(|id| ("membership_ids".into(), (*id).to_string())),
-    );
-    let response = request
-        .post("/households/persistence-fixture/admin/users/bulk")
-        .add_header("sec-fetch-site", "same-origin")
-        .form(&fields)
-        .await;
-    Reply {
-        status: response.status_code().as_u16(),
-        body: response.text(),
+async fn submit(request: &TestServer, csrf: &str, ids: &[&str], action: &str) -> Reply {
+    let reviewed = review(request, csrf, ids, action).await;
+    if reviewed.status_code() != 200 {
+        return reviewed;
     }
+    apply_review(
+        request,
+        csrf,
+        ids,
+        action,
+        &field(reviewed.text(), "review_id"),
+    )
+    .await
 }
 async fn status(fixture: &Fixture, id: i64) -> String {
-    fixture
-        .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status FROM household_memberships WHERE id=$1",
-            [id.into()],
-        ))
+    membership::Entity::find_by_id(id)
+        .one(&fixture.admin)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "status")
-        .unwrap()
+        .status
 }
-async fn audit_count(fixture: &Fixture, outcome: &str) -> i64 {
-    fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT count(*) AS count FROM security_audit_events WHERE event_type='household_access.membership_changed' AND metadata->>'outcome'=$1",[outcome.into()])).await.unwrap().unwrap().try_get("","count").unwrap()
+async fn audit_count(fixture: &Fixture, outcome: &str) -> u64 {
+    security_audit_event::Entity::find()
+        .filter(security_audit_event::Column::HouseholdId.eq(72001))
+        .filter(security_audit_event::Column::EventType.eq("household_access.membership_changed"))
+        .filter(
+            sea_orm::sea_query::extension::postgres::PgExpr::cast_json_field(
+                Expr::col(security_audit_event::Column::Metadata),
+                "outcome",
+            )
+            .eq(outcome),
+        )
+        .count(&fixture.admin)
+        .await
+        .unwrap()
 }
 #[tokio::test]
 async fn bulk_member_partial_success_retains_failed_targets_and_context() -> TestResult {
     let (fixture, boot, request) = setup().await;
-    fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Foreign','foreign-bulk','UTC',now(),now()); INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73063,'Foreign secret identity',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74063,72002,73063,'member','active',now(),now(),now())").await?;
-    let response = submit(
+    add_member(&fixture, 73063, 74063, "Bulk Foreign", "active").await?;
+    add_member(&fixture, 73064, 74064, "Bulk Missing", "active").await?;
+    let csrf = token(&request).await;
+    let reviewed = review(
         &request,
-        &token(&request).await,
-        &["74061", "74062", "74063", "99999"],
+        &csrf,
+        &["74061", "74062", "74063", "74064"],
         "suspend",
+    )
+    .await;
+    assert_eq!(reviewed.status_code(), 200, "{}", reviewed.text());
+    let now = chrono::Utc::now().naive_utc();
+    household::ActiveModel {
+        id: Set(72002),
+        created_by_account_id: Set(Some(71001)),
+        name: Set("Foreign".into()),
+        slug: Set("foreign-bulk".into()),
+        timezone: Set("UTC".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    membership::Entity::update_many()
+        .col_expr(membership::Column::HouseholdId, Expr::value(72002))
+        .filter(membership::Column::Id.eq(74063))
+        .exec(&fixture.admin)
+        .await?;
+    person::Entity::update_many()
+        .col_expr(person::Column::Name, Expr::value("Foreign secret identity"))
+        .filter(person::Column::Id.eq(73063))
+        .exec(&fixture.admin)
+        .await?;
+    membership::Entity::delete_by_id(74064)
+        .exec(&fixture.admin)
+        .await?;
+    let response = apply_review(
+        &request,
+        &csrf,
+        &["74061", "74062", "74063", "74064"],
+        "suspend",
+        &field(reviewed.text(), "review_id"),
     )
     .await;
     assert_eq!(response.status_code(), 200, "{}", response.text());
@@ -152,9 +318,9 @@ async fn bulk_member_partial_success_retains_failed_targets_and_context() -> Tes
     assert!(!html.contains("Foreign secret identity"));
     assert!(html.contains("value=\"74062\" checked"));
     assert!(!html.contains("value=\"74061\" checked"));
-    assert!(html.contains("q=Bulk&amp;role=all&amp;status=active"));
+    assert!(html.contains("q=Bulk&amp;role=all&amp;status=all"));
     assert!(html.contains("direction=desc"));
-    assert!(html.contains("page=2"));
+    assert!(html.contains("page=1"));
     assert!(html.contains("lang=en"));
     assert_eq!(status(&fixture, 74061).await, "suspended");
     assert_eq!(status(&fixture, 74062).await, "suspended");
@@ -199,10 +365,19 @@ async fn bulk_member_invalid_selection_and_csrf_never_mutate() -> TestResult {
     close(fixture, boot).await;
     Ok(())
 }
+// SeaORM 2.0.4 Schema and SeaQuery 1.0.2 SchemaStatement expose no CREATE FUNCTION,
+// CREATE TRIGGER or deferred constraint-trigger builder. The next three fixtures use
+// isolated synthetic PostgreSQL DDL to inject authority, audit and commit failures;
+// ordinary fixture CRUD and assertions use entities/builders.
 #[tokio::test]
 async fn bulk_member_authority_loss_stops_remaining_after_committed_success() -> TestResult {
     let (fixture, boot, request) = setup().await;
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='active' WHERE id=74062; CREATE FUNCTION bulk_remove_actor() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$ BEGIN IF NEW.event_type='household_access.membership_changed' AND NEW.metadata->>'target_membership_id'='74061' THEN UPDATE public.household_memberships SET status='revoked',permissions_version=permissions_version+1 WHERE id=74001; END IF; RETURN NEW; END $$; CREATE TRIGGER bulk_remove_actor AFTER INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION bulk_remove_actor()").await?;
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Status, Expr::value("active"))
+        .filter(membership::Column::Id.eq(74062))
+        .exec(&fixture.admin)
+        .await?;
+    fixture.admin.execute_unprepared(" CREATE FUNCTION bulk_remove_actor() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$ BEGIN IF NEW.event_type='household_access.membership_changed' AND NEW.metadata->>'target_membership_id'='74061' THEN UPDATE public.household_memberships SET status='revoked',permissions_version=permissions_version+1 WHERE id=74001; END IF; RETURN NEW; END $$; CREATE TRIGGER bulk_remove_actor AFTER INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION bulk_remove_actor()").await?;
     let response = submit(
         &request,
         &token(&request).await,
@@ -229,7 +404,12 @@ async fn bulk_member_authority_loss_stops_remaining_after_committed_success() ->
 #[tokio::test]
 async fn bulk_member_audit_failure_rolls_back_without_claiming_success() -> TestResult {
     let (fixture, boot, request) = setup().await;
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='active' WHERE id=74062; CREATE FUNCTION bulk_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='household_access.membership_changed' THEN RAISE EXCEPTION 'Synthetic bulk audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER bulk_reject_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION bulk_reject_audit()").await?;
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Status, Expr::value("active"))
+        .filter(membership::Column::Id.eq(74062))
+        .exec(&fixture.admin)
+        .await?;
+    fixture.admin.execute_unprepared(" CREATE FUNCTION bulk_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='household_access.membership_changed' THEN RAISE EXCEPTION 'Synthetic bulk audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER bulk_reject_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION bulk_reject_audit()").await?;
     let response = submit(
         &request,
         &token(&request).await,
@@ -254,7 +434,13 @@ async fn bulk_member_audit_failure_rolls_back_without_claiming_success() -> Test
 #[tokio::test]
 async fn bulk_member_commit_failure_is_unconfirmed_and_rolls_back() -> TestResult {
     let (fixture, boot, request) = setup().await;
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='active' WHERE id=74062; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73064,'Bulk Gamma',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74064,72001,73064,'member','active',now(),now(),now()); CREATE FUNCTION bulk_reject_commit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='household_access.membership_changed' AND NEW.metadata->>'target_membership_id'='74062' THEN RAISE EXCEPTION 'Synthetic bulk commit rejection'; END IF; RETURN NEW; END $$; CREATE CONSTRAINT TRIGGER bulk_reject_commit AFTER INSERT ON security_audit_events DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION bulk_reject_commit()").await?;
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Status, Expr::value("active"))
+        .filter(membership::Column::Id.eq(74062))
+        .exec(&fixture.admin)
+        .await?;
+    add_member(&fixture, 73064, 74064, "Bulk Gamma", "active").await?;
+    fixture.admin.execute_unprepared(" CREATE FUNCTION bulk_reject_commit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='household_access.membership_changed' AND NEW.metadata->>'target_membership_id'='74062' THEN RAISE EXCEPTION 'Synthetic bulk commit rejection'; END IF; RETURN NEW; END $$; CREATE CONSTRAINT TRIGGER bulk_reject_commit AFTER INSERT ON security_audit_events DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION bulk_reject_commit()").await?;
     let response = submit(
         &request,
         &token(&request).await,
@@ -292,17 +478,22 @@ async fn bulk_member_commit_failure_is_unconfirmed_and_rolls_back() -> TestResul
 #[tokio::test]
 async fn bulk_member_actor_is_last_and_self_removal_renders_no_directory() -> TestResult {
     let (fixture, boot, request) = setup().await;
-    fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE household_memberships SET role='owner',status='active' WHERE id=74062",
-        )
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Role, Expr::value("owner"))
+        .col_expr(membership::Column::Status, Expr::value("active"))
+        .filter(membership::Column::Id.eq(74062))
+        .exec(&fixture.admin)
         .await?;
-    let response = submit(
+    let csrf = token(&request).await;
+    let reviewed = review_context(&request, &csrf, &["74001", "74061"], "revoke", "", None).await;
+    assert_eq!(reviewed.status_code(), 200, "{}", reviewed.text());
+    let response = apply_context(
         &request,
-        &token(&request).await,
+        &csrf,
         &["74001", "74061"],
         "revoke",
+        &field(reviewed.text(), "review_id"),
+        "",
     )
     .await;
     assert_eq!(response.status_code(), 200, "{}", response.text());
@@ -319,24 +510,63 @@ async fn bulk_member_actor_is_last_and_self_removal_renders_no_directory() -> Te
 #[tokio::test]
 async fn bulk_member_concurrent_batches_preserve_last_owner_and_rejection_audit() -> TestResult {
     let (fixture, boot, request) = setup().await;
-    fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE household_memberships SET role='owner',status='active' WHERE id=74062",
-        )
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Role, Expr::value("owner"))
+        .col_expr(membership::Column::Status, Expr::value("active"))
+        .filter(membership::Column::Id.eq(74062))
+        .exec(&fixture.admin)
         .await?;
+    let mut second_request = server(&boot);
+    second_request.save_cookies();
+    select_household(&second_request, &fixture, &boot).await?;
     let csrf = token(&request).await;
+    let second_csrf = token(&second_request).await;
+    let first_review =
+        review_context(&request, &csrf, &["74001", "74062"], "suspend", "", None).await;
+    let second_review = review_context(
+        &second_request,
+        &second_csrf,
+        &["74001", "74062"],
+        "revoke",
+        "",
+        None,
+    )
+    .await;
+    assert_eq!(first_review.status_code(), 200, "{}", first_review.text());
+    assert_eq!(second_review.status_code(), 200, "{}", second_review.text());
+    let first_id = field(first_review.text(), "review_id");
+    let second_id = field(second_review.text(), "review_id");
     let (first, second) = tokio::join!(
-        submit(&request, &csrf, &["74001", "74062"], "suspend"),
-        submit(&request, &csrf, &["74001", "74062"], "revoke")
+        apply_context(
+            &request,
+            &csrf,
+            &["74001", "74062"],
+            "suspend",
+            &first_id,
+            ""
+        ),
+        apply_context(
+            &second_request,
+            &second_csrf,
+            &["74001", "74062"],
+            "revoke",
+            &second_id,
+            ""
+        )
     );
     assert_eq!(first.status_code(), 200, "{}", first.text());
     assert_eq!(second.status_code(), 200, "{}", second.text());
     assert_eq!(status(&fixture, 74001).await, "active");
     assert_ne!(status(&fixture, 74062).await, "active");
     assert!(audit_count(&fixture, "rejected").await >= 2);
-    let owners=fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS count FROM household_memberships WHERE household_id=72001 AND role='owner' AND status='active'")).await?.ok_or("missing owner count")?;
-    assert_eq!(owners.try_get::<i64>("", "count")?, 1);
+    let owners = membership::Entity::find()
+        .filter(membership::Column::HouseholdId.eq(72001))
+        .filter(membership::Column::Role.eq("owner"))
+        .filter(membership::Column::Status.eq("active"))
+        .count(&fixture.admin)
+        .await?;
+    assert_eq!(owners, 1);
+    drop(second_request);
     drop(request);
     close(fixture, boot).await;
     Ok(())
@@ -345,15 +575,23 @@ async fn bulk_member_concurrent_batches_preserve_last_owner_and_rejection_audit(
 #[tokio::test]
 async fn bulk_member_all_success_has_no_empty_retry_and_preserves_escaped_identity() -> TestResult {
     let (fixture, boot, request) = setup().await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET name='<script>private-name</script>' WHERE id=73061")
+    let csrf = token(&request).await;
+    let reviewed = review(&request, &csrf, &["74061", "74062"], "revoke").await;
+    assert_eq!(reviewed.status_code(), 200);
+    person::Entity::update_many()
+        .col_expr(
+            person::Column::Name,
+            Expr::value("<script>private-name</script>"),
+        )
+        .filter(person::Column::Id.eq(73061))
+        .exec(&fixture.admin)
         .await?;
-    let response = submit(
+    let response = apply_review(
         &request,
-        &token(&request).await,
+        &csrf,
         &["74061", "74062"],
         "revoke",
+        &field(reviewed.text(), "review_id"),
     )
     .await;
     assert_eq!(response.status_code(), 200, "{}", response.text());
@@ -404,13 +642,60 @@ async fn bulk_member_rejects_large_unique_selection_and_missing_confirmation() -
 async fn bulk_member_denies_ordinary_revoked_locked_and_inactive_household_actors() -> TestResult {
     let (fixture, boot, request) = setup().await;
     let csrf = token(&request).await;
-    for change in [
-        "UPDATE household_memberships SET role='member' WHERE id=74001",
-        "UPDATE household_memberships SET role='owner',status='revoked',revoked_at=now() WHERE id=74001",
-        "UPDATE household_memberships SET status='active',revoked_at=NULL WHERE id=74001; INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'bulk-lock',now()+interval '1 hour')",
-        "DELETE FROM account_lockouts WHERE account_id=71001; UPDATE households SET lifecycle_state='deletion_requested' WHERE id=72001",
-    ] {
-        fixture.admin.execute_unprepared(change).await?;
+    for scenario in 0..4 {
+        match scenario {
+            0 => {
+                membership::Entity::update_many()
+                    .col_expr(membership::Column::Role, Expr::value("member"))
+                    .filter(membership::Column::Id.eq(74001))
+                    .exec(&fixture.admin)
+                    .await?;
+            }
+            1 => {
+                membership::Entity::update_many()
+                    .col_expr(membership::Column::Role, Expr::value("owner"))
+                    .col_expr(membership::Column::Status, Expr::value("revoked"))
+                    .col_expr(
+                        membership::Column::RevokedAt,
+                        Expr::value(chrono::Utc::now().naive_utc()),
+                    )
+                    .filter(membership::Column::Id.eq(74001))
+                    .exec(&fixture.admin)
+                    .await?;
+            }
+            2 => {
+                membership::Entity::update_many()
+                    .col_expr(membership::Column::Status, Expr::value("active"))
+                    .col_expr(
+                        membership::Column::RevokedAt,
+                        Expr::value(None::<chrono::NaiveDateTime>),
+                    )
+                    .filter(membership::Column::Id.eq(74001))
+                    .exec(&fixture.admin)
+                    .await?;
+                account_lockout::ActiveModel {
+                    account_id: Set(71001),
+                    key: Set("bulk-lock".into()),
+                    deadline: Set((chrono::Utc::now() + chrono::Duration::hours(1)).naive_utc()),
+                    ..Default::default()
+                }
+                .insert(&fixture.admin)
+                .await?;
+            }
+            _ => {
+                account_lockout::Entity::delete_by_id(71001)
+                    .exec(&fixture.admin)
+                    .await?;
+                household::Entity::update_many()
+                    .col_expr(
+                        household::Column::LifecycleState,
+                        Expr::value("deletion_requested"),
+                    )
+                    .filter(household::Column::Id.eq(72001))
+                    .exec(&fixture.admin)
+                    .await?;
+            }
+        }
         assert_eq!(
             submit(&request, &csrf, &["74061"], "suspend")
                 .await
@@ -461,6 +746,236 @@ async fn bulk_member_anonymous_malformed_post_uses_generic_navigation_without_ef
         assert_eq!(audit_count(&fixture, "rejected").await, 0);
     }
     drop(anonymous);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn bulk_review_rejects_filtered_out_initial_target_without_effects() -> TestResult {
+    let (fixture, boot, request) = setup().await;
+    let csrf = token(&request).await;
+    let response = request
+        .post("/households/persistence-fixture/admin/users/bulk/preview")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf.as_str()),
+            ("action", "suspend"),
+            ("membership_ids", "74062"),
+            ("q", "Bulk Alpha"),
+            ("lang", "en"),
+        ])
+        .await;
+    assert_eq!(
+        response.status_code(),
+        422,
+        "filtered-out target must not be reviewable"
+    );
+    assert_eq!(status(&fixture, 74061).await, "active");
+    assert_eq!(status(&fixture, 74062).await, "suspended");
+    assert_eq!(audit_count(&fixture, "success").await, 0);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+#[tokio::test]
+async fn bulk_review_requires_session_confirmation_before_mutation() -> TestResult {
+    let (fixture, boot, request) = setup().await;
+    let response = apply_review(
+        &request,
+        &token(&request).await,
+        &["74061"],
+        "suspend",
+        &uuid::Uuid::new_v4().to_string(),
+    )
+    .await;
+    assert_eq!(
+        response.status_code(),
+        422,
+        "direct apply without a reviewed session must fail"
+    );
+    assert_eq!(status(&fixture, 74061).await, "active");
+    assert_eq!(audit_count(&fixture, "success").await, 0);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn bulk_review_rejects_off_page_selection_without_effects() -> TestResult {
+    let (fixture, boot, request) = setup().await;
+    for index in 0..25 {
+        add_member(
+            &fixture,
+            73100 + index,
+            74100 + index,
+            &format!("Bulk Z{index:02}"),
+            "active",
+        )
+        .await?;
+    }
+    let csrf = token(&request).await;
+    let response = review(&request, &csrf, &["74061"], "revoke").await;
+    assert_eq!(response.status_code(), 422, "{}", response.text());
+    assert_eq!(status(&fixture, 74061).await, "active");
+    assert_eq!(audit_count(&fixture, "success").await, 0);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn bulk_review_binds_session_targets_action_and_context_and_consumes_confirmation()
+-> TestResult {
+    let (fixture, boot, request) = setup().await;
+    let csrf = token(&request).await;
+    for (ids, action, query) in [
+        (vec!["74061", "74062"], "revoke", "Bulk"),
+        (vec!["74061"], "suspend", "Bulk"),
+        (vec!["74061"], "revoke", ""),
+    ] {
+        let reviewed = review(&request, &csrf, &["74061"], "revoke").await;
+        assert_eq!(reviewed.status_code(), 200, "{}", reviewed.text());
+        let response = apply_context(
+            &request,
+            &csrf,
+            &ids,
+            action,
+            &field(reviewed.text(), "review_id"),
+            query,
+        )
+        .await;
+        assert_eq!(response.status_code(), 422, "{}", response.text());
+        assert_eq!(status(&fixture, 74061).await, "active");
+    }
+    let reviewed = review(&request, &csrf, &["74061"], "revoke").await;
+    let id = field(reviewed.text(), "review_id");
+    let mut other = server(&boot);
+    other.save_cookies();
+    select_household(&other, &fixture, &boot).await?;
+    let other_csrf = token(&other).await;
+    let foreign = apply_review(&other, &other_csrf, &["74061"], "revoke", &id).await;
+    assert_eq!(foreign.status_code(), 422, "{}", foreign.text());
+    assert_eq!(status(&fixture, 74061).await, "active");
+    assert_eq!(audit_count(&fixture, "success").await, 0);
+    let success = apply_review(&request, &csrf, &["74061"], "revoke", &id).await;
+    assert_eq!(success.status_code(), 200, "{}", success.text());
+    let replay = apply_review(&request, &csrf, &["74061"], "revoke", &id).await;
+    assert_eq!(replay.status_code(), 422, "{}", replay.text());
+    assert_eq!(status(&fixture, 74061).await, "revoked");
+    assert_eq!(audit_count(&fixture, "success").await, 1);
+    assert_eq!(audit_count(&fixture, "rejected").await, 0);
+    drop(other);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn bulk_review_retry_is_failed_only_despite_shifted_page() -> TestResult {
+    let (fixture, boot, request) = setup().await;
+    let csrf = token(&request).await;
+    let reviewed = review(&request, &csrf, &["74061", "74062"], "suspend").await;
+    assert_eq!(reviewed.status_code(), 200, "{}", reviewed.text());
+    let results = apply_review(
+        &request,
+        &csrf,
+        &["74061", "74062"],
+        "suspend",
+        &field(reviewed.text(), "review_id"),
+    )
+    .await;
+    assert_eq!(results.status_code(), 200, "{}", results.text());
+    let retry_id = field(results.text(), "review_id");
+    for index in 0..25 {
+        add_member(
+            &fixture,
+            73100 + index,
+            74100 + index,
+            &format!("Bulk Z{index:02}"),
+            "active",
+        )
+        .await?;
+    }
+    let retry = review_context(
+        &request,
+        &csrf,
+        &["74062"],
+        "suspend",
+        "Bulk",
+        Some(&retry_id),
+    )
+    .await;
+    assert_eq!(retry.status_code(), 200, "{}", retry.text());
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Status, Expr::value("active"))
+        .filter(membership::Column::Id.eq(74062))
+        .exec(&fixture.admin)
+        .await?;
+    let retried = apply_review(
+        &request,
+        &csrf,
+        &["74062"],
+        "suspend",
+        &field(retry.text(), "review_id"),
+    )
+    .await;
+    assert_eq!(retried.status_code(), 200, "{}", retried.text());
+    assert_eq!(status(&fixture, 74062).await, "suspended");
+    assert_eq!(audit_count(&fixture, "success").await, 2);
+    assert_eq!(audit_count(&fixture, "rejected").await, 1);
+    assert!(!retried.text().contains("Review selected failures again"));
+    let reviewed = review(&request, &csrf, &["74124"], "suspend").await;
+    assert_eq!(reviewed.status_code(), 200);
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Status, Expr::value("suspended"))
+        .filter(membership::Column::Id.eq(74124))
+        .exec(&fixture.admin)
+        .await?;
+    let results = apply_review(
+        &request,
+        &csrf,
+        &["74124"],
+        "suspend",
+        &field(reviewed.text(), "review_id"),
+    )
+    .await;
+    let denied = review_context(
+        &request,
+        &csrf,
+        &["74061", "74124"],
+        "suspend",
+        "Bulk",
+        Some(&field(results.text(), "review_id")),
+    )
+    .await;
+    assert_eq!(denied.status_code(), 422, "{}", denied.text());
+    assert_eq!(audit_count(&fixture, "success").await, 2);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn bulk_review_return_to_members_cancels_pending_confirmation() -> TestResult {
+    let (fixture, boot, request) = setup().await;
+    let csrf = token(&request).await;
+    let reviewed = review(&request, &csrf, &["74061"], "revoke").await;
+    assert_eq!(reviewed.status_code(), 200);
+    request
+        .get("/households/persistence-fixture/admin/users?status=all&lang=en")
+        .await;
+    let cancelled = apply_review(
+        &request,
+        &csrf,
+        &["74061"],
+        "revoke",
+        &field(reviewed.text(), "review_id"),
+    )
+    .await;
+    assert_eq!(cancelled.status_code(), 422, "{}", cancelled.text());
+    assert_eq!(status(&fixture, 74061).await, "active");
+    assert_eq!(audit_count(&fixture, "success").await, 0);
     drop(request);
     close(fixture, boot).await;
     Ok(())

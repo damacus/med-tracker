@@ -119,6 +119,9 @@ impl<'a> Page<'a> {
                 OperationError::Unavailable,
             );
         }
+        if response.status().is_success() && matches!(screen, Screen::Users) {
+            super::bulk_members::clear_review(self.session);
+        }
         response
     }
 
