@@ -83,7 +83,6 @@ jobs:
       - run: task test:unit
 
   loco_integration:
-    needs: [loco_lint, loco_unit]
     name: API, security and database integration tests
     runs-on: ubuntu-26.04
     timeout-minutes: 25
@@ -160,7 +159,6 @@ jobs:
       - run: task test:integration
 
   loco_browser:
-    needs: [loco_lint, loco_unit]
     name: Browser journeys
     runs-on: ubuntu-26.04
     timeout-minutes: 20
