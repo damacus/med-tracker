@@ -167,7 +167,8 @@ async fn guardian_recovery_options_report_bounded_truncation() -> Result<(), DbE
 async fn guardian_recovery_options_reach_orphan_after_101_guarded_minors() -> Result<(), DbErr> {
     let app = Application::new().await;
     let result = async {
-        app.fixture.admin.execute_unprepared(
+        let fixture = access::begin(&app.fixture.admin, &scope(), None).await.map_err(db_error)?;
+        fixture.transaction().execute_unprepared(
             "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at)
                SELECT 85000+g,'A guarded minor '||lpad(g::text,3,'0'),'2020-01-01',1,false,now(),now()
                FROM generate_series(1,101) AS g;
@@ -185,6 +186,7 @@ async fn guardian_recovery_options_reach_orphan_after_101_guarded_minors() -> Re
                SELECT 72001,73001,d.subject_person_id,d.id,'family_member',true,now(),now()
                FROM public.guardian_declarations d WHERE d.subject_person_id BETWEEN 85001 AND 85101"
         ).await?;
+        fixture.commit().await.map_err(db_error)?;
         let tenant = access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
         let guarded = tenant.transaction().query_one_raw(Statement::from_string(DbBackend::Postgres,
             "SELECT count(*) AS guarded FROM public.people p
@@ -1001,6 +1003,9 @@ async fn guardian_recovery_superseded_active_link_remains_history_without_author
             id:Set(id),person_id:Set(person_id),email_address:Set(email.into()),active:Set(true),
             created_at:Set(now),updated_at:Set(now)
         })).exec(&app.fixture.admin).await?;
+        let old_scope = HouseholdScope { actor: Actor { account_id: 71995 },
+            household_id: 72001, request_id: "synthetic-old-guardian-authority".into() };
+        let old = access::begin(&app.fixture.runtime,&old_scope,None).await.map_err(db_error)?;
         let declaration=Query::insert()
             .into_table((Alias::new("public"),Alias::new("guardian_declarations")))
             .columns(["subject_person_id","guardian_person_id","origin_household_id",
@@ -1009,8 +1014,8 @@ async fn guardian_recovery_superseded_active_link_remains_history_without_author
                 Expr::val(71995_i64),Expr::val("Historical guardian subject")])
             .returning_col("id")
             .to_owned();
-        let row=app.fixture.admin.query_one_raw(
-            app.fixture.admin.get_database_backend().build(&declaration)).await?
+        let row=old.transaction().query_one_raw(
+            old.transaction().get_database_backend().build(&declaration)).await?
             .ok_or_else(||DbErr::Custom("Missing historical declaration".into()))?;
         let old_declaration:i64=row.try_get("","id")?;
         carer_relationships::Entity::insert(carer_relationships::ActiveModel {
@@ -1018,13 +1023,10 @@ async fn guardian_recovery_superseded_active_link_remains_history_without_author
             guardian_declaration_id:Set(Some(old_declaration)),
             relationship_type:Set(Some("family_member".into())),active:Set(true),
             created_at:Set(now),updated_at:Set(now),..Default::default()
-        }).exec(&app.fixture.admin).await?;
-        let old_scope = HouseholdScope { actor: Actor { account_id: 71995 },
-            household_id: 72001, request_id: "synthetic-old-guardian-authority".into() };
-        let old = access::begin(&app.fixture.runtime,&old_scope,None).await.map_err(db_error)?;
+        }).exec(old.transaction()).await?;
         require(access::require_person_access(&old,73994,PersonAccess::Manage).await.is_ok(),
             "Initial active link must grant old guardian effective authority before recovery")?;
-        old.rollback().await.map_err(db_error)?;
+        old.commit().await.map_err(db_error)?;
         let disable=Query::update().table(accounts::Entity)
             .value(accounts::Column::Status,1)
             .and_where(Expr::col(accounts::Column::Id).eq(71995_i64)).to_owned();

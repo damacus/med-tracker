@@ -34,7 +34,13 @@ async fn guardian_recovery_screen(viewport: Viewport, screenshot: &'static str) 
 async fn guardian_recovery_restore_screen(viewport: Viewport, screenshot: &'static str) {
     harness::journey(viewport, |journey| {
         Box::pin(async move {
-            journey.admin.execute_unprepared(
+            let scope = med_tracker::models::access::HouseholdScope {
+                actor: med_tracker::models::access::Actor { account_id: 71001 },
+                household_id: 72001,
+                request_id: "synthetic-browser-guardian-restore".into(),
+            };
+            let fixture = med_tracker::models::access::begin(&journey.admin, &scope, None).await.unwrap();
+            fixture.transaction().execute_unprepared(
                 "UPDATE public.household_memberships SET role='owner' WHERE id=74001;
                  UPDATE public.people SET name='Linked guardian <care>' WHERE id=73001;
                  INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at)
@@ -52,6 +58,7 @@ async fn guardian_recovery_restore_screen(viewport: Viewport, screenshot: &'stat
                  INSERT INTO public.carer_relationships(carer_id,patient_id,household_id,active,created_at,updated_at,guardian_declaration_id)
                  SELECT 73001,73994,72001,false,now(),now(),id FROM public.guardian_declarations WHERE subject_person_id=73994"
             ).await.unwrap();
+            fixture.commit().await.unwrap();
             harness::sign_in(journey).await;
             let page=&journey.page;
             page.goto(&format!("{}/households/persistence-fixture/admin/carer_relationships/recover/73994",journey.origin),None).await.unwrap();

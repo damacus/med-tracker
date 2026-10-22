@@ -264,8 +264,14 @@ FOR EACH ROW EXECUTE FUNCTION med_tracker.guardian_initial_lifetime_guard();
 CREATE FUNCTION med_tracker.guardian_recovery_link_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
 AS $body$
-DECLARE declaration_source text; declaration_origin bigint;
+DECLARE initial_declaration public.guardian_declarations%ROWTYPE;
 BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.guardian_declaration_id IS NOT NULL THEN
+      RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Guardian relationship provenance is retained';
+    END IF;
+    RETURN OLD;
+  END IF;
   IF TG_OP = 'UPDATE' THEN
     IF OLD.confirmation_token IS DISTINCT FROM NEW.confirmation_token THEN
       RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Guardian relationship confirmation token is managed';
@@ -287,10 +293,39 @@ BEGIN
   END IF;
   IF TG_OP = 'INSERT' AND NEW.guardian_declaration_id IS NOT NULL
      AND current_user <> 'med_tracker_owner' THEN
-    SELECT d.source,d.origin_household_id INTO declaration_source,declaration_origin
-    FROM public.guardian_declarations d WHERE d.id = NEW.guardian_declaration_id;
-    IF declaration_source IS DISTINCT FROM 'initial_attestation'
-       OR declaration_origin IS DISTINCT FROM NEW.household_id THEN
+    -- Match withdrawal and recovery's account-before-declaration lock order.
+    PERFORM a.id FROM public.accounts a
+    JOIN public.users u ON u.person_id = a.person_id
+    JOIN public.household_memberships actor ON actor.person_id = a.person_id
+    JOIN public.households h ON h.id = actor.household_id
+    WHERE a.id = med_tracker.current_account_id() AND a.person_id = NEW.carer_id
+      AND a.status = 2 AND u.active
+      AND actor.id = med_tracker.current_membership_id()
+      AND actor.household_id = NEW.household_id
+      AND actor.household_id = med_tracker.current_household_id()
+      AND actor.status = 'active' AND actor.revoked_at IS NULL
+      AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l WHERE l.account_id = a.id
+        AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
+    FOR SHARE OF a;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery command required';
+    END IF;
+    SELECT d.* INTO initial_declaration FROM public.guardian_declarations d
+    WHERE d.id = NEW.guardian_declaration_id FOR SHARE OF d;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery command required';
+    END IF;
+    IF initial_declaration.source IS DISTINCT FROM 'initial_attestation'
+       OR initial_declaration.origin_household_id IS DISTINCT FROM NEW.household_id
+       OR initial_declaration.subject_person_id IS DISTINCT FROM NEW.patient_id
+       OR initial_declaration.guardian_person_id IS DISTINCT FROM NEW.carer_id
+       OR initial_declaration.declared_by_account_id IS DISTINCT FROM med_tracker.current_account_id()
+       OR initial_declaration.withdrawn_at IS NOT NULL
+       OR initial_declaration.superseded_at IS NOT NULL
+       OR EXISTS (SELECT 1 FROM public.carer_relationships c
+         WHERE c.household_id = NEW.household_id
+           AND c.guardian_declaration_id = NEW.guardian_declaration_id) THEN
       RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery command required';
     END IF;
   END IF;
@@ -303,7 +338,7 @@ $body$;
 ALTER FUNCTION med_tracker.guardian_recovery_link_guard() OWNER TO med_tracker_owner;
 REVOKE ALL ON FUNCTION med_tracker.guardian_recovery_link_guard() FROM PUBLIC,med_tracker_app;
 CREATE TRIGGER guardian_recovery_link_guard
-BEFORE INSERT OR UPDATE ON public.carer_relationships
+BEFORE INSERT OR UPDATE OR DELETE ON public.carer_relationships
 FOR EACH ROW EXECUTE FUNCTION med_tracker.guardian_recovery_link_guard();
 
 CREATE FUNCTION med_tracker.guardian_recovery_snapshot(p_subject bigint)

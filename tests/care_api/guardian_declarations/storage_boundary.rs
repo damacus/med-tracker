@@ -1,3 +1,6 @@
+#[path = "recovery_link_guard.rs"]
+mod recovery_link_guard;
+
 use super::super::platform::{operation_confirm, operation_start, sign_in};
 use super::{Application, effects, require, withdrawal::declaration};
 use med_tracker::models::access::{self, Actor, HouseholdScope, PersonAccess};
