@@ -1,4 +1,148 @@
 use super::*;
+use med_tracker::models::entities::{carer_relationship, grant, membership};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
+
+const AUTHORITY_READS: [&str; 3] = [
+    "mobile_snapshot",
+    "portable_export?version=2",
+    "data_exports/health_data_json",
+];
+
+async fn authority_payload(app: &Application, token: &str, path: &str) -> Value {
+    let response = app
+        .client
+        .get(format!("{}/api/v1/households/72001/{path}", app.origin))
+        .bearer_auth(token)
+        .header(
+            "x-medtracker-portable-passphrase",
+            "synthetic authority secret",
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200, "{path}");
+    let body: Value = response.json().await.unwrap();
+    if path.starts_with("portable_export") {
+        med_tracker::models::care::portable_crypto::decrypt(
+            &body["data"],
+            "synthetic authority secret",
+        )
+        .unwrap()
+    } else {
+        body["data"].clone()
+    }
+}
+
+async fn legacy_manage(app: &Application, person_id: i64) {
+    let now = chrono::Utc::now().naive_utc();
+    grant::ActiveModel {
+        household_id: Set(72001),
+        household_membership_id: Set(74001),
+        person_id: Set(person_id),
+        access_level: Set("manage".into()),
+        relationship_type: Set("parent".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn mobile_snapshot_uses_self_and_live_guardian_authority_instead_of_manage_grants() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let created = app.client.post(format!("{}/api/v1/households/72001/people", app.origin))
+        .bearer_auth(&token)
+        .json(&json!({"person":{"name":"Declared snapshot child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}}))
+        .send().await.unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let child: Value = created.json().await.unwrap();
+    let child_id = child["data"]["id"].as_i64().unwrap();
+    let schedule = app.client.post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .bearer_auth(&token)
+        .json(&json!({"schedule":{"person_id":child_id.to_string(),"medication_id":"80001","dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}}))
+        .send().await.unwrap();
+    assert_eq!(schedule.status().as_u16(), 201);
+    let schedule: Value = schedule.json().await.unwrap();
+    let schedule_pid = &schedule["data"]["portable_id"];
+    assert!(schedule_pid.is_string());
+    membership::ActiveModel {
+        id: Set(74001),
+        role: Set("member".into()),
+        ..Default::default()
+    }
+    .update(&app.fixture.admin)
+    .await
+    .unwrap();
+    grant::ActiveModel {
+        id: Set(78001),
+        revoked_at: Set(Some(chrono::Utc::now().naive_utc())),
+        ..Default::default()
+    }
+    .update(&app.fixture.admin)
+    .await
+    .unwrap();
+    legacy_manage(&app, 73002).await;
+    for path in AUTHORITY_READS {
+        let payload = authority_payload(&app, &token, path).await;
+        let people = payload["records"]["people"].as_array().unwrap();
+        assert_eq!(people.len(), 2, "{path}");
+        assert!(people.iter().any(|row| row["name"] == "Synthetic adult"));
+        assert!(
+            people
+                .iter()
+                .any(|row| row["name"] == "Declared snapshot child")
+        );
+        assert!(!people.iter().any(|row| row["name"] == "Synthetic minor"));
+        assert!(
+            payload["records"]["schedules"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|row| &row["portable_id"] == schedule_pid),
+            "{path}"
+        );
+    }
+    let declaration = carer_relationship::Entity::find()
+        .filter(carer_relationship::Column::PatientId.eq(child_id))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .guardian_declaration_id
+        .unwrap();
+    let withdrawn = app
+        .client
+        .patch(format!(
+            "{}/api/v1/auth/guardian-declarations/{declaration}",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(withdrawn.status().as_u16(), 200);
+    legacy_manage(&app, child_id).await;
+    for path in AUTHORITY_READS {
+        let payload = authority_payload(&app, &token, path).await;
+        let people = payload["records"]["people"].as_array().unwrap();
+        assert_eq!(people.len(), 1, "{path}");
+        assert_eq!(people[0]["name"], "Synthetic adult");
+        assert!(
+            !payload["records"]["schedules"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|row| &row["portable_id"] == schedule_pid),
+            "{path}"
+        );
+    }
+    app.close().await;
+}
 
 fn snapshot_url(app: &Application) -> String {
     format!("{}/api/v1/households/72001/mobile_snapshot", app.origin)
