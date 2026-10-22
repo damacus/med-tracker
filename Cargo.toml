@@ -38,7 +38,7 @@ better-auth = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = 
     "axum",
     "rustls",
 ] }
-better-auth-core = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281" }
+better-auth-core = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "23c89f4e51999fe5767804879c82c60249cf9f84" }
 openidconnect = "=4.0.1"
 cedar-policy = { version = "=4.13.0", default-features = false }
 headers = "=0.4.2"
