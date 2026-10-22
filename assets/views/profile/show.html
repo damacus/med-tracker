@@ -132,15 +132,12 @@
     </details>
     <section class="card card-body bg-base-100 border border-base-300 gap-4"><h3 class="card-title">{{ labels.profiles.browser.danger_zone }}</h3>
       <p>{{ labels.profiles.browser.closure_description }}</p>
-      <form method="post" action="/account/security/operation" data-security-flow><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="close_account"><button class="btn btn-neutral" type="submit">{{ labels.profiles.browser.close_account }}</button></form>
+      <a class="btn btn-neutral" href="/account/security">{{ labels.profiles.browser.close_account }}</a>
     </section>
     </div>
   </section>
 </div>
-<dialog id="profile-security-flow" class="modal profile-security-flow" aria-labelledby="profile-security-flow-title" data-loading-label="{{ labels.profiles.security.loading }}">
-  <div class="modal-box"><h2 id="profile-security-flow-title" class="sr-only">{{ labels.profiles.account_security.title }}</h2><div data-security-flow-content></div><button type="button" class="btn" data-dialog-close>{{ labels.profiles.security.close }}</button></div>
-</dialog>
-<script src="/static/js/profile-security.js" defer></script>
+
 <script src="/static/js/profile.js" defer></script>
 <script src="/static/js/profile-push.js" defer></script>
 {% endblock content %}

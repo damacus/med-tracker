@@ -1,30 +1,30 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-3xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}">Carer Relationships</a>
+<section class="admin-page">
+  <a class="link" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}">{{ admin_labels.nav.relationships }}</a>
   {% include "administration/context.html" %}
-  <h1 class="text-3xl font-semibold mt-4">New Relationship</h1>
+  <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.polish.new_relationship }}</h1>
   {% include "administration/navigation.html" %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <form id="administration-form" action="/households/{{ slug }}/admin/carer_relationships" method="post" class="flex flex-col gap-4">
       {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-      <label for="carer_id" class="font-semibold">Carer</label>
+      <label for="carer_id" class="font-semibold">{{ admin_labels.polish.carer }}</label>
       <select id="carer_id" name="carer_id" class="select w-full" required {% if carer_id_invalid %}aria-invalid="true" aria-describedby="form-error-carer_id"{% endif %}>
-        <option value="">Choose a carer</option>
+        <option value="">{{ admin_labels.polish.choose_carer }}</option>
         {% for carer in carers %}<option value="{{ carer.id }}" {% if carer.selected %}selected{% endif %}>{{ carer.name }}</option>{% endfor %}
       </select>
-      <label for="patient_id" class="font-semibold">Patient</label>
+      <label for="patient_id" class="font-semibold">{{ admin_labels.polish.patient }}</label>
       <select id="patient_id" name="patient_id" class="select w-full" required {% if patient_id_invalid %}aria-invalid="true" aria-describedby="form-error-patient_id"{% endif %}>
-        <option value="">Choose a patient</option>
+        <option value="">{{ admin_labels.polish.choose_patient }}</option>
         {% for patient in patients %}<option value="{{ patient.id }}" {% if patient.selected %}selected{% endif %}>{{ patient.name }}</option>{% endfor %}
       </select>
-      <label for="relationship_type" class="font-semibold">Relationship type</label>
+      <label for="relationship_type" class="font-semibold">{{ admin_labels.polish.relationship_type }}</label>
       <select id="relationship_type" name="relationship_type" class="select w-full" {% if relationship_type_invalid %}aria-invalid="true" aria-describedby="form-error-relationship_type"{% endif %}>
-        <option value="" {% if draft.relationship_type == "" %}selected{% endif %}>Choose a relationship type</option>
-        {% for kind in relationship_types %}<option value="{{ kind }}" {% if draft.relationship_type == kind %}selected{% endif %}>{{ kind | replace(from="_", to=" ") | capitalize }}</option>{% endfor %}
+        <option value="" {% if draft.relationship_type == "" %}selected{% endif %}>{{ admin_labels.polish.choose_relationship }}</option>
+        {% for kind in relationship_types %}<option value="{{ kind }}" {% if draft.relationship_type == kind %}selected{% endif %}>{% if kind == "professional_carer" or kind == "self" %}{{ admin_labels.polish[kind] }}{% else %}{{ labels.admin.labels.relationship_types[kind] }}{% endif %}</option>{% endfor %}
       </select>
-      <div class="flex flex-col sm:flex-row gap-3 mt-4"><button class="btn btn-neutral" type="submit">Create Relationship</button><a class="btn btn-ghost" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}">Cancel</a></div>
+      <div class="flex flex-col sm:flex-row gap-3 mt-4"><button class="btn btn-neutral" type="submit">{{ admin_labels.polish.create_relationship }}</button><a class="btn btn-ghost" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}">{{ labels.admin.users.form.cancel }}</a></div>
     </form>
   </div></div>
 </section>

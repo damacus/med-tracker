@@ -93,26 +93,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
-                .name("index_account_identities_on_account_id")
-                .table(Alias::new("account_identities"))
-                .col(Alias::new("account_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_account_identities_on_provider_and_uid")
-                .table(Alias::new("account_identities"))
-                .unique()
-                .col(Alias::new("provider"))
-                .col(Alias::new("uid"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
                 .name("index_account_lockouts_on_account_id")
                 .table(Alias::new("account_lockouts"))
                 .col(Alias::new("account_id"))
@@ -171,45 +151,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .table(Alias::new("account_webauthn_auth_challenges"))
                 .unique()
                 .col(Alias::new("challenge_digest"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_account_webauthn_keys_on_account_id")
-                .table(Alias::new("account_webauthn_keys"))
-                .col(Alias::new("account_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_account_webauthn_keys_on_webauthn_id_and_account_id")
-                .table(Alias::new("account_webauthn_keys"))
-                .unique()
-                .col(Alias::new("webauthn_id"))
-                .col(Alias::new("account_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_account_webauthn_user_ids_on_account_id")
-                .table(Alias::new("account_webauthn_user_ids"))
-                .col(Alias::new("account_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_account_webauthn_user_ids_on_webauthn_id")
-                .table(Alias::new("account_webauthn_user_ids"))
-                .unique()
-                .col(Alias::new("webauthn_id"))
                 .to_owned(),
         )
         .await?;
@@ -2415,6 +2356,17 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .name("index_versions_on_whodunnit")
                 .table(Alias::new("versions"))
                 .col(Alias::new("whodunnit"))
+                .to_owned(),
+        )
+        .await?;
+    manager
+        .create_index(
+            Index::create()
+                .name("index_accounts_on_email")
+                .table(Alias::new("accounts"))
+                .unique()
+                .col(Func::lower(Expr::col(Alias::new("email"))))
+                .and_where(Expr::col(Alias::new("status")).is_in([1, 2]))
                 .to_owned(),
         )
         .await?;

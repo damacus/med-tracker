@@ -421,7 +421,7 @@ fn safe_request_id(raw: Option<String>) -> Option<String> {
         .map(|value| value.hyphenated().to_string())
 }
 
-fn make_summary(
+pub(super) fn make_summary(
     id: i64,
     event_type: String,
     actor_account_id: Option<i64>,
@@ -454,7 +454,7 @@ fn make_summary(
     }
 }
 
-fn safe_fields(event_type: &str, metadata: &Value) -> Vec<AuditField> {
+pub(super) fn safe_fields(event_type: &str, metadata: &Value) -> Vec<AuditField> {
     let Some(fields) = metadata.as_object() else {
         return Vec::new();
     };

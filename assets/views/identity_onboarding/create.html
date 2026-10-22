@@ -2,7 +2,7 @@
 {% block content %}
 <section class="card border border-base-300 bg-base-100 max-w-xl mx-auto"><div class="card-body gap-6">
   <h1 class="text-2xl font-semibold">Create Account</h1>
-  <p>Choose a password or passkey, verify your email, then save your recovery codes.</p>
+  <p>Choose a password or passkey, then verify your email.</p>
   {% if invitation is defined %}<p>Join {{ invitation.household_name }}.</p>{% endif %}
   {% include "auth/account_form.html" %}
   <a class="link" href="/login">Sign in</a>

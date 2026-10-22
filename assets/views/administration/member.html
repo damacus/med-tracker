@@ -1,0 +1,37 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section id="administration-form" tabindex="-1" class="admin-page">
+  <a class="link" href="{{ member_return_url }}">{{ admin_labels.nav.members }}</a>
+  {% include "administration/context.html" %}
+  <h1 class="text-3xl font-semibold mt-4">{{ member.name }}</h1>
+  {% include "administration/navigation.html" %}
+  {% if member_notice %}<div role="status" class="alert alert-success mt-4">{{ member_labels.changed }} {{ member_labels[member_notice] }}.</div>{% endif %}
+  <div class="mt-4">{% include "components/form_errors.html" %}</div>
+  <div class="shell-panel member-profile">
+    <h2>{{ detail_labels.title }}</h2>
+    <dl class="member-facts mt-4">
+      <dt>{{ member_labels.email }}</dt><dd>{% if member.email != "" %}{{ member.email }}{% else %}{{ detail_labels.no_email }}{% endif %}</dd>
+      <dt>{{ member_labels.role }}</dt><dd>{{ labels.admin.labels.membership_roles[member.role] }}</dd>
+      <dt>{{ member_labels.status }}</dt><dd><span class="admin-chip">{{ member_labels[member.status] }}</span></dd>
+    </dl>
+    <p class="mt-4">{{ detail_labels.roles[member.role] }}</p>
+    <p class="mt-3">{{ detail_labels.access_help }}</p>
+    <div class="mt-5">{% include "administration/member_actions.html" %}</div>
+  </div>
+  <section class="mt-6" aria-labelledby="member-history-heading">
+    <h2 id="member-history-heading">{{ detail_labels.history }}</h2>
+    <p class="mt-2">{{ detail_labels.history_help }}</p>
+    <ol class="member-history mt-4">
+      {% for event in history %}<li class="shell-panel" data-member-event="{{ event.summary.id }}">
+        <div class="flex flex-wrap justify-between gap-2"><h3>{{ detail_labels.events[event.kind] }}</h3><span class="admin-chip">{{ detail_labels.outcomes[event.outcome] }}</span></div>
+        <p class="mt-2"><time datetime="{{ event.occurred_at_iso }}">{{ event.occurred_at_display }}</time></p>
+        <p class="mt-2">{% if event.actor_name %}<strong>{{ event.actor_name }}</strong> · {% endif %}{{ event.summary.actor }}</p>
+        {% if event.outcome == "rejected" or event.outcome == "failure" %}<p class="mt-3 font-semibold">{{ detail_labels.not_applied }}</p>{% endif %}
+        <dl class="member-facts mt-3">{% for change in event.changes %}<dt>{{ member_labels[change.kind] }}</dt><dd>{% if change.kind == "role" %}{% if change.previous %}{{ labels.admin.labels.membership_roles[change.previous] }}{% else %}—{% endif %} → {% if change.next %}{{ labels.admin.labels.membership_roles[change.next] }}{% else %}—{% endif %}{% else %}{% if change.previous %}{{ member_labels[change.previous] }}{% else %}—{% endif %} → {% if change.next %}{{ member_labels[change.next] }}{% else %}—{% endif %}{% endif %}</dd>{% endfor %}</dl>
+        <a class="link inline-block mt-3" href="/households/{{ slug }}/admin/audit_logs/{{ event.summary.id }}{{ language_suffix }}">{{ admin_labels.overview.view_event }}</a>
+      </li>{% else %}<li class="shell-panel">{{ detail_labels.empty_history }}</li>{% endfor %}
+    </ol>
+    {% if history_older_url %}<a class="btn btn-outline mt-4" data-member-older href="{{ history_older_url }}">{{ detail_labels.older }}</a>{% endif %}
+  </section>
+</section>
+{% endblock content %}

@@ -1,20 +1,37 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-5xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/dashboard">{{ overview_labels.dashboard }}</a>
+<section class="admin-page admin-overview">
+  <a class="link" href="/households/{{ slug }}/dashboard{{ language_suffix }}">{{ overview_labels.dashboard }}</a>
   <h1 class="text-3xl font-semibold mt-4">{% if lang == "en" %}{{ household_name }} administration{% else %}{{ overview_labels.title }} · {{ household_name }}{% endif %}</h1>
   <p class="mt-2 text-base-content/70">{{ overview_labels.summary }}</p>
   {% include "administration/navigation.html" %}
-  <dl class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><dt>{{ overview_labels.members }}</dt><dd class="text-2xl font-semibold">{{ active_members }} {% if active_members == 1 %}{{ overview_labels.active_member }}{% else %}{{ overview_labels.active_members }}{% endif %}</dd></div></div>
-    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><dt>{{ overview_labels.people }}</dt><dd class="text-2xl font-semibold">{{ people_count }} {% if people_count == 1 %}{{ overview_labels.person }}{% else %}{{ overview_labels.people_count }}{% endif %}</dd></div></div>
-    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><dt>{{ overview_labels.invitations }}</dt><dd class="text-2xl font-semibold">{{ pending_invitations }} {% if pending_invitations == 1 %}{{ overview_labels.pending_invitation }}{% else %}{{ overview_labels.pending_invitations }}{% endif %}</dd></div></div>
-    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><dt>{{ overview_labels.attention }}</dt><dd class="text-2xl font-semibold">{{ care_warning_count }} {% if care_warning_count == 1 %}{{ overview_labels.care_issue }}{% else %}{{ overview_labels.care_issues }}{% endif %}</dd></div></div>
+  {% if expired_invitations > 0 %}
+  <section id="expired-invitations" class="admin-attention" aria-labelledby="expired-title">
+    <div><h2 id="expired-title">{{ admin_labels.polish.expired_invitations }} <span class="admin-chip">{{ expired_invitations }}</span></h2><p>{{ admin_labels.polish.expired_help }}</p></div>
+    <a class="btn btn-ghost btn-sm" href="/households/{{ slug }}/admin/invitations?status=expired{% if language_suffix != "" %}&amp;lang={{ lang }}{% endif %}">{{ admin_labels.polish.review_invitations }}</a>
+  </section>
+  {% endif %}
+  <dl class="admin-metrics">
+    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><dt><svg aria-hidden="true" width="20" height="20"><use href="/static/profile-icons.svg#people"/></svg>{{ overview_labels.active_members }}</dt><dd aria-label="{{ active_members }} {% if active_members == 1 %}{{ overview_labels.active_member }}{% else %}{{ overview_labels.active_members }}{% endif %}">{{ active_members }}</dd></div></div>
+    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><dt>{{ overview_labels.people }}</dt><dd aria-label="{{ people_count }} {% if people_count == 1 %}{{ overview_labels.person }}{% else %}{{ overview_labels.people_count }}{% endif %}">{{ people_count }}</dd></div></div>
+    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><dt>{{ overview_labels.pending_invitations }}</dt><dd aria-label="{{ pending_invitations }} {% if pending_invitations == 1 %}{{ overview_labels.pending_invitation }}{% else %}{{ overview_labels.pending_invitations }}{% endif %}">{{ pending_invitations }}</dd></div></div>
+    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4"><dt>{{ admin_labels.polish.people_needing_carers }}</dt><dd aria-label="{{ care_warning_count }} {% if care_warning_count == 1 %}{{ overview_labels.care_issue }}{% else %}{{ overview_labels.care_issues }}{% endif %}">{{ care_warning_count }}</dd></div></div>
+    <div class="admin-metric" data-admin-metric="active-schedules"><dt>{{ admin_labels.polish.active_schedules }}</dt><dd aria-describedby="metric-help-active_schedules">{{ active_schedules }}</dd><dd id="metric-help-active_schedules" class="sr-only">{{ admin_labels.polish.schedules_help }}</dd></div>
+    <div class="admin-metric" data-admin-metric="recent-memberships"><dt>{{ admin_labels.polish.recent_memberships }}</dt><dd aria-describedby="metric-help-recent_memberships">{{ recent_memberships }}</dd><dd id="metric-help-recent_memberships" class="sr-only">{{ admin_labels.polish.memberships_help }}</dd></div>
+    <div class="admin-metric" data-admin-metric="recent-audit-events"><dt>{{ admin_labels.polish.recent_audit_events }}</dt><dd aria-describedby="metric-help-recent_audit_events">{{ recent_audit_events }}</dd><dd id="metric-help-recent_audit_events" class="sr-only">{{ admin_labels.polish.audit_help }}</dd></div>
+    <div class="admin-metric" data-admin-metric="expired-invitations"><dt>{{ admin_labels.polish.expired_invitations }}</dt><dd aria-describedby="metric-help-expired_invitations">{{ expired_invitations }}</dd><dd id="metric-help-expired_invitations" class="sr-only">{{ admin_labels.polish.expired_help }}</dd></div>
   </dl>
-  <div class="grid md:grid-cols-3 gap-4 mt-8">
-    <section class="card bg-base-100 border border-base-300"><div class="card-body"><h2 class="card-title">{{ overview_labels.members }}</h2><p>{{ overview_labels.review_access }}</p><div class="flex flex-wrap gap-3"><a class="link" href="/households/{{ slug }}/admin/users{{ language_suffix }}">{{ overview_labels.view_members }}</a><a class="link" href="/households/{{ slug }}/admin/invitations{{ language_suffix }}">{{ overview_labels.manage_invitations }}</a></div></div></section>
-    <section class="card bg-base-100 border border-base-300"><div class="card-body"><h2 class="card-title">{{ overview_labels.care }}</h2><p>{{ overview_labels.review_care }}</p><div class="flex flex-wrap gap-3"><a class="link" href="/households/{{ slug }}/people">{{ overview_labels.people }}</a><a class="link" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}">{{ overview_labels.manage_relationships }}</a></div></div></section>
-    <section class="card bg-base-100 border border-base-300"><div class="card-body"><h2 class="card-title">{{ overview_labels.household }}</h2><p>{{ overview_labels.household_help }}</p><a class="link" href="/households/{{ slug }}/admin/household/edit{{ language_suffix }}">{{ overview_labels.edit_settings }}</a></div></section>
+  <div class="admin-action-groups">
+    <section><h2>{{ labels.admin.dashboard.sections.user_access }}</h2><div class="admin-action-list">
+      <a class="admin-action-row shell-panel" href="/households/{{ slug }}/admin/users{{ language_suffix }}"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#people"/></svg><span><strong>{{ overview_labels.view_members }}</strong><span>{{ overview_labels.review_access }}</span></span><span aria-hidden="true">›</span></a>
+      <a class="admin-action-row shell-panel" href="/households/{{ slug }}/admin/invitations{{ language_suffix }}"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#profile"/></svg><span><strong>{{ overview_labels.manage_invitations }}</strong><span>{{ labels.admin.dashboard.quick_actions.invitations_description }}</span></span><span aria-hidden="true">›</span></a>
+      <a class="admin-action-row shell-panel" href="/households/{{ slug }}/admin/household/edit{{ language_suffix }}"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#advanced"/></svg><span><strong>{{ overview_labels.edit_settings }}</strong><span>{{ overview_labels.household_help }}</span></span><span aria-hidden="true">›</span></a>
+    </div></section>
+    <section><h2>{{ labels.admin.dashboard.sections.operations }}</h2><div class="admin-action-list">
+      <a class="admin-action-row shell-panel" href="/households/{{ slug }}/people{{ language_suffix }}"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#people"/></svg><span><strong>{{ labels.admin.dashboard.quick_actions.manage_people_title }}</strong><span>{{ labels.admin.dashboard.quick_actions.manage_people_description }}</span></span><span aria-hidden="true">›</span></a>
+      <a class="admin-action-row shell-panel" href="/households/{{ slug }}/admin/audit_logs{{ language_suffix }}"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#reports"/></svg><span><strong>{{ overview_labels.view_audit }}</strong><span>{{ admin_labels.audit.description }}</span></span><span aria-hidden="true">›</span></a>
+      <a class="admin-action-row shell-panel" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#people"/></svg><span><strong>{{ overview_labels.manage_relationships }}</strong><span>{{ overview_labels.review_care }}</span></span><span aria-hidden="true">›</span></a>
+    </div></section>
   </div>
   <section class="mt-8" aria-labelledby="care-attention-heading">
     <h2 id="care-attention-heading" class="text-xl font-semibold">{{ overview_labels.attention }}</h2>
@@ -26,7 +43,7 @@
       <a class="link" href="/households/{{ slug }}/admin/audit_logs{{ language_suffix }}">{{ overview_labels.view_audit }}</a>
     </div>
     {% if recent_activity | length > 0 %}
-      <ol class="mt-4 space-y-3">
+      <ol class="admin-activity">
         {% for event in recent_activity %}
           <li class="card bg-base-100 border border-base-300"><div class="card-body p-4">
             <p class="font-semibold">{{ event.event_label }}</p>

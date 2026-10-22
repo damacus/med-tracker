@@ -1,6 +1,9 @@
 # Persistence baseline provenance
 
-P1 pins the preserved schema input; it does not adopt or restore it.
+This is a historical P1 record, superseded by ADR 0016 and the fresh native
+authentication baseline. The unused `migration/baseline.sql` restore artifact has
+been removed. Current setup uses SeaORM migrations and does not restore or adopt
+this schema input.
 
 The source is retained PR #2419 at commit
 `6d607c71c393a79cd259e39f13d48f1977fba1e2`, protected locally by

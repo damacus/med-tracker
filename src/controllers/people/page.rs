@@ -8,6 +8,7 @@ pub(super) struct Page<'a> {
     slug: &'a str,
     request_id: String,
     form_language: &'static str,
+    explicit_language: bool,
 }
 
 impl<'a> Page<'a> {
@@ -27,17 +28,56 @@ impl<'a> Page<'a> {
             slug,
             request_id: request_id(request),
             form_language: "en",
+            explicit_language: false,
         }
     }
 
-    pub(super) fn form_language(mut self, headers: &HeaderMap) -> Self {
-        self.form_language = crate::models::care::report_pdf::locale(
-            headers
-                .get(header::ACCEPT_LANGUAGE)
-                .and_then(|value| value.to_str().ok())
-                .unwrap_or("en"),
-        );
-        self
+    pub(super) fn form_language(
+        mut self,
+        headers: &HeaderMap,
+        raw: Option<&str>,
+        submitted: &[(String, String)],
+    ) -> Result<Self, OperationError> {
+        let languages = url::form_urlencoded::parse(raw.unwrap_or_default().as_bytes())
+            .filter(|(key, _)| key == "lang")
+            .map(|(_, value)| value.into_owned())
+            .chain(
+                submitted
+                    .iter()
+                    .filter(|(key, _)| key == "lang")
+                    .map(|(_, value)| value.clone()),
+            )
+            .collect::<Vec<_>>();
+        let invalid = || OperationError::Validation {
+            details: json!({"errors":{"lang":["is invalid"]}}),
+        };
+        self.explicit_language = !languages.is_empty();
+        self.form_language = match languages.as_slice() {
+            [] => crate::models::care::report_pdf::locale(
+                headers
+                    .get(header::ACCEPT_LANGUAGE)
+                    .and_then(|value| value.to_str().ok())
+                    .unwrap_or("en"),
+            ),
+            [language] => match language.as_str() {
+                "en" => "en",
+                "es" => "es",
+                "cy" => "cy",
+                "ga" => "ga",
+                "pt" => "pt",
+                _ => {
+                    return Err(invalid());
+                }
+            },
+            _ => {
+                return Err(invalid());
+            }
+        };
+        Ok(self)
+    }
+
+    fn language_suffix(&self) -> String {
+        super::super::administration::language_suffix(self.form_language, self.explicit_language)
     }
 
     pub(super) async fn index(self, pagination: people::Pagination) -> Response {
@@ -64,26 +104,29 @@ impl<'a> Page<'a> {
                         .unwrap_or(Value::Null);
                 }
             }
+            let labels = crate::models::care::report_pdf::translations(self.form_language)
+                .map_err(|_| OperationError::Unavailable)?;
+            people::browser::enrich(&tenant, &mut collection, &labels).await?;
             let can_create = people::can_create(&tenant).await?;
-            Ok::<_, OperationError>(rendering::index(self.slug, collection, can_create))
+            let mut data = rendering::index(self.slug, collection, can_create);
+            data["labels"] = labels.clone();
+            data["lang"] = json!(self.form_language);
+            data["title"] = labels["home"]["cards"]["people"]["title"].clone();
+            data["care_warning_labels"] = labels["care_warning"].clone();
+            Ok::<_, OperationError>(data)
         }
         .await;
         self.finish(tenant, "people/index.html", result, None).await
     }
 
-    pub(super) async fn show(self, id: &str, headers: &HeaderMap) -> Response {
+    pub(super) async fn show(self, id: &str) -> Response {
         let (principal, tenant) =
             match begin(self.ctx, self.session, self.slug, &self.request_id).await {
                 Ok(value) => value,
                 Err(error) => return authentication_error(error),
             };
         let result = async {
-            let locale = crate::models::care::report_pdf::locale(
-                headers
-                    .get(header::ACCEPT_LANGUAGE)
-                    .and_then(|value| value.to_str().ok())
-                    .unwrap_or("en"),
-            );
+            let locale = self.form_language;
             let (projection, _) = people::read(&tenant, id, principal.time_zone()).await?;
             let person_id = projection["data"]["id"]
                 .as_i64()
@@ -106,6 +149,10 @@ impl<'a> Page<'a> {
                 can_manage,
                 can_manage_household,
             );
+            data["date_of_birth_display"] = json!(people::browser::birth_date(
+                data["person"]["date_of_birth"].as_str(),
+                &labels
+            ));
             data["labels"] = labels.clone();
             data["lang"] = json!(locale);
             data["care_warning_labels"] = labels["care_warning"].clone();
@@ -205,10 +252,15 @@ impl<'a> Page<'a> {
         data: std::result::Result<Value, OperationError>,
         error: Option<&OperationError>,
     ) -> Response {
-        let data = match data {
+        let mut data = match data {
             Ok(data) => data,
             Err(error) => return operation_error(error),
         };
+        data["language_suffix"] = json!(self.language_suffix());
+        data["language_explicit"] = json!(self.explicit_language);
+        if let Some(value) = data["cancel_url"].as_str() {
+            data["cancel_url"] = json!(format!("{}{}", value, self.language_suffix()));
+        }
         let notice_key = data["care_notice_key"].as_str().map(str::to_owned);
         let response = rendering::render(self.view, self.token, template, data, error);
         if tenant.commit().await.is_err() {
@@ -271,7 +323,12 @@ impl<'a> Page<'a> {
                     [
                         (
                             header::LOCATION,
-                            format!("/households/{}/people/{}", self.slug, record.id),
+                            format!(
+                                "/households/{}/people/{}{}",
+                                self.slug,
+                                record.id,
+                                self.language_suffix()
+                            ),
                         ),
                         (header::CACHE_CONTROL, "no-store".into()),
                     ],

@@ -229,7 +229,7 @@ pub(crate) async fn update(
     let mut active: account::ActiveModel = account.into();
     active.name = Set(name);
     active.preferences = Set(preferences);
-    active.updated_at = Set(Utc::now().naive_utc());
+    active.updated_at = Set(Utc::now());
     active.update(transaction).await?;
     version::ActiveModel {
         item_type: Set("Account".into()),

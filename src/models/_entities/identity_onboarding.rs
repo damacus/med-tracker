@@ -8,11 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub account_id: i64,
-    #[sea_orm(unique)]
-    pub passkey_user_handle: Uuid,
-    pub recovery_saved_at: Option<DateTimeWithTimeZone>,
-    pub legacy_totp_disabled_at: Option<DateTimeWithTimeZone>,
-    pub legacy_totp_locked_until: Option<DateTimeWithTimeZone>,
+    pub completed_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

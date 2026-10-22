@@ -309,10 +309,6 @@ GRANT ALL ON FUNCTION public.audit_record_signed_checkpoint(p_key_id text, p_pub
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_active_session_keys TO med_tracker_app;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_identities TO med_tracker_app;
-
-GRANT SELECT,USAGE ON SEQUENCE public.account_identities_id_seq TO med_tracker_app;
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_lockouts TO med_tracker_app;
 
 GRANT SELECT,USAGE ON SEQUENCE public.account_lockouts_account_id_seq TO med_tracker_app;
@@ -323,13 +319,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_login_failures TO med_
 
 GRANT SELECT,USAGE ON SEQUENCE public.account_login_failures_account_id_seq TO med_tracker_app;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_otp_keys TO med_tracker_app;
-
-GRANT SELECT,USAGE ON SEQUENCE public.account_otp_keys_id_seq TO med_tracker_app;
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_password_reset_keys TO med_tracker_app;
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_recovery_codes TO med_tracker_app;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_remember_keys TO med_tracker_app;
 
@@ -338,14 +328,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_verification_keys TO m
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_webauthn_auth_challenges TO med_tracker_app;
 
 GRANT SELECT,USAGE ON SEQUENCE public.account_webauthn_auth_challenges_id_seq TO med_tracker_app;
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_webauthn_keys TO med_tracker_app;
-
-GRANT SELECT,USAGE ON SEQUENCE public.account_webauthn_keys_id_seq TO med_tracker_app;
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_webauthn_user_ids TO med_tracker_app;
-
-GRANT SELECT,USAGE ON SEQUENCE public.account_webauthn_user_ids_id_seq TO med_tracker_app;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.accounts TO med_tracker_app;
 

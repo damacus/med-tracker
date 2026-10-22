@@ -1,12 +1,11 @@
 use super::*;
 use crate::models::{
     access, authorization,
-    entities::{account, membership, user},
+    entities::{account, membership},
 };
-use sea_orm::DatabaseTransaction;
 
 pub(super) async fn authorize(
-    db: &DatabaseTransaction,
+    db: &impl sea_orm::ConnectionTrait,
     inviter: &membership::Model,
     invitation: &household_invitation::Model,
 ) -> Result<(), OperationError> {
@@ -20,12 +19,9 @@ pub(super) async fn authorize(
         .ok_or_else(super::acceptance::unavailable)?;
     access::verify_account(db, owner.id)
         .await
-        .map_err(|_| super::acceptance::unavailable())?;
-    user::Entity::find()
-        .filter(user::Column::PersonId.eq(owner.person_id))
-        .filter(user::Column::Active.eq(true))
-        .one(db)
-        .await?
-        .ok_or_else(super::acceptance::unavailable)?;
+        .map_err(|error| match error {
+            OperationError::Unavailable => OperationError::Unavailable,
+            _ => super::acceptance::unavailable(),
+        })?;
     Ok(())
 }

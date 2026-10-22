@@ -440,7 +440,7 @@ pub(super) async fn record(
         CredentialMethod::BrowserSession => ("browser_session", "browser_session"),
     };
     let mut context = json!({
-        "actor_account_id": tenant.scope().actor.account_id, "actor_user_id": tenant.user_id(),
+        "actor_account_id": tenant.scope().actor.account_id, "actor_user_id": tenant.legacy_user_id(),
         "actor_membership_id": tenant.membership().id, "active_role": tenant.membership().role,
         "permissions_version": tenant.membership().permissions_version, "household_id": tenant.scope().household_id,
         "authentication_method": method, "session_reference": format!("{prefix}:{}", provenance.reference),

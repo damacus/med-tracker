@@ -1,3 +1,5 @@
+#[path = "support/db.rs"]
+mod db;
 #[path = "support/fixtures.rs"]
 pub mod fixtures;
 #[allow(dead_code)]
@@ -20,7 +22,6 @@ async fn fixture_slices_preserve_baseline_and_care_memberships() {
         .unwrap()
         .unwrap();
     assert_eq!(account.status, 1);
-    assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
     assert_eq!(
         household_memberships::Entity::find()
             .count(&db)
@@ -66,47 +67,10 @@ async fn catalog(db: &loco_rs::prelude::DatabaseConnection) -> serde_json::Value
     serde_json::from_str(&row.try_get::<String>("", "catalog").unwrap()).unwrap()
 }
 
-fn expected_catalog_without_review() -> serde_json::Map<String, serde_json::Value> {
-    let mut expected = serde_json::Map::new();
-    for source in [
-        include_str!("../migration/catalog.json"),
-        include_str!("../migration/ledger-catalog.json"),
-        include_str!("../migration/queue-catalog.json"),
-        include_str!("../migration/take-identity-catalog.json"),
-        include_str!("../migration/browser-session-catalog.json"),
-        include_str!("../migration/access-token-scopes-catalog.json"),
-        include_str!("../migration/registration-policy-catalog.json"),
-        include_str!("../migration/identity-catalog.json"),
-        include_str!("../migration/support-access-catalog.json"),
-        include_str!("../migration/notification-deliveries-catalog.json"),
-        include_str!("../migration/support-expiry-catalog.json"),
-    ] {
-        expected.extend(
-            serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(source).unwrap(),
-        );
-    }
-    expected
-}
-
 #[derive(serde::Deserialize)]
 struct CanonicalIdentityCatalogue {
     removed: Vec<String>,
     changed: serde_json::Map<String, serde_json::Value>,
-}
-
-fn apply_canonical_identity_catalogue(
-    expected: &mut serde_json::Map<String, serde_json::Value>,
-) -> Result<(), serde_json::Error> {
-    let canonical: CanonicalIdentityCatalogue =
-        serde_json::from_str(include_str!("../migration/canonical-identity-catalog.json"))?;
-    for key in canonical.removed {
-        assert!(
-            expected.remove(&key).is_some(),
-            "Expected removed canonical key: {key}"
-        );
-    }
-    expected.extend(canonical.changed);
-    Ok(())
 }
 
 fn apply_guardian_recovery_catalogue(
@@ -134,30 +98,8 @@ async fn capture_guardian_recovery_catalog_when_requested() {
     let db = restored_database().await;
     migration::Migrator::up(&db, None).await.unwrap();
     let actual = catalog(&db).await;
-    let mut baseline = expected_catalog_without_review();
-    baseline.extend(
-        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(include_str!(
-            "../migration/review-edit-catalog.json"
-        ))
-        .unwrap(),
-    );
-    baseline.extend(
-        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(include_str!(
-            "../migration/account-avatars-catalog.json"
-        ))
-        .unwrap(),
-    );
-    apply_canonical_identity_catalogue(&mut baseline).unwrap();
-    for (key, value) in serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(
-        include_str!("../migration/guardian-declarations-catalog.json"),
-    )
-    .unwrap()
-    {
-        assert!(
-            baseline.insert(key.clone(), value).is_none(),
-            "Expected additive guardian key: {key}"
-        );
-    }
+    let baseline: serde_json::Map<String, serde_json::Value> =
+        serde_json::from_str(include_str!("../migration/catalog.json")).unwrap();
     let actual = actual.as_object().unwrap();
     let removed = baseline
         .keys()
@@ -177,70 +119,6 @@ async fn capture_guardian_recovery_catalog_when_requested() {
     let delta = serde_json::json!({"removed":removed,"changed":changed});
     std::fs::write(
         output.join("guardian-recovery-catalog.json"),
-        serde_json::to_string_pretty(&delta).unwrap(),
-    )
-    .unwrap();
-    db.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn capture_review_edit_catalog_when_requested() {
-    let Some(output) = std::env::var_os("REVIEW_CATALOG_CAPTURE") else {
-        return;
-    };
-    let output = std::path::PathBuf::from(output);
-    assert!(output.is_absolute() && output.is_dir());
-    let db = restored_database().await;
-    migration::Migrator::up(&db, None).await.unwrap();
-    let actual = catalog(&db).await;
-    let baseline = expected_catalog_without_review();
-    let delta = actual
-        .as_object()
-        .unwrap()
-        .iter()
-        .filter(|(key, value)| baseline.get(*key) != Some(*value))
-        .map(|(key, value)| (key.clone(), value.clone()))
-        .collect::<serde_json::Map<_, _>>();
-    assert!(delta.contains_key("relation:public.medication_review_edit_leases"));
-    assert!(delta.contains_key("relation:public.medication_review_histories"));
-    assert!(
-        delta.contains_key("column:public.medication_review_prompts.evidence_source_fingerprint")
-    );
-    std::fs::write(
-        output.join("medtracker-review-edit-catalog.json"),
-        serde_json::to_string_pretty(&delta).unwrap(),
-    )
-    .unwrap();
-    db.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn capture_account_avatar_catalog_when_requested() {
-    let Some(output) = std::env::var_os("ACCOUNT_AVATAR_CATALOG_CAPTURE") else {
-        return;
-    };
-    let output = std::path::PathBuf::from(output);
-    assert!(output.is_absolute() && output.is_dir());
-    let db = restored_database().await;
-    migration::Migrator::up(&db, None).await.unwrap();
-    let actual = catalog(&db).await;
-    let mut baseline = expected_catalog_without_review();
-    baseline.extend(
-        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(include_str!(
-            "../migration/review-edit-catalog.json"
-        ))
-        .unwrap(),
-    );
-    let delta = actual
-        .as_object()
-        .unwrap()
-        .iter()
-        .filter(|(key, value)| baseline.get(*key) != Some(*value))
-        .map(|(key, value)| (key.clone(), value.clone()))
-        .collect::<serde_json::Map<_, _>>();
-    assert!(delta.contains_key("relation:public.account_avatars"));
-    std::fs::write(
-        output.join("account-avatars-catalog.json"),
         serde_json::to_string_pretty(&delta).unwrap(),
     )
     .unwrap();
@@ -300,30 +178,10 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
     let before = catalog(&db).await;
     assert!(before.get("relation:public.accounts").is_some());
     assert!(before.get("relation:public.audit_ledger_entries").is_some());
-    let mut expected = expected_catalog_without_review();
-    expected.extend(
-        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(include_str!(
-            "../migration/review-edit-catalog.json"
-        ))
-        .unwrap(),
-    );
-    expected.extend(
-        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(include_str!(
-            "../migration/account-avatars-catalog.json"
-        ))
-        .unwrap(),
-    );
-    let actual = before.as_object().unwrap();
-    apply_canonical_identity_catalogue(&mut expected)?;
-    for (key, value) in serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(
-        include_str!("../migration/guardian-declarations-catalog.json"),
-    )? {
-        assert!(
-            expected.insert(key.clone(), value).is_none(),
-            "Expected additive guardian key: {key}"
-        );
-    }
+    let mut expected: serde_json::Map<String, serde_json::Value> =
+        serde_json::from_str(include_str!("../migration/catalog.json"))?;
     apply_guardian_recovery_catalogue(&mut expected)?;
+    let actual = before.as_object().unwrap();
     let differences: Vec<_> = expected
         .keys()
         .chain(actual.keys())
@@ -342,13 +200,14 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         differences.join("\n")
     );
     let ledger = ledger_rows(&db).await;
-    assert_eq!(ledger.len(), 14);
+    assert_eq!(ledger.len(), 16);
     assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
     assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
     assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
+    assert_eq!(ledger[13].0, "m20261021_000014_member_directory_identity");
     assert_eq!(
         ledger.last().map(|row| row.0.as_str()),
-        Some("m20261021_000014_guardian_recovery")
+        Some("m20261022_000017_guardian_recovery")
     );
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(catalog(&db).await, before);
@@ -494,7 +353,6 @@ async fn development_seed_creates_a_usable_account_and_household() {
         .unwrap()
         .unwrap();
     assert_eq!(account.email, "persistence@example.test");
-    assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
     let tenant = access::begin(
         &db,
         &HouseholdScope {
@@ -530,6 +388,59 @@ async fn development_seed_creates_a_usable_account_and_household() {
             .is_err()
     );
     db.close().await.unwrap();
+    let seeded =
+        db::OwnedDatabase::clone(&owned_url, &database, "seed_login_", "seed_runtime_").await;
+    let mut config = Config::new(&Environment::Test).unwrap();
+    config.database.uri = seeded.runtime_uri.clone();
+    let Some(loco_rs::config::QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue.uri = seeded.runtime_uri.clone();
+    let boot = med_tracker::app::App::boot(
+        loco_rs::boot::StartMode::ServerOnly,
+        &Environment::Test,
+        config,
+    )
+    .await
+    .unwrap();
+    let mut server = loco_rs::TestServer::new(
+        boot.router
+            .unwrap()
+            .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .unwrap();
+    server.save_cookies();
+    let login = server
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&serde_json::json!({"email":"persistence@example.test","password":"password"}))
+        .await;
+    assert_eq!(login.status_code(), 200, "{}", login.text());
+    assert_eq!(
+        login.json::<serde_json::Value>()["user"]["id"]
+            .to_string()
+            .trim_matches('"'),
+        "71001"
+    );
+    let session = server.get("/api/auth/get-session").await;
+    assert_eq!(session.status_code(), 200, "{}", session.text());
+    assert_eq!(
+        session.json::<serde_json::Value>()["user"]["id"]
+            .to_string()
+            .trim_matches('"'),
+        "71001"
+    );
+    let medicines = server
+        .get("/households/persistence-fixture/medications")
+        .await;
+    assert_eq!(medicines.status_code(), 200, "{}", medicines.text());
+    assert!(medicines.text().contains("Synthetic"));
+    drop(server);
+    if let Some(queue) = boot.app_context.queue_provider.as_ref() {
+        queue.shutdown().unwrap();
+    }
+    boot.app_context.db.close().await.unwrap();
+    seeded.close().await;
 }
 
 #[tokio::test]
@@ -577,6 +488,16 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
         .unwrap();
     let uri = template::owned_database_url();
     let (base, _) = uri.rsplit_once('/').unwrap();
+    let baseline: i64 = db
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS entries FROM audit_ledger_entries",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "entries")
+        .unwrap();
     let mut writers = tokio::task::JoinSet::new();
     for _ in 0..6 {
         let uri = format!("{base}/{database}");
@@ -601,14 +522,17 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
     while let Some(result) = writers.join_next().await {
         result.unwrap();
     }
+    let clinical = db.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM security_audit_events WHERE event_type='migration-proof') AS security,(SELECT count(*) FROM versions WHERE item_type='Medication' AND item_id=80001 AND event='update') AS medications")).await.unwrap().unwrap();
+    assert_eq!(clinical.try_get::<i64>("", "security").unwrap(), 6);
+    assert_eq!(clinical.try_get::<i64>("", "medications").unwrap(), 6);
     let row = db.query_one_raw(Statement::from_string(DbBackend::Postgres, r#"
         SELECT count(*)::bigint AS entries,
             bool_and(sequence = ordinal AND previous_hash IS NOT DISTINCT FROM previous_entry_hash) AS linked,
             bool_and(entry_hash = digest(convert_to('medtracker.audit.ledger.v1' || chr(31) || chain_key || chr(31) || chain_epoch::text || chr(31) || sequence::text || chr(31), 'UTF8') || COALESCE(previous_hash, '\x'::bytea) || canonical_payload, 'sha256')) AS hashes,
             bool_and(retain_until >= occurred_at + interval '9 years') AS retained
-        FROM (SELECT *, row_number() OVER (ORDER BY sequence) AS ordinal, lag(entry_hash) OVER (ORDER BY sequence) AS previous_entry_hash FROM audit_ledger_entries) entries
+        FROM (SELECT *, row_number() OVER (PARTITION BY chain_key,chain_epoch ORDER BY sequence) AS ordinal, lag(entry_hash) OVER (PARTITION BY chain_key,chain_epoch ORDER BY sequence) AS previous_entry_hash FROM audit_ledger_entries) entries
     "#)).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "entries").unwrap(), 12);
+    assert_eq!(row.try_get::<i64>("", "entries").unwrap(), baseline + 12);
     for column in ["linked", "hashes", "retained"] {
         assert!(
             row.try_get::<bool>("", column).unwrap(),
@@ -616,7 +540,7 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
         );
     }
     let pending: i64 = db.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT count(*)::bigint AS pending FROM audit_export_deliveries WHERE status='pending' AND audit_ledger_entry_id IS NOT NULL")).await.unwrap().unwrap().try_get("", "pending").unwrap();
-    assert_eq!(pending, 12);
+    assert_eq!(pending, baseline + 12);
     db.execute_unprepared("DELETE FROM security_audit_events; DELETE FROM versions")
         .await
         .unwrap();
@@ -630,7 +554,7 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
         .unwrap()
         .try_get("", "retained")
         .unwrap();
-    assert_eq!(retained, 12);
+    assert_eq!(retained, baseline + 12);
     db.close().await.unwrap();
 }
 
@@ -696,4 +620,95 @@ async fn owned_postgres_fixture() {
         Ok("1"),
         "Forced persistence fixture failure"
     );
+}
+
+#[tokio::test]
+async fn fresh_setup_refuses_an_unrecognised_schema_without_changing_data() {
+    use med_tracker::models::_entities::accounts;
+    use sea_orm::{
+        EntityTrait,
+        sea_query::{Alias, Expr, ExprTrait, Query},
+    };
+
+    let db = restored_database().await;
+    migration::Migrator::up(&db, None).await.unwrap();
+    fixtures::seed_persistence(&db).await;
+    db.execute(
+        Query::update()
+            .table(Alias::new("seaql_migrations"))
+            .value(Alias::new("version"), "retired_authentication_baseline")
+            .and_where(
+                Expr::col(Alias::new("version")).eq("m20261013_000001_create_medtracker_native"),
+            ),
+    )
+    .await
+    .unwrap();
+    let before = catalog(&db).await;
+    let ledger = ledger_rows(&db).await;
+    let account = accounts::Entity::find_by_id(71001).one(&db).await.unwrap();
+    assert!(account.is_some());
+    assert!(migration::Migrator::up(&db, None).await.is_err());
+    assert_eq!(catalog(&db).await, before);
+    assert_eq!(ledger_rows(&db).await, ledger);
+    assert_eq!(
+        accounts::Entity::find_by_id(71001).one(&db).await.unwrap(),
+        account
+    );
+    db.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn fresh_authentication_schema_never_creates_legacy_credentials() {
+    let db = restored_database().await;
+    migration::Migrator::up(&db, Some(1)).await.unwrap();
+    let initial = catalog(&db).await;
+    for table in [
+        "account_identities",
+        "account_otp_keys",
+        "account_recovery_codes",
+        "account_webauthn_keys",
+        "account_webauthn_user_ids",
+    ] {
+        assert!(
+            initial.get(format!("relation:public.{table}")).is_none(),
+            "Obsolete credential table: {table}"
+        );
+    }
+    assert!(
+        initial
+            .get("column:public.accounts.password_hash")
+            .is_none()
+    );
+    assert!(initial.get("column:public.users.password_digest").is_none());
+    assert!(
+        initial
+            .get("column:public.accounts.email_verified")
+            .is_some()
+    );
+    migration::Migrator::up(&db, Some(6)).await.unwrap();
+    let native = catalog(&db).await;
+    for (table, column) in [
+        ("auth_credentials", "password"),
+        ("identity_sessions", "authentication_method"),
+        ("identity_onboarding", "completed_at"),
+        ("identity_api_keys", "reference_id"),
+    ] {
+        assert!(
+            native
+                .get(format!("column:public.{table}.{column}"))
+                .is_some(),
+            "Missing native authentication field: {table}.{column}"
+        );
+    }
+    assert!(
+        native
+            .get("relation:public.identity_provider_accounts")
+            .is_none()
+    );
+    assert!(
+        native
+            .get("relation:public.identity_device_codes")
+            .is_none()
+    );
+    db.close().await.unwrap();
 }

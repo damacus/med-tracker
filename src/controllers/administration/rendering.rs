@@ -99,23 +99,6 @@ pub(super) fn render(
     }
 }
 
-pub(super) fn members(value: &Value) -> std::result::Result<Vec<Value>, OperationError> {
-    let rows = value["data"]
-        .as_array()
-        .ok_or(OperationError::Unavailable)?;
-    Ok(rows
-        .iter()
-        .filter(|row| row["status"] == "active")
-        .map(|row| {
-            let mut row = row.clone();
-            row["name"] = row["person_name"]
-                .as_str()
-                .map_or_else(|| row["email"].clone(), |name| json!(name));
-            row
-        })
-        .collect())
-}
-
 pub(super) fn selected(options: &mut Value, draft: &HashMap<String, String>) {
     for (key, field) in [("carers", "carer_id"), ("patients", "patient_id")] {
         if let Some(rows) = options[key].as_array_mut() {

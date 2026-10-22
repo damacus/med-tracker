@@ -135,7 +135,7 @@ impl Store<'_> {
             request_id: String::new(),
         };
         let checked = match access::verify_membership(self.transaction, &scope).await {
-            Ok((checked, _)) => checked,
+            Ok(checked) => checked,
             Err(OperationError::Unavailable) => return Err(()),
             Err(_) => return Ok(false),
         };

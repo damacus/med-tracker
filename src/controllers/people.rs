@@ -13,7 +13,7 @@ use crate::models::{
 };
 use axum::{
     Extension,
-    extract::{Form as AxumForm, Query},
+    extract::{Form as AxumForm, Query, RawQuery},
     http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
@@ -74,86 +74,115 @@ async fn index(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers, RawQuery(query)): (Option<Extension<LocoRequestId>>, HeaderMap, RawQuery),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Query(pagination): Query<people::Pagination>,
 ) -> Response {
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .index(pagination)
-        .await
+    let page = match page::Page::new(&ctx, &session, &token, &view, &slug, request).form_language(
+        &headers,
+        query.as_deref(),
+        &[],
+    ) {
+        Ok(page) => page,
+        Err(_) => return super::administration::presentation_invalid_link(&view, &headers),
+    };
+    page.index(pagination).await
 }
 
 async fn show(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers, RawQuery(query)): (Option<Extension<LocoRequestId>>, HeaderMap, RawQuery),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
-    headers: HeaderMap,
 ) -> Response {
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .show(&id, &headers)
-        .await
+    let page = match page::Page::new(&ctx, &session, &token, &view, &slug, request).form_language(
+        &headers,
+        query.as_deref(),
+        &[],
+    ) {
+        Ok(page) => page,
+        Err(_) => return super::administration::presentation_invalid_link(&view, &headers),
+    };
+    page.show(&id).await
 }
 
 async fn new(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers, RawQuery(query)): (Option<Extension<LocoRequestId>>, HeaderMap, RawQuery),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
-    headers: HeaderMap,
 ) -> Response {
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .form_language(&headers)
-        .form(None, None, None)
-        .await
+    let page = match page::Page::new(&ctx, &session, &token, &view, &slug, request).form_language(
+        &headers,
+        query.as_deref(),
+        &[],
+    ) {
+        Ok(page) => page,
+        Err(_) => return super::administration::presentation_invalid_link(&view, &headers),
+    };
+    page.form(None, None, None).await
 }
 
 async fn edit(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers, RawQuery(query)): (Option<Extension<LocoRequestId>>, HeaderMap, RawQuery),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
-    headers: HeaderMap,
 ) -> Response {
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .form_language(&headers)
-        .form(Some(&id), None, None)
-        .await
+    let page = match page::Page::new(&ctx, &session, &token, &view, &slug, request).form_language(
+        &headers,
+        query.as_deref(),
+        &[],
+    ) {
+        Ok(page) => page,
+        Err(_) => return super::administration::presentation_invalid_link(&view, &headers),
+    };
+    page.form(Some(&id), None, None).await
 }
 
 async fn create(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
-    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
+    (request, headers, RawQuery(query)): (Option<Extension<LocoRequestId>>, HeaderMap, RawQuery),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
-    AxumForm(draft): AxumForm<HashMap<String, String>>,
+    AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .form_language(&headers)
-        .save(None, draft)
-        .await
+    let page = match page::Page::new(&ctx, &session, &token, &view, &slug, request).form_language(
+        &headers,
+        query.as_deref(),
+        &draft,
+    ) {
+        Ok(page) => page,
+        Err(_) => return super::administration::presentation_invalid_link(&view, &headers),
+    };
+    page.save(None, draft.into_iter().collect()).await
 }
 
 async fn update(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
+    (request, headers, RawQuery(query)): (Option<Extension<LocoRequestId>>, HeaderMap, RawQuery),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
-    AxumForm(draft): AxumForm<HashMap<String, String>>,
+    AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .form_language(&headers)
-        .save(Some(&id), draft)
-        .await
+    let page = match page::Page::new(&ctx, &session, &token, &view, &slug, request).form_language(
+        &headers,
+        query.as_deref(),
+        &draft,
+    ) {
+        Ok(page) => page,
+        Err(_) => return super::administration::presentation_invalid_link(&view, &headers),
+    };
+    page.save(Some(&id), draft.into_iter().collect()).await
 }

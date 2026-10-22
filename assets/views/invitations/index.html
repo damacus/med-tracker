@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 {% set invite = invite_labels.index %}
-<section class="max-w-3xl mx-auto">
+<section class="admin-page">
   <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ admin_labels.nav.overview }}</a>
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ invite.title }}</h1>
@@ -11,12 +11,12 @@
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <form id="invitation-form" action="/households/{{ slug }}/admin/invitations" method="post" class="flex flex-col gap-4">
-      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+      {% include "invitations/context.html" %}
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <label for="email" class="font-semibold">{{ invite.form.email }}</label>
-      <input id="email" name="email" type="email" class="input w-full" value="{{ draft.email }}" required {% if email_invalid %}aria-invalid="true" aria-describedby="form-error-email"{% endif %}>
+      <input id="email" name="email" type="email" class="input w-full" value="{{ draft.email }}" required {% if email_invalid %}aria-invalid="true" aria-describedby="form-error-email" autofocus{% endif %}>
       <label for="membership_role" class="font-semibold">{{ invite.form.role }}</label>
-      <select id="membership_role" name="membership_role" class="select w-full" {% if membership_role_invalid %}aria-invalid="true" aria-describedby="form-error-membership_role"{% endif %}>
+      <select id="membership_role" name="membership_role" class="select w-full" {% if membership_role_invalid %}aria-invalid="true" aria-describedby="form-error-membership_role" autofocus{% endif %}>
         {% for role in roles %}<option value="{{ role }}" {% if draft.membership_role == role %}selected{% endif %}>{% if role == "member" %}{{ role_labels.member }}{% else %}{{ role_labels.administrator }}{% endif %}</option>{% endfor %}
       </select>
       <p class="text-sm opacity-75">{{ invite.role_guidance }}</p>
@@ -24,28 +24,44 @@
     </form>
   </div></div>
   <h2 class="text-xl font-semibold mt-8">{{ invite.recent }}</h2>
-  <ul class="flex flex-col gap-4 mt-4">
+  <form action="/households/{{ slug }}/admin/invitations" method="get" class="shell-panel grid gap-4 p-4 mt-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="{{ invite.filters.heading }}">
+    {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+    <div><label for="invitation-search" class="label">{{ invite.filters.search }}</label><input id="invitation-search" name="q" type="search" class="input w-full" maxlength="254" value="{{ filters.q }}"></div>
+    <div><label for="invitation-role" class="label">{{ invite.form.role }}</label><select id="invitation-role" name="role" class="select w-full"><option value="">{{ invite.filters.all_roles }}</option>{% for role in roles %}<option value="{{ role }}" {% if filters.role == role %}selected{% endif %}>{{ role_labels[role] }}</option>{% endfor %}</select></div>
+    <div><label for="invitation-status" class="label">{{ invite.filters.status }}</label><select id="invitation-status" name="status" class="select w-full"><option value="">{{ invite.filters.all_statuses }}</option>{% for status in ["pending","accepted","revoked","expired"] %}<option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ invite.status[status] }}</option>{% endfor %}</select></div>
+    <div class="flex flex-wrap items-end gap-3"><button class="btn btn-neutral" type="submit">{{ invite.filters.apply }}</button><a class="link" href="/households/{{ slug }}/admin/invitations{{ language_suffix }}">{{ invite.filters.clear }}</a></div>
+  </form>
+  <p class="mt-4 text-sm opacity-75">{{ invite.delivery.explanation }}</p>
+  <ul class="admin-invitations">
     {% for invitation in invitations %}
     <li class="card bg-base-100 border border-base-300"><div class="card-body">
       <h3 class="card-title break-all">{{ invitation.email }}</h3>
-      <p>{% if invitation.membership_role == "member" %}{{ role_labels.member }}{% else %}{{ role_labels.administrator }}{% endif %} · {{ invitation.status }}</p>
+      <p>{% if invitation.membership_role == "member" %}{{ role_labels.member }}{% else %}{{ role_labels.administrator }}{% endif %} · <span class="admin-chip">{{ invitation.status }}</span></p>
+      <p class="break-words">{{ invite.created }} <time datetime="{{ invitation.created_at }}">{{ invitation.created_at_display }}</time></p>
       <p class="break-words">{{ invite.expires }} <time datetime="{{ invitation.expires_at }}">{{ invitation.expires_at_display }}</time></p>
-      {% if invitation.actionable %}<div class="flex flex-col sm:flex-row gap-3">
+      <div class="invitation-delivery rounded-lg border border-base-300 p-3 {% if invitation.delivery_failed %}bg-warning/10{% else %}bg-base-200/50{% endif %}">
+        <p class="font-semibold">{{ invite.delivery.heading }}: {{ invitation.delivery_status }}</p>
+        {% if invitation.delivery_at %}<p class="text-sm"><time datetime="{{ invitation.delivery_at }}">{{ invitation.delivery_at_display }}</time></p>{% endif %}
+        {% if invitation.delivery_category %}<p class="mt-2">{{ invitation.delivery_category }}</p>{% endif %}
+        {% if invitation.delivery_failed and invitation.actionable and invitation.delivery_retry %}<p class="mt-2 text-sm">{{ invite.delivery.retry }}</p>{% endif %}
+      </div>
+      {% if invitation.actionable %}<div class="invitation-actions flex flex-col sm:flex-row gap-3">
         <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/resend" method="post">
-          {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+          {% include "invitations/context.html" %}
           <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-          <button class="btn btn-outline" type="submit">{{ invite.resend }}</button>
+          <button class="btn btn-outline" type="submit" aria-label="{{ invite.resend }} {{ invitation.email }}">{{ invite.resend }}</button>
         </form>
-        <button class="btn btn-outline" type="button" data-dialog-open="cancel-invitation-{{ invitation.id }}">{{ invite.cancel }}</button>
-        <dialog id="cancel-invitation-{{ invitation.id }}" class="modal" lang="{{ lang }}" aria-labelledby="cancel-invitation-title-{{ invitation.id }}">
+        <button class="btn btn-outline" type="button" aria-label="{{ invite.cancel }} {{ invitation.email }}" data-dialog-open="cancel-invitation-{{ invitation.id }}">{{ invite.cancel }}</button>
+        <dialog id="cancel-invitation-{{ invitation.id }}" class="modal" lang="{{ lang }}" aria-labelledby="cancel-invitation-title-{{ invitation.id }}" aria-describedby="cancel-invitation-email-{{ invitation.id }}">
           <div class="modal-box">
             <h4 id="cancel-invitation-title-{{ invitation.id }}" class="text-xl font-semibold">{{ invite.confirm_cancel.title }}</h4>
+            <p id="cancel-invitation-email-{{ invitation.id }}" class="font-semibold break-all mt-4">{{ invitation.email }}</p>
             <p class="mt-4">{{ invite.confirm_cancel.guidance }}</p>
             <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/cancel" method="post" class="modal-action flex-col gap-2 sm:flex-row">
-              {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+              {% include "invitations/context.html" %}
               <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
               <button class="btn btn-ghost w-full sm:w-auto" type="button" data-dialog-close>{{ invite.confirm_cancel.keep }}</button>
-              <button class="btn btn-neutral w-full sm:w-auto" type="submit">{{ invite.confirm_cancel.confirm }}</button>
+              <button class="btn btn-neutral w-full sm:w-auto" type="submit" aria-label="{{ invite.confirm_cancel.confirm }} {{ invitation.email }}">{{ invite.confirm_cancel.confirm }}</button>
             </form>
           </div>
         </dialog>

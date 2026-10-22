@@ -833,9 +833,9 @@ async fn identity_state(db: &impl ConnectionTrait) -> Result<IdentityState, DbEr
                 (SELECT count(*) FROM public.api_sessions) AS api_sessions,
                 (SELECT count(*) FROM public.identity_api_keys) AS api_keys,
                 (SELECT count(*) FROM public.oauth_grants) AS oauth_grants,
-                (SELECT encode(digest(COALESCE(string_agg(id::text || ':' || COALESCE(password_hash,''), ',' ORDER BY id),''),'sha256'),'hex') FROM public.accounts) AS passwords,
+                (SELECT encode(digest(COALESCE(string_agg(id::text || ':' || COALESCE(password,''), ',' ORDER BY id),''),'sha256'),'hex') FROM public.auth_credentials) AS passwords,
                 (SELECT encode(digest(COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.id)::text,'[]'),'sha256'),'hex') FROM public.identity_passkeys p) AS passkeys,
-                (SELECT encode(digest(COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.id)::text,'[]'),'sha256'),'hex') FROM public.identity_provider_accounts p) AS providers,
+                (SELECT encode(digest(COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.id)::text,'[]'),'sha256'),'hex') FROM public.auth_credentials p) AS providers,
                 (SELECT encode(digest(COALESCE(jsonb_agg(jsonb_build_array(a.id,to_jsonb(a)->'person_id') ORDER BY a.id)::text,'[]'),'sha256'),'hex') FROM public.accounts a) AS account_bindings"))
         .await?.ok_or_else(|| DbErr::Custom("Expected identity counts".to_owned()))?;
     Ok(IdentityState {
@@ -1240,7 +1240,7 @@ async fn signup_ignores_injected_existing_person_and_creates_a_distinct_self() -
             .send().await.map_err(|_| DbErr::Custom("Signup claim transport failed".to_owned()))?;
         let status = response.status().as_u16();
         let body: Value = response.json().await
-            .map_err(|_| DbErr::Custom("Signup claim response was not JSON".to_owned()))?;
+            .map_err(|_| DbErr::Custom(format!("Signup claim HTTP {status} response was not JSON")))?;
         require(status == 200 && body["status"] == true,
             &format!("Valid signup must retain its existing ignored-field contract (HTTP {status})"))?;
         require(claim_target_state(&app.fixture.admin).await? == target,

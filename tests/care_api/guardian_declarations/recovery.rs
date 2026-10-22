@@ -1,6 +1,6 @@
 use super::{Application, require, storage_boundary::foreign_token, withdrawal::declaration};
 use med_tracker::models::{
-    access::{self, Actor, HouseholdScope},
+    access::{self, Actor, HouseholdScope, PersonAccess},
     care::administration::recovery::{
         self, RecoveryAction, RecoveryCommand, RecoveryGuardianId, RecoveryOutcome,
         RecoverySnapshot, RecoverySubjectId,
@@ -21,6 +21,39 @@ fn scope() -> HouseholdScope {
     }
 }
 
+async fn effective_snapshot(
+    tenant: &access::TenantTransaction,
+    subject: i64,
+) -> Result<RecoverySnapshot, DbErr> {
+    let query = sea_orm::sea_query::Query::select()
+        .columns([
+            ("snapshot", "snapshot_token"),
+            ("snapshot", "snapshot_revision"),
+            ("snapshot", "link_token"),
+            ("snapshot", "has_effective_guardian"),
+        ])
+        .from_function(
+            sea_orm::sea_query::Func::cust("med_tracker.guardian_recovery_snapshot")
+                .arg(sea_orm::sea_query::Expr::val(subject)),
+            "snapshot",
+        )
+        .to_owned();
+    let row = tenant
+        .transaction()
+        .query_one_raw(tenant.transaction().get_database_backend().build(&query))
+        .await?
+        .ok_or_else(|| DbErr::Custom("Missing guarded recovery snapshot".into()))?;
+    require(
+        row.try_get::<bool>("", "has_effective_guardian")?,
+        "Canonical snapshot must report effective guardian",
+    )?;
+    Ok(RecoverySnapshot {
+        token: row.try_get("", "snapshot_token")?,
+        revision: row.try_get("", "snapshot_revision")?,
+        link_token: row.try_get("", "link_token")?,
+    })
+}
+
 #[tokio::test]
 async fn guardian_recovery_account_then_household_closure_order_rejects_without_effects()
 -> Result<(), DbErr> {
@@ -35,8 +68,8 @@ async fn guardian_recovery_account_then_household_closure_order_rejects_without_
                (74995,72001,73995,'member','active',now(),now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES
                (71995,73995,'closing-candidate@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES
-               (77995,73995,'closing-candidate@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())"
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES
+               (77995,73995,'closing-candidate@example.test',true,now(),now())"
         ).await?;
         let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
         let snapshot=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
@@ -131,6 +164,48 @@ async fn guardian_recovery_options_report_bounded_truncation() -> Result<(), DbE
 }
 
 #[tokio::test]
+async fn guardian_recovery_options_reach_orphan_after_101_guarded_minors() -> Result<(), DbErr> {
+    let app = Application::new().await;
+    let result = async {
+        app.fixture.admin.execute_unprepared(
+            "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at)
+               SELECT 85000+g,'A guarded minor '||lpad(g::text,3,'0'),'2020-01-01',1,false,now(),now()
+               FROM generate_series(1,101) AS g;
+             INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at)
+               VALUES(85999,'Zoe late orphan','2020-01-01',1,false,now(),now());
+             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at)
+               SELECT 86000+g,72001,85000+g,'member','active',now(),now(),now()
+               FROM generate_series(1,101) AS g;
+             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at)
+               VALUES(86999,72001,85999,'member','active',now(),now(),now());
+             INSERT INTO public.guardian_declarations(subject_person_id,guardian_person_id,origin_household_id,declared_by_account_id,subject_name_at_declaration)
+               SELECT 85000+g,73001,72001,71001,'A guarded minor '||g
+               FROM generate_series(1,101) AS g;
+             INSERT INTO public.carer_relationships(household_id,carer_id,patient_id,guardian_declaration_id,relationship_type,active,created_at,updated_at)
+               SELECT 72001,73001,d.subject_person_id,d.id,'family_member',true,now(),now()
+               FROM public.guardian_declarations d WHERE d.subject_person_id BETWEEN 85001 AND 85101"
+        ).await?;
+        let tenant = access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
+        let guarded = tenant.transaction().query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT count(*) AS guarded FROM public.people p
+               CROSS JOIN LATERAL med_tracker.guardian_recovery_snapshot(p.id) s
+               WHERE p.id BETWEEN 85001 AND 85101 AND s.has_effective_guardian"))
+            .await?.ok_or_else(||DbErr::Custom("Missing guarded count".into()))?;
+        require(guarded.try_get::<i64>("","guarded")? == 101,
+            "Fixture must contain 101 canonically effective guardian links")?;
+        let options = recovery::options(&tenant).await.map_err(db_error)?;
+        require(options.subjects.iter().any(|subject|subject.id.get()==85999)
+            && options.subjects.iter().all(|subject|!subject.has_effective_guardian)
+            && !options.subjects_has_more,
+            "Later orphan must be reachable and warning must count actual orphans")?;
+        tenant.rollback().await.map_err(db_error)?;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
 async fn guardian_recovery_administrator_appoints_for_minor_without_history() -> Result<(), DbErr> {
     let app = Application::new().await;
     let result=async {
@@ -142,7 +217,7 @@ async fn guardian_recovery_administrator_appoints_for_minor_without_history() ->
                (74994,72001,73994,'member','active',now(),now(),now()),
                (74999,72001,73999,'administrator','active',now(),now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71999,73999,'no-history-admin@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77999,73999,'no-history-admin@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())"
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77999,73999,'no-history-admin@example.test',true,now(),now())"
         ).await?;
         let manager_scope=HouseholdScope {actor:Actor{account_id:71999},household_id:72001,
             request_id:"synthetic-no-history-administrator".into()};
@@ -206,17 +281,18 @@ async fn guardian_recovery_latest_history_uses_declaration_time_not_high_old_id(
         require(appointed.declaration_id<old_id,"New appointment must have a lower generated ID")?;
         tenant.commit().await.map_err(db_error)?;
         let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
-        let latest=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
-            .find(|item|item.id.get()==subject)
-            .ok_or_else(||DbErr::Custom("Missing post-appointment high-ID subject".into()))?;
+        let latest=effective_snapshot(&tenant,subject).await?;
+        require(!recovery::options(&tenant).await.map_err(db_error)?.subjects.iter()
+            .any(|item|item.id.get()==subject),
+            "Guarded subject must leave recovery options after appointment")?;
         tenant.rollback().await.map_err(db_error)?;
         let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "SELECT confirmation_token,revision FROM public.guardian_declarations WHERE id=$1",
             [appointed.declaration_id.into()])).await?
             .ok_or_else(||DbErr::Custom("Missing lower-ID new appointment".into()))?;
-        require(latest.snapshot.token==row.try_get::<uuid::Uuid>("","confirmation_token")?
-            && latest.snapshot.revision==row.try_get::<i64>("","revision")?
-            && latest.snapshot.token!=selected.snapshot.token,
+        require(latest.token==row.try_get::<uuid::Uuid>("","confirmation_token")?
+            && latest.revision==row.try_get::<i64>("","revision")?
+            && latest.token!=selected.snapshot.token,
             "Latest confirmation must follow declaration time, including terminal high-ID history")?;
         Ok(())
     }.await;
@@ -365,7 +441,7 @@ async fn guardian_recovery_restore_and_personal_withdrawal_serialize_without_dea
         app.fixture.admin.execute_unprepared(
             "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73999,'Restore race administrator','1980-01-01',0,true,now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71999,73999,'restore-race-admin@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77999,73999,'restore-race-admin@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77999,73999,'restore-race-admin@example.test',true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74999,72001,73999,'administrator','active',now(),now(),now())"
         ).await?;
         app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
@@ -465,9 +541,9 @@ async fn guardian_recovery_candidate_lockout_after_account_wait_rejects_without_
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES
                (71995,73995,'lockout-race-candidate@example.test',2,now(),now()),
                (71999,73999,'lockout-race-manager@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES
-               (77995,73995,'lockout-race-candidate@example.test',crypt('password',gen_salt('bf',4)),true,now(),now()),
-               (77999,73999,'lockout-race-manager@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES
+               (77995,73995,'lockout-race-candidate@example.test',true,now(),now()),
+               (77999,73999,'lockout-race-manager@example.test',true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES
                (74995,72001,73995,'member','active',now(),now(),now()),
                (74999,72001,73999,'administrator','active',now(),now(),now());
@@ -545,9 +621,9 @@ async fn guardian_recovery_waiting_on_candidate_rechecks_restored_old_authority(
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES
                (71995,73995,'candidate-lock@example.test',2,now(),now()),
                (71999,73999,'recovery-admin@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES
-               (77995,73995,'candidate-lock@example.test',crypt('password',gen_salt('bf',4)),true,now(),now()),
-               (77999,73999,'recovery-admin@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES
+               (77995,73995,'candidate-lock@example.test',true,now(),now()),
+               (77999,73999,'recovery-admin@example.test',true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES
                (74995,72001,73995,'member','active',now(),now(),now()),
                (74999,72001,73999,'administrator','active',now(),now(),now());
@@ -593,7 +669,7 @@ async fn guardian_recovery_waiting_on_candidate_rechecks_restored_old_authority(
             let _=attempt.await;
             return Err(DbErr::Custom("Recovery was not observed waiting on the candidate lock".into()));
         }
-        app.fixture.admin.execute_unprepared("UPDATE public.accounts SET status=2 WHERE id=71001").await?;
+        blocker.execute_unprepared("UPDATE public.accounts SET status=2 WHERE id=71001").await?;
         blocker.commit().await?;
         let outcome=attempt.await.map_err(db_error)?;
         require(outcome.as_ref().is_err_and(|error|error.contains("guardian_already_effective")),
@@ -621,9 +697,8 @@ async fn guardian_recovery_birthday_bounds_fail_closed() -> Result<(), DbErr> {
         ).await?;
         let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
         let options=recovery::options(&tenant).await.map_err(db_error)?;
-        let selected=options.subjects.iter().find(|item|item.id.get()==subject)
-            .ok_or_else(||DbErr::Custom("Current minor missing near guardian birthday".into()))?;
-        require(selected.has_effective_guardian,
+        effective_snapshot(&tenant,subject).await?;
+        require(!options.subjects.iter().any(|item|item.id.get()==subject),
             "Guardian adult in latest worldwide zone must prevent false orphanhood")?;
         require(!options.guardians.iter().any(|item|item.id.get()==73001),
             "New appointee must be adult in earliest worldwide zone")?;
@@ -646,7 +721,7 @@ async fn guardian_recovery_definer_rejects_ordinary_member_and_foreign_subject()
         app.fixture.admin.execute_unprepared(
             "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73997,'Ordinary recovery member','1980-01-01',0,true,now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71997,73997,'ordinary-recovery@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77997,73997,'ordinary-recovery@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77997,73997,'ordinary-recovery@example.test',true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74997,72001,73997,'member','active',now(),now(),now());
              INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73998,'Foreign recovery minor','2020-01-01',1,false,now(),now())"
         ).await?;
@@ -771,14 +846,13 @@ async fn guardian_recovery_foreign_active_link_blocks_local_takeover() -> Result
         seeded?;
         let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
         let options=recovery::options(&tenant).await.map_err(db_error)?;
-        let selected=options.subjects.iter().find(|item|item.id.get()==subject)
-            .ok_or_else(||DbErr::Custom("Foreign guarded minor missing".into()))?;
-        require(selected.has_effective_guardian,
+        let snapshot=effective_snapshot(&tenant,subject).await?;
+        require(!options.subjects.iter().any(|item|item.id.get()==subject),
             "A healthy foreign relationship must count despite local inactivity")?;
         let attempted=recovery::execute(&tenant,RecoveryCommand {
             subject:RecoverySubjectId::parse(subject).map_err(db_error)?,
             guardian:RecoveryGuardianId::parse(73001).map_err(db_error)?,
-            expected:selected.snapshot,
+            expected:snapshot,
             action:RecoveryAction::Appoint,
             reason:"Attempted appointment with foreign authority.".into(),
         }).await;
@@ -788,11 +862,11 @@ async fn guardian_recovery_foreign_active_link_blocks_local_takeover() -> Result
         app.fixture.admin.execute_unprepared(
             "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73996,'Synthetic lockout appointee','1980-01-01',0,true,now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71996,73996,'lockout-appointee@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77996,73996,'lockout-appointee@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77996,73996,'lockout-appointee@example.test',true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74996,72001,73996,'member','active',now(),now(),now());
              INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73998,'Synthetic lockout manager','1980-01-01',0,true,now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71998,73998,'lockout-manager@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77998,73998,'lockout-manager@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77998,73998,'lockout-manager@example.test',true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74998,72001,73998,'administrator','active',now(),now(),now());
              INSERT INTO public.account_lockouts(account_id,key,deadline) VALUES(71001,'synthetic-foreign-guardian-lock',now()+interval '1 hour')"
         ).await?;
@@ -802,15 +876,14 @@ async fn guardian_recovery_foreign_active_link_blocks_local_takeover() -> Result
             request_id:"synthetic-foreign-lockout-recovery".into(),
         };
         let tenant=access::begin(&app.fixture.runtime,&manager_scope,None).await.map_err(db_error)?;
-        let selected=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
-            .find(|item|item.id.get()==subject)
-            .ok_or_else(||DbErr::Custom("Foreign guardian missing after lockout".into()))?;
-        require(selected.has_effective_guardian,
+        let options=recovery::options(&tenant).await.map_err(db_error)?;
+        let snapshot=effective_snapshot(&tenant,subject).await?;
+        require(!options.subjects.iter().any(|item|item.id.get()==subject),
             "Temporary foreign guardian login lockout must not create orphanhood")?;
         let attempted=recovery::execute(&tenant,RecoveryCommand {
             subject:RecoverySubjectId::parse(subject).map_err(db_error)?,
             guardian:RecoveryGuardianId::parse(73996).map_err(db_error)?,
-            expected:selected.snapshot,
+            expected:snapshot,
             action:RecoveryAction::Appoint,
             reason:"Lockout must not permit a replacement appointment.".into(),
         }).await;
@@ -833,7 +906,7 @@ async fn guardian_recovery_new_guardian_records_manager_and_remains_withdrawable
         app.fixture.admin.execute_unprepared(
             "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73995,'Synthetic new guardian','1980-01-01',0,true,now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71995,73995,'new-guardian-recovery@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77995,73995,'new-guardian-recovery@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77995,73995,'new-guardian-recovery@example.test',true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74995,72001,73995,'member','active',now(),now(),now())"
         ).await?;
         app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
@@ -861,6 +934,7 @@ async fn guardian_recovery_new_guardian_records_manager_and_remains_withdrawable
         require(state.try_get::<i64>("","appointed")?==1 && state.try_get::<i64>("","superseded")?==1
             && state.try_get::<i64>("","audited")?==1,
             "New authority must credit manager, supersede old source and audit actual appointee")?;
+        crate::fixtures::seed_native_password(&app.fixture.admin,71995).await;
         let guardian_token=foreign_token(&app,71995).await?;
         let own=app.client.get(format!("{}/api/v1/auth/guardian-declarations",app.origin))
             .bearer_auth(&guardian_token).send().await.map_err(db_error)?;
@@ -875,6 +949,126 @@ async fn guardian_recovery_new_guardian_records_manager_and_remains_withdrawable
             .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
             .send().await.map_err(db_error)?;
         require(withdraw.status().as_u16()==200,"New guardian must retain personal withdrawal")?;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
+async fn guardian_recovery_superseded_active_link_remains_history_without_authority()
+-> Result<(), DbErr> {
+    let app = Application::new().await;
+    let result = async {
+        use med_tracker::models::_entities::{
+            accounts, carer_relationships, household_memberships, people, users,
+        };
+        use sea_orm::{ActiveValue::Set, EntityTrait};
+        use sea_orm::sea_query::{Alias, Expr, ExprTrait, JoinType, Query};
+        let now=chrono::Utc::now().naive_utc();
+        people::Entity::insert_many([
+            people::ActiveModel { id:Set(73994), name:Set("Historical guardian subject".into()),
+                date_of_birth:Set(chrono::NaiveDate::from_ymd_opt(2020,1,1)),
+                person_type:Set(1),has_capacity:Set(false),created_at:Set(now),updated_at:Set(now),
+                ..Default::default() },
+            people::ActiveModel { id:Set(73995), name:Set("Historical old guardian".into()),
+                date_of_birth:Set(chrono::NaiveDate::from_ymd_opt(1980,1,1)),
+                person_type:Set(0),has_capacity:Set(true),created_at:Set(now),updated_at:Set(now),
+                ..Default::default() },
+            people::ActiveModel { id:Set(73996), name:Set("Historical new guardian".into()),
+                date_of_birth:Set(chrono::NaiveDate::from_ymd_opt(1980,1,1)),
+                person_type:Set(0),has_capacity:Set(true),created_at:Set(now),updated_at:Set(now),
+                ..Default::default() },
+        ]).exec(&app.fixture.admin).await?;
+        household_memberships::Entity::insert_many(
+            [ (74994,73994), (74995,73995), (74996,73996) ].map(|(id,person_id)|
+                household_memberships::ActiveModel { id:Set(id),household_id:Set(72001),
+                    person_id:Set(person_id),role:Set("member".into()),status:Set("active".into()),
+                    permissions_version:Set(1),joined_at:Set(now),created_at:Set(now),
+                    updated_at:Set(now),..Default::default() })
+        ).exec(&app.fixture.admin).await?;
+        accounts::Entity::insert_many([
+            (71995,73995,"historical-old@example.test"),
+            (71996,73996,"historical-new@example.test"),
+        ].map(|(id,person_id,email)| accounts::ActiveModel {
+            id:Set(id),person_id:Set(person_id),email:Set(email.into()),status:Set(2),
+            created_at:Set(now.and_utc()),updated_at:Set(now.and_utc()),..Default::default()
+        })).exec(&app.fixture.admin).await?;
+        users::Entity::insert_many([
+            (77995,73995,"historical-old@example.test"),
+            (77996,73996,"historical-new@example.test"),
+        ].map(|(id,person_id,email)| users::ActiveModel {
+            id:Set(id),person_id:Set(person_id),email_address:Set(email.into()),active:Set(true),
+            created_at:Set(now),updated_at:Set(now)
+        })).exec(&app.fixture.admin).await?;
+        let declaration=Query::insert()
+            .into_table((Alias::new("public"),Alias::new("guardian_declarations")))
+            .columns(["subject_person_id","guardian_person_id","origin_household_id",
+                "declared_by_account_id","subject_name_at_declaration"])
+            .values_panic([Expr::val(73994_i64),Expr::val(73995_i64),Expr::val(72001_i64),
+                Expr::val(71995_i64),Expr::val("Historical guardian subject")])
+            .returning_col("id")
+            .to_owned();
+        let row=app.fixture.admin.query_one_raw(
+            app.fixture.admin.get_database_backend().build(&declaration)).await?
+            .ok_or_else(||DbErr::Custom("Missing historical declaration".into()))?;
+        let old_declaration:i64=row.try_get("","id")?;
+        carer_relationships::Entity::insert(carer_relationships::ActiveModel {
+            household_id:Set(72001),carer_id:Set(73995),patient_id:Set(73994),
+            guardian_declaration_id:Set(Some(old_declaration)),
+            relationship_type:Set(Some("family_member".into())),active:Set(true),
+            created_at:Set(now),updated_at:Set(now),..Default::default()
+        }).exec(&app.fixture.admin).await?;
+        let old_scope = HouseholdScope { actor: Actor { account_id: 71995 },
+            household_id: 72001, request_id: "synthetic-old-guardian-authority".into() };
+        let old = access::begin(&app.fixture.runtime,&old_scope,None).await.map_err(db_error)?;
+        require(access::require_person_access(&old,73994,PersonAccess::Manage).await.is_ok(),
+            "Initial active link must grant old guardian effective authority before recovery")?;
+        old.rollback().await.map_err(db_error)?;
+        let disable=Query::update().table(accounts::Entity)
+            .value(accounts::Column::Status,1)
+            .and_where(Expr::col(accounts::Column::Id).eq(71995_i64)).to_owned();
+        app.fixture.admin.execute_raw(
+            app.fixture.admin.get_database_backend().build(&disable)).await?;
+        let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
+        let selected=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
+            .find(|item|item.id.get()==73994)
+            .ok_or_else(||DbErr::Custom("Historical orphan missing from options".into()))?;
+        require(!selected.has_effective_guardian && selected.restorable.is_none(),
+            "Unusable former guardian must leave an orphan but no restorable local link")?;
+        let appointed=recovery::execute(&tenant,RecoveryCommand {
+            subject:RecoverySubjectId::parse(73994).map_err(db_error)?,
+            guardian:RecoveryGuardianId::parse(73996).map_err(db_error)?,
+            expected:selected.snapshot,action:RecoveryAction::Appoint,
+            reason:"Manager appointed another adult while old guardian unusable.".into(),
+        }).await.map_err(db_error)?;
+        tenant.commit().await.map_err(db_error)?;
+        let historical=Query::select()
+            .expr_as(Expr::col(("d","superseded_at")).is_not_null(),"terminal")
+            .expr_as(Expr::col(("c","active")),"historical_link_active")
+            .from_as((Alias::new("public"),Alias::new("guardian_declarations")),"d")
+            .join_as(JoinType::InnerJoin,
+                (Alias::new("public"),Alias::new("carer_relationships")),"c",
+                Expr::col(("c","guardian_declaration_id")).equals(("d","id")))
+            .and_where(Expr::col(("d","subject_person_id")).eq(73994_i64))
+            .and_where(Expr::col(("d","guardian_person_id")).eq(73995_i64))
+            .to_owned();
+        let row=app.fixture.admin.query_one_raw(
+            app.fixture.admin.get_database_backend().build(&historical)).await?
+            .ok_or_else(||DbErr::Custom("Missing historical link".into()))?;
+        require(row.try_get::<bool>("","terminal")? && row.try_get::<bool>("","historical_link_active")?
+            && appointed.outcome==RecoveryOutcome::Appointed,
+            "Superseded declaration and its retained active relationship must remain truthful history")?;
+        let enable=Query::update().table(accounts::Entity)
+            .value(accounts::Column::Status,2)
+            .and_where(Expr::col(accounts::Column::Id).eq(71995_i64)).to_owned();
+        app.fixture.admin.execute_raw(
+            app.fixture.admin.get_database_backend().build(&enable)).await?;
+        let old=access::begin(&app.fixture.runtime,&old_scope,None).await.map_err(db_error)?;
+        require(matches!(access::require_person_access(&old,73994,PersonAccess::Manage).await,
+            Err(med_tracker::models::errors::OperationError::Forbidden)),
+            "Restored old account must not regain authority from retained superseded link")?;
+        old.rollback().await.map_err(db_error)?;
         Ok(())
     }.await;
     app.close().await;

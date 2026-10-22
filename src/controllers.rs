@@ -21,7 +21,6 @@ pub mod oauth_server;
 pub mod people;
 pub mod platform;
 pub mod profile;
-pub mod signup;
 pub mod treatments;
 
 #[allow(
@@ -53,5 +52,6 @@ pub fn browser_routes() -> Routes {
     Routes::new()
         .add("/", get(home::index))
         .add("/households/choose", get(home::choose))
+        .add("/households", post(home::create))
         .add("/households/select", post(home::select))
 }

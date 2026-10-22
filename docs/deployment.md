@@ -12,21 +12,21 @@ Loco uses Better Auth with a persistent 64-byte, Base64-encoded
 Development uses the committed synthetic browser-session key when the environment
 variable is absent. Do not use that development key in production.
 
-Unsupported Rails password formats and historical Rails passkeys are not imported
-into Better Auth. Supported retained passwords and authenticator factors remain
-usable. Pre-Better-Auth browser sessions must sign in again; adopted accounts
-complete their required recovery-code acknowledgement before care access.
-Passkey-only accounts add a password before enabling the official Better Auth
-TOTP plugin. New authenticator enrolments require verification before activation.
+Loco uses Better Auth’s native schema, store and authentication plugins. It starts
+with fresh authentication data: Rails passwords, authenticator enrolments,
+passkeys, sessions and recovery tokens are not imported. Schema setup creates the
+native tables directly, without transitional credential tables or auth-data
+conversion. Use a new empty database; setup does not reset or adopt a populated one.
+Provisioning or replacing any populated database requires separate approval.
 
-Retained authenticator enrolments require `RAILS_SECRET_KEY_BASE` to contain the
-original Rails secret. Preserve any rotated `RAILS_OLD_SECRET_KEY_BASE` as well.
-Rodauth derives these secrets from its stored keys and Rails secret; the new
-browser-session key cannot replace them. Missing secrets prevent retained TOTP
-completion. Provision these values through the deployment secret store.
+Users enrol native credentials and use native MFA backup codes or email/password
+recovery. A backup code completes the second sign-in step and cannot sign in
+alone. Passkey-only accounts add a password before enabling the native TOTP
+plugin. New authenticator enrolments require verification before activation.
 
-The independently saved Rails rollback state retains its original credentials and
-secrets. Historical passkey records remain rollback data, not active Loco keys.
+Loco authentication does not need Rails secrets. Preserve the independently saved
+Rails rollback credentials and secrets separately. See the
+[authentication guide](two-factor-authentication.md) for native account flows.
 
 Production browser, CSRF and Better Auth cookies share the validated secure-cookie
 policy. `MEDTRACKER_COOKIE_SECURE=false` is rejected in production; TLS termination
@@ -43,9 +43,9 @@ configured scheme, hostname and port. Use a DNS hostname, or `localhost` for the
 owned browser fixtures. Native browsers reject an IP literal as a relying-party
 ID.
 
-Better Auth uses its new identity passkey store and the maintained Rust WebAuthn
-library. Users register replacement passkeys after onboarding. Retained Rodauth
-credential rows are rollback records, not active Loco credentials. The browser
+Better Auth’s native passkey plugin owns registration, verification and storage.
+Users register new Loco passkeys. Historical Rails credentials remain separate
+rollback data. The browser
 client uses standard `PublicKeyCredential` JSON conversion methods; browsers
 without those methods cannot complete this flow.
 
@@ -88,19 +88,18 @@ permissions, retries, duplicate suppression, restart recovery and shutdown behav
 remain required.
 
 Invalidate existing sessions and tokens at cutover; historical continuity is not
-required. Prove the invalidation mechanism on synthetic credentials, while retaining
-account credentials for fresh authentication and enforcing MFA. Previously issued
+required. Prove the invalidation mechanism on synthetic credentials, using fresh
+Loco credentials and configured native MFA. Previously issued
 download links may expire. Preserve underlying files and data and issue new authorised
 links. Historical system export formats and pre-cutover offline queues need not be
 carried over; new exports and future offline replay still require working Loco flows.
 
-The identity delivery uses unmodified official Better Auth RS Cargo dependencies
-inside MedTracker. Separate identity services and copied or patched library
-source remain rejected. The current adapter retains supported password hashes
-and authenticator factors; unsupported password formats and historical passkeys
-require secure reset/re-enrolment. Preserve all rollback credentials in the
-independently saved state. Optional TOTP, verified passkeys, acknowledged recovery
-codes and operation-bound fresh authentication must work before cutover.
+The identity delivery uses unmodified published Better Auth Rust releases inside
+MedTracker. Separate identity services, copied library source, local patches and
+custom authentication stores remain rejected. Use native credential management,
+including current-password confirmation when disabling MFA. Preserve all Rails
+rollback credentials in the independently saved state. Verify native sign-in,
+password recovery, optional MFA, passkeys and session management before cutover.
 No live changes are authorised by this decision.
 
 Browser pages use daisyUI and clear Loco routes. Keep the same colour schemes,

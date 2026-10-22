@@ -19,6 +19,8 @@ settings:
     issuer: <%= get_env(name="MEDTRACKER_ZITADEL_ISSUER", default="") %>
     client_id: <%= get_env(name="MEDTRACKER_ZITADEL_CLIENT_ID", default="") %>
     client_secret: <%= get_env(name="MEDTRACKER_ZITADEL_CLIENT_SECRET", default="") %>
+  invitation_mail:
+    send_timeout_seconds: <%= get_env(name="MEDTRACKER_INVITATION_MAIL_TIMEOUT_SECONDS", default="30") %>
   browser_push:
     private_key: <%= get_env(name="MEDTRACKER_WEB_PUSH_PRIVATE_KEY", default="") %>
     subject: <%= get_env(name="MEDTRACKER_WEB_PUSH_SUBJECT", default="") %>

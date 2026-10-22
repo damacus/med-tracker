@@ -92,22 +92,35 @@ tasks:
         'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage down --volumes',
       ]
   dev:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: &icu_major "78"
+      RUST_ICU_LINK_SEARCH_DIR: &icu_lib
+        sh: 'if [ "$(uname -s)" = Darwin ]; then icu_prefix=$(brew --prefix icu4c@78) && printf "%s/lib" "$icu_prefix"; else pkg-config --variable=libdir icu-uc; fi'
     desc: Start the Loco server
     cmds:
       - task: frontend:prepare
       - 'cargo run --locked -- start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "development"}}'
   scheduler:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: Run configured Loco scheduled tasks
     cmds:
       [
         'cargo run --locked -- scheduler --environment {{.LOCO_ENV | default "development"}} {{.CLI_ARGS}}',
       ]
   build:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: Build Loco
     cmds:
       - task: frontend:prepare
       - cargo build --locked
   check:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: Check Loco targets
     cmds: [cargo check --locked --all-targets]
   machete:
@@ -115,11 +128,17 @@ tasks:
     cmds:
       - cargo machete --with-metadata --skip-target-dir ./Cargo.toml migration/Cargo.toml
   lint:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: Lint Loco
     cmds:
       - cargo clippy --locked --all-targets -- -D warnings
       - task: machete
   lint:fix:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: Apply safe Loco Clippy suggestions
     cmds:
       [
@@ -136,6 +155,9 @@ tasks:
       - task: test:unit
       - task: test:acceptance
   test:unit:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: Run database-free Rust library, doc and JavaScript unit tests
     cmds:
       - task: frontend:test
@@ -154,10 +176,16 @@ tasks:
           TARGET: '{{.TARGET | default ""}}'
           FILTER: '{{.FILTER | default ""}}'
   test:integration:direct:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
       - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET}}{{else}}--tests{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
   test:integration:owned:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -225,10 +253,16 @@ tasks:
           FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
           FILTER: '{{.FILTER | default ""}}'
   test:browser:direct:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
       - 'cargo nextest run --locked --test browser --run-ignored only --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
   test:browser:owned:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -240,18 +274,33 @@ tasks:
       - task: foundation:db-up
         vars:
           FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - task: foundation:storage-up
+        vars:
+          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
       - >-
         sh -eu -c '
         db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
+        storage_endpoint="http://$(task foundation:storage-port FOUNDATION_PROJECT="$1")";
+        task foundation:storage-init STORAGE_ENDPOINT="$storage_endpoint";
         unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG DOCKER_TLS_VERIFY DOCKER_CERT_PATH;
         export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
         export MEDTRACKER_OWNED_DATABASE=1;
+        export MEDTRACKER_OWNED_STORAGE=1;
+        export ACTIVE_STORAGE_S3_ENDPOINT="$storage_endpoint";
+        export ACTIVE_STORAGE_S3_BUCKET=medtracker-fixture;
+        export ACTIVE_STORAGE_S3_REGION=us-east-1;
+        export ACTIVE_STORAGE_S3_ACCESS_KEY_ID=storage-smoke-access;
+        export ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY=storage-smoke-secret;
+        export ACTIVE_STORAGE_S3_FORCE_PATH_STYLE=true;
         cargo nextest run --locked --test browser --run-ignored only --no-tests=fail --test-threads 2 "$2";
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}}
   test:acceptance:
     desc: Run independent integration and browser stages in parallel
     deps: [test:integration, test:browser]
   routes:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: List Loco routes
     cmds:
       [
@@ -262,6 +311,8 @@ tasks:
     requires:
       vars: [MIGRATION_DATABASE_URL]
     env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
       MEDTRACKER_MIGRATION_DATABASE_URL: "{{.MIGRATION_DATABASE_URL}}"
     cmds:
       [
@@ -276,12 +327,17 @@ tasks:
     requires:
       vars: [SEED_DATABASE_URL]
     env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
       MEDTRACKER_SEED_DATABASE_URL: "{{.SEED_DATABASE_URL}}"
     cmds:
       [
         '{{if .SEED_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" {{.SEED_EXECUTABLE | shellQuote}} db seed --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}{{end}}',
       ]
   worker:
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: Start the Loco worker process
     cmds:
       [

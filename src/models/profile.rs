@@ -270,7 +270,7 @@ async fn save_preferences(
         let before = account.preferences.clone();
         let mut active: account::ActiveModel = account.into();
         active.preferences = Set(Value::Object(preferences));
-        active.updated_at = Set(Utc::now().naive_utc());
+        active.updated_at = Set(Utc::now());
         account = active.update(tenant.transaction()).await?;
         version::ActiveModel {
             item_type: Set("Account".into()),
@@ -278,7 +278,7 @@ async fn save_preferences(
             event: Set("update".into()),
             object: Set(Some(json!({"preferences": before.clone()}).to_string())),
             object_changes: Set(Some(json!({"preferences": [before, account.preferences.clone()]}).to_string())),
-            whodunnit: Set(Some(tenant.user_id().to_string())),
+            whodunnit: Set(tenant.legacy_user_id().map(|id| id.to_string())),
             request_id: Set(Some(tenant.scope().request_id.clone())),
             household_id: Set(Some(tenant.scope().household_id)),
             actor_membership_id: Set(Some(tenant.membership().id)),

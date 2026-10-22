@@ -138,13 +138,20 @@ pub(super) fn form(
 ) -> Value {
     let mut data = context(slug);
     data["lang"] = json!(language);
+    data["labels"] = labels.clone();
+    data["capacity_hint"] = labels["people"]["form"]["capacity_hint"].clone();
+    data["cancel_url"] = json!(person.and_then(|record| record["id"].as_i64()).map_or_else(
+        || format!("/households/{slug}/people"),
+        |id| format!("/households/{slug}/people/{id}")
+    ));
     data["guardian_labels"] = labels["guardian_declarations"].clone();
     let errors = errors(error);
-    data["title"] = json!(if person.is_some() {
-        "Edit Person"
+    data["title"] = labels["people"]["form"][if person.is_some() {
+        "edit_heading"
     } else {
-        "New Person"
-    });
+        "new_heading"
+    }]
+    .clone();
     data["editing"] = json!(person.is_some());
     data["action"] = json!(person.and_then(|person| person["id"].as_i64()).map_or_else(
         || format!("/households/{slug}/people"),
@@ -155,7 +162,7 @@ pub(super) fn form(
         .entry("has_capacity".into())
         .or_insert_with(|| "false".into());
     data["draft"] = json!(values);
-    data["fields"] = json!(FIELDS.iter().map(|(field,label,kind,required)|json!({"name":field,"label":label,"kind":kind,"required":required,"value":forms::field(draft,field),"invalid":errors.iter().any(|error|error["field"]==*field)})).collect::<Vec<_>>());
+    data["fields"] = json!(FIELDS.iter().map(|(field,_,kind,required)|json!({"name":field,"label":labels["people"]["form"][*field],"kind":kind,"required":required,"value":forms::field(draft,field),"invalid":errors.iter().any(|error|error["field"]==*field)})).collect::<Vec<_>>());
     let types: &[&str] = if person.is_some() {
         &["adult", "minor", "dependent_adult"]
     } else {
@@ -164,11 +171,15 @@ pub(super) fn form(
     data["types"] = json!(
         types
             .iter()
-            .map(|value| json!({"value":value,"label":type_label(value)}))
+            .map(|value| json!({"value":value,"label":labels["forms"]["medications"]["wizard"]["dose"]["person_types"][*value]}))
             .collect::<Vec<_>>()
     );
     data["type_invalid"] = json!(errors.iter().any(|error| error["field"] == "person_type"));
     data["capacity_invalid"] = json!(errors.iter().any(|error| error["field"] == "has_capacity"));
+    data["focus_field"] = errors
+        .first()
+        .map_or(Value::Null, |error| error["field"].clone());
+    data["form_error_heading"] = labels["people"]["index"]["error_heading"].clone();
     data["errors"] = json!(errors);
     data
 }

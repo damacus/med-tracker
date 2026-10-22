@@ -54,6 +54,7 @@ pub(super) struct Page<'a> {
     explicit_language: bool,
     cursor: Option<invitations::browser::BrowseCursor>,
     notice: Option<Notice>,
+    filters: invitations::browser::BrowseFilters,
 }
 
 impl<'a> Page<'a> {
@@ -76,30 +77,52 @@ impl<'a> Page<'a> {
             explicit_language: false,
             cursor: None,
             notice: None,
+            filters: invitations::browser::BrowseFilters::default(),
         }
     }
 
-    pub(super) fn with_language(mut self, language: &str) -> Self {
-        self.language = crate::models::care::report_pdf::locale(language);
+    pub(super) fn with_query(mut self, query: IndexQuery) -> Self {
+        self.language = query.language;
+        self.explicit_language = query.explicit_language;
+        self.cursor = query.cursor;
+        self.notice = query.notice;
+        self.filters = query.filters;
         self
     }
 
-    pub(super) fn with_explicit_language(mut self, explicit: bool) -> Self {
-        self.explicit_language = explicit;
-        self
+    fn query_pairs(&self, cursor: Option<String>) -> Vec<(String, String)> {
+        let mut pairs = Vec::new();
+        if !self.filters.search.is_empty() {
+            pairs.push(("q".into(), self.filters.search.clone()));
+        }
+        if let Some(role) = self.filters.role {
+            pairs.push(("role".into(), role.key().into()));
+        }
+        if let Some(status) = self.filters.status {
+            pairs.push(("status".into(), status.key().into()));
+        }
+        if let Some(cursor) = cursor {
+            pairs.push(("cursor".into(), cursor));
+        }
+        if self.explicit_language || self.language != "en" {
+            pairs.push(("lang".into(), self.language.into()));
+        }
+        pairs
     }
 
-    pub(super) fn with_cursor(
-        mut self,
-        cursor: Option<invitations::browser::BrowseCursor>,
-    ) -> Self {
-        self.cursor = cursor;
-        self
-    }
-
-    pub(super) fn with_notice(mut self, notice: Option<Notice>) -> Self {
-        self.notice = notice;
-        self
+    fn url(&self, cursor: Option<String>, notice: Option<Notice>) -> String {
+        let mut query = url::form_urlencoded::Serializer::new(String::new());
+        query.extend_pairs(self.query_pairs(cursor));
+        if let Some(notice) = notice {
+            query.append_pair("notice", notice.key());
+        }
+        let query = query.finish();
+        format!(
+            "/households/{}/admin/invitations{}{}",
+            self.slug,
+            if query.is_empty() { "" } else { "?" },
+            query
+        )
     }
 
     pub(super) async fn index(
@@ -107,16 +130,17 @@ impl<'a> Page<'a> {
         submitted: Option<&[(String, String)]>,
         error: Option<&OperationError>,
     ) -> Response {
-        let (_, tenant) = match begin(self.ctx, self.session, self.slug, &self.request_id).await {
-            Ok(value) => value,
-            Err(error) => {
-                return super::super::administration::presentation_authentication_error(
-                    self.view,
-                    self.language,
-                    error,
-                );
-            }
-        };
+        let (principal, tenant) =
+            match begin(self.ctx, self.session, self.slug, &self.request_id).await {
+                Ok(value) => value,
+                Err(error) => {
+                    return super::super::administration::presentation_authentication_error(
+                        self.view,
+                        self.language,
+                        error,
+                    );
+                }
+            };
         let labels = match crate::models::care::report_pdf::translations(self.language) {
             Ok(labels) => labels,
             Err(_) => {
@@ -128,7 +152,7 @@ impl<'a> Page<'a> {
             }
         };
         let result = async {
-            let records = invitations::browser::browse(&tenant, self.cursor).await?;
+            let records = invitations::browser::browse(&tenant, self.cursor, &self.filters).await?;
             let household_name =
                 crate::models::care::administration::overview::household_name(&tenant).await?;
             let mut data = rendering::data(
@@ -138,24 +162,16 @@ impl<'a> Page<'a> {
                 submitted,
                 error,
                 &labels,
-            );
+                principal.time_zone(),
+            )?;
             data["notice"] = json!(self.notice.map(|notice| {
                 labels["admin"]["invitations"][notice.key()]
                     .as_str()
                     .unwrap_or_default()
             }));
-            data["next_url"] = json!(records.next_cursor.as_deref().map(|cursor| {
-                let mut query = url::form_urlencoded::Serializer::new(String::new());
-                query.append_pair("cursor", cursor);
-                if self.explicit_language || self.language != "en" {
-                    query.append_pair("lang", self.language);
-                }
-                format!(
-                    "/households/{}/admin/invitations?{}",
-                    self.slug,
-                    query.finish()
-                )
-            }));
+            data["next_url"]=json!(records.next_cursor.as_ref().map(|cursor|self.url(Some(cursor.clone()),None)));
+            data["context"]=json!(self.query_pairs(self.cursor.map(invitations::browser::BrowseCursor::encode)).into_iter().map(|(name,value)|json!({"name":name,"value":value})).collect::<Vec<_>>());
+            data["filters"]=json!({"q":self.filters.search,"role":self.filters.role.map_or("",invitations::browser::InvitationRole::key),"status":self.filters.status.map_or("",invitations::browser::InvitationStatus::key)});
             Ok::<_, OperationError>(data)
         }
         .await;
@@ -212,6 +228,20 @@ impl<'a> Page<'a> {
                     );
                 }
             };
+        if let Some(cursor) = self.cursor
+            && let Err(error) = cursor.validate(tenant.scope().household_id, &self.filters)
+        {
+            let error = if tenant.rollback().await.is_err() {
+                OperationError::Unavailable
+            } else {
+                error
+            };
+            return super::super::administration::presentation_error(
+                self.view,
+                self.language,
+                error,
+            );
+        }
         let target = match url::Url::parse(&self.ctx.config.server.full_url())
             .and_then(|url| url.join("/invitations/accept"))
         {
@@ -262,15 +292,9 @@ impl<'a> Page<'a> {
                     [
                         (
                             header::LOCATION,
-                            format!(
-                                "/households/{}/admin/invitations{}notice={}",
-                                self.slug,
-                                if self.explicit_language || self.language != "en" {
-                                    format!("?lang={}&", self.language)
-                                } else {
-                                    "?".into()
-                                },
-                                change.notice().key(),
+                            self.url(
+                                self.cursor.map(invitations::browser::BrowseCursor::encode),
+                                Some(change.notice()),
                             ),
                         ),
                         (header::CACHE_CONTROL, "no-store".into()),

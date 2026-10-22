@@ -7,7 +7,8 @@ pub(super) fn data(
     submitted: Option<&[(String, String)]>,
     error: Option<&OperationError>,
     labels: &Value,
-) -> Value {
+    zone: chrono_tz::Tz,
+) -> Result<Value, OperationError> {
     let mut data = super::super::medications::rendering::appearance_context();
     let index = &labels["admin"]["invitations"]["index"];
     data["title"] = json!(format!(
@@ -36,17 +37,40 @@ pub(super) fn data(
                 InvitationStatus::Revoked => "revoked",
                 InvitationStatus::Expired => "expired",
             };
-            InvitationView {
+            Ok(InvitationView {
                 id: row.id,
                 email: &row.email,
                 membership_role: row.membership_role.key(),
                 status: index["status"][status_key].as_str().unwrap_or_default(),
                 actionable: row.status.actionable(),
                 expires_at: row.expires_at,
-                expires_at_display: row.expires_at.format("%Y-%m-%d %H:%M UTC").to_string(),
-            }
+                expires_at_display: timestamp(row.expires_at, labels, zone)?,
+                created_at: row.created_at,
+                created_at_display: timestamp(row.created_at, labels, zone)?,
+                delivery_status: index["delivery"]["status"][row.delivery.status.key()]
+                    .as_str()
+                    .unwrap_or_default(),
+                delivery_failed: matches!(
+                    row.delivery.status,
+                    invitations::browser::DeliveryStatus::Failed
+                ),
+                delivery_category: row
+                    .delivery
+                    .category
+                    .and_then(|category| index["delivery"]["category"][category.key()].as_str()),
+                delivery_retry: !matches!(
+                    row.delivery.category,
+                    Some(invitations::browser::FailureCategory::Unavailable)
+                ),
+                delivery_at: row.delivery.at,
+                delivery_at_display: row
+                    .delivery
+                    .at
+                    .map(|at| timestamp(at, labels, zone))
+                    .transpose()?,
+            })
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, OperationError>>()?;
     data["invitations"] = json!(rows);
     let errors = errors(error, index);
     for field in ["email", "membership_role"] {
@@ -55,7 +79,21 @@ pub(super) fn data(
     }
     data["errors"] = json!(errors);
     data["form_error_heading"] = index["validation"]["heading"].clone();
-    data
+    Ok(data)
+}
+
+fn timestamp(
+    at: chrono::DateTime<chrono::Utc>,
+    labels: &Value,
+    zone: chrono_tz::Tz,
+) -> Result<String, OperationError> {
+    let local = at.with_timezone(&zone);
+    let date = crate::models::care::people::browser::birth_date(
+        Some(&local.date_naive().to_string()),
+        labels,
+    )
+    .ok_or(OperationError::Unavailable)?;
+    Ok(format!("{} {}", date, local.format("%H:%M %Z")))
 }
 
 fn errors(error: Option<&OperationError>, index: &Value) -> Vec<Value> {
@@ -116,4 +154,12 @@ struct InvitationView<'a> {
     actionable: bool,
     expires_at: chrono::DateTime<chrono::Utc>,
     expires_at_display: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+    created_at_display: String,
+    delivery_status: &'a str,
+    delivery_failed: bool,
+    delivery_retry: bool,
+    delivery_category: Option<&'a str>,
+    delivery_at: Option<chrono::DateTime<chrono::Utc>>,
+    delivery_at_display: Option<String>,
 }

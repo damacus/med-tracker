@@ -45,11 +45,12 @@ async fn guardian_recovery_browser_appoints_with_audit_and_new_guardian_can_with
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at)
              VALUES(74994,72001,73994,'member','active',now(),now(),now()),
                    (74999,72001,73999,'member','active',now(),now(),now());
-             INSERT INTO public.accounts(id,person_id,email,password_hash,status,created_at,updated_at)
-             VALUES(71999,73999,'browser-new-guardian@example.test',crypt('password',gen_salt('bf',4)),2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at)
-             VALUES(77999,73999,'browser-new-guardian@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())"
+             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at)
+             VALUES(71999,73999,'browser-new-guardian@example.test',2,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at)
+             VALUES(77999,73999,'browser-new-guardian@example.test',true,now(),now())"
         ).await?;
+        crate::fixtures::seed_native_password(&app.fixture.admin,71999).await;
         let cookie=sign_in(&app,71001,"persistence@example.test").await;
         let path="/households/persistence-fixture/admin/carer_relationships/recover/73994";
         let (cookies,page)=form_page(&app,&cookie,path).await;
@@ -62,6 +63,9 @@ async fn guardian_recovery_browser_appoints_with_audit_and_new_guardian_can_with
             ("link_token",link.as_str()),("reason","Manager confirmed a new guardian for this minor.")];
         let unconfirmed=post_form(&app,&cookies,path,&form).await;
         require(unconfirmed.status().as_u16()==422,"Recovery requires explicit server-side confirmation")?;
+        let validation_page=unconfirmed.text().await.map_err(|error|DbErr::Custom(error.to_string()))?;
+        require(validation_page.contains("<option value=\"73999\" selected>"),
+            "Appointment validation must retain the chosen guardian")?;
         let denied=post_form(&app,&cookies,path,&[("action","appoint"),("guardian_id","73999"),
             ("snapshot_token",snapshot.as_str()),("snapshot_revision",revision.as_str()),
             ("link_token",link.as_str()),("reason","Manager confirmed a new guardian for this minor."),
@@ -146,8 +150,8 @@ async fn guardian_recovery_browser_restores_exact_inactive_link_and_preserves_ge
              VALUES(74999,72001,73999,'member','active',now(),now(),now());
              INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at)
              VALUES(71999,73999,'restore-other@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at)
-             VALUES(77999,73999,'restore-other@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())"
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at)
+             VALUES(77999,73999,'restore-other@example.test',true,now(),now())"
         ).await?;
         let cookie=sign_in(&app,71001,"persistence@example.test").await;
         let path=format!("/households/persistence-fixture/admin/carer_relationships/recover/{subject}");
@@ -216,10 +220,10 @@ async fn guardian_recovery_browser_shows_superseded_initial_history_without_with
              VALUES(73999,'Synthetic replacement guardian','1980-01-01',0,true,now(),now());
              INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at)
              VALUES(74999,72001,73999,'member','active',now(),now(),now());
-             INSERT INTO public.accounts(id,person_id,email,password_hash,status,created_at,updated_at)
-             VALUES(71999,73999,'browser-replacement@example.test',crypt('password',gen_salt('bf',4)),2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at)
-             VALUES(77999,73999,'browser-replacement@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())"
+             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at)
+             VALUES(71999,73999,'browser-replacement@example.test',2,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at)
+             VALUES(77999,73999,'browser-replacement@example.test',true,now(),now())"
         )).await?;
         let cookie=sign_in(&app,71001,"persistence@example.test").await;
         let path=format!("/households/persistence-fixture/admin/carer_relationships/recover/{subject}");
