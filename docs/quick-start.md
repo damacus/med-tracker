@@ -1,99 +1,75 @@
 # Technical Quick Start
 
-The root application is now Loco 1.2. Use a dedicated PostgreSQL 18 database,
-set `DATABASE_URL`, run `task build`, then `task dev`. The foundation exposes
-`/up`, database readiness at `/_health` and a Tera landing page. Product
-workflows remain under migration; the Rails commands below run the reference
-and rollback application under `rails/`. See the
-[migration plan](plans/loco-migration-20261005/plan.md) for acceptance gates.
+Run the root Rust/Loco application for local development. Rails under `rails/`
+is read-only reference. Read the [0.6 release notes](releases/0.6.md) before
+setting up a new installation.
 
-This guide is for developers and advanced users who want to run the full
-MedTracker stack locally using Docker.
+There is no supported rollback from 0.6 to Rails. A full Rails export at the
+transition is an operator action, not an automatic import or a claim that an
+export has already happened. Any retained Rails site contains only its
+pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
+returning to the old site would not carry those records back. These notes do
+not promise that Rails can import that export or provide a lossless switchback.
 
 ## Prerequisites
 
-Before you begin, make sure you have these tools installed:
-- [Docker](https://www.docker.com/) and Docker Compose
-- [Task](https://taskfile.dev/) (the task runner for this project)
-- [Portless](https://portless.sh/) (`npm install -g portless`, then run `portless trust` once)
-- Git
-
----
-
-## 1. Clone the project
+Install Git and [mise](https://mise.jdx.dev/), then clone the repository:
 
 ```fish
 git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
+mise trust
+mise install
 ```
 
-## 2. Start development services
+The committed `mise.toml` selects the tools. A tool installation failure is a
+setup failure, not an application test result. Docker is needed for the
+repository's disposable integration and browser test services. Local development
+also needs PostgreSQL 18 and the native libraries used by the Rust build; see
+the repository Taskfile for the platform-specific ICU configuration.
 
-Run this command to start the database, web server, and worker:
+## Prepare a private development database
+
+Create a new empty PostgreSQL 18 database. Keep setup credentials separate from
+the restricted application login. Follow the role and extension requirements in
+[Loco database setup](testing.md#loco-database-setup).
+
+Use `task db:migrate MIGRATION_DATABASE_URL=...` for schema installation, or
+`task db:prepare SEED_DATABASE_URL=...` to install the schema and synthetic
+development fixtures. Replace `...` with your private setup connection URL.
+Do not use either path to adopt an existing Rails database. Seeding rejects
+populated application databases and production environments.
+
+Fixture passwords are `password`. Keep a seeded development instance private;
+do not use synthetic accounts for real medication records.
+
+## Start the application
+
+Set `DATABASE_URL` to your restricted runtime connection, then run:
 
 ```fish
-task rails:dev:portless
+task build
+task dev
 ```
 
-This starts the `dev` profile from `compose.yaml` and registers the stable local
-URL `https://med-tracker.localhost`.
+`task dev` prepares the frontend assets and starts Loco in development mode.
+Use the address printed by the server. Development configuration is in
+`config/development.yaml`; production settings and secrets require the separate
+[deployment guide](deployment.md).
 
-## 3. Seed development data
+If background processing is needed, run `task worker` in another terminal. That
+Task also starts a scheduler; do not start `task scheduler` alongside it.
 
-To quickly populate the database with example users, people, and medicines:
+## Check changes
 
-```fish
-task rails:dev:seed
-```
-
-> **Local development only:** fixture data includes sample accounts with known
-> passwords. Do not expose a seeded development stack to a public or shared
-> network, and remove or reset sample accounts before using any real records.
-
-## 4. Open the app
-
-The MedTracker UI is available at:
-
-👉 **[https://med-tracker.localhost](https://med-tracker.localhost)**
-
----
-
-## Day-to-Day Development Commands
-
-| Command | Action |
-| --- | --- |
-| `task rails:dev:logs` | View real-time application logs |
-| `task rails:dev:stop` | Stop all development containers |
-| `task rails:dev:ps` | List running containers |
-| `task rails:test` | Run the full test suite in Docker |
+Use `task test:unit` for database-free checks, `task test:integration` for API and
+database behaviour, and `task test:browser` for Rust Playwright journeys.
+`task ci` runs the application checks. See the [testing guide](testing.md)
+for isolated databases, focused filters and screenshots.
 
 ## Troubleshooting
 
-### Rebuild from scratch
-If you encounter database issues or want to start fresh:
-```fish
-task rails:dev:rebuild
-```
-**Warning**
-
-This command removes all data and recreates the database.
-
-### Database migrations
-To apply new database changes without a full rebuild:
-```fish
-task rails:dev:db-migrate
-```
-
-### Existing credentials diff configuration
-
-Git credentials diff enrollment is local to each checkout. After relocating
-Rails, an existing `bin/rails credentials:diff` driver points to the removed
-root executable. From the repository root, refresh it to the official Rails CLI:
-
-```fish
-git config --local diff.rails_credentials.textconv 'rails/bin/rails credentials:diff'
-```
-
-This updates Git metadata; it does not decrypt or edit credentials. Rails keys
-stay under the ignored `rails/config` paths. Source review packets use
-`git diff --no-textconv --no-ext-diff` so they contain no decrypted credentials.
+Check the server output, database connection and installed tools first. Do not
+reset a populated database as a troubleshooting step. Create a separate empty
+development database when you need a fresh fixture environment. Rails commands
+do not start or repair the root Rust application.

@@ -14,19 +14,18 @@ This document does not authorise a rollout, shutdown, data change or deployment.
 
 ## Image and configuration
 
-- Build runnable root-Loco server and worker images for `linux/amd64` and
-  `linux/arm64` under [#2723](https://github.com/damacus/med-tracker/issues/2723)
-  and [#2724](https://github.com/damacus/med-tracker/issues/2724). Include TLS trust
-  roots, fonts/PDF support, timezone data, templates and static assets. The current
-  [publishing workflow](../../.github/workflows/docker-publish.yml) builds
-  `rails/`; its image is not the Loco replacement.
+- Root-Loco server, worker and scheduler images now have native `linux/amd64`
+  and `linux/arm64` build and smoke-check coverage. Follow
+  [Loco Linux images](loco-images.md) to publish the tested images through the
+  main-branch manual workflow. The separate Rails publisher does not produce
+  the Loco image. Publication is not deployment.
 - Use the selected version or immutable image reference in the existing deployment
   configuration. Keep server and worker versions compatible with the schema.
   No final root-Loco image reference is supplied by this guide.
 - Use [`config/production.yaml`](../../config/production.yaml) as the Rust settings
   reference. Set the public origin with `MEDTRACKER_PUBLIC_HOST`, `PORT` and the
   appropriate `BINDING`; keep production secure cookies enabled. Provision a
-  persistent 64-byte Base64 `MEDTRACKER_SESSION_KEY` through the secret store,
+  persistent `AUTH_SESSION_SECRET` and 64-byte Base64 `MEDTRACKER_SESSION_KEY` through the secret store,
   shared across replicas. Do not use fixture keys or copy Rails credentials.
 - Keep setup credentials separate from the restricted runtime `DATABASE_URL`.
   The runtime login inherits `med_tracker_app`, has no owner-role membership or
@@ -64,10 +63,17 @@ Helm or kubectl procedure.
    CI remain the normal checks for the deliverables being changed; do not create
    a second release-acceptance exercise.
 
+There is no supported rollback from 0.6 to Rails. A full Rails export at the
+transition is an operator action, not an automatic import or a claim that an
+export has already happened. Any retained Rails site contains only its
+pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
+returning to the old site would not carry those records back. These notes do
+not promise that Rails can import that export or provide a lossless switchback.
+
 ## Stop and recovery
 
-If the release fails, the owner uses the same deployment controller to stop or
-revert the affected rollout. Stop the Rust web, worker and scheduler writers
+If the release fails, the owner uses the same deployment controller to stop the
+Rust rollout or redeploy a compatible Rust image. Stop the Rust web, worker and scheduler writers
 before any separately approved database recovery. Preserve the Rust database,
 queue, objects and audit history; do not reset them to make startup pass.
 

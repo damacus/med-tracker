@@ -1,81 +1,42 @@
-# Run MedTracker locally
+# Self-hosting MedTracker
 
-Use this guide to run MedTracker on your own computer for local evaluation.
-This development setup is not a production deployment.
+The 0.6 application uses Rust/Loco and PostgreSQL 18. Read the
+[release notes](releases/0.6.md) before installing it. Start with a new empty
+database and fresh accounts; existing Rails data, passwords, passkeys and
+sessions are not imported.
 
-## Before you begin
+There is no supported rollback from 0.6 to Rails. A full Rails export at the
+transition is an operator action, not an automatic import or a claim that an
+export has already happened. Any retained Rails site contains only its
+pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
+returning to the old site would not carry those records back. These notes do
+not promise that Rails can import that export or provide a lossless switchback.
 
-Run the commands in a terminal:
+## Local evaluation
 
-- On Windows, open PowerShell or Command Prompt from the Start menu.
-- On macOS, open Terminal from **Applications > Utilities**.
+Follow the [technical quick start](quick-start.md) to install the selected
+tools, prepare a private development database and start the Rust server.
+Synthetic fixtures are for local evaluation only. Keep them off public/shared
+networks and do not enter real medication records into a fixture installation.
 
-### What you'll need
+## A reachable installation
 
-Install these tools:
+Operators should use the [fresh Rust rollout guide](operations/loco-cutover-runbook.md)
+and [Loco image guide](operations/loco-images.md). Configure a dedicated database,
+restricted runtime credentials, persistent secrets, private object storage and
+the public HTTPS origin. Run the server, workers and a single scheduler through
+the deployment's existing controller.
 
-1. [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-2. [Git](https://git-scm.com/downloads)
-3. [Task](https://taskfile.dev/installation/)
-4. [Portless](https://portless.sh/)
+The Loco image workflow can publish tested images for both supported Linux
+architectures. It is separate from the Rails publisher. Publishing an image
+does not deploy an application, and these notes do not claim a production
+rollout has happened.
 
-Install Portless and trust its local HTTPS certificate:
+Do not reset or repurpose an existing installation's database. Keep retained
+Rails data and secrets separate. Rust-created data has no reverse migration
+into Rails. Follow the rollout guide's stop and recovery boundaries if a new
+installation encounters a problem.
 
-```shell
-npm install -g portless
-portless trust
-```
-
----
-
-## Download MedTracker
-
-Clone the repository and enter its directory:
-
-```bash
-git clone https://github.com/damacus/med-tracker.git
-cd med-tracker
-```
-
-## Start MedTracker
-
-> **Local evaluation only:** `task rails:dev:portless` starts the development stack.
-> Do not run this stack on a public or shared network, and do not use it as a
-> production server for real medication or person records. For a reachable
-> server, use a production deployment and create your first administrator
-> through the bootstrap/invitation flow instead of loading development
-> fixtures.
-
-```fish
-task rails:dev:portless
-```
-
-The first start can take a few minutes while Docker downloads and builds the
-required images.
-
-## Add example data
-
-You can load local example people and medications. The fixtures include sample
-accounts with known passwords. Only run this command on a private development
-machine:
-
-```fish
-task rails:dev:seed
-```
-
-## Open MedTracker
-
-Open [https://med-tracker.localhost](https://med-tracker.localhost) in a web
-browser.
-
-Sign in with a local demo account from the seed output, or use the account your
-administrator invited for a production deployment. If you loaded fixture data,
-change or remove any sample accounts before exposing the app beyond your own
-computer.
-
----
-
-## Next steps
-
-- [Add your first medicine](families/adding-first-medicine.md)
-- [Record a dose](families/taking-first-dose.md)
+Once an operator has prepared access, household members can follow the
+[family setup guide](families/quick-setup.md). MedTracker supplements an existing
+medication routine; it should not be the sole source of medication reminders.
