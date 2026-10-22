@@ -73,7 +73,7 @@ axum_session_sqlx = { version = "=0.11.0", default-features = false, features = 
     "postgres",
     "tls-rustls",
 ] }
-axum_csrf = { version = "=0.11.0", features = ["layer"] }
+axum_csrf = { version = "=0.12.0", features = ["layer"] }
 tower-http = { version = "=0.7.1", default-features = false, features = [
     "csrf",
 ] }
