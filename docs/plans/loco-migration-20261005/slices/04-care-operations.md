@@ -151,11 +151,18 @@ The documentation build also passed. CI used a temporary internal-disk build
 directory after the external Cargo cache filled; source and repository settings
 were unchanged. Publication is the next step; no merge or deployment is claimed.
 
-Validation precedence: a malformed time or
-amount sent with an already used client UUID now receives input validation (422)
-before replay comparison, whereas the earlier internal replay path could return
-conflict (409). OpenAPI does not specify this malformed replay edge case. Valid
-replay and differing valid payload conflicts retain their existing behaviour.
+The owner confirmed that malformed timestamp or amount strings sent with an
+already used, accessible dose UUID must retain conflict (409). The follow-up uses
+a non-executable typed attempt to check replay authority before returning that
+conflict; the same invalid input with a new UUID returns validation (422).
+Permission checks precede lookup, inaccessible stored doses retain the validation
+error, and database failures propagate. Valid replay and differing valid payload
+conflicts retain their existing behaviour. The focused HTTP regression passed
+with unchanged dose, stock and audit effects, uppercase UUID reuse and permission
+withdrawal; the browser malformed-confirmation unit test also passed. Final root
+`task ci` passed: 150 unit tests, 19 JavaScript tests, 1,149 integration cases,
+28 browser journeys, template concurrency, formatting, Clippy and dependency
+checks. The documentation build passed. Publication is the next step.
 
 ### Typed treatment forms (#2870, local candidate on 22 October 2026)
 

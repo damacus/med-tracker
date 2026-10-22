@@ -118,10 +118,9 @@ pub async fn apply(
                 expected_effective_amount: None,
                 expected_effective_unit: None,
             }
-            .validate()?;
+            .attempt()?;
             let outcome =
-                doses::execute_in_timezone(tenant, doses::Command::Take(take), zone, attribution)
-                    .await?;
+                doses::execute_attempt_in_timezone(tenant, take, zone, attribution).await?;
             let (row, replayed) = match outcome {
                 doses::Outcome::Created(row) => (row, false),
                 doses::Outcome::Replayed(row) => (row, true),

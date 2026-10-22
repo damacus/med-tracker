@@ -510,9 +510,9 @@ async fn take(
         Err(_) => return response::error(response::unavailable(), &request_id),
     };
     let result = match input {
-        Ok(command) => doses::execute_in_timezone(
+        Ok(command) => doses::execute_attempt_in_timezone(
             &tenant,
-            doses::Command::Take(command),
+            command,
             principal.time_zone(),
             Some(principal.provenance()),
         )

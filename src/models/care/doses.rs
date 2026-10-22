@@ -127,16 +127,26 @@ pub struct Take {
     expected_effective_unit: Option<String>,
 }
 
+pub enum TakeAttempt {
+    Ready(Take),
+    MalformedReplay(MalformedReplay),
+}
+
+pub struct MalformedReplay {
+    client_uuid: Uuid,
+    original_error: OperationError,
+}
+
 impl TakeInput {
-    pub fn validate(self) -> Result<Take, OperationError> {
+    pub fn attempt(self) -> Result<TakeAttempt, OperationError> {
         let source = DoseSource::parse(&self.source_type, &self.source_id)?;
-        let taken_at = input::parse_input_time(&self.taken_at)?;
+        let taken_at = input::parse_input_time(&self.taken_at);
         let client_uuid = self
             .client_uuid
             .as_deref()
             .map(Uuid::parse_str)
             .transpose()
-            .map_err(|_| error(ErrorKind::Validation, "invalid client_uuid"))?;
+            .map_err(|_| error(ErrorKind::Validation, "invalid client_uuid"));
         let dose_amount = self
             .dose_amount
             .as_deref()
@@ -148,7 +158,38 @@ impl TakeInput {
                 }
                 Ok(amount)
             })
-            .transpose()?;
+            .transpose();
+        let expected_effective_amount = self
+            .expected_effective_amount
+            .as_deref()
+            .map(Decimal::from_str)
+            .transpose()
+            .map_err(|_| error(ErrorKind::Validation, "Invalid dose configured"));
+        let malformed_amount = dose_amount.is_err();
+        let expected_valid = expected_effective_amount.is_ok()
+            || (malformed_amount
+                && self.expected_effective_amount.as_deref() == self.dose_amount.as_deref());
+        if (taken_at.is_err() || malformed_amount)
+            && let Ok(Some(client_uuid)) = client_uuid.as_ref()
+            && expected_valid
+            && self
+                .dose_unit
+                .as_deref()
+                .is_none_or(|value| !value.is_empty())
+            && self.taken_from_medication_id.is_none_or(|id| id > 0)
+        {
+            let original_error = match taken_at {
+                Err(error) => error,
+                Ok(_) => dose_amount.expect_err("malformed amount was checked"),
+            };
+            return Ok(TakeAttempt::MalformedReplay(MalformedReplay {
+                client_uuid: *client_uuid,
+                original_error,
+            }));
+        }
+        let taken_at = taken_at?;
+        let client_uuid = client_uuid?;
+        let dose_amount = dose_amount?;
         if self.dose_unit.as_deref().is_some_and(str::is_empty) {
             return Err(error(ErrorKind::Validation, "invalid dose_unit"));
         }
@@ -160,13 +201,8 @@ impl TakeInput {
                     .ok_or_else(|| error(ErrorKind::Validation, "invalid taken_from_medication_id"))
             })
             .transpose()?;
-        let expected_effective_amount = self
-            .expected_effective_amount
-            .as_deref()
-            .map(Decimal::from_str)
-            .transpose()
-            .map_err(|_| error(ErrorKind::Validation, "Invalid dose configured"))?;
-        Ok(Take {
+        let expected_effective_amount = expected_effective_amount?;
+        Ok(TakeAttempt::Ready(Take {
             client_uuid,
             source,
             taken_at,
@@ -175,7 +211,14 @@ impl TakeInput {
             taken_from_medication_id,
             expected_effective_amount,
             expected_effective_unit: self.expected_effective_unit,
-        })
+        }))
+    }
+
+    pub fn validate(self) -> Result<Take, OperationError> {
+        match self.attempt()? {
+            TakeAttempt::Ready(take) => Ok(take),
+            TakeAttempt::MalformedReplay(malformed) => Err(malformed.original_error),
+        }
     }
 }
 
@@ -259,6 +302,24 @@ mod typed_take_tests {
         malformed.taken_from_medication_id = Some(0);
         assert!(matches!(
             malformed.validate(),
+            Err(OperationError::Validation { .. })
+        ));
+    }
+
+    #[test]
+    fn browser_confirmation_amount_can_be_a_malformed_retry_attempt() {
+        let mut confirmed = input();
+        confirmed.dose_amount = Some("not-a-decimal".into());
+        confirmed.expected_effective_amount = confirmed.dose_amount.clone();
+        assert!(matches!(
+            confirmed.attempt(),
+            Ok(TakeAttempt::MalformedReplay(_))
+        ));
+
+        let mut unrelated = input();
+        unrelated.expected_effective_amount = Some("not-a-decimal".into());
+        assert!(matches!(
+            unrelated.attempt(),
             Err(OperationError::Validation { .. })
         ));
     }
@@ -463,6 +524,51 @@ pub async fn execute_in_timezone(
     } else {
         Outcome::Created(record)
     })
+}
+
+pub async fn execute_attempt_in_timezone(
+    tenant: &TenantTransaction,
+    attempt: TakeAttempt,
+    zone: chrono_tz::Tz,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<Outcome, OperationError> {
+    match attempt {
+        TakeAttempt::Ready(take) => {
+            execute_in_timezone(tenant, Command::Take(take), zone, provenance).await
+        }
+        TakeAttempt::MalformedReplay(malformed) => {
+            let context = DoseContext {
+                tenant,
+                provenance,
+                zone,
+            };
+            let db = tenant.transaction();
+            let household_id = tenant.scope().household_id;
+            lock_row(db, "households", household_id).await?;
+            access::recheck(tenant).await?;
+            lock_client_uuid(db, malformed.client_uuid).await?;
+            let existing = match existing_take(db, household_id, malformed.client_uuid).await {
+                Ok(existing) => existing,
+                Err(OperationError::Conflict { .. }) => return Err(malformed.original_error),
+                Err(problem) => return Err(problem),
+            };
+            if let Some(existing) = existing {
+                match replay::authorize_existing_take(db, &context, household_id, &existing).await {
+                    Ok(_) => {
+                        return Err(error(
+                            ErrorKind::Conflict,
+                            "client_uuid was already used for a different dose",
+                        ));
+                    }
+                    Err(OperationError::Forbidden | OperationError::NotFound) => {
+                        return Err(malformed.original_error);
+                    }
+                    Err(problem) => return Err(problem),
+                }
+            }
+            Err(malformed.original_error)
+        }
+    }
 }
 
 pub async fn execute_with_provenance(
