@@ -47,6 +47,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
           toolchain: stable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        id: node
+        with:
+          node-version: "24"
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
@@ -54,6 +58,8 @@ jobs:
       - name: Verify Task release binary
         run: echo "e1561194871b9c9fb3aa7c71d1cb2cbcd71eda417b62c511739823eef9f947b9  $(command -v task)" | sha256sum --check --strict
       - run: task image:check
+        env:
+          IMAGE_CI_NODE_VERSION: ${{ steps.node.outputs.node-version }}
 
   image:
     needs: tooling

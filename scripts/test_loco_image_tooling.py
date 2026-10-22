@@ -25,13 +25,23 @@ class ImageToolingTest(unittest.TestCase):
         self.rust_version = re.search(
             r"FROM rust:([\d.]+)-", (self.root / "Dockerfile").read_text()
         ).group(1)
+        self.node_version = re.search(
+            r"FROM node:([\d.]+)-", (self.root / "Dockerfile").read_text()
+        ).group(1)
 
     def test_current_image_matches_stable_ci_and_app_tools(self):
-        check(self.root, self.rust_version)
+        check(self.root, self.rust_version, node_version=f"v{self.node_version}")
 
     def test_new_stable_requires_image_update(self):
         with self.assertRaisesRegex(ValueError, "Rust"):
             check(self.root, "999.0.0")
+
+    def test_new_node_patch_requires_image_update(self):
+        with self.assertRaisesRegex(ValueError, "Node"):
+            check(
+                self.root, self.rust_version,
+                node_version=f"v{self.node_version.split('.')[0]}.999.0",
+            )
 
     def test_app_node_upgrade_requires_image_update(self):
         path = self.root / "mise.toml"

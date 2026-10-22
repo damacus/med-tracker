@@ -23,8 +23,10 @@ The existing Rails image publisher remains separate. Publishing an image does
 not deploy it.
 
 `task image:check` compares the image's pinned Rust compiler with the compiler
-selected by the application's stable CI policy, its Node major with `mise.toml`
-and app CI, and its Task version with app CI. The image uses Rust 1.99.1;
+selected by the application's stable CI policy, its Node version with `mise.toml`
+and the exact Node patch selected by app CI, and its Task version with app CI.
+The local check compares Node majors; CI additionally compares the resolved patch.
+The image uses Rust 1.99.1 and Node 24.22.1;
 `Cargo.toml`'s `rust-version` remains the minimum supported compiler. A new stable
 release makes the alignment check fail until the Rust image version and verified
 digest are updated. Node 24 and Task 3.52.0 match the application's selections.
