@@ -41,6 +41,21 @@ includes:
     flatten: true
 
 tasks:
+  image:check:
+    desc: Detect release-image tool drift from application CI
+    cmds:
+      - python3 scripts/test_loco_image_tooling.py
+      - python3 scripts/check_loco_image_tooling.py
+  image:build:
+    desc: Build the root Loco release image for the local architecture
+    cmds:
+      - task: image:check
+      - 'docker build --tag {{.LOCO_IMAGE | default "medtracker-loco:local" | shellQuote}} .'
+  image:test:
+    desc: Check release commands, runtime assets and non-root image ownership
+    env:
+      LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
+    cmds: [python3 scripts/test_loco_image.py]
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]

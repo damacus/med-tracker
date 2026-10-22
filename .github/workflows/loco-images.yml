@@ -1,0 +1,214 @@
+name: Loco Linux images
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - Cargo.toml
+      - Cargo.lock
+      - build.rs
+      - src/**
+      - migration/**
+      - assets/**
+      - config/production.yaml
+      - package.json
+      - package-lock.json
+      - rails/config/ai_medication_sources.yml
+      - rails/config/medication_review_labels.yml
+      - scripts/*loco_image*.py
+      - mise.toml
+      - .github/workflows/ci.yml
+      - Taskfile.yml
+      - .github/workflows/loco-images.yml
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the checked multi-platform image to GHCR
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loco-images-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tooling:
+    name: Image tool alignment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        id: node
+        with:
+          node-version: "24"
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - name: Verify Task release binary
+        run: echo "e1561194871b9c9fb3aa7c71d1cb2cbcd71eda417b62c511739823eef9f947b9  $(command -v task)" | sha256sum --check --strict
+      - run: task image:check
+        env:
+          IMAGE_CI_NODE_VERSION: ${{ steps.node.outputs.node-version }}
+
+  image:
+    needs: tooling
+    name: Loco image (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install verified Buildx release
+        run: |
+          case "$RUNNER_ARCH" in
+            X64) arch=amd64; checksum=e25d5cd675092bb5d1d03632fdc46cdf3fede7b514dc5f023a105e00d3ce5ad4 ;;
+            ARM64) arch=arm64; checksum=3b83b3731916ba433feccaaa689fe5bcdc81c641d92c8e6c2ea865dfa141c97a ;;
+            *) exit 1 ;;
+          esac
+          curl --fail --silent --show-error --location --proto =https --tlsv1.2 "https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-$arch" --output "$RUNNER_TEMP/docker-buildx"
+          echo "$checksum  $RUNNER_TEMP/docker-buildx" | sha256sum --check --strict
+          directory="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
+          mkdir -p "$directory"
+          install -m 0755 "$RUNNER_TEMP/docker-buildx" "$directory/docker-buildx"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          cache-binary: false
+          buildkitd-flags: --debug=false
+          driver-opts: image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: medtracker-loco:local
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=gha,scope=loco-checked-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=loco-checked-${{ matrix.arch }}
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - name: Verify Task release binary
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          case "$ARCH" in
+            amd64) checksum=e1561194871b9c9fb3aa7c71d1cb2cbcd71eda417b62c511739823eef9f947b9 ;;
+            arm64) checksum=0ede6c82d6d381ef9212363c2e38359fc7cc840116344286c70541c8ab8ea027 ;;
+            *) exit 1 ;;
+          esac
+          echo "$checksum  $(command -v task)" | sha256sum --check --strict
+      - run: task image:test
+      - name: Save the tested image
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p "checked/$ARCH"
+          docker image save medtracker-loco:local | gzip > "checked/$ARCH/image.tar.gz"
+          docker image inspect medtracker-loco:local --format '{{.Id}}' > "checked/$ARCH/image.id"
+          cd "checked/$ARCH"
+          sha256sum image.tar.gz image.id > SHA256SUMS
+      - name: Transfer the tested image
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: checked-loco-${{ matrix.arch }}
+          path: checked/${{ matrix.arch }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  checked_images:
+    name: Verify tested image transfer
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: checked-loco-*
+          path: checked
+      - name: Verify both transferred images without executing them
+        run: |
+          for arch in amd64 arm64; do
+            directory="$PWD/checked/checked-loco-$arch"
+            (cd "$directory" && sha256sum --check --strict SHA256SUMS)
+            docker image load --input "$directory/image.tar.gz"
+            test "$(docker image inspect medtracker-loco:local --format '{{.Id}}')" = "$(cat "$directory/image.id")"
+            test "$(docker image inspect medtracker-loco:local --format '{{.Architecture}}')" = "$arch"
+            test "$(docker image inspect medtracker-loco:local --format '{{.Os}}')" = linux
+          done
+
+  publish:
+    if: github.repository == 'damacus/med-tracker' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish
+    needs: checked_images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: checked-loco-*
+          path: checked
+      - name: Install verified Buildx release
+        run: |
+          case "$RUNNER_ARCH" in
+            X64) arch=amd64; checksum=e25d5cd675092bb5d1d03632fdc46cdf3fede7b514dc5f023a105e00d3ce5ad4 ;;
+            ARM64) arch=arm64; checksum=3b83b3731916ba433feccaaa689fe5bcdc81c641d92c8e6c2ea865dfa141c97a ;;
+            *) exit 1 ;;
+          esac
+          curl --fail --silent --show-error --location --proto =https --tlsv1.2 "https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-$arch" --output "$RUNNER_TEMP/docker-buildx"
+          echo "$checksum  $RUNNER_TEMP/docker-buildx" | sha256sum --check --strict
+          directory="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
+          mkdir -p "$directory"
+          install -m 0755 "$RUNNER_TEMP/docker-buildx" "$directory/docker-buildx"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          cache-binary: false
+          driver: docker
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish tested images and assemble their manifest
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}-loco
+          REVISION: ${{ github.sha }}
+        run: |
+          sources=()
+          for arch in amd64 arm64; do
+            directory="$PWD/checked/checked-loco-$arch"
+            (cd "$directory" && sha256sum --check --strict SHA256SUMS)
+            docker image load --input "$directory/image.tar.gz"
+            test "$(docker image inspect medtracker-loco:local --format '{{.Id}}')" = "$(cat "$directory/image.id")"
+            test "$(docker image inspect medtracker-loco:local --format '{{.Architecture}}')" = "$arch"
+            test "$(docker image inspect medtracker-loco:local --format '{{.Os}}')" = linux
+            tag="$IMAGE:sha-$REVISION-$arch"
+            docker image tag medtracker-loco:local "$tag"
+            docker image push "$tag"
+            digest=$(docker buildx imagetools inspect "$tag" --format '{{.Manifest.Digest}}')
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            sources+=("$IMAGE@$digest")
+          done
+          docker buildx imagetools create --tag "$IMAGE:sha-$REVISION" "${sources[@]}"
