@@ -30,6 +30,13 @@ The breaking note must state the current installation boundary:
 > migration. Keep existing installations separate; do not reset their databases
 > or assume Rails can consume Rust-created records.
 
+There is no supported rollback from 0.6 to Rails. A full Rails export at the
+transition is an operator action, not an automatic import or a claim that an
+export has already happened. Any retained Rails site contains only its
+pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
+returning to the old site would not carry those records back. These notes do
+not promise that Rails can import that export or provide a lossless switchback.
+
 Review the override and generated release body together before updating GitHub.
 After release-please next runs, check that the generated changelog and PR body
 retain the corrected boundary. Historical changelog entries remain historical;

@@ -5,6 +5,13 @@ The 0.6 application uses Rust/Loco and PostgreSQL 18. Read the
 database and fresh accounts; existing Rails data, passwords, passkeys and
 sessions are not imported.
 
+There is no supported rollback from 0.6 to Rails. A full Rails export at the
+transition is an operator action, not an automatic import or a claim that an
+export has already happened. Any retained Rails site contains only its
+pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
+returning to the old site would not carry those records back. These notes do
+not promise that Rails can import that export or provide a lossless switchback.
+
 ## Local evaluation
 
 Follow the [technical quick start](quick-start.md) to install the selected
