@@ -5,6 +5,10 @@ pub(super) enum Screen {
     Index,
     Settings,
     Users,
+    Member(
+        administration::member_browser::MembershipId,
+        Option<administration::member_history::HistoryCursor>,
+    ),
     Role(administration::member_browser::MemberLocator),
     Relationships,
     NewRelationship,
@@ -92,13 +96,17 @@ impl<'a> Page<'a> {
         submitted: Option<&HashMap<String, String>>,
         error: Option<&OperationError>,
     ) -> Response {
-        let (_, tenant) = match begin(self.ctx, self.session, self.slug, &self.request_id).await {
+        let (principal, tenant) = match begin(self.ctx, self.session, self.slug, &self.request_id)
+            .await
+        {
             Ok(value) => value,
             Err(error) => {
                 return super::presentation_authentication_error(self.view, self.language, error);
             }
         };
-        let result = self.data(&tenant, screen, submitted, error).await;
+        let result = self
+            .data(&tenant, screen, submitted, error, principal.time_zone())
+            .await;
         let (template, data) = match result {
             Ok(value) => value,
             Err(error) => return super::presentation_error(self.view, self.language, error),
@@ -120,6 +128,7 @@ impl<'a> Page<'a> {
         screen: Screen,
         submitted: Option<&HashMap<String, String>>,
         error: Option<&OperationError>,
+        zone: chrono_tz::Tz,
     ) -> std::result::Result<(&'static str, Value), OperationError> {
         administration::authorize(tenant).await?;
         let mut data = rendering::context(self.slug, error);
@@ -134,6 +143,7 @@ impl<'a> Page<'a> {
         data["admin_labels"] = labels["administration"].clone();
         data["overview_labels"] = labels["administration"]["overview"].clone();
         data["member_labels"] = labels["administration"]["member_list"].clone();
+        data["detail_labels"] = labels["administration"]["member_detail"].clone();
         let overview = if matches!(screen, Screen::Index) {
             Some(administration::overview::read(tenant).await?)
         } else {
@@ -147,7 +157,7 @@ impl<'a> Page<'a> {
         let (title_key, section) = match screen {
             Screen::Index => ("overview", "overview"),
             Screen::Settings => ("settings", "settings"),
-            Screen::Users | Screen::Role(_) => ("members", "users"),
+            Screen::Users | Screen::Role(_) | Screen::Member(_, _) => ("members", "users"),
             Screen::Relationships | Screen::NewRelationship => ("relationships", "relationships"),
         };
         let section_title = labels["administration"]["nav"][title_key]
@@ -219,6 +229,65 @@ impl<'a> Page<'a> {
                 };
                 "administration/users.html"
             }
+            Screen::Member(id, cursor) => {
+                let member = self
+                    .member(
+                        tenant,
+                        administration::member_browser::MemberLocator::Membership(id),
+                    )
+                    .await?;
+                let history = administration::member_history::read(tenant, id, cursor).await?;
+                let lang = self.explicit_language.then_some(self.language);
+                let mut list_query = self.member_query.clone();
+                list_query.return_to_member = false;
+                let mut detail_query = list_query.clone();
+                detail_query.return_to_member = true;
+                data["member"] = json!(member);
+                data["member_labels"] = labels["administration"]["member_list"].clone();
+                data["detail_labels"] = labels["administration"]["member_detail"].clone();
+                data["member_return_url"] = json!(format!(
+                    "/households/{}/admin/users{}",
+                    self.slug,
+                    list_query.suffix(lang)
+                ));
+                data["member_query_suffix"] = json!(detail_query.suffix(lang));
+                data["member_notice"] = json!(self.member_query.notice);
+                data["query"] = json!({"q":self.member_query.search,"role":self.member_query.role_value(),"status":self.member_query.status_value(),"sort":self.member_query.sort_value(),"direction":self.member_query.direction_value()});
+                data["page"] = json!(self.member_query.page);
+                data["return_to_member"] = json!(true);
+                let rows=history.events.iter().map(|event| {
+                    use administration::audit_logs::AuditFieldLabel;
+                    let mut changes=Vec::new();
+                    for (kind,previous,next) in [("role",AuditFieldLabel::PreviousRole,AuditFieldLabel::NewRole),("status",AuditFieldLabel::PreviousStatus,AuditFieldLabel::NewStatus)] {
+                        let value=|label:AuditFieldLabel| event.fields.iter().find(|field| std::mem::discriminant(&field.label)==std::mem::discriminant(&label)).map(|field|field.value.as_str());
+                        let before=value(previous);let after=value(next);
+                        if before != after {
+                            changes.push(json!({"kind":kind,"previous":before,"next":after}));
+                        }
+                    }
+                    let local=event.occurred_at.and_utc().with_timezone(&zone);
+                    let date=crate::models::care::people::browser::birth_date(Some(&local.date_naive().to_string()),&labels).ok_or(OperationError::Unavailable)?;
+                    Ok(json!({"summary":super::audit_logs::summary(&event.summary,&labels,self.language)?,
+                        "kind":event.kind,"outcome":event.outcome,"actor_name":event.actor_name,
+                        "occurred_at_iso":event.occurred_at.and_utc().to_rfc3339(),
+                        "occurred_at_display":format!("{} {}",date,local.format("%H:%M %Z")),
+                        "changes":changes}))
+                }).collect::<std::result::Result<Vec<_>,OperationError>>()?;
+                data["history"] = json!(rows);
+                data["history_older_url"] = json!(history.next_cursor.map(|cursor| {
+                    let suffix = list_query.suffix(lang);
+                    let separator = if suffix.is_empty() { "?" } else { "&" };
+                    format!(
+                        "/households/{}/admin/memberships/{}{}{}history_cursor={}",
+                        self.slug,
+                        id.get(),
+                        suffix,
+                        separator,
+                        cursor
+                    )
+                }));
+                "administration/member.html"
+            }
             Screen::Role(locator) => {
                 let member = self.member(tenant, locator).await?;
                 let member_json = json!(member);
@@ -235,6 +304,21 @@ impl<'a> Page<'a> {
                 data["member"] = member_json;
                 let lang = self.explicit_language.then_some(self.language);
                 data["member_return_suffix"] = json!(self.member_query.suffix(lang));
+                data["member_return_url"] = json!(if self.member_query.return_to_member {
+                    format!(
+                        "/households/{}/admin/memberships/{}{}",
+                        self.slug,
+                        member.id.get(),
+                        self.member_query.suffix(lang)
+                    )
+                } else {
+                    format!(
+                        "/households/{}/admin/users{}",
+                        self.slug,
+                        self.member_query.suffix(lang)
+                    )
+                });
+                data["return_to_member"] = json!(self.member_query.return_to_member);
                 data["member_role_path"] = json!(match locator {
                     administration::member_browser::MemberLocator::Membership(_) =>
                         format!("memberships/{}", member.id.get()),
@@ -376,7 +460,15 @@ impl<'a> Page<'a> {
                     [
                         (
                             header::LOCATION,
-                            if let Change::Membership(_, action) = change {
+                            if self.member_query.return_to_member && matches!(change,Change::Membership(_,_)|Change::Role(administration::member_browser::MemberLocator::Membership(_))) {
+                                let id=match change {
+                                    Change::Membership(id,_)|Change::Role(administration::member_browser::MemberLocator::Membership(id))=>id,
+                                    _=>return super::presentation_error(self.view,self.language,OperationError::Unavailable),
+                                };
+                                let suffix=self.member_query.suffix(self.explicit_language.then_some(self.language));
+                                let notice=if let Change::Membership(_,action)=change {format!("{}notice={}",if suffix.is_empty(){"?"}else{"&"},action.notice())}else{String::new()};
+                                format!("/households/{}/admin/memberships/{}{}{}",self.slug,id.get(),suffix,notice)
+                            } else if let Change::Membership(_, action) = change {
                                 let suffix = self
                                     .member_query
                                     .suffix(self.explicit_language.then_some(self.language));
@@ -426,6 +518,9 @@ impl<'a> Page<'a> {
                 let screen = match change {
                     Change::Settings => Screen::Settings,
                     Change::Role(id) => Screen::Role(id),
+                    Change::Membership(id, _) if self.member_query.return_to_member => {
+                        Screen::Member(id, None)
+                    }
                     Change::Membership(_, _) => Screen::Users,
                     Change::CreateRelationship => Screen::NewRelationship,
                     Change::Relationship(_, _) => Screen::Relationships,

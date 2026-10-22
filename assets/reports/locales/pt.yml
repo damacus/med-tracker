@@ -3148,6 +3148,34 @@ pt:
     body: "Os cuidados podem continuar. Pode atribuir ou convidar um cuidador quando for adequado."
     action: "Atribuir ou convidar um cuidador"
   administration:
+    member_detail:
+      not_applied: "Alteração solicitada (não aplicada)"
+      title: "Detalhes do membro"
+      no_email: "Sem endereço de e-mail"
+      membership_id: "Participação"
+      edit_role: "Editar função"
+      access_help: "O acesso ao agregado é separado do início de sessão na conta. Gerir um agregado não confere tutela."
+      suspend_help: "A suspensão interrompe temporariamente o acesso a este agregado. Não desativa o início de sessão na conta."
+      revoke_help: "A revogação remove o acesso a este agregado. Não encerra a conta."
+      restore_help: "Restaurar a participação permite novamente o acesso a este agregado, sujeito às permissões atuais da conta."
+      history: "Histórico da participação"
+      history_help: "São apresentadas apenas tentativas registadas relativas a esta participação neste agregado. As referências do autor preservam a atribuição original."
+      empty_history: "Sem atividade de participação registada."
+      older: "Atividade anterior"
+      roles:
+        owner: "Os proprietários gerem os membros e as definições do agregado. O último proprietário ativo não pode ser removido."
+        administrator: "Os administradores gerem os membros e as definições do agregado, sujeitos às salvaguardas dos proprietários."
+        member: "Os membros podem consultar e registar os cuidados do agregado. Não podem administrar participações."
+      events:
+        role: "Tentativa de alteração de função"
+        membership: "Tentativa de alteração de participação"
+        created: "Criação da participação"
+      outcomes:
+        success: "Alteração registada"
+        no_change: "Sem alteração"
+        rejected: "Tentativa rejeitada"
+        failure: "Tentativa falhada"
+        recorded: "Evento registado"
     member_list:
       search: "Nome ou e-mail"
       role: "Papel no agregado"

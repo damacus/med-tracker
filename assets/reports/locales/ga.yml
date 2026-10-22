@@ -3150,6 +3150,34 @@ ga:
     body: "Is féidir leanúint leis an gcúram. Is féidir cúramóir a shannadh nó cuireadh a thabhairt dó nuair is cuí."
     action: "Sann cúramóir nó tabhair cuireadh dó"
   administration:
+    member_detail:
+      not_applied: "Athrú iarrtha (nár cuireadh i bhfeidhm)"
+      title: "Sonraí an bhaill"
+      no_email: "Gan seoladh ríomhphoist"
+      membership_id: "Ballraíocht"
+      edit_role: "Cuir ról in eagar"
+      access_help: "Tá rochtain ar an teaghlach ar leith ó shíniú isteach sa chuntas. Ní thugann bainistiú teaghlaigh caomhnóireacht."
+      suspend_help: "Cuireann fionraí stop sealadach le rochtain ar an teaghlach seo. Ní dhíchumasaíonn sé síniú isteach sa chuntas."
+      revoke_help: "Baineann cúlghairm rochtain ar an teaghlach seo. Ní dhúnann sé an cuntas."
+      restore_help: "Cumasaíonn athbhunú ballraíochta rochtain ar an teaghlach arís, faoi réir ceadanna reatha an chuntais."
+      history: "Stair na ballraíochta"
+      history_help: "Ní thaispeántar ach iarrachtaí taifeadta a bhaineann leis an mballraíocht seo sa teaghlach seo. Coinníonn tagairtí an ghníomhaí an sannadh bunaidh."
+      empty_history: "Níl aon ghníomhaíocht ballraíochta taifeadta."
+      older: "Gníomhaíocht níos sine"
+      roles:
+        owner: "Bainistíonn úinéirí ballraíocht agus socruithe an teaghlaigh. Ní féidir an t-úinéir gníomhach deireanach a bhaint."
+        administrator: "Bainistíonn riarthóirí ballraíocht agus socruithe an teaghlaigh, faoi réir chosaintí na n-úinéirí."
+        member: "Is féidir le baill cúram an teaghlaigh a fheiceáil agus a thaifeadadh. Ní féidir leo ballraíocht a riar."
+      events:
+        role: "Iarracht ar ról a nuashonrú"
+        membership: "Iarracht ar bhallraíocht a nuashonrú"
+        created: "Cruthú ballraíochta"
+      outcomes:
+        success: "Athrú taifeadta"
+        no_change: "Gan athrú"
+        rejected: "Iarracht diúltaithe"
+        failure: "Iarracht theipthe"
+        recorded: "Imeacht taifeadta"
     member_list:
       search: "Ainm nó ríomhphost"
       role: "Ról sa teaghlach"

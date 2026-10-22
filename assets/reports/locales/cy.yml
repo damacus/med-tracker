@@ -3142,6 +3142,34 @@ cy:
     body: "Gall gofal barhau. Gallwch aseinio neu wahodd gofalwr pan fo’n briodol."
     action: "Aseiniwch neu wahoddwch ofalwr"
   administration:
+    member_detail:
+      not_applied: "Newid a geisiwyd (heb ei gymhwyso)"
+      title: "Manylion aelod"
+      no_email: "Dim cyfeiriad e-bost"
+      membership_id: "Aelodaeth"
+      edit_role: "Golygu rôl"
+      access_help: "Mae mynediad i’r aelwyd ar wahân i fewngofnodi i’r cyfrif. Nid yw rheoli aelwyd yn rhoi gwarcheidiaeth."
+      suspend_help: "Mae atal yn atal mynediad i’r aelwyd hon dros dro. Nid yw’n analluogi mewngofnodi i’r cyfrif."
+      revoke_help: "Mae dirymu yn dileu mynediad i’r aelwyd hon. Nid yw’n cau’r cyfrif."
+      restore_help: "Mae adfer aelodaeth yn galluogi mynediad i’r aelwyd eto, yn amodol ar ganiatadau cyfredol y cyfrif."
+      history: "Hanes aelodaeth"
+      history_help: "Dim ond ymdrechion cofnodedig sy’n ymwneud â’r aelodaeth hon yn yr aelwyd hon a ddangosir. Mae cyfeiriadau’r gweithredwr yn cadw’r priodoliad gwreiddiol."
+      empty_history: "Dim gweithgarwch aelodaeth wedi’i gofnodi."
+      older: "Gweithgarwch hŷn"
+      roles:
+        owner: "Mae perchnogion yn rheoli aelodaeth a gosodiadau’r aelwyd. Ni ellir dileu’r perchennog gweithredol olaf."
+        administrator: "Mae gweinyddwyr yn rheoli aelodaeth a gosodiadau’r aelwyd, yn ddarostyngedig i fesurau diogelu perchnogion."
+        member: "Gall aelodau weld a chofnodi gofal yr aelwyd. Ni allant weinyddu aelodaeth."
+      events:
+        role: "Ymgais i ddiweddaru rôl"
+        membership: "Ymgais i ddiweddaru aelodaeth"
+        created: "Creu aelodaeth"
+      outcomes:
+        success: "Newid wedi’i gofnodi"
+        no_change: "Dim newid"
+        rejected: "Ymgais wedi’i gwrthod"
+        failure: "Ymgais wedi methu"
+        recorded: "Digwyddiad wedi’i gofnodi"
     member_list:
       search: "Enw neu e-bost"
       role: "Rôl yn yr aelwyd"

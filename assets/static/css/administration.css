@@ -69,3 +69,14 @@ body:not(.app-household) .shell-header-inner > a:first-child::before { content:'
  .admin-activity .card-body { display:flex; flex-direction:column; }
 }
 @media (max-width:359px) { .admin-metrics { grid-template-columns:minmax(0,1fr); } .admin-navigation .btn { font-size:.6875rem; } }
+
+.member-profile { padding:1.5rem; margin-top:1.5rem; }
+.member-facts { display:grid; grid-template-columns:minmax(0,10rem) minmax(0,1fr); gap:.5rem 1rem; font-size:.8125rem; }
+.member-facts dt { color:var(--on-surface-variant); }
+.member-facts dd { overflow-wrap:anywhere; }
+.member-history { display:grid; gap:.875rem; }
+.member-history > li { padding:1.25rem; font-size:.8125rem; }
+.member-history h3 { font-weight:750; }
+.member-history p { overflow-wrap:anywhere; color:var(--on-surface-variant); }
+.member-action[open] { flex-basis:100%; }
+@media(max-width:479px) { .member-facts { grid-template-columns:minmax(0,1fr); gap:.25rem; } .member-facts dd { margin-bottom:.5rem; } }

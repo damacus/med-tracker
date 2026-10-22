@@ -3117,6 +3117,34 @@ en:
     body: "Care can continue. You can assign or invite a carer when appropriate."
     action: "Assign or invite a carer"
   administration:
+    member_detail:
+      not_applied: "Requested change (not applied)"
+      title: "Member details"
+      no_email: "No email address"
+      membership_id: "Membership"
+      edit_role: "Edit role"
+      access_help: "Household access is separate from account sign-in. Managing a household does not grant guardianship."
+      suspend_help: "Suspension temporarily stops access to this household. It does not disable account sign-in."
+      revoke_help: "Revocation removes access to this household. It does not close the account."
+      restore_help: "Restoring membership enables this household access again, subject to current account permissions."
+      history: "Membership history"
+      history_help: "Only recorded attempts concerning this membership in this household are shown. Actor references preserve the original attribution."
+      empty_history: "No recorded membership activity."
+      older: "Older activity"
+      roles:
+        owner: "Owners manage household membership and settings. The last active owner cannot be removed."
+        administrator: "Administrators manage household membership and settings, subject to owner safeguards."
+        member: "Members can view and record household care. They cannot administer membership."
+      events:
+        role: "Role update attempt"
+        membership: "Membership update attempt"
+        created: "Membership creation"
+      outcomes:
+        success: "Recorded change"
+        no_change: "No change"
+        rejected: "Rejected attempt"
+        failure: "Failed attempt"
+        recorded: "Recorded event"
     member_list:
       search: "Name or email"
       role: "Household role"

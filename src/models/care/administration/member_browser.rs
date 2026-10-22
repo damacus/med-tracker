@@ -116,6 +116,7 @@ pub enum SortDirection {
 
 #[derive(Clone, Debug, Default)]
 pub struct MemberQuery {
+    pub return_to_member: bool,
     pub search: String,
     pub role: MemberRole,
     pub status: MemberStatus,
@@ -131,16 +132,24 @@ impl MemberQuery {
     ) -> Result<Self, OperationError> {
         let encoded = url::form_urlencoded::Serializer::new(String::new())
             .extend_pairs(
-                ["q", "role", "status", "sort", "direction", "page"]
-                    .into_iter()
-                    .filter_map(|key| {
-                        form.get(if key == "role" && form.contains_key("role_filter") {
-                            "role_filter"
-                        } else {
-                            key
-                        })
-                        .map(|value| (key, value.as_str()))
-                    }),
+                [
+                    "q",
+                    "role",
+                    "status",
+                    "sort",
+                    "direction",
+                    "page",
+                    "return_to",
+                ]
+                .into_iter()
+                .filter_map(|key| {
+                    form.get(if key == "role" && form.contains_key("role_filter") {
+                        "role_filter"
+                    } else {
+                        key
+                    })
+                    .map(|value| (key, value.as_str()))
+                }),
             )
             .finish();
         Self::parse(Some(&encoded)).map(|(query, _)| query)
@@ -162,6 +171,7 @@ impl MemberQuery {
                 return Err(invalid(&key));
             }
             match key.as_ref() {
+                "return_to" if value == "member" => query.return_to_member = true,
                 "q" if value.len() <= 100 => query.search = value.trim().to_owned(),
                 "role" => {
                     query.role = match value.as_ref() {
@@ -245,7 +255,8 @@ impl MemberQuery {
         }
     }
     pub fn suffix(&self, language: Option<&str>) -> String {
-        if self.search.is_empty()
+        if !self.return_to_member
+            && self.search.is_empty()
             && self.role == MemberRole::All
             && self.status == MemberStatus::All
             && self.sort == MemberSort::Name
@@ -261,6 +272,9 @@ impl MemberQuery {
             ("sort", self.sort_value()),
             ("direction", self.direction_value()),
         ];
+        if self.return_to_member {
+            pairs.push(("return_to", "member"));
+        }
         let page = self.page.to_string();
         pairs.push(("page", &page));
         if let Some(language) = language {
