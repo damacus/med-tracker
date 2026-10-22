@@ -223,7 +223,7 @@ individual delivery reconciliation. Correct Loco workers and schedules remain
 required. Scale Rails servers to zero and stop its separate workers and schedulers
 before Loco starts; stop Loco before restoring Rails. These decisions change the
 cutover design, not the separate live-action approval boundary.
-See [the deployment decision](../../deployment.md#approved-cutover-decision-unsupported-passkeys)
+See [the deployment decision](../../deployment.md#fresh-rust-release-scope)
 and [the identity transition requirements](slices/03-identity.md#approved-passkey-transition-6-october-2026).
 The approval changes the compatibility requirement; it does not waive verification
 of the transition or authorise production cutover.

@@ -2031,7 +2031,7 @@ account/key/session foreign-key lock-order failure; consistent account-before-ke
 locking now produces a clean rejection without issuing a session.
 
 The user approved dropping unsupported historical passkey algorithms on 6 October.
-This intentional compatibility break is recorded in [the deployment guide](../../deployment.md#approved-cutover-decision-unsupported-passkeys).
+This intentional compatibility break is recorded in [the deployment guide](../../deployment.md#fresh-rust-release-scope).
 Supported keys work on mixed-key accounts. Security settings identify keys needing
 replacement, and unsupported-only accounts receive recovery instructions after
 password verification. Recovery, supported-key registration and explicit old-key
