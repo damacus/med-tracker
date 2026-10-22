@@ -34,6 +34,10 @@ action "delegate_person" appliesTo {
     principal: Membership, resource: Resource,
     context: { person_type: Long, has_capacity: Bool }
 };
+action "recover_minor_guardian" appliesTo {
+    principal: Membership, resource: Resource,
+    context: { person_type: Long, has_capacity: Bool, participating: Bool }
+};
 action "change_owner" appliesTo {
     principal: Membership, resource: Resource,
     context: { next_owner: Bool }

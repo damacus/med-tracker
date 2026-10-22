@@ -1,0 +1,365 @@
+{
+  "removed": [
+    "constraint:public.guardian_declarations.guardian_declarations_initial_subject",
+    "constraint:public.guardian_declarations.guardian_declarations_revision",
+    "constraint:public.guardian_declarations.guardian_declarations_statement",
+    "index:public.guardian_declarations_initial_subject"
+  ],
+  "changed": {
+    "column:public.guardian_declarations.source": {
+      "acl": null,
+      "type": "text",
+      "default": "'initial_attestation'::text",
+      "options": null,
+      "storage": "x",
+      "identity": "",
+      "not_null": true,
+      "position": 11,
+      "collation": "pg_catalog.default",
+      "generated": "",
+      "compression": ""
+    },
+    "column:public.guardian_declarations.superseded_at": {
+      "acl": null,
+      "type": "timestamp with time zone",
+      "default": null,
+      "options": null,
+      "storage": "p",
+      "identity": "",
+      "not_null": false,
+      "position": 12,
+      "collation": null,
+      "generated": "",
+      "compression": ""
+    },
+    "index:public.guardian_declarations_subject_history": {
+      "live": true,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "valid": true,
+      "options": null,
+      "clustered": false,
+      "definition": "CREATE INDEX guardian_declarations_subject_history ON public.guardian_declarations USING btree (subject_person_id, declared_at DESC, id DESC)",
+      "tablespace": null,
+      "replica_identity": false
+    },
+    "function:med_tracker.guardian_declaration_one_way()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "owner": "med_tracker_owner",
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.guardian_declaration_one_way()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    IF NEW.source = 'manager_appointment' AND current_user <> 'med_tracker_owner' THEN\n      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery command required';\n    END IF;\n    NEW.declared_at := pg_catalog.clock_timestamp();\n    NEW.confirmation_token := pg_catalog.gen_random_uuid();\n    RETURN NEW;\n  END IF;\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Guardian declaration provenance is retained';\n  END IF;\n  IF (pg_catalog.to_jsonb(NEW)-ARRAY['withdrawn_at','superseded_at',\n      'superseded_by_account_id','revision','confirmation_token'])\n       IS DISTINCT FROM\n     (pg_catalog.to_jsonb(OLD)-ARRAY['withdrawn_at','superseded_at',\n      'superseded_by_account_id','revision','confirmation_token']) THEN\n    RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Guardian declaration identity is immutable';\n  END IF;\n  IF OLD.withdrawn_at IS NOT NULL OR OLD.superseded_at IS NOT NULL THEN\n    IF NEW IS DISTINCT FROM OLD THEN\n      RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Guardian declaration terminal state is final';\n    END IF;\n    RETURN NEW;\n  END IF;\n  IF NEW.revision <> OLD.revision + 1 THEN\n    RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Invalid guardian declaration transition';\n  END IF;\n  IF NEW.withdrawn_at IS NOT NULL AND NEW.superseded_at IS NULL\n      AND NEW.superseded_by_account_id IS NULL THEN\n    NEW.withdrawn_at := pg_catalog.clock_timestamp();\n  ELSIF NEW.withdrawn_at IS NULL AND NEW.superseded_at IS NOT NULL\n      AND NEW.superseded_by_account_id = med_tracker.current_account_id()\n      AND current_user = 'med_tracker_owner' THEN\n    NEW.superseded_at := pg_catalog.clock_timestamp();\n  ELSE\n    RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Invalid guardian declaration transition';\n  END IF;\n  NEW.confirmation_token := pg_catalog.gen_random_uuid();\n  RETURN NEW;\nEND;\n$function$\n"
+    },
+    "function:med_tracker.guardian_recovery_link_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "owner": "med_tracker_owner",
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.guardian_recovery_link_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE initial_declaration public.guardian_declarations%ROWTYPE;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    IF OLD.guardian_declaration_id IS NOT NULL THEN\n      RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Guardian relationship provenance is retained';\n    END IF;\n    RETURN OLD;\n  END IF;\n  IF TG_OP = 'UPDATE' THEN\n    IF OLD.confirmation_token IS DISTINCT FROM NEW.confirmation_token THEN\n      RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Guardian relationship confirmation token is managed';\n    END IF;\n    IF OLD.guardian_declaration_id IS DISTINCT FROM NEW.guardian_declaration_id\n       OR (OLD.guardian_declaration_id IS NOT NULL AND\n         (OLD.carer_id IS DISTINCT FROM NEW.carer_id\n          OR OLD.patient_id IS DISTINCT FROM NEW.patient_id\n          OR OLD.household_id IS DISTINCT FROM NEW.household_id)) THEN\n      RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'Guardian relationship identity is immutable';\n    END IF;\n    IF OLD.guardian_declaration_id IS NOT NULL AND NOT OLD.active AND NEW.active\n       AND current_user <> 'med_tracker_owner' THEN\n      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery command required';\n    END IF;\n    IF OLD.active IS DISTINCT FROM NEW.active THEN\n      NEW.confirmation_token := pg_catalog.gen_random_uuid();\n    END IF;\n  END IF;\n  IF TG_OP = 'INSERT' AND NEW.guardian_declaration_id IS NOT NULL\n     AND current_user <> 'med_tracker_owner' THEN\n    -- Match withdrawal and recovery's account-before-declaration lock order.\n    PERFORM a.id FROM public.accounts a\n    JOIN public.users u ON u.person_id = a.person_id\n    JOIN public.household_memberships actor ON actor.person_id = a.person_id\n    JOIN public.households h ON h.id = actor.household_id\n    WHERE a.id = med_tracker.current_account_id() AND a.person_id = NEW.carer_id\n      AND a.status = 2 AND u.active\n      AND actor.id = med_tracker.current_membership_id()\n      AND actor.household_id = NEW.household_id\n      AND actor.household_id = med_tracker.current_household_id()\n      AND actor.status = 'active' AND actor.revoked_at IS NULL\n      AND h.status = 'active' AND h.lifecycle_state = 'active'\n      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l WHERE l.account_id = a.id\n        AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))\n    FOR SHARE OF a;\n    IF NOT FOUND THEN\n      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery command required';\n    END IF;\n    SELECT d.* INTO initial_declaration FROM public.guardian_declarations d\n    WHERE d.id = NEW.guardian_declaration_id FOR SHARE OF d;\n    IF NOT FOUND THEN\n      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery command required';\n    END IF;\n    IF initial_declaration.source IS DISTINCT FROM 'initial_attestation'\n       OR initial_declaration.origin_household_id IS DISTINCT FROM NEW.household_id\n       OR initial_declaration.subject_person_id IS DISTINCT FROM NEW.patient_id\n       OR initial_declaration.guardian_person_id IS DISTINCT FROM NEW.carer_id\n       OR initial_declaration.declared_by_account_id IS DISTINCT FROM med_tracker.current_account_id()\n       OR initial_declaration.withdrawn_at IS NOT NULL\n       OR initial_declaration.superseded_at IS NOT NULL\n       OR EXISTS (SELECT 1 FROM public.carer_relationships c\n         WHERE c.household_id = NEW.household_id\n           AND c.guardian_declaration_id = NEW.guardian_declaration_id) THEN\n      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery command required';\n    END IF;\n  END IF;\n  IF TG_OP = 'INSERT' THEN\n    NEW.confirmation_token := pg_catalog.gen_random_uuid();\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+    },
+    "index:public.guardian_declarations_one_open_subject": {
+      "live": true,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "valid": true,
+      "options": null,
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX guardian_declarations_one_open_subject ON public.guardian_declarations USING btree (subject_person_id) WHERE ((withdrawn_at IS NULL) AND (superseded_at IS NULL))",
+      "tablespace": null,
+      "replica_identity": false
+    },
+    "column:public.carer_relationships.confirmation_token": {
+      "acl": null,
+      "type": "uuid",
+      "default": "gen_random_uuid()",
+      "options": null,
+      "storage": "p",
+      "identity": "",
+      "not_null": true,
+      "position": 10,
+      "collation": null,
+      "generated": "",
+      "compression": ""
+    },
+    "function:med_tracker.guardian_recovery_latest_date()": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "owner": "med_tracker_owner",
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.guardian_recovery_latest_date()\n RETURNS date\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n  SELECT ((pg_catalog.clock_timestamp() + interval '14 hours') AT TIME ZONE 'UTC')::date\n$function$\n"
+    },
+    "column:public.guardian_declarations.confirmation_token": {
+      "acl": null,
+      "type": "uuid",
+      "default": "gen_random_uuid()",
+      "options": null,
+      "storage": "p",
+      "identity": "",
+      "not_null": true,
+      "position": 14,
+      "collation": null,
+      "generated": "",
+      "compression": ""
+    },
+    "function:med_tracker.guardian_initial_lifetime_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "owner": "med_tracker_owner",
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.guardian_initial_lifetime_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE previous_scope text;\nBEGIN\n  IF NEW.source <> 'initial_attestation' THEN\n    RETURN NEW;\n  END IF;\n  PERFORM pg_catalog.pg_advisory_xact_lock(\n    pg_catalog.hashtextextended('guardian-subject:' || NEW.subject_person_id::text,0));\n  previous_scope := pg_catalog.current_setting('med_tracker.guardian_recovery_subject_id',true);\n  PERFORM pg_catalog.set_config('med_tracker.guardian_recovery_subject_id',\n    NEW.subject_person_id::text,true);\n  IF EXISTS (SELECT 1 FROM public.guardian_declarations d\n             WHERE d.subject_person_id = NEW.subject_person_id) THEN\n    RAISE EXCEPTION USING ERRCODE = '23505', MESSAGE = 'Initial guardian declaration already exists';\n  END IF;\n  PERFORM pg_catalog.set_config('med_tracker.guardian_recovery_subject_id',\n    COALESCE(previous_scope,''),true);\n  RETURN NEW;\nEND;\n$function$\n"
+    },
+    "function:med_tracker.guardian_recovery_earliest_date()": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "owner": "med_tracker_owner",
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.guardian_recovery_earliest_date()\n RETURNS date\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n  SELECT ((pg_catalog.clock_timestamp() - interval '12 hours') AT TIME ZONE 'UTC')::date\n$function$\n"
+    },
+    "policy:public.people.guardian_recovery_people_owner_read": {
+      "check": null,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint) OR (id = (NULLIF(current_setting('med_tracker.guardian_recovery_guardian_id'::text, true), ''::text))::bigint) OR (id IN ( SELECT d.guardian_person_id\n   FROM guardian_declarations d\n  WHERE (d.subject_person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))))",
+      "command": "r",
+      "permissive": true
+    },
+    "policy:public.people.guardian_recovery_people_owner_update": {
+      "check": "((id = (NULLIF(current_setting('med_tracker.guardian_recovery_guardian_id'::text, true), ''::text))::bigint) OR (id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))",
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((id = (NULLIF(current_setting('med_tracker.guardian_recovery_guardian_id'::text, true), ''::text))::bigint) OR (id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))",
+      "command": "w",
+      "permissive": true
+    },
+    "column:public.guardian_declarations.superseded_by_account_id": {
+      "acl": null,
+      "type": "bigint",
+      "default": null,
+      "options": null,
+      "storage": "p",
+      "identity": "",
+      "not_null": false,
+      "position": 13,
+      "collation": null,
+      "generated": "",
+      "compression": ""
+    },
+    "trigger:public.carer_relationships.guardian_recovery_link_guard": {
+      "enabled": "O",
+      "definition": "CREATE TRIGGER guardian_recovery_link_guard BEFORE INSERT OR DELETE OR UPDATE ON public.carer_relationships FOR EACH ROW EXECUTE FUNCTION med_tracker.guardian_recovery_link_guard()"
+    },
+    "function:med_tracker.guardian_recovery_snapshot(p_subject bigint)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "owner": "med_tracker_owner",
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.guardian_recovery_snapshot(p_subject bigint)\n RETURNS TABLE(snapshot_token uuid, snapshot_revision bigint, link_token uuid, has_effective_guardian boolean)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n  IF p_subject IS NULL OR p_subject <= 0 THEN\n    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Guardian recovery unavailable';\n  END IF;\n  PERFORM pg_catalog.set_config('med_tracker.guardian_recovery_subject_id',\n    p_subject::text,true);\n  IF NOT EXISTS (\n    SELECT 1 FROM public.household_memberships actor\n    JOIN public.accounts a ON a.person_id = actor.person_id\n    JOIN public.users u ON u.person_id = actor.person_id\n    JOIN public.households h ON h.id = actor.household_id\n    JOIN public.household_memberships subject_member\n      ON subject_member.household_id = h.id AND subject_member.person_id = p_subject\n    JOIN public.people subject ON subject.id = p_subject\n    WHERE actor.id = med_tracker.current_membership_id()\n      AND actor.household_id = med_tracker.current_household_id()\n      AND actor.role IN ('owner','administrator')\n      AND actor.status = 'active' AND actor.revoked_at IS NULL\n      AND a.id = med_tracker.current_account_id() AND a.status = 2\n      AND u.active AND h.status = 'active' AND h.lifecycle_state = 'active'\n      AND subject_member.status = 'active' AND subject_member.revoked_at IS NULL\n      AND subject.person_type = 1 AND NOT subject.has_capacity\n      AND subject.date_of_birth IS NOT NULL\n      AND subject.date_of_birth <= med_tracker.guardian_recovery_earliest_date()\n      AND subject.date_of_birth >\n          (med_tracker.guardian_recovery_latest_date() - interval '18 years')::date\n      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l\n        WHERE l.account_id = a.id\n          AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))\n  ) THEN\n    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Guardian recovery unavailable';\n  END IF;\n  SELECT d.confirmation_token,d.revision\n    INTO snapshot_token,snapshot_revision\n    FROM public.guardian_declarations d\n    WHERE d.subject_person_id = p_subject\n    ORDER BY d.declared_at DESC,d.id DESC LIMIT 1;\n  IF NOT FOUND THEN\n    snapshot_token := '00000000-0000-0000-0000-000000000000'::uuid;\n    snapshot_revision := 0;\n  END IF;\n  SELECT c.confirmation_token INTO link_token\n    FROM public.carer_relationships c\n    JOIN public.guardian_declarations d ON d.id=c.guardian_declaration_id\n    WHERE d.subject_person_id=p_subject AND d.withdrawn_at IS NULL\n      AND d.superseded_at IS NULL AND c.household_id=med_tracker.current_household_id()\n    ORDER BY d.declared_at DESC,d.id DESC,c.id DESC LIMIT 1;\n  IF NOT FOUND THEN\n    link_token := '00000000-0000-0000-0000-000000000000'::uuid;\n  END IF;\n  SELECT EXISTS (\n    SELECT 1 FROM public.guardian_declarations d\n    JOIN public.carer_relationships c\n      ON c.guardian_declaration_id = d.id\n      AND c.carer_id = d.guardian_person_id\n      AND c.patient_id = d.subject_person_id\n    JOIN public.households h ON h.id = c.household_id\n    JOIN public.household_memberships subject_member\n      ON subject_member.household_id = h.id\n      AND subject_member.person_id = d.subject_person_id\n    JOIN public.household_memberships guardian_member\n      ON guardian_member.household_id = h.id\n      AND guardian_member.person_id = d.guardian_person_id\n    JOIN public.people guardian ON guardian.id = d.guardian_person_id\n    JOIN public.accounts a ON a.person_id = guardian.id\n    JOIN public.users u ON u.person_id = guardian.id\n    WHERE d.subject_person_id = p_subject\n      AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL\n      AND c.active AND h.status = 'active' AND h.lifecycle_state = 'active'\n      AND subject_member.status = 'active' AND subject_member.revoked_at IS NULL\n      AND guardian_member.status = 'active' AND guardian_member.revoked_at IS NULL\n      AND guardian.person_type = 0 AND guardian.has_capacity\n      AND (guardian.date_of_birth IS NULL OR guardian.date_of_birth <=\n        (med_tracker.guardian_recovery_latest_date() - interval '18 years')::date)\n      AND a.status = 2 AND u.active\n  ) INTO has_effective_guardian;\n  RETURN NEXT;\nEND;\n$function$\n"
+    },
+    "index:public.index_carer_relationships_on_household_carer_patient": {
+      "live": true,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "valid": true,
+      "options": null,
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX index_carer_relationships_on_household_carer_patient ON public.carer_relationships USING btree (household_id, carer_id, patient_id) WHERE (guardian_declaration_id IS NULL)",
+      "tablespace": null,
+      "replica_identity": false
+    },
+    "policy:public.guardian_declarations.guardian_declarations_initial_insert": {
+      "check": "((source = 'initial_attestation'::text) AND (origin_household_id = med_tracker.current_household_id()) AND (statement_version = 1) AND (revision = 1) AND (withdrawn_at IS NULL) AND (superseded_at IS NULL) AND (EXISTS ( SELECT 1\n   FROM ((((accounts a\n     JOIN people guardian ON ((guardian.id = a.person_id)))\n     JOIN household_memberships actor ON ((actor.person_id = guardian.id)))\n     JOIN households h ON ((h.id = actor.household_id)))\n     JOIN users u ON ((u.person_id = guardian.id)))\n  WHERE ((a.id = med_tracker.current_account_id()) AND (a.id = guardian_declarations.declared_by_account_id) AND (a.person_id = guardian_declarations.guardian_person_id) AND (a.status = 2) AND u.active AND (guardian.person_type = 0) AND guardian.has_capacity AND (actor.id = med_tracker.current_membership_id()) AND (actor.household_id = guardian_declarations.origin_household_id) AND ((actor.status)::text = 'active'::text) AND (actor.revoked_at IS NULL) AND ((h.status)::text = 'active'::text) AND ((h.lifecycle_state)::text = 'active'::text) AND (NOT (EXISTS ( SELECT 1\n           FROM account_lockouts l\n          WHERE ((l.account_id = a.id) AND (l.deadline > timezone('UTC'::text, clock_timestamp()))))))))) AND (EXISTS ( SELECT 1\n   FROM (people subject\n     JOIN household_memberships m ON ((m.person_id = subject.id)))\n  WHERE ((subject.id = guardian_declarations.subject_person_id) AND (subject.person_type = ANY (ARRAY[1, 2])) AND (NOT subject.has_capacity) AND (m.household_id = guardian_declarations.origin_household_id) AND ((m.status)::text = 'active'::text) AND (m.revoked_at IS NULL)))))",
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null,
+      "command": "a",
+      "permissive": true
+    },
+    "policy:public.security_audit_events.guardian_recovery_audit_owner_insert": {
+      "check": "(household_id = med_tracker.current_household_id())",
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": null,
+      "command": "a",
+      "permissive": true
+    },
+    "policy:public.carer_relationships.guardian_recovery_relationship_owner_read": {
+      "check": null,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "(patient_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint)",
+      "command": "r",
+      "permissive": true
+    },
+    "policy:public.household_memberships.guardian_recovery_membership_owner_read": {
+      "check": null,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((id = med_tracker.current_membership_id()) OR (person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint) OR (person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_guardian_id'::text, true), ''::text))::bigint) OR (person_id IN ( SELECT d.guardian_person_id\n   FROM guardian_declarations d\n  WHERE (d.subject_person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))))",
+      "command": "r",
+      "permissive": true
+    },
+    "trigger:public.guardian_declarations.guardian_declarations_initial_lifetime": {
+      "enabled": "O",
+      "definition": "CREATE TRIGGER guardian_declarations_initial_lifetime BEFORE INSERT ON public.guardian_declarations FOR EACH ROW EXECUTE FUNCTION med_tracker.guardian_initial_lifetime_guard()"
+    },
+    "constraint:public.guardian_declarations.guardian_declarations_terminal_state": {
+      "local": true,
+      "deferred": false,
+      "enforced": true,
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK ((((withdrawn_at IS NULL) AND (superseded_at IS NULL) AND (superseded_by_account_id IS NULL) AND (revision = 1)) OR ((withdrawn_at IS NOT NULL) AND (superseded_at IS NULL) AND (superseded_by_account_id IS NULL) AND (revision = 2) AND (withdrawn_at >= declared_at)) OR ((withdrawn_at IS NULL) AND (superseded_at IS NOT NULL) AND (superseded_by_account_id IS NOT NULL) AND (revision = 2) AND (superseded_at >= declared_at))))",
+      "no_inherit": false,
+      "inherit_count": 0
+    },
+    "policy:public.guardian_declarations.guardian_recovery_declaration_owner_read": {
+      "check": null,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "(subject_person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint)",
+      "command": "r",
+      "permissive": true
+    },
+    "constraint:public.guardian_declarations.guardian_declarations_source_not_null": {
+      "local": true,
+      "deferred": false,
+      "enforced": true,
+      "validated": true,
+      "deferrable": false,
+      "definition": "NOT NULL source",
+      "no_inherit": false,
+      "inherit_count": 0
+    },
+    "policy:public.carer_relationships.guardian_recovery_relationship_owner_insert": {
+      "check": "((household_id = med_tracker.current_household_id()) AND (patient_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))",
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": null,
+      "command": "a",
+      "permissive": true
+    },
+    "policy:public.carer_relationships.guardian_recovery_relationship_owner_update": {
+      "check": "((household_id = med_tracker.current_household_id()) AND (patient_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))",
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((household_id = med_tracker.current_household_id()) AND (patient_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))",
+      "command": "w",
+      "permissive": true
+    },
+    "policy:public.household_memberships.guardian_recovery_membership_owner_update": {
+      "check": "((id = med_tracker.current_membership_id()) OR (person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint) OR (person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_guardian_id'::text, true), ''::text))::bigint) OR (person_id IN ( SELECT d.guardian_person_id\n   FROM guardian_declarations d\n  WHERE (d.subject_person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))))",
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((id = med_tracker.current_membership_id()) OR (person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint) OR (person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_guardian_id'::text, true), ''::text))::bigint) OR (person_id IN ( SELECT d.guardian_person_id\n   FROM guardian_declarations d\n  WHERE (d.subject_person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))))",
+      "command": "w",
+      "permissive": true
+    },
+    "constraint:public.guardian_declarations.guardian_declarations_source_statement": {
+      "local": true,
+      "deferred": false,
+      "enforced": true,
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK ((((source = 'initial_attestation'::text) AND (statement_version = 1)) OR ((source = 'manager_appointment'::text) AND (statement_version = 2))))",
+      "no_inherit": false,
+      "inherit_count": 0
+    },
+    "policy:public.guardian_declarations.guardian_recovery_declaration_owner_insert": {
+      "check": "((source = 'manager_appointment'::text) AND (subject_person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint))",
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": null,
+      "command": "a",
+      "permissive": true
+    },
+    "policy:public.guardian_declarations.guardian_recovery_declaration_owner_update": {
+      "check": "(subject_person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint)",
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "(subject_person_id = (NULLIF(current_setting('med_tracker.guardian_recovery_subject_id'::text, true), ''::text))::bigint)",
+      "command": "w",
+      "permissive": true
+    },
+    "constraint:public.guardian_declarations.guardian_declarations_superseding_actor": {
+      "local": true,
+      "deferred": false,
+      "enforced": true,
+      "validated": true,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (superseded_by_account_id) REFERENCES accounts(id) ON DELETE RESTRICT",
+      "no_inherit": true,
+      "inherit_count": 0
+    },
+    "constraint:public.carer_relationships.carer_relationships_confirmation_token_not_null": {
+      "local": true,
+      "deferred": false,
+      "enforced": true,
+      "validated": true,
+      "deferrable": false,
+      "definition": "NOT NULL confirmation_token",
+      "no_inherit": false,
+      "inherit_count": 0
+    },
+    "constraint:public.guardian_declarations.guardian_declarations_confirmation_token_not_null": {
+      "local": true,
+      "deferred": false,
+      "enforced": true,
+      "validated": true,
+      "deferrable": false,
+      "definition": "NOT NULL confirmation_token",
+      "no_inherit": false,
+      "inherit_count": 0
+    },
+    "internal_trigger:public.accounts:public.guardian_declarations.guardian_declarations_superseding_actor:9": {
+      "type": 9,
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_restrict_del\"()",
+      "deferrable": false
+    },
+    "internal_trigger:public.accounts:public.guardian_declarations.guardian_declarations_superseding_actor:17": {
+      "type": 17,
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "deferrable": false
+    },
+    "internal_trigger:public.guardian_declarations:public.guardian_declarations.guardian_declarations_superseding_actor:5": {
+      "type": 5,
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_check_ins\"()",
+      "deferrable": false
+    },
+    "internal_trigger:public.guardian_declarations:public.guardian_declarations.guardian_declarations_superseding_actor:17": {
+      "type": 17,
+      "enabled": "O",
+      "deferred": false,
+      "function": "\"RI_FKey_check_upd\"()",
+      "deferrable": false
+    },
+    "function:med_tracker.guardian_recovery_command(p_subject bigint, p_guardian bigint, p_expected_token uuid, p_expected_revision bigint, p_expected_link_token uuid, p_restore_declaration bigint, p_restore_link bigint, p_reason text, p_request_id text)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "owner": "med_tracker_owner",
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.guardian_recovery_command(p_subject bigint, p_guardian bigint, p_expected_token uuid, p_expected_revision bigint, p_expected_link_token uuid, p_restore_declaration bigint, p_restore_link bigint, p_reason text, p_request_id text)\n RETURNS TABLE(outcome text, declaration_id bigint, relationship_id bigint)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE\n  latest_token uuid;\n  latest_revision bigint;\n  latest_link_token uuid;\n  guarded boolean;\n  candidate_eligible boolean;\n  old_declaration bigint;\n  old_guardian bigint;\n  guardian_membership bigint;\n  actor_user bigint;\n  subject_name text;\n  event_metadata jsonb;\n  event_context jsonb;\n  timestamp_utc timestamp;\nBEGIN\n  IF p_subject IS NULL OR p_subject <= 0 OR p_guardian IS NULL OR p_guardian <= 0\n     OR p_expected_token IS NULL OR p_expected_revision IS NULL\n     OR p_expected_link_token IS NULL\n     OR (p_restore_declaration IS NULL) <> (p_restore_link IS NULL)\n     OR pg_catalog.length(pg_catalog.btrim(COALESCE(p_reason,''))) NOT BETWEEN 10 AND 500\n     OR pg_catalog.length(COALESCE(p_request_id,'')) NOT BETWEEN 1 AND 128 THEN\n    RETURN QUERY SELECT 'invalid'::text,NULL::bigint,NULL::bigint;\n    RETURN;\n  END IF;\n  PERFORM pg_catalog.set_config('med_tracker.guardian_recovery_subject_id',\n    p_subject::text,true);\n  PERFORM pg_catalog.set_config('med_tracker.guardian_recovery_guardian_id',\n    p_guardian::text,true);\n  -- This command independently verifies the actor and local minor before any lock or write.\n  IF NOT EXISTS (\n    SELECT 1 FROM public.household_memberships actor\n    JOIN public.accounts a ON a.person_id = actor.person_id\n    JOIN public.users u ON u.person_id = actor.person_id\n    JOIN public.households h ON h.id = actor.household_id\n    JOIN public.household_memberships subject_member\n      ON subject_member.household_id = h.id AND subject_member.person_id = p_subject\n    JOIN public.people subject ON subject.id = p_subject\n    WHERE actor.id = med_tracker.current_membership_id()\n      AND actor.household_id = med_tracker.current_household_id()\n      AND actor.role IN ('owner','administrator')\n      AND actor.status = 'active' AND actor.revoked_at IS NULL\n      AND a.id = med_tracker.current_account_id() AND a.status = 2\n      AND u.active AND h.status = 'active' AND h.lifecycle_state = 'active'\n      AND subject_member.status = 'active' AND subject_member.revoked_at IS NULL\n      AND subject.person_type = 1 AND NOT subject.has_capacity\n      AND subject.date_of_birth IS NOT NULL\n      AND subject.date_of_birth <= med_tracker.guardian_recovery_earliest_date()\n      AND subject.date_of_birth >\n          (med_tracker.guardian_recovery_latest_date() - interval '18 years')::date\n      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l\n        WHERE l.account_id = a.id\n          AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))\n  ) THEN\n    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Guardian recovery unavailable';\n  END IF;\n  -- Own withdrawal locks its account before its declaration; use that same order.\n  PERFORM a.id FROM public.accounts a\n    WHERE a.id = med_tracker.current_account_id() OR a.person_id = p_guardian\n    ORDER BY a.id FOR SHARE OF a;\n  PERFORM 1 FROM public.households h\n    WHERE h.id = med_tracker.current_household_id() FOR UPDATE;\n  PERFORM pg_catalog.pg_advisory_xact_lock(\n    pg_catalog.hashtextextended('guardian-subject:' || p_subject::text,0));\n  PERFORM d.id FROM public.guardian_declarations d\n    WHERE d.subject_person_id = p_subject\n    ORDER BY d.declared_at DESC,d.id DESC LIMIT 1 FOR UPDATE OF d;\n  SELECT u.id,subject.name INTO actor_user,subject_name\n    FROM public.household_memberships actor\n    JOIN public.accounts a ON a.person_id = actor.person_id\n    JOIN public.users u ON u.person_id = actor.person_id\n    JOIN public.households h ON h.id = actor.household_id\n    JOIN public.household_memberships subject_member\n      ON subject_member.household_id = h.id AND subject_member.person_id = p_subject\n    JOIN public.people subject ON subject.id = p_subject\n    WHERE actor.id = med_tracker.current_membership_id()\n      AND actor.household_id = med_tracker.current_household_id()\n      AND actor.role IN ('owner','administrator')\n      AND actor.status = 'active' AND actor.revoked_at IS NULL\n      AND a.id = med_tracker.current_account_id() AND a.status = 2\n      AND u.active AND h.status = 'active' AND h.lifecycle_state = 'active'\n      AND subject_member.status = 'active' AND subject_member.revoked_at IS NULL\n      AND subject.person_type = 1 AND NOT subject.has_capacity\n      AND subject.date_of_birth IS NOT NULL\n      AND subject.date_of_birth <= med_tracker.guardian_recovery_earliest_date()\n      AND subject.date_of_birth >\n          (med_tracker.guardian_recovery_latest_date() - interval '18 years')::date\n      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l\n        WHERE l.account_id = a.id\n          AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))\n    FOR SHARE OF actor,a,u,subject_member,subject;\n  IF NOT FOUND THEN\n    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Guardian recovery unavailable';\n  END IF;\n  SELECT m.id INTO guardian_membership\n    FROM public.household_memberships m\n    JOIN public.people p ON p.id = m.person_id\n    JOIN public.accounts a ON a.person_id = p.id\n    JOIN public.users u ON u.person_id = p.id\n    WHERE m.person_id = p_guardian\n      AND m.household_id = med_tracker.current_household_id()\n      AND m.status = 'active' AND m.revoked_at IS NULL\n      AND p.person_type = 0 AND p.has_capacity\n      AND (p.date_of_birth IS NULL OR p.date_of_birth <=\n        (med_tracker.guardian_recovery_earliest_date() - interval '18 years')::date)\n      AND a.status = 2 AND u.active\n      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l\n        WHERE l.account_id = a.id\n          AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))\n    FOR SHARE OF m,p,a,u;\n  IF NOT FOUND THEN\n    RETURN QUERY SELECT 'invalid_guardian'::text,NULL::bigint,NULL::bigint;\n    RETURN;\n  END IF;\n  PERFORM c.id FROM public.carer_relationships c\n    JOIN public.guardian_declarations d ON d.id = c.guardian_declaration_id\n    WHERE d.subject_person_id = p_subject\n      AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL\n    FOR SHARE OF c;\n  SELECT s.snapshot_token,s.snapshot_revision,s.link_token,s.has_effective_guardian,\n      EXISTS (\n        SELECT 1 FROM public.household_memberships m\n        JOIN public.people p ON p.id = m.person_id\n        JOIN public.accounts a ON a.person_id = p.id\n        JOIN public.users u ON u.person_id = p.id\n        WHERE m.person_id = p_guardian\n          AND m.household_id = med_tracker.current_household_id()\n          AND m.status = 'active' AND m.revoked_at IS NULL\n          AND p.person_type = 0 AND p.has_capacity\n          AND (p.date_of_birth IS NULL OR p.date_of_birth <=\n            (med_tracker.guardian_recovery_earliest_date() - interval '18 years')::date)\n          AND a.status = 2 AND u.active\n          AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l\n            WHERE l.account_id = a.id\n              AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))\n      )\n    INTO latest_token,latest_revision,latest_link_token,guarded,candidate_eligible\n    FROM med_tracker.guardian_recovery_snapshot(p_subject) s;\n  IF NOT candidate_eligible THEN\n    RETURN QUERY SELECT 'invalid_guardian'::text,NULL::bigint,NULL::bigint;\n    RETURN;\n  END IF;\n  IF p_expected_token <> latest_token OR p_expected_revision <> latest_revision\n     OR p_expected_link_token <> latest_link_token THEN\n    RETURN QUERY SELECT 'stale'::text,NULL::bigint,NULL::bigint;\n    RETURN;\n  END IF;\n  IF guarded THEN\n    RETURN QUERY SELECT 'already_guarded'::text,NULL::bigint,NULL::bigint;\n    RETURN;\n  END IF;\n  IF p_restore_declaration IS NOT NULL THEN\n    SELECT d.id,c.id INTO declaration_id,relationship_id\n      FROM public.guardian_declarations d\n      JOIN public.carer_relationships c ON c.guardian_declaration_id = d.id\n      WHERE d.id = p_restore_declaration AND c.id = p_restore_link\n        AND d.subject_person_id = p_subject AND d.guardian_person_id = p_guardian\n        AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL\n        AND c.household_id = med_tracker.current_household_id()\n        AND c.carer_id = p_guardian AND c.patient_id = p_subject AND NOT c.active\n      FOR UPDATE OF d,c;\n    IF NOT FOUND THEN\n      RETURN QUERY SELECT 'invalid_restore'::text,NULL::bigint,NULL::bigint;\n      RETURN;\n    END IF;\n    UPDATE public.carer_relationships\n      SET active = true,updated_at = pg_catalog.timezone('UTC',pg_catalog.clock_timestamp())\n      WHERE id = relationship_id;\n    outcome := 'restored';\n  ELSE\n    IF EXISTS (\n      SELECT 1 FROM public.guardian_declarations d\n      JOIN public.carer_relationships c ON c.guardian_declaration_id = d.id\n      JOIN public.household_memberships m\n        ON m.person_id = d.guardian_person_id AND m.household_id = c.household_id\n      JOIN public.people p ON p.id = d.guardian_person_id\n      JOIN public.accounts a ON a.person_id = p.id\n      JOIN public.users u ON u.person_id = p.id\n      WHERE d.subject_person_id = p_subject\n        AND d.guardian_person_id = p_guardian\n        AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL\n        AND c.household_id = med_tracker.current_household_id() AND NOT c.active\n        AND m.status = 'active' AND m.revoked_at IS NULL\n        AND p.person_type = 0 AND p.has_capacity AND a.status = 2 AND u.active\n        AND (p.date_of_birth IS NULL OR p.date_of_birth <=\n          (med_tracker.guardian_recovery_earliest_date() - interval '18 years')::date)\n    ) THEN\n      RETURN QUERY SELECT 'restore_available'::text,NULL::bigint,NULL::bigint;\n      RETURN;\n    END IF;\n    SELECT d.id,d.guardian_person_id INTO old_declaration,old_guardian\n      FROM public.guardian_declarations d\n      WHERE d.subject_person_id = p_subject\n        AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL\n      FOR UPDATE;\n    IF FOUND THEN\n      UPDATE public.guardian_declarations\n        SET superseded_at = pg_catalog.clock_timestamp(),\n            superseded_by_account_id = med_tracker.current_account_id(),\n            revision = revision + 1\n        WHERE id = old_declaration;\n    END IF;\n    INSERT INTO public.guardian_declarations\n      (subject_person_id,guardian_person_id,origin_household_id,\n       declared_by_account_id,statement_version,source,subject_name_at_declaration)\n      VALUES (p_subject,p_guardian,med_tracker.current_household_id(),\n              med_tracker.current_account_id(),2,'manager_appointment',subject_name)\n      RETURNING id INTO declaration_id;\n    INSERT INTO public.carer_relationships\n      (household_id,carer_id,patient_id,guardian_declaration_id,\n       relationship_type,active,created_at,updated_at)\n      VALUES (med_tracker.current_household_id(),p_guardian,p_subject,declaration_id,\n              'family_member',true,\n              pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()),\n              pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))\n      RETURNING id INTO relationship_id;\n    outcome := 'appointed';\n  END IF;\n  UPDATE public.household_memberships m\n    SET permissions_version = m.permissions_version + 1,\n        updated_at = pg_catalog.timezone('UTC',pg_catalog.clock_timestamp())\n    WHERE m.person_id = p_guardian OR (old_guardian IS NOT NULL AND m.person_id = old_guardian);\n  timestamp_utc := pg_catalog.timezone('UTC',pg_catalog.clock_timestamp());\n  event_metadata := pg_catalog.jsonb_build_object(\n    'subject_person_id',p_subject,'guardian_person_id',p_guardian,\n    'action',outcome,'reason',pg_catalog.btrim(p_reason));\n  event_context := pg_catalog.jsonb_build_object(\n    'actor_account_id',med_tracker.current_account_id(),\n    'actor_membership_id',med_tracker.current_membership_id(),\n    'household_id',med_tracker.current_household_id(),\n    'request_id',p_request_id,'policy_class','GuardianRecovery',\n    'policy_query',outcome);\n  INSERT INTO public.versions\n    (item_type,item_id,event,object,object_changes,whodunnit,request_id,\n     household_id,actor_membership_id,audit_context,created_at)\n    VALUES ('GuardianDeclaration',declaration_id,outcome,NULL,\n      event_metadata::text,actor_user::text,p_request_id,\n      med_tracker.current_household_id(),med_tracker.current_membership_id(),\n      event_context,timestamp_utc);\n  INSERT INTO public.versions\n    (item_type,item_id,event,object,object_changes,whodunnit,request_id,\n     household_id,actor_membership_id,audit_context,created_at)\n    VALUES ('CarerRelationship',relationship_id,outcome,NULL,\n      event_metadata::text,actor_user::text,p_request_id,\n      med_tracker.current_household_id(),med_tracker.current_membership_id(),\n      event_context,timestamp_utc);\n  INSERT INTO public.security_audit_events\n    (household_id,actor_account_id,actor_membership_id,event_type,\n     request_id,metadata,audit_context,created_at,updated_at)\n    VALUES (med_tracker.current_household_id(),med_tracker.current_account_id(),\n      med_tracker.current_membership_id(),'guardian_recovery.' || outcome,\n      p_request_id,event_metadata,event_context,timestamp_utc,timestamp_utc);\n  RETURN NEXT;\nEND;\n$function$\n"
+    }
+  }
+}

@@ -218,6 +218,19 @@ pub(crate) fn may_delegate(member: &membership::Model, subject: &person::Model) 
     )
 }
 
+pub(crate) fn may_recover_minor_guardian(
+    member: &membership::Model,
+    subject: &person::Model,
+) -> bool {
+    evaluate(
+        member_facts(member),
+        json!({"id": subject.id, "household_id": member.household_id}),
+        "recover_minor_guardian",
+        json!({"person_type": subject.person_type, "has_capacity": subject.has_capacity,
+            "participating": true}),
+    )
+}
+
 pub(crate) fn may_change_owner(
     member: &membership::Model,
     household_id: i64,

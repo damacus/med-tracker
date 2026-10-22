@@ -19,12 +19,17 @@ import java.io.IOException
 import okhttp3.Call
 import okhttp3.HttpUrl
 
+import io.medtracker.client.models.AccountProfileResponse
 import io.medtracker.client.models.AuthHouseholdCollectionResponse
 import io.medtracker.client.models.AuthSessionCollectionResponse
 import io.medtracker.client.models.ErrorEnvelope
+import io.medtracker.client.models.GuardianDeclarationCollectionResponse
+import io.medtracker.client.models.GuardianDeclarationResponse
+import io.medtracker.client.models.GuardianDeclarationWithdrawalRequest
 import io.medtracker.client.models.InvitationAcceptanceRequest
 import io.medtracker.client.models.InvitationAcceptanceResponse
 import io.medtracker.client.models.RateLimitErrorEnvelope
+import io.medtracker.client.models.UpdateAccountProfileRequest
 
 import com.squareup.moshi.Json
 
@@ -125,9 +130,77 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     }
 
     /**
+     * DELETE /auth/profile/avatar
+     * Remove the authenticated account avatar without a household.
+     * Metadata, audit and retirement commit together. Repeated removal returns 204 without an additional audit. Every response has Cache-Control no-store and X-Content-Type-Options nosniff.
+     * @return void
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun deleteAccountAvatar() : Unit {
+        val localVarResponse = deleteAccountAvatarWithHttpInfo()
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> Unit
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /auth/profile/avatar
+     * Remove the authenticated account avatar without a household.
+     * Metadata, audit and retirement commit together. Repeated removal returns 204 without an additional audit. Every response has Cache-Control no-store and X-Content-Type-Options nosniff.
+     * @return ApiResponse<Unit?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Throws(IllegalStateException::class, IOException::class)
+    fun deleteAccountAvatarWithHttpInfo() : ApiResponse<Unit?> {
+        val localVariableConfig = deleteAccountAvatarRequestConfig()
+
+        return request<Unit, Unit>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation deleteAccountAvatar
+     *
+     * @return RequestConfig
+     */
+    fun deleteAccountAvatarRequestConfig() : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/auth/profile/avatar",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * DELETE /auth/sessions/{id}
      * Revoke an API session.
-     * 
+     * Revoke only a session belonging to the authenticated account and the credential&#39;s session namespace. API-session and app-token credentials address API sessions; mobile OAuth credentials address mobile grants. A missing, revoked, or other-account session returns 404. 
      * @param id 
      * @return void
      * @throws IllegalStateException If the request is not correctly configured
@@ -158,7 +231,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * DELETE /auth/sessions/{id}
      * Revoke an API session.
-     * 
+     * Revoke only a session belonging to the authenticated account and the credential&#39;s session namespace. API-session and app-token credentials address API sessions; mobile OAuth credentials address mobile grants. A missing, revoked, or other-account session returns 404. 
      * @param id 
      * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -188,6 +261,146 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
         return RequestConfig(
             method = RequestMethod.DELETE,
             path = "/auth/sessions/{id}".replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /auth/profile/avatar
+     * Read the authenticated account avatar without a household.
+     * Every response has Cache-Control no-store and X-Content-Type-Options nosniff. Credentials and the attachment are rechecked after storage reads.
+     * @return java.io.File
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getAccountAvatar() : java.io.File {
+        val localVarResponse = getAccountAvatarWithHttpInfo()
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as java.io.File
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /auth/profile/avatar
+     * Read the authenticated account avatar without a household.
+     * Every response has Cache-Control no-store and X-Content-Type-Options nosniff. Credentials and the attachment are rechecked after storage reads.
+     * @return ApiResponse<java.io.File?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getAccountAvatarWithHttpInfo() : ApiResponse<java.io.File?> {
+        val localVariableConfig = getAccountAvatarRequestConfig()
+
+        return request<Unit, java.io.File>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getAccountAvatar
+     *
+     * @return RequestConfig
+     */
+    fun getAccountAvatarRequestConfig() : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/auth/profile/avatar",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /auth/profile
+     * Read the authenticated account&#39;s profile and preferences.
+     * Account data is independent of the selected household. A valid mobile OAuth credential remains usable after household membership is revoked. Household-bound sessions and app tokens retain their existing membership validity requirements. Name is null until explicitly set. Email is read-only here; use the verified authentication email-change flow. Every response has Cache-Control: no-store. 
+     * @return AccountProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getAccountProfile() : AccountProfileResponse {
+        val localVarResponse = getAccountProfileWithHttpInfo()
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as AccountProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /auth/profile
+     * Read the authenticated account&#39;s profile and preferences.
+     * Account data is independent of the selected household. A valid mobile OAuth credential remains usable after household membership is revoked. Household-bound sessions and app tokens retain their existing membership validity requirements. Name is null until explicitly set. Email is read-only here; use the verified authentication email-change flow. Every response has Cache-Control: no-store. 
+     * @return ApiResponse<AccountProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getAccountProfileWithHttpInfo() : ApiResponse<AccountProfileResponse?> {
+        val localVariableConfig = getAccountProfileRequestConfig()
+
+        return request<Unit, AccountProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getAccountProfile
+     *
+     * @return RequestConfig
+     */
+    fun getAccountProfileRequestConfig() : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/auth/profile",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -266,9 +479,93 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     }
 
     /**
+     * GET /auth/guardian-declarations
+     * List the authenticated guardian&#39;s personal declarations.
+     * Requires an account-bound first-party mobile OAuth credential with medtracker scope. Household sessions, app tokens, personal keys and integration grants cannot use this route. No current household participation is required. Returns captured declaration names, not the subject&#39;s current foreign profile. Source distinguishes the guardian&#39;s initial attestation from a household manager&#39;s appointment. Superseded and withdrawn declarations remain visible as terminal history. Results use descending declaration ID order and a bounded keyset cursor. Every response is no-store. Browser sessions use the separate profile page. 
+     * @param limit  (optional, default to 25)
+     * @param beforeId Exclusive positive declaration ID cursor. (optional)
+     * @return GuardianDeclarationCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listOwnGuardianDeclarations(limit: kotlin.Int? = 25, beforeId: kotlin.Long? = null) : GuardianDeclarationCollectionResponse {
+        val localVarResponse = listOwnGuardianDeclarationsWithHttpInfo(limit = limit, beforeId = beforeId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as GuardianDeclarationCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /auth/guardian-declarations
+     * List the authenticated guardian&#39;s personal declarations.
+     * Requires an account-bound first-party mobile OAuth credential with medtracker scope. Household sessions, app tokens, personal keys and integration grants cannot use this route. No current household participation is required. Returns captured declaration names, not the subject&#39;s current foreign profile. Source distinguishes the guardian&#39;s initial attestation from a household manager&#39;s appointment. Superseded and withdrawn declarations remain visible as terminal history. Results use descending declaration ID order and a bounded keyset cursor. Every response is no-store. Browser sessions use the separate profile page. 
+     * @param limit  (optional, default to 25)
+     * @param beforeId Exclusive positive declaration ID cursor. (optional)
+     * @return ApiResponse<GuardianDeclarationCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listOwnGuardianDeclarationsWithHttpInfo(limit: kotlin.Int?, beforeId: kotlin.Long?) : ApiResponse<GuardianDeclarationCollectionResponse?> {
+        val localVariableConfig = listOwnGuardianDeclarationsRequestConfig(limit = limit, beforeId = beforeId)
+
+        return request<Unit, GuardianDeclarationCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listOwnGuardianDeclarations
+     *
+     * @param limit  (optional, default to 25)
+     * @param beforeId Exclusive positive declaration ID cursor. (optional)
+     * @return RequestConfig
+     */
+    fun listOwnGuardianDeclarationsRequestConfig(limit: kotlin.Int?, beforeId: kotlin.Long?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (limit != null) {
+                    put("limit", listOf(limit.toString()))
+                }
+                if (beforeId != null) {
+                    put("before_id", listOf(beforeId.toString()))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/auth/guardian-declarations",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /auth/sessions
      * List active API sessions for the current account.
-     * 
+     * Return only the caller&#39;s nonrevoked sessions in descending creation order. API-session and app-token credentials list API sessions, including devices whose access or refresh token has expired; mobile OAuth credentials list mobile grants within the configured login lifetime. Never expose access or refresh tokens or their digests. 
      * @return AuthSessionCollectionResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -299,7 +596,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * GET /auth/sessions
      * List active API sessions for the current account.
-     * 
+     * Return only the caller&#39;s nonrevoked sessions in descending creation order. API-session and app-token credentials list API sessions, including devices whose access or refresh token has expired; mobile OAuth credentials list mobile grants within the configured login lifetime. Never expose access or refresh tokens or their digests. 
      * @return ApiResponse<AuthSessionCollectionResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -337,8 +634,8 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
 
     /**
      * DELETE /auth/logout
-     * Revoke the current API session or app token.
-     * 
+     * Revoke the current API session, app token or OAuth grant.
+     * Revoke the bearer API session, app token or OAuth grant when it is known. An absent, invalid, or already revoked bearer is an idempotent no-op and returns an empty 204 response. 
      * @return void
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -367,8 +664,8 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
 
     /**
      * DELETE /auth/logout
-     * Revoke the current API session or app token.
-     * 
+     * Revoke the current API session, app token or OAuth grant.
+     * Revoke the bearer API session, app token or OAuth grant when it is known. An absent, invalid, or already revoked bearer is an idempotent no-op and returns an empty 204 response. 
      * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -396,6 +693,231 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
         return RequestConfig(
             method = RequestMethod.DELETE,
             path = "/auth/logout",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PUT /auth/profile/avatar
+     * Replace the authenticated account avatar without a household.
+     * Accepts exactly one avatar field, PNG, JPEG or WebP up to 5 MiB. Images are decoded with bounded dimensions and re-encoded as PNG. Metadata, audit and retirement commit together. Mobile OAuth credentials do not require household membership; stored credentials retain their existing validity rules. Every response has Cache-Control no-store and X-Content-Type-Options nosniff.
+     * @param avatar 
+     * @return AccountProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateAccountAvatar(avatar: java.io.File) : AccountProfileResponse {
+        val localVarResponse = updateAccountAvatarWithHttpInfo(avatar = avatar)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as AccountProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PUT /auth/profile/avatar
+     * Replace the authenticated account avatar without a household.
+     * Accepts exactly one avatar field, PNG, JPEG or WebP up to 5 MiB. Images are decoded with bounded dimensions and re-encoded as PNG. Metadata, audit and retirement commit together. Mobile OAuth credentials do not require household membership; stored credentials retain their existing validity rules. Every response has Cache-Control no-store and X-Content-Type-Options nosniff.
+     * @param avatar 
+     * @return ApiResponse<AccountProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateAccountAvatarWithHttpInfo(avatar: java.io.File) : ApiResponse<AccountProfileResponse?> {
+        val localVariableConfig = updateAccountAvatarRequestConfig(avatar = avatar)
+
+        return request<Map<String, PartConfig<*>>, AccountProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateAccountAvatar
+     *
+     * @param avatar 
+     * @return RequestConfig
+     */
+    fun updateAccountAvatarRequestConfig(avatar: java.io.File) : RequestConfig<Map<String, PartConfig<*>>> {
+        val localVariableBody = mapOf(
+            "avatar" to PartConfig(body = avatar, headers = mutableMapOf()),)
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf("Content-Type" to "multipart/form-data")
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PUT,
+            path = "/auth/profile/avatar",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /auth/profile
+     * Update the authenticated account&#39;s profile and preferences.
+     * Trims leading and trailing whitespace. The resulting name must contain between 1 and 100 Unicode characters. Account identity and email cannot be supplied. Supply at least one supported field. Omitted fields remain unchanged; null values are rejected. Timezones accept IANA identifiers or retained friendly labels and return IANA identifiers. An empty timezone restores the application default. Shortcuts contain one to three distinct supported destinations. All edits and one attributable account audit commit together; an audit failure rolls back every edit. Every response has Cache-Control: no-store. 
+     * @param updateAccountProfileRequest 
+     * @return AccountProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateAccountProfile(updateAccountProfileRequest: UpdateAccountProfileRequest) : AccountProfileResponse {
+        val localVarResponse = updateAccountProfileWithHttpInfo(updateAccountProfileRequest = updateAccountProfileRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as AccountProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /auth/profile
+     * Update the authenticated account&#39;s profile and preferences.
+     * Trims leading and trailing whitespace. The resulting name must contain between 1 and 100 Unicode characters. Account identity and email cannot be supplied. Supply at least one supported field. Omitted fields remain unchanged; null values are rejected. Timezones accept IANA identifiers or retained friendly labels and return IANA identifiers. An empty timezone restores the application default. Shortcuts contain one to three distinct supported destinations. All edits and one attributable account audit commit together; an audit failure rolls back every edit. Every response has Cache-Control: no-store. 
+     * @param updateAccountProfileRequest 
+     * @return ApiResponse<AccountProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateAccountProfileWithHttpInfo(updateAccountProfileRequest: UpdateAccountProfileRequest) : ApiResponse<AccountProfileResponse?> {
+        val localVariableConfig = updateAccountProfileRequestConfig(updateAccountProfileRequest = updateAccountProfileRequest)
+
+        return request<UpdateAccountProfileRequest, AccountProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateAccountProfile
+     *
+     * @param updateAccountProfileRequest 
+     * @return RequestConfig
+     */
+    fun updateAccountProfileRequestConfig(updateAccountProfileRequest: UpdateAccountProfileRequest) : RequestConfig<UpdateAccountProfileRequest> {
+        val localVariableBody = updateAccountProfileRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/auth/profile",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /auth/guardian-declarations/{id}
+     * Permanently withdraw the authenticated guardian&#39;s own declaration.
+     * Uses the same account-bound first-party credential restriction as the own declaration list, with fresh credential and account checks on every request. Withdrawal remains available after the guardian leaves every household. Only the recorded guardian can withdraw; household management is insufficient. A superseded declaration is terminal and returns 409; the current guardian can withdraw a new manager appointment through this same route. Requires exact true withdrawal and the original Recorded string revision \&quot;1\&quot;. Other revisions return 409. A terminal replay resubmits \&quot;1\&quot; and returns the existing withdrawn revision \&quot;2\&quot; without another audit event, after live authentication. A foreign or missing record returns 404. Withdrawal and its attributable version, ledger and delivery commit together; an audit failure rolls everything back. Withdrawal cannot be restored and creates no memberships, credentials or grants. Local care-link removal is separate. Every response is no-store. 
+     * @param id 
+     * @param guardianDeclarationWithdrawalRequest 
+     * @return GuardianDeclarationResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun withdrawOwnGuardianDeclaration(id: kotlin.String, guardianDeclarationWithdrawalRequest: GuardianDeclarationWithdrawalRequest) : GuardianDeclarationResponse {
+        val localVarResponse = withdrawOwnGuardianDeclarationWithHttpInfo(id = id, guardianDeclarationWithdrawalRequest = guardianDeclarationWithdrawalRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as GuardianDeclarationResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /auth/guardian-declarations/{id}
+     * Permanently withdraw the authenticated guardian&#39;s own declaration.
+     * Uses the same account-bound first-party credential restriction as the own declaration list, with fresh credential and account checks on every request. Withdrawal remains available after the guardian leaves every household. Only the recorded guardian can withdraw; household management is insufficient. A superseded declaration is terminal and returns 409; the current guardian can withdraw a new manager appointment through this same route. Requires exact true withdrawal and the original Recorded string revision \&quot;1\&quot;. Other revisions return 409. A terminal replay resubmits \&quot;1\&quot; and returns the existing withdrawn revision \&quot;2\&quot; without another audit event, after live authentication. A foreign or missing record returns 404. Withdrawal and its attributable version, ledger and delivery commit together; an audit failure rolls everything back. Withdrawal cannot be restored and creates no memberships, credentials or grants. Local care-link removal is separate. Every response is no-store. 
+     * @param id 
+     * @param guardianDeclarationWithdrawalRequest 
+     * @return ApiResponse<GuardianDeclarationResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun withdrawOwnGuardianDeclarationWithHttpInfo(id: kotlin.String, guardianDeclarationWithdrawalRequest: GuardianDeclarationWithdrawalRequest) : ApiResponse<GuardianDeclarationResponse?> {
+        val localVariableConfig = withdrawOwnGuardianDeclarationRequestConfig(id = id, guardianDeclarationWithdrawalRequest = guardianDeclarationWithdrawalRequest)
+
+        return request<GuardianDeclarationWithdrawalRequest, GuardianDeclarationResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation withdrawOwnGuardianDeclaration
+     *
+     * @param id 
+     * @param guardianDeclarationWithdrawalRequest 
+     * @return RequestConfig
+     */
+    fun withdrawOwnGuardianDeclarationRequestConfig(id: kotlin.String, guardianDeclarationWithdrawalRequest: GuardianDeclarationWithdrawalRequest) : RequestConfig<GuardianDeclarationWithdrawalRequest> {
+        val localVariableBody = guardianDeclarationWithdrawalRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/auth/guardian-declarations/{id}".replace("{"+"id"+"}", encodeURIComponent(id.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

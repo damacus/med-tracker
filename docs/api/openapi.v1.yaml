@@ -267,6 +267,9 @@ paths:
         scope. Household sessions, app tokens, personal keys and integration grants
         cannot use this route. No current household participation is required.
         Returns captured declaration names, not the subject's current foreign profile.
+        Source distinguishes the guardian's initial attestation from a household
+        manager's appointment. Superseded and withdrawn declarations remain visible
+        as terminal history.
         Results use descending declaration ID order and a bounded keyset cursor.
         Every response is no-store. Browser sessions use the separate profile page.
       parameters:
@@ -307,6 +310,8 @@ paths:
         declaration list, with fresh credential and account checks on every request.
         Withdrawal remains available after the guardian leaves every household.
         Only the recorded guardian can withdraw; household management is insufficient.
+        A superseded declaration is terminal and returns 409; the current guardian
+        can withdraw a new manager appointment through this same route.
         Requires exact true withdrawal and the original Recorded string revision "1".
         Other revisions return 409. A terminal replay resubmits "1" and returns the
         existing withdrawn revision "2" without another audit event, after live
@@ -5227,7 +5232,7 @@ components:
     GuardianDeclaration:
       type: object
       additionalProperties: false
-      required: [id, subject_person_id, subject_name_at_declaration, statement_version, declared_at, withdrawn_at, revision]
+      required: [id, subject_person_id, subject_name_at_declaration, statement_version, source, declared_at, withdrawn_at, superseded_at, revision]
       properties:
         id:
           $ref: "#/components/schemas/GuardianDeclarationIdentifier"
@@ -5238,10 +5243,17 @@ components:
           minLength: 1
         statement_version:
           type: integer
-          enum: [1]
+          enum: [1, 2]
+          description: Version 1 is the guardian's initial attestation; version 2 is a manager appointment.
+        source:
+          type: string
+          enum: [initial_attestation, manager_appointment]
+          description: Authority origin; a manager appointment does not assert guardian consent or legal verification.
         declared_at:
           $ref: "#/components/schemas/Timestamp"
         withdrawn_at:
+          $ref: "#/components/schemas/NullableTimestamp"
+        superseded_at:
           $ref: "#/components/schemas/NullableTimestamp"
         revision:
           type: string

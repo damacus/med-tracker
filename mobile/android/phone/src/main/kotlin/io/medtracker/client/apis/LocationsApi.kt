@@ -55,7 +55,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations
      * Create household storage.
-     * 
+     * Only an active household owner or administrator can create a location.
      * @param householdId 
      * @param locationCreateRequest 
      * @return LocationResponse
@@ -88,7 +88,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations
      * Create household storage.
-     * 
+     * Only an active household owner or administrator can create a location.
      * @param householdId 
      * @param locationCreateRequest 
      * @return ApiResponse<LocationResponse?>
@@ -132,7 +132,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations/{location_id}/location_memberships
      * Assign a managed person to a location or replay the existing assignment.
-     * 
+     * Only an active household owner or administrator can assign a person to an in-scope location. The person must be an active household participant visible to the caller, with canonical self authority or existing valid Manage authority; a person outside view scope returns 404, while a visible person without manage access returns 403. Replaying the same assignment returns the existing resource. 
      * @param householdId 
      * @param locationId 
      * @param locationMembershipRequest 
@@ -166,7 +166,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations/{location_id}/location_memberships
      * Assign a managed person to a location or replay the existing assignment.
-     * 
+     * Only an active household owner or administrator can assign a person to an in-scope location. The person must be an active household participant visible to the caller, with canonical self authority or existing valid Manage authority; a person outside view scope returns 404, while a visible person without manage access returns 403. Replaying the same assignment returns the existing resource. 
      * @param householdId 
      * @param locationId 
      * @param locationMembershipRequest 
@@ -212,7 +212,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{id}
      * Delete storage only when retained history permits it.
-     * 
+     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Direct or indirect medication takes, saved dose outcomes, or medication pause periods retained through the location&#39;s medications, schedules or person assignments prevent deletion with 422. Otherwise the location, its memberships, medications, dosage options, schedules and person assignments are removed atomically. A failed deletion leaves every related row unchanged. 
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -245,7 +245,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{id}
      * Delete storage only when retained history permits it.
-     * 
+     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Direct or indirect medication takes, saved dose outcomes, or medication pause periods retained through the location&#39;s medications, schedules or person assignments prevent deletion with 422. Otherwise the location, its memberships, medications, dosage options, schedules and person assignments are removed atomically. A failed deletion leaves every related row unchanged. 
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -290,7 +290,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
      * Remove a managed person from the selected location.
-     * 
+     * Only an active household owner or administrator can remove an assignment from an in-scope location. The assigned person must be an active household participant visible to the caller, with canonical self authority or existing valid Manage authority; out-of-scope person or assignment returns 404, and a visible person without manage access returns 403. 
      * @param householdId 
      * @param id 
      * @param locationId 
@@ -323,7 +323,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
      * Remove a managed person from the selected location.
-     * 
+     * Only an active household owner or administrator can remove an assignment from an in-scope location. The assigned person must be an active household participant visible to the caller, with canonical self authority or existing valid Manage authority; out-of-scope person or assignment returns 404, and a visible person without manage access returns 403. 
      * @param householdId 
      * @param id 
      * @param locationId 
@@ -367,7 +367,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations/{id}
      * Read a location.
-     * 
+     * Active members can read a location in their selected household.
      * @param householdId 
      * @param id 
      * @return LocationResponse
@@ -400,7 +400,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations/{id}
      * Read a location.
-     * 
+     * Active members can read a location in their selected household.
      * @param householdId 
      * @param id 
      * @return ApiResponse<LocationResponse?>
@@ -443,7 +443,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations
      * List visible locations.
-     * 
+     * Active members can list every location in their selected household.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -478,7 +478,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations
      * List visible locations.
-     * 
+     * Active members can list every location in their selected household.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -536,7 +536,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -571,7 +571,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -620,7 +620,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -655,7 +655,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 

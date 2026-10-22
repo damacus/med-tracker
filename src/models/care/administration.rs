@@ -7,6 +7,7 @@ pub mod member_history;
 pub mod memberships;
 pub mod overview;
 pub(crate) mod persistence;
+pub mod recovery;
 pub mod settings;
 
 use crate::models::{

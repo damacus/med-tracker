@@ -8,8 +8,9 @@
     <article class="card bg-base-100 border border-base-300"><div class="card-body">
       <h2 class="card-title break-words">{{ declaration.subject_name_at_declaration }}</h2>
       <p>{{ guardian_labels.captured_name }}</p>
-      <p>{% if declaration.withdrawn_at %}{{ guardian_labels.withdrawn }}{% else %}{{ guardian_labels.recorded }}{% endif %}</p>
-      {% if not declaration.withdrawn_at %}
+      <p>{% if declaration.source == "manager_appointment" %}{{ guardian_labels.manager_appointment }}{% else %}{{ guardian_labels.initial_attestation }}{% endif %}</p>
+      <p>{% if declaration.withdrawn_at %}{{ guardian_labels.withdrawn }}{% else %}{% if declaration.superseded_at %}{{ guardian_labels.superseded }}{% else %}{{ guardian_labels.open }}{% endif %}{% endif %}</p>
+      {% if not declaration.withdrawn_at and not declaration.superseded_at %}
       <form method="post" action="/profile/guardian-declarations/{{ declaration.id }}/withdraw" class="grid gap-3">
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
         <input type="hidden" name="revision" value="{{ declaration.revision }}">

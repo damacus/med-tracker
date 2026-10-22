@@ -24,7 +24,7 @@ import com.squareup.moshi.JsonClass
  * 
  *
  * @param times 
- * @param weekdays 
+ * @param weekdays Each weekday is a full English name, its three-letter abbreviation, or a numeric string from 0 through 7. Names ignore surrounding whitespace and case; unrecognised values are rejected.
  * @param dates 
  * @param asNeeded 
  * @param taperSteps 
@@ -36,6 +36,7 @@ data class ScheduleConfig (
     @Json(name = "times")
     val times: kotlin.collections.List<kotlin.String>? = null,
 
+    /* Each weekday is a full English name, its three-letter abbreviation, or a numeric string from 0 through 7. Names ignore surrounding whitespace and case; unrecognised values are rejected. */
     @Json(name = "weekdays")
     val weekdays: kotlin.collections.List<kotlin.String>? = null,
 

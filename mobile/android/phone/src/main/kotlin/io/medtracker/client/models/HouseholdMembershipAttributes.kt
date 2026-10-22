@@ -24,7 +24,7 @@ import com.squareup.moshi.JsonClass
  *
  * @param role 
  * @param status 
- * @param personId 
+ * @param personId Immutable participation identity. When supplied, must equal the existing Person ID; null and relinking are rejected.
  */
 
 
@@ -36,6 +36,7 @@ data class HouseholdMembershipAttributes (
     @Json(name = "status")
     val status: HouseholdMembershipAttributes.Status? = null,
 
+    /* Immutable participation identity. When supplied, must equal the existing Person ID; null and relinking are rejected. */
     @Json(name = "person_id")
     val personId: kotlin.Int? = null
 

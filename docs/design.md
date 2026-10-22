@@ -14,6 +14,16 @@ sections below describe the reference, not requirements to reproduce its interna
 - [Personal-history download authorisation and audit](adrs/0017-personal-history-download-authorisation-and-audit.md): design accepted; implementation and verification pending
 - [SMART deferral and future interoperability uses](adrs/0018-defer-smart-and-record-interoperability-uses.md): SMART implementation deferred until after migration; candidate uses are exploratory
 
+An active minor who has no effective guardian in any household may have an
+eligible open local guardian link restored, or a household owner or administrator
+may appoint a currently eligible adult participant through the dedicated
+recovery journey. Each appointment creates new attributable declaration authority;
+withdrawn and superseded declarations remain final. Recovery confirmation uses
+opaque latest-history and local-link snapshots plus a reason; the link snapshot
+rotates on activation/deactivation. The database rechecks global
+authority under a subject lock. The birthday rule conservatively spans UTC−12
+through UTC+14, which can delay recovery for about 26 hours near adulthood.
+
 ## Purpose
 
 MedTracker records medication schedules, direct assignments, and
