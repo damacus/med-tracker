@@ -23,7 +23,7 @@ import com.squareup.moshi.JsonClass
  * 
  *
  * @param create 
- * @param manageIds 
+ * @param manageIds Participating self and people covered by current eligible guardian declarations; legacy grants confer no Manage authority.
  */
 
 
@@ -32,6 +32,7 @@ data class HouseholdUiCapabilitiesResponseDataPeople (
     @Json(name = "create")
     val create: kotlin.Boolean,
 
+    /* Participating self and people covered by current eligible guardian declarations; legacy grants confer no Manage authority. */
     @Json(name = "manage_ids")
     val manageIds: kotlin.collections.List<kotlin.Int>
 

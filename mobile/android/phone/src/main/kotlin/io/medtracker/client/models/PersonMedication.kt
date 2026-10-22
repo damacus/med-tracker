@@ -33,7 +33,7 @@ import com.squareup.moshi.JsonClass
  * @param doseUnit 
  * @param active 
  * @param paused 
- * @param canManage 
+ * @param canManage Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority.
  * @param doseCycle 
  * @param administrationKind 
  * @param notes 
@@ -79,6 +79,7 @@ data class PersonMedication (
     @Json(name = "paused")
     val paused: kotlin.Boolean,
 
+    /* Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority. */
     @Json(name = "can_manage")
     val canManage: kotlin.Boolean,
 

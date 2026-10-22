@@ -516,7 +516,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations/{location_id}/location_memberships
      * Assign a managed person to a location or replay the existing assignment.
-     * Only an active household owner or administrator can assign a person to an in-scope location. The person must be an active household participant visible to the caller, with canonical self authority or existing valid Manage authority; a person outside view scope returns 404, while a visible person without manage access returns 403. Replaying the same assignment returns the existing resource. 
+     * Only an active household owner or administrator can assign a person to an in-scope location. The person must be an active household participant visible to the caller, with canonical self authority or current eligible declared guardian authority; a person outside view scope returns 404, while a visible person without manage access returns 403. Replaying the same assignment returns the existing resource. 
      * @param householdId 
      * @param locationId 
      * @param locationMembershipRequest 
@@ -550,7 +550,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations/{location_id}/location_memberships
      * Assign a managed person to a location or replay the existing assignment.
-     * Only an active household owner or administrator can assign a person to an in-scope location. The person must be an active household participant visible to the caller, with canonical self authority or existing valid Manage authority; a person outside view scope returns 404, while a visible person without manage access returns 403. Replaying the same assignment returns the existing resource. 
+     * Only an active household owner or administrator can assign a person to an in-scope location. The person must be an active household participant visible to the caller, with canonical self authority or current eligible declared guardian authority; a person outside view scope returns 404, while a visible person without manage access returns 403. Replaying the same assignment returns the existing resource. 
      * @param householdId 
      * @param locationId 
      * @param locationMembershipRequest 
@@ -986,7 +986,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/people
      * Create a person in the household.
-     * Requires an active household owner or administrator, or a member with an existing Manage authority in this household. The actor must be an eligible adult with capacity. Creation is only for a new accountless minor or dependent adult, with exact true initial_guardian_declaration. Capable adults must use their own accounts. The guardian is derived from the authenticated account&#39;s canonical Person; no submitted guardian/Account/Person identity can attach an existing person. The server records its versioned statement, captured name and actual actor; this is a declaration, not independent legal verification. No Account, User, credentials or independent Manage grant is created for the dependent. Person, household participation, declaration, local care link, Home location, initial participation revision and attributable audit and sync changes commit atomically. An audit failure rolls everything back. Name and date of birth are required; email remains trimmed, lowercased and unique when present. Age, kind and capacity must agree. A minor must be younger than eighteen; a dependent adult must be eighteen or older and lack capacity. Invalid or duplicate email returns 422. Malformed JSON or a missing person wrapper returns 400; a present wrapper with invalid attributes returns 422. 
+     * Requires an active household owner or administrator; ordinary members cannot create people through historical grants. The actor must be an eligible adult with capacity. Creation is only for a new accountless minor or dependent adult, with exact true initial_guardian_declaration. Capable adults must use their own accounts. The guardian is derived from the authenticated account&#39;s canonical Person; no submitted guardian/Account/Person identity can attach an existing person. The server records its versioned statement, captured name and actual actor; this is a declaration, not independent legal verification. No Account, User, credentials or independent Manage grant is created for the dependent. Person, household participation, declaration, local care link, Home location, initial participation revision and attributable audit and sync changes commit atomically. An audit failure rolls everything back. Name and date of birth are required; email remains trimmed, lowercased and unique when present. Age, kind and capacity must agree. A minor must be younger than eighteen; a dependent adult must be eighteen or older and lack capacity. Invalid or duplicate email returns 422. Malformed JSON or a missing person wrapper returns 400; a present wrapper with invalid attributes returns 422. 
      * @param householdId 
      * @param personCreateRequest 
      * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
@@ -1020,7 +1020,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/people
      * Create a person in the household.
-     * Requires an active household owner or administrator, or a member with an existing Manage authority in this household. The actor must be an eligible adult with capacity. Creation is only for a new accountless minor or dependent adult, with exact true initial_guardian_declaration. Capable adults must use their own accounts. The guardian is derived from the authenticated account&#39;s canonical Person; no submitted guardian/Account/Person identity can attach an existing person. The server records its versioned statement, captured name and actual actor; this is a declaration, not independent legal verification. No Account, User, credentials or independent Manage grant is created for the dependent. Person, household participation, declaration, local care link, Home location, initial participation revision and attributable audit and sync changes commit atomically. An audit failure rolls everything back. Name and date of birth are required; email remains trimmed, lowercased and unique when present. Age, kind and capacity must agree. A minor must be younger than eighteen; a dependent adult must be eighteen or older and lack capacity. Invalid or duplicate email returns 422. Malformed JSON or a missing person wrapper returns 400; a present wrapper with invalid attributes returns 422. 
+     * Requires an active household owner or administrator; ordinary members cannot create people through historical grants. The actor must be an eligible adult with capacity. Creation is only for a new accountless minor or dependent adult, with exact true initial_guardian_declaration. Capable adults must use their own accounts. The guardian is derived from the authenticated account&#39;s canonical Person; no submitted guardian/Account/Person identity can attach an existing person. The server records its versioned statement, captured name and actual actor; this is a declaration, not independent legal verification. No Account, User, credentials or independent Manage grant is created for the dependent. Person, household participation, declaration, local care link, Home location, initial participation revision and attributable audit and sync changes commit atomically. An audit failure rolls everything back. Name and date of birth are required; email remains trimmed, lowercased and unique when present. Age, kind and capacity must agree. A minor must be younger than eighteen; a dependent adult must be eighteen or older and lack capacity. Invalid or duplicate email returns 422. Malformed JSON or a missing person wrapper returns 400; a present wrapper with invalid attributes returns 422. 
      * @param householdId 
      * @param personCreateRequest 
      * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
@@ -1144,7 +1144,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/portable_imports
      * Apply an encrypted portable import transactionally.
-     * 
+     * Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422 before writes; v3 omits that obsolete field. No person-to-location memberships are restored.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param portableImportRequest 
@@ -1178,7 +1178,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/portable_imports
      * Apply an encrypted portable import transactionally.
-     * 
+     * Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422 before writes; v3 omits that obsolete field. No person-to-location memberships are restored.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param portableImportRequest 
@@ -1524,8 +1524,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
 
     /**
      * DELETE /households/{household_id}/locations/{id}
-     * Delete storage only when retained history permits it.
-     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Direct or indirect medication takes, saved dose outcomes, or medication pause periods retained through the location&#39;s medications, schedules or person assignments prevent deletion with 422. Otherwise the location, its memberships, medications, dosage options, schedules and person assignments are removed atomically. A failed deletion leaves every related row unchanged. 
+     * Delete an empty storage location without administration history.
+     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Any medication stored at the location prevents deletion with 422; move the medication to another location first. Administration history retaining this taken-from location also prevents deletion with 422, even after current stock has moved. Medication, stock, dosage options, schedules, person assignments and administration history are never deleted by this operation. An empty location without historical references and its obsolete membership links are removed atomically. A failed deletion leaves every related row unchanged. 
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -1557,8 +1557,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
 
     /**
      * DELETE /households/{household_id}/locations/{id}
-     * Delete storage only when retained history permits it.
-     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Direct or indirect medication takes, saved dose outcomes, or medication pause periods retained through the location&#39;s medications, schedules or person assignments prevent deletion with 422. Otherwise the location, its memberships, medications, dosage options, schedules and person assignments are removed atomically. A failed deletion leaves every related row unchanged. 
+     * Delete an empty storage location without administration history.
+     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Any medication stored at the location prevents deletion with 422; move the medication to another location first. Administration history retaining this taken-from location also prevents deletion with 422, even after current stock has moved. Medication, stock, dosage options, schedules, person assignments and administration history are never deleted by this operation. An empty location without historical references and its obsolete membership links are removed atomically. A failed deletion leaves every related row unchanged. 
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -1603,7 +1603,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
      * Remove a managed person from the selected location.
-     * Only an active household owner or administrator can remove an assignment from an in-scope location. The assigned person must be an active household participant visible to the caller, with canonical self authority or existing valid Manage authority; out-of-scope person or assignment returns 404, and a visible person without manage access returns 403. 
+     * Only an active household owner or administrator can remove an assignment from an in-scope location. The assigned person must be an active household participant visible to the caller, with canonical self or current eligible declared guardian authority; out-of-scope person or assignment returns 404, and a visible person without manage access returns 403. 
      * @param householdId 
      * @param id 
      * @param locationId 
@@ -1636,7 +1636,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
      * Remove a managed person from the selected location.
-     * Only an active household owner or administrator can remove an assignment from an in-scope location. The assigned person must be an active household participant visible to the caller, with canonical self authority or existing valid Manage authority; out-of-scope person or assignment returns 404, and a visible person without manage access returns 403. 
+     * Only an active household owner or administrator can remove an assignment from an in-scope location. The assigned person must be an active household participant visible to the caller, with canonical self or current eligible declared guardian authority; out-of-scope person or assignment returns 404, and a visible person without manage access returns 403. 
      * @param householdId 
      * @param id 
      * @param locationId 
@@ -2104,7 +2104,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/portable_imports/dry_run
      * Validate an encrypted portable import without writing data.
-     * 
+     * Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422; v3 omits that obsolete field. Inventory and historical administration location references remain supported.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param portableImportRequest 
@@ -2138,7 +2138,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/portable_imports/dry_run
      * Validate an encrypted portable import without writing data.
-     * 
+     * Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422; v3 omits that obsolete field. Inventory and historical administration location references remain supported.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param portableImportRequest 
@@ -2188,6 +2188,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      enum class VersionExportPortableHouseholdBundle(val value: kotlin.String) {
          @Json(name = "1") _1("1"),
          @Json(name = "2") _2("2"),
+         @Json(name = "3") _3("3"),
          @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
 
         /**
@@ -2206,6 +2207,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      enum class PortableFormatExportPortableHouseholdBundle(val value: kotlin.String) {
          @Json(name = "medtracker.portable.v1") medtrackerPeriodPortablePeriodV1("medtracker.portable.v1"),
          @Json(name = "medtracker.portable.v2") medtrackerPeriodPortablePeriodV2("medtracker.portable.v2"),
+         @Json(name = "medtracker.portable.v3") medtrackerPeriodPortablePeriodV3("medtracker.portable.v3"),
          @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
 
         /**
@@ -2221,11 +2223,11 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/portable_export
      * Export an encrypted portable household bundle.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
+     * @param portableFormat Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return PortableEnvelopeResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -2256,11 +2258,11 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/portable_export
      * Export an encrypted portable household bundle.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
+     * @param portableFormat Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return ApiResponse<PortableEnvelopeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -2280,8 +2282,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
+     * @param portableFormat Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return RequestConfig
      */
     fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : RequestConfig<Unit> {
@@ -2481,7 +2483,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/data_exports/{mode}
      * Export household data in a selected backup/profile mode.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param mode 
      * @param xMedTrackerPortablePassphrase Required only for the encrypted migration bundle mode. (optional)
@@ -2515,7 +2517,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/data_exports/{mode}
      * Export household data in a selected backup/profile mode.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param mode 
      * @param xMedTrackerPortablePassphrase Required only for the encrypted migration bundle mode. (optional)
@@ -2905,7 +2907,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/ui_capabilities
      * Read permissions for household management controls.
-     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and existing valid Manage authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
+     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and current eligible declared guardian authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
      * @param householdId 
      * @return HouseholdUiCapabilitiesResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -2937,7 +2939,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/ui_capabilities
      * Read permissions for household management controls.
-     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and existing valid Manage authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
+     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and current eligible declared guardian authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
      * @param householdId 
      * @return ApiResponse<HouseholdUiCapabilitiesResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -3295,7 +3297,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/mobile_snapshot
      * Read a plaintext mobile sync snapshot over authenticated transport.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise this snapshot. This remains a household-scoped reader.
      * @param householdId 
      * @return PortableSnapshotResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -3327,7 +3329,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/mobile_snapshot
      * Read a plaintext mobile sync snapshot over authenticated transport.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise this snapshot. This remains a household-scoped reader.
      * @param householdId 
      * @return ApiResponse<PortableSnapshotResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -7930,7 +7932,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/people/{id}
      * Update a person.
-     * Requires canonical self authority or existing valid Manage authority for an active household participant. A person outside the actor&#39;s visible scope returns 404; a visible person without manage access returns 403. Supplied attributes are merged with the existing record; omitted attributes are retained. Email is normalized and must remain unique. A minor or dependent adult always has has_capacity false, and a person without capacity may be edited without an active carer. Age and person_type must agree. A changed update records person audit and sync changes. If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
+     * Requires canonical self authority or current eligible declared guardian authority for an active household participant. A person outside the actor&#39;s visible scope returns 404; a visible person without manage access returns 403. Supplied attributes are merged with the existing record; omitted attributes are retained. Email is normalized and must remain unique. A minor or dependent adult always has has_capacity false, and a person without capacity may be edited without an active carer. Age and person_type must agree. A changed update records person audit and sync changes. If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 
@@ -7965,7 +7967,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/people/{id}
      * Update a person.
-     * Requires canonical self authority or existing valid Manage authority for an active household participant. A person outside the actor&#39;s visible scope returns 404; a visible person without manage access returns 403. Supplied attributes are merged with the existing record; omitted attributes are retained. Email is normalized and must remain unique. A minor or dependent adult always has has_capacity false, and a person without capacity may be edited without an active carer. Age and person_type must agree. A changed update records person audit and sync changes. If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
+     * Requires canonical self authority or current eligible declared guardian authority for an active household participant. A person outside the actor&#39;s visible scope returns 404; a visible person without manage access returns 403. Supplied attributes are merged with the existing record; omitted attributes are retained. Email is normalized and must remain unique. A minor or dependent adult always has has_capacity false, and a person without capacity may be edited without an active carer. Age and person_type must agree. A changed update records person audit and sync changes. If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 
