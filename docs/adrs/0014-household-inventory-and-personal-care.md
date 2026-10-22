@@ -17,6 +17,16 @@ Households own medication inventory and stock. Locations are optional physical
 storage labels within a household, with no memberships or permissions. Inventory
 must work without creating any location.
 
+Portable v3 omits person-to-location membership links. Imports reject v1/v2
+bundles with non-empty `people.location_portable_ids` with an actionable error;
+obsolete membership metadata is not retained or silently discarded. Inventory
+location labels and immutable administration taken-from locations remain part of
+the portable records. Selecting v3 is explicit; existing export selectors retain
+their documented versions.
+V3 validates an administration's historical location independently of the
+medicine's current location. Household reference checks and immutable-history
+conflict checks remain mandatory.
+
 Personal care follows the person. Current households receive current treatments,
 schedules, active pauses and latest administration status. They do not automatically
 receive another household's detailed history or narrative notes. The person keeps

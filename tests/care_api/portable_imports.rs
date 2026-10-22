@@ -1,8 +1,144 @@
 use super::*;
 use med_tracker::models::care::portable_crypto;
+use med_tracker::models::entities::{location, location_membership, person};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 
 const PASSPHRASE: &str = "synthetic portable secret";
 const PASSPHRASE_HEADER: &str = "x-medtracker-portable-passphrase";
+
+#[tokio::test]
+async fn portable_v3_rejects_legacy_person_location_links_before_any_writes() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let before = import_effects(&app).await;
+    let links = location_membership::Entity::find()
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    for format in [
+        "medtracker.portable.v1",
+        "medtracker.portable.v2",
+        "medtracker.portable.v3",
+    ] {
+        let mut payload = importable_payload();
+        payload["format"] = json!(format);
+        payload["records"]["people"][0]["location_portable_ids"] =
+            json!(["imported-location-0001"]);
+        let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
+        for endpoint in ["portable_imports/dry_run", "portable_imports"] {
+            let response = app
+                .client
+                .post(import_url(&app, endpoint))
+                .bearer_auth(&token)
+                .header(PASSPHRASE_HEADER, PASSPHRASE)
+                .json(&fresh_dependent_request(
+                    bundle.clone(),
+                    "imported-person-0001",
+                ))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status().as_u16(), 422, "{format} {endpoint}");
+            let body: Value = response.json().await.unwrap();
+            assert!(body.to_string().contains("location_portable_ids"), "{body}");
+            assert!(
+                body.to_string().contains("medtracker.portable.v3"),
+                "{body}"
+            );
+            assert_eq!(import_effects(&app).await, before);
+            assert_eq!(
+                location_membership::Entity::find()
+                    .count(&app.fixture.admin)
+                    .await
+                    .unwrap(),
+                links
+            );
+        }
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn portable_v3_import_restores_labels_without_person_location_memberships() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let mut payload = importable_payload();
+    payload["format"] = json!("medtracker.portable.v3");
+    payload["records"]["people"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("location_portable_ids");
+    let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
+    let before = import_effects(&app).await;
+    let links = location_membership::Entity::find()
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let mut applied = None;
+    for (attempt, (endpoint, expected)) in [
+        ("portable_imports/dry_run", 200),
+        ("portable_imports", 201),
+        ("portable_imports", 201),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let request = if attempt == 2 {
+            json!({"bundle":bundle.clone()})
+        } else {
+            fresh_dependent_request(bundle.clone(), "imported-person-0001")
+        };
+        let response = app
+            .client
+            .post(import_url(&app, endpoint))
+            .bearer_auth(&token)
+            .header(PASSPHRASE_HEADER, PASSPHRASE)
+            .json(&request)
+            .send()
+            .await
+            .unwrap();
+        let status = response.status().as_u16();
+        let body: Value = response.json().await.unwrap();
+        assert_eq!(status, expected, "{endpoint}: {body}");
+        assert!(
+            body["data"]["errors"].as_array().unwrap().is_empty(),
+            "{body}"
+        );
+        assert_eq!(
+            location_membership::Entity::find()
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+            links
+        );
+        if attempt == 1 {
+            applied = Some(import_effects(&app).await);
+        } else if attempt == 2 {
+            assert_eq!(Some(import_effects(&app).await), applied);
+        }
+    }
+    assert_eq!(
+        location::Entity::find()
+            .filter(location::Column::PortableId.eq("imported-location-0001"))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        person::Entity::find()
+            .filter(person::Column::PortableId.eq("imported-person-0001"))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    let after = import_effects(&app).await;
+    for field in ["takes", "stock", "notifications", "deliveries", "jobs"] {
+        assert_eq!(after[field], before[field], "{field}");
+    }
+    app.close().await;
+}
 
 fn import_url(app: &Application, endpoint: &str) -> String {
     format!("{}/api/v1/households/72001/{endpoint}", app.origin)
@@ -12,7 +148,7 @@ async fn export_bundle(app: &Application, token: &str) -> Value {
     let response = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/data_exports/encrypted_migration_bundle",
+            "{}/api/v1/households/72001/portable_export?version=3",
             app.origin
         ))
         .bearer_auth(token)
@@ -160,7 +296,7 @@ fn importable_payload() -> Value {
                 "date_of_birth": "1990-01-15",
                 "person_type": "dependent_adult",
                 "has_capacity": false,
-                "location_portable_ids": ["imported-location-0001"]
+                "location_portable_ids": []
             }]
         }
     })
@@ -172,7 +308,7 @@ fn fresh_dependent_request(bundle: Value, person_portable_id: &str) -> Value {
     }]})
 }
 
-async fn import_effects(app: &Application) -> Value {
+pub(super) async fn import_effects(app: &Application) -> Value {
     app.fixture
         .admin
         .query_one_raw(Statement::from_string(
@@ -352,17 +488,17 @@ async fn portable_import_apply_writes_records_and_audits_the_import() {
         .unwrap()
         .try_get("", "count")
         .unwrap();
-    let memberships: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM location_memberships membership JOIN people person ON person.id = membership.person_id JOIN locations location ON location.id = membership.location_id WHERE membership.household_id = 72001 AND location.household_id=72001 AND person.portable_id = 'imported-person-0001' AND location.portable_id = 'imported-location-0001'",
-        ))
+    let imported_person = person::Entity::find()
+        .filter(person::Column::PortableId.eq("imported-person-0001"))
+        .one(&app.fixture.admin)
         .await
         .unwrap()
-        .unwrap()
-        .try_get("", "count")
+        .unwrap();
+    let memberships = location_membership::Entity::find()
+        .filter(location_membership::Column::HouseholdId.eq(72001))
+        .filter(location_membership::Column::PersonId.eq(imported_person.id))
+        .count(&app.fixture.admin)
+        .await
         .unwrap();
     let grants: i64 = app
         .fixture
@@ -431,7 +567,7 @@ async fn portable_import_apply_writes_records_and_audits_the_import() {
     assert_eq!(body["data"]["counts"]["people"], 1);
     assert_eq!(locations, 1);
     assert_eq!(people, 1);
-    assert_eq!(memberships, 1);
+    assert_eq!(memberships, 0);
     assert_eq!(grants, 0);
     assert_eq!(authority.try_get::<i64>("", "declarations").unwrap(), 1);
     assert!(authority.try_get::<bool>("", "current_authority").unwrap());
@@ -673,7 +809,7 @@ async fn portable_import_rejects_unsupported_and_inconsistent_payloads() {
     let mut messages = Vec::new();
     let effects_before = import_effects(&app).await;
     for (index, payload) in [
-        json!({"format": "medtracker.portable.v3", "records": {}}),
+        json!({"format": "medtracker.portable.v4", "records": {}}),
         json!({"format": "medtracker.portable.v1"}),
         json!({"format": "medtracker.portable.v1", "records": {"widgets": []}, "unexpected": true}),
         json!({"format": "medtracker.portable.v1", "records": {"widgets": []}}),

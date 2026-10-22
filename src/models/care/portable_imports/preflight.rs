@@ -78,24 +78,6 @@ pub(crate) async fn preflight(
             ));
         }
     }
-    for (i, row) in plan.rows("people").iter().enumerate() {
-        if let Some(locations) = row["location_portable_ids"].as_array() {
-            for location in locations {
-                if location
-                    .as_str()
-                    .is_none_or(|id| !index.has(plan, "locations", id))
-                {
-                    errors.push(format!(
-                        "people[{i}].location_portable_ids references unknown locations portable ID"
-                    ));
-                }
-            }
-        } else if !row["location_portable_ids"].is_null() {
-            errors.push(format!(
-                "people[{i}].location_portable_ids must be an array"
-            ));
-        }
-    }
     for (kind, field, target, required) in [
         ("medications", "location_portable_id", "locations", true),
         (
@@ -232,7 +214,8 @@ pub(crate) async fn preflight(
             if stock_medication != source_medication {
                 errors.push(format!("medication_takes[{i}].taken_from_medication_portable_id does not match source medication"));
             }
-            if let Some(stock_location) = row["taken_from_location_portable_id"].as_str()
+            if plan.format != crate::models::care::sync::PortableFormat::V3
+                && let Some(stock_location) = row["taken_from_location_portable_id"].as_str()
                 && index.medication_location(plan, stock_medication) != Some(stock_location)
             {
                 errors.push(format!("medication_takes[{i}].taken_from_location_portable_id does not match medication location"));
@@ -309,7 +292,7 @@ pub(crate) async fn preflight(
             errors.push(format!("medication_pause_periods[{i}] {message}"));
         }
     }
-    if plan.v2 {
+    if plan.format.includes_extended_records() {
         for (kind, source_type) in [
             ("schedules", "schedule"),
             ("person_medications", "person_medication"),

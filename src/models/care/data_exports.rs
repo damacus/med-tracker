@@ -58,7 +58,7 @@ pub async fn export(
         return Err(validation("Portable passphrase header is required"));
     }
     let mut payload =
-        sync::api_export_payload(tenant, chrono_tz::UTC, "medtracker.portable.v1", false)
+        sync::api_export_payload(tenant, chrono_tz::UTC, sync::PortableFormat::V1, false)
             .await?
             .body;
     let counts = profile_export::record_counts(&payload);
@@ -102,24 +102,25 @@ pub async fn portable_export(
     if query
         .version
         .as_deref()
-        .is_some_and(|value| !matches!(value, "1" | "2"))
+        .is_some_and(|value| !matches!(value, "1" | "2" | "3"))
     {
         return Err(validation("Unsupported portable data version"));
     }
     if query
         .portable_format
         .as_deref()
-        .is_some_and(|value| !matches!(value, "medtracker.portable.v1" | "medtracker.portable.v2"))
+        .is_some_and(|value| sync::PortableFormat::parse(value).is_none())
     {
         return Err(validation("Unsupported portable data format"));
     }
-    let format = if query.version.as_deref() == Some("2") {
-        "medtracker.portable.v2"
-    } else {
-        query
+    let format = match query.version.as_deref() {
+        Some("2") => sync::PortableFormat::V2,
+        Some("3") => sync::PortableFormat::V3,
+        _ => query
             .portable_format
             .as_deref()
-            .unwrap_or("medtracker.portable.v1")
+            .and_then(sync::PortableFormat::parse)
+            .unwrap_or(sync::PortableFormat::V1),
     };
     let payload = sync::bundle_payload(tenant, chrono_tz::UTC, format)
         .await?

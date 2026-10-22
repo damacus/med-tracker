@@ -6,7 +6,9 @@ mod operations;
 mod pauses;
 mod persistence;
 mod portable;
-pub(crate) use portable::{api_export_payload, bundle_payload, export_payload, mobile_payload};
+pub(crate) use portable::{
+    PortableFormat, api_export_payload, bundle_payload, export_payload, mobile_payload,
+};
 mod reading;
 mod replay;
 pub(crate) mod review_prompts;

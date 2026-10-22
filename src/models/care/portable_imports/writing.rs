@@ -180,9 +180,6 @@ pub(crate) async fn write_records(
                     .ok_or_else(|| format!("{kind} could not be imported"))?
             };
             index.put(kind, portable_id.clone(), id);
-            if kind == "people" {
-                write_location_memberships(db, tenant, row, index, id).await?;
-            }
             if kind == "health_events" {
                 write_health_links(db, tenant, row, index, id).await?;
             }
@@ -230,7 +227,7 @@ pub(crate) async fn write_records(
             .await
             .map_err(|_| format!("{kind} change could not be recorded"))?;
         }
-        if kind == "medication_pause_periods" && plan.v2 {
+        if kind == "medication_pause_periods" && plan.format.includes_extended_records() {
             reconcile_pauses(db, tenant, provenance, plan, index, request_id).await?;
         }
     }

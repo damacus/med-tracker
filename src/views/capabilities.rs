@@ -346,6 +346,7 @@ impl CapabilitiesResponse {
                     "medtracker.portable.v1",
                     "medtracker.portable.encrypted.v1",
                     "medtracker.portable.v2",
+                    "medtracker.portable.v3",
                 ],
                 backups: Backups {
                     encrypted_migration_bundle: true,

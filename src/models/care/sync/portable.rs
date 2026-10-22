@@ -4,6 +4,41 @@ use chrono::NaiveDateTime;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{Condition, QueryTrait};
 use sha2::{Digest, Sha256};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum PortableFormat {
+    V1,
+    V2,
+    V3,
+}
+
+impl PortableFormat {
+    pub(crate) fn parse(value: &str) -> Option<Self> {
+        match value {
+            "medtracker.portable.v1" => Some(Self::V1),
+            "medtracker.portable.v2" => Some(Self::V2),
+            "medtracker.portable.v3" => Some(Self::V3),
+            _ => None,
+        }
+    }
+
+    pub(crate) const fn label(self) -> &'static str {
+        match self {
+            Self::V1 => "medtracker.portable.v1",
+            Self::V2 => "medtracker.portable.v2",
+            Self::V3 => "medtracker.portable.v3",
+        }
+    }
+
+    pub(crate) const fn includes_extended_records(self) -> bool {
+        matches!(self, Self::V2 | Self::V3)
+    }
+
+    pub(crate) const fn includes_person_locations(self) -> bool {
+        matches!(self, Self::V1 | Self::V2)
+    }
+}
+
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
 }
@@ -120,20 +155,20 @@ pub(super) async fn payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, false, false, "medtracker.portable.v2", true).await
+    scoped_payload(tenant, zone, false, false, PortableFormat::V2, true).await
 }
 
 pub(crate) async fn export_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, true, true, "medtracker.portable.v2", true).await
+    scoped_payload(tenant, zone, true, true, PortableFormat::V2, true).await
 }
 
 pub(crate) async fn api_export_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
-    format: &str,
+    format: PortableFormat,
     include_health_events: bool,
 ) -> Result<AppliedBatch, OperationError> {
     scoped_payload(tenant, zone, true, false, format, include_health_events).await
@@ -143,13 +178,13 @@ pub(crate) async fn mobile_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    api_export_payload(tenant, zone, "medtracker.portable.v1", true).await
+    api_export_payload(tenant, zone, PortableFormat::V1, true).await
 }
 
 pub(crate) async fn bundle_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
-    format: &str,
+    format: PortableFormat,
 ) -> Result<AppliedBatch, OperationError> {
     api_export_payload(tenant, zone, format, false).await
 }
@@ -159,7 +194,7 @@ async fn scoped_payload(
     zone: chrono_tz::Tz,
     exporting: bool,
     household_wide: bool,
-    format: &str,
+    format: PortableFormat,
     include_health_events: bool,
 ) -> Result<AppliedBatch, OperationError> {
     let db = tenant.transaction();
@@ -264,12 +299,15 @@ async fn scoped_payload(
         .all(db)
         .await
         .map_err(database_error)?;
-    let memberships = location_membership::Entity::find()
-        .in_tenant(household_id)
-        .filter(location_membership::Column::PersonId.is_in(person_ids.clone()))
-        .all(db)
-        .await
-        .map_err(database_error)?;
+    let memberships = if format.includes_person_locations() {
+        location_membership::Entity::find()
+            .in_tenant(household_id)
+            .filter(location_membership::Column::PersonId.is_in(person_ids.clone()))
+            .all(db)
+            .await?
+    } else {
+        Vec::new()
+    };
     let mut location_ids: HashSet<i64> = memberships
         .iter()
         .map(|row| row.location_id)
@@ -296,7 +334,7 @@ async fn scoped_payload(
         .all(db)
         .await
         .map_err(database_error)?;
-    let v2 = format == "medtracker.portable.v2";
+    let v2 = format.includes_extended_records();
     let periods = if v2 {
         pause_period::Entity::find()
             .in_tenant(household_id)
@@ -413,12 +451,17 @@ async fn scoped_payload(
         .filter_map(|row| Some((row["id"].as_i64()?, row["medication_portable_ids"].clone())))
         .collect();
 
-    let people_values: Vec<Value> = people.iter().map(|row| merge(identity(&row.portable_id, row.updated_at), json!({
+    let people_values: Vec<Value> = people.iter().map(|row| {
+        let mut fields = json!({
         "name": row.name, "email": row.email, "date_of_birth": row.date_of_birth.map(|date| date.to_string()),
         "person_type": person_type(row.person_type), "has_capacity": row.has_capacity,
-        "location_portable_ids": person_locations.get(&row.id).cloned().unwrap_or_default(),
         "notification_preference_portable_id": preference_ids.get(&row.id),
-    }))).collect();
+        });
+        if format.includes_person_locations() {
+            fields["location_portable_ids"] = json!(person_locations.get(&row.id).cloned().unwrap_or_default());
+        }
+        merge(identity(&row.portable_id, row.updated_at), fields)
+    }).collect();
     let location_values: Vec<Value> = locations
         .iter()
         .map(|row| {
@@ -623,7 +666,7 @@ async fn scoped_payload(
         }
     }
     Ok(AppliedBatch {
-        body: json!({"format":format,"scope":"single_person","exported_at":Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs,true),"source_instance_id":"hosted:rust","records":records}),
+        body: json!({"format":format.label(),"scope":"single_person","exported_at":Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs,true),"source_instance_id":"hosted:rust","records":records}),
         takes,
     })
 }

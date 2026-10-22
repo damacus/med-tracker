@@ -4125,18 +4125,18 @@ paths:
         - $ref: "#/components/parameters/portable_passphrase"
         - name: version
           in: query
-          description: Portable export format. Omit or use `1` for the original format; use `2` to include pause history.
+          description: Portable export format. Omit or use `1` for the original format; `2` includes pause history; `3` retains clinical history and inventory locations without person-to-location memberships.
           schema:
             type: string
-            enum: ["1", "2"]
+            enum: ["1", "2", "3"]
             default: "1"
         - name: portable_format
           in: query
           required: false
-          description: Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape.
+          description: Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape.
           schema:
             type: string
-            enum: [medtracker.portable.v1, medtracker.portable.v2]
+            enum: [medtracker.portable.v1, medtracker.portable.v2, medtracker.portable.v3]
             default: medtracker.portable.v1
       responses:
         "200":
@@ -4191,6 +4191,7 @@ paths:
         - Household
         - Portability
       summary: Validate an encrypted portable import without writing data.
+      description: Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422; v3 omits that obsolete field. Inventory and historical administration location references remain supported.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/portable_passphrase"
@@ -4226,6 +4227,7 @@ paths:
         - Household
         - Portability
       summary: Apply an encrypted portable import transactionally.
+      description: Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422 before writes; v3 omits that obsolete field. No person-to-location memberships are restored.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/portable_passphrase"
@@ -9116,6 +9118,7 @@ components:
               - medtracker.portable.v1
               - medtracker.portable.encrypted.v1
               - medtracker.portable.v2
+              - medtracker.portable.v3
         backups:
           $ref: "#/components/schemas/CapabilityBackups"
         fhir:
