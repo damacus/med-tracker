@@ -87,7 +87,7 @@ async fn legacy_fixture(app: &Application) -> Result<(), DbErr> {
 
 async fn unchanged_alternatives(app: &Application, token: &str) -> Result<(), DbErr> {
     authority(app, token, 73001, true).await?;
-    authority(app, token, 73003, true).await
+    authority(app, token, 73003, false).await
 }
 
 async fn declaration_state(app: &Application, id: i64) -> Result<Value, DbErr> {

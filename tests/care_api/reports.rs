@@ -43,6 +43,11 @@ async fn reports_conformance_real_pdf_downloads_have_protected_headers_and_embed
 
 #[tokio::test]
 async fn reports_json_requires_current_person_access_and_valid_dates() {
+    use med_tracker::models::entities::membership;
+    use sea_orm::{
+        ColumnTrait, EntityTrait, QueryFilter,
+        sea_query::{Expr, ExprTrait},
+    };
     let app = Application::new().await;
     app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
@@ -81,7 +86,7 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
     assert_eq!(app.fixture.effect().await, take_stock_before);
     let grant = app.fixture.admin.execute_unprepared("INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,expires_at,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now()+interval '1 hour',now(),now())").await.unwrap();
     assert_eq!(grant.rows_affected(), 1);
-    let managed = app
+    let legacy = app
         .client
         .get(format!(
             "{base}?person_id=73002&start_date=2026-01-01&end_date=2026-01-31"
@@ -90,15 +95,45 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
         .send()
         .await
         .unwrap();
+    assert_eq!(legacy.status().as_u16(), 404);
+    let created = app.client.post(format!("{}/api/v1/households/72001/people", app.origin))
+        .bearer_auth(&token).json(&json!({"person":{"name":"Synthetic report guardian child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}}))
+        .send().await.unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let created: Value = created.json().await.unwrap();
+    let subject = created["data"]["id"].as_i64().unwrap();
+    let managed = app
+        .client
+        .get(format!(
+            "{base}?person_id={subject}&start_date=2026-01-01&end_date=2026-01-31"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
     assert_eq!(managed.status().as_u16(), 200);
     let managed_body: Value = managed.json().await.unwrap();
-    assert_eq!(managed_body["data"]["person"]["id"], "73002");
+    assert_eq!(managed_body["data"]["person"]["id"], subject.to_string());
     assert_eq!(app.fixture.effect().await, take_stock_before);
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    membership::Entity::update_many()
+        .col_expr(membership::Column::Status, Expr::value("revoked"))
+        .col_expr(
+            membership::Column::RevokedAt,
+            Expr::value(chrono::Utc::now().naive_utc()),
+        )
+        .col_expr(
+            membership::Column::PermissionsVersion,
+            Expr::col(membership::Column::PermissionsVersion).add(1),
+        )
+        .filter(membership::Column::HouseholdId.eq(72001))
+        .filter(membership::Column::PersonId.eq(subject))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let departed = app
         .client
         .get(format!(
-            "{base}?person_id=73002&start_date=2026-01-01&end_date=2026-01-31"
+            "{base}?person_id={subject}&start_date=2026-01-01&end_date=2026-01-31"
         ))
         .bearer_auth(&token)
         .send()

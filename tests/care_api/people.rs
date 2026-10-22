@@ -813,7 +813,7 @@ async fn people_new_dependents_require_declaration_without_fabricating_actor_ide
 }
 
 #[tokio::test]
-async fn people_existing_dependents_without_carer_can_be_edited() {
+async fn people_legacy_grants_without_declared_guardian_cannot_edit_dependents() {
     let app = Application::new().await;
     let token = app.token().await;
     app.fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='2020-01-01' WHERE id=73002; UPDATE people SET date_of_birth='1990-01-01' WHERE id=73003; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now(),now()),(78003,72001,74001,73003,'manage','family_member',now(),now())").await.unwrap();
@@ -828,6 +828,6 @@ async fn people_existing_dependents_without_carer_can_be_edited() {
         .map(|key| row.try_get("", key).unwrap())
         .collect();
     app.close().await;
-    assert_eq!(statuses, vec![200, 200]);
-    assert_eq!(counts, vec![2, 0, 2]);
+    assert_eq!(statuses, vec![403, 403]);
+    assert_eq!(counts, vec![0, 0, 0]);
 }

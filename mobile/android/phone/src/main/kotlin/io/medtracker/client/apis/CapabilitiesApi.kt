@@ -122,7 +122,7 @@ open class CapabilitiesApi(basePath: kotlin.String = defaultBasePath, client: Ca
     /**
      * GET /households/{household_id}/ui_capabilities
      * Read permissions for household management controls.
-     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and existing valid Manage authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
+     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and current eligible declared guardian authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
      * @param householdId 
      * @return HouseholdUiCapabilitiesResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -154,7 +154,7 @@ open class CapabilitiesApi(basePath: kotlin.String = defaultBasePath, client: Ca
     /**
      * GET /households/{household_id}/ui_capabilities
      * Read permissions for household management controls.
-     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and existing valid Manage authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
+     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and current eligible declared guardian authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
      * @param householdId 
      * @return ApiResponse<HouseholdUiCapabilitiesResponse?>
      * @throws IllegalStateException If the request is not correctly configured

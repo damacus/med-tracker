@@ -54,7 +54,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * POST /households/{household_id}/portable_imports
      * Apply an encrypted portable import transactionally.
-     * 
+     * Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422 before writes; v3 omits that obsolete field. No person-to-location memberships are restored.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param portableImportRequest 
@@ -88,7 +88,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * POST /households/{household_id}/portable_imports
      * Apply an encrypted portable import transactionally.
-     * 
+     * Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422 before writes; v3 omits that obsolete field. No person-to-location memberships are restored.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param portableImportRequest 
@@ -135,7 +135,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * POST /households/{household_id}/portable_imports/dry_run
      * Validate an encrypted portable import without writing data.
-     * 
+     * Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422; v3 omits that obsolete field. Inventory and historical administration location references remain supported.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param portableImportRequest 
@@ -169,7 +169,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * POST /households/{household_id}/portable_imports/dry_run
      * Validate an encrypted portable import without writing data.
-     * 
+     * Accepts portable v1, v2 and v3. Non-empty legacy people.location_portable_ids are rejected with 422; v3 omits that obsolete field. Inventory and historical administration location references remain supported.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param portableImportRequest 
@@ -219,6 +219,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      enum class VersionExportPortableHouseholdBundle(val value: kotlin.String) {
          @Json(name = "1") _1("1"),
          @Json(name = "2") _2("2"),
+         @Json(name = "3") _3("3"),
          @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
 
         /**
@@ -237,6 +238,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      enum class PortableFormatExportPortableHouseholdBundle(val value: kotlin.String) {
          @Json(name = "medtracker.portable.v1") medtrackerPeriodPortablePeriodV1("medtracker.portable.v1"),
          @Json(name = "medtracker.portable.v2") medtrackerPeriodPortablePeriodV2("medtracker.portable.v2"),
+         @Json(name = "medtracker.portable.v3") medtrackerPeriodPortablePeriodV3("medtracker.portable.v3"),
          @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
 
         /**
@@ -252,11 +254,11 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * GET /households/{household_id}/portable_export
      * Export an encrypted portable household bundle.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
+     * @param portableFormat Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return PortableEnvelopeResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -287,11 +289,11 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * GET /households/{household_id}/portable_export
      * Export an encrypted portable household bundle.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
+     * @param portableFormat Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return ApiResponse<PortableEnvelopeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -311,8 +313,8 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      *
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
+     * @param portableFormat Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return RequestConfig
      */
     fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : RequestConfig<Unit> {
@@ -362,7 +364,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * GET /households/{household_id}/data_exports/{mode}
      * Export household data in a selected backup/profile mode.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param mode 
      * @param xMedTrackerPortablePassphrase Required only for the encrypted migration bundle mode. (optional)
@@ -396,7 +398,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * GET /households/{household_id}/data_exports/{mode}
      * Export household data in a selected backup/profile mode.
-     * 
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param mode 
      * @param xMedTrackerPortablePassphrase Required only for the encrypted migration bundle mode. (optional)

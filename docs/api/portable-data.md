@@ -157,7 +157,7 @@ An applied import is transactional. If any record fails, MedTracker does not kee
 
 Imports accept v1 and v2 plaintext inside the same encrypted envelope. V2 can restore saved dose outcomes and health events. Outcome references must resolve within the destination household or the imported graph. A linked take must match the source and saved cycle window. Duplicate dose slots and changes to existing outcome history are rejected during dry run.
 
-Restoring outcomes does not administer doses or deduct stock. An unchanged outcome can be imported again. The original resolution time is retained; the importing membership is recorded as the local actor for a newly restored outcome. Existing outcomes retain their local actor. Members need a current manage grant for every affected person.
+Restoring outcomes does not administer doses or deduct stock. An unchanged outcome can be imported again. The original resolution time is retained; the importing membership is recorded as the local actor for a newly restored outcome. Existing outcomes retain their local actor. Members need canonical self or current eligible guardian authority for every affected person; legacy Manage grants do not authorise restoration.
 
 Existing medication takes remain authoritative when the same portable ID is imported again. Validation uses their stored source and timestamp. Hosted household export archives include the v2 outcome collection in their portable payload.
 

@@ -500,6 +500,119 @@ async fn treatment_forms_create_and_edit_without_losing_clinical_fields() {
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn legacy_manage_grant_does_not_show_treatment_edit_controls() {
+    use med_tracker::models::entities::{grant, schedule};
+    use sea_orm::{ActiveValue::Set, EntityTrait};
+    harness::journey(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        |journey| {
+            Box::pin(async move {
+                let now = chrono::Utc::now().naive_utc();
+                grant::Entity::insert(grant::ActiveModel {
+                    household_id: Set(72001),
+                    household_membership_id: Set(74001),
+                    person_id: Set(73002),
+                    access_level: Set("manage".into()),
+                    relationship_type: Set("parent".into()),
+                    created_at: Set(now),
+                    updated_at: Set(now),
+                    ..Default::default()
+                })
+                .exec(&journey.admin)
+                .await
+                .unwrap();
+                schedule::Entity::insert(schedule::ActiveModel {
+                    household_id: Set(72001),
+                    person_id: Set(73002),
+                    medication_id: Set(80001),
+                    active: Set(true),
+                    dose_amount: Set(Some(sea_orm::prelude::Decimal::new(2, 0))),
+                    dose_unit: Set(Some("tablet".into())),
+                    dose_cycle: Set(Some(0)),
+                    schedule_type: Set(4),
+                    schedule_config: Set(serde_json::json!({})),
+                    start_date: Set(chrono::NaiveDate::from_ymd_opt(2026, 1, 1)),
+                    end_date: Set(chrono::NaiveDate::from_ymd_opt(2027, 1, 1)),
+                    portable_id: Set(uuid::Uuid::new_v4().to_string()),
+                    created_at: Set(now),
+                    updated_at: Set(now),
+                    ..Default::default()
+                })
+                .exec(&journey.admin)
+                .await
+                .unwrap();
+                harness::sign_in(journey).await;
+                let page = &journey.page;
+                page.goto(
+                    &format!(
+                        "{}/households/persistence-fixture/people/73002/treatments",
+                        journey.origin
+                    ),
+                    None,
+                )
+                .await
+                .unwrap();
+                expect(page.locator("section[aria-labelledby='schedules-heading'] article"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                expect(page.get_by_role(AriaRole::Link, named("Edit schedule")))
+                    .to_have_count(0)
+                    .await
+                    .unwrap();
+                expect(page.get_by_role(AriaRole::Link, named("Add schedule")))
+                    .to_have_count(0)
+                    .await
+                    .unwrap();
+                harness::capture(page, "legacy-manage-denied-desktop").await;
+                page.set_viewport_size(Viewport {
+                    width: 390,
+                    height: 844,
+                })
+                .await
+                .unwrap();
+                expect(page.get_by_role(AriaRole::Link, named("Edit schedule")))
+                    .to_have_count(0)
+                    .await
+                    .unwrap();
+                expect(page.get_by_role(AriaRole::Link, named("Dose records")))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                assert!(
+                    !page
+                        .evaluate::<(), bool>(
+                            "() => document.documentElement.scrollWidth > innerWidth",
+                            None
+                        )
+                        .await
+                        .unwrap()
+                );
+                page.get_by_role(AriaRole::Link, named("Back to Person"))
+                    .press("Tab", None)
+                    .await
+                    .unwrap();
+                expect(page.locator("section[aria-labelledby='schedules-heading'] h3 a"))
+                    .to_be_focused()
+                    .await
+                    .unwrap();
+                page.screenshot_to_file(
+                    Path::new("docs/screenshots/browser-journeys/legacy-manage-denied-mobile.png"),
+                    ScreenshotOptions::builder().full_page(true).build(),
+                )
+                .await
+                .unwrap();
+            })
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn barcode_hit_resolves_existing_medicine_to_refill() {
     let viewport = Viewport {
         width: 390,
