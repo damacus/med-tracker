@@ -182,6 +182,12 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: "0"
       DATABASE_URL: postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco
       MEDTRACKER_OWNED_DATABASE: "1"
+      MEDTRACKER_OWNED_STORAGE: "1"
+      ACTIVE_STORAGE_S3_BUCKET: medtracker-fixture
+      ACTIVE_STORAGE_S3_REGION: us-east-1
+      ACTIVE_STORAGE_S3_ACCESS_KEY_ID: storage-smoke-access
+      ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY: storage-smoke-secret
+      ACTIVE_STORAGE_S3_FORCE_PATH_STYLE: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -214,6 +220,12 @@ jobs:
             ~/.cache/playwright-rust
             ~/.cache/ms-playwright
           key: loco-playwright-${{ hashFiles('Cargo.lock') }}
+      - name: Start browser avatar storage
+        run: |
+          docker compose -f compose.yaml --env-file /dev/null -p mtloco-browser-ci --profile fixture-storage up -d --wait rustfs
+          STORAGE_PORT=$(docker compose -f compose.yaml --env-file /dev/null -p mtloco-browser-ci --profile fixture-storage port rustfs 9000 | cut -d: -f2)
+          echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
+          task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
       - run: task test:browser
       - name: Preserve browser screenshots
         if: always()
