@@ -41,6 +41,15 @@ includes:
     flatten: true
 
 tasks:
+  image:build:
+    desc: Build the root Loco release image for the local architecture
+    cmds:
+      - 'docker build --tag {{.LOCO_IMAGE | default "medtracker-loco:local" | shellQuote}} .'
+  image:test:
+    desc: Check release commands, runtime assets and non-root image ownership
+    env:
+      LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
+    cmds: [python3 scripts/test_loco_image.py]
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]

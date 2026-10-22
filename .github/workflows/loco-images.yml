@@ -1,0 +1,91 @@
+name: Loco Linux images
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - Cargo.toml
+      - Cargo.lock
+      - build.rs
+      - src/**
+      - migration/**
+      - assets/**
+      - config/production.yaml
+      - package.json
+      - package-lock.json
+      - rails/config/ai_medication_sources.yml
+      - rails/config/medication_review_labels.yml
+      - scripts/test_loco_image.py
+      - Taskfile.yml
+      - .github/workflows/loco-images.yml
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the checked multi-platform image to GHCR
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loco-images-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  image:
+    name: Loco image (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: medtracker-loco:local
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=gha,scope=loco-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=loco-${{ matrix.arch }}
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - run: task image:test
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}-loco:sha-${{ github.sha }}
+          cache-from: |
+            type=gha,scope=loco-amd64
+            type=gha,scope=loco-arm64
