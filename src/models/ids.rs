@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub(crate) struct AccountId(i64);
 
 impl AccountId {
@@ -17,10 +17,40 @@ impl std::fmt::Display for AccountId {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub(crate) struct HouseholdId(i64);
 
 impl HouseholdId {
+    pub(crate) const fn from_database(value: i64) -> Self {
+        Self(value)
+    }
+
+    pub(crate) const fn get(self) -> i64 {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+pub(crate) struct PersonId(i64);
+
+impl PersonId {
+    pub(crate) const fn from_database(value: i64) -> Self {
+        Self(value)
+    }
+
+    pub(crate) const fn get(self) -> i64 {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+pub(crate) struct MembershipId(i64);
+
+impl MembershipId {
+    pub(crate) const fn from_database(value: i64) -> Self {
+        Self(value)
+    }
+
     pub(crate) const fn get(self) -> i64 {
         self.0
     }

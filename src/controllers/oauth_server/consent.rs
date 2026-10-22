@@ -1,6 +1,6 @@
 use super::authorization_response;
 use crate::models::identity::{
-    authorization::{self, AuthorizationInput},
+    authorization::{self, AuthorizationInput, DisplayedConsent},
     browser,
     resource::AuthenticationError,
 };
@@ -46,6 +46,7 @@ async fn consent(
             prepared.pending.pre_grant().scope.to_string(),
         ));
     }
+    session.remove("oauth_displayed");
     session.set("oauth_pending", input.clone());
     session.set_store(true);
     let principal =
@@ -54,16 +55,23 @@ async fn consent(
             Err(AuthenticationError::Unauthenticated) => return redirect("/login"),
             Err(_) => return StatusCode::FORBIDDEN.into_response(),
         };
-    let mut data = match authorization::context(
+    let context = match authorization::context(
         &ctx.db,
         &principal,
         prepared.application.client_kind == "mobile",
     )
     .await
     {
-        Ok(data) => data,
+        Ok(Some(context)) => context,
+        Ok(None) => return redirect("/households/choose"),
         Err(error) => return super::failure(error),
     };
+    let nonce = uuid::Uuid::new_v4().to_string();
+    session.set(
+        "oauth_displayed",
+        DisplayedConsent::new(input.clone(), &principal, context.clone(), nonce.clone()),
+    );
+    session.set_store(true);
     let Ok(authenticity_token) = token.authenticity_token() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
@@ -82,6 +90,10 @@ async fn consent(
         .filter(|(name, _)| name != "scope")
         .map(|(name, value)| serde_json::json!({"name":name,"value":value}))
         .collect::<Vec<_>>();
+    let mut data = serde_json::json!({
+        "household_name": context.household_name(), "person_name": context.person_name(),
+        "consent_nonce": nonce,
+    });
     let object = data.as_object_mut().expect("authorization context object");
     object.extend(serde_json::json!({"title":"Authorise access","allow_palette":false,"appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}],"palettes":[],"client_name":prepared.application.name,"fields":fields,"scopes":scopes,"authenticity_token":authenticity_token}).as_object().expect("consent context object").clone());
     match format::render().view(&view, "oauth/consent.html", data) {
@@ -108,10 +120,24 @@ async fn approve(
     let Some(original) = session.get::<AuthorizationInput>("oauth_pending") else {
         return StatusCode::BAD_REQUEST.into_response();
     };
+    let Some(displayed) = session.get::<DisplayedConsent>("oauth_displayed") else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
+    let nonces = fields
+        .iter()
+        .filter(|(name, _)| name == "consent_nonce")
+        .map(|(_, value)| value.as_str())
+        .collect::<Vec<_>>();
+    if displayed.input != original || nonces.as_slice() != [displayed.nonce.as_str()] {
+        return StatusCode::BAD_REQUEST.into_response();
+    }
     let protocol_fields = fields
         .iter()
         .filter(|(name, _)| {
-            name != "scope[]" && name != "authenticity_token" && name != "consent_action"
+            name != "scope[]"
+                && name != "authenticity_token"
+                && name != "consent_action"
+                && name != "consent_nonce"
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -129,6 +155,9 @@ async fn approve(
             Ok(principal) => principal,
             Err(_) => return StatusCode::UNAUTHORIZED.into_response(),
         };
+    if !displayed.matches_principal(&principal) {
+        return StatusCode::BAD_REQUEST.into_response();
+    }
     let actions = fields
         .iter()
         .filter(|(name, _)| name == "consent_action")
@@ -145,6 +174,7 @@ async fn approve(
         return match authorization::deny(&ctx.db, &original).await {
             Ok(output) => {
                 session.remove("oauth_pending");
+                session.remove("oauth_displayed");
                 authorization_response::render(&view, &original, output)
             }
             Err(error) => authorization_response::failure(&view, &original, error),
@@ -166,9 +196,18 @@ async fn approve(
     let mut input = AuthorizationInput(protocol_fields);
     input.0.push(("scope".into(), selected.join(" ")));
     let request_id = request_id.map(|Extension(id)| id.get().to_owned());
-    match authorization::approve(&ctx.db, &principal, &input, request_id.as_deref()).await {
+    match authorization::approve(
+        &ctx.db,
+        &principal,
+        &input,
+        &displayed.context,
+        request_id.as_deref(),
+    )
+    .await
+    {
         Ok(output) => {
             session.remove("oauth_pending");
+            session.remove("oauth_displayed");
             authorization_response::render(&view, &input, output)
         }
         Err(error) => authorization_response::failure(&view, &input, error),

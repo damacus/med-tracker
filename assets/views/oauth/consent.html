@@ -10,6 +10,7 @@
     </div>
     <form id="authorize-form" method="post" action="/authorize" aria-label="Authorise application access" class="flex flex-col gap-6">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="consent_nonce" value="{{ consent_nonce }}">
       {% for field in fields %}<input type="hidden" name="{{ field.name }}" value="{{ field.value }}">{% endfor %}
       <fieldset class="flex flex-col gap-4">
         <legend class="text-xl font-semibold mb-3">Access requested</legend>

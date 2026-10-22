@@ -25,6 +25,22 @@ approving that work. Recommend separating the SMART follow-up from OAuth
 acceptance in [#2670](https://github.com/damacus/med-tracker/issues/2670);
 the issue now tracks OAuth migration acceptance with SMART deferred.
 
+## s03-i08 household consent evidence — 22 October 2026
+
+Integration consent now uses the household selected in the current browser
+session. The submitted form remains bound to the household displayed, even if
+the session subsequently selects another household. Approval rechecks that
+original membership, permission version and household lifecycle. A replacement
+consent page invalidates the older form, and another browser session cannot
+submit it. Mobile consent remains account-bound without a selected household.
+
+The booted-application consent suite passes ten cases covering these boundaries,
+tampering, denial, revoked access and continuation after household selection or
+creation. The browser journey starts unauthenticated, signs in, chooses the
+second household and submits Allow; persisted grant and audit assertions verify
+the displayed household. Desktop and mobile evidence is retained under
+`docs/screenshots/oauth-consent/`. SMART remains deferred under ADR 0018.
+
 ## s03-i12 account-closure mail evidence — 21 October 2026
 
 Follow-up for #2674 and #2631, based on `78ec7f281`. One Sol owner retains

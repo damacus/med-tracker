@@ -1,4 +1,8 @@
-use crate::models::identity::{browser, resource::AuthenticationError};
+use crate::models::identity::{
+    authorization::{AuthorizationInput, DisplayedConsent},
+    browser,
+    resource::AuthenticationError,
+};
 use crate::models::ids::HouseholdId;
 use axum::{
     Extension,
@@ -209,6 +213,9 @@ pub async fn create(
         );
         return redirect("/households/choose");
     }
+    if let Some(destination) = pending_household_authorization(&session) {
+        return redirect(&destination);
+    }
     (
         StatusCode::SEE_OTHER,
         [
@@ -244,9 +251,22 @@ pub async fn select(
         return (StatusCode::NOT_FOUND, [(header::CACHE_CONTROL, "no-store")]).into_response();
     };
     match principal.select_household(&ctx.db, household_id).await {
-        Ok(household) => redirect(&format!("/households/{}/dashboard", household.slug)),
+        Ok(household) => match pending_household_authorization(&session) {
+            Some(destination) => redirect(&destination),
+            None => redirect(&format!("/households/{}/dashboard", household.slug)),
+        },
         Err(error) => authentication_error(error),
     }
+}
+
+fn pending_household_authorization(session: &Session<SessionPgPool>) -> Option<String> {
+    if session.get::<DisplayedConsent>("oauth_displayed").is_some() {
+        return None;
+    }
+    session
+        .get::<AuthorizationInput>("oauth_pending")
+        .and_then(|input| serde_urlencoded::to_string(input.0).ok())
+        .map(|query| format!("/authorize?{query}"))
 }
 
 fn forbidden() -> Response {
