@@ -135,6 +135,28 @@ the Take and Replay tasks own the concurrency/idempotency assertions.
 **Done:** Every named operation works through Loco and has positive, validation, role, concurrency and
 replay evidence. API and browser callers reuse these operations; no read-only substitute counts as migration.
 
+### Typed Take refactor (#2681, verified local candidate on 22 October 2026)
+
+Reference: `main` at `601f8f354ee445aa9e0cec950ec395bd62f0aa21`; no visible UI
+difference is approved or intended. API, browser, sync and occurrence inputs now
+validate into a typed Take command before preparation, replay and writing. The
+local focused `care_doses` integration binary passed 32 tests, including portable
+source IDs, microsecond and timezone preservation, exact Decimal replay, duplicate
+UUIDs, permission withdrawal, stock and audit rollback. Sol owned implementation
+and independent review because this bounded refactor required judgement about
+replay and validation ordering. Review found no remaining actionable finding.
+The final root `task ci` passed formatting, Clippy, dependency checks, unit tests,
+doctests, 1,146 integration tests, browser journeys and template concurrency.
+The documentation build also passed. CI used a temporary internal-disk build
+directory after the external Cargo cache filled; source and repository settings
+were unchanged. Publication is the next step; no merge or deployment is claimed.
+
+Validation precedence: a malformed time or
+amount sent with an already used client UUID now receives input validation (422)
+before replay comparison, whereas the earlier internal replay path could return
+conflict (409). OpenAPI does not specify this malformed replay edge case. Valid
+replay and differing valid payload conflicts retain their existing behaviour.
+
 ## Approved completion plan — 7 October 2026
 
 This section supersedes conflicting older behaviour in this plan. The owner confirmed the complete plan after questions Q1–Q17. Finish the existing auth PR first; invitations remain there. Only after accepted auth is on main, deliver two independent PRs based on main: platform administration/support, then household lifecycle. Other migration work stays paused. No deployment or live-data action is authorised.

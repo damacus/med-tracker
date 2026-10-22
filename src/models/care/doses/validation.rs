@@ -15,8 +15,7 @@ pub(crate) fn valid_identifier(value: &str) -> bool {
             }))
 }
 
-pub(crate) fn parse_decimal(value: &Value) -> Option<Decimal> {
-    let text = value.as_str()?;
+pub(crate) fn parse_decimal_str(text: &str) -> Option<Decimal> {
     let unsigned = text.strip_prefix('-').unwrap_or(text);
     let mut parts = unsigned.split('.');
     let whole = parts.next()?;

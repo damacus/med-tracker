@@ -92,7 +92,7 @@ pub async fn apply(
             {
                 return Err(invalid("invalid taken_from_medication_id"));
             }
-            let take = doses::Take {
+            let take = doses::TakeInput {
                 client_uuid: operation
                     .attributes
                     .get("client_uuid")
@@ -117,7 +117,8 @@ pub async fn apply(
                     .and_then(Value::as_i64),
                 expected_effective_amount: None,
                 expected_effective_unit: None,
-            };
+            }
+            .validate()?;
             let outcome =
                 doses::execute_in_timezone(tenant, doses::Command::Take(take), zone, attribution)
                     .await?;
