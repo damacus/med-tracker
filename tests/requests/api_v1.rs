@@ -14,6 +14,8 @@ mod bulk_members;
 mod capabilities;
 #[path = "../care_api/contract.rs"]
 mod contract;
+#[path = "favicon.rs"]
+mod favicon;
 #[path = "../care_api/fixture.rs"]
 mod fixture;
 #[path = "household_selection.rs"]

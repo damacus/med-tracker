@@ -6,6 +6,48 @@ use sea_orm::ConnectionTrait;
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn shared_layout_favicon_loads_on_login_and_dashboard() {
+    for (name, width, height) in [("desktop", 1440, 1000), ("mobile", 390, 844)] {
+        harness::journey(Viewport { width, height }, |journey| {
+            Box::pin(async move {
+                let page = &journey.page;
+                page.goto(&format!("{}/login", journey.origin), None)
+                    .await
+                    .unwrap();
+                for screen in ["login", "dashboard"] {
+                    if screen == "dashboard" {
+                        harness::sign_in(journey).await;
+                        page.goto(
+                            &format!("{}/households/persistence-fixture/dashboard", journey.origin),
+                            None,
+                        )
+                        .await
+                        .unwrap();
+                    }
+                    let icon = page.evaluate::<(), serde_json::Value>(r#"async () => {
+                        const link = document.querySelector('link[rel="icon"]');
+                        if (!link) return null;
+                        const response = await fetch(link.href);
+                        const image = new Image();
+                        image.src = link.href;
+                        await image.decode();
+                        return {href: new URL(link.href).pathname, type: link.type,
+                            status: response.status, contentType: response.headers.get('content-type'),
+                            width: image.naturalWidth, height: image.naturalHeight};
+                    }"#, None).await.unwrap();
+                    assert_eq!(icon, serde_json::json!({
+                        "href": "/favicon.ico", "type": "image/png", "status": 200,
+                        "contentType": "image/png", "width": 512, "height": 512
+                    }), "{screen} at {width}px");
+                    capture(page, &format!("favicon-{screen}-{name}")).await;
+                }
+            })
+        }).await;
+    }
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn shared_layout_desktop_navigation_survives_route_changes() {
     harness::journey(
         Viewport {

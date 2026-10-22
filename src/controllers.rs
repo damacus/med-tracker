@@ -35,7 +35,15 @@ pub fn routes() -> Routes {
     Routes::new()
         .add("/up", get(health))
         .add("/health", get(health))
+        .add("/favicon.ico", get(favicon))
         .add("/profile-service-worker.js", get(profile_worker))
+}
+
+async fn favicon() -> impl axum::response::IntoResponse {
+    (
+        [(axum::http::header::CONTENT_TYPE, "image/png")],
+        include_bytes!("../assets/static/icon.png").as_slice(),
+    )
 }
 
 async fn profile_worker() -> impl axum::response::IntoResponse {
