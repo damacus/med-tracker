@@ -1,4 +1,5 @@
 mod audit_logs;
+mod bulk_members;
 mod page;
 mod rendering;
 
@@ -92,6 +93,11 @@ pub fn routes() -> Routes {
         .add("/{slug}/admin/household/edit", get(settings))
         .add("/{slug}/admin/household", post(save_settings))
         .add("/{slug}/admin/users", get(users))
+        .add(
+            "/{slug}/admin/users/bulk/preview",
+            post(bulk_members::preview),
+        )
+        .add("/{slug}/admin/users/bulk", post(bulk_members::apply))
         .add("/{slug}/admin/memberships/{id}", get(member_detail))
         .add("/{slug}/admin/users/{id}/edit", get(role))
         .add("/{slug}/admin/users/{id}/membership_role", post(save_role))
