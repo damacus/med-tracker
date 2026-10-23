@@ -160,7 +160,7 @@ class LocoImageTest(unittest.TestCase):
                 containers.append(shell_scheduler)
                 for _ in range(30):
                     logs = self.docker("logs", shell_scheduler)
-                    if "requires /bin/sh" in logs and "NotFound" in logs:
+                    if "failed to execute scheduler job" in logs and "NotFound" in logs:
                         break
                     time.sleep(1)
                 else:
