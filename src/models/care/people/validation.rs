@@ -2,69 +2,45 @@ use super::*;
 
 pub(super) fn assign(
     record: &mut person::Model,
-    attributes: &Value,
-    create: bool,
+    input: PersonUpdateInput,
 ) -> Result<(), OperationError> {
-    let fields = attributes
-        .as_object()
-        .ok_or_else(|| invalid("person", "is invalid"))?;
-    if fields.is_empty()
-        || fields.keys().any(|name| {
-            !matches!(
-                name.as_str(),
-                "name" | "email" | "date_of_birth" | "person_type" | "has_capacity"
-            )
-        })
-    {
+    if !input.valid_shape() {
         return Err(invalid("person", "is invalid"));
     }
-    if let Some(value) = fields.get("name") {
-        record.name = value
-            .as_str()
-            .filter(|s| !s.trim().is_empty())
-            .ok_or_else(|| invalid("name", "can't be blank"))?
-            .to_owned();
-    } else if create {
-        return Err(invalid("name", "can't be blank"));
+    match input.name {
+        UpdateField::Missing => {}
+        UpdateField::Value(value) if !value.trim().is_empty() => record.name = value,
+        UpdateField::Value(_) | UpdateField::Invalid => {
+            return Err(invalid("name", "can't be blank"));
+        }
     }
-    if let Some(value) = fields.get("email") {
-        record.email = match value {
-            Value::Null => None,
-            Value::String(value) => {
-                let value = value.trim().to_lowercase();
-                if !value.is_empty() && !email_valid(&value) {
-                    return Err(invalid("email", "is invalid"));
-                }
-                (!value.is_empty()).then_some(value)
+    match input.email {
+        UpdateField::Missing => {}
+        UpdateField::Value(value) => {
+            let value = value
+                .map(|value| value.trim().to_lowercase())
+                .filter(|value| !value.is_empty());
+            if value.as_deref().is_some_and(|value| !email_valid(value)) {
+                return Err(invalid("email", "is invalid"));
             }
-            _ => return Err(invalid("email", "is invalid")),
-        };
+            record.email = value;
+        }
+        UpdateField::Invalid => return Err(invalid("email", "is invalid")),
     }
-    if let Some(value) = fields.get("date_of_birth") {
-        record.date_of_birth = Some(
-            NaiveDate::parse_from_str(
-                value
-                    .as_str()
-                    .ok_or_else(|| invalid("date_of_birth", "is invalid"))?,
-                "%Y-%m-%d",
-            )
-            .map_err(|_| invalid("date_of_birth", "is invalid"))?,
-        );
-    } else if create {
-        return Err(invalid("date_of_birth", "can't be blank"));
+    match input.date_of_birth {
+        UpdateField::Missing => {}
+        UpdateField::Value(value) => record.date_of_birth = Some(value),
+        UpdateField::Invalid => return Err(invalid("date_of_birth", "is invalid")),
     }
-    if let Some(value) = fields.get("person_type") {
-        record.person_type = match value.as_str() {
-            Some("adult") => 0,
-            Some("minor") => 1,
-            Some("dependent_adult") => 2,
-            _ => return Err(invalid("person_type", "is invalid")),
-        };
+    match input.person_type {
+        UpdateField::Missing => {}
+        UpdateField::Value(value) => record.person_type = value.code(),
+        UpdateField::Invalid => return Err(invalid("person_type", "is invalid")),
     }
-    if let Some(value) = fields.get("has_capacity") {
-        record.has_capacity = value
-            .as_bool()
-            .ok_or_else(|| invalid("has_capacity", "is invalid"))?;
+    match input.has_capacity {
+        UpdateField::Missing => {}
+        UpdateField::Value(value) => record.has_capacity = value,
+        UpdateField::Invalid => return Err(invalid("has_capacity", "is invalid")),
     }
     Ok(())
 }
@@ -110,4 +86,89 @@ pub(super) fn capacity(
         record.has_capacity = false;
     }
     Ok(dependent)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn person_update_input_preserves_patch_and_validation_order() {
+        let mut record = person::Model {
+            name: "Existing".into(),
+            email: Some("existing@example.test".into()),
+            id: 1,
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
+            date_of_birth: None,
+            has_capacity: true,
+            person_type: 0,
+            portable_id: String::new(),
+            professional_title: None,
+        };
+        let input = PersonUpdateInput {
+            name: UpdateField::Value(" ".into()),
+            email: UpdateField::Invalid,
+            ..Default::default()
+        };
+        assert_eq!(
+            assign(&mut record, input),
+            Err(invalid("name", "can't be blank"))
+        );
+        assign(
+            &mut record,
+            PersonUpdateInput {
+                email: UpdateField::Value(None),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(record.name, "Existing");
+        assert_eq!(record.email, None);
+    }
+
+    #[test]
+    fn person_update_input_retains_invalid_fields_until_authorised_assignment() {
+        for (body, field, message) in [
+            (json!({}), "person", "is invalid"),
+            (
+                json!({"initial_guardian_declaration":true}),
+                "person",
+                "is invalid",
+            ),
+            (json!({"name":null,"email":42}), "name", "can't be blank"),
+            (json!({"email":false}), "email", "is invalid"),
+            (json!({"date_of_birth":null}), "date_of_birth", "is invalid"),
+            (
+                json!({"date_of_birth":"2020-02-30"}),
+                "date_of_birth",
+                "is invalid",
+            ),
+            (
+                json!({"person_type":"guardian"}),
+                "person_type",
+                "is invalid",
+            ),
+            (json!({"has_capacity":"true"}), "has_capacity", "is invalid"),
+        ] {
+            let input = PersonUpdateInput::from_fields(body.as_object().unwrap());
+            let mut record = person::Model {
+                id: 1,
+                created_at: Utc::now().naive_utc(),
+                updated_at: Utc::now().naive_utc(),
+                name: "Existing".into(),
+                email: None,
+                date_of_birth: None,
+                has_capacity: true,
+                person_type: 0,
+                portable_id: String::new(),
+                professional_title: None,
+            };
+            assert_eq!(
+                assign(&mut record, input),
+                Err(invalid(field, message)),
+                "{body}"
+            );
+        }
+    }
 }

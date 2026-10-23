@@ -1,9 +1,9 @@
 use super::*;
 
-pub async fn update(
+pub(crate) async fn update(
     tenant: &TenantTransaction,
     id: &str,
-    attributes: Value,
+    input: PersonUpdateInput,
     today: NaiveDate,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<person::Model, OperationError> {
@@ -16,7 +16,7 @@ pub async fn update(
             .await?
             .ok_or(OperationError::NotFound)?;
     let mut proposed = record.clone();
-    validation::assign(&mut proposed, &attributes, false)?;
+    validation::assign(&mut proposed, input)?;
     validation::capacity(&mut proposed, today)?;
     if proposed == record {
         return Ok(record);

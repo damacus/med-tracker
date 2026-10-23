@@ -213,7 +213,7 @@ pub async fn apply(
                 people::update(
                     tenant,
                     id(operation)?,
-                    Value::Object(operation.attributes.clone()),
+                    people::PersonUpdateInput::from_fields(&operation.attributes),
                     chrono::Utc::now()
                         .with_timezone(&doses::app_zone(tenant.settings()))
                         .date_naive(),

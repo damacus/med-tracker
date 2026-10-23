@@ -23,6 +23,8 @@ mod people_polish;
 
 #[path = "browser/dependent_creation.rs"]
 mod dependent_creation;
+#[path = "browser/person_editing.rs"]
+mod person_editing;
 
 #[path = "browser/administration_polish.rs"]
 mod administration_polish;
