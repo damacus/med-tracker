@@ -11,7 +11,7 @@ nav = [
   { Home = "index.md" },
   { "0.6 Release Notes" = "releases/0.6.md" },
   { Articles = [
-    { "From YOLO Rails to YOLO Rust" = "articles/from-yolo-rails-to-yolo-rust.md" }
+    { "Moving MedTracker from Rails to Rust: memory, latency and trade-offs" = "articles/from-yolo-rails-to-yolo-rust.md" }
   ] },
   { "🏠 For Families" = [
     { "Quick Setup" = "families/quick-setup.md" },

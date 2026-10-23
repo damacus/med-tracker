@@ -53,15 +53,49 @@ The standard Rails case uses this repository’s default Puma Solid Queue fork m
 
 A process snapshot shortly after the forked import located most of the growth in the default job worker: about 235 MiB RSS before and 825 MiB afterwards; Puma was about 393 MiB afterwards. These individual RSS figures include shared pages and must not be added to obtain a container total. This supports the reason for separating a heavy importer from the web process. [Before processes](runtime-benchmark-2026-10-23/rails-fork/processes-before.txt), [after processes](runtime-benchmark-2026-10-23/rails-fork/processes-after.txt).
 
-Health requests run roughly once per second, with an authenticated dashboard request every five seconds. This tests basic responsiveness during import, not concurrent-user capacity.
+## Dashboard responsiveness observations
 
-| Configuration | Dashboard probes during import | Failed dashboard probes | Dashboard p95 (s) |
+Health requests run roughly once per second, with an authenticated dashboard request every five seconds. This tests basic responsiveness during import, not concurrent-user capacity. The table below covers only dashboard requests during the original import trials; it does not combine health endpoints or include before/after windows. Lower elapsed time is better.
+
+| Configuration | Dashboard probes during import | Failed dashboard probes | Dashboard latency summary (ms) |
 |---|---:|---:|---:|
-| Rails / Puma + standard forked Solid Queue | 34 | 0 | 0.092 |
-| Rails / Puma + threaded Solid Queue | 40 | 0 | 0.247 |
-| Rails / inline import | 26 | 0 | 0.792 |
-| Loco / background import | 2 | 0 | 0.052 |
-| Loco / inline import | 2 | 0 | 0.269 |
+| Rails / Puma + standard forked Solid Queue | 34 | 0 | Sampled p95: 91.7 |
+| Rails / Puma + threaded Solid Queue | 40 | 0 | Sampled p95: 246.8 |
+| Rails / inline import | 26 | 0 | Sampled p95: 792.0 |
+| Loco / background import | 2 | 0 | Maximum of two samples: 52.1 |
+| Loco / inline import | 2 | 0 | Maximum of two samples: 269.3 |
+
+The earlier p95 label on the two Loco rows overstated what those samples can
+show. The nearest-rank calculation was correct, but with two samples it selects
+the maximum and cannot establish tail latency. The raw measurements are unchanged.
+
+Dashboard responses were not uniformly faster in Loco. The comparable
+threaded/background modes give the following before/after observations, all
+with zero failed requests:
+
+| Trial and phase | Rails dashboard requests | Rails sampled p95 (ms) | Loco dashboard requests | Loco sampled p95 (ms) |
+|---|---:|---:|---:|---:|
+| Original: before import | 13 | 63.5 | 12 | 109.1 |
+| Original: five minutes after import | 59 | 100.6 | 59 | 150.1 |
+| Hard 1 GiB: before import | 13 | 163.0 | 12 | 113.4 |
+| Hard 1 GiB: five minutes after import | 60 | 155.8 | 59 | 172.0 |
+
+These after values cover the entire five-minute probe window, not the final
+minute used for retained-memory medians. The original before and both after
+windows show worse Loco dashboard p95 observations. The bounded before window
+shows the opposite direction. The small before samples, single sequential runs
+and shared-VM/cache conditions prevent a repeatable regression or improvement
+claim. Health-check timings are separate and do not resolve dashboard latency.
+
+Calculation: sort recorded elapsed seconds within each phase and endpoint,
+select the nearest rank `ceil(0.95 * n)` and convert to milliseconds. The
+original report script includes elapsed durations for failed probes as well as
+successes; there were no failures in the original table or these before/after
+groups. A client timeout duration is not a completed server response time.
+The bounded during-import timeouts are therefore reported separately in the
+[matched-trial appendix](#matched-one-gib-rails-async-follow-up), rather than
+hidden inside a successful-response percentile. The underlying per-case
+`probes.jsonl.gz` files retain every request, phase, endpoint, outcome and duration.
 
 The measurements show a substantial resource advantage for the tested Loco implementation on this import and support the goal of reducing operating memory. They do not quantify migration cost versus benefit: feature coverage, operational behaviour and maintenance cost remain separate questions. Retained memory is not by itself evidence of a leak; these runs contain no heap profile or forced-GC investigation.
 

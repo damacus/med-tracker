@@ -1,4 +1,4 @@
-# From YOLO Rails to YOLO Rust
+# Moving MedTracker from Rails to Rust: memory, latency and trade-offs
 
 23 October 2026
 
@@ -82,6 +82,27 @@ Scheduled activity meant Loco's idle peak was not always lower.
 
 That is useful evidence of less CPU work for this import. It is not an electricity
 measurement or a promise about sustained load on another machine.
+
+## Dashboard latency needs more work
+
+The dashboard observations were not uniformly better in Loco. In the original
+five-minute post-import windows, sampled dashboard p95 was about **150 ms for
+Loco versus 101 ms for threaded Rails**, with 59 requests each. In the bounded
+trials it was about **172 ms versus 156 ms**, with 59 and 60 requests respectively.
+All those requests succeeded. Lower response time is better, so these are worse
+Loco dashboard observations.
+
+The original during-import table is much less useful for comparing tails: Loco
+had just two dashboard samples per mode. Their nearest-rank p95 is simply their
+maximum. A faster import also leaves less time to collect probes. Health checks
+are a different endpoint and must not stand in for dashboard response times.
+
+These were single sequential local runs with light traffic, not a controlled
+user-load latency study. They do not establish the cause or repeatability of a
+regression. The memory result stands, but we have not established a dashboard
+tail-latency improvement. The report now shows the
+[phase-by-phase dashboard observations](../development/runtime-benchmark-2026-10-23.md#dashboard-responsiveness-observations)
+and sampling limits alongside the resource measurements.
 
 ## Some of this is the implementation
 
