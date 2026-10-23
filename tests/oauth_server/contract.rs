@@ -1,5 +1,5 @@
 #[path = "../care_api/fixture.rs"]
-mod fixture;
+pub(super) mod fixture;
 
 use fixture::Fixture;
 use loco_rs::{

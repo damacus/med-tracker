@@ -310,8 +310,17 @@ tasks:
         cargo nextest run --locked --test browser --run-ignored only --no-tests=fail --test-threads 2 "$2";
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}}
   test:acceptance:
-    desc: Run independent integration and browser stages in parallel
+    desc: Run integration and browser stages with separate or shared database scheduling
+    cmds:
+      - task: '{{if eq (.MEDTRACKER_OWNED_DATABASE | default "") "1"}}test:acceptance:shared{{else}}test:acceptance:isolated{{end}}'
+  test:acceptance:isolated:
+    internal: true
     deps: [test:integration, test:browser]
+  test:acceptance:shared:
+    internal: true
+    cmds:
+      - task: test:integration
+      - task: test:browser
   routes:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major

@@ -10,6 +10,8 @@ mod journeys;
 mod native_auth;
 #[path = "browser/native_auth_forms.rs"]
 mod native_auth_forms;
+#[path = "browser/oauth_consent.rs"]
+mod oauth_consent;
 #[path = "support/template.rs"]
 mod template;
 
