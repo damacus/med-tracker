@@ -1,0 +1,14 @@
+{
+  "rails": {
+    "postgresql_peak_during_MiB": 705.90234375,
+    "rustfs_peak_during_MiB": 91.9375,
+    "whole_stack_peak_during_MiB": 1783.28515625,
+    "whole_stack_after_MiB": 1265.3046875
+  },
+  "loco": {
+    "postgresql_peak_during_MiB": 216.609375,
+    "rustfs_peak_during_MiB": 87.22265625,
+    "whole_stack_peak_during_MiB": 548.78515625,
+    "whole_stack_after_MiB": 559.8828125
+  }
+}

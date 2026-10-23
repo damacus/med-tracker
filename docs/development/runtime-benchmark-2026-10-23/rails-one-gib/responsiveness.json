@@ -1,0 +1,48 @@
+{
+  "rails": {
+    "before": {
+      "requests": 61,
+      "failures": 0,
+      "dashboard_failures": 0,
+      "health_failures": 0,
+      "max_successful_seconds": 0.1629856659999973
+    },
+    "during": {
+      "requests": 194,
+      "failures": 2,
+      "dashboard_failures": 1,
+      "health_failures": 1,
+      "max_successful_seconds": 0.8106974589999965
+    },
+    "after": {
+      "requests": 299,
+      "failures": 0,
+      "dashboard_failures": 0,
+      "health_failures": 0,
+      "max_successful_seconds": 0.25912045900008707
+    }
+  },
+  "loco": {
+    "before": {
+      "requests": 60,
+      "failures": 0,
+      "dashboard_failures": 0,
+      "health_failures": 0,
+      "max_successful_seconds": 0.1134246249999995
+    },
+    "during": {
+      "requests": 6,
+      "failures": 0,
+      "dashboard_failures": 0,
+      "health_failures": 0,
+      "max_successful_seconds": 0.13547008400000493
+    },
+    "after": {
+      "requests": 299,
+      "failures": 0,
+      "dashboard_failures": 0,
+      "health_failures": 0,
+      "max_successful_seconds": 0.20720291599999996
+    }
+  }
+}

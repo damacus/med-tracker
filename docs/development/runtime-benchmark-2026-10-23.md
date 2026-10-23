@@ -281,3 +281,85 @@ and [overlapping build records](runtime-benchmark-2026-10-23/one-gib/overlapping
 are retained with the original build log and compressed contemporaneous diagnostic
 tool outputs. The diagnostic timestamps are preserved; these are recovered
 historical observations, not a new recreation of the build failure.
+
+## Matched one-GiB Rails async follow-up
+
+Rails also completed the same import under a hard **1 GiB app-container limit
+with no swap**, with no OOM and no restart through five minutes of retention.
+This trial used one Puma process with Solid Queue in threaded async mode, a fresh
+clone of the same synthetic Rails seed and fresh queue/cache/cable databases,
+the same exact archive and unchanged application image. Only the benchmark apps
+were paused between trials; no other workloads were stopped or rebuilt.
+
+`SOLID_QUEUE_IN_PUMA=true`, `SOLID_QUEUE_SUPERVISOR_MODE=async`,
+`mem_limit: 1g`, `memswap_limit: 1g` and `restart: no` match the intended test.
+Docker inspection and kernel readings verify the limit and zero swap allowance.
+PostgreSQL and RustFS remain uncapped on both sides: they are outside this 1 GiB
+app budget, and their swap allowance is not disabled by the app setting.
+
+| App container, threaded/background mode | Rails | Loco |
+|---|---:|---:|
+| Before import: working-set median (MiB) | 325.3 | 65.4 |
+| During import: sampled working-set peak (MiB) | 988.9 | 250.8 |
+| Five minutes after: working-set median (MiB) | 948.0 | 242.2 |
+| Five minutes after: anonymous median (MiB) | 923.3 | 189.0 |
+| Kernel raw peak since container start (MiB) | 1024.0 | 482.3 |
+| Observed upload/queue/import time (s) | 196.5 | 5.6 |
+| Kernel memory-limit hit events (`max`) | 1245 | 0 |
+| OOM events / restarts | 0 / 0 | 0 / 0 |
+
+The raw peak includes file cache; working set subtracts inactive file cache.
+Rails reached its hard kernel ceiling, while Loco stayed below half of that
+budget in its earlier matched trial. Limit-hit events indicate memory pressure,
+not OOM kills. Both final catalogues match exactly: 84,410 barcodes and 187,213
+AMPP relationships, with the same ordered business-field hashes and 16,942 skips.
+
+The supporting services also used memory outside the app budget:
+
+| Working-set memory outside/including the app budget (MiB) | Rails | Loco |
+|---|---:|---:|
+| PostgreSQL peak during import | 705.9 | 216.6 |
+| RustFS peak during import | 91.9 | 87.2 |
+| Whole stack: simultaneous peak during import | 1783.3 | 548.8 |
+| Whole stack: final-minute median five minutes after | 1265.3 | 559.9 |
+
+Whole-stack values sum simultaneous samples, rather than adding component peaks.
+The dependency containers were reused across fresh database clones; their cache
+and maintenance activity limit attribution to the import itself. Neither run
+establishes that the whole deployment fits on a 1 GiB machine or tests a database
+memory cap. [Dependency measurements](runtime-benchmark-2026-10-23/rails-one-gib/dependency-comparison.json)
+are retained with the underlying samples.
+
+| Light HTTP probes during import | Rails | Loco |
+|---|---:|---:|
+| Requests | 194 | 6 |
+| Failures at the shared two-second deadline | 2 | 0 |
+| Dashboard timeouts | 1 | 0 |
+| Health timeouts | 1 | 0 |
+| Slowest successful probe (s) | 0.811 | 0.135 |
+
+The timeouts were client observations; they do not establish the server’s eventual
+response time or prove a particular cause. These are light health/dashboard probes,
+not a concurrent-user load test. The much shorter Loco import has fewer probe
+samples, so the raw counts and observed maximums must not be treated as a robust
+latency-distribution comparison. Completion times retain five-second polling
+precision. Both cases are single sequential local trials, with shared-VM and
+database-cache limitations as described above.
+
+This result shows that the tested Rails implementation can complete within
+1 GiB; it does not support a claim that Rails requires more than 1 GiB for this
+import. Loco retained substantially less application memory and more headroom.
+The separate web/worker production layout and sustained traffic remain outside
+this experiment. No manual GC, heap tuning, retry or application change was used.
+
+Both app containers were left running in async mode under their 1 GiB/no-swap
+settings, using their own newly imported seeded clones. Loco’s pause/restart was
+outside its recorded observation window. Both passed health and authenticated
+dashboard checks after the comparison.
+
+[Rails completion and kernel counters](runtime-benchmark-2026-10-23/rails-one-gib/completion.json),
+[phase summary](runtime-benchmark-2026-10-23/rails-one-gib/summary.json),
+[responsiveness comparison](runtime-benchmark-2026-10-23/rails-one-gib/responsiveness.json)
+and [Compose settings](runtime-benchmark-2026-10-23/rails-one-gib/compose-rails-1g.json)
+are retained with raw samples and the live Docker event capture. Application
+logs remain local and are not part of the committed evidence bundle.

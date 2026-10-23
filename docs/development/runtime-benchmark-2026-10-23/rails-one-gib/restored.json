@@ -1,0 +1,10 @@
+{
+  "rails": {
+    "health": 200,
+    "authenticated_dashboard": 200
+  },
+  "loco": {
+    "health": 200,
+    "authenticated_dashboard": 200
+  }
+}

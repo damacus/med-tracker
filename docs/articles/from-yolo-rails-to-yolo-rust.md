@@ -52,6 +52,23 @@ application limit. This proves that the tested application workload completed
 within 1 GiB; it does not put the whole stack, or a production deployment,
 inside that budget.
 
+Rails also completed a matched threaded import under the same hard 1 GiB
+application limit with no swap, no OOM events and no restarts through five
+minutes of retention. Its sampled working set peaked at about 989 MiB and
+retained about 948 MiB, compared with Loco's 251 MiB and 242 MiB. Rails reached
+the kernel memory ceiling and recorded limit-hit events, without an OOM kill.
+The result is more memory headroom for Loco, not evidence that Rails cannot do
+this job within 1 GiB.
+
+Both trials used uncapped supporting services. Simultaneous whole-stack working
+set peaked at about 1,783 MiB for Rails and 549 MiB for Loco during import, with
+cache and maintenance activity in reused database containers included. Two Rails
+probes timed out at a two-second deadline; none of Loco's six import probes did.
+The unequal sample counts and light traffic do not establish a latency
+distribution or explain the timeout cause. The
+[matched-trial appendix](../development/runtime-benchmark-2026-10-23.md#matched-one-gib-rails-async-follow-up)
+keeps the exact counters, timing caveats and supporting-service figures together.
+
 ## Less CPU work, rather than a lower peak
 
 A separate follow-up measured CPU work per completed import. Loco background
