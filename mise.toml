@@ -5,4 +5,4 @@
 "cargo:cargo-deny" = "0.20.2"
 lefthook = "2.2.2"
 node = "24"
-ruby = "4.0.8"
+ruby = "4.0.9"
