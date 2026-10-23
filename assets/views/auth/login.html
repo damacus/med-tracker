@@ -1,6 +1,25 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="card shell-card max-w-lg mx-auto"><div class="card-body">
+<section class="card shell-card login-surface">
+  <div class="login-brand">
+    <p class="login-brand-name"><span aria-hidden="true">M</span> MedTracker</p>
+    <div><p class="login-welcome">Welcome back</p><p class="shell-muted">Sign in to your account to continue</p></div>
+    <ul class="login-benefits">
+      <li><strong>Stay on track</strong><span>Never miss a dose</span></li>
+      <li><strong>Your schedule</strong><span>All your meds in one place</span></li>
+      <li><strong>Track your progress</strong><span>Better habits, better health</span></li>
+      <li><strong>Insights that help</strong><span>Understand your health</span></li>
+    </ul>
+    <picture class="login-illustration" data-login-illustration
+      data-light-desktop="/static/images/auth/login-med-illustration-light-desktop.webp"
+      data-light-mobile="/static/images/auth/login-med-illustration-light-mobile.webp"
+      data-dark-desktop="/static/images/auth/login-med-illustration-dark-desktop.webp"
+      data-dark-mobile="/static/images/auth/login-med-illustration-dark-mobile.webp">
+      <source media="(max-width: 520px)" width="384" height="576">
+      <img alt="" width="896" height="672" loading="eager" fetchpriority="high" decoding="async">
+    </picture>
+  </div>
+  <div class="card-body login-form-panel">
   <h1 class="text-3xl font-semibold">Sign in</h1>
   {% if error %}<p role="alert" class="shell-error">{{ error }}</p>{% endif %}
   <form method="post" action="/login" class="grid gap-4 mt-4">
