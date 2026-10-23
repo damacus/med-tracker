@@ -25,6 +25,8 @@ mod people_polish;
 mod dependent_creation;
 #[path = "browser/person_editing.rs"]
 mod person_editing;
+#[path = "browser/review_prompt_editing.rs"]
+mod review_prompt_editing;
 #[path = "browser/typed_care_operations.rs"]
 mod typed_care_operations;
 
