@@ -22,23 +22,23 @@ pub(crate) struct BrowserInput {
 
 pub(crate) async fn apply_browser(
     tenant: &TenantTransaction,
-    operation: &Operation,
-    input: &BrowserInput,
+    input: &HealthInput,
+    browser: &BrowserInput,
     provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<health_event::Model, OperationError> {
     let context = AuthContext {
         tenant,
         provenance,
-        browser: Some(input),
+        browser: Some(browser),
     };
     Ok(apply_sync_operation(
         tenant.transaction(),
         &context,
-        operation,
+        input,
         &tenant.scope().request_id,
     )
     .await?
-    .value())
+    .record)
 }
 
 pub(crate) fn browser_etag(
@@ -76,14 +76,35 @@ pub(crate) async fn apply(
         provenance,
         browser: None,
     };
+    let input = HealthInput::from_operation(operation);
     let row = apply_sync_operation(
         tenant.transaction(),
         &context,
-        operation,
+        &input,
         &tenant.scope().request_id,
     )
     .await?;
-    Ok(row.value())
+    Ok(row.result.value())
+}
+
+pub(crate) async fn apply_typed(
+    tenant: &TenantTransaction,
+    input: &HealthInput,
+    provenance: &CredentialProvenance,
+) -> Result<health_event::Model, OperationError> {
+    let context = AuthContext {
+        tenant,
+        provenance,
+        browser: None,
+    };
+    Ok(apply_sync_operation(
+        tenant.transaction(),
+        &context,
+        input,
+        &tenant.scope().request_id,
+    )
+    .await?
+    .record)
 }
 pub(super) async fn authorize_replay(
     tenant: &TenantTransaction,
@@ -204,7 +225,8 @@ fn sync_error(status: StatusCode) -> OperationError {
         },
     }
 }
-struct Attributes {
+#[derive(Clone)]
+pub(crate) struct Attributes {
     person_id: Option<String>,
     event_kind: Option<i32>,
     severity: Option<i32>,
@@ -217,6 +239,10 @@ struct Attributes {
 
 fn parse_date(value: &Value) -> Result<NaiveDate, StatusCode> {
     let text = value.as_str().ok_or(StatusCode::UNPROCESSABLE_ENTITY)?;
+    parse_date_text(text)
+}
+
+fn parse_date_text(text: &str) -> Result<NaiveDate, StatusCode> {
     let bytes = text.as_bytes();
     if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-' {
         return Err(StatusCode::UNPROCESSABLE_ENTITY);
@@ -224,14 +250,8 @@ fn parse_date(value: &Value) -> Result<NaiveDate, StatusCode> {
     NaiveDate::parse_from_str(text, "%Y-%m-%d").map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)
 }
 
-fn parse_attributes(body: &Value, create: bool) -> Result<Attributes, StatusCode> {
-    let outer = body.as_object().ok_or(StatusCode::BAD_REQUEST)?;
-    let inner = outer
-        .get("health_event")
-        .and_then(Value::as_object)
-        .ok_or(StatusCode::BAD_REQUEST)?;
-    if outer.len() != 1
-        || inner.is_empty()
+fn parse_attributes(inner: &Map<String, Value>, create: bool) -> Result<Attributes, StatusCode> {
+    if inner.is_empty()
         || inner.keys().any(|key| {
             !matches!(
                 key.as_str(),
@@ -315,6 +335,133 @@ fn parse_attributes(body: &Value, create: bool) -> Result<Attributes, StatusCode
         ended_on,
         medication_ids,
     })
+}
+
+pub(crate) struct HealthInput {
+    action: HealthAction,
+    id: Option<String>,
+    if_match: Option<String>,
+    attributes: Result<Attributes, StatusCode>,
+    empty_attributes: bool,
+}
+
+#[derive(Clone, Copy)]
+enum HealthAction {
+    Create,
+    Update,
+    Delete,
+    Other,
+}
+
+impl HealthAction {
+    fn from_str(action: &str) -> Self {
+        match action {
+            "create" => Self::Create,
+            "update" => Self::Update,
+            "delete" => Self::Delete,
+            _ => Self::Other,
+        }
+    }
+}
+
+impl HealthInput {
+    pub(crate) fn from_operation(operation: &Operation) -> Self {
+        Self {
+            action: HealthAction::from_str(&operation.action),
+            id: operation.id.clone(),
+            if_match: operation.if_match.clone(),
+            attributes: parse_attributes(&operation.attributes, operation.action == "create"),
+            empty_attributes: operation.attributes.is_empty(),
+        }
+    }
+
+    pub(crate) fn from_api(
+        body: &Value,
+        id: Option<&str>,
+        if_match: Option<&str>,
+    ) -> Result<Self, OperationError> {
+        let fields = body
+            .as_object()
+            .filter(|outer| outer.len() == 1)
+            .and_then(|outer| outer.get("health_event"))
+            .and_then(Value::as_object)
+            .ok_or_else(|| sync_error(StatusCode::BAD_REQUEST))?;
+        Ok(Self {
+            action: if id.is_some() {
+                HealthAction::Update
+            } else {
+                HealthAction::Create
+            },
+            id: id.map(str::to_owned),
+            if_match: if_match.map(str::to_owned),
+            attributes: parse_attributes(fields, id.is_none()),
+            empty_attributes: fields.is_empty(),
+        })
+    }
+
+    pub(crate) fn from_browser(
+        id: Option<&str>,
+        if_match: Option<String>,
+        person_id: i64,
+        draft: &std::collections::HashMap<String, String>,
+        ongoing: bool,
+    ) -> Self {
+        let field = |key: &str| draft.get(key).map_or("", String::as_str);
+        let attributes = (|| {
+            let event_kind = match field("event_kind") {
+                "illness" => Some(0),
+                "suspected_side_effect" => Some(1),
+                _ => return Err(StatusCode::UNPROCESSABLE_ENTITY),
+            };
+            let severity = match field("severity") {
+                "" => None,
+                "mild" => Some(0),
+                "moderate" => Some(1),
+                "severe" => Some(2),
+                _ => return Err(StatusCode::UNPROCESSABLE_ENTITY),
+            };
+            let title = (!field("title").trim().is_empty())
+                .then(|| field("title").to_owned())
+                .ok_or(StatusCode::UNPROCESSABLE_ENTITY)?;
+            let started_on = parse_date_text(field("started_on"))?;
+            let ended_on = if ongoing {
+                None
+            } else {
+                Some(parse_date_text(field("ended_on"))?)
+            };
+            Ok(Attributes {
+                person_id: Some(person_id.to_string()),
+                event_kind,
+                severity,
+                title: Some(title),
+                notes: Some(field("notes").to_owned()),
+                started_on: Some(started_on),
+                ended_on,
+                medication_ids: None,
+            })
+        })();
+        Self {
+            action: if id.is_some() {
+                HealthAction::Update
+            } else {
+                HealthAction::Create
+            },
+            id: id.map(str::to_owned),
+            if_match,
+            attributes,
+            empty_attributes: false,
+        }
+    }
+
+    pub(crate) fn delete(id: &str, if_match: String) -> Self {
+        Self {
+            action: HealthAction::Delete,
+            id: Some(id.to_owned()),
+            if_match: Some(if_match),
+            attributes: Err(StatusCode::UNPROCESSABLE_ENTITY),
+            empty_attributes: true,
+        }
+    }
 }
 
 fn event_kind(value: i32) -> &'static str {
@@ -615,16 +762,24 @@ async fn set_medications(
     Ok(())
 }
 
+struct HealthWritten {
+    record: health_event::Model,
+    result: SyncResult,
+}
+
 async fn apply_sync_operation(
     db: &DatabaseTransaction,
     context: &AuthContext<'_>,
-    operation: &Operation,
+    input: &HealthInput,
     request_id: &str,
-) -> Result<SyncResult, OperationError> {
+) -> Result<HealthWritten, OperationError> {
     let household_id = context.tenant.scope().household_id;
-    if operation.action == "create" {
-        let attrs = parse_attributes(&json!({"health_event": operation.attributes}), true)
-            .map_err(sync_error)?;
+    if matches!(input.action, HealthAction::Create) {
+        let attrs = input
+            .attributes
+            .as_ref()
+            .map_err(|error| sync_error(*error))?
+            .clone();
         let person = visible_person(db, context, attrs.person_id.as_deref().unwrap())
             .await?
             .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
@@ -637,8 +792,8 @@ async fn apply_sync_operation(
         {
             return Err(OperationError::NotFound);
         }
-        let selected = if let Some(input) = context.browser {
-            input.medications.clone()
+        let selected = if let Some(browser) = context.browser {
+            browser.medications.clone()
         } else {
             medications(db, context, attrs.medication_ids.as_deref().unwrap_or(&[]))
                 .await?
@@ -694,15 +849,18 @@ async fn apply_sync_operation(
         )
         .await?;
         let (_, etag) = representation(db, &record).await?;
-        return Ok(SyncResult {
-            record_type: "HealthEvent",
-            record_id: Some(record.id),
-            record_portable_id: Some(record.portable_id),
-            etag: Some(etag),
-            replayed: Some(false),
+        return Ok(HealthWritten {
+            record: record.clone(),
+            result: SyncResult {
+                record_type: "HealthEvent",
+                record_id: Some(record.id),
+                record_portable_id: Some(record.portable_id),
+                etag: Some(etag),
+                replayed: Some(false),
+            },
         });
     }
-    let id = operation
+    let id = input
         .id
         .as_deref()
         .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
@@ -718,8 +876,8 @@ async fn apply_sync_operation(
     {
         return Err(OperationError::NotFound);
     }
-    let (before_body, current_etag) = representation(db, &record).await?;
-    let expected = operation
+    let (_, current_etag) = representation(db, &record).await?;
+    let expected = input
         .if_match
         .as_deref()
         .filter(|value| !value.is_empty())
@@ -732,10 +890,13 @@ async fn apply_sync_operation(
         .await
         .map_err(database_error)?
         .ok_or(OperationError::NotFound)?;
-    match operation.action.as_str() {
-        "update" => {
-            let attrs = parse_attributes(&json!({"health_event": operation.attributes}), false)
-                .map_err(sync_error)?;
+    match input.action {
+        HealthAction::Update => {
+            let attrs = input
+                .attributes
+                .as_ref()
+                .map_err(|error| sync_error(*error))?
+                .clone();
             let target_person = if let Some(id) = attrs.person_id.as_deref() {
                 let requested = visible_person(db, context, id)
                     .await?
@@ -786,11 +947,13 @@ async fn apply_sync_operation(
             let selected_ids = selected
                 .as_ref()
                 .map(|rows| rows.iter().map(|row| row.id).collect::<HashSet<_>>());
-            let mut previous_ids = before_body["data"]["medication_ids"]
-                .as_array()
-                .ok_or(OperationError::Unavailable)?
-                .iter()
-                .filter_map(Value::as_i64)
+            let mut previous_ids = health_event_medication::Entity::find()
+                .filter(health_event_medication::Column::HealthEventId.eq(record.id))
+                .all(db)
+                .await
+                .map_err(database_error)?
+                .into_iter()
+                .filter_map(|link| link.medication_id)
                 .collect::<HashSet<_>>();
             if let Some(input) = context.browser {
                 previous_ids.retain(|id| input.editable_medication_ids.contains(id));
@@ -850,16 +1013,19 @@ async fn apply_sync_operation(
                 updated
             };
             let (_, etag) = representation(db, &updated).await?;
-            Ok(SyncResult {
-                record_type: "HealthEvent",
-                record_id: Some(updated.id),
-                record_portable_id: Some(updated.portable_id),
-                etag: Some(etag),
-                replayed: Some(unchanged),
+            Ok(HealthWritten {
+                record: updated.clone(),
+                result: SyncResult {
+                    record_type: "HealthEvent",
+                    record_id: Some(updated.id),
+                    record_portable_id: Some(updated.portable_id),
+                    etag: Some(etag),
+                    replayed: Some(unchanged),
+                },
             })
         }
-        "delete" => {
-            if !operation.attributes.is_empty() {
+        HealthAction::Delete => {
+            if !input.empty_attributes {
                 return Err(sync_error(StatusCode::UNPROCESSABLE_ENTITY));
             }
             let before = audit_snapshot(db, &record).await?;
@@ -899,12 +1065,15 @@ async fn apply_sync_operation(
             .insert(db)
             .await
             .map_err(database_error)?;
-            Ok(SyncResult {
-                record_type: "HealthEvent",
-                record_id: Some(record.id),
-                record_portable_id: Some(record.portable_id),
-                etag: None,
-                replayed: None,
+            Ok(HealthWritten {
+                record: record.clone(),
+                result: SyncResult {
+                    record_type: "HealthEvent",
+                    record_id: Some(record.id),
+                    record_portable_id: Some(record.portable_id),
+                    etag: None,
+                    replayed: None,
+                },
             })
         }
         _ => Err(sync_error(StatusCode::UNPROCESSABLE_ENTITY)),

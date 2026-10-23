@@ -26,7 +26,8 @@ use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use doses::CredentialProvenance;
 use hmac::{Hmac, KeyInit, Mac};
 use identity::{Kind, Source};
-use input::{attributes, parse_not_taken, parse_take};
+use input::ActionInput;
+pub use input::ChangeInput;
 use keys::{decode_key, key};
 use persistence::{actionable, find_row, link_take, reopen_decision, save_decision};
 use projection::{Occurrence, projected};
@@ -44,7 +45,14 @@ use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 use uuid::Uuid;
 pub(crate) use writing::browser_list;
+pub(crate) use writing::key_for_row;
 pub use writing::{RangeQuery, authorize, change, list};
+
+pub struct OccurrenceWritten {
+    pub row: dose_occurrence::Model,
+    pub body: Value,
+    pub etag: String,
+}
 
 pub(crate) struct ReportOccurrence {
     pub person_id: i64,
