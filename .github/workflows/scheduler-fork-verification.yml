@@ -1,8 +1,7 @@
 name: Pinned scheduler project verification
 
 on:
-  push:
-    branches: [codex/verify-scheduler-fork]
+  workflow_dispatch:
 
 permissions:
   contents: read
