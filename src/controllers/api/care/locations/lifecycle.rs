@@ -224,12 +224,18 @@ async fn mutation(
                     .and_then(|outer| outer.get("location"))
                     .cloned()
                     .unwrap_or(Value::Null);
-                locations::update(tenant, id, attributes, etag, Some(provenance))
-                    .await
-                    .map(|record| {
-                        let (body, etag) = locations::representation(&record);
-                        (StatusCode::OK, body, Some(etag))
-                    })
+                locations::update(
+                    tenant,
+                    id,
+                    locations::LocationInput::from_json(attributes),
+                    etag,
+                    Some(provenance),
+                )
+                .await
+                .map(|record| {
+                    let (body, etag) = locations::representation(&record);
+                    (StatusCode::OK, body, Some(etag))
+                })
             };
             match result {
                 Ok(reply) => {

@@ -95,20 +95,12 @@ async fn locked(
 pub async fn update(
     tenant: &TenantTransaction,
     id: &str,
-    attributes: Value,
+    input: LocationInput,
     etag: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<location::Model, OperationError> {
     let found = locked(tenant, id, etag).await?;
-    let mut merged = json!({"name":found.name,"description":found.description});
-    let inner = attributes
-        .as_object()
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| invalid("location", "is invalid"))?;
-    for (key, value) in inner {
-        merged[key] = value.clone();
-    }
-    let (name, description) = validate(&merged)?;
+    let (name, description) = input.values(Some(&found))?;
     let before = snapshot(&found);
     let mut active: location::ActiveModel = found.into();
     active.name = Set(name);

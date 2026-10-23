@@ -75,7 +75,31 @@ security decision or unresolved authority change appears.
   navigation and are excluded from the comparison.
 - Independent reviews of medication CRUD, dosage savepoint and the remaining
   typed callers found no actionable issue; the capture guard is verified by
-  the paired mature browser runs. Layers 3–5 remain planned.
+  the paired mature browser runs.
+- Layer 3's typed-location patch interface regression failed before executable
+  edits: `rtk task check` reported the missing `LocationInput` and
+  `LocationField` types. Its focused unit test later passed. Location,
+  invitation, household settings and membership writes now receive typed
+  inputs from their browser, API and sync callers. Invitation email validation
+  has a typed producer with the existing `OperationError` adapter for callers
+  outside this layer; signup's JSON error consumer remains for layer 5. The
+  unused grant argument was removed without changing its request validation.
+- Layer 3 focused local acceptance passed: locations 26/26, invitations 61/61,
+  household administration 41/41, sync catalogue 6/6, and request-level
+  settings 13/13. The test-first location unit case and 19 frontend unit cases
+  passed. All-target `task check`, `task lint`, `task fmt` and `git diff --check`
+  passed. The unchanged-source and candidate full browser runs each passed
+  42 journeys with one skipped test. [Paired mature desktop and mobile
+  captures](../screenshots/typed-household-writes/README.md) show six
+  byte-identical location, settings and members views; invitation management
+  keeps the same layout and content apart from fixture timestamps.
+- Independent whole-area review and narrow follow-up review found no actionable
+  issue in the layer 3 source and test diff. The delivery controller's frozen
+  `task ci` passed: 161 unit tests, 42 browser journeys, 1,179 integration tests
+  and the separate competing-process fixture test. Log:
+  `/private/tmp/medtracker-household-ci.log`. Layers 4–5 remain planned.
+- Person editing is published as #2898 and medication/stock/order writes as
+  #2900; both have passed hosted CI and remain open in native stack #2899.
 - The final scope audit also tracks two separate areas outside this stack:
   app-token issuance and browser review-prompt editing. Browser occurrence forms
   belong to layer 4; report reads and review-prompt PDF conversions belong to

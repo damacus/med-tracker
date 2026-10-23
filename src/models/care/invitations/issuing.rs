@@ -5,22 +5,22 @@ use loco_rs::model::TenantQueryExt;
 
 pub async fn create(
     tenant: &TenantTransaction,
-    attributes: Value,
+    input: InvitationInput,
     acceptance_url: Option<&url::Url>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
     crate::models::care::sync::lock(tenant).await?;
     administration::authorize(tenant).await?;
-    create_authorized(tenant, attributes, acceptance_url, provenance).await
+    create_authorized(tenant, input, acceptance_url, provenance).await
 }
 
 async fn create_authorized(
     tenant: &TenantTransaction,
-    attributes: Value,
+    input: InvitationInput,
     acceptance_url: Option<&url::Url>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
-    let (email, role) = input::attributes(&attributes)?;
+    let (email, role) = input.validated()?;
     if household_invitation::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(household_invitation::Column::Email.eq(&email))
@@ -104,7 +104,7 @@ pub(crate) async fn create_for_parent(
     use sea_orm::QuerySelect;
     crate::models::care::sync::lock(tenant).await?;
     crate::models::care::person_carers::selected(tenant, person_id).await?;
-    let email = input::validated_email(email)?;
+    let email = input::validate_email(email).map_err(OperationError::from)?;
     let pending = household_invitation::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(household_invitation::Column::Email.eq(&email))
@@ -186,8 +186,7 @@ pub(crate) async fn create_for_parent(
     }
     create_authorized(
         tenant,
-        json!({"email":email,"membership_role":"member",
-        "dependent_ids":[person_id],"relationship_type":"parent","access_level":"manage"}),
+        InvitationInput::from_form(&email, "member", true),
         Some(acceptance_url),
         provenance,
     )

@@ -125,9 +125,12 @@ async fn process(
         return Ok(reply);
     }
     let attributes = if method == "DELETE" {
-        Value::Null
+        administration::memberships::MembershipInput::Revoke
     } else {
-        attributes(&body, "household_membership")?
+        administration::memberships::MembershipInput::from_json(attributes(
+            &body,
+            "household_membership",
+        )?)
     };
     let savepoint = tenant
         .transaction()
@@ -138,7 +141,6 @@ async fn process(
         tenant,
         numeric_id,
         attributes,
-        method == "DELETE",
         Some(principal.provenance()),
     )
     .await;

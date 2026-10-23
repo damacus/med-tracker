@@ -4,6 +4,7 @@ mod authority;
 pub mod browser;
 pub mod delivery;
 mod input;
+pub use input::InvitationInput;
 pub(crate) use input::validated_email;
 mod issuing;
 mod lifecycle;

@@ -35,7 +35,6 @@ pub enum GrantCreation {
 
 pub async fn create(
     tenant: &TenantTransaction,
-    _attributes: Value,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<GrantCreation, OperationError> {
     authorize(tenant).await?;

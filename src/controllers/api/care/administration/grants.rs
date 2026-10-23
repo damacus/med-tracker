@@ -108,11 +108,9 @@ async fn process(
     {
         return Ok(reply);
     }
-    let attributes = if id.is_some() {
-        Value::Null
-    } else {
-        attributes(&body, "person_access_grant")?
-    };
+    if id.is_none() {
+        attributes(&body, "person_access_grant")?;
+    }
     let savepoint = tenant
         .transaction()
         .begin()
@@ -123,8 +121,7 @@ async fn process(
             .await
             .map(|()| Value::Null)
     } else {
-        match administration::grants::create(tenant, attributes, Some(principal.provenance())).await
-        {
+        match administration::grants::create(tenant, Some(principal.provenance())).await {
             Ok(administration::grants::GrantCreation::Rejected) => {
                 savepoint
                     .commit()

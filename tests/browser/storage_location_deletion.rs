@@ -20,6 +20,7 @@ async fn storage_location_deletion(viewport: Viewport, size: &'static str) {
         harness::sign_in(journey).await;
         let page = &journey.page;
         page.goto(&format!("{}/households/persistence-fixture/locations/79001", journey.origin), None).await.unwrap();
+        expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         page.get_by_role(AriaRole::Button, named("Delete Location")).click(None).await.unwrap();
         let dialog = page.get_by_role(AriaRole::Dialog, named("Delete Location"));
         expect(dialog.clone()).to_be_visible().await.unwrap();
