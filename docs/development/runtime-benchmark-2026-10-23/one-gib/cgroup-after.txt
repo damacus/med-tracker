@@ -1,0 +1,12 @@
+1073741824
+0
+505745408
+254177280
+0
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+oom_group_kill 0
+sock_throttled 0

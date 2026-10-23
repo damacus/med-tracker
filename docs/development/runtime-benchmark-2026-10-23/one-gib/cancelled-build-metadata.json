@@ -1,0 +1,22 @@
+{
+  "Name": "med-tracker",
+  "Ref": "i1n8trlh2dqjheriim7vyv1w0",
+  "Context": ".",
+  "Dockerfile": "Dockerfile",
+  "VCSRepository": "https://github.com/damacus/med-tracker.git",
+  "VCSRevision": "1de893e64c88e652dfafdd56927b0f20eebf9feb",
+  "StartedAt": "2026-10-23T09:42:48.933775127+01:00",
+  "CompletedAt": "2026-10-23T10:06:25.631937177+01:00",
+  "Duration": 1416698162050,
+  "Status": "canceled",
+  "Error": {
+    "Code": 1,
+    "Message": "context canceled"
+  },
+  "NumCompletedSteps": 26,
+  "NumTotalSteps": 31,
+  "NumCachedSteps": 6,
+  "Config": {
+    "ImageResolveMode": "local"
+  }
+}

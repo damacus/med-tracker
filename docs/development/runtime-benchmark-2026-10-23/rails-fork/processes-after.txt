@@ -1,0 +1,7 @@
+PID                 PPID                RSS                 COMMAND
+10459               10436               402072              puma 8.0.2 (tcp://0.0.0.0:3000) [app]
+11839               10459               237600              solid-queue-fork-supervisor(1.7.0): supervising 27, 31, 35, 38
+11906               11839               242012              solid-queue-dispatcher(1.7.0): dispatching every 1 seconds
+11910               11839               240808              solid-queue-worker(1.7.0): waiting for jobs in notifications
+11914               11839               844476              solid-queue-worker(1.7.0): waiting for jobs in default
+11917               11839               238936              solid-queue-scheduler(1.7.0): scheduling schedule_daily_reminders,refresh_medication_review_evidence,expire_household_exports,reconcile_nhs_dmd_imports

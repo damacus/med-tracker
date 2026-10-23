@@ -1,0 +1,112 @@
+{
+  "app": "loco",
+  "mode": "inline",
+  "started": "2026-10-23T12:21:39.606011+00:00",
+  "import": {
+    "status": 4,
+    "total_records": 288565,
+    "processed_records": 288565,
+    "imported_count": 84410,
+    "created_count": 84410,
+    "updated_count": 0,
+    "unchanged_count": 0,
+    "skipped_count": 16942,
+    "error_message": null
+  },
+  "upload_http_status": 303,
+  "upload_error": null,
+  "import_seconds": 10.693753500000007,
+  "import_start_elapsed": 60.455500708,
+  "import_end_elapsed": 71.149254208,
+  "phases": {
+    "before": {
+      "mt-idle-6577-loco-1": {
+        "median_MiB": 33.046875,
+        "peak_MiB": 33.796875,
+        "final_minute_median_MiB": 33.046875,
+        "final_minute_anon_MiB": 31.87890625,
+        "samples": 121
+      },
+      "mt-idle-6577-loco-db-1": {
+        "median_MiB": 190.66796875,
+        "peak_MiB": 191.46484375,
+        "final_minute_median_MiB": 190.66796875,
+        "final_minute_anon_MiB": 28.72265625,
+        "samples": 121
+      },
+      "mt-idle-6577-loco-storage-1": {
+        "median_MiB": 92.75,
+        "peak_MiB": 93.96484375,
+        "final_minute_median_MiB": 92.75,
+        "final_minute_anon_MiB": 81.76171875,
+        "samples": 121
+      }
+    },
+    "during": {
+      "mt-idle-6577-loco-1": {
+        "median_MiB": 232.5546875,
+        "peak_MiB": 262.67578125,
+        "final_minute_median_MiB": 232.5546875,
+        "final_minute_anon_MiB": 225.0234375,
+        "samples": 20
+      },
+      "mt-idle-6577-loco-db-1": {
+        "median_MiB": 209.0,
+        "peak_MiB": 210.2421875,
+        "final_minute_median_MiB": 209.0,
+        "final_minute_anon_MiB": 40.064453125,
+        "samples": 20
+      },
+      "mt-idle-6577-loco-storage-1": {
+        "median_MiB": 91.48046875,
+        "peak_MiB": 91.5078125,
+        "final_minute_median_MiB": 91.48046875,
+        "final_minute_anon_MiB": 80.0234375,
+        "samples": 20
+      }
+    },
+    "after": {
+      "mt-idle-6577-loco-1": {
+        "median_MiB": 264.8984375,
+        "peak_MiB": 265.890625,
+        "final_minute_median_MiB": 264.8984375,
+        "final_minute_anon_MiB": 225.12890625,
+        "samples": 120
+      },
+      "mt-idle-6577-loco-db-1": {
+        "median_MiB": 218.23828125,
+        "peak_MiB": 225.0390625,
+        "final_minute_median_MiB": 218.23828125,
+        "final_minute_anon_MiB": 49.06640625,
+        "samples": 120
+      },
+      "mt-idle-6577-loco-storage-1": {
+        "median_MiB": 91.0,
+        "peak_MiB": 91.8828125,
+        "final_minute_median_MiB": 91.0,
+        "final_minute_anon_MiB": 79.5546875,
+        "samples": 120
+      }
+    }
+  },
+  "probes": {
+    "before": {
+      "requests": 61,
+      "errors": 0,
+      "max_seconds": 0.1009643330000003,
+      "median_seconds": 0.003004916000001856
+    },
+    "during": {
+      "requests": 10,
+      "errors": 0,
+      "max_seconds": 0.2522742079999887,
+      "median_seconds": 0.0024818539999991174
+    },
+    "after": {
+      "requests": 61,
+      "errors": 0,
+      "max_seconds": 0.1501555830000001,
+      "median_seconds": 0.002530583000009301
+    }
+  }
+}

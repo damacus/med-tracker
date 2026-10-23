@@ -1,0 +1,16 @@
+{
+  "state": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 69502,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-10-23T12:14:44.79238038Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  },
+  "image": "sha256:4cfa90ebf1a3ad5c73a9764158e89aa3a4f667c50d48d863db2eb9f9e7007885"
+}
