@@ -292,7 +292,7 @@ impl<'a> Page<'a> {
                 people::update(
                     &tenant,
                     id,
-                    rendering::attributes(&draft),
+                    super::input::update(&draft),
                     chrono::Utc::now()
                         .with_timezone(&principal.time_zone())
                         .date_naive(),

@@ -201,7 +201,6 @@ async fn process(
     if attributes.is_empty() {
         return Err(response::Failure::bad_request("Invalid request body"));
     }
-    let attributes = Value::Object(attributes);
     let household_id = tenant.scope().household_id;
     let path = match id {
         Some(id) => format!("/api/v1/households/{household_id}/people/{id}"),
@@ -224,7 +223,14 @@ async fn process(
         .map_err(|_| response::unavailable())?;
     let result = match id {
         Some(id) => {
-            people::update(tenant, id, attributes, today, Some(principal.provenance())).await
+            people::update(
+                tenant,
+                id,
+                people::PersonUpdateInput::from_fields(&attributes),
+                today,
+                Some(principal.provenance()),
+            )
+            .await
         }
         None => match serde_json::from_value::<people::DependentInput>(Value::Object(
             fields.clone(),

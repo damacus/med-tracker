@@ -111,23 +111,6 @@ pub(super) fn draft(person: Option<&Value>) -> HashMap<String, String> {
     draft
 }
 
-pub(super) fn attributes(draft: &HashMap<String, String>) -> Value {
-    let capacity = match draft.get("has_capacity").map(String::as_str) {
-        None | Some("false") => json!(false),
-        Some("true") => json!(true),
-        Some(value) => json!(value),
-    };
-    let mut attributes = json!({"name":forms::field(draft,"name"),"email":forms::field(draft,"email"),"date_of_birth":forms::field(draft,"date_of_birth"),"person_type":forms::field(draft,"person_type"),"has_capacity":capacity});
-    if let Some(value) = draft.get("initial_guardian_declaration") {
-        attributes["initial_guardian_declaration"] = match value.as_str() {
-            "true" => json!(true),
-            "false" => json!(false),
-            value => json!(value),
-        };
-    }
-    attributes
-}
-
 pub(super) fn form(
     slug: &str,
     person: Option<&Value>,

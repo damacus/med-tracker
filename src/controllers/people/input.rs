@@ -1,5 +1,29 @@
 use super::*;
-use crate::models::care::people::{DependentInput, DependentKind};
+use crate::models::care::people::{
+    DependentInput, DependentKind, PersonKind, PersonUpdateInput, UpdateField,
+};
+
+pub(super) fn update(draft: &HashMap<String, String>) -> PersonUpdateInput {
+    PersonUpdateInput {
+        name: UpdateField::Value(forms::field(draft, "name").into()),
+        email: UpdateField::Value(Some(forms::field(draft, "email").into())),
+        date_of_birth: forms::field(draft, "date_of_birth")
+            .parse()
+            .map_or(UpdateField::Invalid, UpdateField::Value),
+        person_type: match forms::field(draft, "person_type") {
+            "adult" => UpdateField::Value(PersonKind::Adult),
+            "minor" => UpdateField::Value(PersonKind::Minor),
+            "dependent_adult" => UpdateField::Value(PersonKind::DependentAdult),
+            _ => UpdateField::Invalid,
+        },
+        has_capacity: match draft.get("has_capacity").map(String::as_str) {
+            None | Some("false") => UpdateField::Value(false),
+            Some("true") => UpdateField::Value(true),
+            _ => UpdateField::Invalid,
+        },
+        invalid_shape: draft.contains_key("initial_guardian_declaration"),
+    }
+}
 
 fn invalid() -> OperationError {
     OperationError::Validation {
