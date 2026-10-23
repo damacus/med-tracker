@@ -157,6 +157,15 @@ jobs:
         with:
           name: checked-loco-amd64
           path: checked
+      - name: Use the release builder's Docker image store
+        run: |
+          if sudo test -f /etc/docker/daemon.json; then
+            sudo cat /etc/docker/daemon.json
+          else
+            printf '{}\n'
+          fi | jq '.features["containerd-snapshotter"] = false' > "$RUNNER_TEMP/docker-daemon.json"
+          sudo install -m 0644 "$RUNNER_TEMP/docker-daemon.json" /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: Load the verified release image
         run: |
           (cd checked && sha256sum --check --strict SHA256SUMS)
