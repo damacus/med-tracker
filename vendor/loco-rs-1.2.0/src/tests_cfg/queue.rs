@@ -1,0 +1,72 @@
+#[cfg(feature = "worker")]
+use crate::bgworker;
+use std::path::PathBuf;
+
+#[cfg(feature = "worker")]
+fn queue_jobs_fixture_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join("queue")
+        .join("jobs.yaml")
+}
+
+#[cfg(feature = "worker")]
+/// # Panics
+///
+/// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly
+/// and preventing further test execution with incomplete setup.
+pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
+    let yaml_tasks =
+        std::fs::read_to_string(queue_jobs_fixture_path()).expect("Failed to read YAML file");
+
+    let tasks: Vec<bgworker::pg::Job> =
+        serde_yaml::from_str(&yaml_tasks).expect("Failed to parse YAML");
+    for task in tasks {
+        sqlx::query(
+            r"
+            INSERT INTO pg_loco_queue (id, name, task_data, status, run_at, interval, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, NULL, $6, $7)
+            ",
+        )
+        .bind(task.id)
+        .bind(task.name)
+        .bind(task.data)
+        .bind(task.status.to_string())
+        .bind(task.run_at)
+        .bind(task.created_at)
+        .bind(task.updated_at)
+        .execute(pool)
+        .await.expect("execute insert query");
+    }
+}
+
+#[cfg(all(feature = "worker", feature = "db-sqlite"))]
+/// # Panics
+///
+/// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly
+/// and preventing further test execution with incomplete setup.
+pub async fn sqlite_seed_data(pool: &sqlx::Pool<sqlx::Sqlite>) {
+    let yaml_tasks =
+        std::fs::read_to_string(queue_jobs_fixture_path()).expect("Failed to read YAML file");
+
+    let tasks: Vec<bgworker::sqlt::Job> =
+        serde_yaml::from_str(&yaml_tasks).expect("Failed to parse YAML");
+    for task in tasks {
+        sqlx::query(
+            r"
+            INSERT INTO sqlt_loco_queue (id, name, task_data, status, run_at, interval, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, NULL, ?, ?)
+            "
+        )
+        .bind(task.id)
+        .bind(task.name)
+        .bind(task.data.to_string())
+        .bind(task.status.to_string())
+        .bind(task.run_at)
+        .bind(task.created_at)
+        .bind(task.updated_at)
+        .execute(pool)
+        .await.expect("create row");
+    }
+}

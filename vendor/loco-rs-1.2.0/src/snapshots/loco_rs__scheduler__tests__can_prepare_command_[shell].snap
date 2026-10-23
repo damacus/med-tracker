@@ -1,0 +1,11 @@
+---
+source: src/scheduler.rs
+expression: prepare_command
+---
+JobDescription {
+    command: Shell(
+        "echo loco",
+    ),
+    output: STDOUT,
+    environment: Test,
+}

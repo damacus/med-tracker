@@ -57,6 +57,12 @@ lighthouse-*
 node_modules
 .worktrees/
 vendor/**/*
+!vendor/README.md
+!vendor/loco-scheduler.patch
+!vendor/loco-rs-1.2.0/
+!vendor/loco-rs-1.2.0/**
+!vendor/upstream/
+!vendor/upstream/loco-rs-1.2.0.crate
 !vendor/fonts/
 !vendor/fonts/NotoSans-Regular.ttf
 !vendor/fonts/OFL-1.1.txt

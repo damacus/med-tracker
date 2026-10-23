@@ -1,0 +1,780 @@
+use crate::validation::ValidatorTrait;
+use axum::extract::{Form, FromRequest, Json, Query, Request};
+use serde::de::DeserializeOwned;
+
+use crate::Error;
+
+/// Axum middleware for validating JSON request bodies
+///
+/// This module provides extractors for validating JSON request bodies, form
+/// data, path parameters, and query parameters using the `validator` crate.
+/// Each extractor supports both detailed validation error messages
+/// (`WithMessage` variants) and simplified error responses.
+///
+/// # Example:
+///
+/// ```
+/// use axum::{routing::post, Router};
+/// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::JsonValidateWithMessage;
+/// use validator::Validate;
+///
+/// #[derive(Serialize, Deserialize, Validate)]
+/// struct User {
+///     #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+///     username: String,
+///     #[validate(email(message = "email must be valid"))]
+///     email: String,
+/// }
+///
+/// async fn create_user(JsonValidateWithMessage(user): JsonValidateWithMessage<User>) -> String {
+///     format!("User created: {}, {}", user.username, user.email)
+/// }
+///
+/// fn app() -> Router {
+///     Router::new()
+///         .route("/users", post(create_user))
+/// }
+/// ```
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct JsonValidateWithMessage<T>(pub T);
+
+/// Axum middleware for validating form data
+///
+/// # Example:
+///
+/// ```
+/// use axum::{routing::post, Router};
+/// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::FormValidateWithMessage;
+/// use validator::Validate;
+///
+/// #[derive(Serialize, Deserialize, Validate)]
+/// struct User {
+///     #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+///     username: String,
+///     #[validate(email(message = "email must be valid"))]
+///     email: String,
+/// }
+///
+/// async fn create_user(FormValidateWithMessage(user): FormValidateWithMessage<User>) -> String {
+///     format!("User created: {}, {}", user.username, user.email)
+/// }
+///
+/// fn app() -> Router {
+///     Router::new()
+///         .route("/users", post(create_user))
+/// }
+/// ```
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FormValidateWithMessage<T>(pub T);
+
+/// Axum middleware for validating JSON request bodies with simplified error
+/// handling
+///
+/// # Example:
+///
+/// ```
+/// use axum::{routing::post, Router};
+/// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::JsonValidate;
+/// use validator::Validate;
+///
+/// #[derive(Serialize, Deserialize, Validate)]
+/// struct User {
+///     #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+///     username: String,
+///     #[validate(email(message = "email must be valid"))]
+///     email: String,
+/// }
+///
+/// async fn create_user(JsonValidate(user): JsonValidate<User>) -> String {
+///     format!("User created: {}, {}", user.username, user.email)
+/// }
+///
+/// fn app() -> Router {
+///     Router::new()
+///         .route("/users", post(create_user))
+/// }
+/// ```
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct JsonValidate<T>(pub T);
+
+/// Axum middleware for validating form data with simplified error handling
+///
+/// # Example:
+///
+/// ```
+/// use axum::{routing::post, Router};
+/// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::FormValidate;
+/// use validator::Validate;
+///
+/// #[derive(Serialize, Deserialize, Validate)]
+/// struct User {
+///     #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+///     username: String,
+///     #[validate(email(message = "email must be valid"))]
+///     email: String,
+/// }
+///
+/// async fn create_user(FormValidate(user): FormValidate<User>) -> String {
+///     format!("User created: {}, {}", user.username, user.email)
+/// }
+///
+/// fn app() -> Router {
+///     Router::new()
+///         .route("/users", post(create_user))
+/// }
+/// ```
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FormValidate<T>(pub T);
+
+/// Axum middleware for validating query parameters
+///
+/// # Example:
+///
+/// ```
+/// use axum::{routing::get, Router};
+/// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::QueryValidateWithMessage;
+/// use validator::Validate;
+///
+/// #[derive(Serialize, Deserialize, Validate)]
+/// struct UserQuery {
+///     #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+///     username: String,
+///     #[validate(email(message = "email must be valid"))]
+///     email: String,
+/// }
+///
+/// async fn get_user(QueryValidateWithMessage(params): QueryValidateWithMessage<UserQuery>) -> String {
+///     format!("User: {}, Email: {}", params.username, params.email)
+/// }
+///
+/// fn app() -> Router {
+///     Router::new()
+///         .route("/users", get(get_user))
+/// }
+/// ```
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct QueryValidateWithMessage<T>(pub T);
+
+/// Axum middleware for validating query parameters with simplified error
+/// handling
+///
+/// # Example:
+///
+/// ```
+/// use axum::{routing::get, Router};
+/// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::QueryValidate;
+/// use validator::Validate;
+///
+/// #[derive(Serialize, Deserialize, Validate)]
+/// struct UserQuery {
+///     #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+///     username: String,
+///     #[validate(email(message = "email must be valid"))]
+///     email: String,
+/// }
+///
+/// async fn get_user(QueryValidate(params): QueryValidate<UserQuery>) -> String {
+///     format!("User: {}, Email: {}", params.username, params.email)
+/// }
+///
+/// fn app() -> Router {
+///     Router::new()
+///         .route("/users", get(get_user))
+/// }
+/// ```
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct QueryValidate<T>(pub T);
+
+// ---------------------------------------
+//
+// Shared `FromRequest` implementation
+//
+// Each extractor above is the combination of two independent axes:
+//   * how the value is decoded from the request: JSON body / form body / query string
+//   * which error tier a failed `validate()` call reports as:
+//       - "with message": field-level detail via `Error::Validation` (`{"errors": {...}}`)
+//       - opaque: `Error::BadRequest(String::new())` (`{"error": "Bad Request"}`)
+//
+// The decoding step is factored into the `extract_*` functions below, and the two error
+// tiers are factored into the `impl_validate_with_message!` / `impl_validate_opaque!` macros,
+// so each of the 6 combinations only needs to name its decoder (and, for the opaque tier,
+// its log message).
+//
+// ---------------------------------------
+
+/// Decode a JSON request body into `T`, without validating it.
+///
+/// # Errors
+/// Returns an error when the request body cannot be decoded as JSON into `T`.
+async fn extract_json_value<T, S>(req: Request, state: &S) -> Result<T, Error>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    let Json(value) = Json::<T>::from_request(req, state).await?;
+    Ok(value)
+}
+
+/// Decode a form-urlencoded request body into `T`, without validating it.
+///
+/// # Errors
+/// Returns an error when the request body cannot be decoded as form data into `T`.
+async fn extract_form_value<T, S>(req: Request, state: &S) -> Result<T, Error>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    let Form(value) = Form::<T>::from_request(req, state).await?;
+    Ok(value)
+}
+
+/// Decode the query string into `T`, without validating it.
+///
+/// # Errors
+/// Returns an error when the query string cannot be decoded into `T`.
+async fn extract_query_value<T, S>(req: Request, state: &S) -> Result<T, Error>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    let Query(value) = Query::<T>::from_request(req, state)
+        .await
+        .map_err(|rejection| Error::BadRequest(format!("Invalid query string: {rejection}")))?;
+    Ok(value)
+}
+
+/// Implement `FromRequest` for a validate extractor in the "with message" error tier: a failed
+/// `validate()` call is reported with full field-level detail (`Error::Validation`, i.e.
+/// `{"errors": {...}}`).
+macro_rules! impl_validate_with_message {
+    ($name:ident, $extract:ident) => {
+        impl<T, S> FromRequest<S> for $name<T>
+        where
+            T: DeserializeOwned + ValidatorTrait,
+            S: Send + Sync,
+        {
+            type Rejection = Error;
+
+            async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+                let value = $extract::<T, S>(req, state).await?;
+                value.validate().map_err(Error::Validation)?;
+                Ok(Self(value))
+            }
+        }
+    };
+}
+
+/// Implement `FromRequest` for a validate extractor in the opaque error tier: a failed
+/// `validate()` call is reported without detail (`Error::BadRequest(String::new())`, i.e.
+/// `{"error": "Bad Request"}`), logging `$log_msg` at debug level for diagnosis.
+macro_rules! impl_validate_opaque {
+    ($name:ident, $extract:ident, $log_msg:literal) => {
+        impl<T, S> FromRequest<S> for $name<T>
+        where
+            T: DeserializeOwned + ValidatorTrait,
+            S: Send + Sync,
+        {
+            type Rejection = Error;
+
+            async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+                let value = $extract::<T, S>(req, state).await?;
+                value.validate().map_err(|err| {
+                    tracing::debug!(err = ?err, $log_msg);
+                    Error::BadRequest(String::new())
+                })?;
+                Ok(Self(value))
+            }
+        }
+    };
+}
+
+impl_validate_with_message!(JsonValidateWithMessage, extract_json_value);
+impl_validate_with_message!(FormValidateWithMessage, extract_form_value);
+impl_validate_with_message!(QueryValidateWithMessage, extract_query_value);
+
+impl_validate_opaque!(
+    JsonValidate,
+    extract_json_value,
+    "request validation error occurred"
+);
+impl_validate_opaque!(
+    FormValidate,
+    extract_form_value,
+    "request validation error occurred"
+);
+impl_validate_opaque!(
+    QueryValidate,
+    extract_query_value,
+    "query validation error occurred"
+);
+
+#[cfg(test)]
+mod tests {
+    use crate::validation::{ModelValidationErrors, ValidatorTrait};
+    use axum::{
+        body::{to_bytes, Body},
+        http::{self, Request as HttpRequest, StatusCode},
+        response::IntoResponse,
+    };
+    use serde::{Deserialize, Serialize};
+    use serde_json::{json, Value};
+    use validator::Validate;
+
+    use super::*;
+
+    #[derive(Debug, Serialize, Deserialize, Validate)]
+    struct TestUser {
+        #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+        username: String,
+        #[validate(email(message = "email must be valid"))]
+        email: String,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, Validate)]
+    struct TestQueryParams {
+        #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+        username: String,
+        #[validate(email(message = "email must be valid"))]
+        email: String,
+    }
+
+    fn create_json_request(json: &str) -> HttpRequest<Body> {
+        HttpRequest::builder()
+            .method(http::Method::POST)
+            .uri("/test")
+            .header(http::header::CONTENT_TYPE, "application/json")
+            .body(Body::from(json.to_string()))
+            .unwrap()
+    }
+
+    fn create_form_request(form_data: &str) -> HttpRequest<Body> {
+        HttpRequest::builder()
+            .method(http::Method::POST)
+            .uri("/test")
+            .header(
+                http::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded",
+            )
+            .body(Body::from(form_data.to_string()))
+            .unwrap()
+    }
+
+    fn create_query_request(query: &str) -> HttpRequest<Body> {
+        HttpRequest::builder()
+            .method(http::Method::GET)
+            .uri(format!("/test?{}", query))
+            .body(Body::empty())
+            .unwrap()
+    }
+
+    async fn assert_response_status_and_body(
+        err: Error,
+        expected_status: StatusCode,
+        expected_json: Value,
+    ) {
+        let response = err.into_response();
+        assert_eq!(response.status(), expected_status);
+
+        let body = to_bytes(response.into_body(), 1024 * 1024)
+            .await
+            .expect("Failed to read response body");
+
+        let body_str = String::from_utf8(body.to_vec()).expect("Response body is not valid UTF-8");
+
+        let actual_json =
+            serde_json::from_str::<Value>(&body_str).expect("Response body is not valid JSON");
+
+        assert_eq!(actual_json, expected_json);
+    }
+
+    #[tokio::test]
+    async fn test_json_validate_with_message_valid() {
+        let valid_json = r#"{"username": "valid_user", "email": "test@example.com"}"#;
+        let request = create_json_request(valid_json);
+
+        let result = JsonValidateWithMessage::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_ok());
+
+        let user = result.unwrap().0;
+        assert_eq!(user.username, "valid_user");
+        assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_json_validate_with_message_invalid() {
+        let invalid_json = r#"{"username": "ab", "email": "invalid-email"}"#;
+        let request = create_json_request(invalid_json);
+
+        let result = JsonValidateWithMessage::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "errors": {
+                "username": [
+                    {
+                        "code": "length",
+                        "message": "username must be at least 3 characters",
+                        "params": {
+                            "min": 3,
+                            "value": "ab"
+                        }
+                    }
+                ],
+                "email": [
+                    {
+                        "code": "email",
+                        "message": "email must be valid",
+                        "params": {
+                            "value": "invalid-email"
+                        }
+                    }
+                ]
+            }
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_form_validate_with_message_valid() {
+        let valid_form = "username=valid_user&email=test@example.com";
+        let request = create_form_request(valid_form);
+
+        let result = FormValidateWithMessage::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_ok());
+
+        let user = result.unwrap().0;
+        assert_eq!(user.username, "valid_user");
+        assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_form_validate_with_message_invalid() {
+        let invalid_form = "username=ab&email=invalid-email";
+        let request = create_form_request(invalid_form);
+
+        let result = FormValidateWithMessage::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "errors": {
+                "username": [
+                    {
+                        "code": "length",
+                        "message": "username must be at least 3 characters",
+                        "params": {
+                            "min": 3,
+                            "value": "ab"
+                        }
+                    }
+                ],
+                "email": [
+                    {
+                        "code": "email",
+                        "message": "email must be valid",
+                        "params": {
+                            "value": "invalid-email"
+                        }
+                    }
+                ]
+            }
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_json_validate_valid() {
+        let valid_json = r#"{"username": "valid_user", "email": "test@example.com"}"#;
+        let request = create_json_request(valid_json);
+
+        let result = JsonValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_ok());
+
+        let user = result.unwrap().0;
+        assert_eq!(user.username, "valid_user");
+        assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_json_validate_invalid() {
+        let invalid_json = r#"{"username": "ab", "email": "invalid-email"}"#;
+        let request = create_json_request(invalid_json);
+
+        let result = JsonValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        if let Error::BadRequest(msg) = &err {
+            assert_eq!(msg, &String::new());
+        } else {
+            panic!("Expected BadRequest error");
+        }
+
+        let expected = json!({
+            "error": "Bad Request",
+            // "description": ""
+        });
+
+        assert_response_status_and_body(err, StatusCode::BAD_REQUEST, expected).await;
+    }
+
+    #[tokio::test]
+    async fn test_form_validate_valid() {
+        let valid_form = "username=valid_user&email=test@example.com";
+        let request = create_form_request(valid_form);
+
+        let result = FormValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_ok());
+
+        let user = result.unwrap().0;
+        assert_eq!(user.username, "valid_user");
+        assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_form_validate_invalid() {
+        let invalid_form = "username=ab&email=invalid-email";
+        let request = create_form_request(invalid_form);
+
+        let result = FormValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        if let Error::BadRequest(msg) = &err {
+            assert_eq!(msg, &String::new());
+        } else {
+            panic!("Expected BadRequest error");
+        }
+
+        let expected = json!({
+            "error": "Bad Request",
+            // "description": ""
+        });
+
+        assert_response_status_and_body(err, StatusCode::BAD_REQUEST, expected).await;
+    }
+
+    #[tokio::test]
+    async fn test_malformed_json() {
+        let invalid_json = r#"{"username": "valid_user", "email": "test@example.com"#;
+        let request = create_json_request(invalid_json);
+
+        let result = JsonValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "error": "Bad Request",
+            // "description": "invalid type: map, expected a string at line 1 column 47"
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_malformed_form() {
+        let invalid_form = "username=valid_user&email%invalid_format";
+        let request = create_form_request(invalid_form);
+
+        let result = FormValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, Error::AxumFormRejection(_)),
+            "expected a form rejection, got: {err:?}"
+        );
+
+        let expected = json!({
+            "error": "Bad Request",
+            // "description": "Failed to deserialize form body: ..."
+        });
+
+        assert_response_status_and_body(err, StatusCode::UNPROCESSABLE_ENTITY, expected).await;
+    }
+
+    // Custom validator that does not rely on the `validator` crate
+    #[derive(Debug, Serialize, Deserialize)]
+    struct CustomData {
+        username: String,
+        email: String,
+    }
+
+    impl ValidatorTrait for CustomData {
+        fn validate(&self) -> Result<(), ModelValidationErrors> {
+            use crate::validation::ValidationError;
+            use std::collections::{BTreeMap, HashMap};
+            if self.username.len() < 3 {
+                let mut errors: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
+                errors.insert(
+                    "username".to_string(),
+                    vec![ValidationError {
+                        code: "length".to_string(),
+                        message: Some("username must be at least 3 characters".to_string()),
+                        params: HashMap::new(),
+                    }],
+                );
+                return Err(ModelValidationErrors { errors });
+            }
+            if !self.email.contains('@') {
+                let mut errors: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
+                errors.insert(
+                    "email".to_string(),
+                    vec![ValidationError {
+                        code: "email".to_string(),
+                        message: Some("email must be valid".to_string()),
+                        params: HashMap::new(),
+                    }],
+                );
+                return Err(ModelValidationErrors { errors });
+            }
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_json_validate_with_message_custom_validator_invalid() {
+        let invalid_json = r#"{"username": "ab", "email": "invalid"}"#;
+        let request = create_json_request(invalid_json);
+
+        let result = JsonValidateWithMessage::<CustomData>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "errors": {
+                "username": [
+                    { "code": "length", "message": "username must be at least 3 characters" }
+                ]
+            }
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_json_validate_with_message_custom_validator_valid() {
+        let valid_json = r#"{"username": "valid_user", "email": "valid@example.com"}"#;
+        let request = create_json_request(valid_json);
+
+        let result = JsonValidateWithMessage::<CustomData>::from_request(request, &()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_query_validate_with_message_valid() {
+        let valid_query = "username=valid_user&email=test@example.com";
+        let request = create_query_request(valid_query);
+
+        let result = QueryValidateWithMessage::<TestQueryParams>::from_request(request, &()).await;
+        assert!(result.is_ok());
+
+        let params = result.unwrap().0;
+        assert_eq!(params.username, "valid_user");
+        assert_eq!(params.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_query_validate_with_message_invalid() {
+        let invalid_query = "username=ab&email=invalid-email";
+        let request = create_query_request(invalid_query);
+
+        let result = QueryValidateWithMessage::<TestQueryParams>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "errors": {
+                "username": [
+                    {
+                        "code": "length",
+                        "message": "username must be at least 3 characters",
+                        "params": {
+                            "min": 3,
+                            "value": "ab"
+                        }
+                    }
+                ],
+                "email": [
+                    {
+                        "code": "email",
+                        "message": "email must be valid",
+                        "params": {
+                            "value": "invalid-email"
+                        }
+                    }
+                ]
+            }
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_query_validate_valid() {
+        let valid_query = "username=valid_user&email=test@example.com";
+        let request = create_query_request(valid_query);
+
+        let result = QueryValidate::<TestQueryParams>::from_request(request, &()).await;
+        assert!(result.is_ok());
+
+        let params = result.unwrap().0;
+        assert_eq!(params.username, "valid_user");
+        assert_eq!(params.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_query_validate_invalid() {
+        let invalid_query = "username=ab&email=invalid-email";
+        let request = create_query_request(invalid_query);
+
+        let result = QueryValidate::<TestQueryParams>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        if let Error::BadRequest(msg) = &err {
+            assert_eq!(msg, &String::new());
+        } else {
+            panic!("Expected BadRequest error");
+        }
+
+        let expected = json!({
+            "error": "Bad Request",
+            // "description": ""
+        });
+
+        assert_response_status_and_body(err, StatusCode::BAD_REQUEST, expected).await;
+    }
+
+    #[tokio::test]
+    async fn test_malformed_query() {
+        let invalid_query = "username=valid_user&email=invalid_format";
+        let request = create_query_request(invalid_query);
+
+        let result = QueryValidate::<TestQueryParams>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "error": "Bad Request",
+            // "description": "Invalid query string: expected `=` after key"
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+}

@@ -8,6 +8,10 @@
 !src/**
 !migration/
 !migration/**
+!vendor/
+vendor/**
+!vendor/loco-rs-1.2.0/
+!vendor/loco-rs-1.2.0/**
 migration/target/
 !assets/
 !assets/**

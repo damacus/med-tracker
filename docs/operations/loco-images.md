@@ -1,14 +1,35 @@
 # Root Loco Linux images
 
 Build the root application with `task image:build`, then run `task image:test`.
-Both tasks accept `LOCO_IMAGE` (default `medtracker-loco:local`). Docker is required;
-the build uses the committed Cargo and npm lockfiles. The checks create and remove
+Both tasks accept `LOCO_IMAGE` (default `medtracker-loco:local`). Docker is required.
+The build uses the committed Cargo and npm lockfiles and accepts `CARGO_BUILD_JOBS`
+(default `2`, use `1` on a constrained VM). The checks create and remove
 their own PostgreSQL container, migrate its empty database, and boot the server
 and worker with a restricted runtime login. No existing database is used.
 The final scratch image contains the Linux executable, its shared libraries,
 TLS roots, timezone data,
 production configuration, Tera templates, static assets and PDF fonts. It runs as
 UID/GID 65532, without a shell or compiler.
+
+Native scheduler execution is covered separately by
+`task test:scheduler:process` and `task test:scheduler:image LOCO_IMAGE=<image>`.
+The image acceptance creates a private database and restricted login, expires a
+support session, then inserts another session and waits for a later cron tick.
+It checks both attributable audit records, absence of duplicate expiry, UID 65532,
+missing `/bin/sh` and clean scheduler shutdown. These checks execute a schedule;
+listing configured jobs alone does not prove execution.
+
+On a Docker host with exhausted default network pools, the image checks accept
+`LOCO_IMAGE_SUBNET=<unused-private-subnet>`. Choose an unused subnet; the checks
+remove only the network and containers they created.
+
+Loco's released 1.2.0 scheduler requires a local correction for direct native-task
+execution. The repository's `vendor/README.md` patch record describes the retained
+published archive, checksum and exact source diff.
+`task scheduler:patch:check` verifies them.
+Native `run` values support quoted arguments but do not expand shell syntax.
+`shell: true` explicitly requests a platform shell and cannot run in this scratch
+image. Keep production schedules as native tasks.
 
 The **Loco Linux images** workflow builds and checks amd64 and arm64 on native
 runners. Dispatch it **from main** with **publish** enabled to publish a

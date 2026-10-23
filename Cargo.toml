@@ -1,6 +1,9 @@
 [workspace]
 members = ["migration"]
-exclude = ["rust", "client-tools"]
+exclude = ["rust", "client-tools", "vendor/loco-rs-1.2.0"]
+
+[patch.crates-io]
+loco-rs = { path = "vendor/loco-rs-1.2.0" }
 
 [package]
 name = "med-tracker"

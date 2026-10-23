@@ -24,6 +24,7 @@ ENV CARGO_HOME=/usr/local/cargo \
 WORKDIR /app
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY migration/ migration/
+COPY vendor/loco-rs-1.2.0/ vendor/loco-rs-1.2.0/
 COPY src/ src/
 COPY assets/ assets/
 COPY rails/config/ai_medication_sources.yml rails/config/medication_review_labels.yml rails/config/

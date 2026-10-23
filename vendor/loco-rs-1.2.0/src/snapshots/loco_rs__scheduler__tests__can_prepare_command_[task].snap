@@ -1,0 +1,17 @@
+---
+source: src/scheduler.rs
+expression: prepare_command
+---
+JobDescription {
+    command: NativeTask {
+        executable: "[BIN_PATH]",
+        arguments: [
+            "task",
+            "foo",
+            "LOCO_ENV:test",
+            "SCHEDULER:true",
+        ],
+    },
+    output: STDOUT,
+    environment: Test,
+}

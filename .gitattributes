@@ -10,3 +10,7 @@ rails/config/credentials.yml.enc diff=rails_credentials
 
 mobile/android/phone/src/main/kotlin/io/medtracker/client/** -whitespace
 assets/static/fonts/**/OFL.txt -whitespace
+
+# Preserve published dependency bytes; the exact scheduler delta has its own check.
+vendor/loco-rs-1.2.0/** -whitespace
+vendor/loco-scheduler.patch -whitespace

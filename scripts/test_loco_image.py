@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import tarfile
+import tempfile
 import time
 import unittest
 import urllib.error
@@ -19,11 +20,12 @@ class LocoImageTest(unittest.TestCase):
 
     def test_production_boot_with_restricted_database_identity(self):
         prefix = "loco-image-" + uuid.uuid4().hex
-        database, server, worker = (
-            prefix + suffix for suffix in ("-db", "-server", "-worker")
+        database, server, worker, scheduler = (
+            prefix + suffix for suffix in ("-db", "-server", "-worker", "-scheduler")
         )
         containers = []
-        self.docker("network", "create", prefix)
+        subnet = os.environ.get("LOCO_IMAGE_SUBNET")
+        self.docker("network", "create", *(["--subnet", subnet] if subnet else []), prefix)
         try:
             self.docker(
                 "run",
@@ -118,6 +120,53 @@ class LocoImageTest(unittest.TestCase):
                 "--environment",
                 "production",
             )
+            with tempfile.TemporaryDirectory(prefix="loco-scheduler-") as directory:
+                scheduler_config = os.path.join(directory, "scheduler.yaml")
+                with open(scheduler_config, "w", encoding="utf-8") as config:
+                    config.write(
+                        'jobs:\n  expiry:\n    run: support-access-expire\n'
+                        '    schedule: "0 0 0 1 1 *"\n    run_on_start: true\n'
+                    )
+                self.docker(
+                    "run", "--detach", "--name", scheduler, *runtime,
+                    "--mount", f"type=bind,src={scheduler_config},dst=/tmp/scheduler.yaml,readonly",
+                    self.image, "scheduler", "--environment", "production",
+                    "--config", "/tmp/scheduler.yaml",
+                )
+                containers.append(scheduler)
+                for _ in range(30):
+                    logs = self.docker("logs", scheduler)
+                    self.assertNotIn("failed to execute scheduler job", logs, logs)
+                    if "Support expiry run finished" in logs:
+                        break
+                    time.sleep(1)
+                else:
+                    self.fail("Native scheduled task did not execute: " + logs)
+                self.docker("kill", "--signal=SIGINT", scheduler)
+                self.assertEqual(self.docker("wait", scheduler).strip(), "0")
+                with open(scheduler_config, "w", encoding="utf-8") as config:
+                    config.write(
+                        'jobs:\n  explicit_shell:\n    run: echo synthetic\n'
+                        '    shell: true\n    schedule: "0 0 0 1 1 *"\n'
+                        '    run_on_start: true\n'
+                    )
+                shell_scheduler = scheduler + "-explicit-shell"
+                self.docker(
+                    "run", "--detach", "--name", shell_scheduler, *runtime,
+                    "--mount", f"type=bind,src={scheduler_config},dst=/tmp/scheduler.yaml,readonly",
+                    self.image, "scheduler", "--environment", "production",
+                    "--config", "/tmp/scheduler.yaml",
+                )
+                containers.append(shell_scheduler)
+                for _ in range(30):
+                    logs = self.docker("logs", shell_scheduler)
+                    if "requires /bin/sh" in logs and "NotFound" in logs:
+                        break
+                    time.sleep(1)
+                else:
+                    self.fail("Explicit shell job did not report the missing shell: " + logs)
+                self.docker("kill", "--signal=SIGINT", shell_scheduler)
+                self.assertEqual(self.docker("wait", shell_scheduler).strip(), "0")
             for name, arguments in [
                 (server, []),
                 (worker, ["start", "--worker", "--environment", "production"]),
@@ -217,6 +266,15 @@ class LocoImageTest(unittest.TestCase):
             self.assertTrue(any(path.startswith("app/assets/views/") for path in files))
             for path in [
                 "bin/sh",
+                "usr/bin/sh",
+                "bin/bash",
+                "usr/bin/bash",
+                "bin/dash",
+                "usr/bin/dash",
+                "bin/ash",
+                "usr/bin/ash",
+                "bin/busybox",
+                "usr/bin/busybox",
                 "usr/bin/cargo",
                 "usr/bin/node",
                 "usr/local/cargo/bin/cargo",
