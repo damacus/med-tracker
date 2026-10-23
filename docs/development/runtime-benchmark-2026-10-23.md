@@ -211,7 +211,11 @@ The kernel confirmed `memory.max=1073741824` and `memory.swap.max=0`.
 The measured container runs `start --all --environment production`: web,
 in-process background jobs and scheduler share that single 1 GiB budget, including
 scheduled-task subprocesses. PostgreSQL and RustFS retain their earlier settings
-and are outside that limit. No rebuild or application change was needed.
+and are outside that limit. Their recorded Docker memory limits are both zero
+(unset): neither supporting container had an individual memory cap. The trial
+therefore bounds only the application, not the whole stack. Historical kernel
+swap limits for those supporting containers were not captured. No rebuild or
+application change was needed.
 
 | Phase | Working set (MiB) | Anonymous (MiB) | File cache (MiB) | Inactive file cache (MiB) | Raw cgroup usage (MiB) |
 |---|---:|---:|---:|---:|---:|

@@ -10,6 +10,9 @@ site_dir = "site"
 nav = [
   { Home = "index.md" },
   { "0.6 Release Notes" = "releases/0.6.md" },
+  { Articles = [
+    { "From YOLO Rails to YOLO Rust" = "articles/from-yolo-rails-to-yolo-rust.md" }
+  ] },
   { "🏠 For Families" = [
     { "Quick Setup" = "families/quick-setup.md" },
     { "Add your first medicine" = "families/adding-first-medicine.md" },
