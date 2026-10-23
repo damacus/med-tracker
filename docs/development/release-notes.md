@@ -26,8 +26,9 @@ The breaking note must state the current installation boundary:
 > Start the Rust application with a new empty PostgreSQL 18 database and fresh
 > accounts. Rails passwords, passkeys, authenticator enrolments, sessions and
 > recovery tokens are not imported. Existing Rails sessions cannot authenticate
-> to Rust. There is no Rails data import, populated-database adoption or reverse
-> migration. Keep existing installations separate; do not reset their databases
+> to Rust. Clinical data transfer uses portable export/import, with complete
+> Rails-export compatibility tracked in #2702. There is no Rails schema adoption,
+> password/passkey/session/auth-record conversion or reverse migration. Keep existing installations separate; do not reset their databases
 > or assume Rails can consume Rust-created records.
 
 There is no supported rollback from 0.6 to Rails. A full Rails export at the

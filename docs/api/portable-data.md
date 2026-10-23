@@ -10,11 +10,31 @@ Use the OpenAPI contract for endpoint parameters and response envelopes. This gu
 |---|---|
 | `medtracker.portable.v1` | Plaintext mobile snapshot and the data encrypted inside a migration bundle. |
 | `medtracker.portable.v2` | Migration data with pause history and persisted dose outcomes, or a consistent sync snapshot with a cursor. |
+| `medtracker.portable.v3` | Rust-native clinical transfer with extended records and no person-location memberships. |
 | `medtracker.portable.encrypted.v1` | AES-256-GCM envelope used for portable export and import. |
 | `medtracker.health_data.v1` | Plaintext health-data export. |
 | `medtracker.backup.v1` | JSON file stored inside a ZIP backup. |
 
 Every plaintext payload includes `scope`, `exported_at`, `source_instance_id`, and `records`. A sync snapshot also includes `cursor`.
+
+### Clinical transfer into fresh Rust
+
+Clinical data moves through portable export/import, not Rails schema adoption or
+authentication conversion. Set up the fresh Rust database and new Better Auth
+credentials separately. Rust import supports v1/v2/v3, but rejects non-empty
+obsolete `people.location_portable_ids` in older bundles before writing anything.
+V3 excludes that field entirely. Medication storage locations and immutable
+taken-from dose locations are separate retained relationships.
+
+Request `portable_export?version=3` or
+`portable_format=medtracker.portable.v3` for a Rust v3 encrypted export. The default
+remains v1. The retained Rails exporter emits v1/v2 and includes person-location
+links, so a Rails export is not proof of an unchanged, complete Rust import.
+[#2702](https://github.com/damacus/med-tracker/issues/2702) tracks the explicit
+collection compatibility and any required reviewed portable-data adaptation.
+Do not change a format marker or silently discard clinical fields to bypass
+validation. There is no supported rollback to Rails or promised Rails importer
+for records created in Rust.
 
 Profile JSON and ZIP downloads are plaintext archives. Neither the Rails portable
 importer nor the Loco application currently restores `medtracker.backup.v1` ZIP
@@ -39,7 +59,7 @@ References use portable IDs. Local membership IDs and signed API occurrence keys
 Send the portable passphrase in `X-MedTracker-Portable-Passphrase`. Do not put it in a URL or JSON body.
 
 Request `portable_export?version=2` to include pause history in an encrypted migration
-bundle. The default remains version 1. Both versions can be imported; v1 collections
+bundle. The default remains version 1. V1/v2 imports must satisfy the obsolete-link checks above; v1 collections
 remain unchanged. Sync v2 snapshots include pause periods automatically.
 
 The encrypted envelope identifies the cipher and key derivation function. It also contains a salt, plaintext checksum, and authenticated ciphertext. Treat the complete envelope as sensitive health data even though its record values are encrypted.
@@ -62,7 +82,10 @@ Nullable relationship fields contain a portable ID or `null`. Collection relatio
 
 ### People
 
-People add `name`, `email`, `date_of_birth`, `person_type`, `has_capacity`, `location_portable_ids`, and `notification_preference_portable_id`.
+People add `name`, `email`, `date_of_birth`, `person_type`, `has_capacity`, and
+`notification_preference_portable_id`. V1/v2 payloads can include
+`location_portable_ids`, but non-empty arrays are rejected on import. V3 people
+must not include that obsolete field.
 
 ### Locations
 
