@@ -12,6 +12,150 @@ use sea_orm::{
 use serde_json::{Value, json};
 use std::str::FromStr;
 
+pub struct OrderInput(Result<OrderDetails, OperationError>);
+
+struct OrderDetails {
+    supplier: Option<String>,
+    quantity: Option<Decimal>,
+    arrival: Option<NaiveDate>,
+}
+
+impl OrderInput {
+    pub fn ordered_from_json(body: &Value) -> Self {
+        Self(parse_ordered(body))
+    }
+
+    pub fn ordered_from_fields(fields: &serde_json::Map<String, Value>) -> Self {
+        Self(parse_fields(fields))
+    }
+
+    pub fn ordered_from_form(
+        supplier: Option<String>,
+        quantity: Option<String>,
+        expected_arrival_on: Option<String>,
+    ) -> Self {
+        Self((|| {
+            Ok(OrderDetails {
+                supplier,
+                quantity: quantity.as_deref().map(parse_quantity).transpose()?,
+                arrival: expected_arrival_on
+                    .as_deref()
+                    .map(parse_arrival)
+                    .transpose()?,
+            })
+        })())
+    }
+
+    pub fn received_from_json(body: &Value) -> Self {
+        let parsed = body
+            .as_object()
+            .ok_or_else(|| invalid("order_details", "is invalid"))
+            .and_then(|outer| {
+                if outer.is_empty() {
+                    Ok(OrderDetails {
+                        supplier: None,
+                        quantity: None,
+                        arrival: None,
+                    })
+                } else {
+                    Err(invalid("order_details", "contains an unsupported field"))
+                }
+            });
+        Self(parsed)
+    }
+
+    pub fn received() -> Self {
+        Self(Ok(OrderDetails {
+            supplier: None,
+            quantity: None,
+            arrival: None,
+        }))
+    }
+
+    fn into_details(self) -> Result<OrderDetails, OperationError> {
+        self.0
+    }
+}
+
+fn parse_ordered(body: &Value) -> Result<OrderDetails, OperationError> {
+    let outer = body
+        .as_object()
+        .ok_or_else(|| invalid("order_details", "is invalid"))?;
+    if outer.keys().any(|key| key != "order_details") {
+        return Err(invalid("order_details", "contains an unsupported field"));
+    }
+    let empty = serde_json::Map::new();
+    let fields = match outer.get("order_details") {
+        Some(value) => value
+            .as_object()
+            .ok_or_else(|| invalid("order_details", "must be an object"))?,
+        None => &empty,
+    };
+    parse_fields(fields)
+}
+
+fn parse_fields(fields: &serde_json::Map<String, Value>) -> Result<OrderDetails, OperationError> {
+    if fields.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "supplier" | "quantity" | "expected_arrival_on"
+        )
+    }) {
+        return Err(invalid("order_details", "contains an unsupported field"));
+    }
+    let supplier = fields
+        .get("supplier")
+        .map(|value| {
+            value
+                .as_str()
+                .map(str::to_owned)
+                .ok_or_else(|| invalid("supplier", "must be a string"))
+        })
+        .transpose()?;
+    let quantity = fields
+        .get("quantity")
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| invalid("quantity", "must be a decimal string"))
+                .and_then(parse_quantity)
+        })
+        .transpose()?;
+    let arrival = fields
+        .get("expected_arrival_on")
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| invalid("expected_arrival_on", "must be an ISO date"))
+                .and_then(parse_arrival)
+        })
+        .transpose()?;
+    Ok(OrderDetails {
+        supplier,
+        quantity,
+        arrival,
+    })
+}
+
+fn parse_quantity(raw: &str) -> Result<Decimal, OperationError> {
+    let amount =
+        Decimal::from_str(raw).map_err(|_| invalid("quantity", "must be a decimal string"))?;
+    if amount < Decimal::ZERO
+        || amount >= Decimal::from(100_000_000)
+        || amount.normalize().scale() > 2
+    {
+        return Err(invalid("quantity", "is outside stock precision"));
+    }
+    Ok(amount)
+}
+
+fn parse_arrival(raw: &str) -> Result<NaiveDate, OperationError> {
+    NaiveDate::parse_from_str(raw, "%Y-%m-%d")
+        .ok()
+        .filter(|date| date.format("%Y-%m-%d").to_string() == raw)
+        .ok_or_else(|| invalid("expected_arrival_on", "must be an ISO date"))
+}
+
 pub async fn lock_visible(
     tenant: &TenantTransaction,
     id: &str,
@@ -38,18 +182,18 @@ pub async fn lock_visible(
 pub async fn mark_as_ordered(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: OrderInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<medication::Model, OperationError> {
-    change(tenant, id, body, true, provenance).await
+    change(tenant, id, input, true, provenance).await
 }
 pub async fn mark_as_received(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: OrderInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<medication::Model, OperationError> {
-    change(tenant, id, body, false, provenance).await
+    change(tenant, id, input, false, provenance).await
 }
 fn invalid(field: &str, message: &str) -> OperationError {
     OperationError::Validation {
@@ -59,69 +203,16 @@ fn invalid(field: &str, message: &str) -> OperationError {
 async fn change(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: OrderInput,
     ordered: bool,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<medication::Model, OperationError> {
     let row = lock_visible(tenant, id).await?;
-    let outer = body
-        .as_object()
-        .ok_or_else(|| invalid("order_details", "is invalid"))?;
-    if outer.keys().any(|key| key != "order_details") || (!ordered && !outer.is_empty()) {
-        return Err(invalid("order_details", "contains an unsupported field"));
-    }
-    let empty = json!({});
-    let fields = outer
-        .get("order_details")
-        .unwrap_or(&empty)
-        .as_object()
-        .ok_or_else(|| invalid("order_details", "must be an object"))?;
-    if fields.keys().any(|key| {
-        !matches!(
-            key.as_str(),
-            "supplier" | "quantity" | "expected_arrival_on"
-        )
-    }) {
-        return Err(invalid("order_details", "contains an unsupported field"));
-    }
-    let supplier = fields
-        .get("supplier")
-        .map(|value| {
-            value
-                .as_str()
-                .map(str::to_owned)
-                .ok_or_else(|| invalid("supplier", "must be a string"))
-        })
-        .transpose()?;
-    let quantity = fields
-        .get("quantity")
-        .map(|value| {
-            let raw = value
-                .as_str()
-                .ok_or_else(|| invalid("quantity", "must be a decimal string"))?;
-            let amount = Decimal::from_str(raw)
-                .map_err(|_| invalid("quantity", "must be a decimal string"))?;
-            if amount < Decimal::ZERO
-                || amount >= Decimal::from(100_000_000)
-                || amount.normalize().scale() > 2
-            {
-                return Err(invalid("quantity", "is outside stock precision"));
-            }
-            Ok(amount)
-        })
-        .transpose()?;
-    let arrival = fields
-        .get("expected_arrival_on")
-        .map(|value| {
-            let raw = value
-                .as_str()
-                .ok_or_else(|| invalid("expected_arrival_on", "must be an ISO date"))?;
-            NaiveDate::parse_from_str(raw, "%Y-%m-%d")
-                .ok()
-                .filter(|date| date.format("%Y-%m-%d").to_string() == raw)
-                .ok_or_else(|| invalid("expected_arrival_on", "must be an ISO date"))
-        })
-        .transpose()?;
+    let OrderDetails {
+        supplier,
+        quantity,
+        arrival,
+    } = input.into_details()?;
     let before = medications::medication_snapshot(&row);
     let mut active = row.into_active_model();
     let now = Utc::now().naive_utc();

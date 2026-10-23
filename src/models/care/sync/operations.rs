@@ -232,18 +232,28 @@ pub async fn apply(
             ))
         }
         "medication_dosage_option" => {
-            let body = envelope(operation);
-            let (body, etag) = if operation.action == "create" {
-                dosages::create(tenant, body, attribution).await?
+            let input = dosages::DosageInput::from_fields(
+                &operation.attributes,
+                operation.action == "create",
+            );
+            let row = if operation.action == "create" {
+                dosages::create(tenant, input, attribution).await?
             } else {
                 if !dosages::can_manage(tenant).await? {
                     return Err(OperationError::Forbidden);
                 }
                 let (_, etag) = dosages::read(tenant, id(operation)?).await?;
                 required_etag(operation, &etag)?;
-                dosages::update(tenant, id(operation)?, body, Some(&etag), attribution).await?
+                dosages::update(tenant, id(operation)?, input, Some(&etag), attribution).await?
             };
-            wire("MedicationDosageOption", body, etag, None)
+            let (_, etag) = dosages::represent(tenant, &row).await?;
+            Ok(result(
+                "MedicationDosageOption",
+                row.id,
+                Some(&row.portable_id),
+                Some(etag),
+                None,
+            ))
         }
         "schedule" | "person_medication" => {
             super::sources::apply(tenant, operation, provenance).await

@@ -59,7 +59,8 @@ pub(super) fn draft(context: &FormContext) -> HashMap<String, String> {
 pub(super) fn attributes(
     draft: &HashMap<String, String>,
     context: &FormContext,
-) -> std::result::Result<Value, OperationError> {
+) -> std::result::Result<medications::crud::MedicationInput, OperationError> {
+    use medications::crud::{Field, MedicationInput};
     let options_mode = context.options_mode;
     if !options_mode
         && context
@@ -81,39 +82,38 @@ pub(super) fn attributes(
             details: json!({"error":"Dosage options remain unchanged when editing medication details."}),
         });
     }
-    let mut attributes = serde_json::Map::new();
-    for field in ["name", "friendly_name", "description", "warnings"] {
-        attributes.insert(field.into(), json!(forms::field(draft, field)));
-    }
+    let mut attributes = MedicationInput::default();
+    attributes.name = Field::Value(forms::field(draft, "name").to_owned());
+    attributes.friendly_name = Field::Value(forms::field(draft, "friendly_name").to_owned());
+    attributes.description = Field::Value(forms::field(draft, "description").to_owned());
+    attributes.warnings = Field::Value(forms::field(draft, "warnings").to_owned());
     let location = forms::field(draft, "location_id");
-    attributes.insert(
-        "location_id".into(),
-        location
-            .parse::<i64>()
-            .map_or_else(|_| json!(location), |value| json!(value)),
-    );
+    attributes.location_id = location.parse::<i64>().map_or(Field::Invalid, Field::Value);
     if !options_mode {
-        attributes.insert(
-            "reorder_threshold".into(),
-            json!(forms::field(draft, "reorder_threshold")),
-        );
+        attributes.reorder_threshold = decimal_field(forms::field(draft, "reorder_threshold"));
         let unit = forms::field(draft, "dose_unit");
         if !unit.is_empty() {
-            attributes.insert("dose_unit".into(), json!(unit));
+            attributes.dose_unit = Field::Value(unit.to_owned());
         }
-        for field in ["dose_amount", "current_supply"] {
-            let value = forms::field(draft, field);
-            attributes.insert(
-                field.into(),
-                if value.is_empty() {
-                    Value::Null
-                } else {
-                    json!(value)
-                },
-            );
-        }
+        attributes.dose_amount = nullable_decimal_field(forms::field(draft, "dose_amount"));
+        attributes.current_supply = nullable_decimal_field(forms::field(draft, "current_supply"));
     }
-    Ok(Value::Object(attributes))
+    Ok(attributes)
+}
+
+fn decimal_field(value: &str) -> medications::crud::Field<sea_orm::prelude::Decimal> {
+    medications::crud::parse_decimal_text(value).map_or(
+        medications::crud::Field::InvalidText,
+        medications::crud::Field::Value,
+    )
+}
+
+fn nullable_decimal_field(value: &str) -> medications::crud::Field<sea_orm::prelude::Decimal> {
+    if value.is_empty() {
+        medications::crud::Field::Null
+    } else {
+        decimal_field(value)
+    }
 }
 
 pub(super) fn view(

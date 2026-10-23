@@ -62,9 +62,21 @@ async fn change(
             return Ok(reply);
         }
         let result = if ordered {
-            orders::mark_as_ordered(&tenant, &id, &body, Some(principal.provenance())).await
+            orders::mark_as_ordered(
+                &tenant,
+                &id,
+                orders::OrderInput::ordered_from_json(&body),
+                Some(principal.provenance()),
+            )
+            .await
         } else {
-            orders::mark_as_received(&tenant, &id, &body, Some(principal.provenance())).await
+            orders::mark_as_received(
+                &tenant,
+                &id,
+                orders::OrderInput::received_from_json(&body),
+                Some(principal.provenance()),
+            )
+            .await
         };
         result.map_err(response::operation)?;
         let snapshot = medications::read_stock_snapshot(&tenant, &id)

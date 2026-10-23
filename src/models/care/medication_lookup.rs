@@ -254,9 +254,29 @@ fn text(value: &Value, field: &str) -> String {
     value[field].as_str().unwrap_or("").to_owned()
 }
 
+pub struct StockMatchCandidate {
+    pub barcode: String,
+    pub code: String,
+    pub name: String,
+    pub display: String,
+    pub package_unit: Option<String>,
+}
+
+impl StockMatchCandidate {
+    fn from_product(value: &Value) -> Self {
+        Self {
+            barcode: text(value, "barcode"),
+            code: text(value, "code"),
+            name: text(value, "name"),
+            display: text(value, "display"),
+            package_unit: value["package_unit"].as_str().map(str::to_owned),
+        }
+    }
+}
+
 pub async fn stock_matches(
     tenant: &TenantTransaction,
-    candidate: &Value,
+    candidate: &StockMatchCandidate,
 ) -> Result<Vec<medication::Model>, OperationError> {
     access::recheck(tenant).await?;
     let visible = access::medication_scope(tenant)
@@ -266,13 +286,17 @@ pub async fn stock_matches(
     Ok(matches_from(&visible, candidate))
 }
 
-fn matches_from(visible: &[medication::Model], candidate: &Value) -> Vec<medication::Model> {
-    let gtins = barcode_candidates(&text(candidate, "barcode"));
-    let code = text(candidate, "code");
-    let name = candidate["name"]
-        .as_str()
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| candidate["display"].as_str().unwrap_or(""));
+fn matches_from(
+    visible: &[medication::Model],
+    candidate: &StockMatchCandidate,
+) -> Vec<medication::Model> {
+    let gtins = barcode_candidates(&candidate.barcode);
+    let code = &candidate.code;
+    let name = if candidate.name.is_empty() {
+        &candidate.display
+    } else {
+        &candidate.name
+    };
     let direct: Vec<_> = visible
         .iter()
         .filter(|row| {
@@ -287,7 +311,7 @@ fn matches_from(visible: &[medication::Model], candidate: &Value) -> Vec<medicat
     }
     let coded: Vec<_> = visible
         .iter()
-        .filter(|row| !code.is_empty() && row.dmd_code.as_deref() == Some(&code))
+        .filter(|row| !code.is_empty() && row.dmd_code.as_deref() == Some(code.as_str()))
         .cloned()
         .collect();
     if !coded.is_empty() {
@@ -295,7 +319,7 @@ fn matches_from(visible: &[medication::Model], candidate: &Value) -> Vec<medicat
     }
     visible
         .iter()
-        .filter(|row| matching::compatible(name, candidate["package_unit"].as_str(), row))
+        .filter(|row| matching::compatible(name, candidate.package_unit.as_deref(), row))
         .cloned()
         .collect()
 }
@@ -363,7 +387,7 @@ pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found
             entry["match_reason"] = Value::Null;
             entry["match_reason_label"] = Value::Null;
         }
-        let records = matches_from(&visible, &entry);
+        let records = matches_from(&visible, &StockMatchCandidate::from_product(&entry));
         let choices: Vec<Value> = records
             .iter()
             .map(|row| stock_value(row, &locations, &slug))
@@ -385,7 +409,16 @@ pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found
         results.push(entry);
     }
     if results.is_empty() && barcode.is_some() {
-        for row in matches_from(&visible, &json!({"barcode":barcode})) {
+        for row in matches_from(
+            &visible,
+            &StockMatchCandidate {
+                barcode: barcode.as_deref().unwrap_or_default().to_owned(),
+                code: String::new(),
+                name: String::new(),
+                display: String::new(),
+                package_unit: None,
+            },
+        ) {
             matches.push(stock_value(&row, &locations, &slug));
         }
     }
