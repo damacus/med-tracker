@@ -26,12 +26,26 @@ Journeys are marked `#[ignore]` so the shared integration lanes skip them;
 `task test:browser` selects them with nextest `--run-ignored only`. Both
 integration and browser tasks fail when a filter selects no tests.
 
-Each retained journey chooses its viewport explicitly: the manual medication
-wizard uses desktop 1440 × 1000, and scanner-to-refill uses mobile 390 × 844.
-Both save review captures under `docs/screenshots/browser-journeys/`; CI uploads
-those captures as the `browser-journey-screenshots` artifact. API and rendered-page
-behaviour stays in compiled Rust tests; these captures do not claim coverage
-for retired JavaScript interactions.
+The Rust browser lane is deliberately smaller than the retired JavaScript suite;
+it does not claim test-for-test parity. Each journey chooses its viewport rather
+than inheriting an automatic desktop/mobile matrix. Retained journeys now include
+native passkeys and account forms, OAuth consent, care/scanner flows,
+administration and location-deletion protection. CI uploads captures under
+`docs/screenshots/browser-journeys/` as the `browser-journey-screenshots` artifact.
+
+At [main `957e57390`](https://github.com/damacus/med-tracker/actions/runs/39883785308)
+on 23 October 2026, CI executed 34 browser journeys successfully, with one
+unignored harness unit test excluded by `--run-ignored only`. The same run passed
+153 Rust library tests, 19 JavaScript unit tests and 1,169 tests in the integration lane
+(including the 153 library tests; 38 additional tests skipped), plus the separately invoked template-concurrency guard. Counts
+describe that run, not universal page, device or live-provider coverage.
+
+The remaining concrete gaps have existing owners:
+[typed browser fixtures](https://github.com/damacus/med-tracker/issues/2809),
+[passkey cancellation/reuse browser paths](https://github.com/damacus/med-tracker/issues/2437),
+[live provider/passkey acceptance](https://github.com/damacus/med-tracker/issues/1889)
+and [accessibility](https://github.com/damacus/med-tracker/issues/2709).
+Do not recreate the deleted suite or count API/render assertions as browser proof.
 
 Running `cargo test --tests` directly requires an owned `DATABASE_URL`; the
 empty `medtracker_reference` base database is created lazily by

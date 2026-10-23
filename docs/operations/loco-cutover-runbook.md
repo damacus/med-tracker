@@ -2,8 +2,10 @@
 
 Root Loco uses PostgreSQL 18 and a new empty database. Follow
 [ADR 0016](../adrs/0016-fresh-rust-without-legacy-compatibility.md): Rails is
-read-only reference; there is no Rails data import, credential migration, populated
-schema adoption or reverse migration. Never reset or silently adopt an existing
+read-only reference; there is no Rails schema adoption, credential/auth-record
+conversion or reverse migration. Clinical data transfer uses portable export/import;
+complete Rails-export compatibility remains tracked in
+[#2702](https://github.com/damacus/med-tracker/issues/2702). Never reset or silently adopt an existing
 database.
 
 The owner applies the image/version upgrade through the deployment's normal
