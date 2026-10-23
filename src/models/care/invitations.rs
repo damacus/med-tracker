@@ -5,7 +5,7 @@ pub mod browser;
 pub mod delivery;
 mod input;
 pub use input::InvitationInput;
-pub(crate) use input::validated_email;
+pub(crate) use input::{validate_email, validated_email};
 mod issuing;
 mod lifecycle;
 mod reading;
@@ -27,7 +27,8 @@ pub use issuing::create;
 pub(crate) use issuing::create_for_parent;
 pub use lifecycle::{cancel, resend, revoke};
 pub use reading::{list, list_api, preview};
-pub use signup::accept_signup;
+pub(crate) use signup::SignupInvitationError;
+pub(crate) use signup::accept_signup;
 pub(crate) use signup::signup_invitation;
 
 #[derive(Debug)]

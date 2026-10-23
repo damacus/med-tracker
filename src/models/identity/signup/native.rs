@@ -16,13 +16,13 @@ pub(crate) async fn prepare_native_profile(
     {
         invitations::signup_invitation(transaction, token)
             .await
-            .map_err(operation_error)?
+            .map_err(invitation_error)?
             .email
     } else {
         if !policy::open(transaction, settings).await? {
             return Err(SignupError::RegistrationClosed);
         }
-        invitations::validated_email(&profile.email).map_err(operation_error)?
+        invitations::validate_email(&profile.email).map_err(|_| invalid("email", "is invalid"))?
     };
     let row = transaction
         .query_one_raw(sql(
@@ -66,7 +66,7 @@ pub(crate) async fn complete_native_profile(
         Some(
             invitations::signup_invitation(transaction, token)
                 .await
-                .map_err(operation_error)?,
+                .map_err(invitation_error)?,
         )
     } else {
         None
@@ -97,7 +97,7 @@ pub(crate) async fn complete_native_profile(
     {
         invitations::accept_signup(transaction, &actor, token, request_id.unwrap_or(""))
             .await
-            .map_err(operation_error)?;
+            .map_err(invitation_error)?;
     } else {
         bootstrap::owner(transaction, &actor, household_id, &profile.name, request_id).await?;
     }

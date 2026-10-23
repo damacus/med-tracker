@@ -288,7 +288,7 @@ async fn show(
             Ok(history) => history,
             Err(error) => return operation_error(error),
         };
-        data["insights"] = history["smart_insights"].clone();
+        data["insights"] = json!(history.smart_insights);
     }
     data["dashboard"] = snapshot;
     data["variant"] = json!(variant);

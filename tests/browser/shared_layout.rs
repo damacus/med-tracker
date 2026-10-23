@@ -112,6 +112,12 @@ async fn shared_layout_desktop_navigation_survives_route_changes() {
                     .await
                     .unwrap();
                     if ["dashboard", "medications", "profile", "reports"].contains(&path) {
+                        if path == "reports" {
+                            expect(page.locator("body[data-navigation-ready]"))
+                                .to_be_visible()
+                                .await
+                                .unwrap();
+                        }
                         capture(page, &format!("{section}-desktop")).await;
                     }
                 }
@@ -195,6 +201,12 @@ async fn shared_layout_mobile_drawer_and_narrow_pages() {
                             expect(page.locator("[data-mobile-shortcuts] a[href$=\"/medications\"][aria-current=page]")).to_be_visible().await.unwrap();
                         }
                         let screenshot = if path == "add-medication" { path } else { section };
+                        if path == "reports" {
+                            expect(page.locator("body[data-navigation-ready]"))
+                                .to_be_visible()
+                                .await
+                                .unwrap();
+                        }
                         capture(page, &format!("{screenshot}-{width}")).await;
                     }
                 }

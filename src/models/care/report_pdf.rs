@@ -1,4 +1,8 @@
+use crate::models::care::reports::{
+    GpHistoryReport, MedicationReviewReport, OrdinaryHistoryReport,
+};
 use loco_rs::controller::views::{ViewRenderer, engines::TeraView};
+use serde::Serialize;
 use serde_json::{Value, json};
 use sghtmltopdf::{Converter, with_render_stack};
 use std::path::PathBuf;
@@ -8,6 +12,24 @@ pub enum Kind {
     GpHistory,
     OrdinaryHistory,
     MedicationReview,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum Document {
+    Gp(GpHistoryReport),
+    Ordinary(OrdinaryHistoryReport),
+    Review(MedicationReviewReport),
+}
+
+impl Document {
+    pub fn kind(&self) -> Kind {
+        match self {
+            Self::Gp(_) => Kind::GpHistory,
+            Self::Ordinary(_) => Kind::OrdinaryHistory,
+            Self::Review(_) => Kind::MedicationReview,
+        }
+    }
 }
 
 impl Kind {
@@ -80,10 +102,80 @@ pub fn locale(value: &str) -> &'static str {
 
 #[cfg(test)]
 mod locale_tests {
-    use super::{Kind, locale, localize_report, translations};
+    use super::Document;
+    use super::{locale, localize_report, translations};
+    use crate::models::care::reports::{
+        GpHistoryReport, GpPerson, MedicationReviewReport, ReportUtc, ReviewPerson, ReviewPromptRow,
+    };
+    use chrono::{NaiveDate, Utc};
     use serde_json::Value;
     use serde_json::json;
     use std::collections::BTreeSet;
+
+    pub(super) fn gp_fixture() -> GpHistoryReport {
+        GpHistoryReport {
+            person: GpPerson {
+                id: 1,
+                name: "Example person".into(),
+                date_of_birth: None,
+            },
+            start_date: NaiveDate::from_ymd_opt(2026, 7, 1).unwrap(),
+            end_date: NaiveDate::from_ymd_opt(2026, 7, 1).unwrap(),
+            generated_at: ReportUtc(
+                NaiveDate::from_ymd_opt(2026, 6, 30)
+                    .unwrap()
+                    .and_hms_opt(23, 30, 0)
+                    .unwrap()
+                    .and_utc(),
+            ),
+            current_medicines: Vec::new(),
+            chronology: Vec::new(),
+            medication_takes: Vec::new(),
+            time_zone: Some("Europe/London".into()),
+            include_medication_takes: Some(false),
+            generated_label: None,
+            reporting_period: None,
+            birthday_label: None,
+        }
+    }
+
+    fn legacy_prompt() -> ReviewPromptRow {
+        ReviewPromptRow {
+            id: 1,
+            person_id: 1,
+            primary_medication_id: 2,
+            interacting_medication_id: 3,
+            evidence_record_id: 4,
+            primary_medication_name: "One".into(),
+            interacting_medication_name: "Two".into(),
+            evidence_source_name: "Legacy source".into(),
+            evidence_source_url: "https://example.test/legacy".into(),
+            evidence_source_version: "1".into(),
+            matched_term: "legacy".into(),
+            match_type: "unclassified_legacy".into(),
+            source_instruction: "unclassified_legacy".into(),
+            match_reason: "Legacy source".into(),
+            evidence_text: "Legacy evidence".into(),
+            etag: "fixture".into(),
+            evidence_source_checked_on: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            evidence_source_effective_on: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            risk_level: "unknown".into(),
+            match_confidence: "unknown".into(),
+            status: "needs_review".into(),
+            practitioner_name: None,
+            practitioner_role: None,
+            review_note: None,
+            reviewed_on: None,
+            reviewed_by_membership_id: None,
+            updated_at: ReportUtc(Utc::now()),
+            person_name: Some("Synthetic adult".into()),
+            risk_label: None,
+            confidence_label: None,
+            status_label: None,
+            match_type_label: None,
+            source_instruction_label: None,
+        }
+    }
 
     fn leaf_paths(value: &Value, prefix: &str, paths: &mut BTreeSet<String>) {
         if let Some(object) = value.as_object() {
@@ -147,8 +239,9 @@ mod locale_tests {
 
     #[test]
     fn gp_generated_time_uses_the_accounts_local_date_and_zone() {
-        let mut report = json!({"generated_at":"2026-06-30T23:30:00Z","time_zone":"Europe/London","start_date":"2026-07-01","end_date":"2026-07-01","person":{"date_of_birth":null},"chronology":[]});
-        localize_report(Kind::GpHistory, &mut report, &translations("en").unwrap());
+        let mut report = Document::Gp(gp_fixture());
+        localize_report(&mut report, &translations("en").unwrap());
+        let report = json!(report);
         assert!(
             report["generated_label"]
                 .as_str()
@@ -162,8 +255,27 @@ mod locale_tests {
         use loco_rs::controller::views::{ViewRenderer, engines::TeraView};
         let view = TeraView::build().unwrap();
         let labels = translations("en").unwrap();
-        let mut report = json!({"generated_at":"2026-07-01T12:00:00Z","person":{"name":"Synthetic adult"},"to_discuss":1,"reviewed":0,"people_count":1,"prompts":[{"person_name":"Synthetic adult","primary_medication_name":"One","interacting_medication_name":"Two","risk_level":"unknown","match_confidence":"unknown","status":"needs_review","evidence_text":"Legacy evidence","match_reason":"Legacy source","matched_term":"legacy","match_type":"unclassified_legacy","source_instruction":"unclassified_legacy","evidence_source_name":"Legacy source","evidence_source_version":"1","evidence_source_effective_on":"2026-01-01","evidence_source_checked_on":"2026-01-01","evidence_source_url":"https://example.test/legacy","practitioner_name":null}]});
-        localize_report(Kind::MedicationReview, &mut report, &labels);
+        let mut report = Document::Review(MedicationReviewReport {
+            person: ReviewPerson {
+                id: None,
+                name: "Synthetic adult".into(),
+            },
+            generated_at: ReportUtc(
+                NaiveDate::from_ymd_opt(2026, 7, 1)
+                    .unwrap()
+                    .and_hms_opt(12, 0, 0)
+                    .unwrap()
+                    .and_utc(),
+            ),
+            prompts: vec![legacy_prompt()],
+            people_count: Some(1),
+            to_discuss: Some(1),
+            reviewed: Some(0),
+            time_zone: None,
+            generated_label: None,
+        });
+        localize_report(&mut report, &labels);
+        let report = json!(report);
         let html = view.render("reports/medication_review.html", json!({"lang":"en","title":"Medication review","labels":labels,"report":report,"page_counter_css":""}));
         assert!(
             html.is_ok(),
@@ -200,173 +312,164 @@ fn interpolate(source: &Value, path: &str, values: &[(&str, &str)]) -> String {
         })
 }
 
-fn localize_report(kind: Kind, report: &mut Value, labels: &Value) {
-    let generated = report["generated_at"]
-        .as_str()
-        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
-        .map_or_else(
-            || report["generated_at"].as_str().unwrap_or("").to_owned(),
-            |value| {
-                let zone = report["time_zone"]
-                    .as_str()
-                    .and_then(|name| name.parse::<chrono_tz::Tz>().ok())
-                    .unwrap_or(chrono_tz::UTC);
-                value
-                    .with_timezone(&zone)
-                    .format("%Y-%m-%d %H:%M %Z")
-                    .to_string()
-            },
-        );
-    let generated_key = if matches!(kind, Kind::MedicationReview) {
+fn localize_report(report: &mut Document, labels: &Value) {
+    let (generated_at, zone, review) = match report {
+        Document::Gp(data) => (data.generated_at.0, data.time_zone.as_deref(), false),
+        Document::Ordinary(data) => (data.generated_at.0, None, false),
+        Document::Review(data) => (data.generated_at.0, data.time_zone.as_deref(), true),
+    };
+    let zone = zone
+        .and_then(|name| name.parse::<chrono_tz::Tz>().ok())
+        .unwrap_or(chrono_tz::UTC);
+    let generated = generated_at
+        .with_timezone(&zone)
+        .format("%Y-%m-%d %H:%M %Z")
+        .to_string();
+    let key = if review {
         "reports.medication_review.generated_at"
     } else {
         "reports.health_history.generated_at"
     };
-    report["generated_label"] = json!(interpolate(
-        labels,
-        generated_key,
-        &[("timestamp", &generated)]
-    ));
-    if matches!(kind, Kind::MedicationReview)
-        && let Some(prompts) = report["prompts"].as_array_mut()
-    {
-        let translations = &labels["reports"]["medication_review"];
-        for prompt in prompts {
-            for (field, group, output) in [
-                ("risk_level", "risk_levels", "risk_label"),
-                ("match_confidence", "confidence_levels", "confidence_label"),
-                ("status", "statuses", "status_label"),
-                ("match_type", "match_types", "match_type_label"),
-                (
-                    "source_instruction",
-                    "source_instructions",
-                    "source_instruction_label",
-                ),
-            ] {
-                let value = prompt[field].as_str().unwrap_or("");
-                let translated = translations[group]
+    let generated_label = interpolate(labels, key, &[("timestamp", &generated)]);
+    match report {
+        Document::Ordinary(data) => {
+            data.generated_label = Some(generated_label);
+        }
+        Document::Review(data) => {
+            data.generated_label = Some(generated_label);
+            let translations = &labels["reports"]["medication_review"];
+            let translated = |group: &str, value: &str| {
+                translations[group]
                     .get(value)
                     .and_then(Value::as_str)
                     .unwrap_or(value)
-                    .to_owned();
-                prompt[output] = json!(translated);
-            }
-        }
-    }
-    if !matches!(kind, Kind::GpHistory) {
-        return;
-    }
-    let start = report["start_date"].as_str().unwrap_or("");
-    let end = report["end_date"].as_str().unwrap_or("");
-    report["reporting_period"] = json!(interpolate(
-        labels,
-        "reports.health_history.gp.reporting_period",
-        &[("start_date", start), ("end_date", end)]
-    ));
-    let birthday = report["person"]["date_of_birth"].as_str().unwrap_or("");
-    let birthday = if birthday.is_empty() {
-        label(labels, "reports.health_history.gp.not_recorded")
-    } else {
-        birthday.to_owned()
-    };
-    report["birthday_label"] = json!(interpolate(
-        labels,
-        "reports.health_history.gp.identity.date_of_birth",
-        &[("date", &birthday)]
-    ));
-    let Some(events) = report["chronology"].as_array_mut() else {
-        return;
-    };
-    for event in events {
-        let kind = event["event_kind"].as_str().unwrap_or("");
-        event["kind_label"] = json!(label(labels, &format!("health_events.kinds.{kind}")));
-        let severity = event["severity"].as_str().unwrap_or("").to_owned();
-        event["severity_label"] = json!(label(
-            labels,
-            &format!("health_events.severities.{severity}")
-        ));
-        let started = event["started_on"].as_str().unwrap_or("").to_owned();
-        let ended = event["ended_on"].as_str().map(str::to_owned);
-        event["date_range_label"] = json!(ended.as_deref().map_or_else(
-            || interpolate(
-                labels,
-                "reports.health_history.ongoing_from",
-                &[("started_on", &started)]
-            ),
-            |end| interpolate(
-                labels,
-                "reports.health_history.event_date_range",
-                &[("started_on", &started), ("ended_on", end)]
-            )
-        ));
-        let duration = event["duration_days"].as_i64().map_or_else(
-            || label(labels, "reports.health_history.gp.chronology.ongoing"),
-            |days| {
-                interpolate(
-                    labels,
-                    "reports.health_history.gp.chronology.days",
-                    &[("count", &days.to_string())],
-                )
-            },
-        );
-        let mut details = vec![interpolate(
-            labels,
-            "reports.health_history.gp.chronology.duration",
-            &[("duration", &duration)],
-        )];
-        if !severity.is_empty() {
-            details.push(interpolate(
-                labels,
-                "reports.health_history.gp.chronology.severity",
-                &[(
-                    "severity",
-                    &label(labels, &format!("health_events.severities.{severity}")),
-                )],
-            ));
-        }
-        for (field, key, argument) in [
-            ("notes", "notes", "notes"),
-            ("action_taken", "action", "action"),
-        ] {
-            if let Some(value) = event[field].as_str().filter(|value| !value.is_empty()) {
-                details.push(interpolate(
-                    labels,
-                    &format!("reports.health_history.gp.chronology.{key}"),
-                    &[(argument, value)],
+                    .to_owned()
+            };
+            for prompt in &mut data.prompts {
+                prompt.risk_label = Some(translated("risk_levels", &prompt.risk_level));
+                prompt.confidence_label =
+                    Some(translated("confidence_levels", &prompt.match_confidence));
+                prompt.status_label = Some(translated("statuses", &prompt.status));
+                prompt.match_type_label = Some(translated("match_types", &prompt.match_type));
+                prompt.source_instruction_label = Some(translated(
+                    "source_instructions",
+                    &prompt.source_instruction,
                 ));
             }
         }
-        let help = if event["medical_help_sought"].as_bool().unwrap_or(false) {
-            "yes"
-        } else {
-            "no"
-        };
-        details.push(interpolate(
-            labels,
-            "reports.health_history.gp.chronology.medical_help",
-            &[(
-                "medical_help",
-                &label(labels, &format!("reports.health_history.gp.{help}")),
-            )],
-        ));
-        let medications = event["medication_names"]
-            .as_array()
-            .map(|names| {
-                names
-                    .iter()
-                    .filter_map(Value::as_str)
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            })
-            .unwrap_or_default();
-        if !medications.is_empty() {
-            details.push(interpolate(
+        Document::Gp(data) => {
+            data.generated_label = Some(generated_label);
+            data.reporting_period = Some(interpolate(
                 labels,
-                "reports.health_history.gp.chronology.medications",
-                &[("medications", &medications)],
+                "reports.health_history.gp.reporting_period",
+                &[
+                    ("start_date", &data.start_date.to_string()),
+                    ("end_date", &data.end_date.to_string()),
+                ],
             ));
+            let birthday = data.person.date_of_birth.map_or_else(
+                || label(labels, "reports.health_history.gp.not_recorded"),
+                |date| date.to_string(),
+            );
+            data.birthday_label = Some(interpolate(
+                labels,
+                "reports.health_history.gp.identity.date_of_birth",
+                &[("date", &birthday)],
+            ));
+            for event in &mut data.chronology {
+                event.kind_label = Some(label(
+                    labels,
+                    &format!("health_events.kinds.{}", event.event_kind),
+                ));
+                let severity = event.severity.unwrap_or("");
+                event.severity_label = Some(label(
+                    labels,
+                    &format!("health_events.severities.{severity}"),
+                ));
+                let started = event.started_on.to_string();
+                event.date_range_label = Some(event.ended_on.map_or_else(
+                    || {
+                        interpolate(
+                            labels,
+                            "reports.health_history.ongoing_from",
+                            &[("started_on", &started)],
+                        )
+                    },
+                    |end| {
+                        interpolate(
+                            labels,
+                            "reports.health_history.event_date_range",
+                            &[("started_on", &started), ("ended_on", &end.to_string())],
+                        )
+                    },
+                ));
+                let duration = event.duration_days.map_or_else(
+                    || label(labels, "reports.health_history.gp.chronology.ongoing"),
+                    |days| {
+                        interpolate(
+                            labels,
+                            "reports.health_history.gp.chronology.days",
+                            &[("count", &days.to_string())],
+                        )
+                    },
+                );
+                let mut details = vec![interpolate(
+                    labels,
+                    "reports.health_history.gp.chronology.duration",
+                    &[("duration", &duration)],
+                )];
+                if !severity.is_empty() {
+                    details.push(interpolate(
+                        labels,
+                        "reports.health_history.gp.chronology.severity",
+                        &[(
+                            "severity",
+                            &label(labels, &format!("health_events.severities.{severity}")),
+                        )],
+                    ));
+                }
+                if let Some(note) = event.notes.as_deref().filter(|value| !value.is_empty()) {
+                    details.push(interpolate(
+                        labels,
+                        "reports.health_history.gp.chronology.notes",
+                        &[("notes", note)],
+                    ));
+                }
+                if let Some(action) = event
+                    .action_taken
+                    .as_deref()
+                    .filter(|value| !value.is_empty())
+                {
+                    details.push(interpolate(
+                        labels,
+                        "reports.health_history.gp.chronology.action",
+                        &[("action", action)],
+                    ));
+                }
+                let help = if event.medical_help_sought {
+                    "yes"
+                } else {
+                    "no"
+                };
+                details.push(interpolate(
+                    labels,
+                    "reports.health_history.gp.chronology.medical_help",
+                    &[(
+                        "medical_help",
+                        &label(labels, &format!("reports.health_history.gp.{help}")),
+                    )],
+                ));
+                let medications = event.medication_names.join(", ");
+                if !medications.is_empty() {
+                    details.push(interpolate(
+                        labels,
+                        "reports.health_history.gp.chronology.medications",
+                        &[("medications", &medications)],
+                    ));
+                }
+                event.details = Some(details);
+            }
         }
-        event["details"] = json!(details);
     }
 }
 
@@ -397,16 +500,16 @@ fn font_directory() -> Result<PathBuf, RenderError> {
 
 pub fn render(
     view: &TeraView,
-    kind: Kind,
-    mut report: Value,
+    mut report: Document,
     language: &str,
 ) -> Result<Vec<u8>, RenderError> {
+    let kind = report.kind();
     let language = locale(language);
     let labels = translations(language)?;
     let title = label(&labels, kind.title_key());
     let subject = label(&labels, kind.subject_key());
     let page_counter_css = page_counter_css(&labels)?;
-    localize_report(kind, &mut report, &labels);
+    localize_report(&mut report, &labels);
     let font_directory = font_directory()?;
     let font = font_directory.join("NotoSans-Regular.ttf");
     let html = view
@@ -457,17 +560,36 @@ mod tests {
     #[test]
     fn gp_html_preserves_clinical_details_and_localizes_event_labels() {
         let view = TeraView::build().unwrap();
-        let report = json!({
-            "person":{"name":"Example person","date_of_birth":"1990-01-01"},
-            "start_date":"2026-01-01","end_date":"2026-01-31","generated_at":"2026-02-01T10:00:00Z",
-            "current_medicines":[],"include_medication_takes":false,"medication_takes":[],
-            "chronology":[{"started_on":"2026-01-03","ended_on":"2026-01-05","event_kind":"suspected_side_effect","title":"Example symptom","duration_days":3,"severity":"moderate","notes":"Observed after lunch","action_taken":"Recorded event","medical_help_sought":true,"medication_names":["Example medicine"]}]
-        });
         for language in ["en", "cy"] {
             let labels = translations(language).unwrap();
             let page_counter = page_counter_css(&labels).unwrap();
-            let mut report = report.clone();
-            localize_report(Kind::GpHistory, &mut report, &labels);
+            let mut report = locale_tests::gp_fixture();
+            report.person.date_of_birth =
+                Some(chrono::NaiveDate::from_ymd_opt(1990, 1, 1).unwrap());
+            report.start_date = chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
+            report.end_date = chrono::NaiveDate::from_ymd_opt(2026, 1, 31).unwrap();
+            report
+                .chronology
+                .push(crate::models::care::reports::GpEvent {
+                    id: 1,
+                    event_kind: "suspected_side_effect",
+                    title: "Example symptom".into(),
+                    started_on: chrono::NaiveDate::from_ymd_opt(2026, 1, 3).unwrap(),
+                    ended_on: Some(chrono::NaiveDate::from_ymd_opt(2026, 1, 5).unwrap()),
+                    ongoing: false,
+                    duration_days: Some(3),
+                    severity: Some("moderate"),
+                    notes: Some("Observed after lunch".into()),
+                    action_taken: Some("Recorded event".into()),
+                    medical_help_sought: true,
+                    medication_names: vec!["Example medicine".into()],
+                    kind_label: None,
+                    severity_label: None,
+                    date_range_label: None,
+                    details: None,
+                });
+            let mut report = Document::Gp(report);
+            localize_report(&mut report, &labels);
             let html = view.render("reports/gp_history.html", json!({"lang":language,"title":label(&labels,"reports.health_history.title"),"labels":labels.clone(),"page_counter_css":page_counter,"report":report})).unwrap();
             assert!(
                 html.contains(label(&labels, "health_events.kinds.suspected_side_effect").as_str())
