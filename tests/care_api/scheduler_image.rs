@@ -103,7 +103,16 @@ async fn actual_schedule_expires_support_and_audits_once_without_a_shell() -> Te
         assert_eq!(docker(&["inspect", "--format", "{{.Config.User}}", &name])?.trim(), "65532:65532");
         let shell = Command::new("docker").args(["exec", &name, "/bin/sh", "-c", "exit 0"]).output()?;
         assert!(!shell.status.success(), "Acceptance image must have no /bin/sh");
-        assert!(String::from_utf8_lossy(&shell.stderr).contains("no such file"));
+        let shell_output = format!(
+            "{}{}",
+            String::from_utf8_lossy(&shell.stdout),
+            String::from_utf8_lossy(&shell.stderr)
+        );
+        assert!(
+            shell_output.contains("no such file"),
+            "Unexpected shell execution failure: {shell_output}; scheduler logs: {}",
+            docker(&["logs", &name])?
+        );
         wait_for_expiry(&fixture, 98001, &name).await?;
         seed_session(&fixture, 98002, admin.id).await?;
         wait_for_expiry(&fixture, 98002, &name).await?;
