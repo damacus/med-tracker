@@ -5,6 +5,166 @@ use serde_json::{Value, json};
 
 use crate::harness::{self, named};
 
+async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static str) {
+    harness::journey(viewport, |journey| {
+        Box::pin(async move {
+            let page = &journey.page;
+            let context = page.context().unwrap();
+            let cdp = context.new_cdp_session(page).await.unwrap();
+            cdp.send("WebAuthn.enable", Some(json!({"enableUI": false})))
+                .await
+                .unwrap();
+            cdp.send(
+                "WebAuthn.addVirtualAuthenticator",
+                Some(json!({"options": {
+                    "protocol": "ctap2",
+                    "transport": "internal",
+                    "hasResidentKey": true,
+                    "hasUserVerification": true,
+                    "isUserVerified": true,
+                    "automaticPresenceSimulation": true
+                }})),
+            )
+            .await
+            .unwrap();
+
+            harness::sign_in(journey).await;
+            page.goto(&format!("{}/account/security", journey.origin), None)
+                .await
+                .unwrap();
+            page.get_by_role(AriaRole::Link, named("Add passkey"))
+                .click(None)
+                .await
+                .unwrap();
+            page.get_by_label("Passkey name", true)
+                .fill("Cancellation retry key", None)
+                .await
+                .unwrap();
+            page.get_by_role(AriaRole::Button, named("Register Passkey"))
+                .click(None)
+                .await
+                .unwrap();
+            expect(page.get_by_text("Passkey: Cancellation retry key", true))
+                .to_be_visible()
+                .await
+                .unwrap();
+            page.get_by_role(AriaRole::Button, named("Sign out"))
+                .click(None)
+                .await
+                .unwrap();
+            expect(page.get_by_role(AriaRole::Heading, named("Sign in")))
+                .to_be_visible()
+                .await
+                .unwrap();
+            let _: Value = page
+                .evaluate(
+                    r#"() => {
+                    const get = navigator.credentials.get.bind(navigator.credentials);
+                    let cancel = true;
+                    navigator.credentials.get = options => {
+                        if (cancel) {
+                            cancel = false;
+                            return Promise.reject(new DOMException('Cancelled', 'NotAllowedError'));
+                        }
+                        return get(options);
+                    };
+                    const fetch = window.fetch.bind(window);
+                    window.passkeyVerifyRequests = 0;
+                    window.fetch = (...args) => {
+                        if (String(args[0]).endsWith('/passkey/verify-authentication')) {
+                            window.passkeyVerifyRequests += 1;
+                        }
+                        return fetch(...args);
+                    };
+                }"#,
+                    None::<&()>,
+                )
+                .await
+                .unwrap();
+
+            let button = page.get_by_role(AriaRole::Button, named("Sign in with a passkey"));
+            button.click(None).await.unwrap();
+            expect(page.get_by_role(AriaRole::Alert, None))
+                .to_contain_text("Try again or use another sign-in method")
+                .await
+                .unwrap();
+            let enabled: bool = page
+                .evaluate(
+                    "() => !document.querySelector('[data-passkey-login]').disabled",
+                    None::<&()>,
+                )
+                .await
+                .unwrap();
+            assert!(
+                enabled,
+                "cancelled sign-in left the passkey button disabled"
+            );
+            let attempts: u64 = page
+                .evaluate("() => window.passkeyVerifyRequests", None::<&()>)
+                .await
+                .unwrap();
+            assert_eq!(attempts, 0, "cancelled ceremony submitted an assertion");
+            let session = native_session(page).await;
+            assert!(
+                session.is_null() || session["session"].is_null(),
+                "cancelled ceremony created a session"
+            );
+            let directory = std::path::Path::new("docs/screenshots/native-auth");
+            std::fs::create_dir_all(directory).unwrap();
+            page.screenshot_to_file(
+                &directory.join(format!("passkey-cancelled-{size}.png")),
+                ScreenshotOptions::builder()
+                    .animations(Animations::Disabled)
+                    .full_page(true)
+                    .build(),
+            )
+            .await
+            .unwrap();
+
+            button.click(None).await.unwrap();
+            expect(page.get_by_role(
+                AriaRole::Button,
+                named("Open household: Synthetic household"),
+            ))
+            .to_be_visible()
+            .await
+            .unwrap();
+            let session = native_session(page).await;
+            assert!(
+                !session["session"].is_null(),
+                "retry did not create a session"
+            );
+        })
+    })
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn native_passkey_cancelled_sign_in_can_retry_desktop() {
+    passkey_cancelled_sign_in_can_retry(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        "desktop",
+    )
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn native_passkey_cancelled_sign_in_can_retry_mobile() {
+    passkey_cancelled_sign_in_can_retry(
+        Viewport {
+            width: 390,
+            height: 844,
+        },
+        "mobile",
+    )
+    .await;
+}
+
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_assertion() {
