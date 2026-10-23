@@ -367,16 +367,19 @@ pub async fn open_care_section(page: &Page, name: &str) {
         return;
     }
     let account = ["Administration", "Profile"].contains(&name);
-    let button = if account { "My Account" } else { "Open menu" };
     let dialog_name = if account {
         "My Account"
     } else {
         "Navigation menu"
     };
-    page.get_by_role(AriaRole::Button, named(button))
-        .click(None)
-        .await
-        .unwrap();
+    page.locator(if account {
+        "[data-app-account]"
+    } else {
+        "[data-app-drawer]"
+    })
+    .click(None)
+    .await
+    .unwrap();
     page.get_by_role(AriaRole::Dialog, named(dialog_name))
         .get_by_role(AriaRole::Link, named(name))
         .click(None)
