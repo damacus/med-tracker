@@ -10,6 +10,9 @@ site_dir = "site"
 nav = [
   { Home = "index.md" },
   { "0.6 Release Notes" = "releases/0.6.md" },
+  { Articles = [
+    { "Moving MedTracker from Rails to Rust: memory, latency and trade-offs" = "articles/from-yolo-rails-to-yolo-rust.md" }
+  ] },
   { "🏠 For Families" = [
     { "Quick Setup" = "families/quick-setup.md" },
     { "Add your first medicine" = "families/adding-first-medicine.md" },
@@ -22,6 +25,7 @@ nav = [
     { Deployment = "deployment.md" },
     { "Fresh Rust rollout" = "operations/loco-cutover-runbook.md" },
     { Testing = "testing.md" },
+    { "Rails and Loco runtime comparison" = "development/runtime-benchmark-2026-10-23.md" },
     { "Maintaining release notes" = "development/release-notes.md" },
     { "Required CI checks" = "development/ci.md" },
     { "MCP Integration" = "mcp.md" },

@@ -1,0 +1,112 @@
+{
+  "app": "rails",
+  "mode": "fork",
+  "started": "2026-10-23T12:14:45.009657+00:00",
+  "import": {
+    "status": 4,
+    "total_records": 288565,
+    "processed_records": 288565,
+    "imported_count": 84410,
+    "created_count": 84410,
+    "updated_count": 0,
+    "unchanged_count": 0,
+    "skipped_count": 16942,
+    "error_message": null
+  },
+  "upload_http_status": 302,
+  "upload_error": null,
+  "import_seconds": 151.95968662500002,
+  "import_start_elapsed": 60.157495749999995,
+  "import_end_elapsed": 212.117182375,
+  "phases": {
+    "before": {
+      "mt-idle-6577-rails-1": {
+        "median_MiB": 918.927734375,
+        "peak_MiB": 957.2578125,
+        "final_minute_median_MiB": 918.927734375,
+        "final_minute_anon_MiB": 842.40625,
+        "samples": 120
+      },
+      "mt-idle-6577-rails-db-1": {
+        "median_MiB": 212.33984375,
+        "peak_MiB": 216.97265625,
+        "final_minute_median_MiB": 212.33984375,
+        "final_minute_anon_MiB": 30.03125,
+        "samples": 120
+      },
+      "mt-idle-6577-rails-storage-1": {
+        "median_MiB": 83.10546875,
+        "peak_MiB": 84.05078125,
+        "final_minute_median_MiB": 83.10546875,
+        "final_minute_anon_MiB": 79.62890625,
+        "samples": 120
+      }
+    },
+    "during": {
+      "mt-idle-6577-rails-1": {
+        "median_MiB": 1545.88671875,
+        "peak_MiB": 1588.2109375,
+        "final_minute_median_MiB": 1545.88671875,
+        "final_minute_anon_MiB": 1517.2578125,
+        "samples": 301
+      },
+      "mt-idle-6577-rails-db-1": {
+        "median_MiB": 224.80078125,
+        "peak_MiB": 706.94140625,
+        "final_minute_median_MiB": 224.80078125,
+        "final_minute_anon_MiB": 47.5859375,
+        "samples": 301
+      },
+      "mt-idle-6577-rails-storage-1": {
+        "median_MiB": 98.9921875,
+        "peak_MiB": 103.86328125,
+        "final_minute_median_MiB": 98.9921875,
+        "final_minute_anon_MiB": 94.6875,
+        "samples": 301
+      }
+    },
+    "after": {
+      "mt-idle-6577-rails-1": {
+        "median_MiB": 1557.130859375,
+        "peak_MiB": 1558.3046875,
+        "final_minute_median_MiB": 1557.1328125,
+        "final_minute_anon_MiB": 1529.921875,
+        "samples": 120
+      },
+      "mt-idle-6577-rails-db-1": {
+        "median_MiB": 225.623046875,
+        "peak_MiB": 226.1875,
+        "final_minute_median_MiB": 225.625,
+        "final_minute_anon_MiB": 47.59765625,
+        "samples": 120
+      },
+      "mt-idle-6577-rails-storage-1": {
+        "median_MiB": 83.13671875,
+        "peak_MiB": 84.23828125,
+        "final_minute_median_MiB": 83.13671875,
+        "final_minute_anon_MiB": 78.8046875,
+        "samples": 120
+      }
+    }
+  },
+  "probes": {
+    "before": {
+      "requests": 60,
+      "errors": 0,
+      "max_seconds": 0.08607770800000125,
+      "median_seconds": 0.03593533350000078
+    },
+    "during": {
+      "requests": 152,
+      "errors": 0,
+      "max_seconds": 0.15233804100000725,
+      "median_seconds": 0.0070761045000082845
+    },
+    "after": {
+      "requests": 60,
+      "errors": 0,
+      "max_seconds": 0.09893650000000775,
+      "median_seconds": 0.011007270999996877
+    }
+  }
+}
