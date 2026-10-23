@@ -43,3 +43,6 @@ mod accessibility_level_a;
 
 #[path = "browser/accessibility_journeys.rs"]
 mod accessibility_journeys;
+
+#[path = "browser/login_layout.rs"]
+mod login_layout;

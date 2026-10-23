@@ -20,6 +20,11 @@
     root.classList.toggle('dark', dark);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', dark ? '#111827' : '#f8fafc');
+    for (const illustration of document.querySelectorAll('[data-login-illustration]')) {
+      const mode = dark ? 'dark' : 'light';
+      illustration.querySelector('source').setAttribute('srcset', illustration.dataset[`${mode}Mobile`]);
+      illustration.querySelector('img').setAttribute('src', illustration.dataset[`${mode}Desktop`]);
+    }
     for (const button of document.querySelectorAll('[data-palette-choice]')) button.setAttribute('aria-pressed', String(button.dataset.paletteChoice === palette));
     for (const button of document.querySelectorAll('[data-appearance-choice]')) button.setAttribute('aria-pressed', String(button.dataset.appearanceChoice === appearance));
   }
