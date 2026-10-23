@@ -178,7 +178,7 @@ async fn execute(
             .map_err(response::operation)?;
         parameters(&query, kind, pdf)?;
         let generated_at = Utc::now();
-        let (data, filename, render_kind, metadata, person_id) = match kind {
+        let (data, filename, metadata, person_id) = match kind {
             Kind::Health => {
                 let (start, end) = dates(&query, today).ok_or_else(validation)?;
                 let include_takes = query.include_medication_takes.as_deref() == Some("1");
@@ -197,9 +197,8 @@ async fn execute(
                     data = report_data::gp_history_pdf(data, principal.time_zone(), include_takes);
                 }
                 (
-                    data,
+                    report_pdf::Document::Gp(data),
                     format!("medtracker-health-history-{start}-to-{end}.pdf"),
-                    report_pdf::Kind::GpHistory,
                     json!({"person_id":person.id,"start_date":start.to_string(),"end_date":end.to_string(),"include_medication_takes":include_takes,"format":"pdf","outcome":"success"}),
                     person.id,
                 )
@@ -222,22 +221,21 @@ async fn execute(
                     );
                 }
                 (
-                    data,
+                    report_pdf::Document::Review(data),
                     format!(
                         "medtracker-medication-review-{}.pdf",
                         generated_at.date_naive()
                     ),
-                    report_pdf::Kind::MedicationReview,
                     json!({"person_id":person.id,"status":query.status,"format":"pdf","outcome":"success"}),
                     person.id,
                 )
             }
         };
-        Ok::<_, response::Failure>((data, filename, render_kind, metadata, person_id))
+        Ok::<_, response::Failure>((data, filename, metadata, person_id))
     }
     .await;
     let audit_request = audit::RequestAudit::report(matches!(kind, Kind::Reviews));
-    let (data, filename, render_kind, metadata, person_id) = match result {
+    let (data, filename, metadata, person_id) = match result {
         Ok(value) => value,
         Err(error) => {
             return no_store(
@@ -274,8 +272,7 @@ async fn execute(
         .unwrap_or("en")
         .to_owned();
     let rendered =
-        tokio::task::spawn_blocking(move || report_pdf::render(&view, render_kind, data, &locale))
-            .await;
+        tokio::task::spawn_blocking(move || report_pdf::render(&view, data, &locale)).await;
     let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
         Ok(value) => value,
         Err(error) => return no_store(response::error(error, &request_id)),

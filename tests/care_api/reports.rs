@@ -219,6 +219,7 @@ async fn medication_review_summary_counts_only_people_with_visible_prompts() {
         chrono::Utc::now().date_naive(),
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     assert_eq!(report["prompts"].as_array().unwrap().len(), 0);
     assert_eq!(report["people_count"], 0);
@@ -392,6 +393,7 @@ async fn ordinary_report_compares_persisted_scheduled_at_as_utc_instants() {
         chrono_tz::Europe::London,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     assert_eq!(
         london["daily_outcomes"][0]["date"], "2026-07-01",
@@ -412,6 +414,7 @@ async fn ordinary_report_compares_persisted_scheduled_at_as_utc_instants() {
         chrono_tz::America::New_York,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     assert_eq!(
         new_york["daily_outcomes"][0]["unexplained_missed"], 1,
@@ -433,6 +436,7 @@ async fn ordinary_report_compares_persisted_scheduled_at_as_utc_instants() {
         chrono_tz::Europe::London,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     assert_eq!(
         london_resolved["not_taken_outcomes"][0]["scheduled_at"], "2026-07-01 11:30",
@@ -449,6 +453,7 @@ async fn ordinary_report_compares_persisted_scheduled_at_as_utc_instants() {
         chrono_tz::America::New_York,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     assert_eq!(
         new_york_resolved["not_taken_outcomes"][0]["scheduled_at"], "2026-07-01 06:30",
@@ -486,6 +491,7 @@ async fn ordinary_report_projects_and_attributes_takes_in_the_configured_zone() 
         chrono_tz::America::New_York,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     let dst_sunday = report["daily_outcomes"]
         .as_array()
@@ -540,6 +546,7 @@ async fn ordinary_report_forecasts_each_taper_step_at_its_own_dose() {
         chrono_tz::UTC,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     let alerts = report["inventory_alerts"].as_array().unwrap();
     assert_eq!(alerts.len(), 1, "500 units covers the taper: {report}");
@@ -583,6 +590,7 @@ async fn ordinary_report_compliance_includes_cycle_expected_and_taken() {
         chrono_tz::Europe::London,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     assert_eq!(report["cycle_summaries"][0]["expected"], 1);
     assert_eq!(report["summary"]["expected"], 1);
@@ -620,6 +628,7 @@ async fn report_projection_does_not_suppress_a_take_linked_to_another_source() {
         chrono_tz::Europe::London,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     let cycle = report["cycle_summaries"]
         .as_array()
@@ -716,6 +725,7 @@ async fn ordinary_report_counts_daily_doses_from_each_taper_steps_times() {
         chrono_tz::UTC,
     )
     .await
+    .map(|report| serde_json::to_value(report).unwrap())
     .unwrap();
     let days = report["daily_outcomes"].as_array().unwrap();
     for (date, expected) in [

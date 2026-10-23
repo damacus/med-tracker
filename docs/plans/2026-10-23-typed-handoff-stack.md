@@ -130,9 +130,36 @@ security decision or unresolved authority change appears.
   database/storage mode on a freshly created synthetic fixture stack, which
   schedules integration then browser tests. No application or Docker setting
   changed to recover the gate. Layer 5 remains planned.
-- Person editing is published as #2898, medication/stock/order writes as #2900,
-  and household writes as #2901. All three have passed hosted CI and remain open
-  in native stack #2899.
+- Layer 5's typed report interface and minute-projection regression failed
+  before executable changes (`OrdinaryHistoryReport` and
+  `within_ninety_report_minutes` were missing). Report models now keep GP,
+  ordinary and medication-review rows typed through insights, dashboard,
+  browser and API callers and PDF localisation. SeaORM subqueries restrict GP
+  takes to the selected person in the database; selected records receive
+  batched source, medicine and location enrichment. Signup email and invitation
+  failures use typed errors before the existing external response mapping.
+  Focused local acceptance passed: report HTTP/PDF 19/19, signup 10/10,
+  PDF-localisation unit 5/5, typed-report unit 2/2 and reports browser 7/7.
+  [Paired reports screenshots](../screenshots/typed-report-handoffs/README.md)
+  at desktop, 390px and 320px are byte-identical to the unchanged-source
+  reference. Independent signup, GP and ordinary/PDF/controller reviews found
+  no actionable issue. Final all-target `task check`, strict `task lint`,
+  `task fmt`, `task docs:build` and `git diff --check` passed. The delivery
+  controller's final `task ci` passed: 165 unit tests, 1,183 integration tests,
+  the separate competing-process fixture check and 45 browser journeys. Log:
+  `/private/tmp/medtracker-reports-ci-fresh.log`. The first full run stopped
+  because the retained synthetic OAuth template contained an expired code;
+  its failed clone's code expired at 12:06 UTC before the test ran at 12:44 UTC.
+  The focused failure reproduced, then all 24 OAuth compatibility tests passed
+  after rebuilding only that task-owned template. The full rerun created the
+  template fresh at first use and passed without an application change. Logs:
+  `/private/tmp/medtracker-reports-ci.log`,
+  `/private/tmp/layer5-oauth-expired-template-red.log` and
+  `/private/tmp/layer5-oauth-fresh-template-green.log`.
+- Before final-layer publication, person editing was published as #2898,
+  medication/stock/order writes as #2900, household writes as #2901 and sync
+  adapters as #2902. All four had passed hosted checks and remained open in
+  native stack #2899 for the final-layer gate.
 - The final scope audit also tracks two separate areas outside this stack:
   app-token issuance and browser review-prompt editing. Browser occurrence forms
   belong to layer 4; report reads and review-prompt PDF conversions belong to

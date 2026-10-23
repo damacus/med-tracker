@@ -218,21 +218,20 @@ async fn index(
             principal.time_zone(),
         )
         .await?;
-        data["people"] = json!(
-            people
-                .iter()
-                .map(|row| json!({"id":row.id,"id_string":row.id.to_string(),"name":row.name}))
-                .collect::<Vec<_>>()
-        );
-        data["manageable_people"] = json!(
-            manageable
-                .iter()
-                .map(|row| json!({"id":row.id,"id_string":row.id.to_string(),"name":row.name}))
-                .collect::<Vec<_>>()
-        );
-        data["selected_person_id"] = json!(filters.person_id);
-        data["include_medication_takes"] =
-            json!(filters.include_medication_takes.as_deref() == Some("1"));
+        let view_people = |rows: &[person::Model]| {
+            rows.iter()
+                .map(|row| report_data::ReportPerson {
+                    id: row.id,
+                    id_string: row.id.to_string(),
+                    name: row.name.clone(),
+                })
+                .collect()
+        };
+        data.people = report_data::OrdinaryPeople::Browser(view_people(&people));
+        data.manageable_people = Some(view_people(&manageable));
+        data.selected_person_id = Some(filters.person_id.clone());
+        data.include_medication_takes =
+            Some(filters.include_medication_takes.as_deref() == Some("1"));
         Ok::<_, OperationError>(data)
     }
     .await;
@@ -255,7 +254,7 @@ async fn index(
     if tenant.commit().await.is_err() {
         return unavailable();
     }
-    page(&view, &token, &slug, data, StatusCode::OK, language)
+    page(&view, &token, &slug, json!(data), StatusCode::OK, language)
 }
 
 async fn gp_download(
@@ -307,8 +306,7 @@ async fn gp_download(
         tenant,
         &view,
         DownloadPayload {
-            kind: report_pdf::Kind::GpHistory,
-            data,
+            data: report_pdf::Document::Gp(data),
             filename: &filename,
             event_type: "health_history_report.downloaded",
             metadata,
@@ -401,8 +399,7 @@ async fn review_download(
         tenant,
         &view,
         DownloadPayload {
-            kind: report_pdf::Kind::MedicationReview,
-            data,
+            data: report_pdf::Document::Review(data),
             filename: &filename,
             event_type: "medication_review_report.downloaded",
             metadata,
@@ -417,8 +414,7 @@ async fn review_download(
 }
 
 struct DownloadPayload<'a> {
-    kind: report_pdf::Kind,
-    data: Value,
+    data: report_pdf::Document,
     filename: &'a str,
     event_type: &'a str,
     metadata: Value,
@@ -442,7 +438,6 @@ async fn download(
     language: &str,
 ) -> Response {
     let DownloadPayload {
-        kind,
         data,
         filename,
         event_type,
@@ -451,13 +446,14 @@ async fn download(
         level,
         people,
     } = payload;
+    let kind = data.kind();
     if tenant.commit().await.is_err() {
         return unavailable();
     }
     let view = view.clone();
     let language = language.to_owned();
     let rendered =
-        tokio::task::spawn_blocking(move || report_pdf::render(&view, kind, data, &language)).await;
+        tokio::task::spawn_blocking(move || report_pdf::render(&view, data, &language)).await;
     let bytes = match rendered {
         Ok(Ok(bytes)) => bytes,
         _ => {
