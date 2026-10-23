@@ -53,17 +53,20 @@ pub async fn reorder_assignment(
         Err(_) => return response::error(response::unavailable(), &request_id),
     };
     let result = match body {
-        Ok(AxumJson(body)) if body.is_object() => {
-            pause_periods::reorder_assignment(&tenant, &id, &body, Some(principal.provenance()))
-                .await
-                .map(|(body, etag)| (StatusCode::OK, body, Some(etag), false))
-                .map_err(|error| match error {
-                    OperationError::Validation { details } => response::Failure::fields(
-                        details.get("errors").cloned().unwrap_or_default(),
-                    ),
-                    other => response::operation(other),
-                })
-        }
+        Ok(AxumJson(body)) if body.is_object() => pause_periods::reorder_assignment(
+            &tenant,
+            &id,
+            &pause_periods::DirectionInput::from_body(&body),
+            Some(principal.provenance()),
+        )
+        .await
+        .map(|(body, etag)| (StatusCode::OK, body, Some(etag), false))
+        .map_err(|error| match error {
+            OperationError::Validation { details } => {
+                response::Failure::fields(details.get("errors").cloned().unwrap_or_default())
+            }
+            other => response::operation(other),
+        }),
         _ => Err(response::Failure::bad_request("Invalid request body")),
     };
     let restored = if result.is_ok() {
@@ -112,16 +115,22 @@ async fn change(
     let result = match body {
         Err(error) => Err(error),
         Ok(body) => {
+            let input = pause_periods::EmptyChangeInput::from_body(&body);
             let operation = match (schedule, pause) {
                 (true, true) => {
-                    pause_periods::pause_schedule(&tenant, &id, &body, Some(principal.provenance()))
-                        .await
+                    pause_periods::pause_schedule(
+                        &tenant,
+                        &id,
+                        &input,
+                        Some(principal.provenance()),
+                    )
+                    .await
                 }
                 (true, false) => {
                     pause_periods::resume_schedule(
                         &tenant,
                         &id,
-                        &body,
+                        &input,
                         Some(principal.provenance()),
                     )
                     .await
@@ -130,7 +139,7 @@ async fn change(
                     pause_periods::pause_assignment(
                         &tenant,
                         &id,
-                        &body,
+                        &input,
                         Some(principal.provenance()),
                     )
                     .await
@@ -139,7 +148,7 @@ async fn change(
                     pause_periods::resume_assignment(
                         &tenant,
                         &id,
-                        &body,
+                        &input,
                         Some(principal.provenance()),
                     )
                     .await

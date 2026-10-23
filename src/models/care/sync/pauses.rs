@@ -12,7 +12,7 @@ pub(super) async fn apply(
     operation: &Operation,
     provenance: &CredentialProvenance,
 ) -> Result<Value, OperationError> {
-    let (body, etag, replayed) = if operation.action == "create" {
+    let (written, replayed) = if operation.action == "create" {
         if operation
             .attributes
             .get("source_id")
@@ -23,10 +23,33 @@ pub(super) async fn apply(
         }
         let query = pause_period::Entity::find().in_tenant(tenant.scope().household_id);
         let before = query.clone().count(tenant.transaction()).await?;
-        let (body, etag) =
-            pause_periods::create(tenant, &envelope(operation), Some(provenance)).await?;
+        let selector = pause_periods::authorize_create(
+            tenant,
+            pause_periods::PauseSourceAttempt::from_fields(
+                operation.attributes.get("source_type"),
+                operation.attributes.get("source_id"),
+            ),
+        )
+        .await?;
+        if operation.attributes.keys().any(|key| {
+            !matches!(
+                key.as_str(),
+                "source_type" | "source_id" | "reason" | "note"
+            )
+        }) {
+            return Err(pause_periods::invalid(
+                "medication_pause_period",
+                "contains an unsupported field",
+            ));
+        }
+        let input = pause_periods::PauseCreate::from_source_fields(
+            &selector,
+            operation.attributes.get("reason"),
+            operation.attributes.get("note"),
+        )?;
+        let written = pause_periods::create(tenant, &input, Some(provenance)).await?;
         let replayed = before == query.count(tenant.transaction()).await?;
-        (body, etag, replayed)
+        (written, replayed)
     } else {
         let id = operation.id.as_deref().ok_or(OperationError::NotFound)?;
         let row = pause_period::Entity::find()
@@ -67,24 +90,20 @@ pub(super) async fn apply(
                 details: json!({"code":"unprocessable_content","message":"Attributes are invalid"}),
             });
         }
-        let (body, etag) =
-            pause_periods::resume(tenant, id, &json!({}), Some(&etag), Some(provenance)).await?;
-        (body, etag, row.ended_at.is_some())
+        let written = pause_periods::resume(
+            tenant,
+            &pause_periods::ResumeInput::new(id),
+            Some(&etag),
+            Some(provenance),
+        )
+        .await?;
+        (written, row.ended_at.is_some())
     };
-    let portable_id = body["data"]["portable_id"]
-        .as_str()
-        .ok_or(OperationError::Unavailable)?;
-    let row = pause_period::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(pause_period::Column::PortableId.eq(portable_id))
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
     Ok(result(
         "MedicationPausePeriod",
-        row.id,
-        Some(&row.portable_id),
-        Some(etag),
+        written.row.id,
+        Some(&written.row.portable_id),
+        Some(written.etag),
         Some(replayed),
     ))
 }
@@ -92,7 +111,6 @@ pub(super) async fn apply(
 pub(super) async fn source_change(
     tenant: &TenantTransaction,
     operation: &Operation,
-    before: &Value,
     provenance: &CredentialProvenance,
 ) -> Result<Value, OperationError> {
     let id = operation.id.as_deref().ok_or(OperationError::NotFound)?;
@@ -107,9 +125,31 @@ pub(super) async fn source_change(
     } else {
         assignments::authorize_update(tenant, id).await?;
     }
-    let portable = before["data"]["portable_id"]
-        .as_str()
-        .ok_or(OperationError::Unavailable)?;
+    let (record_id, portable) = if schedule {
+        let query = schedule::Entity::find().in_tenant(tenant.scope().household_id);
+        let query = if let Ok(id) = id.parse::<i64>() {
+            query.filter(schedule::Column::Id.eq(id))
+        } else {
+            query.filter(schedule::Column::PortableId.eq(id))
+        };
+        let row = query
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::NotFound)?;
+        (row.id, row.portable_id)
+    } else {
+        let query = person_medication::Entity::find().in_tenant(tenant.scope().household_id);
+        let query = if let Ok(id) = id.parse::<i64>() {
+            query.filter(person_medication::Column::Id.eq(id))
+        } else {
+            query.filter(person_medication::Column::PortableId.eq(id))
+        };
+        let row = query
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::NotFound)?;
+        (row.id, row.portable_id)
+    };
     match operation.action.as_str() {
         "pause" => {
             if operation
@@ -119,19 +159,24 @@ pub(super) async fn source_change(
             {
                 return Err(invalid("Attributes are invalid"));
             }
-            let mut attrs = operation.attributes.clone();
-            attrs.insert("source_type".into(), json!(operation.resource_type));
-            attrs.insert("source_id".into(), json!(portable));
-            pause_periods::create(
-                tenant,
-                &json!({"medication_pause_period":attrs}),
-                Some(provenance),
+            pause_periods::authorize_source(tenant, operation.resource_type.as_str(), &portable)
+                .await?;
+            let input = pause_periods::PauseCreate::from_fields(
+                operation.resource_type.as_str(),
+                &portable,
+                operation.attributes.get("reason"),
+                operation.attributes.get("note"),
             )
-            .await
             .map_err(|error| match error {
                 OperationError::Validation { .. } => invalid("Attributes are invalid"),
                 _ => error,
             })?;
+            pause_periods::create(tenant, &input, Some(provenance))
+                .await
+                .map_err(|error| match error {
+                    OperationError::Validation { .. } => invalid("Attributes are invalid"),
+                    _ => error,
+                })?;
         }
         "resume" => {
             if !operation.attributes.is_empty() {
@@ -140,9 +185,21 @@ pub(super) async fn source_change(
                 });
             }
             if schedule {
-                pause_periods::resume_schedule(tenant, id, &json!({}), Some(provenance)).await?;
+                pause_periods::resume_schedule(
+                    tenant,
+                    id,
+                    &pause_periods::EmptyChangeInput::empty(),
+                    Some(provenance),
+                )
+                .await?;
             } else {
-                pause_periods::resume_assignment(tenant, id, &json!({}), Some(provenance)).await?;
+                pause_periods::resume_assignment(
+                    tenant,
+                    id,
+                    &pause_periods::EmptyChangeInput::empty(),
+                    Some(provenance),
+                )
+                .await?;
             }
         }
         "reorder" => {
@@ -150,12 +207,12 @@ pub(super) async fn source_change(
         }
         _ => return Err(invalid("Attributes are invalid")),
     }
-    let (body, etag) = if schedule {
+    let (_, etag) = if schedule {
         treatments::lifecycle::read(tenant, id).await?
     } else {
         assignments::read(tenant, id).await?
     };
-    super::operations::wire(kind, body, etag, None)
+    Ok(result(kind, record_id, Some(&portable), Some(etag), None))
 }
 
 async fn reorder(

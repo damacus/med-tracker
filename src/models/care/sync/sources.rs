@@ -56,7 +56,7 @@ pub(super) async fn apply(
         return super::operations::wire(kind, body, etag, (!schedule).then_some(unchanged));
     }
     if matches!(operation.action.as_str(), "pause" | "resume" | "reorder") {
-        return super::pauses::source_change(tenant, operation, &before.0, provenance).await;
+        return super::pauses::source_change(tenant, operation, provenance).await;
     }
     if !operation.attributes.is_empty() {
         return Err(OperationError::Validation {

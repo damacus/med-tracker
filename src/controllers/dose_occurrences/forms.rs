@@ -13,16 +13,19 @@ pub(super) fn range(
 }
 
 pub(super) fn payload(
+    source_path: (&str, &str),
     action: &str,
     draft: &HashMap<String, String>,
     zone: chrono_tz::Tz,
-) -> Result<Value, OperationError> {
+) -> Result<dose_occurrences::ChangeInput, OperationError> {
     let key = browser_forms::field(draft, "key");
-    let body = match action {
-        "not_taken" => {
-            json!({"key":key,"reason":browser_forms::optional(draft,"reason"),"note":browser_forms::optional(draft,"note")})
-        }
-        "reopen" => json!({"key":key}),
+    match action {
+        "not_taken" => Ok(dose_occurrences::ChangeInput::not_taken_strings(
+            key,
+            browser_forms::optional(draft, "reason").as_deref(),
+            browser_forms::optional(draft, "note").as_deref(),
+        )),
+        "reopen" => Ok(dose_occurrences::ChangeInput::reopen(key)),
         "take" => {
             let invalid = || OperationError::Validation {
                 details: json!({"errors":{"taken_at":["must be a valid local date and time"]}}),
@@ -42,11 +45,17 @@ pub(super) fn payload(
                 return Err(invalid());
             };
             let stock = browser_forms::field(draft, "taken_from_medication_id").parse::<i64>().map_err(|_| OperationError::Validation { details: json!({"errors":{"taken_from_medication_id":["must be a positive integer"]}}) })?;
-            json!({"key":key,"client_uuid":browser_forms::field(draft,"client_uuid"),"taken_at":time.to_rfc3339(),"dose_amount":browser_forms::field(draft,"dose_amount"),"taken_from_medication_id":stock})
+            Ok(dose_occurrences::ChangeInput::take(
+                source_path,
+                key,
+                &time.to_rfc3339(),
+                Some(browser_forms::field(draft, "client_uuid")),
+                Some(browser_forms::field(draft, "dose_amount")),
+                Some(stock),
+            ))
         }
-        _ => return Err(OperationError::NotFound),
-    };
-    Ok(json!({"dose_occurrence":body}))
+        _ => Err(OperationError::NotFound),
+    }
 }
 
 pub(super) fn defaults(

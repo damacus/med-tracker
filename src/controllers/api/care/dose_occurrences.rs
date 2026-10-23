@@ -156,7 +156,7 @@ async fn process(
                 tenant,
                 (kind, &path.1),
                 action,
-                &body,
+                dose_occurrences::ChangeInput::from_body((kind, &path.1), action, &body),
                 etag,
                 &secret,
                 Some(principal.provenance()),
@@ -169,12 +169,12 @@ async fn process(
         })
     };
     let (status, reply, etag) = match operation {
-        Ok((body, etag)) => {
+        Ok(written) => {
             savepoint
                 .commit()
                 .await
                 .map_err(|_| response::unavailable())?;
-            (StatusCode::OK, body, Some(etag))
+            (StatusCode::OK, written.body, Some(written.etag))
         }
         Err(OperationError::Validation { details }) => {
             savepoint

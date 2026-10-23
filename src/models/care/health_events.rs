@@ -9,6 +9,7 @@ use crate::models::{
 };
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde_json::{Value, json};
+pub(crate) use sync::health_events::HealthInput;
 
 fn scope(tenant: &TenantTransaction) -> sea_orm::Select<health_event::Entity> {
     health_event::Entity::find()
@@ -76,11 +77,10 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
     )
 }
 
-pub async fn mutate(
+pub(crate) async fn mutate(
     tenant: &TenantTransaction,
     id: Option<&str>,
-    body: &Value,
-    if_match: Option<&str>,
+    input: Result<HealthInput, OperationError>,
     provenance: &CredentialProvenance,
 ) -> Result<(Value, String), OperationError> {
     sync::lock(tenant).await?;
@@ -88,24 +88,7 @@ pub async fn mutate(
         let row = selected(tenant, id).await?;
         access::require_person_access(tenant, row.person_id, PersonAccess::Manage).await?;
     }
-    let fields = body
-        .as_object()
-        .filter(|outer| outer.len() == 1)
-        .and_then(|outer| outer.get("health_event"))
-        .and_then(Value::as_object)
-        .ok_or_else(|| OperationError::Validation {
-            details: json!({"status":400,"code":"bad_request","message":"Invalid request body"}),
-        })?;
-    let operation = sync::Operation {
-        resource_type: "health_event".into(),
-        action: if id.is_some() { "update" } else { "create" }.into(),
-        id: id.map(str::to_owned),
-        if_match: if_match.map(str::to_owned),
-        attributes: fields.clone(),
-    };
-    let result = sync::health_events::apply(tenant, &operation, provenance).await?;
-    let id = result["record_id"]
-        .as_str()
-        .ok_or(OperationError::Unavailable)?;
-    read(tenant, id).await
+    let input = input?;
+    let record = sync::health_events::apply_typed(tenant, &input, provenance).await?;
+    sync::health_events::representation(tenant.transaction(), &record).await
 }

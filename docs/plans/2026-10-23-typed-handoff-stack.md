@@ -97,9 +97,42 @@ security decision or unresolved authority change appears.
   issue in the layer 3 source and test diff. The delivery controller's frozen
   `task ci` passed: 161 unit tests, 42 browser journeys, 1,179 integration tests
   and the separate competing-process fixture test. Log:
-  `/private/tmp/medtracker-household-ci.log`. Layers 4–5 remain planned.
-- Person editing is published as #2898 and medication/stock/order writes as
-  #2900; both have passed hosted CI and remain open in native stack #2899.
+  `/private/tmp/medtracker-household-ci.log`.
+- Layer 4's typed pause-command interface failed `task check` before executable
+  edits (`PauseCreate` was missing). A dual-invalid pause reason/note test then
+  failed against an intermediate candidate and passed after restoring the
+  reason-first error. Pause, legacy reorder, occurrence and health-event writes
+  now receive typed inputs from API, browser and sync adapters; returned row
+  identity stays typed until the final wire projection. Raw replay bodies,
+  signed occurrence keys and final transport JSON remain at their boundaries.
+  Unchanged-source desktop/mobile saved-state browser references are retained
+  [with candidate capture points](../screenshots/typed-care-operations/README.md).
+- Layer 4 focused acceptance passed locally: pause and legacy routes 9/9
+  (Nextest run `cb580d45-82ae-434b-bbb2-f43ca1550c23`; Task wrapper exit 255
+  came after the passing test and cleanup because of a shell status expression),
+  dose outcomes 15/15, health events 10/10, and sync occurrence reopen 1/1.
+  The latter three Task runs exited 0 with logs at
+  `/private/tmp/layer4-occurrence-integration.log`,
+  `/private/tmp/layer4-health-integration.log` and
+  `/private/tmp/layer4-sync-occurrence.log`. The final typed sync pause identity
+  case passed 1/1 with Task exit 0
+  (`/private/tmp/layer4-sync-pause-final.log`). The final browser Task passed
+  3/3 journeys (`/private/tmp/layer4-browser-final.log`): eight screenshot
+  pairs are byte-identical, two desktop pairs have 28 one-channel-level pixel
+  differences confined to the sidebar search control, and the not-taken pair
+  differs only in the recorded time. Independent affected-family and narrow
+  follow-up reviews found no actionable issue. The final all-target `task check`,
+  strict `task lint`, `task fmt`, `task docs:build` and `git diff --check` passed.
+  Root-owned `task ci` passed: 163 unit tests, 1,181 integration tests, the
+  separate competing-process fixture check and 45 browser journeys. Log:
+  `/private/tmp/medtracker-sync-ci-owned.log`. Docker's address pools were full
+  of other worktrees' networks, so the successful run used the existing owned
+  database/storage mode on a freshly created synthetic fixture stack, which
+  schedules integration then browser tests. No application or Docker setting
+  changed to recover the gate. Layer 5 remains planned.
+- Person editing is published as #2898, medication/stock/order writes as #2900,
+  and household writes as #2901. All three have passed hosted CI and remain open
+  in native stack #2899.
 - The final scope audit also tracks two separate areas outside this stack:
   app-token issuance and browser review-prompt editing. Browser occurrence forms
   belong to layer 4; report reads and review-prompt PDF conversions belong to

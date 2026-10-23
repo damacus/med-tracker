@@ -45,50 +45,22 @@ pub(super) async fn apply(
         };
         let kind = text("source_type")?;
         let id = text("source_id")?;
-        let mut attrs = Map::new();
-        attrs.insert("key".into(), json!(text("occurrence_key")?));
-        for field in ["reason", "note"] {
-            if let Some(value) = operation.attributes.get(field) {
-                attrs.insert(field.into(), value.clone());
-            }
-        }
-        let (body, etag) = dose_occurrences::change(
+        let key = text("occurrence_key")?;
+        let written = dose_occurrences::change(
             tenant,
             (kind, id),
             "not_taken",
-            &json!({"dose_occurrence":attrs}),
+            dose_occurrences::ChangeInput::not_taken(
+                key,
+                operation.attributes.get("reason"),
+                operation.attributes.get("note"),
+            ),
             None,
             secret,
             Some(provenance),
         )
         .await
         .map_err(source_error)?;
-        let source_id = body["data"]["source_id"]
-            .as_i64()
-            .ok_or(OperationError::Unavailable)?;
-        let date = body["data"]["window_starts_on"]
-            .as_str()
-            .and_then(|date| chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").ok())
-            .ok_or(OperationError::Unavailable)?;
-        let position = body["data"]["position"]
-            .as_i64()
-            .and_then(|position| i32::try_from(position).ok())
-            .ok_or(OperationError::Unavailable)?;
-        let query = dose_occurrence::Entity::find()
-            .in_tenant(tenant.scope().household_id)
-            .filter(dose_occurrence::Column::WindowStartsOn.eq(date))
-            .filter(dose_occurrence::Column::Position.eq(position));
-        let query = match kind {
-            "schedule" => query.filter(dose_occurrence::Column::ScheduleId.eq(source_id)),
-            "person_medication" => {
-                query.filter(dose_occurrence::Column::PersonMedicationId.eq(source_id))
-            }
-            _ => return Err(invalid()),
-        };
-        let row = query
-            .one(tenant.transaction())
-            .await?
-            .ok_or(OperationError::Unavailable)?;
         let changes_after = api_change_event::Entity::find()
             .in_tenant(tenant.scope().household_id)
             .filter(api_change_event::Column::RecordType.eq("MedicationDoseOccurrence"))
@@ -96,9 +68,9 @@ pub(super) async fn apply(
             .await?;
         return Ok(result(
             "MedicationDoseOccurrence",
-            row.id,
-            Some(&row.portable_id),
-            Some(etag),
+            written.row.id,
+            Some(&written.row.portable_id),
+            Some(written.etag),
             Some(changes_after == changes_before),
         ));
     }
@@ -134,33 +106,14 @@ pub(super) async fn apply(
         return Err(invalid());
     }
     required_etag(operation, &dose_occurrences::record_etag(&row))?;
-    let data = dose_occurrences::list(
-        tenant,
-        kind,
-        &source_id.to_string(),
-        dose_occurrences::RangeQuery {
-            start_date: Some(row.window_starts_on.to_string()),
-            end_date: Some(row.window_starts_on.to_string()),
-        },
-        secret,
-    )
-    .await
-    .map_err(source_error)?;
-    let occurrence = data["data"]
-        .as_array()
-        .and_then(|rows| {
-            rows.iter().find(|value| {
-                value["window_starts_on"] == json!(row.window_starts_on.to_string())
-                    && value["position"] == json!(row.position)
-            })
-        })
-        .ok_or_else(invalid)?;
-    let key = occurrence["key"].as_str().ok_or_else(invalid)?;
-    let (_, etag) = dose_occurrences::change(
+    let key = dose_occurrences::key_for_row(tenant, &row, secret)
+        .await
+        .map_err(source_error)?;
+    let written = dose_occurrences::change(
         tenant,
         (kind, &source_id.to_string()),
         "reopen",
-        &json!({"dose_occurrence":{"key":key}}),
+        dose_occurrences::ChangeInput::reopen(&key),
         operation.if_match.as_deref(),
         secret,
         Some(provenance),
@@ -171,7 +124,7 @@ pub(super) async fn apply(
         "MedicationDoseOccurrence",
         row.id,
         Some(&row.portable_id),
-        Some(etag),
+        Some(written.etag),
         Some(false),
     ))
 }
