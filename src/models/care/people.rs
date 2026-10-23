@@ -8,6 +8,7 @@ mod writing;
 
 pub(crate) use creation::create_imported;
 pub use creation::{CreateDependent, create};
+pub(crate) use creation::{DependentInput, DependentKind};
 pub(crate) use me::me_read;
 pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};

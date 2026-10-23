@@ -226,7 +226,14 @@ async fn process(
         Some(id) => {
             people::update(tenant, id, attributes, today, Some(principal.provenance())).await
         }
-        None => match people::CreateDependent::parse(&Value::Object(fields.clone()), today) {
+        None => match serde_json::from_value::<people::DependentInput>(Value::Object(
+            fields.clone(),
+        ))
+        .map_err(|_| OperationError::Validation {
+            details: json!({"errors":{"person":["contains unsupported or invalid fields"]}}),
+        })
+        .and_then(|input| people::CreateDependent::from_input(input, today))
+        {
             Ok(command) => {
                 people::create(tenant, command, today, Some(principal.provenance())).await
             }

@@ -5,20 +5,20 @@ use sea_orm::ConnectionTrait;
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum DependentKind {
+pub(crate) enum DependentKind {
     Minor,
     DependentAdult,
 }
 
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Request {
-    name: String,
-    email: Option<String>,
-    date_of_birth: NaiveDate,
-    person_type: DependentKind,
-    has_capacity: Option<bool>,
-    initial_guardian_declaration: Option<bool>,
+pub(crate) struct DependentInput {
+    pub name: String,
+    pub email: Option<String>,
+    pub date_of_birth: NaiveDate,
+    pub person_type: DependentKind,
+    pub has_capacity: Option<bool>,
+    pub initial_guardian_declaration: Option<bool>,
 }
 
 #[derive(serde::Deserialize)]
@@ -39,9 +39,10 @@ pub struct CreateDependent {
 }
 
 impl CreateDependent {
-    pub fn parse(attributes: &Value, today: NaiveDate) -> Result<Self, OperationError> {
-        let request: Request = serde_json::from_value(attributes.clone())
-            .map_err(|_| invalid("person", "contains unsupported or invalid fields"))?;
+    pub(crate) fn from_input(
+        request: DependentInput,
+        today: NaiveDate,
+    ) -> Result<Self, OperationError> {
         let attestation = InitialGuardianAttestation::parse(request.initial_guardian_declaration)?;
         Self::validate(request, attestation, today)
     }
@@ -54,7 +55,7 @@ impl CreateDependent {
         let imported: ImportedDependent = serde_json::from_value(row.clone())
             .map_err(|_| invalid("person", "contains unsupported or invalid dependent fields"))?;
         Self::validate(
-            Request {
+            DependentInput {
                 name: imported.name,
                 email: imported.email,
                 date_of_birth: imported.date_of_birth,
@@ -68,7 +69,7 @@ impl CreateDependent {
     }
 
     fn validate(
-        request: Request,
+        request: DependentInput,
         attestation: InitialGuardianAttestation,
         today: NaiveDate,
     ) -> Result<Self, OperationError> {
@@ -267,4 +268,57 @@ pub(crate) async fn create_imported(
     persistence::record_version(tenant,"HouseholdMembership",participation.id,"create",None,json!({"id":participation.id,"household_id":participation.household_id,"person_id":saved.id,"role":participation.role,"status":participation.status}),provenance).await?;
     persistence::record_version(tenant,"CarerRelationship",relationship.id,"create",None,json!({"id":relationship.id,"household_id":relationship.household_id,"carer_id":relationship.carer_id,"patient_id":relationship.patient_id,"guardian_declaration_id":declaration.get(),"relationship_type":relationship.relationship_type,"active":relationship.active}),provenance).await?;
     Ok(saved)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dependent_input() -> DependentInput {
+        DependentInput {
+            name: "Synthetic child".into(),
+            email: Some("  Child@Example.Test  ".into()),
+            date_of_birth: NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            person_type: DependentKind::Minor,
+            has_capacity: Some(false),
+            initial_guardian_declaration: Some(true),
+        }
+    }
+
+    #[test]
+    fn dependent_input_preserves_normalization_and_exact_attestation() {
+        let today = NaiveDate::from_ymd_opt(2026, 10, 23).unwrap();
+        let command = CreateDependent::from_input(dependent_input(), today).unwrap();
+        assert_eq!(command.name, "Synthetic child");
+        assert_eq!(command.email.as_deref(), Some("child@example.test"));
+        assert!(matches!(command.kind, DependentKind::Minor));
+        for acceptance in [None, Some(false)] {
+            let mut input = dependent_input();
+            input.initial_guardian_declaration = acceptance;
+            assert!(matches!(
+                CreateDependent::from_input(input, today),
+                Err(OperationError::Validation { details })
+                    if details == json!({"errors":{"initial_guardian_declaration":["must be explicitly accepted"]}})
+            ));
+        }
+    }
+
+    #[test]
+    fn dependent_input_rejects_capacity_and_minor_on_eighteenth_birthday() {
+        let today = NaiveDate::from_ymd_opt(2026, 10, 23).unwrap();
+        let mut capable = dependent_input();
+        capable.has_capacity = Some(true);
+        assert!(matches!(
+            CreateDependent::from_input(capable, today),
+            Err(OperationError::Validation { details })
+                if details == json!({"errors":{"has_capacity":["must be false for a dependent"]}})
+        ));
+        let mut adult = dependent_input();
+        adult.date_of_birth = NaiveDate::from_ymd_opt(2008, 10, 23).unwrap();
+        assert!(matches!(
+            CreateDependent::from_input(adult, today),
+            Err(OperationError::Validation { details })
+                if details == json!({"errors":{"person_type":["does not match age"]}})
+        ));
+    }
 }
