@@ -17,7 +17,7 @@
         <form method="post" action="/households/select">
           <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
           <input type="hidden" name="household_id" value="{{ household.id }}">
-          <button class="btn btn-neutral" type="submit" aria-label="Open {{ household.name }}">Open household</button>
+          <button class="btn btn-neutral" type="submit" aria-label="Open household: {{ household.name }}">Open household</button>
         </form>
       </div></li>
     {% else %}<li>You do not have an active household membership.</li>{% endfor %}

@@ -77,11 +77,13 @@ async fn integration_consent_desktop_and_mobile() {
                     .click(None)
                     .await
                     .unwrap();
-                expect(page.get_by_role(AriaRole::Button, named("Open Second care home")))
-                    .to_be_visible()
-                    .await
-                    .unwrap();
-                page.get_by_role(AriaRole::Button, named("Open Second care home"))
+                expect(
+                    page.get_by_role(AriaRole::Button, named("Open household: Second care home")),
+                )
+                .to_be_visible()
+                .await
+                .unwrap();
+                page.get_by_role(AriaRole::Button, named("Open household: Second care home"))
                     .click(None)
                     .await
                     .unwrap();

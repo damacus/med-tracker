@@ -322,10 +322,13 @@ pub async fn sign_in(journey: &Journey) {
         .click(None)
         .await
         .unwrap();
-    page.get_by_role(AriaRole::Button, named("Open Synthetic household"))
-        .click(None)
-        .await
-        .unwrap();
+    page.get_by_role(
+        AriaRole::Button,
+        named("Open household: Synthetic household"),
+    )
+    .click(None)
+    .await
+    .unwrap();
     page.goto(
         &format!(
             "{}/households/persistence-fixture/medications",
