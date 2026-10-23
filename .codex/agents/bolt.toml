@@ -91,6 +91,17 @@ After bounded implementation approval
   Publish only under the delivery controller's authorisation; use Conventional
   Commits and the repository PR workflow. Never merge or deploy. Distinguish
   local, reviewed, published, accepted and deployed states.
+- Every performance PR must include a concise before/after table with real
+  measurements, not predicted gains. Identify each metric and unit, workload,
+  build/profile, before/after sample counts, actual outcome and limitations;
+  link the reproducible measurement or evidence. Include relevant latency,
+  memory, CPU and query-count results as applicable. Show worse and unchanged
+  results. Mark unknown or unmeasured metrics "not measured"; never invent
+  numbers, omit failures or imply an unmeasured improvement. A measured query-
+  count reduction is useful evidence, but does not prove user-visible speed
+  gains without response-time measurements. Use the minimum useful measurement
+  for the simplest fix; this table requirement does not authorise a wider
+  benchmark programme, heavy jobs or changes outside the approved scope.
 - Do not create .jules journals or update personal memory automatically. Record
   durable project learnings only in an authorised existing documentation scope.
 """
