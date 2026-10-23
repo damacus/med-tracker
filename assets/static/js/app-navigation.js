@@ -190,10 +190,8 @@
       const switcher = sidebar.querySelector('a[href="/households/choose?switch=1"]');
       const selectedHousehold = data.households?.find(household => String(household.id) === String(data.active_household_id) && typeof household.name === 'string');
       switcher.replaceChildren(element('span', labels.profile_menu.households));
-      switcher.setAttribute('aria-label', labels.profile_menu.households);
       if (selectedHousehold) {
         switcher.append(element('span', selectedHousehold.name, 'text-xs shell-muted'));
-        switcher.setAttribute('aria-label', `${labels.profile_menu.households} · ${selectedHousehold.name}`);
       }
       switcher.classList.add('app-household-switcher');
       sidebar.querySelector('[data-sidebar-name]').textContent = data.name;
@@ -205,7 +203,9 @@
         signOut.querySelector('[name="authenticity_token"]').value = data.authenticity_token;
       } else sidebar.querySelector('.app-sidebar-account').append(logout());
     }
-    const account = dialog('app-account', labels.profile_menu.my_account, [header.querySelector('[data-app-account]'), ...(sidebarTrigger ? [sidebarTrigger] : [])]);
+    const accountTriggers = [header.querySelector('[data-app-account]'), ...(sidebarTrigger ? [sidebarTrigger] : [])];
+    const account = dialog('app-account', labels.profile_menu.my_account, accountTriggers);
+    for (const trigger of accountTriggers) trigger.setAttribute('aria-label', `${data.initials} ${data.name} ${labels.profile_menu.my_account}`);
     if (appearanceTrigger) {
       appearanceTrigger.className = 'app-navigation-link';
       appearanceTrigger.addEventListener('click', () => account.close());

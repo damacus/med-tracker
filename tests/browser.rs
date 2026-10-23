@@ -37,3 +37,6 @@ mod polish_followups;
 
 #[path = "browser/storage_location_deletion.rs"]
 mod storage_location_deletion;
+
+#[path = "browser/accessibility_level_a.rs"]
+mod accessibility_level_a;
