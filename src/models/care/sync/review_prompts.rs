@@ -4,7 +4,9 @@ use axum::http::StatusCode;
 use chrono::{Datelike, NaiveDate};
 use loco_rs::model::TenantQueryExt;
 use sea_orm::DatabaseTransaction;
+use serde_json::Map;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 pub(crate) struct AuthContext<'a> {
     pub(crate) tenant: &'a TenantTransaction,
 }
@@ -129,8 +131,40 @@ pub(crate) async fn visible_prompt(
         .map_err(database_error)
 }
 
+#[derive(Clone, Copy)]
+enum ReviewStatus {
+    NeedsReview,
+    ReviewedWithPractitioner,
+    ExpectedPrescribedCombination,
+    NotRelevant,
+    HiddenLowSignal,
+}
+
+impl ReviewStatus {
+    fn parse(value: &str) -> Result<Self, StatusCode> {
+        match value {
+            "needs_review" => Ok(Self::NeedsReview),
+            "reviewed_with_practitioner" => Ok(Self::ReviewedWithPractitioner),
+            "expected_prescribed_combination" => Ok(Self::ExpectedPrescribedCombination),
+            "not_relevant" => Ok(Self::NotRelevant),
+            "hidden_low_signal" => Ok(Self::HiddenLowSignal),
+            _ => Err(StatusCode::UNPROCESSABLE_ENTITY),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::NeedsReview => "needs_review",
+            Self::ReviewedWithPractitioner => "reviewed_with_practitioner",
+            Self::ExpectedPrescribedCombination => "expected_prescribed_combination",
+            Self::NotRelevant => "not_relevant",
+            Self::HiddenLowSignal => "hidden_low_signal",
+        }
+    }
+}
+
 pub(crate) struct Changes {
-    status: Option<String>,
+    status: Option<ReviewStatus>,
     practitioner_name: Option<String>,
     practitioner_role: Option<String>,
     reviewed_on: Option<Option<NaiveDate>>,
@@ -146,8 +180,14 @@ impl Changes {
         else {
             return Err(StatusCode::BAD_REQUEST);
         };
-        if root.len() != 1
-            || inner.is_empty()
+        if root.len() != 1 {
+            return Err(StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        Self::parse_attributes(inner)
+    }
+
+    pub(crate) fn parse_attributes(inner: &Map<String, Value>) -> Result<Self, StatusCode> {
+        if inner.is_empty()
             || inner.keys().any(|field| {
                 !matches!(
                     field.as_str(),
@@ -168,38 +208,15 @@ impl Changes {
                 _ => Err(StatusCode::UNPROCESSABLE_ENTITY),
             }
         };
-        let status = text("status")?;
-        if status.as_deref().is_some_and(|status| {
-            !matches!(
-                status,
-                "needs_review"
-                    | "reviewed_with_practitioner"
-                    | "expected_prescribed_combination"
-                    | "not_relevant"
-                    | "hidden_low_signal"
-            )
-        }) {
-            return Err(StatusCode::UNPROCESSABLE_ENTITY);
-        }
+        let status = text("status")?
+            .as_deref()
+            .map(ReviewStatus::parse)
+            .transpose()?;
         let reviewed_on = match inner.get("reviewed_on") {
             None => None,
             Some(Value::Null) => Some(None),
             Some(Value::String(date)) if date.is_empty() => Some(None),
-            Some(Value::String(date)) => Some(Some({
-                let bytes = date.as_bytes();
-                if bytes.len() != 10
-                    || bytes[4] != b'-'
-                    || bytes[7] != b'-'
-                    || bytes
-                        .iter()
-                        .enumerate()
-                        .any(|(index, byte)| index != 4 && index != 7 && !byte.is_ascii_digit())
-                {
-                    return Err(StatusCode::UNPROCESSABLE_ENTITY);
-                }
-                NaiveDate::parse_from_str(date, "%Y-%m-%d")
-                    .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?
-            })),
+            Some(Value::String(date)) => Some(Some(Self::parse_date(date)?)),
             _ => return Err(StatusCode::UNPROCESSABLE_ENTITY),
         };
         Ok(Self {
@@ -211,12 +228,57 @@ impl Changes {
         })
     }
 
+    fn parse_date(date: &str) -> Result<NaiveDate, StatusCode> {
+        let bytes = date.as_bytes();
+        if bytes.len() != 10
+            || bytes[4] != b'-'
+            || bytes[7] != b'-'
+            || bytes
+                .iter()
+                .enumerate()
+                .any(|(index, byte)| index != 4 && index != 7 && !byte.is_ascii_digit())
+        {
+            return Err(StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)
+    }
+
+    pub(crate) fn from_browser_form(
+        draft: &HashMap<String, String>,
+        record: &review_prompt::Model,
+    ) -> Result<Self, StatusCode> {
+        let status = Some(ReviewStatus::parse(
+            draft
+                .get("status")
+                .ok_or(StatusCode::UNPROCESSABLE_ENTITY)?,
+        )?);
+        let reviewed_on = match draft.get("reviewed_on") {
+            None => Some(None),
+            Some(date) if date.is_empty() => Some(None),
+            Some(date) => Some(Some(Self::parse_date(date)?)),
+        };
+        let text = |field: &str, current: Option<&str>| -> Result<Option<String>, StatusCode> {
+            let value = draft.get(field).ok_or(StatusCode::UNPROCESSABLE_ENTITY)?;
+            Ok((current.is_some() || !value.is_empty()).then(|| value.clone()))
+        };
+        Ok(Self {
+            status,
+            practitioner_name: text("practitioner_name", record.practitioner_name.as_deref())?,
+            practitioner_role: text("practitioner_role", record.practitioner_role.as_deref())?,
+            reviewed_on,
+            review_note: text("review_note", record.review_note.as_deref())?,
+        })
+    }
+
     pub(crate) fn apply(
         self,
         record: &review_prompt::Model,
         membership_id: i64,
     ) -> Option<(review_prompt::ActiveModel, bool)> {
-        let status = self.status.clone().unwrap_or_else(|| record.status.clone());
+        let status = self
+            .status
+            .map(ReviewStatus::as_str)
+            .unwrap_or(&record.status);
         let name = self
             .practitioner_name
             .as_deref()
@@ -227,7 +289,7 @@ impl Changes {
             .or(record.practitioner_role.as_deref());
         let reviewed_on = self.reviewed_on.unwrap_or(record.reviewed_on);
         if matches!(
-            status.as_str(),
+            status,
             "reviewed_with_practitioner" | "expected_prescribed_combination"
         ) && (name.is_none_or(|value| value.trim().is_empty())
             || role.is_none_or(|value| value.trim().is_empty())
@@ -238,8 +300,8 @@ impl Changes {
         let mut changed = record.clone().into_active_model();
         let mut dirty = false;
         if let Some(status) = self.status {
-            dirty |= status != record.status;
-            changed.status = Set(status);
+            dirty |= status.as_str() != record.status;
+            changed.status = Set(status.as_str().to_owned());
         }
         if let Some(name) = self.practitioner_name {
             dirty |= Some(&name) != record.practitioner_name.as_ref();
@@ -258,7 +320,7 @@ impl Changes {
             changed.review_note = Set(Some(note));
         }
         if matches!(
-            status.as_str(),
+            status,
             "reviewed_with_practitioner" | "expected_prescribed_combination"
         ) {
             dirty |= Some(membership_id) != record.reviewed_by_membership_id;
@@ -335,8 +397,7 @@ async fn apply_sync_operation(
         .and_then(|value| value.as_str().map(str::to_owned))
         .unwrap_or_default();
     edit::require(context.tenant, &record, &lease).await?;
-    let changes =
-        Changes::parse(&json!({"medication_review_prompt": attributes})).map_err(sync_error)?;
+    let changes = Changes::parse_attributes(&attributes).map_err(sync_error)?;
     let (active, dirty) = changes
         .apply(&record, context.tenant.membership().id)
         .ok_or_else(|| sync_error(StatusCode::UNPROCESSABLE_ENTITY))?;
@@ -404,4 +465,97 @@ async fn authorize_sync_replay(
         return Err(OperationError::Forbidden);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn record() -> review_prompt::Model {
+        let day = NaiveDate::from_ymd_opt(2026, 10, 1).unwrap();
+        review_prompt::Model {
+            id: 1,
+            created_at: day.and_hms_opt(0, 0, 0).unwrap(),
+            evidence_record_id: 1,
+            evidence_source_checked_on: day,
+            evidence_source_effective_on: day,
+            evidence_source_name: String::new(),
+            evidence_source_url: String::new(),
+            evidence_source_version: String::new(),
+            evidence_text: String::new(),
+            household_id: 1,
+            interacting_medication_id: 1,
+            interacting_medication_name: String::new(),
+            match_confidence: String::new(),
+            match_reason: String::new(),
+            match_type: String::new(),
+            matched_term: String::new(),
+            person_id: 1,
+            practitioner_name: None,
+            practitioner_role: None,
+            primary_medication_id: 1,
+            primary_medication_name: String::new(),
+            review_note: None,
+            reviewed_by_membership_id: None,
+            reviewed_on: None,
+            risk_level: String::new(),
+            source_instruction: String::new(),
+            status: "not_relevant".to_owned(),
+            updated_at: day.and_hms_opt(0, 0, 0).unwrap(),
+        }
+    }
+
+    #[test]
+    fn browser_form_preserves_missing_blank_and_strict_date_contract() {
+        let stored = record();
+        let mut draft = HashMap::from([
+            ("status".to_owned(), "not_relevant".to_owned()),
+            ("practitioner_name".to_owned(), String::new()),
+            ("practitioner_role".to_owned(), String::new()),
+            ("review_note".to_owned(), String::new()),
+        ]);
+        let changes = Changes::from_browser_form(&draft, &stored).unwrap();
+        assert!(changes.practitioner_name.is_none());
+        assert!(changes.practitioner_role.is_none());
+        assert!(changes.review_note.is_none());
+        assert_eq!(changes.reviewed_on, Some(None));
+        assert!(!changes.apply(&stored, 1).unwrap().1);
+
+        draft.remove("practitioner_name");
+        assert_eq!(
+            Changes::from_browser_form(&draft, &stored).err(),
+            Some(StatusCode::UNPROCESSABLE_ENTITY)
+        );
+        draft.insert("practitioner_name".to_owned(), String::new());
+        draft.insert("reviewed_on".to_owned(), "2026-1-01".to_owned());
+        assert_eq!(
+            Changes::from_browser_form(&draft, &stored).err(),
+            Some(StatusCode::UNPROCESSABLE_ENTITY)
+        );
+        draft.insert("reviewed_on".to_owned(), String::new());
+        draft.insert("status".to_owned(), "reviewed_with_practitioner".to_owned());
+        assert!(
+            Changes::from_browser_form(&draft, &stored)
+                .unwrap()
+                .apply(&stored, 1)
+                .is_none()
+        );
+
+        let mut with_name = stored;
+        with_name.practitioner_name = Some("Dr Prior".to_owned());
+        draft.insert("status".to_owned(), "not_relevant".to_owned());
+        let changes = Changes::from_browser_form(&draft, &with_name).unwrap();
+        assert_eq!(changes.practitioner_name.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn omitted_wire_status_preserves_unknown_stored_status() {
+        let mut stored = record();
+        stored.status = "legacy_review_state".to_owned();
+        let changes =
+            Changes::parse(&json!({"medication_review_prompt":{"review_note":"Updated"}})).unwrap();
+        let (active, dirty) = changes.apply(&stored, 1).unwrap();
+        assert!(dirty);
+        assert_eq!(active.status.unwrap(), "legacy_review_state");
+    }
 }

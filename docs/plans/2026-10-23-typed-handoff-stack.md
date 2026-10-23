@@ -224,3 +224,26 @@ passed: 167 unit tests, 1,187 integration tests, the separate competing-process
 fixture check and 45 browser journeys. Log: `/private/tmp/token-area-ci.log`.
 The three source/test SHA-256 values matched the reviewed freeze after CI;
 generated tracked screenshots were archived outside the checkout and restored.
+
+Layer 1 is published as #2906 at
+`7eed417359eef9d0347b96ede9fa8ed410a46179`; hosted checks passed while layer 2
+was implemented. It remains open for the whole-stack gate.
+
+Layer 2's unchanged-source browser baseline passed at the layer 1 commit. Its
+separate clear-date-only regression failed: the date cleared in storage but
+`updated_at` stayed at `2026-10-23T14:33:53.525596`, leaving the ETag unchanged
+(Nextest `ff2c440f-00d8-49b3-a07b-10ad8bfdb625`). Browser forms now construct
+typed changes directly, sync parses its attributes without a manufactured
+envelope, and the true API envelope retains its boundary parser. Date clearing
+goes through the shared change application and advances the version. No
+authority, reconciliation, lease, replay, archive or audit order changed.
+Focused acceptance passed: browser 2/2, review-prompt API 22/22, sync 1/1 and
+typed units 2/2. Independent whole-area review and root review found no
+actionable issue. All eight [desktop/mobile screenshot pairs](../screenshots/typed-review-prompt-editing/README.md)
+are byte-identical to the unchanged-source reference. Root's frozen `task ci`
+passed: 169 unit tests, 1,189 integration tests, the separate competing-process
+fixture check and 47 browser journeys. Log:
+`/private/tmp/review-prompt-area-ci.log`. All 21 reviewed source, test and visual
+evidence hashes matched after CI-generated captures were archived and the
+reviewed captures restored. Only the owned cached OAuth template was refreshed
+before this run; application code and test expectations were unchanged during CI.
