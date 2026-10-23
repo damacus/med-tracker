@@ -1,9 +1,0 @@
----
-source: src/auth.rs
-expression: jwt.validate(&token)
----
-Err(
-    Error(
-        ExpiredSignature,
-    ),
-)

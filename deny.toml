@@ -7,4 +7,4 @@ multiple-versions = "warn"
 unknown-registry = "deny"
 unknown-git = "deny"
 required-git-spec = "rev"
-allow-git = ["https://github.com/better-auth-rs/better-auth-rs"]
+allow-git = ["https://github.com/better-auth-rs/better-auth-rs", "https://github.com/damacus/loco"]

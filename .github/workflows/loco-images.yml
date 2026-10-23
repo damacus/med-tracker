@@ -10,7 +10,6 @@ on:
       - build.rs
       - src/**
       - migration/**
-      - vendor/**
       - assets/**
       - config/production.yaml
       - package.json
@@ -18,7 +17,6 @@ on:
       - rails/config/ai_medication_sources.yml
       - rails/config/medication_review_labels.yml
       - scripts/*loco_image*.py
-      - scripts/*loco_scheduler*.py
       - mise.toml
       - .github/workflows/ci.yml
       - Taskfile.yml

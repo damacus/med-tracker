@@ -1,1 +1,0 @@
-mod embedded_assets;

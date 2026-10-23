@@ -1,5 +1,0 @@
----
-source: src/controller/middleware/request_id.rs
-expression: id
----
-"foo-barbaz"

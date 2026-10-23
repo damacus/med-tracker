@@ -1,7 +1,0 @@
----
-source: tests/controller/middlewares.rs
-expression: policy
----
-Some(
-    "default-src 'self' https",
-)

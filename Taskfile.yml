@@ -46,12 +46,6 @@ tasks:
     cmds:
       - python3 scripts/test_loco_image_tooling.py
       - python3 scripts/check_loco_image_tooling.py
-      - task: scheduler:patch:check
-  scheduler:patch:check:
-    desc: Verify the released Loco archive and exact scheduler patch
-    cmds:
-      - python3 -B scripts/test_loco_scheduler_patch.py
-      - python3 -B scripts/check_loco_scheduler_patch.py
   image:build:
     desc: Build the root Loco release image for the local architecture
     cmds:
@@ -414,7 +408,6 @@ tasks:
   ci:
     desc: Run formatting, lint, unit, integration and browser checks
     cmds:
-      - task: scheduler:patch:check
       - task: fmt
       - task: lint
       - task: test:unit

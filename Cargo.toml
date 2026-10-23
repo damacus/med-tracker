@@ -1,9 +1,9 @@
 [workspace]
 members = ["migration"]
-exclude = ["rust", "client-tools", "vendor/loco-rs-1.2.0"]
+exclude = ["rust", "client-tools"]
 
 [patch.crates-io]
-loco-rs = { path = "vendor/loco-rs-1.2.0" }
+loco-rs = { git = "https://github.com/damacus/loco", rev = "5224bc58f9292a2f4713ee333bded785e5266f09" }
 
 [package]
 name = "med-tracker"

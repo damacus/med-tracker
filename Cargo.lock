@@ -4636,6 +4636,7 @@ dependencies = [
 [[package]]
 name = "loco-rs"
 version = "1.2.0"
+source = "git+https://github.com/damacus/loco?rev=5224bc58f9292a2f4713ee333bded785e5266f09#5224bc58f9292a2f4713ee333bded785e5266f09"
 dependencies = [
  "argon2",
  "async-trait",
