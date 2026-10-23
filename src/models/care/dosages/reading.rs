@@ -26,7 +26,7 @@ pub(crate) fn value(row: &dosage::Model, portable: &str) -> Result<Value, Operat
     )
 }
 
-pub(super) async fn representation(
+pub async fn representation(
     tenant: &TenantTransaction,
     row: &dosage::Model,
 ) -> Result<(Value, String), OperationError> {

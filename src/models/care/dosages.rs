@@ -24,9 +24,10 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-pub use reading::{Pagination, for_medication, list, read};
+pub use reading::{Pagination, for_medication, list, read, representation as represent};
 pub use removal::destroy;
-use validation::{attributes, storage_decimal, valid_persisted_dosage};
+pub use validation::{DosageInput, FormDosageInput};
+use validation::{storage_decimal, valid_persisted_dosage};
 pub(crate) use writing::{add_stock, create_with_parent, update_stock_checked};
 pub use writing::{create, update};
 

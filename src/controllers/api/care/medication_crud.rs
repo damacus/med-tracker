@@ -118,7 +118,7 @@ async fn representation(
 
 fn attributes(
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
-) -> std::result::Result<Value, response::Failure> {
+) -> std::result::Result<medications::crud::MedicationInput, response::Failure> {
     let AxumJson(body) =
         body.map_err(|_| response::Failure::bad_request("Invalid JSON request body"))?;
     let outer = body
@@ -134,7 +134,9 @@ fn attributes(
             "contains an unknown root field",
         ));
     }
-    Ok(attributes.clone())
+    Ok(medications::crud::MedicationInput::from_json(
+        attributes.clone(),
+    ))
 }
 
 fn failure(error: OperationError) -> response::Failure {

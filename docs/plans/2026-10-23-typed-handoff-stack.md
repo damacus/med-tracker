@@ -55,4 +55,29 @@ security decision or unresolved authority change appears.
   competing-process fixture test. Log: `/private/tmp/medtracker-person-edit-ci.log`.
 - Independent person-editing review found no actionable issue in the frozen
   source, caller and regression-test diff.
-- Remaining layers are planned and have not yet been implemented or accepted.
+- Medication/stock/order typed-command interface regression failed before
+  executable edits: `rtk task check` reported missing `MedicationCreate`,
+  `LocationId` and typed create entrypoint. No transport or schema change was
+  required. CRUD, dosage, wizard, stock check, order and sync write callers now
+  pass typed inputs; writes return models until final response serialization.
+- Layer 2 focused checks passed locally: `care_medications` 31/31, dosage API
+  14/14, stock-order API 5/5, sync catalogue 6/6, stock-check persisted
+  aggregate/audit case 1/1, wizard extra-option unit 1/1, desktop wizard and
+  dose edit 1/1, and mobile stock-match/refill 1/1. The all-target `task check`,
+  `task lint`, `task fmt` and `git diff --check` passed. The delivery controller's
+  frozen-source `task ci` passed: 160 unit tests, 42 browser journeys, 1,178
+  integration tests and the separate competing-process fixture test. Log:
+  `/private/tmp/medtracker-medication-ci.log`.
+- Mature unchanged-source and final browser captures match byte for byte after
+  waiting for `body[data-navigation-ready]`. The [paired desktop and mobile
+  evidence](../screenshots/typed-medication-writes/README.md) records source,
+  viewport, locale and SHA-256 values. Earlier captures showed incomplete
+  navigation and are excluded from the comparison.
+- Independent reviews of medication CRUD, dosage savepoint and the remaining
+  typed callers found no actionable issue; the capture guard is verified by
+  the paired mature browser runs. Layers 3–5 remain planned.
+- The final scope audit also tracks two separate areas outside this stack:
+  app-token issuance and browser review-prompt editing. Browser occurrence forms
+  belong to layer 4; report reads and review-prompt PDF conversions belong to
+  layer 5. Completion of these five areas does not mean every application use
+  of JSON has been removed.

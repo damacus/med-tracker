@@ -108,11 +108,7 @@ pub async fn apply(
         {
             return Err(invalid());
         }
-        checked.push((
-            row.medication_id,
-            row.option_id,
-            quantity.normalize().to_string(),
-        ));
+        checked.push((row.medication_id, row.option_id, quantity));
     }
     checked.sort_by_key(|(medication_id, option_id, _)| (*medication_id, *option_id));
     for (medication_id, option_id, quantity) in checked {
@@ -121,7 +117,7 @@ pub async fn apply(
             dosages::update_stock_checked(
                 tenant,
                 &option_id.to_string(),
-                json!({"dosage_option":{"current_supply":quantity}}),
+                dosages::DosageInput::stock_quantity(quantity),
                 Some(&etag),
                 provenance,
                 reason,
@@ -134,7 +130,7 @@ pub async fn apply(
                 tenant,
                 medications::Command::AdjustStock(medications::AdjustStock {
                     medication_id: medication_id.to_string(),
-                    new_quantity: quantity,
+                    new_quantity: quantity.normalize().to_string(),
                     reason: Some(reason.to_owned()),
                 }),
                 Some(&medications::ScalarPrecondition {

@@ -11,6 +11,31 @@ pub struct RemoveStock {
     pub submission_id: String,
 }
 
+#[derive(PartialEq, Eq)]
+struct RemovalFacts {
+    quantity: String,
+    reason: String,
+    note: String,
+    submission_id: String,
+    dosage_id: String,
+}
+
+impl RemovalFacts {
+    fn from_history(value: &Value) -> Option<Self> {
+        Some(Self {
+            quantity: value.get("quantity")?.as_str()?.to_owned(),
+            reason: value.get("reason")?.as_str()?.to_owned(),
+            note: value.get("note")?.as_str()?.to_owned(),
+            submission_id: value.get("submission_id")?.as_str()?.to_owned(),
+            dosage_id: value.get("dosage_id")?.as_str()?.to_owned(),
+        })
+    }
+
+    fn audit_payload(&self) -> Value {
+        json!({"quantity":self.quantity,"reason":self.reason,"note":self.note,"submission_id":self.submission_id,"dosage_id":self.dosage_id})
+    }
+}
+
 mod mutation;
 use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect};
 
@@ -27,7 +52,7 @@ pub async fn create(
     )
     .await?;
     let found = authorize(tenant, &input.medication_id).await?;
-    let (quantity, payload) = validate(&input)?;
+    let (quantity, facts) = validate(&input)?;
     lock_row(tenant.transaction(), "medications", found.id).await?;
     let found = authorize(tenant, &input.medication_id).await?;
     if let Some(id) = input.dosage_id.as_deref() {
@@ -62,15 +87,12 @@ pub async fn create(
             .as_deref()
             .and_then(|raw| serde_json::from_str(raw).ok())
             .unwrap_or(Value::Null);
-        if ["quantity", "reason", "note", "submission_id", "dosage_id"]
-            .iter()
-            .any(|key| values[*key] != payload[*key])
-        {
+        if RemovalFacts::from_history(&values).as_ref() != Some(&facts) {
             return Err(invalid());
         }
         return Ok(row(&prior));
     }
-    mutation::apply(&context, found, quantity, payload, input.dosage_id).await
+    mutation::apply(&context, found, quantity, facts, input.dosage_id).await
 }
 
 pub async fn history(
@@ -127,7 +149,7 @@ fn history_query(tenant: &TenantTransaction, id: i64) -> sea_orm::Select<version
         .filter(version::Column::Event.eq("stock_removal"))
 }
 
-fn validate(input: &RemoveStock) -> Result<(Decimal, Value), OperationError> {
+fn validate(input: &RemoveStock) -> Result<(Decimal, RemovalFacts), OperationError> {
     let mut parts = input.quantity.split('.');
     let whole = parts.next().unwrap_or("");
     let fraction = parts.next();
@@ -181,7 +203,13 @@ fn validate(input: &RemoveStock) -> Result<(Decimal, Value), OperationError> {
     }
     Ok((
         quantity,
-        json!({"quantity": format_quantity(quantity), "reason": input.reason, "note": note, "submission_id": input.submission_id, "dosage_id": input.dosage_id.as_deref().unwrap_or("")}),
+        RemovalFacts {
+            quantity: format_quantity(quantity),
+            reason: input.reason.clone(),
+            note: note.to_owned(),
+            submission_id: input.submission_id.clone(),
+            dosage_id: input.dosage_id.clone().unwrap_or_default(),
+        },
     ))
 }
 

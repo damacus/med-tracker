@@ -353,7 +353,31 @@ async fn barcode_miss_flows_into_manual_medication_wizard() {
                 .to_be_visible()
                 .await
                 .unwrap();
+            expect(page.locator("body[data-navigation-ready]"))
+                .to_be_visible()
+                .await
+                .unwrap();
             harness::capture(page, "barcode-miss-desktop").await;
+            page.get_by_role(AriaRole::Link, named("Manage Dose Options"))
+                .click(None)
+                .await
+                .unwrap();
+            page.get_by_role(AriaRole::Link, named("Edit dose option"))
+                .click(None)
+                .await
+                .unwrap();
+            page.get_by_label("Description", true)
+                .fill("Edited dose option", None)
+                .await
+                .unwrap();
+            page.get_by_role(AriaRole::Button, named("Save Dose Option"))
+                .click(None)
+                .await
+                .unwrap();
+            expect(page.locator("main"))
+                .to_contain_text("Edited dose option")
+                .await
+                .unwrap();
             page.goto(
                 &format!(
                     "{}/households/persistence-fixture/people/73001/treatments",
@@ -702,6 +726,10 @@ window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
                 .await
                 .unwrap();
             expect(page.get_by_role(AriaRole::Dialog, named("Refill inventory")))
+                .to_be_visible()
+                .await
+                .unwrap();
+            expect(page.locator("body[data-navigation-ready]"))
                 .to_be_visible()
                 .await
                 .unwrap();

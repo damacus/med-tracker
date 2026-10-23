@@ -1,6 +1,40 @@
 use super::*;
 use medications::crud;
-use serde_json::json;
+use sea_orm::prelude::Decimal;
+use serde_json::{Value, json};
+
+fn input(value: Value) -> crud::MedicationInput {
+    crud::MedicationInput::from_json(value)
+}
+
+#[tokio::test]
+async fn typed_medication_create_persists_exact_stock_and_remains_readable() {
+    let fixture = Fixture::new().await;
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
+    let command = crud::MedicationCreate::new(
+        "Synthetic typed tablets".into(),
+        crud::LocationId::try_from(89001).unwrap(),
+        Decimal::new(5, 1),
+    )
+    .with_stock(Decimal::new(125, 1));
+    let created = crud::create(&tenant, command, None).await.unwrap();
+    let snapshot = medications::read_stock_snapshot(&tenant, &created.id.to_string())
+        .await
+        .unwrap();
+    assert_eq!(
+        snapshot.medication.current_supply,
+        Some(Decimal::new(125, 1))
+    );
+    assert_eq!(snapshot.medication.reorder_threshold, Decimal::new(5, 1));
+    assert_eq!(
+        snapshot.medication.name.as_deref(),
+        Some("Synthetic typed tablets")
+    );
+    tenant.commit().await.unwrap();
+    fixture.close().await;
+}
 
 #[tokio::test]
 async fn medication_crud_conformance_empty_barcodes_do_not_conflict() {
@@ -8,8 +42,8 @@ async fn medication_crud_conformance_empty_barcodes_do_not_conflict() {
     let tenant = access::begin(&fixture.runtime, &scope(), None)
         .await
         .unwrap();
-    let first = crud::create(&tenant, json!({"name":"Synthetic blank barcode one","location_id":89001,"dose_amount":"2","current_supply":"10","reorder_threshold":"2","barcode":""}), None).await.unwrap();
-    let second = crud::create(&tenant, json!({"name":"Synthetic blank barcode two","location_id":89001,"dose_amount":"2","current_supply":"10","reorder_threshold":"2","barcode":""}), None).await.unwrap();
+    let first = crud::create(&tenant, input(json!({"name":"Synthetic blank barcode one","location_id":89001,"dose_amount":"2","current_supply":"10","reorder_threshold":"2","barcode":""})), None).await.unwrap();
+    let second = crud::create(&tenant, input(json!({"name":"Synthetic blank barcode two","location_id":89001,"dose_amount":"2","current_supply":"10","reorder_threshold":"2","barcode":""})), None).await.unwrap();
     let snapshot = medications::read_stock_snapshot(&tenant, &second.id.to_string())
         .await
         .unwrap();
@@ -33,7 +67,7 @@ async fn medication_crud_conformance_oversized_dose_is_rejected_before_mutation(
     let result = crud::update(
         &tenant,
         "90001",
-        json!({"dose_amount":"9".repeat(309)}),
+        input(json!({"dose_amount":"9".repeat(309)})),
         None,
         None,
     )
@@ -59,9 +93,15 @@ async fn medication_crud_conformance_nullable_dose_preserves_retained_api_semant
         .await
         .unwrap();
     assert!(before.medication.dose_amount.is_some());
-    let updated = crud::update(&tenant, "90001", json!({"dose_amount":null}), None, None)
-        .await
-        .unwrap();
+    let updated = crud::update(
+        &tenant,
+        "90001",
+        input(json!({"dose_amount":null})),
+        None,
+        None,
+    )
+    .await
+    .unwrap();
     assert_eq!(updated.dose_amount, None);
     assert_eq!(updated.current_supply, before.medication.current_supply);
     tenant.commit().await.unwrap();
@@ -71,9 +111,15 @@ async fn medication_crud_conformance_nullable_dose_preserves_retained_api_semant
     let nullable = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();
-    crud::update(&tenant, "90001", json!({"dose_amount":null}), None, None)
-        .await
-        .unwrap();
+    crud::update(
+        &tenant,
+        "90001",
+        input(json!({"dose_amount":null})),
+        None,
+        None,
+    )
+    .await
+    .unwrap();
     let replay = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();
@@ -90,7 +136,7 @@ async fn medication_crud_create_is_immediately_usable_and_audited() {
     let tenant = access::begin(&fixture.runtime, &scope(), None)
         .await
         .unwrap();
-    let result = crud::create(&tenant, json!({"name":"Synthetic new tablets","location_id":89001,"dose_amount":"2","dose_unit":"tablet","current_supply":"10","reorder_threshold":"2","barcode":"5901234123457"}), None).await;
+    let result = crud::create(&tenant, input(json!({"name":"Synthetic new tablets","location_id":89001,"dose_amount":"2","dose_unit":"tablet","current_supply":"10","reorder_threshold":"2","barcode":"5901234123457"})), None).await;
     let created = result.unwrap();
     let snapshot = medications::read_stock_snapshot(&tenant, &created.id.to_string())
         .await
@@ -121,7 +167,7 @@ async fn medication_crud_update_preserves_omitted_attributes_and_checks_etag() {
     let updated = crud::update(
         &tenant,
         "90001",
-        json!({"friendly_name":"Synthetic display name"}),
+        input(json!({"friendly_name":"Synthetic display name"})),
         Some(&old.etag),
         None,
     )
@@ -136,7 +182,7 @@ async fn medication_crud_update_preserves_omitted_attributes_and_checks_etag() {
     let stale = crud::update(
         &tenant,
         "90001",
-        json!({"name":"Must not overwrite"}),
+        input(json!({"name":"Must not overwrite"})),
         Some(&old.etag),
         None,
     )
@@ -179,7 +225,7 @@ async fn medication_crud_rejects_invalid_attributes_and_duplicate_barcode() {
         let tenant = access::begin(&fixture.runtime, &scope(), None)
             .await
             .unwrap();
-        let result = crud::create(&tenant, attributes, None).await;
+        let result = crud::create(&tenant, input(attributes), None).await;
         tenant.rollback().await.unwrap();
         assert!(matches!(result, Err(OperationError::Validation { .. })));
     }
@@ -239,7 +285,7 @@ async fn medication_crud_member_cannot_update_or_destroy_visible_medication() {
     let updated = crud::update(
         &tenant,
         "90001",
-        json!({"name":"Forbidden replacement"}),
+        input(json!({"name":"Forbidden replacement"})),
         None,
         None,
     )
@@ -261,7 +307,7 @@ async fn medication_crud_create_audit_failure_rolls_back_row_and_change() {
         .unwrap();
     let result = crud::create(
         &tenant,
-        json!({"name":"Synthetic rollback medicine","location_id":89001,"reorder_threshold":"2"}),
+        input(json!({"name":"Synthetic rollback medicine","location_id":89001,"reorder_threshold":"2"})),
         None,
     )
     .await;

@@ -80,16 +80,14 @@ async fn order(
             Ok(value) => value,
             Err(error) => return browser::authentication_error(error),
         };
-    let mut fields = serde_json::Map::new();
-    for name in ["supplier", "quantity", "expected_arrival_on"] {
-        if let Some(value) = forms::optional(&draft, name) {
-            fields.insert(name.into(), json!(value));
-        }
-    }
     match orders::mark_as_ordered(
         &tenant,
         &id,
-        &json!({"order_details":fields}),
+        orders::OrderInput::ordered_from_form(
+            forms::optional(&draft, "supplier"),
+            forms::optional(&draft, "quantity"),
+            forms::optional(&draft, "expected_arrival_on"),
+        ),
         Some(principal.provenance()),
     )
     .await
@@ -138,7 +136,14 @@ async fn receive(
             Ok(value) => value,
             Err(error) => return browser::authentication_error(error),
         };
-    match orders::mark_as_received(&tenant, &id, &json!({}), Some(principal.provenance())).await {
+    match orders::mark_as_received(
+        &tenant,
+        &id,
+        orders::OrderInput::received(),
+        Some(principal.provenance()),
+    )
+    .await
+    {
         Ok(_) => {
             if tenant.commit().await.is_err() {
                 return browser::unavailable();

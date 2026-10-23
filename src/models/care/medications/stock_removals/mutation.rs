@@ -5,7 +5,7 @@ pub(super) async fn apply(
     context: &StockContext<'_>,
     medication: medication::Model,
     quantity: Decimal,
-    mut payload: Value,
+    facts: RemovalFacts,
     dosage_id: Option<String>,
 ) -> Result<Value, OperationError> {
     let db = context.tenant.transaction();
@@ -119,6 +119,7 @@ pub(super) async fn apply(
     } else {
         "units".into()
     };
+    let mut payload = facts.audit_payload();
     payload["previous_quantity"] = json!(format_quantity(previous));
     payload["remaining_quantity"] = json!(format_quantity(remaining));
     payload["unit"] = json!(unit);
