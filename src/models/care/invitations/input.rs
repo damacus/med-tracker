@@ -1,6 +1,15 @@
 use super::*;
 
-pub(crate) fn validated_email(value: &str) -> Result<String, OperationError> {
+#[derive(Debug)]
+pub(crate) struct EmailValidationError;
+
+impl From<EmailValidationError> for OperationError {
+    fn from(_: EmailValidationError) -> Self {
+        invalid("email", "is invalid")
+    }
+}
+
+pub(crate) fn validate_email(value: &str) -> Result<String, EmailValidationError> {
     let email = value.trim().to_lowercase();
     let valid_email = email.len() <= 320
         && !email.is_empty()
@@ -13,33 +22,58 @@ pub(crate) fn validated_email(value: &str) -> Result<String, OperationError> {
                 && !domain.ends_with('.')
         });
     if !valid_email {
-        return Err(invalid("email", "is invalid"));
+        return Err(EmailValidationError);
     }
     Ok(email)
 }
 
-pub(super) fn attributes(value: &Value) -> Result<(String, String), OperationError> {
-    if [
-        "dependent_ids",
-        "dependent_ids[]",
-        "relationship_type",
-        "access_level",
-    ]
-    .iter()
-    .any(|field| value.get(*field).is_some())
-    {
-        return Err(invalid(
-            "base",
-            "Household invitations cannot assign care authority.",
-        ));
+pub(crate) fn validated_email(value: &str) -> Result<String, OperationError> {
+    validate_email(value).map_err(Into::into)
+}
+
+pub struct InvitationInput {
+    email: String,
+    role: String,
+    care_authority_requested: bool,
+}
+
+impl InvitationInput {
+    pub fn from_fields(fields: &serde_json::Map<String, Value>) -> Self {
+        let email = fields.get("email").and_then(Value::as_str).unwrap_or("");
+        let role = fields
+            .get("membership_role")
+            .and_then(Value::as_str)
+            .unwrap_or("member");
+        let care_authority_requested = [
+            "dependent_ids",
+            "dependent_ids[]",
+            "relationship_type",
+            "access_level",
+        ]
+        .iter()
+        .any(|field| fields.contains_key(*field));
+        Self::from_form(email, role, care_authority_requested)
     }
-    let email = validated_email(value.get("email").and_then(Value::as_str).unwrap_or(""))?;
-    let role = value
-        .get("membership_role")
-        .and_then(Value::as_str)
-        .unwrap_or("member");
-    if !matches!(role, "member" | "administrator") {
-        return Err(invalid("membership_role", "is invalid"));
+
+    pub fn from_form(email: &str, role: &str, care_authority_requested: bool) -> Self {
+        Self {
+            email: email.into(),
+            role: role.into(),
+            care_authority_requested,
+        }
     }
-    Ok((email, role.into()))
+
+    pub(super) fn validated(self) -> Result<(String, String), OperationError> {
+        if self.care_authority_requested {
+            return Err(invalid(
+                "base",
+                "Household invitations cannot assign care authority.",
+            ));
+        }
+        let email = validate_email(&self.email).map_err(OperationError::from)?;
+        if !matches!(self.role.as_str(), "member" | "administrator") {
+            return Err(invalid("membership_role", "is invalid"));
+        }
+        Ok((email, self.role))
+    }
 }

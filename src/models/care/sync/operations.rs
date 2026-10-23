@@ -139,7 +139,7 @@ pub async fn apply(
             if operation.action == "create" {
                 let row = locations::create(
                     tenant,
-                    Value::Object(operation.attributes.clone()),
+                    locations::LocationInput::from_fields(operation.attributes.clone()),
                     attribution,
                 )
                 .await?;
@@ -176,7 +176,7 @@ pub async fn apply(
                 let row = locations::update(
                     tenant,
                     id(operation)?,
-                    Value::Object(operation.attributes.clone()),
+                    locations::LocationInput::from_fields(operation.attributes.clone()),
                     &etag,
                     attribution,
                 )

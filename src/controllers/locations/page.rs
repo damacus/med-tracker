@@ -178,13 +178,15 @@ impl<'a> Page<'a> {
             .await?;
             return Ok(None);
         }
-        let attributes = json!({"name":forms::field(draft,"name"),"description":forms::field(draft,"description")});
+        let input = locations::LocationInput::from_form(
+            forms::field(draft, "name"),
+            forms::field(draft, "description"),
+        );
         let record = match id {
             Some(id) => {
-                locations::update(tenant, id, attributes, etag, Some(principal.provenance()))
-                    .await?
+                locations::update(tenant, id, input, etag, Some(principal.provenance())).await?
             }
-            None => locations::create(tenant, attributes, Some(principal.provenance())).await?,
+            None => locations::create(tenant, input, Some(principal.provenance())).await?,
         };
         Ok(Some(record.id))
     }

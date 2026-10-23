@@ -39,16 +39,3 @@ fn invalid(field: &str, message: &str) -> OperationError {
         details: json!({"errors": {field: [message]}}),
     }
 }
-fn fields<'a>(
-    attributes: &'a Value,
-    allowed: &[&str],
-    name: &str,
-) -> Result<&'a serde_json::Map<String, Value>, OperationError> {
-    let fields = attributes
-        .as_object()
-        .ok_or_else(|| invalid(name, "is invalid"))?;
-    if fields.is_empty() || fields.keys().any(|key| !allowed.contains(&key.as_str())) {
-        return Err(invalid(name, "is invalid"));
-    }
-    Ok(fields)
-}

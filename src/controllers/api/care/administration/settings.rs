@@ -79,8 +79,12 @@ async fn process(
         .begin()
         .await
         .map_err(|_| response::unavailable())?;
-    let result =
-        administration::settings::update(tenant, attributes, Some(principal.provenance())).await;
+    let result = administration::settings::update(
+        tenant,
+        administration::settings::HouseholdSettingsInput::from_json(attributes),
+        Some(principal.provenance()),
+    )
+    .await;
     let (status, reply) = reply(savepoint, tenant, result, StatusCode::OK).await?;
     if let Some(key) = key {
         store(

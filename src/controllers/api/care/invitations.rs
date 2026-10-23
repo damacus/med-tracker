@@ -16,7 +16,9 @@ fn no_store(mut response: Response) -> Response {
     response
 }
 
-fn attributes(body: &Value) -> std::result::Result<Value, response::Failure> {
+fn attributes(
+    body: &Value,
+) -> std::result::Result<invitations::InvitationInput, response::Failure> {
     let source = body
         .get("household_invitation")
         .and_then(Value::as_object)
@@ -36,7 +38,7 @@ fn attributes(body: &Value) -> std::result::Result<Value, response::Failure> {
     if values.is_empty() {
         return Err(response::Failure::bad_request("Invalid request body"));
     }
-    Ok(Value::Object(values))
+    Ok(invitations::InvitationInput::from_fields(&values))
 }
 
 async fn reply(

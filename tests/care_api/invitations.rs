@@ -299,7 +299,11 @@ async fn invitations_mail_queue_failure_rolls_back_invitation_and_audit() {
     let target = url::Url::parse("https://synthetic.example.test/invitations/accept").unwrap();
     let result = invitations::create(
         &tenant,
-        json!({"email":"synthetic-queue-failure@example.test","membership_role":"member"}),
+        invitations::InvitationInput::from_form(
+            "synthetic-queue-failure@example.test",
+            "member",
+            false,
+        ),
         Some(&target),
         Some(principal.provenance()),
     )
@@ -341,7 +345,7 @@ async fn invitations_mail_committed_job_has_durable_attempt_and_provider_receipt
     let target = url::Url::parse("https://synthetic.example.test/invitations/accept").unwrap();
     let created = invitations::create(
         &tenant,
-        json!({"email":"synthetic-worker@example.test","membership_role":"member"}),
+        invitations::InvitationInput::from_form("synthetic-worker@example.test", "member", false),
         Some(&target),
         Some(principal.provenance()),
     )
@@ -631,7 +635,7 @@ async fn invitation_mail_worker_rechecks_authority_tokens_and_replay_without_res
         let target = url::Url::parse("https://synthetic.example.test/invitations/accept").unwrap();
         let created = invitations::create(
             &tenant,
-            json!({"email":"safe-attempt@example.test","membership_role":"member"}),
+            invitations::InvitationInput::from_form("safe-attempt@example.test", "member", false),
             Some(&target),
             None,
         )
@@ -833,7 +837,7 @@ async fn invitation_mail_attempts_enforce_runtime_tenancy_and_immutable_provenan
         .unwrap();
     invitations::create(
         &tenant,
-        json!({"email":"rls-attempt@example.test","membership_role":"member"}),
+        invitations::InvitationInput::from_form("rls-attempt@example.test", "member", false),
         Some(&url::Url::parse("https://synthetic.example.test/invitations/accept").unwrap()),
         None,
     )
