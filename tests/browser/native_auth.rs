@@ -60,7 +60,7 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             capture_sizes(page, "unverified-passkey-error").await;
             cdp.send("WebAuthn.setResponseOverrideBits", Some(json!({"authenticatorId":authenticator_id,"isBadUV":false}))).await.unwrap();
             page.get_by_role(AriaRole::Button, named("Sign in with a passkey")).click(None).await.unwrap();
-            expect(page.get_by_role(AriaRole::Button, named("Open Synthetic household"))).to_be_visible().await.unwrap();
+            expect(page.get_by_role(AriaRole::Button, named("Open household: Synthetic household"))).to_be_visible().await.unwrap();
             page.goto(&format!("{}/account/security", journey.origin), None).await.unwrap();
             expect(page.get_by_role(AriaRole::Heading, named("Account security"))).to_be_visible().await.unwrap();
             expect(page.get_by_text("persistence@example.test", true)).to_be_visible().await.unwrap();

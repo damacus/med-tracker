@@ -97,3 +97,58 @@ document.querySelectorAll('button, a, [role="button"]').forEach(el => {
 - [WCAG 2.5.8 target size (minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
 - [WCAG 2.5.5 target size (enhanced)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html)
 - [Technique C42 for minimum height and width](https://www.w3.org/WAI/WCAG22/Techniques/css/C42)
+
+## Current Rust Level A audit
+
+The Rust browser audit covers a bounded set of English journeys at desktop
+(1440×1000) and mobile (390×844) sizes. It uses pinned axe-core 4.14.0 with the
+`wcag2a`, `wcag21a` and `wcag22a` tags, rendered accessibility-tree snapshots and
+browser keyboard interactions. Each requested page must return a successful
+HTTP response at its expected URL, so an authentication redirect cannot stand
+in for the intended page.
+
+The audit identified two failures of SC 2.5.3, Label in Name: the account
+control's accessible name omitted the visible person's name, and the household
+chooser's name inserted the household name between the visible words “Open
+household”. The corrections preserve those visible words in the accessible
+name. A separate punctuation-only difference on the household switcher is not
+a normative failure: W3C's [Label in Name guidance](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html#punctuation-and-capitalization)
+states that punctuation and capitalisation differences do not affect this
+criterion. Removing that redundant label lets the visible text supply the name.
+
+Page scans cover sign-in, signup and password recovery request forms, household
+choice, dashboard, inventory, medication creation and detail, people, treatments,
+schedule creation and profile. The signup and password recovery scans do not
+complete email verification, reset confirmation or credential enrolment.
+Keyboard checks exercise skip-link activation,
+the invalid-login alert, mobile menu opening and Tab navigation, Escape and
+focus return, the search shortcut and dismissal, and opening and dismissing the
+dose dialog without recording a dose. The lower navigation check also verifies
+account-dialog focus return and uses a deliberately mismatched label as a
+negative control to confirm the repaired rule stays active.
+
+Axe marks the hidden dialogs' `aria-controls` references for manual review.
+The keyboard checks confirm that those targets exist as native dialogs and
+exercise opening, dismissal and focus return for the account and mobile menu.
+
+Run the focused checks with:
+
+```fish
+rtk task test:browser FILTER=accessibility_level_a
+```
+
+JSON findings, including axe items requiring manual review, and accessibility
+snapshots are written to `tmp/accessibility-level-a/`. Screenshots of navigation,
+the chooser, login error and dose dialog are written to
+`docs/screenshots/accessibility-level-a/`. Application changes still require
+`rtk task ci`; documentation changes require `rtk task docs:build` and
+`rtk git diff --check`.
+
+Reports named `negative-control-*` deliberately contain the mismatched-label
+finding. They prove the detector works and are not application audit failures.
+
+These checks do not establish WCAG conformance. VoiceOver, speech control and
+the remaining journeys have not been verified by this bounded audit. Axe cannot
+determine every Level A requirement, and its incomplete results need human
+assessment. AA and AAA assessment is outside this change; the wider Level AA
+target above remains separate.

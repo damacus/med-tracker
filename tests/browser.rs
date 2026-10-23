@@ -40,3 +40,6 @@ mod storage_location_deletion;
 
 #[path = "browser/accessibility_level_a.rs"]
 mod accessibility_level_a;
+
+#[path = "browser/accessibility_journeys.rs"]
+mod accessibility_journeys;

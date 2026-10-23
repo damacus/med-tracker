@@ -74,8 +74,8 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
         page.get_by_role(AriaRole::Button,named("Save password")).click(None).await.unwrap();
         expect(page.get_by_role(AriaRole::Heading,named("Sign in"))).to_be_visible().await.unwrap();
         sign_in(page,&journey.origin).await;
-        expect(page.get_by_role(AriaRole::Button,named("Open Synthetic household"))).to_be_visible().await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Open Synthetic household")).click(None).await.unwrap();
+        expect(page.get_by_role(AriaRole::Button,named("Open household: Synthetic household"))).to_be_visible().await.unwrap();
+        page.get_by_role(AriaRole::Button,named("Open household: Synthetic household")).click(None).await.unwrap();
 
         page.goto(&format!("{}/households/persistence-fixture/profile#security",journey.origin),None).await.unwrap();
         expect(page.locator("#profile-tab-security")).to_be_visible().await.unwrap();
@@ -127,7 +127,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
         capture_sizes(page,"backup-code-login").await;
         page.get_by_label("Backup code",true).fill(backups[0].trim(),None).await.unwrap();
         page.get_by_role(AriaRole::Button,named("Use backup code")).click(None).await.unwrap();
-        expect(page.get_by_role(AriaRole::Button,named("Open Synthetic household"))).to_be_visible().await.unwrap();
+        expect(page.get_by_role(AriaRole::Button,named("Open household: Synthetic household"))).to_be_visible().await.unwrap();
         page.goto(&format!("{}/account/security/email",journey.origin),None).await.unwrap();
         page.get_by_label("New email address",true).fill("browser-changed@example.test",None).await.unwrap();
         capture_sizes(page,"change-email").await;
