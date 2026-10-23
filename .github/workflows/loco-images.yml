@@ -161,6 +161,8 @@ jobs:
         run: |
           (cd checked && sha256sum --check --strict SHA256SUMS)
           docker image load --input checked/image.tar.gz
+          cat checked/image.id
+          docker image inspect medtracker-loco:local --format '{{.Id}} {{.Architecture}} {{.Os}}'
           test "$(docker image inspect medtracker-loco:local --format '{{.Id}}')" = "$(cat checked/image.id)"
           test "$(docker image inspect medtracker-loco:local --format '{{.Architecture}}')" = amd64
           test "$(docker image inspect medtracker-loco:local --format '{{.Os}}')" = linux
