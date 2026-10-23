@@ -47,3 +47,26 @@ dialog.modal:not([open]) { display: none; }
 @media (max-width: 480px) { .shell-main { padding-block: 1.5rem; } .shell-header-inner { gap: 0.5rem; flex-wrap: wrap; } .shell-header-inner.app-header { flex-wrap: nowrap; } }
 @media (max-width: 350px) { .shell-header-inner.app-header { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
+
+.login-surface { display: grid; width: 100%; max-width: 72rem; margin-inline: auto; overflow: hidden; }
+.login-brand { display: flex; flex-direction: column; align-items: center; gap: 1rem; min-width: 0; padding: 1rem; text-align: center; border-bottom: 1px solid var(--border-color); }
+.login-brand-name { display: flex; align-items: center; gap: .75rem; font-size: 1.25rem; font-weight: 750; }
+.login-brand-name > span { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .75rem; background: var(--primary); color: var(--primary-foreground); }
+.login-welcome { margin-bottom: .5rem; font-size: 1.5rem; font-weight: 750; line-height: 1.2; }
+.login-benefits { display: none; list-style: none; margin: 0; padding: 0; }
+.login-benefits li { display: grid; gap: .25rem; }
+.login-benefits strong { font-size: .875rem; }
+.login-benefits li > span { font-size: .875rem; color: var(--on-surface-variant); }
+.login-illustration { display: block; flex: none; width: min(100%, 18rem); aspect-ratio: 4 / 3; overflow: hidden; border-radius: 1rem; }
+.login-illustration img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+.login-form-panel { min-width: 0; align-self: center; justify-content: center; }
+@media (max-width: 520px) { .login-illustration { width: min(42vw, 6rem); aspect-ratio: 2 / 3; } }
+@media (min-width: 521px) { .login-brand { padding: 2rem; } }
+@media (min-width: 768px) {
+  .login-surface { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .login-brand { align-items: stretch; gap: 1.5rem; min-height: 42rem; text-align: left; border-bottom: 0; border-right: 1px solid var(--border-color); }
+  .login-welcome { font-size: clamp(2rem, 3.5vw, 3rem); }
+  .login-benefits { display: grid; gap: 1rem; }
+  .login-illustration { width: min(100%, 28rem); margin: auto auto 0; }
+  .login-form-panel { padding: clamp(2rem, 4vw, 4rem); }
+}
