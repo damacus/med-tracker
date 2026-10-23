@@ -70,7 +70,7 @@ tasks:
     cmds:
       - task: run
         vars:
-          COMMAND: node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs tests/browser/dashboard-cancellation.test.mjs
+          COMMAND: node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs tests/browser/dashboard-cancellation.test.mjs tests/browser/canary-status.test.mjs
       - task: run
         vars: {COMMAND: cargo test --locked --workspace --doc}
   acceptance-process:

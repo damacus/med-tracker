@@ -47,6 +47,7 @@ impl BackgroundWorker<ReminderRun> for ReminderWorker {
     }
 
     async fn perform(&self, run: ReminderRun) -> loco_rs::Result<()> {
+        crate::models::canary::work(&self.ctx).await?;
         let scope = HouseholdScope {
             actor: Actor {
                 account_id: run.account_id,
@@ -116,6 +117,7 @@ impl Task for ReminderTask {
     }
 
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> loco_rs::Result<()> {
+        crate::models::canary::work(ctx).await?;
         let runs = recipients(ctx, Utc::now())
             .await
             .map_err(|_| loco_rs::Error::string("Browser reminder scheduling failed"))?;

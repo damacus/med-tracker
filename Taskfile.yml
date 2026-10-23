@@ -118,5 +118,7 @@ tasks:
     cmds: [{task: "dev:up"}]
   test:
     cmds: [{task: "test:unit"}, {task: "test:integration"}, {task: "test:browser"}]
+  test:canary:
+    cmds: [{task: "host:test:canary"}]
   test:tooling:
     cmds: [node --test scripts/test_compose_tasks.mjs]

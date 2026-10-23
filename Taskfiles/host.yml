@@ -155,6 +155,30 @@ tasks:
     cmds: [cargo fmt --all -- --check]
   fmt:apply:
     cmds: [cargo fmt --all]
+  test:canary:
+    desc: Verify synthetic canary seed and full application gate with disposable PostgreSQL
+    deps: [":frontend:prepare"]
+    vars:
+      FOUNDATION_PROJECT:
+        sh: 'printf "mtloco-canary-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
+    cmds:
+      - defer:
+          task: foundation:db-down
+          vars:
+            FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - task: foundation:db-up
+        vars:
+          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - >-
+        sh -eu -c '
+        db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
+        export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
+        export MEDTRACKER_OWNED_DATABASE=1;
+        cargo nextest run --locked --lib --run-ignored only --no-tests=fail --test-threads 1 canary::acceptance;
+        ' sh {{.FOUNDATION_PROJECT | shellQuote}}
   test:unit:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -320,5 +344,6 @@ tasks:
       - task: fmt
       - task: lint
       - task: test:unit
+      - task: test:canary
       - task: test:integration
       - task: test:browser

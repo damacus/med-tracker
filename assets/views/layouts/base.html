@@ -12,6 +12,7 @@
     <script src="/static/js/interaction.js" defer></script>
     <script src="/static/js/mobile-shortcuts.js" defer></script>
     <script src="/static/js/app-navigation.js" defer></script>
+    {% if canary_enabled | default(value=false) %}<script src="/static/js/canary.js" defer></script>{% endif %}
   </head>
   <body{% if slug %} class="app-household"{% endif %}>
     <a href="#main" class="skip-link">{% if labels %}{{ labels.layouts.navigation.skip_to_content }}{% else %}Skip to content{% endif %}</a>
@@ -34,7 +35,7 @@
     <script src="/static/js/global-search.js" defer></script>
     {% endif %}
     {% include "components/app-navigation.html" %}
-    <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% block content %}{% endblock content %}</main>
+    <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% if canary_enabled | default(value=false) %}{% include "components/canary-notice.html" %}{% endif %}{% block content %}{% endblock content %}</main>
     {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · {% if labels %}{{ labels.layouts.navigation.care_tagline }}{% else %}Care, kept together.{% endif %}</div></footer>{% endblock footer %}
     {% block appearance %}{% include "components/appearance.html" %}{% endblock appearance %}
   </body>
