@@ -1,5 +1,6 @@
 mod carer_relationships;
 mod health_events;
+mod input;
 mod page;
 mod rendering;
 

@@ -21,6 +21,9 @@ mod shared_layout;
 #[path = "browser/people_polish.rs"]
 mod people_polish;
 
+#[path = "browser/dependent_creation.rs"]
+mod dependent_creation;
+
 #[path = "browser/administration_polish.rs"]
 mod administration_polish;
 

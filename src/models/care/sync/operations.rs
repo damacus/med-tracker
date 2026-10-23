@@ -197,10 +197,13 @@ pub async fn apply(
                 let today = chrono::Utc::now()
                     .with_timezone(&doses::app_zone(tenant.settings()))
                     .date_naive();
-                let command = people::CreateDependent::parse(
-                    &Value::Object(operation.attributes.clone()),
-                    today,
-                )?;
+                let input = serde_json::from_value::<people::DependentInput>(Value::Object(
+                    operation.attributes.clone(),
+                ))
+                .map_err(|_| OperationError::Validation {
+                    details: json!({"errors":{"person":["contains unsupported or invalid fields"]}}),
+                })?;
+                let command = people::CreateDependent::from_input(input, today)?;
                 people::create(tenant, command, today, attribution).await?
             } else {
                 people::authorize_update(tenant, id(operation)?).await?;
