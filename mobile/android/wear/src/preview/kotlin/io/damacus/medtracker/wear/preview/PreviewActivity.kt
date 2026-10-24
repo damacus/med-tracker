@@ -3,6 +3,11 @@ package io.damacus.medtracker.wear.preview
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -24,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
@@ -172,12 +178,23 @@ private fun PressPill(label: String, enabled: Boolean, onClick: () -> Unit) {
     val interactions = remember { MutableInteractionSource() }
     val pressed by interactions.collectIsPressedAsState()
     val colours = MaterialTheme.colorScheme
+    val fill by animateColorAsState(
+        targetValue = if (pressed) colours.primary else Color.Black,
+        animationSpec = tween(durationMillis = if (pressed) 160 else 220),
+        label = "Pill fill"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        label = "Pill press"
+    )
     OutlinedButton(onClick = onClick, enabled = enabled, interactionSource = interactions,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale },
         border = BorderStroke(1.5.dp, if (enabled) colours.primary else colours.onSurfaceVariant),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (pressed) colours.primary else Color.Transparent,
-            contentColor = if (pressed) colours.onPrimary else colours.primary),
+            containerColor = fill,
+            contentColor = pillContentColour(fill, colours.primary)),
         label = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text(label) } })
 }
 
