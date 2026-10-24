@@ -4,26 +4,26 @@
 <section class="max-w-xl mx-auto card shell-card"><div class="card-body gap-4">
   <h1 class="text-3xl font-semibold">{{ title }}</h1>
   {% if error %}<p role="alert">{{ error }}</p>{% endif %}
-  {% if mode == "regenerate" %}<form method="post" action="/account/security/totp/backup-codes" class="space-y-4"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><label class="form-control" for="replacement-password">Current password<input class="input input-bordered" id="replacement-password" name="password" type="password" autocomplete="current-password" required></label><button class="btn shell-primary" type="submit">Replace backup codes</button></form>
+  {% if mode == "regenerate" %}<form method="post" action="/account/security/totp/backup-codes" class="space-y-4"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><label class="grid gap-2" for="replacement-password">Current password<input class="input input-bordered w-full" id="replacement-password" name="password" type="password" autocomplete="current-password" required></label><button class="btn btn-primary" type="submit">Replace backup codes</button></form>
   {% elif mode == "start" %}
   <p>{{ flow.totp_start_hint }}</p>
   <form method="post" action="/account/security/totp" class="space-y-4">
     <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-    <label class="form-control" for="totp-password">{{ flow.current_password }}<input class="input input-bordered" id="totp-password" name="password" type="password" autocomplete="current-password" required></label>
-    <button class="btn shell-primary" type="submit">{{ flow.continue }}</button>
+    <label class="grid gap-2" for="totp-password">{{ flow.current_password }}<input class="input input-bordered w-full" id="totp-password" name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn btn-primary" type="submit">{{ flow.continue }}</button>
   </form>
   {% else %}
-  {% if secret %}<p>{{ flow.totp_setup_hint }}</p><label class="form-control" for="totp-secret">{{ flow.setup_key }}<input class="input input-bordered font-mono" id="totp-secret" value="{{ secret }}" readonly></label>{% endif %}
+  {% if secret %}<p>{{ flow.totp_setup_hint }}</p><label class="grid gap-2" for="totp-secret">{{ flow.setup_key }}<input class="input input-bordered w-full font-mono" id="totp-secret" value="{{ secret }}" readonly></label>{% endif %}
   {% if backup_codes %}<section aria-labelledby="backup-heading"><h2 id="backup-heading" class="text-xl font-semibold">Save your backup codes</h2><p>Each code can complete one password sign-in if you lose access to your authenticator app. Keep them somewhere safe.</p><ul aria-label="Backup codes" class="font-mono break-all space-y-2">{% for code in backup_codes %}<li>{{ code }}</li>{% endfor %}</ul></section>{% endif %}
-  {% if mode == "backup" %}<p>These codes replace your previous set. Save them now; this page is shown once.</p><a class="btn shell-primary" href="/account/security">I have saved my backup codes</a>{% else %}
+  {% if mode == "backup" %}<p>These codes replace your previous set. Save them now; this page is shown once.</p><a class="btn btn-primary" href="/account/security">I have saved my backup codes</a>{% else %}
   <form method="post" action="{% if mode == 'login' %}/auth/totp{% elif mode == 'disable' %}/account/security/totp/disable/confirm{% else %}/account/security/totp/finish{% endif %}" class="space-y-4">
     <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-    {% if mode == 'disable' %}<label class="form-control" for="disable-password">{{ flow.current_password }}<input class="input input-bordered" id="disable-password" name="password" type="password" autocomplete="current-password" required></label>{% endif %}
-    {% if mode != 'disable' %}    <label class="form-control" for="totp-code">{{ flow.authentication_code }}<input class="input input-bordered" id="totp-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>{% endif %}
+    {% if mode == 'disable' %}<label class="grid gap-2" for="disable-password">{{ flow.current_password }}<input class="input input-bordered w-full" id="disable-password" name="password" type="password" autocomplete="current-password" required></label>{% endif %}
+    {% if mode != 'disable' %}    <label class="grid gap-2" for="totp-code">{{ flow.authentication_code }}<input class="input input-bordered w-full" id="totp-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>{% endif %}
     {% if mode == 'finish' %}<label class="flex gap-2"><input type="checkbox" name="saved" value="yes" required> I have saved my backup codes</label>{% endif %}
-    <button class="btn shell-primary" type="submit">{% if mode == 'login' %}{{ flow.verify }}{% elif mode == 'disable' %}{{ flow.disable_totp }}{% else %}{{ flow.enable_totp }}{% endif %}</button>
+    <button class="btn btn-primary" type="submit">{% if mode == 'login' %}{{ flow.verify }}{% elif mode == 'disable' %}{{ flow.disable_totp }}{% else %}{{ flow.enable_totp }}{% endif %}</button>
   </form>
-  {% if mode == 'login' %}<form method="post" action="/auth/totp" class="space-y-4"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="backup" value="true"><label class="form-control" for="backup-code">Backup code<input class="input input-bordered" id="backup-code" name="code" autocomplete="one-time-code" maxlength="128" required></label><button class="btn btn-outline" type="submit">Use backup code</button></form><a class="link" href="/reset-password">Reset your password</a>{% endif %}
+  {% if mode == 'login' %}<form method="post" action="/auth/totp" class="space-y-4"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="backup" value="true"><label class="grid gap-2" for="backup-code">Backup code<input class="input input-bordered w-full" id="backup-code" name="code" autocomplete="one-time-code" maxlength="128" required></label><button class="btn btn-outline" type="submit">Use backup code</button></form><a class="link" href="/reset-password">Reset your password</a>{% endif %}
   {% endif %}
   {% endif %}
 </div></section>

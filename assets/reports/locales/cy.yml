@@ -1606,6 +1606,7 @@ cy:
       has_capacity: Mae ganddo'r gallu i reoli ei feddyginiaeth ei hun
       note: 'Nodyn:'
       capacity_hint: "Gellir cadw person heb allu heb ofalwr gweithredol. Nid oes gan blant dan oed ac oedolion dibynnol allu."
+      dependent_capacity_hint: "Nid oes gan blant dan oed ac oedolion dibynnol allu."
       capacity_hint_assign_carer: "Gallwch aseinio neu wahodd gofalwr ar ôl cadw."
       save: Cadw
       cancel: Canslo
@@ -1961,6 +1962,11 @@ cy:
     overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
     security_flow:
+      incomplete_link: "Dolen anghyflawn"
+      incomplete_reset_guidance: "Mae’r ddolen ailosod cyfrinair hon yn anghyflawn. Gofynnwch am ddolen newydd i ailosod eich cyfrinair."
+      incomplete_verification_guidance: "Mae’r ddolen ddilysu hon yn anghyflawn. Gofynnwch am e-bost newydd i ddilysu eich cyfrif."
+      request_reset_link: "Gofyn am ddolen ailosod cyfrinair newydd"
+      request_verification_link: "Gofyn am e-bost dilysu newydd"
       change_password: "Newid cyfrinair"
       new_password: "Cyfrinair newydd"
       current_password: "Cyfrinair presennol"
