@@ -42,6 +42,7 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                         const brand = document.querySelector('.login-brand')?.getBoundingClientRect();
                         const form = document.querySelector('.login-form-panel')?.getBoundingClientRect();
                         const card = getComputedStyle(document.querySelector('.shell-card'));
+                        const passkey = getComputedStyle(document.querySelector('[data-passkey-login]'));
                         return {
                             source: image?.currentSrc ?? '',
                             decorative: image?.alt === '',
@@ -55,10 +56,12 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                             fieldHeight: document.getElementById('email').getBoundingClientRect().height,
                             actionHeight: document.querySelector('form[action="/login"] button[type="submit"]').getBoundingClientRect().height,
                             footerBelowCard: Boolean(document.querySelector('.login-footer') && document.querySelector('.login-footer').getBoundingClientRect().top >= document.querySelector('.login-surface').getBoundingClientRect().bottom),
-                            card: {background: card.backgroundColor, border: card.borderColor, shadow: card.boxShadow}
+                            card: {background: card.backgroundColor, border: card.borderColor, shadow: card.boxShadow},
+                            passkey: {border: passkey.borderColor, text: passkey.color}
                         };
                     }"#, None::<&()>).await.unwrap();
                     let size = if width <= 520 { "mobile" } else { "desktop" };
+                    assert_ne!(observation["passkey"]["border"], observation["passkey"]["text"], "passkey outline should be softer than its text at {width}/{appearance}");
                     observations.push((width, appearance, size, observation));
                     audits.push(audit(page, &format!("login-layout-{width}-{appearance}")).await);
                     if width == 1440 || width == 375 {
