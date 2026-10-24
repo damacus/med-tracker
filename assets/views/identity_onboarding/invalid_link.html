@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body gap-4">
+  <h1 class="text-3xl font-semibold">{{ flow.incomplete_link }}</h1>
+  <p role="alert">{% if password_reset %}{{ flow.incomplete_reset_guidance }}{% else %}{{ flow.incomplete_verification_guidance }}{% endif %}</p>
+  <a class="btn btn-primary" href="{{ recovery_path }}">{% if password_reset %}{{ flow.request_reset_link }}{% else %}{{ flow.request_verification_link }}{% endif %}</a>
+  <a class="link" href="/login">{{ flow.return_signin }}</a>
+</div></section>
+{% endblock content %}
