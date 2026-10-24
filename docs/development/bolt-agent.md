@@ -5,6 +5,27 @@ improvement only after the owner approves its concrete scope. The initial
 performance chat is investigation-only. Adding the agent does not approve an
 application change, a dependency, a heavy build or a load test on shared resources.
 
+## Required before/after table in performance PRs
+
+Every Bolt performance PR must include a concise table of **actual measured
+before and after results**, with metric units, workload, build/profile, sample
+counts, outcome and limitations. Link the reproduction steps or evidence.
+Include latency, memory, CPU and query counts where relevant; explicitly mark
+unknown or unmeasured values **not measured**. Show worse or unchanged outcomes,
+timeouts and errors rather than selecting only successful improvements.
+
+| Metric (unit) | Workload / build profile | Before (samples) | After (samples) | Actual outcome and limits |
+|---|---|---|---|---|
+| Relevant measured metric | Exact comparable case | Actual value and count | Actual value and count | Measured difference, noise and caveats |
+| Relevant unmeasured metric | Same case | Not measured | Not measured | No improvement claim |
+
+These are placeholders, not benchmark results. Replace them with the actual
+measurements for the proposed change; do not manufacture numbers or expected
+percentages. Fewer queries can be a valid measured result, but cannot establish
+faster user responses without timing evidence. Choose the minimum useful check
+for the simplest fix. This reporting rule does not expand the approved scope
+or require a new benchmark programme, dependency or heavy workload.
+
 ## Configuration and starting a fresh chat
 
 [`.codex/agents/bolt.toml`](../../.codex/agents/bolt.toml) defines the project
