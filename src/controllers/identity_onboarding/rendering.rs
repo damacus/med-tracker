@@ -8,6 +8,33 @@ use serde_json::{Value, json};
 
 use super::forms::{Create, Errors};
 
+pub(super) enum LinkRecovery {
+    PasswordReset,
+    Verification,
+}
+
+pub(super) fn invalid_link(view: &TeraView, recovery: LinkRecovery) -> Response {
+    let mut data = crate::controllers::medications::rendering::appearance_context();
+    data["title"] = json!("Incomplete link");
+    data["password_reset"] = json!(matches!(recovery, LinkRecovery::PasswordReset));
+    data["recovery_path"] = json!(match recovery {
+        LinkRecovery::PasswordReset => "/reset-password",
+        LinkRecovery::Verification => "/verify-account-resend",
+    });
+    match super::security_locale::view(view, "identity_onboarding/invalid_link.html", data) {
+        Ok(response) => (
+            StatusCode::BAD_REQUEST,
+            [
+                (header::CACHE_CONTROL, "no-store"),
+                (header::REFERRER_POLICY, "strict-origin"),
+            ],
+            response,
+        )
+            .into_response(),
+        Err(_) => unavailable(),
+    }
+}
+
 pub(super) fn account(
     view: &TeraView,
     token: CsrfToken,

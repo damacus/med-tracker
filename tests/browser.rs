@@ -6,6 +6,8 @@ pub mod fixtures;
 mod harness;
 #[path = "browser/journeys.rs"]
 mod journeys;
+#[path = "browser/malformed_auth_entry.rs"]
+mod malformed_auth_entry;
 #[path = "browser/native_auth.rs"]
 mod native_auth;
 #[path = "browser/native_auth_forms.rs"]
@@ -61,3 +63,6 @@ mod dashboard_cancellation;
 
 #[path = "browser/report_clarity.rs"]
 mod report_clarity;
+
+#[path = "browser/security_entry.rs"]
+mod security_entry;

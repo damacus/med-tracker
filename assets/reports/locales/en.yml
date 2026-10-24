@@ -2279,6 +2279,11 @@ en:
         metric_value: Schedule
   profiles:
     security_flow:
+      incomplete_link: "Incomplete link"
+      incomplete_reset_guidance: "This password reset link is incomplete. Request a new link to reset your password."
+      incomplete_verification_guidance: "This verification link is incomplete. Request a new email to verify your account."
+      request_reset_link: "Request a new password reset link"
+      request_verification_link: "Request a new verification email"
       change_password: "Change password"
       new_password: "New password"
       current_password: "Current password"

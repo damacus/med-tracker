@@ -2271,6 +2271,11 @@ pt:
         metric_value: Horário
   profiles:
     security_flow:
+      incomplete_link: "Ligação incompleta"
+      incomplete_reset_guidance: "Esta ligação para repor a palavra-passe está incompleta. Peça uma nova ligação para repor a sua palavra-passe."
+      incomplete_verification_guidance: "Esta ligação de verificação está incompleta. Peça um novo email para verificar a sua conta."
+      request_reset_link: "Pedir uma nova ligação para repor a palavra-passe"
+      request_verification_link: "Pedir um novo email de verificação"
       change_password: "Alterar palavra-passe"
       new_password: "Nova palavra-passe"
       current_password: "Palavra-passe atual"
