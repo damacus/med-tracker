@@ -24,10 +24,10 @@
             {% for type in types %}<option value="{{ type.value }}" {% if type.value == draft.person_type %}selected{% endif %}>{{ type.label }}</option>{% endfor %}
           </select></div>
         <label class="flex items-start gap-3" for="has_capacity">
-          <input id="has_capacity" name="has_capacity" type="checkbox" value="true" class="checkbox shrink-0" {% if focus_field == "has_capacity" %}autofocus{% endif %} {% if draft.has_capacity == "true" %}checked{% endif %} {% if capacity_invalid %}aria-invalid="true" aria-describedby="form-error-has_capacity"{% endif %}>
+          <input id="has_capacity" name="has_capacity" type="checkbox" value="true" class="checkbox shrink-0" {% if focus_field == "has_capacity" %}autofocus{% endif %} {% if editing and draft.has_capacity == "true" %}checked{% endif %} {% if not editing %}disabled{% endif %} {% if capacity_invalid %}aria-invalid="true"{% endif %} aria-describedby="capacity-hint{% if capacity_invalid %} form-error-has_capacity{% endif %}">
           {{ labels.people.form.has_capacity }}
         </label>
-        <p class="text-sm text-base-content/70">{{ capacity_hint }}</p>
+        <p id="capacity-hint" class="text-sm text-base-content/70">{% if editing %}{{ capacity_hint }}{% else %}{{ labels.people.form.dependent_capacity_hint }}{% endif %}</p>
       </fieldset>
       {% if not editing %}
       <fieldset class="grid gap-3 border-t border-base-300 pt-6">

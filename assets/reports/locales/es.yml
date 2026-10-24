@@ -1624,6 +1624,7 @@ es:
       has_capacity: Tiene capacidad para gestionar su propia medicación
       note: 'Nota:'
       capacity_hint: "Se puede guardar una persona sin capacidad sin un cuidador activo. Los menores y los adultos dependientes no tienen capacidad."
+      dependent_capacity_hint: "Los menores y los adultos dependientes no tienen capacidad."
       capacity_hint_assign_carer: "Puedes asignar o invitar a un cuidador después de guardar."
       create: Crear persona
       update: Actualizar persona

@@ -1619,6 +1619,7 @@ ga:
       has_capacity: Tá cumas aige/aici a leigheas féin a bhainistiú
       note: 'Nóta:'
       capacity_hint: "Is féidir duine gan chumas a shábháil gan cúramóir gníomhach. Níl cumas ag mionaoisigh ná ag daoine fásta cleithiúnacha."
+      dependent_capacity_hint: "Níl cumas ag mionaoisigh ná ag daoine fásta cleithiúnacha."
       capacity_hint_assign_carer: "Is féidir cúramóir a shannadh nó cuireadh a thabhairt dó tar éis sábhála."
       save: Sábháil
       cancel: Cealaigh
