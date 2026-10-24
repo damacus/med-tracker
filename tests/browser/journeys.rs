@@ -433,6 +433,36 @@ async fn treatment_forms_create_and_edit_without_losing_clinical_fields() {
                     .fill("2026-10-22", None)
                     .await
                     .unwrap();
+                assert!(page.evaluate::<(), bool>(
+                    r#"() => ["start_date", "end_date"].every(id => document.getElementById(id).required)"#,
+                    None,
+                ).await.unwrap());
+                page.evaluate::<(), bool>(
+                    r#"() => { document.getElementById("end_date").form.noValidate = true; return true; }"#,
+                    None,
+                ).await.unwrap();
+                page.get_by_role(AriaRole::Button, named("Add schedule"))
+                    .click(None).await.unwrap();
+                expect(page.locator("main")).to_contain_text("Check the highlighted fields and try again.")
+                    .await.unwrap();
+                assert!(page.evaluate::<(), bool>(
+                    r#"() => { const input = document.getElementById("end_date"); return input.getAttribute("aria-invalid") === "true" && input.classList.contains("input-error") && input.parentElement.contains(document.getElementById("end_date-error")) && document.getElementById("dose_amount").value === "0.10"; }"#,
+                    None,
+                ).await.unwrap());
+                for (width, height, name) in [(1440, 1000, "desktop"), (390, 844, "mobile")] {
+                    page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                    assert!(!page.evaluate::<(), bool>(
+                        "() => document.documentElement.scrollWidth > innerWidth", None,
+                    ).await.unwrap());
+                    assert!(page.evaluate::<(), bool>(
+                        r#"() => { const start = document.getElementById("start_date").getBoundingClientRect(); const end = document.getElementById("end_date").getBoundingClientRect(); return innerWidth < 640 || Math.abs(start.top - end.top) < 1; }"#, None,
+                    ).await.unwrap());
+                    page.screenshot_to_file(
+                        Path::new(&format!("docs/screenshots/browser-journeys/schedule-required-date-{name}.png")),
+                        ScreenshotOptions::builder().full_page(true).build(),
+                    ).await.unwrap();
+                }
+                page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
                 page.get_by_label("End date", true)
                     .fill("2026-11-22", None)
                     .await

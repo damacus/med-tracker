@@ -66,7 +66,7 @@ pub(super) fn form(
             .as_array()
             .and_then(|messages| messages.first())
             .and_then(Value::as_str)
-            .map_or_else(|| browser_forms::message(error), |message| format!("Taper plan {message}.")),
+            .map_or_else(|| "Check the highlighted fields and try again.".into(), |message| format!("Taper plan {message}.")),
         _ => browser_forms::message(error),
     }));
     let mut fields = vec![
@@ -238,7 +238,7 @@ fn field(
         || original.to_owned(),
         |value| value.normalize().to_string(),
     );
-    json!({"name":name,"label":label,"kind":kind,"value":value,"step":if hours && decimal.is_some_and(|number| !number.fract().is_zero()) {"any"} else {"1"},"errors":errors.get(name).cloned().unwrap_or(json!([])),"options":[]})
+    json!({"required":matches!(name, "start_date" | "end_date"),"name":name,"label":label,"kind":kind,"value":value,"step":if hours && decimal.is_some_and(|number| !number.fract().is_zero()) {"any"} else {"1"},"errors":errors.get(name).cloned().unwrap_or(json!([])),"options":[]})
 }
 fn choices(values: &[&str]) -> Value {
     json!(
