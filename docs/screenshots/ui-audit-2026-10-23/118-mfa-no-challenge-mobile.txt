@@ -1,0 +1,21 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Verify your identity" [level=1]
+  - text: Authentication code
+  - textbox "Authentication code"
+  - button "Verify"
+  - text: Backup code
+  - textbox "Backup code"
+  - button "Use backup code"
+  - link "Reset your password":
+    - /url: /reset-password
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

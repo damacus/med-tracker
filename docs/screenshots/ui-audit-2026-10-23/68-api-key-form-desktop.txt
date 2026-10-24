@@ -1,0 +1,40 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Personal API keys" [level=1]
+  - paragraph: Keys use the selected permissions within your current household access. Their permissions, households, name and expiry cannot be changed. Revoke and replace a key to change its access.
+  - heading "Create an API key" [level=2]
+  - text: Name
+  - textbox "Name"
+  - group "Households":
+    - generic: Households
+    - checkbox "Synthetic household"
+    - text: Synthetic household
+  - group "Permissions":
+    - generic: Permissions
+    - checkbox "Read care records"
+    - text: Read care records
+    - checkbox "Manage care records"
+    - text: Manage care records
+    - checkbox "Record doses"
+    - text: Record doses
+    - checkbox "Manage household memberships"
+    - text: Manage household memberships
+    - checkbox "Manage household invitations"
+    - text: Manage household invitations
+  - text: Expires in days
+  - spinbutton "Expires in days": "90"
+  - button "Create API key"
+  - heading "Existing keys" [level=2]
+  - paragraph: No active personal API keys.
+  - link "Account security":
+    - /url: /account/security
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

@@ -1,0 +1,42 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - link "Cancel":
+    - /url: /households/persistence-fixture/medications
+  - heading "Add a New Medication" [level=1]
+  - list "Medication setup progress":
+    - listitem: Details
+    - listitem: Dose
+    - listitem: Supply
+    - listitem: Warnings
+  - heading "Medication details" [active] [level=2]
+  - generic: Name
+  - textbox "Name"
+  - generic: Display name
+  - textbox "Display name"
+  - generic: Description
+  - textbox "Description"
+  - generic: Location
+  - combobox "Location":
+    - option "Synthetic cabinet" [selected]
+  - button "Continue"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

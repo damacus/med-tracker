@@ -1,0 +1,84 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - status
+  - generic: SA
+  - paragraph: Profile settings
+  - heading "My Profile" [level=1]
+  - paragraph: persistence@example.test
+  - paragraph: Shape your account, safety preferences, and notification rhythm from one calm control room.
+  - tablist "My Profile":
+    - tab "Profile"
+    - tab "Security" [active] [selected]
+    - tab "Notifications"
+    - tab "Advanced"
+  - text: + + + +
+  - tabpanel "Security":
+    - heading "Security" [level=2]
+    - paragraph:
+      - generic: Password updated
+      - generic: "2FA: Not enabled"
+      - generic: 0 passkeys
+    - heading "Account Security" [level=3]
+    - paragraph: Manage your login credentials and security settings
+    - link "Change Email Address":
+      - /url: /account/security/email
+      - strong: Change Email Address
+      - generic: Update the email address you use to sign in
+      - generic: Change
+    - link "Change Password":
+      - /url: /account/security/password
+      - strong: Change Password
+      - generic: Update your password to keep your account secure
+      - generic: Change
+    - heading "Sign-in methods" [level=4]
+    - link "Account Security":
+      - /url: /account/security
+    - heading "Two-Factor Authentication" [level=3]
+    - paragraph: Secure your account with multiple authentication methods
+    - heading "Authenticator App (TOTP)" [level=4]
+    - paragraph: Use an app like Google Authenticator or 1Password.
+    - paragraph: "2FA: Not enabled"
+    - link "Two-Factor Authentication":
+      - /url: /account/security
+    - heading "Passkeys" [level=4]
+    - paragraph: Use biometrics or a security key for passwordless login.
+    - paragraph: No passkeys yet.
+    - link "Add passkey":
+      - /url: /account/security/passkey
+    - heading "Personal API keys" [level=3]
+    - paragraph: Create revocable tokens for scripts and trusted integrations.
+    - link "Manage personal API keys":
+      - /url: /account/security/keys
+    - heading "Active sessions" [level=3]
+    - strong: Other session
+    - paragraph: Signed in 23 Oct 2026 22:26 UTC. Expires 30 Oct 2026 22:26 UTC.
+    - button "Revoke session"
+    - strong: Other session
+    - paragraph: Signed in 23 Oct 2026 22:29 UTC. Expires 30 Oct 2026 22:29 UTC.
+    - button "Revoke session"
+    - strong: Other session
+    - paragraph: Signed in 23 Oct 2026 22:44 UTC. Expires 30 Oct 2026 22:44 UTC.
+    - button "Revoke session"
+    - strong: Current session
+    - paragraph: Signed in 23 Oct 2026 23:18 UTC. Expires 30 Oct 2026 23:18 UTC.
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

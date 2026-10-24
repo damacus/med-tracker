@@ -1,0 +1,74 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - heading "Edit Dose Option" [level=1]
+  - paragraph: Synthetic tablets
+  - form "Dose option details":
+    - group "Dose":
+      - generic: Dose
+      - generic: Amount
+      - spinbutton "Amount": "2.0"
+      - generic: Unit
+      - combobox "Unit":
+        - option "tablet" [selected]
+        - option "capsule"
+        - option "gummy"
+        - option "mg"
+        - option "ml"
+        - option "g"
+        - option "mcg"
+        - option "IU"
+        - option "spray"
+        - option "drop"
+        - option "sachet"
+        - option "pad"
+      - generic: Description
+      - textbox "Description": Synthetic audit option
+    - group "Timing":
+      - generic: Timing
+      - generic: Dose cycle
+      - combobox "Dose cycle":
+        - option "Daily" [selected]
+        - option "Weekly"
+        - option "Monthly"
+      - generic: Frequency
+      - textbox "Frequency": daily
+      - generic: Maximum daily doses
+      - spinbutton "Maximum daily doses": "1"
+      - generic: Minimum hours between doses
+      - spinbutton "Minimum hours between doses": "0"
+    - group "Stock":
+      - generic: Stock
+      - generic: Current Supply
+      - spinbutton "Current Supply"
+      - generic: Reorder Threshold
+      - spinbutton "Reorder Threshold"
+    - group "Defaults":
+      - generic: Defaults
+      - checkbox "Default for adults"
+      - text: Default for adults
+      - checkbox "Default for children"
+      - text: Default for children
+    - button "Save Dose Option"
+    - link "Cancel":
+      - /url: /households/persistence-fixture/medications/80001/dosage_options
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

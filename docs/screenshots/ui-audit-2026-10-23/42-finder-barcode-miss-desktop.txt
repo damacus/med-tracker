@@ -1,0 +1,80 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Open global search":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - link "Back to medications":
+    - /url: /households/persistence-fixture/medications
+  - heading "Medication Finder" [level=1]
+  - paragraph: Scan a pack or enter its barcode to find a medicine and add stock.
+  - heading "Scan a barcode" [level=2]
+  - button "Start Scanner"
+  - paragraph
+  - generic: Barcode
+  - textbox "Barcode": "0000000000000"
+  - button "Find barcode" [active]
+  - heading "Search the medicine catalogue" [level=2]
+  - generic: Medicine name
+  - textbox "Medicine name"
+  - generic: Form
+  - combobox "Form":
+    - option "Any form" [selected]
+    - option "Tablet"
+    - option "Capsule"
+    - option "Liquid"
+    - option "Cream"
+    - option "Inhaler"
+    - option "Patch"
+    - option "Drops"
+    - option "Spray"
+  - generic: Strength
+  - textbox "Strength"
+  - button "Search medicines"
+  - status: No matching product. You can enter the medication manually.
+  - link "Enter medication manually":
+    - /url: /households/persistence-fixture/medications/new?barcode=0000000000000
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

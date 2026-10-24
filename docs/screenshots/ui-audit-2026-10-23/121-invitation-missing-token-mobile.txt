@@ -1,0 +1,16 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account Security":
+    - /url: /account/security
+- main:
+  - heading "Invitation link unavailable" [level=1]
+  - alert: This invitation link is invalid or has expired. Ask a household manager for a new invitation.
+  - link "Return to dashboard":
+    - /url: /
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

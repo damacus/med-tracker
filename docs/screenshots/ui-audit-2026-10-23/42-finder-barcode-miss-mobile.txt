@@ -1,0 +1,53 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - link "Back to medications":
+    - /url: /households/persistence-fixture/medications
+  - heading "Medication Finder" [level=1]
+  - paragraph: Scan a pack or enter its barcode to find a medicine and add stock.
+  - heading "Scan a barcode" [level=2]
+  - button "Start Scanner"
+  - paragraph
+  - generic: Barcode
+  - textbox "Barcode": "0000000000000"
+  - button "Find barcode" [active]
+  - heading "Search the medicine catalogue" [level=2]
+  - generic: Medicine name
+  - textbox "Medicine name"
+  - generic: Form
+  - combobox "Form":
+    - option "Any form" [selected]
+    - option "Tablet"
+    - option "Capsule"
+    - option "Liquid"
+    - option "Cream"
+    - option "Inhaler"
+    - option "Patch"
+    - option "Drops"
+    - option "Spray"
+  - generic: Strength
+  - textbox "Strength"
+  - button "Search medicines"
+  - status: No matching product. You can enter the medication manually.
+  - link "Enter medication manually":
+    - /url: /households/persistence-fixture/medications/new?barcode=0000000000000
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

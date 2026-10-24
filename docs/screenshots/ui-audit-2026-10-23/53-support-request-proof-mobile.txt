@@ -1,0 +1,22 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Confirm support access request" [level=1]
+  - paragraph: Confirm support access request with your current sign-in method. This request expires after five minutes.
+  - text: Current password
+  - textbox "Current password"
+  - text: Authentication code
+  - textbox "Authentication code"
+  - paragraph: Enter your authenticator app code if you have enabled it.
+  - button "Confirm change"
+  - link "Back to account security":
+    - /url: /account/security
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

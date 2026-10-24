@@ -1,0 +1,37 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - heading "Dose Options" [level=1]
+  - paragraph: Synthetic tablets
+  - link "Add dose option":
+    - /url: /households/persistence-fixture/medications/80001/dosage_options/new
+  - link "Back to Medication":
+    - /url: /households/persistence-fixture/medications/80001
+  - article:
+    - heading "2.0 tablet" [level=2]
+    - paragraph: Synthetic audit option
+    - paragraph: "Frequency: daily"
+    - paragraph: "Current supply: Untracked"
+    - link "Edit dose option":
+      - /url: /households/persistence-fixture/medications/80001/dosage_options/1/edit
+    - button "Delete dose option"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

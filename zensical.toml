@@ -22,6 +22,7 @@ nav = [
     { Deployment = "deployment.md" },
     { "Fresh Rust rollout" = "operations/loco-cutover-runbook.md" },
     { Testing = "testing.md" },
+    { "Browser UI audit (October 2026)" = "ui-audits/2026-10-23/README.md" },
     { "Bolt performance agent" = "development/bolt-agent.md" },
     { "Maintaining release notes" = "development/release-notes.md" },
     { "Required CI checks" = "development/ci.md" },

@@ -1,0 +1,77 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - link "Cancel":
+    - /url: /households/persistence-fixture/medications
+  - heading "Add a New Medication" [level=1]
+  - list "Medication setup progress":
+    - listitem: Details
+    - listitem: Dose
+    - listitem: Supply
+    - listitem: Warnings
+  - heading "Dose and plan" [active] [level=2]
+  - generic: Person
+  - combobox "Person":
+    - option "No person plan" [selected]
+    - option "Synthetic adult"
+  - generic: Dose
+  - spinbutton "Dose"
+  - generic: Unit
+  - combobox "Unit":
+    - option "tablet" [selected]
+    - option "capsule"
+    - option "gummy"
+    - option "mg"
+    - option "ml"
+    - option "g"
+    - option "mcg"
+    - option "IU"
+    - option "spray"
+    - option "drop"
+    - option "sachet"
+    - option "pad"
+  - generic: Frequency
+  - combobox "Frequency":
+    - option "Multiple daily" [selected]
+    - option "Daily"
+    - option "Weekly"
+    - option "Specific dates"
+    - option "As needed"
+    - option "Tapering"
+  - generic: Doses per day
+  - spinbutton "Doses per day": "2"
+  - generic: Hours apart
+  - spinbutton "Hours apart": "12"
+  - generic: First dose time
+  - textbox "First dose time": 08:00
+  - generic: Second dose time
+  - textbox "Second dose time": 20:00
+  - generic: Start date
+  - textbox "Start date": 2026-10-23
+  - generic: End date
+  - textbox "End date": 2027-10-23
+  - paragraph: Review the medication plan before continuing.
+  - button "Review medication plan"
+  - paragraph
+  - button "Back"
+  - button "Continue"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

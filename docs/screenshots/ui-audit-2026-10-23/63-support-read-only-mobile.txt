@@ -1,0 +1,62 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/supported-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/supported-fixture/dashboard
+      - text: Dashboard
+  - link "Profile":
+    - /url: /households/supported-fixture/profile
+    - generic: M
+    - text: Profile
+  - link "Households":
+    - /url: /households/choose?switch=1
+  - button "Sign Out"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+  - button "Open global search": Search
+- main:
+  - paragraph: Temporary support
+  - 'heading "Support access: Supported household" [level=1]'
+  - paragraph: Read-only support view. Access expires at 2026-10-23 23:49:09 UTC.
+  - navigation "Platform administration":
+    - link "Platform users":
+      - /url: /platform/users
+    - link "Platform settings":
+      - /url: /platform/settings
+    - link "Support access":
+      - /url: /platform/support
+    - link "Owner recovery":
+      - /url: /platform/owner-recovery
+  - heading "Household members" [level=2]
+  - list:
+    - listitem: Supported owner
+    - listitem: Supported member
+  - heading "People" [level=2]
+  - list:
+    - listitem: Supported owner
+    - listitem: Supported member
+  - heading "Medications" [level=2]
+  - list:
+    - listitem: Supported tablets
+  - heading "Medication allocations" [level=2]
+  - paragraph: No active allocations.
+  - list
+  - heading "Schedules" [level=2]
+  - paragraph: No active schedules.
+  - list
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

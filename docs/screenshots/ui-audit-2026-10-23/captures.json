@@ -1,0 +1,3889 @@
+[
+  {
+    "name": "01-login-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/01-login-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Sign in",
+      "Appearance"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "neutral-dark",
+    "title": "Sign in | MedTracker",
+    "url": "http://127.0.0.1:17891/login",
+    "width": 1440,
+    "sha256": "9164972a4c55ceb3a0e838136c61828fd86d99dd959c932e785c066833492d59"
+  },
+  {
+    "name": "02-login-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/02-login-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Sign in",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "neutral-dark",
+    "title": "Sign in | MedTracker",
+    "url": "http://127.0.0.1:17891/login",
+    "width": 375,
+    "sha256": "0b52e4955a548939eee9e6fa104458ac86a9a848e7786a32fdc82aac1f89ac08"
+  },
+  {
+    "name": "03-chooser-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/03-chooser-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "MedTracker",
+      "Choose a household"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Choose a household | MedTracker",
+    "url": "http://127.0.0.1:17891/households/choose",
+    "width": 1440,
+    "sha256": "c226ff2c96f69d4863ea96a959685187026b457f05194cf8865335417c552229"
+  },
+  {
+    "name": "04-chooser-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/04-chooser-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "MedTracker",
+      "Choose a household"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Choose a household | MedTracker",
+    "url": "http://127.0.0.1:17891/households/choose",
+    "width": 390,
+    "sha256": "a01a422e08c7bd333634bb7cd38cf04dacfbe979d86966cfbeb8ec6105a7030c"
+  },
+  {
+    "name": "05-chooser-retired-security-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/05-chooser-retired-security-mobile.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 844,
+    "overflow": false,
+    "theme": null,
+    "title": "",
+    "url": "http://127.0.0.1:17891/multifactor-manage",
+    "width": 390,
+    "sha256": "3f690742922b18eaed46e283598ade84a62732a37479a7104a88d0677ee89005"
+  },
+  {
+    "name": "06-dashboard-current-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/06-dashboard-current-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Good evening, Synthetic",
+      "Today's Schedule",
+      "Smart Insights",
+      "Stock Inventory"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Family Dashboard | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/dashboard",
+    "width": 390,
+    "sha256": "e5c0427acf00b4188929bde1790709444aeb52f07ea8a2ab9ad4a07862dad9e1"
+  },
+  {
+    "name": "07-dashboard-prn-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/07-dashboard-prn-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Good evening, Synthetic",
+      "Today's Schedule",
+      "Smart Insights",
+      "Stock Inventory"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Family Dashboard | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/dashboard",
+    "width": 390,
+    "sha256": "edda9507094a2fc435d2a257bb9ff26752354f1c1a22f4582c65cdaef1856af3"
+  },
+  {
+    "name": "08-dashboard-current-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/08-dashboard-current-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Good evening, Synthetic",
+      "Today's Schedule",
+      "Smart Insights",
+      "Stock Inventory"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Family Dashboard | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/dashboard",
+    "width": 1440,
+    "sha256": "9e6fb6a3b301517f55415a47266842faf559e78cfc62815e95a10420685af15d"
+  },
+  {
+    "name": "09-dashboard-dose-dialog-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/09-dashboard-dose-dialog-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Good evening, Synthetic",
+      "Today's Schedule",
+      "Smart Insights",
+      "Stock Inventory",
+      "Record dose"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Family Dashboard | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/dashboard?record_medication_id=80001&record_source_type=person_medication&record_source_id=81001&record_person_id=73001&dashboard_person_id=73001&dashboard_grouping=person",
+    "width": 1440,
+    "sha256": "8fac8233c9b231b4bbf249d59f16388f0e4ff40892b621be6c27e81dd842a8a1"
+  },
+  {
+    "name": "10-dashboard-dose-dialog-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/10-dashboard-dose-dialog-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Good evening, Synthetic",
+      "Today's Schedule",
+      "Smart Insights",
+      "Stock Inventory",
+      "Record dose"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Family Dashboard | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/dashboard?record_medication_id=80001&record_source_type=person_medication&record_source_id=81001&record_person_id=73001&dashboard_person_id=73001&dashboard_grouping=person",
+    "width": 390,
+    "sha256": "3d13d493570961bf7c56c6d1096fd93403ac3f034c5af90790e50abfda5b51a1"
+  },
+  {
+    "name": "11-inventory-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/11-inventory-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Medications",
+      "Synthetic tablets"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medications | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications",
+    "width": 390,
+    "sha256": "c8f47be32a8d35bf31e33b842773f36e50b286d3d9072dba2ed9ebe0190b5560"
+  },
+  {
+    "name": "12-inventory-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/12-inventory-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Medications",
+      "Synthetic tablets"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medications | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications",
+    "width": 1440,
+    "sha256": "4ac906e3a6cc3adbbec9187c119106d36a4d5e47dfded3b76bccf62a6b6aa0aa"
+  },
+  {
+    "name": "13-medication-detail-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/13-medication-detail-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic tablets",
+      "Inventory Status",
+      "Record dose",
+      "Standard dosage",
+      "Manage medication"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic tablets | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001",
+    "width": 1440,
+    "sha256": "dd4c39735f00e74a972ecf5d345b88de279c8b4432ad86bf9158a5d87fdca4f2"
+  },
+  {
+    "name": "13-medication-detail-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/13-medication-detail-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic tablets",
+      "Inventory Status",
+      "Record dose",
+      "Standard dosage",
+      "Manage medication"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic tablets | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001",
+    "width": 390,
+    "sha256": "311ca7767dee57cd64df7ec1c9eb2086eea5d2e181adef48c4d469e3ef186906"
+  },
+  {
+    "name": "14-medication-edit-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/14-medication-edit-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit Medication"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/edit",
+    "width": 1440,
+    "sha256": "c6db90398d6a61ec5994b8f5a46883c470d1e3ab1dffa130aa3ffa2ab36c050a"
+  },
+  {
+    "name": "14-medication-edit-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/14-medication-edit-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit Medication"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/edit",
+    "width": 390,
+    "sha256": "9a21c539b04c352a8c49f67c6d85512fba31e585f82f5965993f2237a907c6bc"
+  },
+  {
+    "name": "15-medication-edit-error-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/15-medication-edit-error-desktop.jpg",
+    "alerts": [
+      "Check the following detailsName can't be blank"
+    ],
+    "headings": [
+      "Edit Medication",
+      "Check the following details"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001",
+    "width": 1440,
+    "sha256": "c22acbdd6e6df727482b0f8eea58f1fd0798ce18d3c07a481f5ff9b5265ef3a7"
+  },
+  {
+    "name": "15-medication-edit-error-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/15-medication-edit-error-mobile.jpg",
+    "alerts": [
+      "Check the following detailsName can't be blank"
+    ],
+    "headings": [
+      "Edit Medication",
+      "Check the following details"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001",
+    "width": 390,
+    "sha256": "a6aaeaab91641d25c1ad9cac1536fb8ded177b20e68b6ceccc5d2fd26593bd93"
+  },
+  {
+    "name": "16-dose-options-empty-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/16-dose-options-empty-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose Options"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose Options | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/dosage_options",
+    "width": 1440,
+    "sha256": "86ab89e360f6c9147a8cdc6aa9fe3c6eb1fdb4e942a6a10a62e6ac6aeff2322b"
+  },
+  {
+    "name": "16-dose-options-empty-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/16-dose-options-empty-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose Options"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose Options | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/dosage_options",
+    "width": 390,
+    "sha256": "51bf2aad7d68943df38810736543426ade57f8c4735a9a47a5c1f309aef77b22"
+  },
+  {
+    "name": "17-dose-option-form-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/17-dose-option-form-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Add Dose Option"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add Dose Option | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/dosage_options/new",
+    "width": 1440,
+    "sha256": "a2a27a3364d73ae98dce91b8566d30a2bcc5e64648996204712e049e698f1171"
+  },
+  {
+    "name": "17-dose-option-form-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/17-dose-option-form-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Add Dose Option"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add Dose Option | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/dosage_options/new",
+    "width": 390,
+    "sha256": "fe8ed00ce1685493bdd0f31cc8aabd921274a98e1882a751000b1bef6b1b832b"
+  },
+  {
+    "name": "18-dose-option-saved-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/18-dose-option-saved-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose Options",
+      "2.0 tablet"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose Options | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/dosage_options",
+    "width": 1440,
+    "sha256": "1323d07a3b9a1d48dfcd85e2a884feced97b7d5f284dc4bd0aa634f5ca050e0a"
+  },
+  {
+    "name": "18-dose-option-saved-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/18-dose-option-saved-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose Options",
+      "2.0 tablet"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose Options | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/dosage_options",
+    "width": 390,
+    "sha256": "669efc75fff9fd50be00ec7aab84e83299cc6a700142844f49acbf1907eec6fc"
+  },
+  {
+    "name": "19-dose-option-edit-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/19-dose-option-edit-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit Dose Option"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Dose Option | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/dosage_options/1/edit",
+    "width": 1440,
+    "sha256": "85d773a33194f81f15dec0393b7969332dd9d26c180599400b66a2d4cee6d77a"
+  },
+  {
+    "name": "19-dose-option-edit-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/19-dose-option-edit-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit Dose Option"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Dose Option | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/dosage_options/1/edit",
+    "width": 390,
+    "sha256": "7ebb15b401d9a63852e0c4653f9f701fe6154e08dbfb3c89455ec56c35fd17ee"
+  },
+  {
+    "name": "20-refill-dialog-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/20-refill-dialog-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic tablets",
+      "Inventory Status",
+      "Record dose",
+      "Dose options",
+      "Manage medication",
+      "Refill inventory"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic tablets | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001",
+    "width": 1440,
+    "sha256": "9d4301ee9c8bc5e35d0cdc56f2ae5d7985b9e28a010d23d586a22acc8692f9b2"
+  },
+  {
+    "name": "20-refill-dialog-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/20-refill-dialog-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic tablets",
+      "Inventory Status",
+      "Record dose",
+      "Dose options",
+      "Manage medication",
+      "Refill inventory"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic tablets | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001",
+    "width": 390,
+    "sha256": "f4d471f9acf8bda6bec4ffd91e42ed9ae1ee7cde280e7de9dd33795aeb2c66ee"
+  },
+  {
+    "name": "21-stock-adjustment-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/21-stock-adjustment-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Adjust stock"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Adjust stock | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/stock/adjust",
+    "width": 1440,
+    "sha256": "7835487b6c4360ecf741a6c59c6f536b41a5024d7d783f7afc30ac480f1dfbd1"
+  },
+  {
+    "name": "21-stock-adjustment-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/21-stock-adjustment-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Adjust stock"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Adjust stock | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/stock/adjust",
+    "width": 390,
+    "sha256": "d897aea06ad771b69bb36595e9ae2d8bdbb56b8e668db03108272a71bf6a16aa"
+  },
+  {
+    "name": "22-medication-order-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/22-medication-order-desktop.jpg",
+    "alerts": [
+      "No order recorded"
+    ],
+    "headings": [
+      "Order medication",
+      "Receive an order"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Order medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/order",
+    "width": 1440,
+    "sha256": "e65a268291902f9b149087e58c883eb78d7046a4a36d5aaa786b281db193769e"
+  },
+  {
+    "name": "22-medication-order-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/22-medication-order-mobile.jpg",
+    "alerts": [
+      "No order recorded"
+    ],
+    "headings": [
+      "Order medication",
+      "Receive an order"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Order medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/order",
+    "width": 390,
+    "sha256": "01de1c8ba4b16c664d3dacd5bfd04948a77a793c6b659c621e1c466dbcb38b87"
+  },
+  {
+    "name": "23-order-recorded-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/23-order-recorded-desktop.jpg",
+    "alerts": [
+      "Ordered"
+    ],
+    "headings": [
+      "Order medication",
+      "Receive an order"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Order medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/order",
+    "width": 1440,
+    "sha256": "f405c00e5dad30a8b517e6fb5d4b91720ed1d357f48d0aecaa231421557ea08b"
+  },
+  {
+    "name": "23-order-recorded-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/23-order-recorded-mobile.jpg",
+    "alerts": [
+      "Ordered"
+    ],
+    "headings": [
+      "Order medication",
+      "Receive an order"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Order medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/80001/order",
+    "width": 390,
+    "sha256": "eb8279cf3cddcbca8444b3ee3f15d6fc04a085a5d67687853be872f56be4f178"
+  },
+  {
+    "name": "24-stock-check-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/24-stock-check-desktop.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "Inventory administration",
+      "Choose medicines",
+      "Amendment batch"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Inventory administration | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/stock-check",
+    "width": 1440,
+    "sha256": "65ac315290f45552e587ed896e0eec756c6e619ba9206305045413cba8681828"
+  },
+  {
+    "name": "24-stock-check-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/24-stock-check-mobile.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "Inventory administration",
+      "Choose medicines",
+      "Amendment batch"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Inventory administration | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/stock-check",
+    "width": 390,
+    "sha256": "4f221253a504e6725736b81d6466190496b5f6d726f040be31a81e2f742fb06b"
+  },
+  {
+    "name": "25-stock-check-selected-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/25-stock-check-selected-desktop.jpg",
+    "alerts": [
+      "1 selected. total net change: 0 tablets"
+    ],
+    "headings": [
+      "Inventory administration",
+      "Choose medicines",
+      "Amendment batch"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Inventory administration | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/stock-check",
+    "width": 1440,
+    "sha256": "223b484130c98378d6b585b07ca3b939ab240d97ba1d1d0c96b4252370480ed1"
+  },
+  {
+    "name": "25-stock-check-selected-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/25-stock-check-selected-mobile.jpg",
+    "alerts": [
+      "1 selected. total net change: 0 tablets"
+    ],
+    "headings": [
+      "Inventory administration",
+      "Choose medicines",
+      "Amendment batch"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Inventory administration | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/stock-check",
+    "width": 390,
+    "sha256": "f2fabfa59c9b91493a6dc240e6388f858da56dfc3992a0f3c2453986cf108d50"
+  },
+  {
+    "name": "26-add-medication-workflow-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/26-add-medication-workflow-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Choose a person",
+      "Synthetic adult"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Choose a person | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/add-medication?return_to=/households/persistence-fixture/medications",
+    "width": 1440,
+    "sha256": "dd6739994f114222970e5eab00fcf98b28abcf60b835c79dea78bcbf7aeea8d1"
+  },
+  {
+    "name": "26-add-medication-workflow-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/26-add-medication-workflow-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Choose a person",
+      "Synthetic adult"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Choose a person | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/add-medication?return_to=/households/persistence-fixture/medications",
+    "width": 390,
+    "sha256": "9f38fbf045703882197e39491c17de0e613c7cf1dfff03a8ebfee32534976652"
+  },
+  {
+    "name": "27-assignment-form-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/27-assignment-form-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Assign medication"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Assign medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/assignments/new?source=workflow",
+    "width": 1440,
+    "sha256": "bda8cb72cdfbc0960e2b68cf09189ac7a2bb464c184d8783ebc50ba10e17e193"
+  },
+  {
+    "name": "27-assignment-form-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/27-assignment-form-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Assign medication"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Assign medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/assignments/new?source=workflow",
+    "width": 390,
+    "sha256": "97b2835b2d3734a37c34de5411937024492181ff5603b1f01622f8d58d07dda1"
+  },
+  {
+    "name": "28-treatment-overview-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/28-treatment-overview-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Treatments for Synthetic adult",
+      "Schedules",
+      "Medication assignments"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Treatments for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments",
+    "width": 1440,
+    "sha256": "796f7bfefa158056d59ca5f1edb1bc9c86f1c1a47ad57315f602c6ceefa955cb"
+  },
+  {
+    "name": "28-treatment-overview-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/28-treatment-overview-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Treatments for Synthetic adult",
+      "Schedules",
+      "Medication assignments"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Treatments for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments",
+    "width": 390,
+    "sha256": "458ad95c265c23950cc9e38714dbc65aec075a39711f182ae7ba6af7fb232ec3"
+  },
+  {
+    "name": "29-schedule-form-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/29-schedule-form-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Treatments for Synthetic adult",
+      "Schedules",
+      "Medication assignments"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Treatments for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments",
+    "width": 1440,
+    "accepted": false,
+    "reason": "Rejected: treatment overview remained visible; schedule form did not open.",
+    "sha256": "b69f6ae52c021ccd866faad0e6a1b7ffad41a13efd336b131662c6247fd98f6e"
+  },
+  {
+    "name": "29-schedule-form-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/29-schedule-form-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Treatments for Synthetic adult",
+      "Schedules",
+      "Medication assignments"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Treatments for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments",
+    "width": 390,
+    "accepted": false,
+    "reason": "Rejected: treatment overview remained visible; schedule form did not open.",
+    "sha256": "37b7eb8d3133967483d050d453c9806df66f958602969136daa8a7d4fee0b350"
+  },
+  {
+    "name": "30-schedule-form-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/30-schedule-form-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Add schedule"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add schedule | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/new",
+    "width": 1440,
+    "sha256": "4c3cdb82dbf91c23a9de475c2a5d6d0b6847b3b3c5b1fcb6059facebd93c6801"
+  },
+  {
+    "name": "30-schedule-form-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/30-schedule-form-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Add schedule"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add schedule | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/new",
+    "width": 390,
+    "sha256": "2c5035a719ba89c637ebf22c83ae7721c7c094fb207edb5157249f2cc300bbc2"
+  },
+  {
+    "name": "31-schedule-taper-step-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/31-schedule-taper-step-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Add schedule"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add schedule | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules",
+    "width": 1440,
+    "sha256": "bf99e4e553b1acca28998b7b3e053e7a6d00fc43c960c0fec155ca25550f4897"
+  },
+  {
+    "name": "31-schedule-taper-step-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/31-schedule-taper-step-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Add schedule"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add schedule | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules",
+    "width": 390,
+    "sha256": "f198f00d3f6650094ab6628c2a12ba2a2a5a7138c0ae9b604caf08e0b0b66ca2"
+  },
+  {
+    "name": "32-schedule-empty-end-date-error-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/32-schedule-empty-end-date-error-desktop.jpg",
+    "alerts": [
+      "Invalid operation",
+      "must be a date"
+    ],
+    "headings": [
+      "Add schedule"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add schedule | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules",
+    "width": 1440,
+    "sha256": "6b2e919511eb7836a7f2b2bc5e2ad8e40b4a0eec3776a26bedde5ddbdf17f532"
+  },
+  {
+    "name": "32-schedule-empty-end-date-error-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/32-schedule-empty-end-date-error-mobile.jpg",
+    "alerts": [
+      "Invalid operation",
+      "must be a date"
+    ],
+    "headings": [
+      "Add schedule"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add schedule | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules",
+    "width": 390,
+    "sha256": "716129586c811e6e04aaa1629fa3c82abcb30ff7b0aede5c547bf358b7fa9a6c"
+  },
+  {
+    "name": "33-treatment-populated-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/33-treatment-populated-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Treatments for Synthetic adult",
+      "Schedules",
+      "Medication assignments"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Treatments for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments",
+    "width": 1440,
+    "sha256": "6ff72aacc96a96fe8f81e32053a976a22717ea48af72eeed7e7e929a87f1d418"
+  },
+  {
+    "name": "33-treatment-populated-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/33-treatment-populated-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Treatments for Synthetic adult",
+      "Schedules",
+      "Medication assignments"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Treatments for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments",
+    "width": 390,
+    "sha256": "d5c2bbf388be93829569e59ca7f8274d5e69759954cad810a10a3e2fc3ceb5f0"
+  },
+  {
+    "name": "34-schedule-edit-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/34-schedule-edit-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit schedule"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit schedule | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/edit",
+    "width": 1440,
+    "sha256": "8e4ee822ec54558fc3c667d281c293b25d98205fe9a31de971d7cad6633a3d67"
+  },
+  {
+    "name": "34-schedule-edit-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/34-schedule-edit-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit schedule"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit schedule | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/edit",
+    "width": 390,
+    "sha256": "93d03a7552b24bbb3c67c8bf49665d1d2900ea86de60539a3d48fb855a04767a"
+  },
+  {
+    "name": "35-dose-history-open-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/35-dose-history-open-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses",
+    "width": 1440,
+    "sha256": "cf67f1150a974b3d53fa98d2b995da90b540f58ca4e4efe54f14d4b75ae6849b"
+  },
+  {
+    "name": "35-dose-history-open-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/35-dose-history-open-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses",
+    "width": 390,
+    "sha256": "83882c0f8231785ca30763e29dae99b3d5344b2de4b6b86d9084521afabb4e93"
+  },
+  {
+    "name": "36-not-taken-dialog-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/36-not-taken-dialog-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23",
+      "Record not taken"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses",
+    "width": 1440,
+    "sha256": "6b01f6cb6f7207e3b58aaf735ab542eeda8216699ea29eefcdfe4886fa0663a7"
+  },
+  {
+    "name": "36-not-taken-dialog-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/36-not-taken-dialog-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23",
+      "Record not taken"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses",
+    "width": 390,
+    "sha256": "da849e6d270d6ca72c79623f379b8d8b1ba3bcce3cf7cd23705fb6068779e981"
+  },
+  {
+    "name": "37-dose-not-taken-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/37-dose-not-taken-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses?start_date=2026-10-23&end_date=2026-10-23",
+    "width": 1440,
+    "sha256": "4910d974cfa28b5b87ede2a1065e7a883a3a0f16e2fc70e62c289052c6483962"
+  },
+  {
+    "name": "37-dose-not-taken-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/37-dose-not-taken-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses?start_date=2026-10-23&end_date=2026-10-23",
+    "width": 390,
+    "sha256": "d4bb74e334772a28bbc14aa15a66d07594e64a5af2a20bcd9d5c9d82bc37363a"
+  },
+  {
+    "name": "38-reopen-dose-dialog-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/38-reopen-dose-dialog-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23",
+      "Correct dose decision"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses?start_date=2026-10-23&end_date=2026-10-23",
+    "width": 1440,
+    "sha256": "43ac1b1801b2bab91cd6eb83fbf995273ed32b788dae14f82cdfbb4cccbd32ad"
+  },
+  {
+    "name": "38-reopen-dose-dialog-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/38-reopen-dose-dialog-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23",
+      "Correct dose decision"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses?start_date=2026-10-23&end_date=2026-10-23",
+    "width": 390,
+    "sha256": "fdce0ac27690e7c3609be657de246736cf9654b837d6abd606316102f0a5bf8e"
+  },
+  {
+    "name": "39-history-record-dose-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/39-history-record-dose-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23",
+      "Record dose"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses?start_date=2026-10-23&end_date=2026-10-23",
+    "width": 390,
+    "sha256": "197b41ef6103e7394f5c178c77a4305a39dc1dd8aaf5cc82ca4dd9ba52d1da57"
+  },
+  {
+    "name": "40-dose-history-taken-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/40-dose-history-taken-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses?start_date=2026-10-23&end_date=2026-10-23",
+    "width": 1440,
+    "sha256": "a61189e2178f2e40c8ee16c6a5815512ee1dd499a543ab402a7f797217872aaf"
+  },
+  {
+    "name": "40-dose-history-taken-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/40-dose-history-taken-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Dose records for Synthetic adult",
+      "Dose 1 on 2026-10-23"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Dose records for Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/treatments/schedules/1/doses?start_date=2026-10-23&end_date=2026-10-23",
+    "width": 390,
+    "sha256": "b76145e7799353b63e0502b7bc350e1ba69251fdc54f742584423815e33a18da"
+  },
+  {
+    "name": "41-medication-finder-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/41-medication-finder-desktop.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "Medication Finder",
+      "Scan a barcode",
+      "Search the medicine catalogue"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medication Finder | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/finder",
+    "width": 1440,
+    "sha256": "7807fff722b511f3d9eaa014f3257e72b0fda99e4f58b03abbd821ea63beb690"
+  },
+  {
+    "name": "41-medication-finder-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/41-medication-finder-mobile.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "Medication Finder",
+      "Scan a barcode",
+      "Search the medicine catalogue"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medication Finder | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/finder",
+    "width": 390,
+    "sha256": "38abbc8d316d56ce51a01e7e2bcd96f95a52690670f5b229c533204614f3ccd1"
+  },
+  {
+    "name": "42-finder-barcode-miss-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/42-finder-barcode-miss-desktop.jpg",
+    "alerts": [
+      "No matching product. You can enter the medication manually."
+    ],
+    "headings": [
+      "Medication Finder",
+      "Scan a barcode",
+      "Search the medicine catalogue"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medication Finder | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/finder",
+    "width": 1440,
+    "sha256": "e1fcf8d88d3107d7e2897ce41e1f8e6928f66c073fbb721d6082d2b40611e06e"
+  },
+  {
+    "name": "42-finder-barcode-miss-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/42-finder-barcode-miss-mobile.jpg",
+    "alerts": [
+      "No matching product. You can enter the medication manually."
+    ],
+    "headings": [
+      "Medication Finder",
+      "Scan a barcode",
+      "Search the medicine catalogue"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medication Finder | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/finder",
+    "width": 390,
+    "sha256": "344f084277cda2adb26f26bcdac1c79b06226cc37f9194b794a0c13144277592"
+  },
+  {
+    "name": "43-medication-create-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/43-medication-create-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Add a New Medication",
+      "Medication details"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add a New Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/new?barcode=0000000000000",
+    "width": 1440,
+    "sha256": "4ddeafd991db593fc557267ed576738000cdd1aed48051b6214617cbad31a196"
+  },
+  {
+    "name": "43-medication-create-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/43-medication-create-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Add a New Medication",
+      "Medication details"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add a New Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/new?barcode=0000000000000",
+    "width": 390,
+    "sha256": "b71be8961cc75bea5691bfa7f97f7d53dbbc54877ab612a286506c9d265bc794"
+  },
+  {
+    "name": "44-medication-wizard-dose-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/44-medication-wizard-dose-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Add a New Medication",
+      "Dose and plan"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add a New Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/new?barcode=0000000000000",
+    "width": 390,
+    "sha256": "1b90118f590dc8bf7508084824590ac8b5b06175170178a2423d578d6f343757"
+  },
+  {
+    "name": "45-medication-wizard-supply-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/45-medication-wizard-supply-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Add a New Medication",
+      "Supply"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add a New Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/new?barcode=0000000000000",
+    "width": 390,
+    "sha256": "6d2ed6b798cbb39b767b36230ad21c7ab537a5f1a921e2c66ad0c09a1fe83833"
+  },
+  {
+    "name": "46-medication-wizard-warnings-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/46-medication-wizard-warnings-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Add a New Medication",
+      "Warnings"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add a New Medication | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/new?barcode=0000000000000",
+    "width": 390,
+    "sha256": "f714cca05413755ab83b538bb41892bbd19e0ae1dcf43f2c1b1fc3451702f797"
+  },
+  {
+    "name": "47-medication-created-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/47-medication-created-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic audit medicine created!",
+      "Saved dose options"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medication created | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/wizard",
+    "width": 1440,
+    "sha256": "701e2f6812751cf4c62e64dfefbcfa991c50a54c23ece79465e9a0af5628ce84"
+  },
+  {
+    "name": "47-medication-created-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/47-medication-created-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic audit medicine created!",
+      "Saved dose options"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medication created | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medications/wizard",
+    "width": 390,
+    "sha256": "73df1076bf9c697789d73051c84788ca610b7edda5ffc7bc573a5269fe20abe7"
+  },
+  {
+    "name": "48-people-list-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/48-people-list-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "People",
+      "Synthetic adult"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "People | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people",
+    "width": 1440,
+    "sha256": "9cbde34331660cb3d025d7f6dde83c6c28a9bb60b8647420c25f14bdd8dbfd01"
+  },
+  {
+    "name": "48-people-list-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/48-people-list-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "People",
+      "Synthetic adult"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "People | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people",
+    "width": 390,
+    "sha256": "2ad5c3e0be7182e9db4f0ee3b411f30be5af8092991ac4bac73f7039d8902a30"
+  },
+  {
+    "name": "49-person-detail-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/49-person-detail-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic adult",
+      "Current medications",
+      "Care Actions",
+      "Profile details"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001",
+    "width": 1440,
+    "sha256": "94407c2026b1e18bf5c163dd4f549359aa900e6b067d398c83a8d63d1e704607"
+  },
+  {
+    "name": "49-person-detail-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/49-person-detail-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic adult",
+      "Current medications",
+      "Care Actions",
+      "Profile details"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic adult | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001",
+    "width": 390,
+    "sha256": "a9d4c6b52b039538e427e61813717ffb355c07e778b0cfb423dbb19ff8e808ab"
+  },
+  {
+    "name": "50-person-edit-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/50-person-edit-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit Person"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Person | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/edit",
+    "width": 1440,
+    "sha256": "1e54294637581933b049958e89ebb6a243f722913857201fb1ec09bf6793a275"
+  },
+  {
+    "name": "50-person-edit-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/50-person-edit-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit Person"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Person | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/edit",
+    "width": 390,
+    "sha256": "3c18cdbc373e662ab46aed95ed9d1c44c774f52e07e242d190eb6b2583db086e"
+  },
+  {
+    "name": "51-person-create-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/51-person-create-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "New Person"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "New Person | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/new",
+    "width": 1440,
+    "sha256": "e6cbca5815567153c53fee1bf8bdf0f7538cc3f165a6526c0c42f28a0464a664"
+  },
+  {
+    "name": "51-person-create-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/51-person-create-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "New Person"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "New Person | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/new",
+    "width": 390,
+    "sha256": "0b475111c93ef2f9733a38f56be91ce4d9d5bb5985e0b19c798f03a861d79494"
+  },
+  {
+    "name": "52-platform-support-empty-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/52-platform-support-empty-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access",
+      "Request support access",
+      "Sessions"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 1440,
+    "sha256": "3d8f2669642c1f6ab874a268b75ac9e6b36d10a8cf79507b989ba2ce274715ff"
+  },
+  {
+    "name": "52-platform-support-empty-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/52-platform-support-empty-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access",
+      "Request support access",
+      "Sessions"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 390,
+    "sha256": "8c279bd21ca749e05a60243fabe4fb25f2825db68e6338476037471c01c7b82a"
+  },
+  {
+    "name": "53-support-request-proof-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/53-support-request-proof-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Confirm support access request"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Change password | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 1440,
+    "sha256": "e264844aa705cf9103b82a09016268fab2d411411ba276512c114fcd5ec6a18d"
+  },
+  {
+    "name": "53-support-request-proof-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/53-support-request-proof-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Confirm support access request"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Change password | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 390,
+    "sha256": "ffff4bc3e8aeef456090d846920f02110e0260339855acd1a95db0f5bca81e7d"
+  },
+  {
+    "name": "54-support-request-pending-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/54-support-request-pending-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access",
+      "Request support access",
+      "Sessions"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 1440,
+    "sha256": "78159b566fbc221919127c06f95cae5ed04774e3c4a2b7f4c0afe861ad40cad3"
+  },
+  {
+    "name": "54-support-request-pending-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/54-support-request-pending-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access",
+      "Request support access",
+      "Sessions"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 390,
+    "sha256": "c1ffdbbdbebd61dd5836585a10dfe1fb69653a47ec47b45ea21fb9fba839f773"
+  },
+  {
+    "name": "55-platform-users-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/55-platform-users-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Platform users",
+      "User directory"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Platform users | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/users",
+    "width": 1440,
+    "sha256": "07e2db962a12aecbb8a9824d303715dabc9d7a612cff1149077168b37b636805"
+  },
+  {
+    "name": "55-platform-users-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/55-platform-users-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Platform users",
+      "User directory"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Platform users | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/users",
+    "width": 390,
+    "sha256": "957cce2bfc3fdf71cb4682e347dec7e37ee70497ae5b779418292eb6721a8910"
+  },
+  {
+    "name": "56-platform-users-empty-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/56-platform-users-empty-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Platform users",
+      "User directory"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Platform users | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/users?q=no-match%40example.test",
+    "width": 1440,
+    "sha256": "4e2c1972e59a91c0dd74c3cd8b74c2c7b87d0e1f42cd811814462937ad3f6320"
+  },
+  {
+    "name": "56-platform-users-empty-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/56-platform-users-empty-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Platform users",
+      "User directory"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Platform users | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/users?q=no-match%40example.test",
+    "width": 390,
+    "sha256": "93672d1bd21538e4e1217cc0d469093b8a132cc4b2f70aaedb5483a004718827"
+  },
+  {
+    "name": "57-platform-settings-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/57-platform-settings-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Platform settings",
+      "Registration access",
+      "Medicine lookup"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Platform settings | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/settings",
+    "width": 1440,
+    "sha256": "af752c50457d5a01bc5f93e5a6bc6b8596d86ced5540d9b71d3865c13436b71a"
+  },
+  {
+    "name": "57-platform-settings-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/57-platform-settings-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Platform settings",
+      "Registration access",
+      "Medicine lookup"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Platform settings | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/settings",
+    "width": 390,
+    "sha256": "268bd8ce73da7f631c1af53b31aaa3d1152f3f8bc8eb91f3a2d57b86b16de626"
+  },
+  {
+    "name": "58-platform-owner-recovery-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/58-platform-owner-recovery-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Owner recovery",
+      "Households",
+      "Select a household"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Owner recovery | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/owner-recovery",
+    "width": 1440,
+    "sha256": "c4efe5ac246a5dbd2d1db0316928e5e6c1f0f7d6954afd74143e77a794736ddf"
+  },
+  {
+    "name": "58-platform-owner-recovery-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/58-platform-owner-recovery-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Owner recovery",
+      "Households",
+      "Select a household"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Owner recovery | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/owner-recovery",
+    "width": 390,
+    "sha256": "461fecb1eee177c5d7ec8c1d748686476c1881be8d3b93265d8bfc90092522c1"
+  },
+  {
+    "name": "59-account-security-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/59-account-security-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Account security",
+      "Sign-in methods",
+      "Active sessions",
+      "Close account"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Account security | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security",
+    "width": 1440,
+    "sha256": "2dd735de399ae3168a05781f81f18c7c2b25260473c148926b27f16d0e3e7a52"
+  },
+  {
+    "name": "59-account-security-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/59-account-security-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Account security",
+      "Sign-in methods",
+      "Active sessions",
+      "Close account"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Account security | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security",
+    "width": 390,
+    "sha256": "4f0e746e532a4c49c374d4802d404c8abb41a9647240b1b1e7200be59f2c3292"
+  },
+  {
+    "name": "60-owner-support-approval-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/60-owner-support-approval-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access requests"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/account/support",
+    "width": 1440,
+    "sha256": "dedbe8c6ccf969ed1d94f5a1928ba907ac6a311e605b5f11f0da0ab7c5361eeb"
+  },
+  {
+    "name": "60-owner-support-approval-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/60-owner-support-approval-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access requests"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/account/support",
+    "width": 390,
+    "sha256": "a585bb3636eb4955c848a3968168b1abef886268a49043c7bcba64797b9a32f5"
+  },
+  {
+    "name": "61-owner-support-approved-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/61-owner-support-approved-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access requests"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/account/support",
+    "width": 1440,
+    "sha256": "4e2accf5990247796605b1de24cb16b0db9190d43cfba1dc49909173732ebe89"
+  },
+  {
+    "name": "61-owner-support-approved-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/61-owner-support-approved-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access requests"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/account/support",
+    "width": 390,
+    "sha256": "f0b0d226abb18ff509a05e6116f263ec76c51307b50003f8e7c532d87823f467"
+  },
+  {
+    "name": "62-support-active-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/62-support-active-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access",
+      "Request support access",
+      "Sessions"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 1440,
+    "sha256": "d24717ec66ddab2b9ad0936bd3833a4656713777104204852d18e60b90cbd3f4"
+  },
+  {
+    "name": "62-support-active-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/62-support-active-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access",
+      "Request support access",
+      "Sessions"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 390,
+    "sha256": "4fff89303a35751e2a021d433eb1ac3917c55d2bbc998ddbdf97d7729e097565"
+  },
+  {
+    "name": "63-support-read-only-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/63-support-read-only-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access: Supported household",
+      "Household members",
+      "People",
+      "Medications",
+      "Medication allocations",
+      "Schedules"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support/1",
+    "width": 1440,
+    "accepted": false,
+    "rejection_reason": "Captured before navigation readiness; support content only, stable chrome unverified",
+    "sha256": "4114ac2ca03b3ecc558d6a91ee7f5f0338ad19889f97c39b294502605fc5820b"
+  },
+  {
+    "name": "63-support-read-only-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/63-support-read-only-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access: Supported household",
+      "Household members",
+      "People",
+      "Medications",
+      "Medication allocations",
+      "Schedules"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support/1",
+    "width": 390,
+    "accepted": false,
+    "rejection_reason": "Captured before navigation readiness; support content only, stable chrome unverified",
+    "sha256": "961bc60dfa7f9c8ecb90d7333fd839fc2ee9fdcda814ee0f9559e3d4a00d555b"
+  },
+  {
+    "name": "64-support-ended-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/64-support-ended-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access",
+      "Request support access",
+      "Sessions"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 1440,
+    "sha256": "e0312418440a602233f8ab0340975be2a373b56a8060d61c45c20552ddefc33f"
+  },
+  {
+    "name": "64-support-ended-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/64-support-ended-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Support access",
+      "Request support access",
+      "Sessions"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Support access | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/support",
+    "width": 390,
+    "sha256": "aa6077c94815bb4feeb206d748f37df5904d987c06d7a4dae5c0d0baafd01e63"
+  },
+  {
+    "name": "65-owner-recovery-blocked-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/65-owner-recovery-blocked-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Owner recovery",
+      "Households",
+      "Supported household"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Owner recovery | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/owner-recovery?household=72602",
+    "width": 1440,
+    "sha256": "561ade3f109d94143571cdfa2ec37fc8a4fd85e8406e76c6ad7d4695211e6fc6"
+  },
+  {
+    "name": "65-owner-recovery-blocked-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/65-owner-recovery-blocked-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Owner recovery",
+      "Households",
+      "Supported household"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Owner recovery | MedTracker",
+    "url": "http://127.0.0.1:17891/platform/owner-recovery?household=72602",
+    "width": 390,
+    "sha256": "66dd8df04978d18834e47ebfc62682ad6f477cf79d79688f0eb227e5e7c63407"
+  },
+  {
+    "name": "66-email-proof-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/66-email-proof-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Change email"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Change email | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/email",
+    "width": 1440,
+    "sha256": "49c429dd2750f4530818dba2fc9e3fbb495be2315e392f050279d433acfcc195"
+  },
+  {
+    "name": "66-email-proof-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/66-email-proof-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Change email"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Change email | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/email",
+    "width": 390,
+    "sha256": "774591a6bbce0fffd599620c84e253f3fc7967d6c23b77e3fa6d7046ea0b8ee1"
+  },
+  {
+    "name": "67-password-proof-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/67-password-proof-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Change password"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Change password | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/password",
+    "width": 1440,
+    "sha256": "99e138af53738bf3cf4af2ce4f28b50d2ae0dcfa4462ede72f05a6e59768755e"
+  },
+  {
+    "name": "67-password-proof-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/67-password-proof-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Change password"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Change password | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/password",
+    "width": 390,
+    "sha256": "fb1cadd4b066999b42b17f8bef372864b838776d547194d73a93ac69144a534b"
+  },
+  {
+    "name": "68-api-key-form-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/68-api-key-form-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Personal API keys",
+      "Create an API key",
+      "Existing keys"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Personal API keys | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/keys",
+    "width": 1440,
+    "sha256": "c5827914b1ad9dac6c62be94d61e0a26faabc69dc70744652658a656edb88229"
+  },
+  {
+    "name": "68-api-key-form-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/68-api-key-form-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Personal API keys",
+      "Create an API key",
+      "Existing keys"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Personal API keys | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/keys",
+    "width": 390,
+    "sha256": "4711a91032e905995058149cf59951f94523882c9395684365d8c3fbcfb2b2ed"
+  },
+  {
+    "name": "69-totp-entry-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/69-totp-entry-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Enable authenticator app"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Enable authenticator app | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/totp",
+    "width": 1440,
+    "sha256": "bab437e38743ae75d7e820397d846581c14e072189b9137650442d9d88d0ca3f"
+  },
+  {
+    "name": "69-totp-entry-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/69-totp-entry-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Enable authenticator app"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Enable authenticator app | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/totp",
+    "width": 390,
+    "sha256": "aaa5cbbbcbad3da3d68aa0dea8e745553b29fcda8bacf612022238013c6fb070"
+  },
+  {
+    "name": "70-passkey-entry-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/70-passkey-entry-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Add passkey"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add passkey | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/passkey",
+    "width": 1440,
+    "sha256": "0a14af1957421b1d6c956fdd0dc5f8e0711a1f369e05d31d9711b81d3ffaae08"
+  },
+  {
+    "name": "70-passkey-entry-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/70-passkey-entry-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Add passkey"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Add passkey | MedTracker",
+    "url": "http://127.0.0.1:17891/account/security/passkey",
+    "width": 390,
+    "sha256": "417f5fd45484c852aa996ebe818e72d627b3cd87e205635af9c30b7f856b49cb"
+  },
+  {
+    "name": "71-profile-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/71-profile-desktop.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile",
+    "width": 1440,
+    "sha256": "8d1d38cb7541b2ffe5cb6661e3fdcc0918f1a6baec12bc7e7a9dbe261f55e5f3"
+  },
+  {
+    "name": "71-profile-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/71-profile-mobile.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile",
+    "width": 390,
+    "sha256": "220e92569ed17f237fb937b9003c0eb05c880f08feee3f297dce254a056ef0a7"
+  },
+  {
+    "name": "72-profile-security-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/72-profile-security-desktop.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Security"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#security",
+    "width": 1440,
+    "sha256": "884439bd2212037ca08559f0b4f2e488cbd7e89442fdcf3d5201f7e663d76ff1"
+  },
+  {
+    "name": "72-profile-security-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/72-profile-security-mobile.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Security"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#security",
+    "width": 390,
+    "sha256": "709f53735d8454c2f9199920f961ce24e77041b8153a425e669d641465ed7e09"
+  },
+  {
+    "name": "73-profile-notifications-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/73-profile-notifications-desktop.jpg",
+    "alerts": [
+      "",
+      "Browser notification delivery is not configured."
+    ],
+    "headings": [
+      "My Profile",
+      "Notifications"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#notifications",
+    "width": 1440,
+    "sha256": "2c40ad03973e2b44e2746e9a367b4d0e4935ea9c0e18da122477d6d124bbba94"
+  },
+  {
+    "name": "73-profile-notifications-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/73-profile-notifications-mobile.jpg",
+    "alerts": [
+      "",
+      "Browser notification delivery is not configured."
+    ],
+    "headings": [
+      "My Profile",
+      "Notifications"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#notifications",
+    "width": 390,
+    "sha256": "f89af97705a54a266c8a578d6c87917c4995982a1b26e81cf98677a98ead0bfc"
+  },
+  {
+    "name": "74-profile-advanced-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/74-profile-advanced-desktop.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Advanced"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#advanced",
+    "width": 1440,
+    "sha256": "616e1765aa1eb80aef5a1dfe3cf61a6f9f6d0cc3ca0b10ecc94282c240891973"
+  },
+  {
+    "name": "74-profile-advanced-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/74-profile-advanced-mobile.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Advanced"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#advanced",
+    "width": 390,
+    "sha256": "e70d5d4b253bc2ac24a52f5f33ca2d98e717ef2f648caa72d6e82dcc3d10f7d6"
+  },
+  {
+    "name": "75-profile-avatar-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/75-profile-avatar-desktop.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 1440,
+    "sha256": "36b88268fdec5fc9b62cd32010905222255ad2e923939f274c348894b2b1ec80"
+  },
+  {
+    "name": "75-profile-avatar-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/75-profile-avatar-mobile.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 390,
+    "sha256": "02bb51590e332ee6417221ae401e880999273997174ff5e08f6b4a770bb978aa"
+  },
+  {
+    "name": "76-profile-appearance-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/76-profile-appearance-desktop.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 1440,
+    "sha256": "d883e070b73b520be24246e7396ed4d36186f474ca8e8b4fc7acaeb606b845db"
+  },
+  {
+    "name": "76-profile-appearance-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/76-profile-appearance-mobile.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 390,
+    "sha256": "ba5a43438c4a357dea57ec40de5206e8620c57691d5cabba307da7f702ff1dca"
+  },
+  {
+    "name": "77-profile-light-320",
+    "path": "docs/screenshots/ui-audit-2026-10-23/77-profile-light-320.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 320,
+    "accepted": false,
+    "rejection_reason": "Filename claims light but actual theme is dark; superseded by79",
+    "sha256": "75d91d49394df5e21b4dcb121236e9586aad513f9651204cbf728bb006347cdc"
+  },
+  {
+    "name": "78-mobile-menu-light-320",
+    "path": "docs/screenshots/ui-audit-2026-10-23/78-mobile-menu-light-320.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 320,
+    "accepted": false,
+    "rejection_reason": "Filename claims light but actual theme is dark; superseded by80",
+    "sha256": "85c04cec67ec7f2c02eeb57a3a00fe5d0771a06a68f0ffe483e00293db8c4470"
+  },
+  {
+    "name": "79-profile-light-320",
+    "path": "docs/screenshots/ui-audit-2026-10-23/79-profile-light-320.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-light",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 320,
+    "sha256": "16950a928afcb7b68612f2f79a75a0dc2748cef6257242989bea5d62cd0767d1"
+  },
+  {
+    "name": "80-mobile-menu-light-320",
+    "path": "docs/screenshots/ui-audit-2026-10-23/80-mobile-menu-light-320.jpg",
+    "alerts": [
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-light",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 320,
+    "sha256": "a0d65faf92b93c63ced5bd5392cfc699f1c06206384c4be7512c845b39d5ae7c"
+  },
+  {
+    "name": "81-global-search-320",
+    "path": "docs/screenshots/ui-audit-2026-10-23/81-global-search-320.jpg",
+    "alerts": [
+      "",
+      ""
+    ],
+    "headings": [
+      "My Profile",
+      "Profile",
+      "Profile photo",
+      "Time Zone",
+      "Bottom bar shortcuts",
+      "Appearance"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "My Profile | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/profile#profile",
+    "width": 320,
+    "sha256": "45d007b137282589287491749950e95ee6bd28cf22bd11426944bc641c0e7dba"
+  },
+  {
+    "name": "82-search-initial-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/82-search-initial-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Search"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search",
+    "width": 1440,
+    "sha256": "7a7f55afaf9a199258d16e1281af3a19ac9b862d1e6a5060ad06d508231e1761"
+  },
+  {
+    "name": "82-search-initial-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/82-search-initial-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Search"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search",
+    "width": 390,
+    "sha256": "f4ae5eae69c2432adeff08d022018e0ff2d82a23f1d714be619f8bc5c5b0ac00"
+  },
+  {
+    "name": "83-search-results-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/83-search-results-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Search"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search?q=Synthetic",
+    "width": 1440,
+    "sha256": "d7c2ba874b61fc290a59833b31b79178741fb87cb5386c066dbb27592a43243c"
+  },
+  {
+    "name": "83-search-results-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/83-search-results-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Search"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search?q=Synthetic",
+    "width": 390,
+    "sha256": "1340598c59c0fb2aee5901c40a5a2c7811e806cf7d9f06dcd40042c341241d78"
+  },
+  {
+    "name": "84-search-empty-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/84-search-empty-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Search"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search?q=no-such-audit-item",
+    "width": 1440,
+    "sha256": "b23f6716419744864a3a43440e852c71e5b9c035aa26d00c120abc0df24a561d"
+  },
+  {
+    "name": "84-search-empty-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/84-search-empty-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Search"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search?q=no-such-audit-item",
+    "width": 390,
+    "sha256": "e23ff234579857208038cc690fa269e715a833d96c683d95cff8674218881fa3"
+  },
+  {
+    "name": "85-locations-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/85-locations-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Locations",
+      "Synthetic cabinet"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Locations | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations",
+    "width": 1440,
+    "sha256": "0caf2409c08145f5e5f88237dcc327f096f2bb09a41b049a8a7b070036b39b82"
+  },
+  {
+    "name": "85-locations-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/85-locations-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Locations",
+      "Synthetic cabinet"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Locations | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations",
+    "width": 390,
+    "sha256": "c164bf1f2fbea9486fc2b556a66421f0bb01708629544ec3aea6f4bf3af55b1f"
+  },
+  {
+    "name": "86-location-detail-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/86-location-detail-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic cabinet",
+      "Medications at this location"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic cabinet | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations/79001",
+    "width": 1440,
+    "sha256": "5eab01cd3de45319a51e9a0ea207f701999894668474230ea72995fa001a05b3"
+  },
+  {
+    "name": "86-location-detail-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/86-location-detail-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic cabinet",
+      "Medications at this location"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic cabinet | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations/79001",
+    "width": 390,
+    "sha256": "ce08570e5e78cd35b93d386949033bd625195bbea2606230fb0c71bb5fb65054"
+  },
+  {
+    "name": "87-location-delete-confirmation-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/87-location-delete-confirmation-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic cabinet",
+      "Medications at this location",
+      "Delete Location"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic cabinet | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations/79001",
+    "width": 1440,
+    "sha256": "121ebff5a0e573fd4783cf0a68a6bfee64e2d5d6cc04e3d5427b35f0662dd0dc"
+  },
+  {
+    "name": "87-location-delete-confirmation-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/87-location-delete-confirmation-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic cabinet",
+      "Medications at this location",
+      "Delete Location"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic cabinet | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations/79001",
+    "width": 390,
+    "sha256": "b1c3e24abf5f83caf9721137fcafb1996b1df0831c77b208c4b94e39cad52875"
+  },
+  {
+    "name": "88-location-edit-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/88-location-edit-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit Location"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Location | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations/79001/edit",
+    "width": 1440,
+    "sha256": "993504c0e975016c628fe8c9f7fa3c89d9f3e8e682805821570245dcfafe85e8"
+  },
+  {
+    "name": "88-location-edit-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/88-location-edit-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit Location"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit Location | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations/79001/edit",
+    "width": 390,
+    "sha256": "4757c0f0317b147806c912a6e1b6236da53a849a278534a2eb0bdf8a2a4d258d"
+  },
+  {
+    "name": "89-location-new-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/89-location-new-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "New Location"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "New Location | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations/new",
+    "width": 1440,
+    "sha256": "72ea2d8cb8912c4b6eae63ef56b858bfde85e64fe55a442c9e362d647b7015be"
+  },
+  {
+    "name": "89-location-new-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/89-location-new-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "New Location"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "New Location | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/locations/new",
+    "width": 390,
+    "sha256": "2031eb0c1b52b87cb76d72a3cff152a8a5b135d8b01445806294df982fe11ce8"
+  },
+  {
+    "name": "90-health-history-empty-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/90-health-history-empty-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic adult's health events"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic adult's health events | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/health_events",
+    "width": 1440,
+    "sha256": "057e34aa6a53fe5a6afc0fdfcfcd811df17c8206840956af878aca83c425ea20"
+  },
+  {
+    "name": "90-health-history-empty-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/90-health-history-empty-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic adult's health events"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic adult's health events | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/health_events",
+    "width": 390,
+    "sha256": "ad08d4c0afd4a976de424e32820457ee737c6083baf775291855e39d13c361de"
+  },
+  {
+    "name": "91-health-event-new-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/91-health-event-new-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Record notable illness"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Record notable illness | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/health_events/new?event_kind=illness&locale=en",
+    "width": 1440,
+    "sha256": "44f37d86d597f391fe6975f3cc3b516ab0dbf66dfa7179b357f75b490f82833e"
+  },
+  {
+    "name": "91-health-event-new-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/91-health-event-new-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Record notable illness"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Record notable illness | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/health_events/new?event_kind=illness&locale=en",
+    "width": 390,
+    "sha256": "c3c0026ac35f3455be14cf862751f14547d770e7b5d69f9f391b758ecd6132a7"
+  },
+  {
+    "name": "92-health-event-saved-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/92-health-event-saved-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic adult's health events",
+      "Synthetic audit event"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic adult's health events | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/health_events?locale=en",
+    "width": 1440,
+    "sha256": "6c990c92391463660377d2aa7bc59a9642f7689be2bb7542c76a66418a402518"
+  },
+  {
+    "name": "92-health-event-saved-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/92-health-event-saved-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic adult's health events",
+      "Synthetic audit event"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Synthetic adult's health events | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/health_events?locale=en",
+    "width": 390,
+    "sha256": "44efbfe8b33ea812ff3e6621d13ba3586d6e0a46e65d7f3a02efb6cb5b6f5fbd"
+  },
+  {
+    "name": "93-health-event-edit-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/93-health-event-edit-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit notable illness"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit notable illness | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/health_events/1/edit?locale=en",
+    "width": 1440,
+    "sha256": "dc6578d8145c3a59017d1717f84a32a15a9da8896f24c4e20ee0d6ece73a727a"
+  },
+  {
+    "name": "93-health-event-edit-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/93-health-event-edit-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit notable illness"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Edit notable illness | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/health_events/1/edit?locale=en",
+    "width": 390,
+    "sha256": "2fc579a70c043be8671a2e64db302e63caeb3f21fcd492a863d402b0ec964197"
+  },
+  {
+    "name": "94-medicine-reviews-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/94-medicine-reviews-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Medicine reviews",
+      "No medicine reviews to show"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medicine reviews | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medicine-reviews",
+    "width": 1440,
+    "sha256": "04048037cc2d4075ac8a6fdc93da36b9992b900171fd4366ec13c9d5b9354696"
+  },
+  {
+    "name": "94-medicine-reviews-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/94-medicine-reviews-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Medicine reviews",
+      "No medicine reviews to show"
+    ],
+    "height": 844,
+    "overflow": false,
+    "theme": "default-dark",
+    "title": "Medicine reviews | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/medicine-reviews",
+    "width": 390,
+    "sha256": "a3bc8ff586cae4ae88961605c18780780963ac8d9cb326accacb9e02edadb6db"
+  },
+  {
+    "name": "95-household-admin-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/95-household-admin-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic household administration",
+      "User Access",
+      "Operations",
+      "Needs attention",
+      "Recent activity"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household administration | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin",
+    "width": 1440,
+    "sha256": "37526b39d51ba2a83268fb190a0b0fce0aab62ae0dfe4c2965d8097886d38d01"
+  },
+  {
+    "name": "95-household-admin-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/95-household-admin-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Synthetic household administration",
+      "User Access",
+      "Operations",
+      "Needs attention",
+      "Recent activity"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household administration | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin",
+    "width": 390,
+    "sha256": "a205765d1dc5b09cd1ae6f42f472f4f33c2c781e3e85d377444fe60fea842f70"
+  },
+  {
+    "name": "96-household-members-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/96-household-members-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Members"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Members | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/users",
+    "width": 1440,
+    "sha256": "155322e37759abdde2a42cebf518291b619bc9b59671cf4fc021d17c92c984b2"
+  },
+  {
+    "name": "96-household-members-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/96-household-members-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Members"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Members | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/users",
+    "width": 390,
+    "sha256": "a5bafa8cab83f5510f84dd35b199169eae778375bacb4edca6ba955b36f8352c"
+  },
+  {
+    "name": "97-membership-detail-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/97-membership-detail-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "persistence@example.test",
+      "Member details",
+      "Membership history"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Members | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/memberships/74001",
+    "width": 1440,
+    "sha256": "86feea87e75dc5a619845ba3cd125956ef3326c402d71a32af5f087ea40e4bf4"
+  },
+  {
+    "name": "97-membership-detail-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/97-membership-detail-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "persistence@example.test",
+      "Member details",
+      "Membership history"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Members | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/memberships/74001",
+    "width": 390,
+    "sha256": "0100f1134e82b3cdb5501c282836412b42428410b42adb35e2c1ccb1a5596c67"
+  },
+  {
+    "name": "98-membership-role-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/98-membership-role-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit household role for persistence@example.test"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Edit household role for persistence@example.test | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/memberships/74001/edit?q=&role=all&status=all&sort=name&direction=asc&return_to=member&page=1",
+    "width": 1440,
+    "sha256": "e11aa263bb91a0a2d61471a000f11016dbe87fa1849d62144770f7c5b09d73c3"
+  },
+  {
+    "name": "98-membership-role-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/98-membership-role-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Edit household role for persistence@example.test"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Edit household role for persistence@example.test | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/memberships/74001/edit?q=&role=all&status=all&sort=name&direction=asc&return_to=member&page=1",
+    "width": 390,
+    "sha256": "9be9cd7c67297868ae692907a88f7319663b446fd9381b9077f6c2aebfc9e077"
+  },
+  {
+    "name": "99-household-settings-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/99-household-settings-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Household settings"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Household settings | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/household/edit",
+    "width": 1440,
+    "sha256": "cd62a42561145d8982f8d879975ddfd25c7192ec1f8156c4ab349daaf0dcec20"
+  },
+  {
+    "name": "99-household-settings-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/99-household-settings-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Household settings"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Household settings | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/household/edit",
+    "width": 390,
+    "sha256": "dbc0d0a6cdda5f4727db39c2b9d37df884cc3f3bb02a82dfff02853cbf86f7fb"
+  },
+  {
+    "name": "100-invitations-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/100-invitations-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Invitations",
+      "Recent invitations"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Invitations | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/invitations",
+    "width": 1440,
+    "sha256": "3fe518b857a1557d531af2fd0312e56a98928590f421aeb0e970aa83bec651e7"
+  },
+  {
+    "name": "100-invitations-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/100-invitations-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Invitations",
+      "Recent invitations"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Invitations | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/invitations",
+    "width": 390,
+    "sha256": "4d628a5e0a24d5f2dc661e9c5bab5440902df48cb4bb0e2414d5539f7ec73f4b"
+  },
+  {
+    "name": "101-security-audit-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/101-security-audit-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Security audit"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Security audit | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/audit_logs",
+    "width": 1440,
+    "sha256": "6ec3c5b627c39e3fb55b64590b48fb30ac4cdba6245cbd4220e46ef63274b297"
+  },
+  {
+    "name": "101-security-audit-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/101-security-audit-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Security audit"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Security audit | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/audit_logs",
+    "width": 390,
+    "sha256": "225e39777faff4d833193fcf231a1570e4a8dd1efd898cc33757f9c640a4b42b"
+  },
+  {
+    "name": "102-security-audit-error-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/102-security-audit-error-desktop.jpg",
+    "alerts": [
+      "Check the following detailsFrom date (UTC) is invalid"
+    ],
+    "headings": [
+      "Security audit",
+      "Check the following details"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Security audit | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/audit_logs?event_type=&from=bad-date&to=",
+    "width": 1440,
+    "sha256": "75157f9fcf969916e889c143d074a859906fe03200177681fd9d88f08fd635cf"
+  },
+  {
+    "name": "102-security-audit-error-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/102-security-audit-error-mobile.jpg",
+    "alerts": [
+      "Check the following detailsFrom date (UTC) is invalid"
+    ],
+    "headings": [
+      "Security audit",
+      "Check the following details"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Security audit | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/audit_logs?event_type=&from=bad-date&to=",
+    "width": 390,
+    "sha256": "71b177b36039db1362a968b1e46ce2c61127093e8ddb61c1a2a157eb971f41e1"
+  },
+  {
+    "name": "103-care-relationships-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/103-care-relationships-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Care relationships"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Care relationships | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/carer_relationships",
+    "width": 1440,
+    "sha256": "0846c014476847fab9f305b720fb7864bdb39f4068445d311667d0204d23a9d8"
+  },
+  {
+    "name": "103-care-relationships-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/103-care-relationships-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Care relationships"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Care relationships | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/carer_relationships",
+    "width": 390,
+    "sha256": "e00102219fd2b047ddd04bee330d1e039156a55e4862a2cae2453d7862e166b9"
+  },
+  {
+    "name": "104-guardian-recovery-empty-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/104-guardian-recovery-empty-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Recover guardian"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Care relationships | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/carer_relationships/recover",
+    "width": 1440,
+    "sha256": "0b103bab6d5d56fafbc2ee7153d6ece9b34272b372e9877182cb2b54dd710744"
+  },
+  {
+    "name": "104-guardian-recovery-empty-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/104-guardian-recovery-empty-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Recover guardian"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Synthetic household \u00b7 Care relationships | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/admin/carer_relationships/recover",
+    "width": 390,
+    "sha256": "9f986c6b4d1764a19bf8ba92c370591929bc5dc4b3d435eea0479071fbbef353"
+  },
+  {
+    "name": "105-guardian-declarations-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/105-guardian-declarations-desktop.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": null,
+    "title": "Welcome to Loco!",
+    "url": "http://127.0.0.1:17891/profile/guardian-declarations/",
+    "width": 1440,
+    "accepted": false,
+    "rejection_reason": "Invalid trailing-slash path; actual normalised route captured in107",
+    "sha256": "3240bfa80ab05c1a43d616193f63e789387cc0b58b1cb70ff0e4ae3e37a0c8d3"
+  },
+  {
+    "name": "105-guardian-declarations-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/105-guardian-declarations-mobile.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 844,
+    "overflow": true,
+    "ready": false,
+    "theme": null,
+    "title": "Welcome to Loco!",
+    "url": "http://127.0.0.1:17891/profile/guardian-declarations/",
+    "width": 390,
+    "accepted": false,
+    "rejection_reason": "Invalid trailing-slash path; actual normalised route captured in107",
+    "sha256": "755ab549a39b5f7c1aed2ef98812ebd40684ab4c211563dc36de004b9cf84952"
+  },
+  {
+    "name": "106-nhs-catalogue-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/106-nhs-catalogue-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "NHS dm+d catalogue",
+      "Import history"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "NHS dm+d catalogue | MedTracker",
+    "url": "http://127.0.0.1:17891/admin/nhs-dmd",
+    "width": 1440,
+    "sha256": "cf6d79a0eceea643ed2aeb069b3466e81c0acf31b7d23dfc648607cc606453b7"
+  },
+  {
+    "name": "106-nhs-catalogue-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/106-nhs-catalogue-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "NHS dm+d catalogue",
+      "Import history"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "NHS dm+d catalogue | MedTracker",
+    "url": "http://127.0.0.1:17891/admin/nhs-dmd",
+    "width": 390,
+    "sha256": "6614bb3b47556b8bbf7ee3667a4537dd4b89d2889afebd0e13cae0e6477875b7"
+  },
+  {
+    "name": "107-guardian-declarations-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/107-guardian-declarations-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Guardian declarations"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Guardian declarations | MedTracker",
+    "url": "http://127.0.0.1:17891/profile/guardian-declarations",
+    "width": 1440,
+    "sha256": "2abe56eedb2503f1d3bf360f8ebf0aa60bdd0416496e0a94cd26b5c095b04094"
+  },
+  {
+    "name": "107-guardian-declarations-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/107-guardian-declarations-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Guardian declarations"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Guardian declarations | MedTracker",
+    "url": "http://127.0.0.1:17891/profile/guardian-declarations",
+    "width": 390,
+    "sha256": "bbf61f60d2c28d59742bff557da79d315667a687c8166170bcd5434d0bbec534"
+  },
+  {
+    "name": "108-reports-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/108-reports-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Health Report",
+      "Today",
+      "Adherence Timeline",
+      "Dose outcomes",
+      "Inventory Alert",
+      "Smart Insights",
+      "Export health history"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Health Report | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/reports",
+    "width": 1440,
+    "sha256": "93e977eb3c7a6f58c7f1ff9e2d56ea6a95b50172f9de3be5e983cbaabe5424a4"
+  },
+  {
+    "name": "108-reports-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/108-reports-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Health Report",
+      "Today",
+      "Adherence Timeline",
+      "Dose outcomes",
+      "Inventory Alert",
+      "Smart Insights",
+      "Export health history"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Health Report | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/reports",
+    "width": 390,
+    "sha256": "a48837da5211c6c3ea6e58f0670b12a9bc4c07718fa655c58834ee3d6939fa72"
+  },
+  {
+    "name": "109-report-invalid-range-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/109-report-invalid-range-desktop.jpg",
+    "alerts": [
+      "End date must be on or after start date."
+    ],
+    "headings": [
+      "Health Report",
+      "Export health history"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Health Report | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/reports?person_id=&start_date=2026-10-25&end_date=2026-10-24",
+    "width": 1440,
+    "sha256": "fb8f83d1fca74b84e72689eb84d12df5cfd4c681052974de4083cc7a44d2a019"
+  },
+  {
+    "name": "109-report-invalid-range-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/109-report-invalid-range-mobile.jpg",
+    "alerts": [
+      "End date must be on or after start date."
+    ],
+    "headings": [
+      "Health Report",
+      "Export health history"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Health Report | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/reports?person_id=&start_date=2026-10-25&end_date=2026-10-24",
+    "width": 390,
+    "sha256": "535156c5467f6616afeae660f175f92d055c1c081c45b9f478b61560a05c9063"
+  },
+  {
+    "name": "110-signup-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/110-signup-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Create Account"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Create Account | MedTracker",
+    "url": "http://127.0.0.1:17891/create-account",
+    "width": 1440,
+    "sha256": "2797140c6c38091f1793f991d97c7ddc2cd60e04e3c8f3ec669223a60ac1b3d0"
+  },
+  {
+    "name": "110-signup-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/110-signup-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Create Account"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Create Account | MedTracker",
+    "url": "http://127.0.0.1:17891/create-account",
+    "width": 390,
+    "sha256": "ae3687f62f926de920cbdf0c078d956c03a19176ee03109bbc65107890b9e493"
+  },
+  {
+    "name": "111-signup-passkey-choice-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/111-signup-passkey-choice-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Create Account"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Create Account | MedTracker",
+    "url": "http://127.0.0.1:17891/create-account",
+    "width": 1440,
+    "sha256": "7634722948eda7f11fd679dda9e9238d9d9d57dde107cf1f6547da5c539e9bb9"
+  },
+  {
+    "name": "111-signup-passkey-choice-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/111-signup-passkey-choice-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Create Account"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Create Account | MedTracker",
+    "url": "http://127.0.0.1:17891/create-account",
+    "width": 390,
+    "sha256": "c4793c1f38d35a1dc041d09198735daa531d14f8518e0ab282e2246e2f51d3f4"
+  },
+  {
+    "name": "112-password-reset-request-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/112-password-reset-request-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Reset your password"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Reset your password | MedTracker",
+    "url": "http://127.0.0.1:17891/reset-password",
+    "width": 1440,
+    "sha256": "49c0d2fe6a15b79fd5edaee04baa07253d3f1d8253dd9afa2fb42a9c05a01f70"
+  },
+  {
+    "name": "112-password-reset-request-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/112-password-reset-request-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Reset your password"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Reset your password | MedTracker",
+    "url": "http://127.0.0.1:17891/reset-password",
+    "width": 390,
+    "sha256": "70ecdc60ec2eb280df454412a649f1d2ed989208f1f5978a3f4d060ce21ab9a5"
+  },
+  {
+    "name": "113-password-reset-requested-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/113-password-reset-requested-desktop.jpg",
+    "alerts": [
+      "If an account exists for that address, we have sent a password reset link. Check your email."
+    ],
+    "headings": [
+      "Reset your password"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Reset your password | MedTracker",
+    "url": "http://127.0.0.1:17891/reset-password",
+    "width": 1440,
+    "sha256": "17e7a9addf0c995e2582b49093d37d53c9fe532310adc647754e1e17e77d6b71"
+  },
+  {
+    "name": "113-password-reset-requested-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/113-password-reset-requested-mobile.jpg",
+    "alerts": [
+      "If an account exists for that address, we have sent a password reset link. Check your email."
+    ],
+    "headings": [
+      "Reset your password"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Reset your password | MedTracker",
+    "url": "http://127.0.0.1:17891/reset-password",
+    "width": 390,
+    "sha256": "d4becdfe3f2bc4cf17bf009160a6cf2da2d686a6f393355247b2ade30cbe12e1"
+  },
+  {
+    "name": "114-password-reset-invalid-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/114-password-reset-invalid-desktop.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": null,
+    "title": "",
+    "url": "http://127.0.0.1:17891/reset-password/confirm",
+    "width": 1440,
+    "sha256": "958ebab463b9e32e175766560f5fa4a5676db49accc3c1f5aca3a123d857b910"
+  },
+  {
+    "name": "114-password-reset-invalid-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/114-password-reset-invalid-mobile.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": null,
+    "title": "",
+    "url": "http://127.0.0.1:17891/reset-password/confirm",
+    "width": 390,
+    "sha256": "6a05299d88b27f2d452b4fe46581e9bd09f7964038a33f1d7350da4b7e4bce25"
+  },
+  {
+    "name": "115-verification-resend-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/115-verification-resend-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Resend verification email"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Resend verification email | MedTracker",
+    "url": "http://127.0.0.1:17891/verify-account-resend",
+    "width": 1440,
+    "sha256": "562fc5abb8f9edb0274aea9aa57a0dc9453856048746cd205cfa99974ea1df89"
+  },
+  {
+    "name": "115-verification-resend-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/115-verification-resend-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Resend verification email"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Resend verification email | MedTracker",
+    "url": "http://127.0.0.1:17891/verify-account-resend",
+    "width": 390,
+    "sha256": "40f8af3f4483c4583c7caa46d1ec68c59a6db168f5dee0b3f01622bd0b0a7dd2"
+  },
+  {
+    "name": "116-password-reset-invalid-token-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/116-password-reset-invalid-token-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Reset your password"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Reset your password | MedTracker",
+    "url": "http://127.0.0.1:17891/reset-password/confirm?token=synthetic-invalid-audit-token",
+    "width": 1440,
+    "sha256": "30a4fc053f1871a3e86df56a18b277ed3618f85dd7372d9961275806b863ed3a"
+  },
+  {
+    "name": "116-password-reset-invalid-token-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/116-password-reset-invalid-token-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Reset your password"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Reset your password | MedTracker",
+    "url": "http://127.0.0.1:17891/reset-password/confirm?token=synthetic-invalid-audit-token",
+    "width": 390,
+    "sha256": "250babf1abf011522cd2ef9416f299b16d6846ee4e03ed68566576f36dff866a"
+  },
+  {
+    "name": "117-verification-invalid-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/117-verification-invalid-desktop.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": null,
+    "title": "",
+    "url": "http://127.0.0.1:17891/verify-account-confirm",
+    "width": 1440,
+    "sha256": "958ebab463b9e32e175766560f5fa4a5676db49accc3c1f5aca3a123d857b910"
+  },
+  {
+    "name": "117-verification-invalid-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/117-verification-invalid-mobile.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": null,
+    "title": "",
+    "url": "http://127.0.0.1:17891/verify-account-confirm",
+    "width": 390,
+    "sha256": "6a05299d88b27f2d452b4fe46581e9bd09f7964038a33f1d7350da4b7e4bce25"
+  },
+  {
+    "name": "118-mfa-no-challenge-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/118-mfa-no-challenge-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Verify your identity"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Verify your identity | MedTracker",
+    "url": "http://127.0.0.1:17891/auth/totp",
+    "width": 1440,
+    "sha256": "f43116a432b6de72bf4710b2cda8f088bf7e5636a50b5d9dd69aee3eef1d435a"
+  },
+  {
+    "name": "118-mfa-no-challenge-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/118-mfa-no-challenge-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Verify your identity"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Verify your identity | MedTracker",
+    "url": "http://127.0.0.1:17891/auth/totp",
+    "width": 390,
+    "sha256": "cbfa45e0876bff8882a82a4b7330656adff9b477e3cf8d918a960f2cf86b1f50"
+  },
+  {
+    "name": "119-verification-invalid-token-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/119-verification-invalid-token-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Verify your email address"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Verify your account | MedTracker",
+    "url": "http://127.0.0.1:17891/verify-account-confirm?token=synthetic-invalid-audit-token",
+    "width": 1440,
+    "sha256": "1c6dba8512c8471d1fb42c0be52143d3c91591914e812eada3fbc7e1e2e0c3db"
+  },
+  {
+    "name": "119-verification-invalid-token-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/119-verification-invalid-token-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Verify your email address"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Verify your account | MedTracker",
+    "url": "http://127.0.0.1:17891/verify-account-confirm?token=synthetic-invalid-audit-token",
+    "width": 390,
+    "sha256": "f6f220b556781c8709639940336eb60348289640692a43a505b693d2f709a55d"
+  },
+  {
+    "name": "120-passkey-setup-no-session-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/120-passkey-setup-no-session-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Sign in"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "neutral-dark",
+    "title": "Sign in | MedTracker",
+    "url": "http://127.0.0.1:17891/login",
+    "width": 1440,
+    "sha256": "c9bdbd6153a4d97cf0d128dac217068ff3aaf05f0d42539e8e3816c6cc9aebab"
+  },
+  {
+    "name": "120-passkey-setup-no-session-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/120-passkey-setup-no-session-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Sign in"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "neutral-dark",
+    "title": "Sign in | MedTracker",
+    "url": "http://127.0.0.1:17891/login",
+    "width": 390,
+    "sha256": "da5cc0cb4c93b9609305bb1829b232e8eee75dfe230b5c2218a3abd554a8030c"
+  },
+  {
+    "name": "121-invitation-missing-token-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/121-invitation-missing-token-desktop.jpg",
+    "alerts": [
+      "This invitation link is invalid or has expired. Ask a household manager for a new invitation."
+    ],
+    "headings": [
+      "Invitation link unavailable"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Invitation link unavailable | MedTracker",
+    "url": "http://127.0.0.1:17891/invitations/accept",
+    "width": 1440,
+    "sha256": "18ff73f8f8f25518a656995ad89b4a18f6e0c9743e07fa53d2813f5eeed8e8ef"
+  },
+  {
+    "name": "121-invitation-missing-token-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/121-invitation-missing-token-mobile.jpg",
+    "alerts": [
+      "This invitation link is invalid or has expired. Ask a household manager for a new invitation."
+    ],
+    "headings": [
+      "Invitation link unavailable"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "default-dark",
+    "title": "Invitation link unavailable | MedTracker",
+    "url": "http://127.0.0.1:17891/invitations/accept",
+    "width": 390,
+    "sha256": "41cfa66a246164e8b303b1f76ef997907e0ed9fc4b59c26b9de1e99c6c7d467f"
+  },
+  {
+    "name": "122-public-home-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/122-public-home-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "MedTracker",
+      "Your care, in one place"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "neutral-dark",
+    "title": "Welcome | MedTracker",
+    "url": "http://127.0.0.1:17891/",
+    "width": 1440,
+    "sha256": "395bc69ea642a577ac7f7520ca4cd8cbceaa0801c59024c873cf621b93e98822"
+  },
+  {
+    "name": "122-public-home-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/122-public-home-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "MedTracker",
+      "Your care, in one place"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "neutral-dark",
+    "title": "Welcome | MedTracker",
+    "url": "http://127.0.0.1:17891/",
+    "width": 390,
+    "sha256": "9428570b13a4ac5b5040d840dccd129b351e46da7eb94a1308725a31eacc7448"
+  },
+  {
+    "name": "123-login-invalid-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/123-login-invalid-desktop.jpg",
+    "alerts": [
+      "Invalid email or password"
+    ],
+    "headings": [
+      "Sign in"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": "neutral-dark",
+    "title": "Sign in | MedTracker",
+    "url": "http://127.0.0.1:17891/login",
+    "width": 1440,
+    "sha256": "02ee7f28e24ae25e12576f84656fd9a404eb44bcbe49d9339a162198cb844d61"
+  },
+  {
+    "name": "123-login-invalid-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/123-login-invalid-mobile.jpg",
+    "alerts": [
+      "Invalid email or password"
+    ],
+    "headings": [
+      "Sign in"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": "neutral-dark",
+    "title": "Sign in | MedTracker",
+    "url": "http://127.0.0.1:17891/login",
+    "width": 390,
+    "sha256": "0b415f3dfa29a77017b1b3368f9a2812f8c7c56542522b28a519ec6df0d0b650"
+  },
+  {
+    "name": "124-person-carers-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/124-person-carers-desktop.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 1000,
+    "overflow": false,
+    "ready": false,
+    "theme": null,
+    "title": "",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/carer_relationships",
+    "width": 1440,
+    "sha256": "e0170e87fb9e0aa36759060b9526659b2929abade3e6e587dd23f53c7cf687ff"
+  },
+  {
+    "name": "124-person-carers-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/124-person-carers-mobile.jpg",
+    "alerts": [],
+    "headings": [],
+    "height": 844,
+    "overflow": false,
+    "ready": false,
+    "theme": null,
+    "title": "",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/people/73001/carer_relationships",
+    "width": 390,
+    "sha256": "7328bd389b9c17eda6030c6a2616440b9b05e0afe88a9a57b99812857bc05c0c"
+  },
+  {
+    "name": "125-global-search-results-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/125-global-search-results-desktop.jpg",
+    "alerts": [
+      "6 results"
+    ],
+    "headings": [
+      "Search"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search",
+    "width": 1440,
+    "sha256": "bd9eb0240a6ed22cbcaaf1b8ba2108361807c55412557776973d6a992065f55f"
+  },
+  {
+    "name": "125-global-search-results-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/125-global-search-results-mobile.jpg",
+    "alerts": [
+      "6 results"
+    ],
+    "headings": [
+      "Search"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search",
+    "width": 390,
+    "sha256": "39f935677b6a70bcb8976f4ec8ff5f62091a59fcd5a83835669997927a182e90"
+  },
+  {
+    "name": "126-account-menu-desktop",
+    "path": "docs/screenshots/ui-audit-2026-10-23/126-account-menu-desktop.jpg",
+    "alerts": [],
+    "headings": [
+      "Search"
+    ],
+    "height": 1000,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search",
+    "width": 1440,
+    "sha256": "d42c88de96f1259949ed3413c2a11af38d844983f44c90fd5f19d4b4aac0fef4"
+  },
+  {
+    "name": "126-account-menu-mobile",
+    "path": "docs/screenshots/ui-audit-2026-10-23/126-account-menu-mobile.jpg",
+    "alerts": [],
+    "headings": [
+      "Search"
+    ],
+    "height": 844,
+    "overflow": false,
+    "ready": true,
+    "theme": "default-dark",
+    "title": "Search | MedTracker",
+    "url": "http://127.0.0.1:17891/households/persistence-fixture/search",
+    "width": 390,
+    "sha256": "451dd972a92456a4ce9484be6a5d76f88c71aab76236a122d6a9635afd0ae0d9"
+  }
+]

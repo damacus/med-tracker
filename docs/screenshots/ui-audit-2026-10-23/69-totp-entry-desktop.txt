@@ -1,0 +1,17 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Enable authenticator app" [level=1]
+  - paragraph: Your authenticator app will protect password login. Confirm your current password to start.
+  - text: Current password
+  - textbox "Current password"
+  - button "Continue"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

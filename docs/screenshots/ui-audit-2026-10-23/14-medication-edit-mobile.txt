@@ -1,0 +1,70 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - heading "Edit Medication" [level=1]
+  - link "Manage Dose Options":
+    - /url: /households/persistence-fixture/medications/80001/dosage_options
+  - group "Medication":
+    - generic: Medication
+    - generic: Name
+    - textbox "Name": Synthetic tablets
+    - generic: Display name
+    - textbox "Display name"
+    - generic: Location
+    - combobox "Location":
+      - option "Select a location..."
+      - option "Synthetic cabinet" [selected]
+  - group "Dose":
+    - generic: Dose
+    - generic: Dose
+    - spinbutton "Dose": "2"
+    - generic: Unit
+    - combobox "Unit":
+      - option "Select unit"
+      - option "tablet" [selected]
+      - option "capsule"
+      - option "gummy"
+      - option "mg"
+      - option "ml"
+      - option "g"
+      - option "mcg"
+      - option "IU"
+      - option "spray"
+      - option "drop"
+      - option "sachet"
+      - option "pad"
+  - group "Stock":
+    - generic: Stock
+    - generic: Remaining Supply
+    - spinbutton "Remaining Supply": "10"
+    - generic: Reorder Threshold
+    - spinbutton "Reorder Threshold": "10"
+  - group "Notes and warnings":
+    - generic: Notes and warnings
+    - generic: Description
+    - textbox "Description"
+    - generic: Warnings
+    - textbox "Warnings"
+  - button "Save Medication"
+  - link "Back to Medications":
+    - /url: /households/persistence-fixture/medications
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

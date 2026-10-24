@@ -1,0 +1,288 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - status
+  - generic: SA
+  - paragraph: Profile settings
+  - heading "My Profile" [level=1]
+  - paragraph: persistence@example.test
+  - paragraph: Shape your account, safety preferences, and notification rhythm from one calm control room.
+  - tablist "My Profile":
+    - tab "Profile" [selected]
+    - tab "Security"
+    - tab "Notifications"
+    - tab "Advanced"
+  - tabpanel "Profile":
+    - heading "Profile" [level=2]
+    - paragraph:
+      - generic: Synthetic adult
+      - generic: persistence@example.test
+      - generic: System
+    - heading "Personal Information" [level=3]
+    - paragraph: Your basic profile information
+    - term: Name
+    - definition: Synthetic adult
+    - term: Email
+    - definition: persistence@example.test
+    - term: Time Zone
+    - definition: UTC
+    - term: Date of Birth
+    - definition: February 03, 1985
+    - term: Age
+    - definition: "41"
+    - term: Person Type
+    - definition: Adult
+    - term: Has Capacity
+    - definition: "Yes"
+    - generic "Profile photo Upload an avatar for places where your name appears. +":
+      - strong: Profile photo
+      - generic: Upload an avatar for places where your name appears.
+      - generic: SA
+      - text: +
+    - generic "Time Zone Choose the time zone used for reminders and recorded doses. UTC +":
+      - strong: Time Zone
+      - generic: Choose the time zone used for reminders and recorded doses.
+      - generic: UTC
+      - text: +
+    - option "Abu Dhabi"
+    - option "Adelaide"
+    - option "Alaska"
+    - option "Almaty"
+    - option "American Samoa"
+    - option "Amsterdam"
+    - option "Arizona"
+    - option "Astana"
+    - option "Asuncion"
+    - option "Athens"
+    - option "Atlantic Time (Canada)"
+    - option "Auckland"
+    - option "Azores"
+    - option "Baghdad"
+    - option "Baku"
+    - option "Bangkok"
+    - option "Beijing"
+    - option "Belgrade"
+    - option "Berlin"
+    - option "Bern"
+    - option "Bogota"
+    - option "Brasilia"
+    - option "Bratislava"
+    - option "Brisbane"
+    - option "Brussels"
+    - option "Bucharest"
+    - option "Budapest"
+    - option "Buenos Aires"
+    - option "Cairo"
+    - option "Canberra"
+    - option "Cape Verde Is."
+    - option "Caracas"
+    - option "Casablanca"
+    - option "Central America"
+    - option "Central Time (US & Canada)"
+    - option "Chatham Is."
+    - option "Chennai"
+    - option "Chihuahua"
+    - option "Chongqing"
+    - option "Copenhagen"
+    - option "Darwin"
+    - option "Dhaka"
+    - option "Dublin"
+    - option "Eastern Time (US & Canada)"
+    - option "Edinburgh"
+    - option "Ekaterinburg"
+    - option "Fiji"
+    - option "Georgetown"
+    - option "Greenland"
+    - option "Guadalajara"
+    - option "Guam"
+    - option "Hanoi"
+    - option "Harare"
+    - option "Hawaii"
+    - option "Helsinki"
+    - option "Hobart"
+    - option "Hong Kong"
+    - option "Indiana (East)"
+    - option "International Date Line West"
+    - option "Irkutsk"
+    - option "Islamabad"
+    - option "Istanbul"
+    - option "Jakarta"
+    - option "Jerusalem"
+    - option "Kabul"
+    - option "Kaliningrad"
+    - option "Kamchatka"
+    - option "Karachi"
+    - option "Kathmandu"
+    - option "Kolkata"
+    - option "Krasnoyarsk"
+    - option "Kuala Lumpur"
+    - option "Kuwait"
+    - option "Kyiv"
+    - option "La Paz"
+    - option "Lima"
+    - option "Lisbon"
+    - option "Ljubljana"
+    - option "London"
+    - option "Madrid"
+    - option "Magadan"
+    - option "Marshall Is."
+    - option "Mazatlan"
+    - option "Melbourne"
+    - option "Mexico City"
+    - option "Mid-Atlantic"
+    - option "Midway Island"
+    - option "Minsk"
+    - option "Monrovia"
+    - option "Monterrey"
+    - option "Montevideo"
+    - option "Moscow"
+    - option "Mountain Time (US & Canada)"
+    - option "Mumbai"
+    - option "Muscat"
+    - option "Nairobi"
+    - option "New Caledonia"
+    - option "New Delhi"
+    - option "Newfoundland"
+    - option "Novosibirsk"
+    - option "Nuku'alofa"
+    - option "Osaka"
+    - option "Pacific Time (US & Canada)"
+    - option "Paris"
+    - option "Perth"
+    - option "Port Moresby"
+    - option "Prague"
+    - option "Pretoria"
+    - option "Puerto Rico"
+    - option "Quito"
+    - option "Rangoon"
+    - option "Riga"
+    - option "Riyadh"
+    - option "Rome"
+    - option "Samara"
+    - option "Samoa"
+    - option "Santiago"
+    - option "Sapporo"
+    - option "Sarajevo"
+    - option "Saskatchewan"
+    - option "Seoul"
+    - option "Singapore"
+    - option "Skopje"
+    - option "Sofia"
+    - option "Solomon Is."
+    - option "Srednekolymsk"
+    - option "Sri Jayawardenepura"
+    - option "St. Petersburg"
+    - option "Stockholm"
+    - option "Sydney"
+    - option "Taipei"
+    - option "Tallinn"
+    - option "Tashkent"
+    - option "Tbilisi"
+    - option "Tehran"
+    - option "Tijuana"
+    - option "Tokelau Is."
+    - option "Tokyo"
+    - option "UTC"
+    - option "Ulaanbaatar"
+    - option "Urumqi"
+    - option "Vienna"
+    - option "Vilnius"
+    - option "Vladivostok"
+    - option "Volgograd"
+    - option "Warsaw"
+    - option "Wellington"
+    - option "West Central Africa"
+    - option "Yakutsk"
+    - option "Yerevan"
+    - option "Zagreb"
+    - option "Zurich"
+    - option "UTC" [selected]
+    - generic "Bottom bar shortcuts Choose one to three shortcuts in the order you want them to appear. Home Inventory Medicine Finder +":
+      - strong: Bottom bar shortcuts
+      - generic: Choose one to three shortcuts in the order you want them to appear.
+      - generic: Home Inventory Medicine Finder
+      - text: +
+    - option "No shortcut"
+    - option "Home" [selected]
+    - option "Inventory"
+    - option "Locations"
+    - option "People"
+    - option "Medicine Finder"
+    - option "Medicine reviews"
+    - option "Reports"
+    - option "Profile"
+    - option "Administration"
+    - option "No shortcut"
+    - option "Home"
+    - option "Inventory" [selected]
+    - option "Locations"
+    - option "People"
+    - option "Medicine Finder"
+    - option "Medicine reviews"
+    - option "Reports"
+    - option "Profile"
+    - option "Administration"
+    - option "No shortcut"
+    - option "Home"
+    - option "Inventory"
+    - option "Locations"
+    - option "People"
+    - option "Medicine Finder" [selected]
+    - option "Medicine reviews"
+    - option "Reports"
+    - option "Profile"
+    - option "Administration"
+    - generic "Appearance Choose how MedTracker looks across signed-in and signed-out screens. System Command Centre +":
+      - strong: Appearance
+      - generic: Choose how MedTracker looks across signed-in and signed-out screens.
+      - generic: System
+      - generic: Command Centre
+      - text: +
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

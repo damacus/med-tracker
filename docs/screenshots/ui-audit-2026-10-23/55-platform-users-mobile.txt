@@ -1,0 +1,74 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph: Administration
+  - heading "Platform users" [level=1]
+  - paragraph: Manage who can sign in and who can administer MedTracker. Household roles are managed within each household.
+  - navigation "Platform administration":
+    - link "Platform users":
+      - /url: /platform/users
+    - link "Platform settings":
+      - /url: /platform/settings
+    - link "Support access":
+      - /url: /platform/support
+    - link "Owner recovery":
+      - /url: /platform/owner-recovery
+  - generic: Search by email
+  - searchbox "Search by email"
+  - button "Search"
+  - region "User directory":
+    - heading "User directory" [level=2]
+    - paragraph: Sign-in access and platform permissions
+    - generic: 3 users
+    - article:
+      - generic: Name unavailable
+      - generic: persistence@example.test
+      - term: Platform access
+      - definition:
+        - generic: Platform administrator
+      - term: Account
+      - definition:
+        - generic: Verified
+      - term: Sign-in
+      - definition:
+        - generic: Sign-in enabled
+      - button "Revoke administrator"
+      - button "Disable sign-in"
+    - article:
+      - generic: Supported owner
+      - generic: support-owner@example.test
+      - term: Platform access
+      - definition:
+        - generic: Standard access
+      - term: Account
+      - definition:
+        - generic: Verified
+      - term: Sign-in
+      - definition:
+        - generic: Sign-in enabled
+      - button "Grant administrator"
+      - button "Disable sign-in"
+    - article:
+      - generic: Supported member
+      - generic: supported-member@example.test
+      - term: Platform access
+      - definition:
+        - generic: Standard access
+      - term: Account
+      - definition:
+        - generic: Verified
+      - term: Sign-in
+      - definition:
+        - generic: Sign-in enabled
+      - button "Grant administrator"
+      - button "Disable sign-in"
+    - paragraph: Showing 3 of 3 users
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

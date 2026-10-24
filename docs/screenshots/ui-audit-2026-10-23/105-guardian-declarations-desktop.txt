@@ -1,0 +1,22 @@
+- heading "Welcome to Loco!" [level=1]
+- paragraph: It looks like you've just started your Loco server, and this is the fallback page displayed when a route doesn't exist.
+- heading "Remove this Fallback Page" [level=3]
+- paragraph:
+  - text: To remove this fallback page, adjust the configuration in your
+  - code: config/development.yaml
+  - text: file. Look for the
+  - code: "fallback:"
+  - text: setting and disable or customize it.
+- heading "Scaffold Your Application" [level=3]
+- paragraph: "Use the Loco CLI to scaffold your application:"
+- code: cargo loco generate scaffold movie title:string
+- paragraph: This creates models, controllers, and views.
+- heading "Need More Help?" [level=3]
+- paragraph:
+  - text: If you need further assistance, check out the
+  - link "Loco documentation":
+    - /url: https://loco.rs/docs
+  - text: or post on our
+  - link "discussions forum":
+    - /url: https://github.com/loco-rs/loco/discussions
+  - text: .

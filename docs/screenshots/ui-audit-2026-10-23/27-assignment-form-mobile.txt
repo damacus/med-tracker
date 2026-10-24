@@ -1,0 +1,78 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - link "Back to treatments":
+    - /url: /households/persistence-fixture/people/73001/treatments
+  - heading "Assign medication" [level=1]
+  - paragraph: Synthetic adult
+  - group "Medication and dose":
+    - generic: Medication and dose
+    - generic: Medication
+    - combobox "Medication":
+      - option "Select medication" [selected]
+      - option "Synthetic tablets"
+    - generic: Dose option
+    - combobox "Dose option":
+      - option "Select dose option" [selected]
+      - option "Synthetic tablets · 2 tablet"
+    - generic: Dose amount
+    - textbox "Dose amount"
+    - generic: Dose unit
+    - combobox "Dose unit":
+      - option "Select dose unit"
+      - option "tablet" [selected]
+      - option "capsule"
+      - option "gummy"
+      - option "mg"
+      - option "ml"
+      - option "g"
+      - option "mcg"
+      - option "IU"
+      - option "spray"
+      - option "drop"
+      - option "sachet"
+      - option "pad"
+  - group "Timing":
+    - generic: Timing
+    - generic: Dose cycle
+    - combobox "Dose cycle":
+      - option "Select dose cycle"
+      - option "daily" [selected]
+      - option "weekly"
+      - option "monthly"
+    - generic: Administration
+    - combobox "Administration":
+      - option "Select administration"
+      - option "routine" [selected]
+      - option "as needed"
+  - group "Limits":
+    - generic: Limits
+    - generic: Maximum daily doses
+    - spinbutton "Maximum daily doses"
+    - generic: Minimum hours between doses
+    - spinbutton "Minimum hours between doses"
+  - generic: Notes
+  - textbox "Notes"
+  - button "Assign medication"
+  - link "Back to treatments":
+    - /url: /households/persistence-fixture/people/73001/treatments
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

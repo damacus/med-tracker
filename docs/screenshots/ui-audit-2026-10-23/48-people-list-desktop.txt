@@ -1,0 +1,72 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - paragraph: Manage people
+  - heading "People" [level=1]
+  - link "New Person":
+    - /url: /households/persistence-fixture/people/new
+  - list:
+    - img "Synthetic adult avatar":
+      - generic: SA
+    - heading "Synthetic adult" [level=2]:
+      - link "Synthetic adult":
+        - /url: /households/persistence-fixture/people/73001
+    - term: "Born:"
+    - definition:
+      - time: 3 February 1985
+    - term: "Age:"
+    - definition: "41"
+    - term: "Medications:"
+    - definition: 2 active medications
+    - link "Add Medication":
+      - /url: /households/persistence-fixture/add-medication?person_id=73001
+    - link "View Medications":
+      - /url: /households/persistence-fixture/people/73001
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

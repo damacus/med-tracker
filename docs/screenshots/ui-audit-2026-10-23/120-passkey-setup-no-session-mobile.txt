@@ -1,0 +1,33 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph:
+    - generic: M
+    - text: MedTracker
+  - paragraph: Welcome back
+  - paragraph: Sign in to your account to continue
+  - heading "Sign in" [level=1]
+  - text: Email address
+  - textbox "Email address"
+  - text: Password
+  - textbox "Password"
+  - button "Sign in"
+  - button "Sign in with a passkey"
+  - link "Reset your password":
+    - /url: /reset-password
+  - paragraph:
+    - text: Need an account?
+    - link "Create one":
+      - /url: /create-account
+  - paragraph:
+    - link "Resend verification email":
+      - /url: /verify-account-resend
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

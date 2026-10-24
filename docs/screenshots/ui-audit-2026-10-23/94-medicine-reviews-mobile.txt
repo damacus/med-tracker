@@ -1,0 +1,57 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - heading "Medicine reviews" [level=1]
+  - paragraph: Public medicine-label evidence organised for your next practitioner conversation.
+  - paragraph: This evidence supports a conversation with a practitioner. It does not replace clinical judgement or tell you to change a medicine.
+  - link "Export review PDF":
+    - /url: /households/persistence-fixture/medicine-reviews/report
+  - navigation "Review status":
+    - link "Needs review 0":
+      - /url: "?review_status=needs_review&priority=all&show_hidden=0"
+      - text: Needs review
+      - generic: "0"
+    - link "Reviewed 0":
+      - /url: "?review_status=reviewed&priority=all&show_hidden=0"
+      - text: Reviewed
+      - generic: "0"
+    - link "All 0":
+      - /url: "?review_status=all&priority=all&show_hidden=0"
+      - text: All
+      - generic: "0"
+  - group "Priority":
+    - generic: Priority
+    - button "All" [pressed]:
+      - generic: All
+    - button "Soon":
+      - generic: Soon
+    - button "Convenient":
+      - generic: Convenient
+    - button "Low confidence":
+      - generic: Low confidence
+  - generic: Include filtered items
+  - switch "Include filtered items"
+  - paragraph: 0 lower-confidence review items
+  - heading "No medicine reviews to show" [level=2]
+  - paragraph: No reviewed evidence pairs match the active medicines in the selected household records.
+  - navigation "Review pages"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

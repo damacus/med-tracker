@@ -1,0 +1,54 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - paragraph: Stock amendment mode
+  - heading "Inventory administration" [level=1]
+  - paragraph: Build a batch of supply amendments, then apply them together.
+  - text: Inventory location
+  - combobox "Inventory location":
+    - option "All locations" [selected]
+    - option "Synthetic cabinet"
+  - button "View"
+  - heading "Choose medicines" [level=2]
+  - paragraph: Select the medicines you counted.
+  - paragraph: 0 selected
+  - button "Clear selection"
+  - status
+  - text: Search medicines
+  - searchbox "Search medicines"
+  - checkbox "Synthetic tablets Synthetic cabinet 10 tablets"
+  - strong: Synthetic tablets
+  - generic: Synthetic cabinet
+  - generic: 10 tablets
+  - heading "Amendment batch" [level=2]
+  - paragraph: Enter the count you found for each selected medicine.
+  - paragraph: Choose medicines from the list to build an amendment batch.
+  - text: Reason for amendments
+  - combobox "Reason for amendments":
+    - option "House stock check" [selected]
+    - option "Manual correction"
+    - option "Damaged or disposed"
+    - option "Other"
+  - paragraph: "total net change: —"
+  - button "Clear batch"
+  - button "Apply 0 amendments" [disabled]
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

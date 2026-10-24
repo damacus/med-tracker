@@ -1,0 +1,68 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Open global search":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - link "Locations":
+    - /url: /households/persistence-fixture/locations
+  - link "Medications":
+    - /url: /households/persistence-fixture/medications
+  - heading "Synthetic cabinet" [level=1]
+  - heading "Medications at this location" [level=2]
+  - list:
+    - heading "Synthetic audit medicine" [level=3]:
+      - link "Synthetic audit medicine":
+        - /url: /households/persistence-fixture/medications/80002
+    - paragraph: "Stock: 10 tablet"
+    - heading "Synthetic tablets" [level=3]:
+      - link "Synthetic tablets":
+        - /url: /households/persistence-fixture/medications/80001
+    - paragraph: "Stock: 9 tablet"
+  - link "Edit Location":
+    - /url: /households/persistence-fixture/locations/79001/edit
+  - button "Delete Location"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

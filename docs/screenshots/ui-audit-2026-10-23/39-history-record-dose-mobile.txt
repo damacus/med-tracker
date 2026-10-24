@@ -1,0 +1,65 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - heading "Dose records for Synthetic adult" [level=1]
+  - paragraph: "Medication: Synthetic tablets"
+  - paragraph: "Dose unit: tablet"
+  - link "Back to treatments":
+    - /url: /households/persistence-fixture/people/73001/treatments
+  - text: Start date
+  - textbox "Start date": 2026-10-23
+  - text: End date
+  - textbox "End date": 2026-10-23
+  - button "Show doses"
+  - paragraph: Choose up to 31 days.
+  - article "Dose 1 on 2026-10-23":
+    - heading "Dose 1 on 2026-10-23" [level=2]
+    - paragraph: Open
+    - paragraph:
+      - text: Scheduled for
+      - time: 23 Oct 2026, 08:00:00 UTC
+    - button "Record not taken"
+    - button "Record dose"
+    - dialog "Record dose":
+      - heading "Record dose" [level=2]
+      - paragraph: Use this only if the dose was taken. This records an actual dose and deducts stock.
+      - paragraph: Synthetic adult
+      - paragraph: Synthetic tablets
+      - paragraph:
+        - text: Dose 1 on
+        - time: 2026-10-23
+      - paragraph:
+        - text: Scheduled for
+        - time: 23 Oct 2026, 08:00:00 UTC
+      - paragraph:
+        - text: Prescribed dose
+        - strong: 1 tablet
+      - text: Dose amount
+      - textbox "Dose amount": "1"
+      - text: Taken at
+      - textbox "Taken at": 2026-10-23T22:36:47.669
+      - group "Stock source":
+        - paragraph: Stock source
+        - paragraph: Synthetic tablets · Synthetic cabinet
+        - paragraph: "Remaining stock: 10 tablet"
+      - button "Confirm dose"
+      - button "Cancel"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

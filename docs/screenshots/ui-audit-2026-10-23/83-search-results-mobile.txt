@@ -1,0 +1,52 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - heading "Search" [level=1]
+  - paragraph: Find MedTracker records and shortcuts.
+  - generic: Search MedTracker
+  - searchbox "Search MedTracker": Synthetic
+  - button "Search"
+  - link "Synthetic adult People":
+    - /url: /households/persistence-fixture/people/73001
+    - strong: Synthetic adult
+    - generic: People
+  - link "Synthetic audit medicine Synthetic cabinet":
+    - /url: /households/persistence-fixture/medications/80002
+    - strong: Synthetic audit medicine
+    - generic: Synthetic cabinet
+  - link "Synthetic tablets Synthetic cabinet":
+    - /url: /households/persistence-fixture/medications/80001
+    - strong: Synthetic tablets
+    - generic: Synthetic cabinet
+  - link "Synthetic tablets Synthetic adult · non-scheduled medication":
+    - /url: /households/persistence-fixture/people/73001#person_medication_81001
+    - strong: Synthetic tablets
+    - generic: Synthetic adult · non-scheduled medication
+  - link "Synthetic tablets schedule Synthetic adult ·":
+    - /url: /households/persistence-fixture/people/73001#schedule_1
+    - strong: Synthetic tablets schedule
+    - generic: Synthetic adult ·
+  - link "Synthetic cabinet Locations":
+    - /url: /households/persistence-fixture/locations/79001
+    - strong: Synthetic cabinet
+    - generic: Locations
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder
