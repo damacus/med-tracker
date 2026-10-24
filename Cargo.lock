@@ -4636,8 +4636,7 @@ dependencies = [
 [[package]]
 name = "loco-rs"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5386baf405736a2620001f4561b00fa4874dae99eac3ccf01713fabc9ef13af4"
+source = "git+https://github.com/damacus/loco?rev=5224bc58f9292a2f4713ee333bded785e5266f09#5224bc58f9292a2f4713ee333bded785e5266f09"
 dependencies = [
  "argon2",
  "async-trait",
@@ -4674,6 +4673,7 @@ dependencies = [
  "serde_json",
  "serde_variant",
  "serde_yaml_ng",
+ "shlex",
  "sqlx",
  "tera 2.4.0",
  "thiserror 2.0.21",
