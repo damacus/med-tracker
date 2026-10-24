@@ -20,9 +20,11 @@
     <div class="grid sm:grid-cols-2 gap-3"><div class="grid gap-2"><label for="medicine-form">Form</label><select id="medicine-form" name="form" class="select w-full"><option value="">Any form</option><option value="tablet">Tablet</option><option value="capsule">Capsule</option><option value="liquid">Liquid</option><option value="cream">Cream</option><option value="inhaler">Inhaler</option><option value="patch">Patch</option><option value="drops">Drops</option><option value="spray">Spray</option></select></div><div class="grid gap-2"><label for="medicine-strength">Strength</label><input id="medicine-strength" name="strength" class="input w-full"></div></div>
     <button type="submit" class="btn btn-neutral w-fit" disabled>Search medicines</button>
   </form>
-  <p role="status" class="mt-4" data-lookup-status></p>
-  <div data-lookup-results class="flex flex-col gap-4 mt-4"></div>
-  {% if can_create %}<a class="link mt-4 inline-block" data-manual-entry href="/households/{{ slug }}/medications/new">Enter medication manually</a>{% endif %}
+  <div data-lookup-feedback>
+    <p role="status" class="mt-4" data-lookup-status></p>
+    <div data-lookup-results class="flex flex-col gap-4 mt-4"></div>
+    {% if can_create %}<a class="link mt-4 inline-block" data-manual-entry href="/households/{{ slug }}/medications/new">Enter medication manually</a>{% endif %}
+  </div>
 </section>
 <script src="/static/js/medication-finder.js" defer></script>
 {% endblock content %}
