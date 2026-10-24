@@ -6,8 +6,8 @@
   <p>{{ flow.passkey_hint }}</p>
   <p role="alert" tabindex="-1" data-registration-error hidden></p>
   <form data-add-passkey class="space-y-4">
-    <label class="form-control" for="passkey-name">{{ flow.passkey_name }}<input id="passkey-name" name="name" class="input input-bordered" maxlength="100" required></label>
-    <button type="submit" class="btn shell-primary">{{ flow.register_passkey }}</button>
+    <label class="grid gap-2" for="passkey-name">{{ flow.passkey_name }}<input id="passkey-name" name="name" class="input input-bordered w-full" maxlength="100" required></label>
+    <button type="submit" class="btn btn-primary">{{ flow.register_passkey }}</button>
   </form>
 </div></section>
 <script src="/static/js/add-passkey.js" defer></script>

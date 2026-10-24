@@ -58,3 +58,6 @@ mod login_layout;
 
 #[path = "browser/dashboard_cancellation.rs"]
 mod dashboard_cancellation;
+
+#[path = "browser/security_entry.rs"]
+mod security_entry;
