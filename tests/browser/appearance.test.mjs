@@ -6,6 +6,27 @@ import test from 'node:test';
 const source = () => readFileSync('assets/static/js/appearance.js', 'utf8');
 const classes = new Set();
 
+test('login reuses the original Rails brand and benefit artwork', () => {
+  const sprite = readFileSync('assets/static/auth-icons.svg', 'utf8');
+  for (const file of [
+    'rails/app/components/auth/mt_logo.rb',
+    'rails/app/components/auth/benefit_icons/heart_check.rb',
+    'rails/app/components/auth/benefit_icons/schedule_calendar.rb',
+    'rails/app/components/auth/benefit_icons/progress_path_pin.rb',
+    'rails/app/components/auth/benefit_icons/insights_search.rb',
+  ]) {
+    const reference = readFileSync(file, 'utf8');
+    const paths = [...reference.matchAll(/\bd:\s*'([^']+)'/g)].map(match => match[1]);
+    const constant = reference.match(/(?:HEART_PATH|PATH) = ([\s\S]+?)\n\n/);
+    if (constant) paths.push([...constant[1].matchAll(/'([^']*)'/g)].map(match => match[1]).join(''));
+    assert.ok(paths.length > 0, `reference paths missing: ${file}`);
+    for (const path of paths) assert.ok(sprite.includes(`d="${path}"`), `original artwork changed: ${file}`);
+    for (const match of reference.matchAll(/(?:fill|stop_color): '(#[A-Fa-f0-9]{6})'/g)) {
+      assert.ok(sprite.includes(match[1]), `original artwork colour changed: ${file}`);
+    }
+  }
+});
+
 test('shared navigation follows the selected page language and otherwise keeps browser negotiation', async () => {
   for (const language of ['es', 'en', '', undefined]) {
     const listeners = {};

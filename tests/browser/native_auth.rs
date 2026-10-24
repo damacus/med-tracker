@@ -52,7 +52,7 @@ async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static 
                 .click(None)
                 .await
                 .unwrap();
-            expect(page.get_by_role(AriaRole::Heading, named("Sign in")))
+            expect(page.get_by_role(AriaRole::Heading, named("Welcome back")))
                 .to_be_visible()
                 .await
                 .unwrap();
@@ -64,7 +64,10 @@ async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static 
                     navigator.credentials.get = options => {
                         if (cancel) {
                             cancel = false;
-                            return Promise.reject(new DOMException('Cancelled', 'NotAllowedError'));
+                            return new Promise((resolve, reject) => {
+                                window.cancelPendingPasskey = () => reject(new DOMException('Cancelled', 'NotAllowedError'));
+                                document.querySelector('[data-passkey-login]').dataset.passkeyPending = 'true';
+                            });
                         }
                         return get(options);
                     };
@@ -84,6 +87,56 @@ async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static 
 
             let button = page.get_by_role(AriaRole::Button, named("Sign in with a passkey"));
             button.click(None).await.unwrap();
+            expect(button.clone())
+                .to_have_attribute("data-passkey-pending", "true")
+                .await
+                .unwrap();
+            for appearance in ["light", "dark"] {
+                page.get_by_role(AriaRole::Button, named("Appearance"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                page.locator(format!("[data-appearance-choice='{appearance}']"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                page.keyboard().press("Escape", None).await.unwrap();
+                let paint: Value = page.evaluate(r#"async () => {
+                    await Promise.allSettled(document.getAnimations().map(animation => animation.finished));
+                    const button = document.querySelector('[data-passkey-login]');
+                    const shared = document.createElement('button');
+                    shared.className = 'btn';
+                    shared.disabled = true;
+                    button.parentElement.append(shared);
+                    const paint = element => {
+                        const style = getComputedStyle(element);
+                        return {background: style.backgroundColor, color: style.color, border: style.borderColor, shadow: style.boxShadow};
+                    };
+                    const result = {disabled: button.disabled, actual: paint(button), shared: paint(shared)};
+                    shared.remove();
+                    return result;
+                }"#, None::<&()>).await.unwrap();
+                assert_eq!(paint["disabled"], true);
+                assert_eq!(
+                    paint["actual"], paint["shared"],
+                    "pending passkey button overrides shared disabled styling at {size}/{appearance}: {paint}"
+                );
+                let directory = std::path::Path::new("docs/screenshots/login-reference");
+                std::fs::create_dir_all(directory).unwrap();
+                page.screenshot_to_file(
+                    &directory.join(format!("passkey-pending-{size}-{appearance}.png")),
+                    ScreenshotOptions::builder()
+                        .animations(Animations::Disabled)
+                        .full_page(true)
+                        .build(),
+                )
+                .await
+                .unwrap();
+            }
+            let _: Value = page
+                .evaluate("() => window.cancelPendingPasskey()", None::<&()>)
+                .await
+                .unwrap();
             expect(page.get_by_role(AriaRole::Alert, None))
                 .to_contain_text("Try again or use another sign-in method")
                 .await
@@ -205,7 +258,7 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             let credentials = cdp.send("WebAuthn.getCredentials", Some(json!({"authenticatorId":authenticator_id}))).await.unwrap();
             assert_eq!(credentials["result"]["credentials"].as_array().unwrap().len(), 1);
             page.get_by_role(AriaRole::Button, named("Sign out")).click(None).await.unwrap();
-            expect(page.get_by_role(AriaRole::Heading, named("Sign in"))).to_be_visible().await.unwrap();
+            expect(page.get_by_role(AriaRole::Heading, named("Welcome back"))).to_be_visible().await.unwrap();
             page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
             capture_sizes(page, "sign-in").await;
             cdp.send("WebAuthn.setResponseOverrideBits", Some(json!({"authenticatorId":authenticator_id,"isBadUV":true}))).await.unwrap();
