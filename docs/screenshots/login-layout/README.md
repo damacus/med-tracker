@@ -1,4 +1,9 @@
-# Login imagery and responsive layout
+# Historical login imagery and responsive layout
+
+These captures record the partial layout delivered in #2895. They are historical
+evidence, not acceptance of fidelity to the original MedTracker login. The
+[separate correction](../login-reference/README.md) restores the original brand
+and benefit icons and includes its own rendered comparison.
 
 Reference: the four images in `rails/app/assets/images/auth`, together with
 `login_layout_support.rb`, `login_brand_support.rb` and
@@ -15,7 +20,7 @@ The new layout keeps the Rust card's background, border and shadow. It uses
 side-by-side brand and form panels from 768 pixels, and stacked panels below
 that width. The desktop benefits are hidden on mobile. The portrait image is
 selected through 520 pixels; wider screens use the landscape image.
-Benefits use the reference text without adding another icon set.
+At that revision, benefits used the reference text without the original icons.
 
 | Appearance | Desktop | Mobile |
 | --- | --- | --- |
