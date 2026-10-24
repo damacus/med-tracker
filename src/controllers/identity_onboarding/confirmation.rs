@@ -1,6 +1,6 @@
 use axum::{
     Extension,
-    extract::{Form, Query},
+    extract::{Form, Query, rejection::QueryRejection},
     http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
@@ -27,10 +27,13 @@ pub(super) struct Confirm {
 }
 
 pub(super) async fn show(
-    Query(link): Query<Link>,
+    link: std::result::Result<Query<Link>, QueryRejection>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
+    let Ok(Query(link)) = link else {
+        return super::rendering::invalid_link(&view, super::rendering::LinkRecovery::Verification);
+    };
     if link.token.len() > 4096 {
         return super::rendering::redirect("/login");
     }
