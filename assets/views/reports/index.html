@@ -26,7 +26,24 @@
     <div class="card-body grid gap-4 sm:grid-cols-3"><div><p>{{ labels.reports.index.summary.overall_compliance }}</p><p class="text-3xl font-bold">{{ report.summary.compliance }}%</p></div><div><p>{{ labels.reports.index.summary.total_doses_logged }}</p><p class="text-3xl font-bold">{{ report.summary.actual }}/{{ report.summary.expected }}</p></div><div><p>{{ labels.reports.index.summary.evidence_reviewed }}</p><p>{{ report.smart_insights.evidence_summary }}</p></div></div>
   </section>
   <section class="card bg-base-100 border border-base-300" aria-labelledby="timeline-title">
-    <div class="card-body"><h2 class="card-title" id="timeline-title">{{ labels.reports.index.timeline_title }}</h2><div class="flex h-48 items-end gap-2 overflow-x-auto" role="img" aria-label="{{ labels.reports.index.timeline_title }}">{% for day in report.daily_outcomes %}<div class="flex min-w-8 flex-1 flex-col items-center justify-end h-full"><span class="sr-only">{{ day.date }}: {{ day.percentage }}%</span><div data-testid="report-compliance-bar" class="w-full bg-primary rounded-t" style="height: {{ day.percentage }}%;" title="{{ day.date }}: {{ day.percentage }}%"></div><span class="text-xs">{{ day.day_name }}</span></div>{% endfor %}</div></div>
+    <div class="card-body">
+      <h2 class="card-title" id="timeline-title">{{ labels.reports.index.timeline_title }}</h2>
+      <p id="timeline-description" class="sr-only">{% for day in report.daily_outcomes %}{% set percentage = day.percentage | str %}{{ day.date }}: {% if day.expected == 0 and day.actual == 0 %}{{ labels.reports.index.timeline_no_doses_expected }}{% else %}{{ labels.reports.index.timeline_compliance | replace(from="%{percentage}", to=percentage) }}{% endif %}. {% endfor %}</p>
+      <div class="flex h-48 items-end gap-2 overflow-x-auto" role="img" aria-label="{{ labels.reports.index.timeline_title }}" aria-describedby="timeline-description">
+        {% for day in report.daily_outcomes %}
+        {% set percentage = day.percentage | str %}
+        <div class="flex min-w-8 flex-1 flex-col items-center justify-end h-full">
+          {% if day.expected == 0 and day.actual == 0 %}
+          <div data-testid="report-no-doses-marker" class="w-full h-1 bg-base-300 rounded" title="{{ day.date }}: {{ labels.reports.index.timeline_no_doses_expected }}"></div>
+          {% else %}
+          <div data-testid="report-compliance-bar" class="w-full bg-primary rounded-t" style="height: {{ day.percentage }}%;" title="{{ day.date }}: {{ labels.reports.index.timeline_compliance | replace(from="%{percentage}", to=percentage) }}"></div>
+          {% endif %}
+          <span class="text-xs">{{ day.day_name }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="flex items-center gap-2 text-sm"><span class="w-6 h-1 bg-base-300 rounded" aria-hidden="true"></span>{{ labels.reports.index.timeline_no_doses_expected }}</p>
+    </div>
   </section>
   <section class="card bg-base-100 border border-base-300" aria-labelledby="daily-title">
     <div class="card-body"><h2 class="card-title" id="daily-title">{{ labels.reports.health_history.outcomes.title }}</h2>

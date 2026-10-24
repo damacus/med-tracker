@@ -2649,8 +2649,8 @@ ga:
         description: Cógais a glacadh inniu, grúpáilte de réir duine.
         empty: Níor glacadh aon chógas inniu.
       summary:
-        overall_compliance: Cloí Laethúil
-        total_doses_logged: Dáileoga Laethúla Logáilte
+        overall_compliance: Cloí sa tréimhse
+        total_doses_logged: Dáileoga logáilte sa tréimhse
         evidence_reviewed: Fianaise Athbhreithnithe
         excellent: Sármhaith
         needs_attention: Teastaíonn aird
@@ -2658,6 +2658,7 @@ ga:
         missed_doses: Dáileoga caillte
         based_on_logs: Bunaithe ar dháileoga logáilte
       timeline_title: Amlíne Cloí
+      timeline_no_doses_expected: Níltear ag súil le haon dáileoga
       download_pdf: Íoslódáil PDF
       gp_person_label: Duine don tuarascáil don dochtúir teaghlaigh
       gp_person_prompt: Roghnaigh duine
