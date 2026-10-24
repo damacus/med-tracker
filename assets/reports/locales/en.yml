@@ -1559,6 +1559,7 @@ en:
       has_capacity: Has capacity to manage own medication
       note: 'Note:'
       capacity_hint: "A person without capacity can be saved without an active carer. Minors and dependent adults do not have capacity."
+      dependent_capacity_hint: "Minors and dependent adults do not have capacity."
       capacity_hint_assign_carer: "You can assign or invite a carer after saving."
       save: Save
       cancel: Cancel

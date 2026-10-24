@@ -1606,6 +1606,7 @@ cy:
       has_capacity: Mae ganddo'r gallu i reoli ei feddyginiaeth ei hun
       note: 'Nodyn:'
       capacity_hint: "Gellir cadw person heb allu heb ofalwr gweithredol. Nid oes gan blant dan oed ac oedolion dibynnol allu."
+      dependent_capacity_hint: "Nid oes gan blant dan oed ac oedolion dibynnol allu."
       capacity_hint_assign_carer: "Gallwch aseinio neu wahodd gofalwr ar ôl cadw."
       save: Cadw
       cancel: Canslo

@@ -25,6 +25,13 @@ async fn dependent_creation_keeps_form_and_guardian_declaration() {
                 )
                 .await
                 .unwrap();
+                for person_type in ["minor", "dependent_adult", "minor"] {
+                    page.locator("#person_type").select_option(person_type, None).await.unwrap();
+                    assert!(page.evaluate::<(), bool>(
+                        "() => { const capacity = document.getElementById('has_capacity'); return capacity.disabled && !capacity.checked; }",
+                        None,
+                    ).await.unwrap());
+                }
                 page.get_by_label("Name", true)
                     .fill("Synthetic typed child", None)
                     .await
@@ -70,6 +77,15 @@ async fn dependent_creation_keeps_form_and_guardian_declaration() {
                     .await
                     .unwrap();
                 }
+                page.get_by_label("Date of Birth", true).fill("2999-01-01", None).await.unwrap();
+                page.get_by_role(AriaRole::Button, named("Create Person")).click(None).await.unwrap();
+                expect(page.locator("[role=alert]")).to_be_visible().await.unwrap();
+                assert!(page.evaluate::<(), bool>(
+                    "() => { const capacity = document.getElementById('has_capacity'); return capacity.disabled && !capacity.checked; }",
+                    None,
+                ).await.unwrap());
+                page.get_by_label("Date of Birth", true).fill("2020-01-01", None).await.unwrap();
+                page.locator("#initial_guardian_declaration").check(None).await.unwrap();
                 page.get_by_role(AriaRole::Button, named("Create Person"))
                     .click(None)
                     .await
@@ -99,6 +115,11 @@ async fn dependent_creation_keeps_form_and_guardian_declaration() {
                         .unwrap(),
                     1
                 );
+                page.goto(&format!("{}/households/persistence-fixture/people/73001/edit", journey.origin), None).await.unwrap();
+                assert!(page.evaluate::<(), bool>(
+                    r#"() => { const capacity = document.getElementById("has_capacity"); return !capacity.disabled && capacity.checked; }"#,
+                    None,
+                ).await.unwrap());
             })
         },
     )
