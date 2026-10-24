@@ -37,5 +37,5 @@ tasks:
   test:
     cmds:
       [
-        node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs,
+        node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs tests/browser/dashboard-cancellation.test.mjs,
       ]

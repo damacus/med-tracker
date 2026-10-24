@@ -86,8 +86,26 @@ document.addEventListener('DOMContentLoaded', () => {
   for (const dialog of document.querySelectorAll('dialog[data-dialog-auto-open]')) {
     if (dialog instanceof HTMLDialogElement) {
       dialog.showModal();
-      const opener = document.querySelector(`[data-dialog-open="${dialog.id}"]`);
-      if (opener) dialog.addEventListener('close', () => opener.focus(), { once: true });
+      let opener = document.querySelector(`[data-dialog-open="${dialog.id}"]`);
+      const url = new URL(window.location.href);
+      const recordingKeys = ['record_medication_id', 'record_source_type', 'record_source_id', 'record_person_id'];
+      const dashboardRecording = dialog.id === 'record-dose-dialog' && url.searchParams.has('record_medication_id');
+      if (dashboardRecording) {
+        opener = Array.from(document.querySelectorAll('#dashboard a[href]')).find(link => {
+          const destination = new URL(link.href);
+          return destination.origin === url.origin && destination.pathname === url.pathname &&
+            recordingKeys.every(key => url.searchParams.has(key) && destination.searchParams.get(key) === url.searchParams.get(key));
+        });
+      }
+      dialog.addEventListener('close', () => {
+        if (dashboardRecording) {
+          const current = new URL(window.location.href);
+          for (const key of recordingKeys) current.searchParams.delete(key);
+          window.history.replaceState(window.history.state, '', current);
+        }
+        opener?.focus();
+        if (dashboardRecording) opener?.scrollIntoView({ block: 'center' });
+      }, { once: true });
       dialog.querySelector('[data-dialog-error-focus]')?.focus();
     }
   }
