@@ -733,7 +733,38 @@ window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
                 .to_be_visible()
                 .await
                 .unwrap();
-            harness::capture(page, "barcode-hit-mobile").await;
+            let refill = page.get_by_role(AriaRole::Dialog, named("Refill inventory"));
+            expect(refill.clone())
+                .to_contain_text("Synthetic tablets")
+                .await
+                .unwrap();
+            expect(refill.get_by_text("tablets", true))
+                .to_be_visible()
+                .await
+                .unwrap();
+            for (width, height, name) in [
+                (1440, 1000, "refill-context-desktop"),
+                (390, 844, "barcode-hit-mobile"),
+            ] {
+                page.set_viewport_size(Viewport { width, height })
+                    .await
+                    .unwrap();
+                expect(refill.clone()).to_be_visible().await.unwrap();
+                assert!(
+                    !page
+                        .evaluate::<(), bool>(
+                            "() => document.documentElement.scrollWidth > innerWidth",
+                            None,
+                        )
+                        .await
+                        .unwrap()
+                );
+                expect(page.locator("body[data-navigation-ready]"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                harness::capture(page, name).await;
+            }
         })
     })
     .await;
