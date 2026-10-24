@@ -3014,8 +3014,8 @@ es:
         description: Medicamentos tomados hoy, agrupados por persona.
         empty: No se han tomado medicamentos hoy.
       summary:
-        overall_compliance: Adherencia diaria
-        total_doses_logged: Dosis diarias registradas
+        overall_compliance: Adherencia del período
+        total_doses_logged: Dosis registradas en el período
         evidence_reviewed: Evidencia revisada
         excellent: Excelente
         needs_attention: Necesita atención
@@ -3023,6 +3023,7 @@ es:
         missed_doses: Dosis omitidas
         based_on_logs: Basado en dosis registradas
       timeline_title: Cronología de adherencia
+      timeline_no_doses_expected: No se esperan dosis
       download_pdf: Descargar PDF
       gp_person_label: Persona para el informe del médico de cabecera
       gp_person_prompt: Selecciona una persona

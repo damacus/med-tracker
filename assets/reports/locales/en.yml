@@ -2009,8 +2009,8 @@ en:
         description: Medications taken today, grouped by person.
         empty: No medications taken today.
       summary:
-        overall_compliance: Daily Compliance
-        total_doses_logged: Daily Doses Logged
+        overall_compliance: Period compliance
+        total_doses_logged: Doses logged in period
         evidence_reviewed: Evidence Reviewed
         excellent: Excellent
         needs_attention: Needs attention
@@ -2018,6 +2018,7 @@ en:
         missed_doses: Missed doses
         based_on_logs: Based on logged doses
       timeline_title: Adherence Timeline
+      timeline_no_doses_expected: No doses expected
       download_pdf: Download PDF
       gp_person_label: Person for GP report
       gp_person_prompt: Select a person
