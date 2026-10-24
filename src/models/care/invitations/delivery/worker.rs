@@ -247,6 +247,7 @@ impl BackgroundWorker<InvitationMail> for InvitationMailWorker {
     }
 
     async fn perform(&self, mail: InvitationMail) -> loco_rs::Result<()> {
+        crate::models::canary::work(&self.ctx).await?;
         self.deliver(mail)
             .await
             .map_err(|_| loco_rs::Error::string("Invitation mail attempt unavailable"))

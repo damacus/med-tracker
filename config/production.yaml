@@ -4,6 +4,15 @@ logger:
   level: info
   format: compact
 settings:
+  canary:
+    enabled: <%= get_env(name="MEDTRACKER_CANARY_ENABLED", default="false") %>
+    scope: <%= get_env(name="MEDTRACKER_CANARY_SCOPE", default="") %>
+    control_database_url: <%= get_env(name="MEDTRACKER_CANARY_CONTROL_DATABASE_URL", default="") %>
+    image: <%= get_env(name="LOCO_IMAGE", default="") %>
+    smoke_key: <%= get_env(name="MEDTRACKER_CANARY_SMOKE_KEY", default="") %>
+    run_id: <%= get_env(name="MEDTRACKER_CANARY_RUN_ID", default="") %>
+    epoch: <%= get_env(name="MEDTRACKER_CANARY_EPOCH", default="") %>
+    smoke_url: <%= get_env(name="MEDTRACKER_CANARY_SMOKE_URL", default="") %>
   time_zone: <%= get_env(name="TZ", default="UTC") %>
   registration:
     invite_only: <%= get_env(name="INVITE_ONLY", default="") %>
