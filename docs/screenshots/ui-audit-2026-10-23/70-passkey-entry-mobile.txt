@@ -1,0 +1,17 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Add passkey" [level=1]
+  - paragraph: Name this passkey, then use your device to verify your identity.
+  - text: Passkey name
+  - textbox "Passkey name"
+  - button "Register Passkey"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

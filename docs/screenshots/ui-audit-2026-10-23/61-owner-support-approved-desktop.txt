@@ -1,0 +1,29 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph: Account security
+  - heading "Support access requests" [level=1]
+  - paragraph: Platform administrators may request temporary read-only access to a household you own. Support users cannot write, export, or download household data and cannot access files. A request expires after 24 hours. Approved access lasts 30 minutes from activation, and you can end access at any time. Approving requires fresh sign-in confirmation.
+  - list:
+    - term: Household
+    - definition: Supported household
+    - term: Requested by
+    - definition: persistence@example.test
+    - term: Reason
+    - definition: Synthetic UI audit of owner-approved support
+    - term: State
+    - definition: approved
+    - term: Deadline
+    - definition: 2026-10-24 23:18:10 UTC
+    - term: Scope
+    - definition: read-only support access — the support user cannot write, export, or download household data
+    - button "End access"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

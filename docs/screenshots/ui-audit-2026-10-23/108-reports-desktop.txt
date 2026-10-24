@@ -1,0 +1,174 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - paragraph: Wellness Analytics
+  - heading "Health Report" [level=1]
+  - text: Person
+  - combobox "Person":
+    - option "All people" [selected]
+    - option "Synthetic adult"
+  - text: From
+  - textbox "From": 2026-10-18
+  - text: To
+  - textbox "To": 2026-10-24
+  - button "Apply date filters"
+  - region "Today":
+    - heading "Today" [level=2]
+    - paragraph: No medications taken today.
+  - region "Report summary":
+    - paragraph: Daily Compliance
+    - paragraph: 50%
+    - paragraph: Daily Doses Logged
+    - paragraph: 1/2
+    - paragraph: Evidence Reviewed
+    - paragraph: 7 days reviewed with 3 medication events
+  - region "Adherence Timeline":
+    - heading "Adherence Timeline" [level=2]
+    - img "Adherence Timeline":
+      - generic: "2026-10-18: 100%"
+      - 'generic "2026-10-18: 100%"'
+      - generic: Sun
+      - generic: "2026-10-19: 100%"
+      - 'generic "2026-10-19: 100%"'
+      - generic: Mon
+      - generic: "2026-10-20: 100%"
+      - 'generic "2026-10-20: 100%"'
+      - generic: Tue
+      - generic: "2026-10-21: 100%"
+      - 'generic "2026-10-21: 100%"'
+      - generic: Wed
+      - generic: "2026-10-22: 100%"
+      - 'generic "2026-10-22: 100%"'
+      - generic: Thu
+      - generic: "2026-10-23: 100%"
+      - 'generic "2026-10-23: 100%"'
+      - generic: Fri
+      - generic: "2026-10-24: 0%"
+      - 'generic "2026-10-24: 0%"'
+      - generic: Sat
+  - region "Dose outcomes":
+    - heading "Dose outcomes" [level=2]
+    - table:
+      - rowgroup:
+        - row "Date Expected Taken Not taken Unexplained misses":
+          - columnheader "Date"
+          - columnheader "Expected"
+          - columnheader "Taken"
+          - columnheader "Not taken"
+          - columnheader "Unexplained misses"
+      - rowgroup:
+        - row "2026-10-18 0 0 0 0":
+          - rowheader "2026-10-18"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+        - row "2026-10-19 0 0 0 0":
+          - rowheader "2026-10-19"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+        - row "2026-10-20 0 0 0 0":
+          - rowheader "2026-10-20"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+        - row "2026-10-21 0 0 0 0":
+          - rowheader "2026-10-21"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+        - row "2026-10-22 0 0 0 0":
+          - rowheader "2026-10-22"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+        - row "2026-10-23 1 1 0 0":
+          - rowheader "2026-10-23"
+          - cell "1"
+          - cell "1"
+          - cell "0"
+          - cell "0"
+        - row "2026-10-24 1 0 0 0":
+          - rowheader "2026-10-24"
+          - cell "1"
+          - cell "0"
+          - cell "0"
+          - cell "0"
+  - region "Inventory Alert":
+    - heading "Inventory Alert" [level=2]
+    - paragraph: Synthetic tablets · 9
+  - region "Smart Insights":
+    - heading "Smart Insights" [level=2]
+    - paragraph: 7 days reviewed with 3 medication events
+    - heading "Learning your routine" [level=3]
+    - paragraph: Keep logging doses so MedTracker can spot real patterns.
+  - region "Export health history":
+    - heading "Export health history" [level=2]
+    - paragraph: Download a health history PDF for one person over a chosen date range.
+    - text: Person for GP report
+    - combobox "Person for GP report":
+      - option "Select a person" [selected]
+      - option "Synthetic adult"
+    - text: From
+    - textbox "From": 2026-10-18
+    - text: To
+    - textbox "To": 2026-10-24
+    - checkbox "Include medication administration log"
+    - generic: Include medication administration log
+    - button "Download PDF"
+  - paragraph:
+    - link "MedTracker medicine review record":
+      - /url: /households/persistence-fixture/medicine-reviews/report
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

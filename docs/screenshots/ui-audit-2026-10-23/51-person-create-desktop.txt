@@ -1,0 +1,82 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - link "Back":
+    - /url: /households/persistence-fixture/people
+  - paragraph: Manage people
+  - heading "New Person" [level=1]
+  - group "Identity":
+    - generic: Identity
+    - generic: Name
+    - textbox "Name"
+    - generic: Email
+    - textbox "Email"
+    - generic: Date of Birth
+    - textbox "Date of Birth"
+  - group "Medication support":
+    - generic: Medication support
+    - generic: Person Type
+    - combobox "Person Type":
+      - option "Minor" [selected]
+      - option "Dependent adult"
+    - checkbox "Has capacity to manage own medication"
+    - text: Has capacity to manage own medication
+    - paragraph: A person without capacity can be saved without an active carer. Minors and dependent adults do not have capacity.
+  - group "Guardian declarations":
+    - generic: Guardian declarations
+    - checkbox "I declare that I am this person’s guardian."
+    - generic: I declare that I am this person’s guardian.
+    - paragraph: This records your declaration for this new dependent. It does not independently verify legal guardianship. Capable adults must use their own account.
+    - link "Guardian declarations":
+      - /url: /profile/guardian-declarations
+  - button "Create Person"
+  - link "Cancel":
+    - /url: /households/persistence-fixture/people
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

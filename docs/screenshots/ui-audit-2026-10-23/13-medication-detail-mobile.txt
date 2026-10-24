@@ -1,0 +1,54 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - link "Medications":
+    - /url: /households/persistence-fixture/medications
+  - paragraph: Medication Profile
+  - heading "Synthetic tablets" [level=1]
+  - paragraph: Synthetic cabinet
+  - heading "Inventory Status" [level=2]
+  - paragraph: 10 tablets
+  - paragraph: Low stock
+  - paragraph: Reorder at 10 tablets
+  - button "Refill inventory"
+  - link "Order medication":
+    - /url: /households/persistence-fixture/medications/80001/order
+  - heading "Record dose" [level=2]
+  - paragraph: Check the person, medication, dose and time before recording.
+  - button "Record dose"
+  - region "Dose options":
+    - generic "Dose options"
+    - link "Manage Dose Options":
+      - /url: /households/persistence-fixture/medications/80001/dosage_options
+  - region "Dose history":
+    - generic "Dose history"
+  - heading "Standard dosage" [level=2]
+  - paragraph: 2 tablets
+  - region "Manage medication":
+    - heading "Manage medication" [level=2]
+    - button "Adjust stock"
+    - link "Stock adjustment page":
+      - /url: /households/persistence-fixture/medications/80001/stock/adjust
+    - link "Edit Medication":
+      - /url: /households/persistence-fixture/medications/80001/edit
+    - button "Delete Medication"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

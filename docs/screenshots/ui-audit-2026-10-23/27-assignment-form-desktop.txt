@@ -1,0 +1,105 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Open global search":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - link "Back to treatments":
+    - /url: /households/persistence-fixture/people/73001/treatments
+  - heading "Assign medication" [level=1]
+  - paragraph: Synthetic adult
+  - group "Medication and dose":
+    - generic: Medication and dose
+    - generic: Medication
+    - combobox "Medication":
+      - option "Select medication" [selected]
+      - option "Synthetic tablets"
+    - generic: Dose option
+    - combobox "Dose option":
+      - option "Select dose option" [selected]
+      - option "Synthetic tablets · 2 tablet"
+    - generic: Dose amount
+    - textbox "Dose amount"
+    - generic: Dose unit
+    - combobox "Dose unit":
+      - option "Select dose unit"
+      - option "tablet" [selected]
+      - option "capsule"
+      - option "gummy"
+      - option "mg"
+      - option "ml"
+      - option "g"
+      - option "mcg"
+      - option "IU"
+      - option "spray"
+      - option "drop"
+      - option "sachet"
+      - option "pad"
+  - group "Timing":
+    - generic: Timing
+    - generic: Dose cycle
+    - combobox "Dose cycle":
+      - option "Select dose cycle"
+      - option "daily" [selected]
+      - option "weekly"
+      - option "monthly"
+    - generic: Administration
+    - combobox "Administration":
+      - option "Select administration"
+      - option "routine" [selected]
+      - option "as needed"
+  - group "Limits":
+    - generic: Limits
+    - generic: Maximum daily doses
+    - spinbutton "Maximum daily doses"
+    - generic: Minimum hours between doses
+    - spinbutton "Minimum hours between doses"
+  - generic: Notes
+  - textbox "Notes"
+  - button "Assign medication"
+  - link "Back to treatments":
+    - /url: /households/persistence-fixture/people/73001/treatments
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

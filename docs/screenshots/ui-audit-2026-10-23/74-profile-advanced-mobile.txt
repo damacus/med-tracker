@@ -1,0 +1,49 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - status
+  - generic: SA
+  - paragraph: Profile settings
+  - heading "My Profile" [level=1]
+  - paragraph: persistence@example.test
+  - paragraph: Shape your account, safety preferences, and notification rhythm from one calm control room.
+  - tablist "My Profile":
+    - tab "Profile"
+    - tab "Security"
+    - tab "Notifications"
+    - tab "Advanced" [active] [selected]
+  - text: + + + +
+  - tabpanel "Advanced":
+    - heading "Advanced" [level=2]
+    - paragraph:
+      - generic: Data export available
+    - generic "Data backup Download a copy of your medication and health records.":
+      - strong: Data backup
+      - generic: Download a copy of your medication and health records.
+    - generic "System Information Application version and resources":
+      - strong: System Information
+      - generic: Application version and resources
+    - heading "Danger Zone" [level=3]
+    - paragraph: Closing your account ends your access and revokes sign-in methods. Shared care records and audit history remain. Transfer ownership of any household where you are the only owner first.
+    - link "Close account":
+      - /url: /account/security
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

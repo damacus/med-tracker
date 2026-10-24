@@ -1,0 +1,18 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph: Care, kept together
+  - heading "MedTracker" [level=1]
+  - link "Sign in":
+    - /url: /login
+  - heading "Your care, in one place" [level=2]
+  - paragraph: Keep people, medicines and their care together.
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

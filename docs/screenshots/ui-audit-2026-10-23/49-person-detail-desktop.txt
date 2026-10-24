@@ -1,0 +1,122 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - link "People":
+    - /url: /households/persistence-fixture/people
+  - link "Medications":
+    - /url: /households/persistence-fixture/medications
+  - img "Synthetic adult avatar":
+    - generic: SA
+  - heading "Synthetic adult" [level=1]
+  - paragraph: Manage people
+  - paragraph: Adult · Age 41
+  - link "Edit Person":
+    - /url: /households/persistence-fixture/people/73001/edit
+  - region "Current medications":
+    - heading "Current medications" [level=2]
+    - link "Add Medication":
+      - /url: /households/persistence-fixture/add-medication?person_id=73001
+    - article "Synthetic tablets ongoing medication":
+      - heading "Synthetic tablets" [level=3]:
+        - link "Synthetic tablets":
+          - /url: /households/persistence-fixture/medications/80001
+      - generic: Active
+      - paragraph: Ongoing medication
+      - paragraph: 2 tablets
+      - paragraph: 9 tablets in stock
+      - paragraph: As needed
+      - link "Record dose":
+        - /url: /households/persistence-fixture/medications/80001?record_source_type=person_medication&record_source_id=81001&record_person_id=73001
+      - link "Dose records":
+        - /url: /households/persistence-fixture/people/73001/treatments/assignments/81001/doses
+      - link "Edit treatment":
+        - /url: /households/persistence-fixture/people/73001/treatments/assignments/81001/edit
+    - article "Synthetic tablets scheduled treatment":
+      - heading "Synthetic tablets" [level=3]:
+        - link "Synthetic tablets":
+          - /url: /households/persistence-fixture/medications/80001
+      - generic: Active
+      - paragraph: Scheduled treatment
+      - paragraph: 1 tablet
+      - paragraph: 9 tablets in stock
+      - paragraph: Daily
+      - paragraph: 23 October 2026 to 23 October 2027
+      - paragraph: Maximum 1 dose a day
+      - link "Record dose":
+        - /url: /households/persistence-fixture/medications/80001?record_source_type=schedule&record_source_id=1&record_person_id=73001
+      - link "Dose records":
+        - /url: /households/persistence-fixture/people/73001/treatments/schedules/1/doses
+      - link "Edit treatment":
+        - /url: /households/persistence-fixture/people/73001/treatments/schedules/1/edit
+  - complementary:
+    - region "Care Actions":
+      - heading "Care Actions" [level=2]
+      - link "Health events":
+        - /url: /households/persistence-fixture/people/73001/health_events
+      - link "Manage treatments":
+        - /url: /households/persistence-fixture/people/73001/treatments
+      - link "Add schedule":
+        - /url: /households/persistence-fixture/people/73001/treatments/schedules/new
+      - link "Assign medication":
+        - /url: /households/persistence-fixture/people/73001/treatments/assignments/new
+      - link "Carer relationships":
+        - /url: /households/persistence-fixture/admin/carer_relationships
+    - region "Profile details":
+      - heading "Profile details" [level=2]
+      - term: Date of Birth
+      - definition:
+        - time: 3 February 1985
+      - term: Email
+      - definition: Not recorded
+      - term: Person Type
+      - definition: Adult
+      - term: Has capacity to manage own medication
+      - definition: "Yes"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

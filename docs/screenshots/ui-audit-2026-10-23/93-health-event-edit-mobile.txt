@@ -1,0 +1,48 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - heading "Edit notable illness" [level=1]
+  - paragraph: Synthetic adult · Capture facts entered by the family or carer.
+  - generic: Title
+  - textbox "Title": Synthetic audit event
+  - generic: Start date
+  - textbox "Start date": 2026-10-23
+  - generic: End date
+  - textbox "End date"
+  - checkbox "Ongoing" [checked]
+  - text: Ongoing
+  - generic: Severity
+  - combobox "Severity":
+    - option "Not specified" [selected]
+    - option "Mild"
+    - option "Moderate"
+    - option "Severe"
+  - generic: Notes
+  - textbox "Notes"
+  - generic: Action taken
+  - textbox "Action taken"
+  - checkbox "Medical help was sought"
+  - text: Medical help was sought
+  - button "Save"
+  - link "Cancel":
+    - /url: /households/persistence-fixture/people/73001/health_events?locale=en
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

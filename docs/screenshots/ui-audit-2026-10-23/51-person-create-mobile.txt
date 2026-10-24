@@ -1,0 +1,54 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - link "Back":
+    - /url: /households/persistence-fixture/people
+  - paragraph: Manage people
+  - heading "New Person" [level=1]
+  - group "Identity":
+    - generic: Identity
+    - generic: Name
+    - textbox "Name"
+    - generic: Email
+    - textbox "Email"
+    - generic: Date of Birth
+    - textbox "Date of Birth"
+  - group "Medication support":
+    - generic: Medication support
+    - generic: Person Type
+    - combobox "Person Type":
+      - option "Minor" [selected]
+      - option "Dependent adult"
+    - checkbox "Has capacity to manage own medication"
+    - text: Has capacity to manage own medication
+    - paragraph: A person without capacity can be saved without an active carer. Minors and dependent adults do not have capacity.
+  - group "Guardian declarations":
+    - generic: Guardian declarations
+    - checkbox "I declare that I am this person’s guardian."
+    - generic: I declare that I am this person’s guardian.
+    - paragraph: This records your declaration for this new dependent. It does not independently verify legal guardianship. Capable adults must use their own account.
+    - link "Guardian declarations":
+      - /url: /profile/guardian-declarations
+  - button "Create Person"
+  - link "Cancel":
+    - /url: /households/persistence-fixture/people
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

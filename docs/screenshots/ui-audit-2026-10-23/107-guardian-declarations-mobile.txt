@@ -1,0 +1,15 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Guardian declarations" [level=1]
+  - paragraph: These are your personal declarations. Household care links are managed separately.
+  - paragraph: You have no guardian declarations.
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

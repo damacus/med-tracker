@@ -1,0 +1,67 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - 'link "Back: Synthetic adult"':
+    - /url: /households/persistence-fixture/people/73001
+  - heading "Synthetic adult's health events" [level=1]
+  - paragraph: Record notable illnesses and suspected side effects without making clinical claims.
+  - link "Record notable illness":
+    - /url: /households/persistence-fixture/people/73001/health_events/new?event_kind=illness&locale=en
+  - link "Record suspected side effect":
+    - /url: /households/persistence-fixture/people/73001/health_events/new?event_kind=suspected_side_effect&locale=en
+  - list:
+    - article:
+      - generic: Notable illness
+      - heading "Synthetic audit event" [level=2]
+      - paragraph: Ongoing since 2026-10-23
+      - link "Edit":
+        - /url: /households/persistence-fixture/people/73001/health_events/1/edit?locale=en
+      - button "Delete"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

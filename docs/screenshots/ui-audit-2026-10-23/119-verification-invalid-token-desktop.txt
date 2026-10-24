@@ -1,0 +1,18 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Verify your email address" [level=1]
+  - paragraph: Continue to verify the email address in this message.
+  - paragraph: Continue only if you requested this verification.
+  - button "Verify and continue"
+  - link "Use another account":
+    - /url: /login
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

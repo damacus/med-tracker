@@ -1,0 +1,44 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - paragraph: Manage people
+  - heading "People" [level=1]
+  - link "New Person":
+    - /url: /households/persistence-fixture/people/new
+  - list:
+    - img "Synthetic adult avatar":
+      - generic: SA
+    - heading "Synthetic adult" [level=2]:
+      - link "Synthetic adult":
+        - /url: /households/persistence-fixture/people/73001
+    - term: "Born:"
+    - definition:
+      - time: 3 February 1985
+    - term: "Age:"
+    - definition: "41"
+    - term: "Medications:"
+    - definition: 2 active medications
+    - link "Add Medication":
+      - /url: /households/persistence-fixture/add-medication?person_id=73001
+    - link "View Medications":
+      - /url: /households/persistence-fixture/people/73001
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

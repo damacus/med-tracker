@@ -1,0 +1,85 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - heading "Medicine reviews" [level=1]
+  - paragraph: Public medicine-label evidence organised for your next practitioner conversation.
+  - paragraph: This evidence supports a conversation with a practitioner. It does not replace clinical judgement or tell you to change a medicine.
+  - link "Export review PDF":
+    - /url: /households/persistence-fixture/medicine-reviews/report
+  - navigation "Review status":
+    - link "Needs review 0":
+      - /url: "?review_status=needs_review&priority=all&show_hidden=0"
+      - text: Needs review
+      - generic: "0"
+    - link "Reviewed 0":
+      - /url: "?review_status=reviewed&priority=all&show_hidden=0"
+      - text: Reviewed
+      - generic: "0"
+    - link "All 0":
+      - /url: "?review_status=all&priority=all&show_hidden=0"
+      - text: All
+      - generic: "0"
+  - group "Priority":
+    - generic: Priority
+    - button "All" [pressed]:
+      - generic: All
+    - button "Discuss soon":
+      - generic: Discuss soon
+    - button "Ask when convenient":
+      - generic: Ask when convenient
+    - button "Low confidence":
+      - generic: Low confidence
+  - generic: Include filtered items
+  - switch "Include filtered items"
+  - paragraph: 0 lower-confidence review items
+  - heading "No medicine reviews to show" [level=2]
+  - paragraph: No reviewed evidence pairs match the active medicines in the selected household records.
+  - navigation "Review pages"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

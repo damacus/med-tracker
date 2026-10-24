@@ -1,0 +1,111 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - link "Back to treatments":
+    - /url: /households/persistence-fixture/people/73001/treatments
+  - heading "Add schedule" [level=1]
+  - paragraph: Synthetic adult
+  - group "Medication and dose":
+    - generic: Medication and dose
+    - generic: Medication
+    - combobox "Medication":
+      - option "Select medication" [selected]
+      - option "Synthetic tablets"
+    - generic: Dose option
+    - combobox "Dose option":
+      - option "Select dose option" [selected]
+      - option "Synthetic tablets · 2 tablet"
+    - generic: Dose amount
+    - textbox "Dose amount"
+    - generic: Dose unit
+    - combobox "Dose unit":
+      - option "Select dose unit"
+      - option "tablet" [selected]
+      - option "capsule"
+      - option "gummy"
+      - option "mg"
+      - option "ml"
+      - option "g"
+      - option "mcg"
+      - option "IU"
+      - option "spray"
+      - option "drop"
+      - option "sachet"
+      - option "pad"
+  - group "Timing":
+    - generic: Timing
+    - generic: Schedule type
+    - combobox "Schedule type":
+      - option "Select schedule type"
+      - option "daily" [selected]
+      - option "multiple daily"
+      - option "weekly"
+      - option "specific dates"
+      - option "prn"
+      - option "tapering"
+      - option "every other day"
+    - generic: Dose cycle
+    - combobox "Dose cycle":
+      - option "Select dose cycle"
+      - option "daily" [selected]
+      - option "weekly"
+      - option "monthly"
+    - generic: Start date
+    - textbox "Start date"
+    - generic: End date
+    - textbox "End date"
+    - generic: Frequency
+    - textbox "Frequency"
+    - generic: Times
+    - textbox "Times"
+    - generic: Specific dates
+    - textbox "Specific dates"
+    - paragraph: Enter times as HH:MM separated by commas. Enter specific dates as YYYY-MM-DD separated by commas or new lines.
+    - checkbox "Monday"
+    - text: Monday
+    - checkbox "Tuesday"
+    - text: Tuesday
+    - checkbox "Wednesday"
+    - text: Wednesday
+    - checkbox "Thursday"
+    - text: Thursday
+    - checkbox "Friday"
+    - text: Friday
+    - checkbox "Saturday"
+    - text: Saturday
+    - checkbox "Sunday"
+    - text: Sunday
+  - group "Limits":
+    - generic: Limits
+    - generic: Maximum daily doses
+    - spinbutton "Maximum daily doses"
+    - generic: Minimum hours between doses
+    - spinbutton "Minimum hours between doses"
+  - generic: Notes
+  - textbox "Notes"
+  - group "Taper plan":
+    - generic: Taper plan
+    - button "Add taper step"
+  - button "Add schedule"
+  - link "Back to treatments":
+    - /url: /households/persistence-fixture/people/73001/treatments
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

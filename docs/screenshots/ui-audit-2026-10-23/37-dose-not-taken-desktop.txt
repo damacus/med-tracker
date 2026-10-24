@@ -1,0 +1,37 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+- main:
+  - heading "Dose records for Synthetic adult" [level=1]
+  - paragraph: "Medication: Synthetic tablets"
+  - paragraph: "Dose unit: tablet"
+  - link "Back to treatments":
+    - /url: /households/persistence-fixture/people/73001/treatments
+  - text: Start date
+  - textbox "Start date": 2026-10-23
+  - text: End date
+  - textbox "End date": 2026-10-23
+  - button "Show doses"
+  - paragraph: Choose up to 31 days.
+  - article "Dose 1 on 2026-10-23":
+    - heading "Dose 1 on 2026-10-23" [level=2]
+    - paragraph: Not taken
+    - paragraph:
+      - text: Scheduled for
+      - time: 23 Oct 2026, 08:00:00 UTC
+    - paragraph: "Reason: Asleep"
+    - paragraph: Synthetic audit outcome
+    - paragraph:
+      - text: Recorded at
+      - time: 23 Oct 2026, 22:36:32 UTC
+    - button "Reopen dose"
+    - button "Record dose"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

@@ -1,0 +1,36 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph: Administration
+  - heading "Owner recovery" [level=1]
+  - paragraph: Promote an eligible member to owner for households that have no usable owner. This change requires fresh sign-in confirmation.
+  - navigation "Platform administration":
+    - link "Platform users":
+      - /url: /platform/users
+    - link "Platform settings":
+      - /url: /platform/settings
+    - link "Support access":
+      - /url: /platform/support
+    - link "Owner recovery":
+      - /url: /platform/owner-recovery
+  - generic: Household search
+  - searchbox "Household search"
+  - button "Search"
+  - complementary:
+    - heading "Households" [level=2]
+    - list:
+      - link "Supported household":
+        - /url: /platform/owner-recovery?household=72602
+      - link "Synthetic household":
+        - /url: /platform/owner-recovery?household=72001
+  - heading "Select a household" [level=2]
+  - paragraph: Review its current ownership and eligible members before starting a recovery.
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

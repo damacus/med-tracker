@@ -1,0 +1,36 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph: Administration
+  - heading "Platform users" [level=1]
+  - paragraph: Manage who can sign in and who can administer MedTracker. Household roles are managed within each household.
+  - navigation "Platform administration":
+    - link "Platform users":
+      - /url: /platform/users
+    - link "Platform settings":
+      - /url: /platform/settings
+    - link "Support access":
+      - /url: /platform/support
+    - link "Owner recovery":
+      - /url: /platform/owner-recovery
+  - generic: Search by email
+  - searchbox "Search by email": no-match@example.test
+  - button "Search"
+  - link "Clear search":
+    - /url: /platform/users
+  - region "User directory":
+    - heading "User directory" [level=2]
+    - paragraph: Results for “no-match@example.test”
+    - generic: 0 users
+    - heading "No users found" [level=3]
+    - paragraph: Try a different email address or clear the search to see all users.
+    - paragraph: Showing 0 of 0 users
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

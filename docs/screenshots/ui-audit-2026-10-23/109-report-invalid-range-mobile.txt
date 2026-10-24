@@ -1,0 +1,52 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - button "Open menu":
+  - link "MedTracker home":
+    - /url: /
+    - text: MedTracker
+  - button "Open global search": Search
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+- main:
+  - paragraph: Wellness Analytics
+  - heading "Health Report" [level=1]
+  - alert: End date must be on or after start date.
+  - text: Person
+  - combobox "Person":
+    - option "All people" [selected]
+    - option "Synthetic adult"
+  - text: From
+  - textbox "From": 2026-10-25
+  - text: To
+  - textbox "To": 2026-10-24
+  - button "Apply date filters"
+  - region "Export health history":
+    - heading "Export health history" [level=2]
+    - paragraph: Download a health history PDF for one person over a chosen date range.
+    - text: Person for GP report
+    - combobox "Person for GP report":
+      - option "Select a person" [selected]
+      - option "Synthetic adult"
+    - text: From
+    - textbox "From": 2026-10-25
+    - text: To
+    - textbox "To": 2026-10-24
+    - checkbox "Include medication administration log"
+    - generic: Include medication administration log
+    - button "Download PDF"
+  - paragraph:
+    - link "MedTracker medicine review record":
+      - /url: /households/persistence-fixture/medicine-reviews/report
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
+- navigation "Bottom bar shortcuts":
+  - link "Home":
+    - /url: /households/persistence-fixture/dashboard
+    - generic: Home
+  - link "Inventory":
+    - /url: /households/persistence-fixture/medications
+    - generic: Inventory
+  - link "Medicine Finder":
+    - /url: /households/persistence-fixture/medications/finder
+    - generic: Medicine Finder

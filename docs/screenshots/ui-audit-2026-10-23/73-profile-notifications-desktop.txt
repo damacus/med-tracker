@@ -1,0 +1,99 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - status
+  - generic: SA
+  - paragraph: Profile settings
+  - heading "My Profile" [level=1]
+  - paragraph: persistence@example.test
+  - paragraph: Shape your account, safety preferences, and notification rhythm from one calm control room.
+  - tablist "My Profile":
+    - tab "Profile"
+    - tab "Security"
+    - tab "Notifications" [active] [selected]
+    - tab "Advanced"
+  - text: + + + +
+  - tabpanel "Notifications":
+    - heading "Notifications" [level=2]
+    - paragraph:
+      - generic: "Reminders: On"
+      - generic: 3 categories enabled
+    - heading "Notifications" [level=3]
+    - paragraph: Manage medication reminders and browser notifications
+    - region "Browser Notifications":
+      - heading "Browser Notifications" [level=3]
+      - paragraph: Allow this device to receive medication reminders
+      - status: Browser notification delivery is not configured.
+      - button "Enable" [disabled]
+      - button "Disable" [disabled]
+    - group "Notifications":
+      - generic: Notifications
+      - strong: Enable reminders
+      - generic: Send notifications at the times below
+      - checkbox "Enable reminders" [checked]
+      - heading "Notification Categories" [level=3]
+      - paragraph: Choose which notification types to receive
+      - strong: Dose Due Reminders
+      - generic: Receive a notification when a dose is due.
+      - checkbox "Dose Due Reminders" [checked]
+      - strong: Missed Dose Reminders
+      - generic: Receive a notification when a dose is overdue.
+      - checkbox "Missed Dose Reminders" [checked]
+      - strong: Low Stock Warnings
+      - generic: Receive a notification when medication stock is running low.
+      - checkbox "Low Stock Warnings" [checked]
+      - strong: Private Notification Content
+      - generic: Hide sensitive information like medication names in notifications.
+      - checkbox "Private Notification Content"
+      - generic "Reminder times Set when you want to receive reminders each day":
+        - strong: Reminder times
+        - generic: Set when you want to receive reminders each day
+      - button "Save"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

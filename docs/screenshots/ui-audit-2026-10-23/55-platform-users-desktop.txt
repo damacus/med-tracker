@@ -1,0 +1,81 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph: Administration
+  - heading "Platform users" [level=1]
+  - paragraph: Manage who can sign in and who can administer MedTracker. Household roles are managed within each household.
+  - navigation "Platform administration":
+    - link "Platform users":
+      - /url: /platform/users
+    - link "Platform settings":
+      - /url: /platform/settings
+    - link "Support access":
+      - /url: /platform/support
+    - link "Owner recovery":
+      - /url: /platform/owner-recovery
+  - generic: Search by email
+  - searchbox "Search by email"
+  - button "Search"
+  - region "User directory":
+    - heading "User directory" [level=2]
+    - paragraph: Sign-in access and platform permissions
+    - generic: 3 users
+    - table "Platform users and their account access":
+      - caption: Platform users and their account access
+      - rowgroup:
+        - row "User Platform access Account Sign-in Actions":
+          - columnheader "User"
+          - columnheader "Platform access"
+          - columnheader "Account"
+          - columnheader "Sign-in"
+          - columnheader "Actions"
+      - rowgroup:
+        - row "Name unavailable persistence@example.test Platform administrator Verified Sign-in enabled Revoke administrator Disable sign-in":
+          - rowheader "Name unavailable persistence@example.test":
+            - generic: Name unavailable
+            - generic: persistence@example.test
+          - cell "Platform administrator":
+            - generic: Platform administrator
+          - cell "Verified":
+            - generic: Verified
+          - cell "Sign-in enabled":
+            - generic: Sign-in enabled
+          - cell "Revoke administrator Disable sign-in":
+            - button "Revoke administrator"
+            - button "Disable sign-in"
+        - row "Supported owner support-owner@example.test Standard access Verified Sign-in enabled Grant administrator Disable sign-in":
+          - rowheader "Supported owner support-owner@example.test":
+            - generic: Supported owner
+            - generic: support-owner@example.test
+          - cell "Standard access":
+            - generic: Standard access
+          - cell "Verified":
+            - generic: Verified
+          - cell "Sign-in enabled":
+            - generic: Sign-in enabled
+          - cell "Grant administrator Disable sign-in":
+            - button "Grant administrator"
+            - button "Disable sign-in"
+        - row "Supported member supported-member@example.test Standard access Verified Sign-in enabled Grant administrator Disable sign-in":
+          - rowheader "Supported member supported-member@example.test":
+            - generic: Supported member
+            - generic: supported-member@example.test
+          - cell "Standard access":
+            - generic: Standard access
+          - cell "Verified":
+            - generic: Verified
+          - cell "Sign-in enabled":
+            - generic: Sign-in enabled
+          - cell "Grant administrator Disable sign-in":
+            - button "Grant administrator"
+            - button "Disable sign-in"
+    - paragraph: Showing 3 of 3 users
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

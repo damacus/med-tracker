@@ -1,0 +1,41 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph: Administration
+  - heading "Platform settings" [level=1]
+  - paragraph: Control registration and medicine lookup for MedTracker. Changes require fresh sign-in confirmation.
+  - navigation "Platform administration":
+    - link "Platform users":
+      - /url: /platform/users
+    - link "Platform settings":
+      - /url: /platform/settings
+    - link "Support access":
+      - /url: /platform/support
+    - link "Owner recovery":
+      - /url: /platform/owner-recovery
+  - heading "Registration access" [level=2]
+  - paragraph: Choose whether new accounts need an invitation.
+  - generic: Registration
+  - combobox "Registration":
+    - option "Open registration" [selected]
+    - option "Invite only"
+  - heading "Medicine lookup" [level=2]
+  - paragraph: Configure the terminology service and the order used to find medicine information.
+  - generic: Medicine lookup base URL
+  - textbox "Medicine lookup base URL": https://ontology.nhs.uk/production1/fhir
+  - generic: Medicine lookup token URL
+  - textbox "Medicine lookup token URL": https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token
+  - generic: Medicine lookup source priority
+  - textbox "Medicine lookup source priority": imported_catalog,local_nhs_dmd,cached_open_products_facts,open_products_facts,curated_catalog,nhs_dmd,supplements
+  - paragraph: "Comma-separated. Allowed sources: imported_catalog, local_nhs_dmd, cached_open_products_facts, open_products_facts, curated_catalog, nhs_dmd, supplements."
+  - generic: You will confirm your identity before saving.
+  - button "Save settings"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

@@ -1,0 +1,48 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Account security" [level=1]
+  - paragraph: persistence@example.test
+  - navigation "Account security actions":
+    - link "Change email":
+      - /url: /account/security/email
+    - link "Personal API keys":
+      - /url: /account/security/keys
+  - link "Platform administration":
+    - /url: /platform/users
+  - heading "Sign-in methods" [level=2]
+  - paragraph: "ZITADEL: not linked"
+  - paragraph: "Password: enabled"
+  - link "Change password":
+    - /url: /account/security/password
+  - paragraph: "Authenticator app: not enabled"
+  - link "Enable authenticator app":
+    - /url: /account/security/totp
+  - link "Add passkey":
+    - /url: /account/security/passkey
+  - heading "Active sessions" [level=2]
+  - list:
+    - strong: Other session
+    - paragraph: Signed in 23 Oct 2026 22:26 UTC. Expires 30 Oct 2026 22:26 UTC.
+    - button "Revoke session"
+    - strong: Other session
+    - paragraph: Signed in 23 Oct 2026 22:29 UTC. Expires 30 Oct 2026 22:29 UTC.
+    - button "Revoke session"
+    - strong: Other session
+    - paragraph: Signed in 23 Oct 2026 22:44 UTC. Expires 30 Oct 2026 22:44 UTC.
+    - button "Revoke session"
+    - strong: Current session
+    - paragraph: Signed in 23 Oct 2026 23:17 UTC. Expires 30 Oct 2026 23:17 UTC.
+  - button "Sign out"
+  - heading "Close account" [level=2]
+  - paragraph: Closing your account ends your access and revokes sign-in methods. Shared care records and audit history remain. Transfer ownership of any household where you are the only owner first.
+  - button "Close account"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

@@ -1,0 +1,47 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - paragraph: Administration
+  - heading "Support access" [level=1]
+  - paragraph: Request temporary, read-only access to help a household. Its owner decides whether to approve and can end access at any time.
+  - navigation "Platform administration":
+    - link "Platform users":
+      - /url: /platform/users
+    - link "Platform settings":
+      - /url: /platform/settings
+    - link "Support access":
+      - /url: /platform/support
+    - link "Owner recovery":
+      - /url: /platform/owner-recovery
+  - heading "Request support access" [level=2]
+  - generic: Household
+  - combobox "Household":
+    - option "Synthetic household" [selected]
+    - option "Supported household"
+  - generic: Reason
+  - textbox "Reason"
+  - paragraph: Requests expire after 24 hours. A household owner must approve before access is activated for 30 minutes.
+  - button "Request support access"
+  - heading "Sessions" [level=2]
+  - list:
+    - term: ID
+    - definition: "1"
+    - term: Household
+    - definition: Supported household
+    - term: Requested by
+    - definition: persistence@example.test
+    - term: Reason
+    - definition: Synthetic UI audit of owner-approved support
+    - term: State
+    - definition: ended
+    - term: Deadline
+    - definition: 2026-10-23 23:49:09 UTC
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

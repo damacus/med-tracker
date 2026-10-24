@@ -1,0 +1,76 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - link "Members":
+    - /url: /households/persistence-fixture/admin/memberships/74001?q=&role=all&status=all&sort=name&direction=asc&return_to=member&page=1
+  - paragraph: Synthetic household administration
+  - heading "Edit household role for persistence@example.test" [level=1]
+  - navigation "Household administration":
+    - link "Overview":
+      - /url: /households/persistence-fixture/admin
+    - link "Members":
+      - /url: /households/persistence-fixture/admin/users
+    - link "Care relationships":
+      - /url: /households/persistence-fixture/admin/carer_relationships
+    - link "Invitations":
+      - /url: /households/persistence-fixture/admin/invitations
+    - link "Security audit":
+      - /url: /households/persistence-fixture/admin/audit_logs
+    - link "Household settings":
+      - /url: /households/persistence-fixture/admin/household/edit
+  - generic: Household role
+  - combobox "Household role":
+    - option "Owner"
+    - option "Administrator" [selected]
+    - option "Member"
+  - button "Update household role"
+  - link "Cancel":
+    - /url: /households/persistence-fixture/admin/memberships/74001?q=&role=all&status=all&sort=name&direction=asc&return_to=member&page=1
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

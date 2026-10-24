@@ -1,0 +1,70 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - link "Cancel":
+    - /url: /households/persistence-fixture/medications
+  - heading "Add a New Medication" [level=1]
+  - list "Medication setup progress":
+    - listitem: Details
+    - listitem: Dose
+    - listitem: Supply
+    - listitem: Warnings
+  - heading "Medication details" [active] [level=2]
+  - generic: Name
+  - textbox "Name"
+  - generic: Display name
+  - textbox "Display name"
+  - generic: Description
+  - textbox "Description"
+  - generic: Location
+  - combobox "Location":
+    - option "Synthetic cabinet" [selected]
+  - button "Continue"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

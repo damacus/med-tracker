@@ -1,0 +1,24 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - link "Households":
+    - /url: /
+  - heading "NHS dm+d catalogue" [level=1]
+  - paragraph: Upload a release archive to update the local barcode catalogue. Imports continue when you leave this page.
+  - generic: Release archive
+  - button "Release archive"
+  - paragraph: ZIP archive, up to 500 MB. Include the AMPP and GTIN release files.
+  - button "Import release"
+  - heading "Import history" [level=2]
+  - link "Refresh import status":
+    - /url: /admin/nhs-dmd
+  - paragraph: No imports yet.
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

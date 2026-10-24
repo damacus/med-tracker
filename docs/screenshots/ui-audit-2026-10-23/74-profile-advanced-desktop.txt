@@ -1,0 +1,77 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Search Ctrl K":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+    - generic: Ctrl K
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - status
+  - generic: SA
+  - paragraph: Profile settings
+  - heading "My Profile" [level=1]
+  - paragraph: persistence@example.test
+  - paragraph: Shape your account, safety preferences, and notification rhythm from one calm control room.
+  - tablist "My Profile":
+    - tab "Profile"
+    - tab "Security"
+    - tab "Notifications"
+    - tab "Advanced" [active] [selected]
+  - text: + + + +
+  - tabpanel "Advanced":
+    - heading "Advanced" [level=2]
+    - paragraph:
+      - generic: Data export available
+    - generic "Data backup Download a copy of your medication and health records.":
+      - strong: Data backup
+      - generic: Download a copy of your medication and health records.
+    - generic "System Information Application version and resources":
+      - strong: System Information
+      - generic: Application version and resources
+    - heading "Danger Zone" [level=3]
+    - paragraph: Closing your account ends your access and revokes sign-in methods. Shared care records and audit history remain. Transfer ownership of any household where you are the only owner first.
+    - link "Close account":
+      - /url: /account/security
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

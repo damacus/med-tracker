@@ -1,0 +1,109 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Primary navigation":
+  - link "MedTracker":
+    - /url: /
+    - generic: M
+    - text: MedTracker
+  - link "Open global search":
+    - /url: /households/persistence-fixture/search
+    - text: Search
+  - navigation "Primary navigation":
+    - link "Dashboard":
+      - /url: /households/persistence-fixture/dashboard
+      - text: Dashboard
+    - link "Inventory":
+      - /url: /households/persistence-fixture/medications
+      - text: Inventory
+    - link "Locations":
+      - /url: /households/persistence-fixture/locations
+      - text: Locations
+    - link "People":
+      - /url: /households/persistence-fixture/people
+      - text: People
+    - link "Medication Finder":
+      - /url: /households/persistence-fixture/medications/finder
+      - text: Medication Finder
+    - link "Medicine reviews":
+      - /url: /households/persistence-fixture/medicine-reviews
+      - text: Medicine reviews
+    - link "Reports":
+      - /url: /households/persistence-fixture/reports
+      - text: Reports
+    - link "Administration":
+      - /url: /households/persistence-fixture/admin
+      - text: Administration
+    - link "Profile":
+      - /url: /households/persistence-fixture/profile
+      - text: Profile
+  - button "SA Synthetic adult My Account":
+    - generic: SA
+    - generic: Synthetic adult
+  - link "Households Synthetic household":
+    - /url: /households/choose?switch=1
+    - generic: Households
+    - generic: Synthetic household
+  - button "Sign Out"
+- banner
+- main:
+  - link "Back to Person":
+    - /url: /households/persistence-fixture/people/73001
+  - heading "Treatments for Synthetic adult" [level=1]
+  - navigation "Add treatment":
+    - link "Add schedule":
+      - /url: /households/persistence-fixture/people/73001/treatments/schedules/new
+    - link "Assign medication":
+      - /url: /households/persistence-fixture/people/73001/treatments/assignments/new
+  - region "Schedules":
+    - heading "Schedules" [level=2]
+    - article "Synthetic tablets schedules":
+      - heading "Synthetic tablets" [level=3]:
+        - link "Synthetic tablets":
+          - /url: /households/persistence-fixture/medications/80001
+      - link "Dose records":
+        - /url: /households/persistence-fixture/people/73001/treatments/schedules/1/doses
+      - paragraph: 1.0 tablet · Active
+      - term: Schedule type
+      - definition: daily
+      - term: Dates
+      - definition: 2026-10-23 to 2027-10-23
+      - term: Dose cycle
+      - definition: daily
+      - term: Maximum daily doses
+      - definition: "1"
+      - term: Times
+      - definition: 08:00
+      - link "Edit schedule":
+        - /url: /households/persistence-fixture/people/73001/treatments/schedules/1/edit
+      - generic "Pause options"
+      - option "Select a reason" [selected]
+      - option "Out of supply"
+      - option "Temporarily not needed"
+      - option "Clinician advice"
+      - option "Side effects"
+      - option "Other"
+      - button "Retire schedule"
+  - region "Medication assignments":
+    - heading "Medication assignments" [level=2]
+    - article "Synthetic tablets assignments":
+      - heading "Synthetic tablets" [level=3]:
+        - link "Synthetic tablets":
+          - /url: /households/persistence-fixture/medications/80001
+      - link "Dose records":
+        - /url: /households/persistence-fixture/people/73001/treatments/assignments/81001/doses
+      - paragraph: 2.0 tablet · Active
+      - term: Administration
+      - definition: as needed
+      - link "Edit assignment":
+        - /url: /households/persistence-fixture/people/73001/treatments/assignments/81001/edit
+      - generic "Pause options"
+      - option "Select a reason" [selected]
+      - option "Out of supply"
+      - option "Temporarily not needed"
+      - option "Clinician advice"
+      - option "Side effects"
+      - option "Other"
+      - button "Unassign medication"
+  - navigation "Treatment pages"
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

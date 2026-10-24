@@ -1,0 +1,18 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Change email" [level=1]
+  - text: New email address
+  - textbox "New email address"
+  - button "Continue"
+  - link "Back to account security":
+    - /url: /account/security
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

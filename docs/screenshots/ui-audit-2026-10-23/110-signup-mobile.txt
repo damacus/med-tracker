@@ -1,0 +1,32 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Create Account" [level=1]
+  - paragraph: Choose a password or passkey, then verify your email.
+  - group "Sign-in method":
+    - generic: Sign-in method
+    - radio "Password" [checked]
+    - text: Password
+    - radio "Passkey"
+    - text: Passkey
+  - text: Password
+  - textbox "Password"
+  - paragraph: Use at least 15 characters.
+  - text: Name
+  - textbox "Name"
+  - text: Date of birth
+  - textbox "Date of birth"
+  - text: Email
+  - textbox "Email"
+  - button "Create Account"
+  - link "Sign in":
+    - /url: /login
+- contentinfo:
+  - generic: MedTracker · Care, kept together.

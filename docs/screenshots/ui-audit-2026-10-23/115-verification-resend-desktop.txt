@@ -1,0 +1,19 @@
+- link "Skip to content":
+  - /url: "#main"
+- banner:
+  - link "MedTracker home":
+    - /url: /
+    - text: M MedTracker
+  - button "Appearance"
+  - link "Account security":
+    - /url: /account/security
+- main:
+  - heading "Resend verification email" [level=1]
+  - paragraph: Enter the email address you used to create your account and we will send a new verification link if one is needed.
+  - text: Email address
+  - textbox "Email address"
+  - button "Resend verification email"
+  - link "Back to sign in":
+    - /url: /login
+- contentinfo:
+  - generic: MedTracker · Care, kept together.
