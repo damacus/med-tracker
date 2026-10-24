@@ -5,6 +5,73 @@ use med_tracker::models::{
 };
 
 #[tokio::test]
+async fn dashboard_reads_timing_history_only_when_effective_rules_need_it() {
+    use med_tracker::models::entities::{medication_take, person_medication};
+    use sea_orm::{ActiveModelTrait, Set, prelude::Decimal};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    let mut app = Application::new().await;
+    let now = chrono::Utc::now().naive_utc();
+    for (id, days_ago) in [(84995, 60), (84996, 0)] {
+        let taken_at = now - chrono::Duration::days(days_ago);
+        medication_take::ActiveModel {
+            id: Set(id),
+            household_id: Set(72001),
+            person_medication_id: Set(Some(81001)),
+            dose_amount: Set(Some(Decimal::ONE)),
+            dose_unit: Set(Some("tablet".into())),
+            taken_at: Set(Some(taken_at)),
+            portable_id: Set(uuid::Uuid::new_v4().to_string()),
+            created_at: Set(taken_at),
+            updated_at: Set(taken_at),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    }
+    let history_reads = Arc::new(AtomicUsize::new(0));
+    let observed = Arc::clone(&history_reads);
+    app.context.db.set_metric_callback(move |info| {
+        let sql = &info.statement.sql;
+        if sql.starts_with("SELECT ")
+            && sql.contains("FROM \"medication_takes\"")
+            && sql
+                .split_once(" WHERE ")
+                .is_some_and(|(_, condition)| !condition.contains("\"taken_at\""))
+        {
+            observed.fetch_add(1, Ordering::Relaxed);
+        }
+    });
+    let before = snapshot(&app).await;
+    assert!(!before["rows"].as_array().unwrap().is_empty());
+    assert_eq!(before["completed"].as_array().unwrap().len(), 1);
+    assert_eq!(history_reads.load(Ordering::Relaxed), 0);
+
+    person_medication::ActiveModel {
+        id: Set(81001),
+        max_daily_doses: Set(Some(0)),
+        ..Default::default()
+    }
+    .update(&app.fixture.admin)
+    .await
+    .unwrap();
+    let after = snapshot(&app).await;
+    assert_eq!(history_reads.load(Ordering::Relaxed), 1);
+    assert!(after["rows"].as_array().unwrap().iter().any(|row| {
+        row["source_type"] == "person_medication"
+            && row["source_id"] == 81001
+            && row["status"] == "max_reached"
+            && row["can_record"] == false
+    }));
+    assert_eq!(before["completed"], after["completed"]);
+    app.fixture.close().await;
+}
+
+#[tokio::test]
 async fn dashboard_respects_shared_dose_limits_and_person_access() {
     let app = Application::new().await;
     app.fixture.seed_foreign_household(72002).await;
