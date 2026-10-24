@@ -48,8 +48,7 @@ dialog.modal:not([open]) { display: none; }
 @media (max-width: 350px) { .shell-header-inner.app-header { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
 
-.login-page { --login-accent: #008577; min-height: 100dvh; padding: 1rem; background: radial-gradient(circle at 50% -10%, #f0f9ff 0%, #f8fafc 42%, #e2e8f0 100%); }
-html.dark .login-page { --login-accent: #2dd4bf; background: radial-gradient(circle at 50% -10%, #0f172a 0%, #020817 58%, #01050e 100%); }
+.login-page { min-height: 100dvh; padding: 1rem; background: radial-gradient(circle at 50% -10%, var(--surface-container-lowest) 0%, var(--surface-container-low) 42%, var(--surface-container-high) 100%); }
 .login-content { display: flex; flex-direction: column; justify-content: center; gap: 1rem; min-height: calc(100dvh - 2rem); max-width: 72rem; margin-inline: auto; }
 .login-surface { display: grid; width: 100%; overflow: hidden; border-radius: 1rem; }
 .login-brand { display: flex; flex-direction: column; gap: .75rem; min-width: 0; padding: 1rem; text-align: center; border-bottom: 1px solid var(--border-color); }
@@ -72,22 +71,17 @@ html.dark .login-page { --login-accent: #2dd4bf; background: radial-gradient(cir
 .login-field-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .login-field-heading a { font-size: .75rem; font-weight: 700; }
 .login-input { position: relative; }
-.login-input input { width: 100%; height: 3.5rem; min-height: 3.5rem; padding: 1rem 3rem 1rem 1rem; border: 1px solid var(--border-color); border-radius: .5rem; font-size: 1rem; box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
+.login-input input { width: 100%; height: 3.5rem; min-height: 3.5rem; padding: 1rem 3rem 1rem 1rem; font-size: 1rem; }
 .login-input > svg { position: absolute; top: 50%; right: 1rem; width: 1.3125rem; height: 1.3125rem; transform: translateY(-50%); pointer-events: none; color: var(--on-surface-variant); }
-.login-primary { display: flex; width: 100%; height: auto; min-height: 4rem; padding: 1.25rem; border: 0; border-radius: 999px; background: var(--login-accent); color: white; font-size: 1rem; font-weight: 700; box-shadow: 0 8px 15px rgb(0 121 107 / .15); }
+.login-primary { width: 100%; height: auto; min-height: 4rem; padding: 1.25rem; border-radius: var(--shape-full); font-size: 1rem; font-weight: 700; }
 .login-primary > span { flex: 1; }
 .login-primary > svg { flex: none; width: 1.375rem; height: 1.375rem; }
-.login-primary:hover { background: #00776b; }
-html.dark .login-primary { color: #082f2b; }
-html.dark .login-primary:hover { background: #5eead4; }
 .login-options { display: grid; gap: 1rem; margin-top: 2.25rem; }
 .login-options > p { font-size: .875rem; font-weight: 600; color: var(--on-surface-variant); }
-.login-secondary { display: flex; justify-content: flex-start; gap: 1.25rem; width: 100%; height: auto; min-height: 4rem; padding: .5rem 1rem .5rem .5rem; border: 1px solid var(--border-color); border-radius: .5rem; background: var(--card); color: var(--foreground); font-size: 1rem; font-weight: 700; text-align: left; box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
-.login-secondary:hover { border-color: var(--login-accent); background: var(--surface-container-low); }
+.login-secondary { justify-content: flex-start; gap: 1.25rem; width: 100%; height: auto; min-height: 4rem; padding: .5rem 1rem .5rem .5rem; font-size: 1rem; font-weight: 700; text-align: left; }
 .login-option-icon { flex: none; width: 3rem; height: 3rem; }
 .login-secondary > span { flex: 1; min-width: 0; white-space: normal; }
 .login-option-chevron { flex: none; width: 1.5rem; height: 1.5rem; }
-.login-page :focus-visible { outline-color: var(--login-accent); }
 .login-error { margin-bottom: 1rem; }
 .login-footer { display: grid; gap: 1rem; text-align: center; font-size: .875rem; font-weight: 600; color: var(--on-surface-variant); }
 .login-footer > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .5rem 1.5rem; }
