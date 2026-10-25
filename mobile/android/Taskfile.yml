@@ -12,7 +12,7 @@ tasks:
     dir: "{{.TASKFILE_DIR}}"
     desc: Build and lint the separate interactive watch preview
     cmds:
-      - ./gradlew :wear:assemblePreview :wear:lintPreview :wear:verifyCompanionDependencies --no-daemon --max-workers=1
+      - ./gradlew :wear:assemblePreview :wear:lintPreview :wear:assembleDebug :wear:verifyCompanionDependencies --no-daemon --max-workers=1
 
   jvm:check:
     dir: "{{.TASKFILE_DIR}}"

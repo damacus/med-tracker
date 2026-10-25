@@ -15,16 +15,29 @@ Build and check it with `task android:wear:preview:test` and
 `mobile/android/wear/build/outputs/apk/preview/wear-preview.apk`.
 
 The preview uses sample vitamins and a local Today → dose → result flow.
-The central outlined action fills on press; moving outside cancels the click.
+The central outlined action fills horizontally during a one-second hold and
+completes while the finger is still down. Releasing early drains the fill over
+150 ms; leaving the button, changing screens or interrupting the app cancels
+the hold. Keyboard and accessibility activation remain available.
 “Take dose” marks only that sample as recorded. “Later” returns to Today without
 recording. Swipe right to go back; scroll or use the crown to reach later items.
 The result explicitly identifies the simulation. No phone session or clinical
 write is involved. Recorded samples survive activity recreation, but the preview
 does not provide durable history or backend synchronisation.
 
-Compose and navigation dependencies belong only to the preview variant. The
-debug, staging and release companions retain their dependency check. Android CI
-also runs the preview tests, build and lint.
+Compose UI and navigation runtime dependencies belong only to the preview
+variant. The module-wide Compose compiler needs a compile-only Compose runtime;
+it is not packaged in the debug, staging or release companions, which retain
+their dependency check. Android CI also runs the preview tests, build and lint,
+including debug compilation.
+
+The intended real workflow is next due dose → review medicine, person and amount
+→ deliberate hold confirmation → authoritative confirmed, pending or error
+result. The connection protocol below has no dose feed, recording command,
+idempotency key or recording acknowledgement. Phone-backed dose display and
+recording need a separately verified Loco/API and Data Layer integration that
+retains phone session authority and current care permissions. The preview does
+not establish offline retry or guardianship policy.
 
 ### Phone connection protocol
 

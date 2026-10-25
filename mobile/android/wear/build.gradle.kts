@@ -40,6 +40,10 @@ androidComponents {
 }
 
 dependencies {
+    compileOnly(platform(libs.androidx.compose.bom))
+    compileOnly(libs.androidx.compose.runtime)
+    testCompileOnly(platform(libs.androidx.compose.bom))
+    testCompileOnly(libs.androidx.compose.runtime)
     "previewImplementation"(platform(libs.androidx.compose.bom))
     "previewImplementation"(libs.androidx.activity.compose)
     "previewImplementation"(libs.wear.compose.material3)

@@ -88,7 +88,7 @@ private fun PreviewApp() {
                     }
                     entry<Dose> { route ->
                         val dose = session.doses.first { it.id == route.id }
-                        DoseScreen(dose, route.id in recorded,
+                        DoseScreen(dose, route.id in recorded, backStack.lastOrNull() == route,
                             onTake = {
                                 if (session.record(route.id)) {
                                     savedRecorded = session.recorded.value.toIntArray()
@@ -148,7 +148,7 @@ private fun TodayScreen(doses: List<DemoDose>, recorded: Set<Int>, onDose: (Int)
 }
 
 @Composable
-private fun DoseScreen(dose: DemoDose, recorded: Boolean, onTake: () -> Unit, onLater: () -> Unit) {
+private fun DoseScreen(dose: DemoDose, recorded: Boolean, active: Boolean, onTake: () -> Unit, onLater: () -> Unit) {
     val state = rememberTransformingLazyColumnState()
     ScreenScaffold(scrollState = state, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 22.dp)) { padding ->
         TransformingLazyColumn(state = state, contentPadding = padding, modifier = Modifier.fillMaxSize(),
@@ -161,7 +161,7 @@ private fun DoseScreen(dose: DemoDose, recorded: Boolean, onTake: () -> Unit, on
                 }
             }
             item {
-                PressPill(if (recorded) "Sample recorded" else "Take dose", !recorded, onTake)
+                HoldToTakePill(!recorded, active, onTake)
             }
             item {
                 Button(onClick = onLater, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
