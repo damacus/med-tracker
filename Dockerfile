@@ -8,7 +8,7 @@ RUN ./node_modules/.bin/tailwindcss -i assets/static/css/app.css -o assets/stati
     && cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js
 
 FROM rust:1.99.1-slim-trixie@sha256:aab42391a986424e22d6a3ec14f37bc6dd3dacff4d457ca7cccd781e02297cc6 AS toolchain
-FROM ubuntu:26.04@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944 AS build
+FROM ubuntu:26.04@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944 AS dependencies
 ARG CARGO_BUILD_JOBS=2
 ARG TARGETARCH
 RUN apt-get update && apt-get install --yes --no-install-recommends \
@@ -22,6 +22,29 @@ ENV CARGO_HOME=/usr/local/cargo \
     RUST_ICU_MAJOR_VERSION_NUMBER=78 \
     CARGO_INCREMENTAL=0
 WORKDIR /app
+FROM dependencies AS development
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    curl libasound2t64 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcups2t64 \
+    libdbus-1-3 libdrm2 libgbm1 libnspr4 libnss3 libx11-6 libxcb1 libxcomposite1 \
+    libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=frontend /usr/local/ /usr/local/
+RUN case "$TARGETARCH" in \
+      amd64) task_sha=02c679ffae53dca791804847d78b31731615894e292948397c971c87ac9e95bd ;; \
+      arm64) task_sha=7e0044108830cec0534577b289564e3b7c83e6df276feb631a1edc63d04e4ebe ;; \
+      *) exit 1 ;; esac \
+    && curl --fail --location --output /tmp/task.tar.gz "https://github.com/go-task/task/releases/download/v3.52.0/task_linux_${TARGETARCH}.tar.gz" \
+    && echo "$task_sha  /tmp/task.tar.gz" | sha256sum --check --strict \
+    && tar -xzf /tmp/task.tar.gz -C /usr/local/bin task \
+    && rm /tmp/task.tar.gz
+RUN cargo install --locked cargo-nextest --version 0.9.149 \
+    && cargo install --locked cargo-watch --version 8.5.3
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    libcairo2 libpango-1.0-0 fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+ENV CARGO_INCREMENTAL=1
+
+FROM dependencies AS build
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY migration/ migration/
 COPY src/ src/

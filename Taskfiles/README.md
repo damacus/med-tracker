@@ -1,186 +1,92 @@
 # Task runner guide
 
-MedTracker uses [Task](https://taskfile.dev/) as the public entry point for
-development, tests, documentation, security checks, and local production-image
-validation. Run `task -l` for the current command list.
+Root Loco commands own the active Rust application. Rails tasks remain available
+under `rails:*` for read-only reference work. Obsolete `rust:*` and `api:*`
+namespaces and their migration Taskfiles have been removed. Recorded commands in
+historical reports describe the tools that existed when those reports were written.
 
-Do not call Docker Compose or Rails commands directly when a Task command owns
-the workflow.
+## Local Docker environments
 
-## File layout
+Docker Compose v2.24.4 or later, Task, Python 3, curl and Docker are required.
+All application ports bind to loopback and Docker assigns the host ports.
+Run `task dev:ps`, `task test:ps` or `task prod:ps` to find them.
+`task dev` is the same as `task dev:up`.
 
-`Taskfile.yml` includes the files owned by each application and tool. Application
-commands live beside their owner; this directory holds repository automation.
-Existing root commands remain available while callers adopt the explicit namespaces.
+| Operation | Development | Test | Local production image |
+| --- | --- | --- | --- |
+| Build | `task dev:build` | `task test:build` | `task prod:build` |
+| Start | `task dev:up` | `task test:up` | `task prod:up` |
+| Stop | `task dev:down` | `task test:down` | `task prod:down` |
+| Restart | `task dev:restart` | `task test:restart` | `task prod:restart` |
+| Logs | `task dev:logs` | `task test:logs` | `task prod:logs` |
+| Status | `task dev:ps` | `task test:ps` | `task prod:ps` |
+| Synthetic seed | `task dev:seed` | `task test:seed` | Unavailable |
 
-| File                                             | Scope                                              |
-|--------------------------------------------------|----------------------------------------------------|
-| `../rails/Taskfile.yml`                          | Rails commands and environment includes            |
-| `../rails/tasks/internal.yml`                    | Shared Docker Compose operations                   |
-| `../rails/tasks/dev.yml`                         | Development services and data                      |
-| `../rails/tasks/test.yml`                        | Docker-backed test services                        |
-| `../rails/tasks/local.yml`                       | Host tests with a local database                   |
-| `../rails/tasks/prod.yml`                        | Local production-image checks                      |
-| `../rails/tasks/audit.yml`                       | Audit export and verification                      |
-| `../rails/tasks/lighthouse.yml`                  | Browser quality checks                             |
-| `../rust/Taskfile.yml`                           | Rust API, web and UI package commands              |
-| `../client-tools/Taskfile.yml`                   | CLI and MCP Cargo workspace                        |
-| `../client-tools/openapi-generator/Taskfile.yml` | Native API generation                              |
-| `../docs/Taskfile.yml`                           | Documentation build and preview                    |
-| `../mobile/android/Taskfile.yml`                 | Android build and checks                           |
-| `frontend.yml`                                   | Tailwind CSS, static assets and Playwright runners |
-| `agents.yml`                                     | Translator integration                             |
-| `openspec.yml`                                   | OpenSpec validation and status                     |
-| `worktree.yml`                                   | Worktree creation and cleanup                      |
+Development and test use the same pinned Rust, Node and Task toolchain.
+Sources bind into the container; Cargo registry, Git downloads, target artifacts
+and node modules use persistent named volumes. Incremental compilation is enabled.
+The application rebuilds frontend assets and reloads Rust, templates, CSS and
+configuration through cargo-watch. Generated CSS and vendor JS are excluded from
+the watcher to prevent restart loops.
+Build development once, then start it. Rebuild the image after toolchain changes.
 
-Keep user-facing commands in the file that owns their environment. Put shared
-Compose mechanics in `rails/tasks/internal.yml`.
+Each checkout has a project name derived from its absolute path, with a separate
+suffix for dev, test and prod. Each environment owns its database, storage and
+compiler caches. Inherited Compose project/file/profile settings are ignored.
+No arbitrary database URL or existing Compose project can be selected. Data volumes
+without this workflow’s ownership label are rejected instead of adopted.
 
-Rails source and Docker configuration still live at the repository root. Only
-its Taskfiles have moved under `rails/`; the source relocation is a separate change.
-`Taskfiles/local.yml` is a compatibility symlink for the existing database-login spec.
+`down` preserves data and caches. `dev:reset` and `test:reset` require
+`CONFIRM=<exact-project-name>`; the refusal message prints the required name.
+Reset removes only that environment’s database and fixture-storage volumes.
+Compiler and dependency caches survive. There is no production reset or seed task.
+Seeding invokes the existing application guard: only an empty development or test
+database can receive synthetic fixtures. No populated database is silently reset.
 
-## Namespaces and working directories
+Startup runs migrations with the migration identity, then creates a restricted
+runtime login belonging to `med_tracker_app`. Runtime is not a superuser and has
+no database creation, role creation or RLS bypass privileges. Local passwords are
+fixed synthetic credentials. Operational role provisioning uses createuser and a
+single fixed ALTER ROLE statement because SeaORM cannot administer PostgreSQL roles.
+Application queries and migrations retain their existing SeaORM boundaries.
 
-Prefer `rails:*`, `rust:api:*`, `rust:web:*`, `rust:ui:*`, `api-clients:*`,
-`client-tools:*`, `mobile:android:*` and `docs:*`.
-The old Rails commands, `api:*`, `api-clients:*` and `android:*`
-remain available. New code should use the explicit namespace.
+`prod:*` runs only a local release-image check. The existing release build uses
+`cargo --release` and the shell-free, non-root `FROM scratch` runtime, with no
+source mounts or development toolchain. The local stack starts server, worker
+and scheduler; it does not deploy anywhere. Production keeps secure cookies enabled.
+The printed HTTP loopback URL supports health and page preview; authenticated
+production browser use needs a local HTTPS endpoint. The task does not weaken
+that application guard. Set `LOCO_IMAGE=<existing-local-tag>` to exercise an
+existing release image, or use `prod:build` to build the current release image.
+`task image:test` and `task test:scheduler:image` retain deeper production-image
+and scheduled-write proof.
 
-Root and local invocation use the same commands and working directories:
-
-```fish
-task rails:rubocop
-task -d rails rubocop
-task rust:api:check
-task -d rust/api check
-task client-tools:check
-task -d client-tools check
-task mobile:android:test
-task -d mobile/android test
-task docs:build
-task -d docs build
-```
-
-Rails, API compatibility runners and API generation execute from the repository
-root because they use root-owned Compose, scripts, contracts and output paths.
-The client-tools, Android, web and UI packages execute from their own directories.
-Explicit task directories also make direct local invocation work.
-
-`task rust:build` compiles the UI and API packages. It does not rebuild a running
-container. Existing `api:contract-up` and `rust:api:contract-up` commands build
-and start only a named disposable contract environment; they are not development
-or production restart commands. This refactor does not introduce a Rust development
-runtime or change database-reset behaviour.
-
-## Common commands
+## Focused tests and CI
 
 ```fish
-task test
-task test TEST_FILE=spec/models/person_spec.rb
-task test:preflight
-task rubocop
-task rubocop:test
-task brakeman
+rtk task test:unit TARGET=med-tracker FILTER=domain_name
+rtk task test:integration TARGET=care_api FILTER=fixture
+rtk task test:browser FILTER=login
+rtk task test:tooling
 ```
 
-```fish
-task dev:up
-task dev:seed
-task dev:logs
-task dev:stop
-```
+Unit TARGET selects a workspace package; integration/browser TARGET selects a Rust
+test binary. Filters are passed as one argument and zero matches fail. Integration
+and browser runners use isolated test services; unit tests start neither database
+nor storage. The integration/browser harness creates its own restricted
+runtime roles and template-cloned databases. `test:up` keeps an accessible test
+application and services running. Stop them explicitly with `test:down`.
 
-```fish
-task docs:build
-task docs:serve
-task openspec:validate
-```
+Hosted CI retains its host toolchain path when `CI=true` or when the existing
+owned-database harness sets `MEDTRACKER_OWNED_DATABASE=1`. The host acceptance
+path continues to provision and tear down disposable services when no owned
+database is supplied. Explicit `host:test:unit`, `host:test:integration` and
+`host:test:browser` are available for that path. `task ci` remains the application
+gate; tooling-only changes use `task test:tooling` and relevant image checks.
 
-`task dev:rebuild`, `task test:rebuild`, and `task prod:rebuild` delete the
-selected environment's database volumes. Use them only when a clean database is
-required.
+## Other owners
 
-RuboCop runs with the Performance plugin and preview behaviour for the next
-major release. The project explicitly keeps its quote and indentation styles,
-selected complexity limits, and file exclusions. Convention offences still fail
-CI. Use `task rubocop:test` to check that performance findings and style failures
-remain enforced when RuboCop or its configuration changes.
-
-## Compose isolation
-
-The shared internal tasks use one `compose.yaml` with `dev`, `test`, and `prod`
-profiles. The Compose project name contains the worktree directory name and a
-hash of its absolute path. This keeps containers, networks, and volumes separate
-between worktrees.
-
-Every internal Compose task requires an `ENVIRONMENT` value. Public task files
-pass that value when they call `internal:*` tasks.
-
-`internal:run` starts a temporary service container through the worktree's
-Compose lock, so pass the complete command once. The root Taskfile defaults to
-`run: once`, which would deduplicate repeated calls to the same task, so every
-internal helper declares `run: always`. These helpers are imperative operations
-where deduplication would silently skip requested work.
-
-## Add a public command
-
-1. Choose the task file that owns the command's environment or purpose.
-2. Reuse an `internal:*` task for shared Compose work.
-3. Pass required values through `vars` — task-level `env` does not cross `task:` calls, so an `internal:*` callee can only forward into its container env values it received through `vars`.
-4. Add a short `desc` so the command appears clearly in `task -l`.
-5. Add a `summary` when the command needs usage examples or safety notes.
-
-Example:
-
-```yaml
-console:
-  desc: Open the development Rails console
-  cmds:
-    - task: internal:run
-      vars:
-        ENVIRONMENT: dev
-        COMMAND: rails console
-```
-
-Use `requires.vars` when a command must refuse missing input. Use environment
-transport for values that can contain spaces or shell metacharacters. Do not
-interpolate untrusted values into a shell command.
-
-## Change an internal task
-
-An internal task can affect development, test, and local production-image
-workflows. Check every caller before changing it:
-
-```fish
-rg 'internal:task-name|task: task-name' Taskfile.yml Taskfiles rails rust
-```
-
-Verify the narrow public commands that use the changed boundary. Run the normal
-repository gates when executable task configuration changes.
-
-## Variables
-
-Common public variables include:
-
-| Variable      | Use                                           |
-|---------------|-----------------------------------------------|
-| `TEST_FILE`   | Limit `task test` to a spec path              |
-| `AUTOCORRECT` | Enable RuboCop correction                     |
-| `NO_CACHE`    | Rebuild a selected image without Docker cache |
-| `COMPONENTS`  | Select RubyUI families for comparison         |
-| `OUTPUT`      | Set an external RubyUI comparison directory   |
-
-Each operator command can define additional required variables. Read its
-`summary` with `task --summary <task-name>` before use.
-
-## Troubleshooting
-
-- If Task cannot find a command, run `task -l` and use its full namespace.
-- If an internal task reports a missing variable, check the caller's `vars` and
-  `env` blocks.
-- If Docker uses an unexpected service or volume, confirm the selected profile
-  and worktree before changing data.
-- A wrapper can call `internal:run` several times in one execution: internal
-  helpers declare `run: always`, so each call runs in order instead of being
-  deduplicated.
+Frontend assets use `frontend:*`; CLI/MCP use `client-tools:*`; generated clients
+use `api-clients:*`; Android uses `mobile:android:*`; documentation uses `docs:*`.
+`task -l` lists the current public surface. Do not use the retained old Rust source
+as an active application or migration runner.

@@ -10,12 +10,6 @@ includes:
   rails:
     taskfile: rails/Taskfile.yml
     dir: rails
-  rust:
-    taskfile: rust/Taskfile.yml
-    dir: .
-  api:
-    taskfile: rust/api/Taskfile.yml
-    dir: .
   client-tools:
     taskfile: client-tools/Taskfile.yml
     dir: client-tools
@@ -144,7 +138,7 @@ tasks:
       [
         'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage down --volumes',
       ]
-  dev:
+  host:dev:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: &icu_major "78"
       RUST_ICU_LINK_SEARCH_DIR: &icu_lib
@@ -207,16 +201,16 @@ tasks:
     cmds:
       - task: test:unit
       - task: test:acceptance
-  test:unit:
+  host:test:unit:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     desc: Run database-free Rust library, doc and JavaScript unit tests
     cmds:
       - task: frontend:test
-      - 'cargo nextest run --locked --workspace --lib --no-tests=fail --test-threads 2 {{.FILTER | default ""}}'
+      - 'cargo nextest run --locked --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
       - cargo test --locked --workspace --doc
-  test:integration:
+  host:test:integration:
     desc: Run compiled API, security and database integration tests
     deps: [frontend:prepare]
     vars:
@@ -234,7 +228,7 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
-      - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET}}{{else}}--tests{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
+      - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--tests{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
   test:integration:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -294,7 +288,7 @@ tasks:
           cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
         fi
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}}
-  test:browser:
+  host:test:browser:
     desc: Run the Rust browser journeys against a private owned database
     deps: [frontend:prepare]
     vars:
@@ -304,6 +298,7 @@ tasks:
       - task: '{{if eq (.MEDTRACKER_OWNED_DATABASE | default "") "1"}}test:browser:direct{{else}}test:browser:owned{{end}}'
         vars:
           FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
+          TARGET: '{{.TARGET | default "browser"}}'
           FILTER: '{{.FILTER | default ""}}'
   test:browser:direct:
     env:
@@ -311,7 +306,7 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
-      - 'cargo nextest run --locked --test browser --run-ignored only --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
+      - 'cargo nextest run --locked --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
   test:browser:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -345,15 +340,17 @@ tasks:
         export ACTIVE_STORAGE_S3_ACCESS_KEY_ID=storage-smoke-access;
         export ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY=storage-smoke-secret;
         export ACTIVE_STORAGE_S3_FORCE_PATH_STYLE=true;
-        cargo nextest run --locked --test browser --run-ignored only --no-tests=fail --test-threads 2 "$2";
-        ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}}
+        cargo nextest run --locked --test "$3" --run-ignored only --no-tests=fail --test-threads 2 "$2";
+        ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}} {{.TARGET | default "browser" | shellQuote}}
   test:acceptance:
     desc: Run integration and browser stages with separate or shared database scheduling
     cmds:
       - task: '{{if eq (.MEDTRACKER_OWNED_DATABASE | default "") "1"}}test:acceptance:shared{{else}}test:acceptance:isolated{{end}}'
   test:acceptance:isolated:
     internal: true
-    deps: [test:integration, test:browser]
+    cmds:
+      - task: test:integration
+      - task: test:browser
   test:acceptance:shared:
     internal: true
     cmds:
@@ -417,3 +414,121 @@ tasks:
     summary: Default task - shows all available commands
     silent: true
     cmds: [task --list]
+  dev:up:
+    desc: Local dev up
+    cmds:
+      - python3 scripts/compose_workflows.py dev up
+  dev:down:
+    desc: Local dev down
+    cmds:
+      - python3 scripts/compose_workflows.py dev down
+  dev:restart:
+    desc: Local dev restart
+    cmds:
+      - python3 scripts/compose_workflows.py dev restart
+  dev:logs:
+    desc: Local dev logs
+    cmds:
+      - python3 scripts/compose_workflows.py dev logs
+  dev:ps:
+    desc: Local dev ps
+    cmds:
+      - python3 scripts/compose_workflows.py dev ps
+  dev:build:
+    desc: Local dev build
+    cmds:
+      - python3 scripts/compose_workflows.py dev build
+  dev:seed:
+    desc: Local dev seed
+    cmds:
+      - python3 scripts/compose_workflows.py dev seed
+  dev:reset:
+    desc: Local dev reset
+    cmds:
+      - python3 scripts/compose_workflows.py dev reset --confirm {{.CONFIRM | default "" | shellQuote}}
+  test:up:
+    desc: Local test up
+    cmds:
+      - python3 scripts/compose_workflows.py test up
+  test:down:
+    desc: Local test down
+    cmds:
+      - python3 scripts/compose_workflows.py test down
+  test:restart:
+    desc: Local test restart
+    cmds:
+      - python3 scripts/compose_workflows.py test restart
+  test:logs:
+    desc: Local test logs
+    cmds:
+      - python3 scripts/compose_workflows.py test logs
+  test:ps:
+    desc: Local test ps
+    cmds:
+      - python3 scripts/compose_workflows.py test ps
+  test:build:
+    desc: Local test build
+    cmds:
+      - python3 scripts/compose_workflows.py test build
+  test:seed:
+    desc: Local test seed
+    cmds:
+      - python3 scripts/compose_workflows.py test seed
+  test:reset:
+    desc: Local test reset
+    cmds:
+      - python3 scripts/compose_workflows.py test reset --confirm {{.CONFIRM | default "" | shellQuote}}
+  prod:up:
+    desc: Local prod up
+    cmds:
+      - python3 scripts/compose_workflows.py prod up
+  prod:down:
+    desc: Local prod down
+    cmds:
+      - python3 scripts/compose_workflows.py prod down
+  prod:restart:
+    desc: Local prod restart
+    cmds:
+      - python3 scripts/compose_workflows.py prod restart
+  prod:logs:
+    desc: Local prod logs
+    cmds:
+      - python3 scripts/compose_workflows.py prod logs
+  prod:ps:
+    desc: Local prod ps
+    cmds:
+      - python3 scripts/compose_workflows.py prod ps
+  prod:build:
+    desc: Local prod build
+    cmds:
+      - python3 scripts/compose_workflows.py prod build
+  dev:
+    desc: Start isolated Docker development
+    cmds: [{task: dev:up}]
+  test:unit:
+    desc: Run unit tests (Docker locally, host in CI or owned harness)
+    cmds:
+      - task: '{{if or (eq (.CI | default "") "true") (eq (.MEDTRACKER_OWNED_DATABASE | default "") "1")}}host:test:unit{{else}}compose:test:unit{{end}}'
+  compose:test:unit:
+    internal: true
+    cmds:
+      - python3 scripts/compose_workflows.py test unit --target {{.TARGET | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}
+  test:integration:
+    desc: Run integration tests (Docker locally, host in CI or owned harness)
+    cmds:
+      - task: '{{if or (eq (.CI | default "") "true") (eq (.MEDTRACKER_OWNED_DATABASE | default "") "1")}}host:test:integration{{else}}compose:test:integration{{end}}'
+  compose:test:integration:
+    internal: true
+    cmds:
+      - python3 scripts/compose_workflows.py test integration --target {{.TARGET | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}
+  test:browser:
+    desc: Run browser tests (Docker locally, host in CI or owned harness)
+    cmds:
+      - task: '{{if or (eq (.CI | default "") "true") (eq (.MEDTRACKER_OWNED_DATABASE | default "") "1")}}host:test:browser{{else}}compose:test:browser{{end}}'
+  compose:test:browser:
+    internal: true
+    cmds:
+      - python3 scripts/compose_workflows.py test browser --target {{.TARGET | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}
+  test:tooling:
+    desc: Test local Compose routing and guards
+    cmds: [python3 scripts/test_compose_workflows.py]
