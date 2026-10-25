@@ -242,8 +242,8 @@ impl<'a> Page<'a> {
                 error,
             );
         }
-        let target = match url::Url::parse(&self.ctx.config.server.full_url())
-            .and_then(|url| url.join("/invitations/accept"))
+        let target = match crate::models::settings::public_origin(self.ctx)
+            .and_then(|url| url.join("/invitations/accept").map_err(Into::into))
         {
             Ok(url) => url,
             Err(_) => {

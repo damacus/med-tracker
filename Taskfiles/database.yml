@@ -1,0 +1,32 @@
+version: "3"
+tasks:
+  migrate:
+    desc: Create the complete application schema through Loco migrations
+    requires:
+      vars: [MIGRATION_DATABASE_URL]
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: "78"
+      RUST_ICU_LINK_SEARCH_DIR:
+        sh: 'if [ "$(uname -s)" = Darwin ]; then icu_prefix=$(brew --prefix icu4c@78) && printf "%s/lib" "$icu_prefix"; else pkg-config --variable=libdir icu-uc; fi'
+      MEDTRACKER_MIGRATION_DATABASE_URL: "{{.MIGRATION_DATABASE_URL}}"
+    cmds:
+      [
+        '{{if .MIGRATION_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" {{.MIGRATION_EXECUTABLE | shellQuote}} db migrate --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" cargo run --locked -- db migrate --environment {{.LOCO_ENV | default "development"}}{{end}}',
+      ]
+  prepare:
+    desc: Migrate an empty development or test database and load synthetic fixtures
+    cmds:
+      - task: seed
+  seed:
+    desc: Seed an empty development or test database with synthetic fixtures
+    requires:
+      vars: [SEED_DATABASE_URL]
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: "78"
+      RUST_ICU_LINK_SEARCH_DIR:
+        sh: 'if [ "$(uname -s)" = Darwin ]; then icu_prefix=$(brew --prefix icu4c@78) && printf "%s/lib" "$icu_prefix"; else pkg-config --variable=libdir icu-uc; fi'
+      MEDTRACKER_SEED_DATABASE_URL: "{{.SEED_DATABASE_URL}}"
+    cmds:
+      [
+        '{{if .SEED_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" {{.SEED_EXECUTABLE | shellQuote}} db seed --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}{{end}}',
+      ]

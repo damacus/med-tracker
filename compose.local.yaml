@@ -6,7 +6,7 @@ services:
     profiles: [dev, test]
     build:
       context: .
-      target: development
+      target: ${MT_TOOL_TARGET}
     image: ${MT_PROJECT}-tool
     working_dir: /app
     init: true
@@ -19,7 +19,6 @@ services:
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
       BINDING: 0.0.0.0
-      MT_FRONTEND_LOCK: ${MT_FRONTEND_LOCK}
       MEDTRACKER_SESSION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==
       S3_ENDPOINT: http://rustfs:9000
       S3_BUCKET: scanner-fixture
@@ -32,40 +31,82 @@ services:
       ACTIVE_STORAGE_S3_ACCESS_KEY_ID: storage-smoke-access
       ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY: storage-smoke-secret
       ACTIVE_STORAGE_S3_FORCE_PATH_STYLE: "true"
-    volumes: &tool_volumes
-      - .:/app
+    volumes:
       - cargo-registry:/usr/local/cargo/registry
       - cargo-git:/usr/local/cargo/git
       - target:/app/target
-      - node-modules:/app/node_modules
-      - npm-cache:/root/.npm
       - browser-cache:/root/.cache
     command: [sleep, infinity]
-  dev-app:
+  dev-tool:
     extends: tool
     profiles: !override [dev]
+    volumes:
+      - ./src:/app/src:ro
+      - ./migration:/app/migration:ro
+      - ./assets:/app/assets
+      - ./config:/app/config:ro
+      - ./tests:/app/tests:ro
+      - ./docs/api/openapi.v1.yaml:/app/docs/api/openapi.v1.yaml:ro
+      - ./scripts:/app/scripts:ro
+      - ./Taskfiles:/app/Taskfiles:ro
+      - ./Taskfiles/container.yml:/app/Taskfile.yml:ro
+      - ./Cargo.toml:/app/Cargo.toml:ro
+      - ./Cargo.lock:/app/Cargo.lock:ro
+      - ./build.rs:/app/build.rs:ro
+      - ./Dockerfile:/app/Dockerfile:ro
+      - ./package.json:/app/package.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro
+      - ./rails/config/ai_medication_sources.yml:/app/rails/config/ai_medication_sources.yml:ro
+      - ./rails/config/medication_review_labels.yml:/app/rails/config/medication_review_labels.yml:ro
+      - dev-runtime:/app/run
+  dev-frontend:
+    extends: dev-tool
+    profiles: !override [dev]
+    command: [/app/node_modules/.bin/tailwindcss, --cwd, /app/assets, -i, /app/assets/static/css/app.css, -o, /app/assets/static/css/compiled.css, --minify, --watch=always]
+  dev-builder:
+    extends: dev-tool
+    profiles: !override [dev]
+    command: [cargo, watch, --poll, --postpone, -w, src, -w, migration, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, -w, Dockerfile, -w, Taskfiles/container.yml, -w, rails/config/ai_medication_sources.yml, -w, rails/config/medication_review_labels.yml, -w, assets/security, -w, assets/catalogue, -w, assets/reports/locales, -w, assets/reports/terminology, -w, assets/static/icon.png, -w, assets/static/js/profile-push-worker.js, -s, "task --dir /app dev-build"]
+  dev-app:
+    extends: dev-tool
+    profiles: !override [dev]
     environment:
+      MEDTRACKER_PUBLIC_ORIGIN: ${MT_PUBLIC_ORIGIN:-}
+      MEDTRACKER_COOKIE_SECURE: ${MT_COOKIE_SECURE:-true}
       DATABASE_URL: postgres://medtracker_runtime:synthetic_local_runtime_password@postgres/medtracker_loco
-    command: [cargo, watch, --poll, -w, src, -w, migration, -w, assets, -w, config, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, --ignore, assets/static/css/compiled.css, --ignore, assets/static/js/html5-qrcode.min.js, -s, "flock ${MT_FRONTEND_LOCK} task --taskfile Taskfiles/frontend.yml --dir /app prepare && cargo run --locked -- start --server-and-worker --environment development"]
+    command: [cargo, watch, --poll, --ignore-nothing, -w, /app/run/bin/med-tracker, -w, assets/views, -w, config, --, /app/run/bin/med-tracker, start, --server-and-worker, --environment, development]
     ports:
       - target: 5150
+        published: ${MT_HTTP_PORT:-0}
         host_ip: 127.0.0.1
   dev-scheduler:
-    extends: tool
+    extends: dev-tool
     profiles: !override [dev]
     environment:
+      MEDTRACKER_PUBLIC_ORIGIN: ${MT_PUBLIC_ORIGIN:-}
+      MEDTRACKER_COOKIE_SECURE: ${MT_COOKIE_SECURE:-true}
       DATABASE_URL: postgres://medtracker_runtime:synthetic_local_runtime_password@postgres/medtracker_loco
-    command: [cargo, watch, --poll, -w, src, -w, migration, -w, config, -x, "run --locked -- scheduler --environment development"]
+    command: [cargo, watch, --poll, --ignore-nothing, -w, /app/run/bin/med-tracker, -w, config, --, /app/run/bin/med-tracker, scheduler, --environment, development]
   test-app:
-    extends: dev-app
+    extends: tool
     profiles: !override [test]
-    command: [cargo, watch, --poll, -w, src, -w, migration, -w, assets, -w, config, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, --ignore, assets/static/css/compiled.css, --ignore, assets/static/js/html5-qrcode.min.js, -s, "flock ${MT_FRONTEND_LOCK} task --taskfile Taskfiles/frontend.yml --dir /app prepare && cargo run --locked -- start --server-and-worker --environment test"]
     environment:
-      MEDTRACKER_COOKIE_SECURE: "false"
+      MEDTRACKER_PUBLIC_ORIGIN: ${MT_PUBLIC_ORIGIN:-}
+      MEDTRACKER_COOKIE_SECURE: ${MT_COOKIE_SECURE:-true}
+      DATABASE_URL: postgres://medtracker_runtime:synthetic_local_runtime_password@postgres/medtracker_loco
+    command: [cargo, run, --locked, --, start, --server-and-worker, --environment, test]
+    ports:
+      - target: 5150
+        published: ${MT_HTTP_PORT:-0}
+        host_ip: 127.0.0.1
   test-scheduler:
-    extends: dev-scheduler
+    extends: tool
     profiles: !override [test]
-    command: [cargo, watch, --poll, -w, src, -w, migration, -w, config, -x, "run --locked -- scheduler --environment test"]
+    environment:
+      MEDTRACKER_PUBLIC_ORIGIN: ${MT_PUBLIC_ORIGIN:-}
+      MEDTRACKER_COOKIE_SECURE: ${MT_COOKIE_SECURE:-true}
+      DATABASE_URL: postgres://medtracker_runtime:synthetic_local_runtime_password@postgres/medtracker_loco
+    command: [cargo, run, --locked, --, scheduler, --environment, test]
   app:
     profiles: [prod]
     build:
@@ -74,7 +115,7 @@ services:
     image: ${LOCO_IMAGE:-${MT_PROJECT}-runtime}
     environment: &runtime_environment
       DATABASE_URL: postgres://medtracker_runtime:synthetic_local_runtime_password@postgres/medtracker_loco
-      MEDTRACKER_PUBLIC_HOST: http://localhost
+      MEDTRACKER_PUBLIC_ORIGIN: ${MT_PUBLIC_ORIGIN:-}
       MEDTRACKER_SESSION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==
       AUTH_SESSION_SECRET: synthetic-local-production-secret-at-least-32-characters
     read_only: true
@@ -100,6 +141,7 @@ volumes:
   scanner-logs:
     labels:
       io.medtracker.local-owner: ${MT_PROJECT}
+  dev-runtime:
   cargo-registry:
     external: true
     name: ${MT_CARGO_REGISTRY_CACHE}
@@ -109,12 +151,6 @@ volumes:
   target:
     external: true
     name: ${MT_TARGET_CACHE}
-  node-modules:
-    external: true
-    name: ${MT_NODE_CACHE}
-  npm-cache:
-    external: true
-    name: ${MT_NPM_CACHE}
   browser-cache:
     external: true
     name: ${MT_BROWSER_CACHE}

@@ -5,6 +5,9 @@ from functools import lru_cache
 import hashlib
 import json
 import os
+import re
+import shutil
+import socket
 from pathlib import Path
 import subprocess
 import sys
@@ -19,30 +22,118 @@ def project(environment, root=ROOT):
     return "mt-" + hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:12] + "-" + environment
 
 
-def frontend_lock(root=ROOT):
-    return "/root/.npm/" + project("dev", root)[:-4] + "-frontend.lock"
+def public_origin(environment):
+    if os.environ.get("PORTLESS") == "0":
+        return "http://localhost"
+    port = os.environ.get("PORTLESS_PORT", "443")
+    return "https://" + project(environment) + ".localhost" + (":" + port if port != "443" else "")
 
 
-def cache_names(architecture, root=ROOT, lock_bytes=None, target_override=None):
+def portless(*arguments):
+    executable = shutil.which("portless")
+    if not executable and shutil.which("mise"):
+        resolved = subprocess.run(["mise", "which", "portless"], cwd=ROOT, text=True, capture_output=True)
+        if resolved.returncode == 0:
+            executable = resolved.stdout.strip()
+    if not executable:
+        raise RuntimeError("Portless is missing; run mise install npm:portless, then portless doctor. Use PORTLESS=0 to bypass.")
+    clean = {**os.environ, "PORTLESS_SYNC_HOSTS": "0", "PORTLESS_LAN": "0", "NO_COLOR": "1"}
+    return subprocess.run([executable, *arguments], env=clean, check=True, text=True, capture_output=True).stdout.strip()
+
+
+def localhost_proxy():
+    diagnostics = portless("doctor")
+    if not re.search(r"^Mode:\s+HTTPS,\s+\.localhost$", diagnostics, re.MULTILINE):
+        raise RuntimeError("Portless aliases require an HTTPS proxy configured exclusively for .localhost. Run portless doctor/setup, or use PORTLESS=0.")
+
+
+def alias_port(environment):
+    routes = portless("list")
+    origin = public_origin(environment)
+    match = re.search(re.escape(origin) + r"\s+->\s+localhost:(\d+)\s+\(alias\)", routes)
+    if match:
+        return int(match.group(1))
+    if origin in routes:
+        raise RuntimeError("Portless route is not an owned static alias: " + origin)
+    return None
+
+
+def app_binding(environment):
+    service = "app" if environment == "prod" else environment + "-app"
+    if not run(environment, "ps", "-q", service, capture=True).stdout.strip():
+        return None
+    return run(environment, "port", service, "5150", capture=True).stdout.strip()
+
+
+def bypass_endpoint(environment):
+    existing = app_binding(environment)
+    if existing:
+        port = int(existing.rsplit(":", 1)[1])
+    else:
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            port = listener.getsockname()[1]
+    return "http://127.0.0.1:" + str(port), port
+
+
+def portless_preflight(environment):
+    if os.environ.get("PORTLESS") == "0":
+        return None
+    localhost_proxy()
+    origin = public_origin(environment)
+    if portless("get", project(environment), "--no-worktree") != origin:
+        raise RuntimeError("Portless HTTPS proxy is not configured/running at the expected .localhost origin. Run portless doctor/setup; set PORTLESS_PORT if needed, or use PORTLESS=0.")
+    hostname = project(environment) + ".localhost"
+    port = os.environ.get("PORTLESS_PORT", "443")
+    probe = subprocess.run(["curl", "--silent", "--show-error", "--head", "--max-time", "3", "--resolve", hostname + ":" + port + ":127.0.0.1", origin], text=True, capture_output=True)
+    if probe.returncode or "x-portless: 1" not in probe.stdout.lower():
+        raise RuntimeError("Trusted Portless HTTPS proxy is unavailable. Run portless doctor and complete proxy/trust setup before up, or use PORTLESS=0. " + probe.stderr.strip())
+    binding = app_binding(environment)
+    previous = int(binding.rsplit(":", 1)[1]) if binding else None
+    existing = alias_port(environment)
+    if existing is not None and existing != previous:
+        raise RuntimeError("Portless alias does not match the owned Compose app; refusing to overwrite " + origin)
+    return previous
+
+
+def register_alias(environment, binding, previous):
+    if os.environ.get("PORTLESS") == "0":
+        print(project(environment) + " ready at http://" + binding, flush=True)
+        return
+    localhost_proxy()
+    current = int(binding.rsplit(":", 1)[1])
+    existing = alias_port(environment)
+    if existing is not None and existing not in (previous, current):
+        raise RuntimeError("Portless alias is not owned by this Compose app; refusing to overwrite it")
+    portless("alias", project(environment), str(current))
+    origin = public_origin(environment)
+    hostname = project(environment) + ".localhost"
+    subprocess.run(["curl", "--fail", "--silent", "--show-error", "--max-time", "3", "--retry", "3", "--retry-delay", "1", "--retry-all-errors", "--retry-max-time", "5", "--resolve", hostname + ":" + os.environ.get("PORTLESS_PORT", "443") + ":127.0.0.1", origin + "/health"], check=True, stdout=subprocess.DEVNULL)
+    print(project(environment) + " ready at " + origin, flush=True)
+
+
+def remove_alias(environment):
+    if os.environ.get("PORTLESS") == "0":
+        return
+    localhost_proxy()
+    existing = alias_port(environment)
+    if existing is None:
+        return
+    binding = app_binding(environment)
+    if not binding or existing != int(binding.rsplit(":", 1)[1]):
+        raise RuntimeError("Alias no longer matches the owned app; leave it untouched. Inspect it before explicit cleanup: portless alias --remove " + project(environment))
+    portless("alias", "--remove", project(environment))
+
+
+def cache_names(architecture, root=ROOT):
     architecture = {"aarch64": "arm64", "x86_64": "amd64"}.get(architecture, architecture)
     platform = "linux-" + architecture
     checkout = project("dev", root)[:-4]
-    target = checkout + "-target-" + platform
-    allowed_targets = {target, project("dev", root) + "_target", project("test", root) + "_target"}
-    if target_override and target_override not in allowed_targets:
-        raise ValueError("Target cache must be an exact allowed target volume for this checkout")
-    dockerfile = (ROOT / "Dockerfile").read_bytes()
-    node_image = next(line for line in dockerfile.splitlines() if line.startswith(b"FROM node:"))
-    lock_bytes = (root / "package-lock.json").read_bytes() if lock_bytes is None else lock_bytes
-    node_key = hashlib.sha256(node_image + lock_bytes + platform.encode()).hexdigest()[:20]
-    browser_key = hashlib.sha256(dockerfile + platform.encode()).hexdigest()[:20]
     return {
-        "MT_TARGET_CACHE": target_override or target,
+        "MT_TARGET_CACHE": checkout + "-target-" + platform,
         "MT_CARGO_REGISTRY_CACHE": "mt-cargo-registry-v1",
         "MT_CARGO_GIT_CACHE": "mt-cargo-git-v1",
-        "MT_NODE_CACHE": checkout + "-node-" + platform + "-" + node_key,
-        "MT_NPM_CACHE": "mt-npm-downloads-v1",
-        "MT_BROWSER_CACHE": "mt-browser-" + platform + "-" + browser_key,
+        "MT_BROWSER_CACHE": "mt-browser-" + platform + "-ubuntu26-v1",
     }
 
 
@@ -62,13 +153,16 @@ def compose(environment):
             "--profile", "fixture-storage", "--profile", environment]
 
 
-def run(environment, *arguments, capture=False):
+def run(environment, *arguments, capture=False, origin=None, published_port=None):
     clean = {key: value for key, value in os.environ.items()
              if not key.startswith("COMPOSE_")}
+    clean["MT_PUBLIC_ORIGIN"] = origin or ("" if os.environ.get("PORTLESS") == "0" else public_origin(environment))
+    clean["MT_HTTP_PORT"] = str(published_port or 0)
+    clean["MT_COOKIE_SECURE"] = "false" if os.environ.get("PORTLESS") == "0" else "true"
     clean["MT_ENV"] = environment
     clean["MT_PROJECT"] = project(environment)
-    clean["MT_FRONTEND_LOCK"] = frontend_lock()
-    caches = cache_names(docker_architecture(), target_override=os.environ.get("MT_TARGET_CACHE"))
+    clean["MT_TOOL_TARGET"] = "test" if environment == "test" else "development"
+    caches = cache_names(docker_architecture())
     clean.update(caches)
     if environment != "prod" and arguments[0] in ("run", "up"):
         for name in caches.values():
@@ -78,11 +172,11 @@ def run(environment, *arguments, capture=False):
 
 
 def tool(environment, *arguments):
-    run(environment, "run", "--rm", "--no-deps", "tool", *arguments)
+    run(environment, "run", "--rm", "--no-deps", "dev-tool" if environment == "dev" else "tool", *arguments)
 
 
-def frontend(environment, *arguments):
-    tool(environment, "flock", frontend_lock(), *arguments)
+def build_tools(environment):
+    run(environment, "build", "dev-tool" if environment == "dev" else "tool")
 
 
 def services(environment):
@@ -112,6 +206,8 @@ def check_data_volumes(environment):
 def application(environment, *arguments):
     if environment == "prod":
         run(environment, "run", "--rm", "--no-deps", "app", *arguments)
+    elif environment == "dev":
+        tool(environment, "/app/run/bin/med-tracker", *arguments)
     else:
         tool(environment, "cargo", "run", "--locked", "--", *arguments)
 
@@ -125,8 +221,7 @@ def wait_ready(environment):
         try:
             with urllib.request.urlopen(origin + "/health", timeout=2) as response:
                 if response.status == 200:
-                    print(project(environment) + " ready at " + origin, flush=True)
-                    return
+                    return endpoint
         except (urllib.error.URLError, OSError):
             pass
         time.sleep(1)
@@ -152,16 +247,23 @@ def main(argv=None):
         if args.confirm != project(environment):
             parser.error("reset requires --confirm " + project(environment))
         check_data_volumes(environment)
+        remove_alias(environment)
         run(environment, "down")
         for name in ("database", "scanner-data", "scanner-logs"):
             subprocess.run(["docker", "volume", "rm", project(environment) + "_" + name], check=True)
     elif action == "build":
-        run(environment, "build", "app" if environment == "prod" else "tool")
+        if environment == "prod":
+            run(environment, "build", "app")
+        else:
+            build_tools(environment)
     elif action in ("down", "logs", "ps"):
+        if action == "down":
+            remove_alias(environment)
         run(environment, action, *(["--follow"] if action == "logs" else []))
     elif action == "restart":
         run(environment, "restart")
     elif action in ("unit", "integration", "browser"):
+        build_tools(environment)
         if action != "unit":
             services(environment)
         command = ["cargo", "nextest", "run", "--locked", "--no-tests=fail", "--test-threads", "2"]
@@ -173,20 +275,26 @@ def main(argv=None):
             command += ["--test", args.target] if args.target else ["--tests"]
         if args.filter:
             command.append(args.filter)
-        frontend(environment, "task", "--taskfile", "Taskfiles/frontend.yml", "--dir", "/app", "prepare")
         tool(environment, *command)
         if action == "integration" and not args.target and not args.filter:
             tool(environment, "cargo", "test", "--locked", "--test", "template_concurrency", "competing_processes_prepare_once", "--", "--ignored", "--exact")
         if action == "unit" and not args.filter:
-            frontend(environment, "task", "--taskfile", "Taskfiles/frontend.yml", "--dir", "/app", "test")
+            tool(environment, "task", "--taskfile", "Taskfiles/frontend.yml", "--dir", "/app", "test")
             tool(environment, "cargo", "test", "--locked", "--workspace", "--doc")
     elif action == "seed":
+        if environment == "test":
+            build_tools(environment)
         services(environment)
         application(environment, "db", "seed", "--environment", loco)
     elif action == "up":
-        services(environment)
+        previous = portless_preflight(environment)
         if environment != "prod":
-            frontend(environment, "task", "--taskfile", "Taskfiles/frontend.yml", "--dir", "/app", "prepare")
+            build_tools(environment)
+        if environment == "dev":
+            run(environment, "stop", "dev-frontend", "dev-builder")
+            tool(environment, "task", "--taskfile", "Taskfiles/frontend.yml", "--dir", "/app", "build")
+            tool(environment, "task", "--dir", "/app", "dev-build")
+        services(environment)
         if environment == "prod":
             run(environment, "run", "--rm", "--no-deps", "-e", "DATABASE_URL=postgres://medtracker:medtracker_password@postgres/medtracker_loco", "app", "db", "migrate", "--environment", loco)
         else:
@@ -200,8 +308,12 @@ def main(argv=None):
         restricted = run(environment, "exec", "-T", "postgres", "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "medtracker", "-d", "medtracker_loco", "-tAc", "SELECT rolcanlogin AND rolinherit AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolbypassrls AND pg_has_role('medtracker_runtime', 'med_tracker_app', 'MEMBER') FROM pg_roles WHERE rolname = 'medtracker_runtime'", capture=True)
         if restricted.stdout.strip() != "t":
             raise RuntimeError("Expected a restricted runtime identity; refusing to alter an existing role")
-        run(environment, "up", "-d", *(["app", "scheduler"] if environment == "prod" else [environment + "-app", environment + "-scheduler"]))
-        wait_ready(environment)
+        origin, published_port = (None, None)
+        if os.environ.get("PORTLESS") == "0" and environment != "prod":
+            origin, published_port = bypass_endpoint(environment)
+        run(environment, "up", "-d", *(["app", "scheduler"] if environment == "prod" else (["dev-frontend", "dev-builder", "dev-app", "dev-scheduler"] if environment == "dev" else ["test-app", "test-scheduler"])), origin=origin, published_port=published_port)
+        binding = wait_ready(environment)
+        register_alias(environment, binding, previous)
 
 
 if __name__ == "__main__":

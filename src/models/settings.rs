@@ -48,10 +48,153 @@ pub(crate) fn integer(settings: Option<&Value>, path: &[&str]) -> Option<i64> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct PublicOriginError;
+
+impl std::fmt::Display for PublicOriginError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Invalid configured public origin")
+    }
+}
+
+impl std::error::Error for PublicOriginError {}
+
+impl From<url::ParseError> for PublicOriginError {
+    fn from(_: url::ParseError) -> Self {
+        Self
+    }
+}
+
+pub(crate) fn public_origin(ctx: &loco_rs::app::AppContext) -> Result<url::Url, PublicOriginError> {
+    public_origin_from_settings(
+        ctx.config.settings.as_ref(),
+        &ctx.config.server.full_url(),
+        &ctx.environment,
+    )
+}
+
+fn public_origin_from_settings(
+    settings: Option<&Value>,
+    fallback: &str,
+    environment: &loco_rs::environment::Environment,
+) -> Result<url::Url, PublicOriginError> {
+    let configured = match node(settings, &["public_origin"]) {
+        Some(Value::String(value)) if value.trim().is_empty() => None,
+        Some(Value::String(value)) => Some(value.trim()),
+        Some(_) => return Err(PublicOriginError),
+        None => None,
+    };
+    let origin = url::Url::parse(configured.unwrap_or(fallback))?;
+    if !matches!(origin.scheme(), "http" | "https")
+        || origin.host_str().is_none()
+        || !origin.username().is_empty()
+        || origin.password().is_some()
+        || origin.path() != "/"
+        || origin.query().is_some()
+        || origin.fragment().is_some()
+        || (configured.is_some()
+            && matches!(environment, loco_rs::environment::Environment::Production)
+            && origin.scheme() != "https")
+    {
+        return Err(PublicOriginError);
+    }
+    Ok(origin)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn public_origin_keeps_proxy_ports_separate_from_binding() {
+        for (configured, expected) in [
+            ("https://mt-dev.localhost", "https://mt-dev.localhost/"),
+            (
+                "https://mt-dev.localhost:1356",
+                "https://mt-dev.localhost:1356/",
+            ),
+        ] {
+            let value = json!({"public_origin": configured});
+            let origin = public_origin_from_settings(
+                Some(&value),
+                "http://localhost:5150",
+                &loco_rs::environment::Environment::Development,
+            )
+            .unwrap();
+            assert_eq!(origin.as_str(), expected);
+            assert!(!origin.as_str().contains("5150"));
+            assert_eq!(
+                origin.join("/invitations/accept").unwrap().host_str(),
+                Some("mt-dev.localhost")
+            );
+            assert_eq!(origin.join("/token").unwrap().port(), origin.port());
+        }
+    }
+
+    #[test]
+    fn public_origin_preserves_absent_null_and_empty_fallback() {
+        for value in [
+            json!({}),
+            json!({"public_origin":null}),
+            json!({"public_origin":""}),
+        ] {
+            let origin = public_origin_from_settings(
+                Some(&value),
+                "http://localhost:5150",
+                &loco_rs::environment::Environment::Production,
+            )
+            .unwrap();
+            assert_eq!(origin.as_str(), "http://localhost:5150/");
+        }
+    }
+
+    #[test]
+    fn public_origin_rejects_non_origins_and_insecure_production_override() {
+        for configured in [
+            "https://user:password@example.test",
+            "https://example.test/path",
+            "https://example.test?query=1",
+            "https://example.test#fragment",
+            "file:///tmp/app",
+            "invalid",
+        ] {
+            let value = json!({"public_origin":configured});
+            assert!(
+                public_origin_from_settings(
+                    Some(&value),
+                    "http://localhost:5150",
+                    &loco_rs::environment::Environment::Development
+                )
+                .is_err()
+            );
+        }
+        let value = json!({"public_origin":"http://localhost:1356"});
+        assert!(
+            public_origin_from_settings(
+                Some(&value),
+                "http://localhost:5150",
+                &loco_rs::environment::Environment::Production
+            )
+            .is_err()
+        );
+        assert!(
+            public_origin_from_settings(
+                Some(&value),
+                "http://localhost:5150",
+                &loco_rs::environment::Environment::Development
+            )
+            .is_ok()
+        );
+        assert!(
+            public_origin_from_settings(
+                Some(&json!({"public_origin":true})),
+                "http://localhost:5150",
+                &loco_rs::environment::Environment::Development
+            )
+            .is_err()
+        );
+    }
 
     fn settings() -> Value {
         json!({

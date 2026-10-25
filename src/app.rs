@@ -109,12 +109,14 @@ impl Hooks for App {
             config.secret = layers.identity_secret.clone();
             config.advanced.use_secure_cookies = Some(layers.secure);
             ctx.shared_store.insert(layers);
-            config.base_url = format!(
-                "{}/api/auth",
-                ctx.config.server.full_url().trim_end_matches('/')
-            )
-            .into();
-            config.trusted_origins = Some(vec![ctx.config.server.full_url()].into());
+            let origin = crate::models::settings::public_origin(ctx)
+                .map_err(|error| Error::string(&error.to_string()))?;
+            config.base_url = origin
+                .join("/api/auth")
+                .map_err(|error| Error::string(&error.to_string()))?
+                .to_string()
+                .into();
+            config.trusted_origins = Some(vec![origin.origin().ascii_serialization()].into());
             config.password.require_uppercase = false;
             config.password.require_lowercase = false;
             config.password.require_numbers = false;
