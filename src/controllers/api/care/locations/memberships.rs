@@ -91,7 +91,13 @@ async fn creation(
         .begin()
         .await
         .map_err(|_| response::unavailable())?;
-    let result = locations::create_membership(tenant, &location, &body, Some(provenance)).await;
+    let result = locations::create_membership(
+        tenant,
+        &location,
+        locations::LocationMembershipInput::from_json(&body),
+        Some(provenance),
+    )
+    .await;
     let (status, representation) = match result {
         Ok((record, person)) => {
             savepoint

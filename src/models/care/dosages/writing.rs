@@ -36,28 +36,40 @@ pub(crate) async fn add_stock(
 
 pub async fn create(
     tenant: &TenantTransaction,
-    body: Value,
+    input: DosageInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<dosage::Model, OperationError> {
     authorize(tenant).await?;
-    let attrs = attributes(&body, true).ok_or_else(invalid)?;
+    let attrs = input.into_attributes()?;
     let parent = parent(
         tenant,
-        attrs.medication_id.as_deref().ok_or_else(invalid)?,
+        attrs
+            .medication_id
+            .as_ref()
+            .map(validation::MedicationId::as_str)
+            .ok_or_else(invalid)?,
         true,
     )
     .await?;
     access::recheck(tenant).await?;
-    create_with_parent(tenant, body, parent, provenance).await
+    create_with_parent_attributes(tenant, attrs, parent, provenance).await
 }
 
 pub(crate) async fn create_with_parent(
     tenant: &TenantTransaction,
-    body: Value,
+    input: DosageInput,
     parent: medication::Model,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
-    let attrs = attributes(&body, true).ok_or_else(invalid)?;
+) -> Result<dosage::Model, OperationError> {
+    create_with_parent_attributes(tenant, input.into_attributes()?, parent, provenance).await
+}
+
+async fn create_with_parent_attributes(
+    tenant: &TenantTransaction,
+    attrs: validation::Attributes,
+    parent: medication::Model,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<dosage::Model, OperationError> {
     let now = Utc::now().naive_utc();
     let active = dosage::ActiveModel {
         household_id: Set(tenant.scope().household_id),
@@ -73,7 +85,7 @@ pub(crate) async fn create_with_parent(
         default_min_hours_between_doses: Set(attrs
             .default_min_hours_between_doses
             .ok_or_else(invalid)?),
-        default_dose_cycle: Set(attrs.default_dose_cycle.ok_or_else(invalid)?),
+        default_dose_cycle: Set(attrs.default_dose_cycle.ok_or_else(invalid)?.code()),
         current_supply: Set(attrs.current_supply.unwrap_or(None)),
         reorder_threshold: Set(attrs.reorder_threshold.unwrap_or(None)),
         created_at: Set(now),
@@ -117,7 +129,7 @@ pub(crate) async fn create_with_parent(
             None,
         )
         .await?;
-        reading::representation(tenant, &row).await
+        Ok(row)
     }
     .await;
     match result {
@@ -135,32 +147,32 @@ pub(crate) async fn create_with_parent(
 pub async fn update(
     tenant: &TenantTransaction,
     id: &str,
-    body: Value,
+    input: DosageInput,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
-    update_with_event(tenant, id, body, etag, provenance, None).await
+) -> Result<dosage::Model, OperationError> {
+    update_with_event(tenant, id, input, etag, provenance, None).await
 }
 
 pub(crate) async fn update_stock_checked(
     tenant: &TenantTransaction,
     id: &str,
-    body: Value,
+    input: DosageInput,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
     reason: &str,
-) -> Result<(Value, String), OperationError> {
-    update_with_event(tenant, id, body, etag, provenance, Some(reason)).await
+) -> Result<dosage::Model, OperationError> {
+    update_with_event(tenant, id, input, etag, provenance, Some(reason)).await
 }
 
 async fn update_with_event(
     tenant: &TenantTransaction,
     id: &str,
-    body: Value,
+    input: DosageInput,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
     stock_check_reason: Option<&str>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<dosage::Model, OperationError> {
     authorize(tenant).await?;
     let found = record(tenant, id, false).await?;
     parent(tenant, &found.medication_id.to_string(), true).await?;
@@ -174,7 +186,7 @@ async fn update_with_event(
             details: json!({}),
         });
     }
-    let attrs = attributes(&body, false).ok_or_else(invalid)?;
+    let attrs = input.into_attributes()?;
     let supply = attrs.current_supply.unwrap_or(row.current_supply);
     let inventory_changed = supply.is_some() || supply != row.current_supply;
     let before = persistence::dosage_snapshot(&row);
@@ -204,7 +216,7 @@ async fn update_with_event(
         active.default_min_hours_between_doses = Set(value);
     }
     if let Some(value) = attrs.default_dose_cycle {
-        active.default_dose_cycle = Set(value);
+        active.default_dose_cycle = Set(value.code());
     }
     if let Some(value) = attrs.current_supply {
         active.current_supply = Set(value);
@@ -276,7 +288,7 @@ async fn update_with_event(
             )
             .await?;
         }
-        reading::representation(tenant, &row).await
+        Ok(row)
     }
     .await;
     match result {

@@ -1,5 +1,5 @@
 use super::browser;
-use crate::models::{care::invitations, errors::OperationError};
+use crate::models::care::invitations;
 use chrono::{Months, NaiveDate, Utc};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use std::collections::BTreeMap;
@@ -60,13 +60,15 @@ pub(crate) fn initial_preferences(
     Ok(serde_json::json!({"time_zone": zone.to_string()}))
 }
 
-fn operation_error(error: OperationError) -> SignupError {
+fn invitation_error(error: invitations::SignupInvitationError) -> SignupError {
     match error {
-        OperationError::Validation { details } => serde_json::from_value(details["errors"].clone())
-            .map(SignupError::Invalid)
-            .unwrap_or(SignupError::Unavailable),
-        OperationError::Unavailable => SignupError::Unavailable,
-        _ => invalid("invitation_token", "is invalid or expired"),
+        invitations::SignupInvitationError::InvitationUnavailable => {
+            invalid("base", "Invitation unavailable")
+        }
+        invitations::SignupInvitationError::Unavailable => SignupError::Unavailable,
+        invitations::SignupInvitationError::InvalidKey => {
+            invalid("invitation_token", "is invalid or expired")
+        }
     }
 }
 

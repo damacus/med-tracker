@@ -219,7 +219,10 @@ pub async fn update(
         people::update(
             tenant,
             &current.id.to_string(),
-            json!({"date_of_birth": date.to_string()}),
+            people::PersonUpdateInput {
+                date_of_birth: people::UpdateField::Value(date),
+                ..Default::default()
+            },
             today,
             provenance,
         )

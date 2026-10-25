@@ -125,10 +125,14 @@ async fn process(
     {
         return Err(response::Failure::bad_request("Invalid request body"));
     }
-    if let Some(id) = id {
-        pause_periods::authorize_resume(tenant, id).await
+    let source = if let Some(id) = id {
+        pause_periods::authorize_resume(tenant, id)
+            .await
+            .map(|_| None)
     } else {
-        pause_periods::authorize_create(tenant, &body).await
+        pause_periods::authorize_create(tenant, pause_periods::PauseSourceAttempt::from_body(&body))
+            .await
+            .map(Some)
     }
     .map_err(response::operation)?;
     let path = if let Some(id) = id {
@@ -148,21 +152,31 @@ async fn process(
         .await
         .map_err(|_| response::unavailable())?;
     let operation = if let Some(id) = id {
-        pause_periods::resume(
-            tenant,
-            id,
-            &body,
-            headers
-                .get(axum::http::header::IF_MATCH)
-                .map(|value| value.to_str().unwrap_or("")),
-            Some(principal.provenance()),
-        )
-        .await
+        match pause_periods::ResumeInput::parse(id, &body) {
+            Ok(input) => {
+                pause_periods::resume(
+                    tenant,
+                    &input,
+                    headers
+                        .get(axum::http::header::IF_MATCH)
+                        .map(|value| value.to_str().unwrap_or("")),
+                    Some(principal.provenance()),
+                )
+                .await
+            }
+            Err(error) => Err(error),
+        }
     } else {
-        pause_periods::create(tenant, &body, Some(principal.provenance())).await
+        match pause_periods::PauseCreate::parse_with_source(
+            source.as_ref().expect("create source authorised"),
+            &body,
+        ) {
+            Ok(input) => pause_periods::create(tenant, &input, Some(principal.provenance())).await,
+            Err(error) => Err(error),
+        }
     };
     let (status, reply, etag) = match operation {
-        Ok((body, etag)) => {
+        Ok(written) => {
             savepoint
                 .commit()
                 .await
@@ -173,8 +187,8 @@ async fn process(
                 } else {
                     StatusCode::CREATED
                 },
-                body,
-                Some(etag),
+                written.body,
+                Some(written.etag),
             )
         }
         Err(OperationError::Validation { details }) => {

@@ -1,7 +1,7 @@
 use crate::models::identity::better_auth::{IdentityService, dispatch};
 use axum::{
     Extension,
-    extract::{Form, Query},
+    extract::{Form, Query, rejection::QueryRejection},
     http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
@@ -60,10 +60,16 @@ pub(super) async fn show(csrf: CsrfToken, ViewEngine(view): ViewEngine<TeraView>
     render(&view, csrf, None, false, None)
 }
 pub(super) async fn confirmation(
-    Query(link): Query<Link>,
+    link: std::result::Result<Query<Link>, QueryRejection>,
     csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
+    let Ok(Query(link)) = link else {
+        return super::rendering::invalid_link(
+            &view,
+            super::rendering::LinkRecovery::PasswordReset,
+        );
+    };
     if link.token.len() > 4096 {
         return StatusCode::BAD_REQUEST.into_response();
     }

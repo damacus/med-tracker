@@ -81,6 +81,61 @@ impl MembershipStatus {
     }
 }
 
+pub enum MemberField<T> {
+    Missing,
+    Value(T),
+    Invalid,
+}
+
+pub enum MembershipInput {
+    Revoke,
+    Update {
+        role: MemberField<String>,
+        status: MemberField<String>,
+        person_id: MemberField<i64>,
+        invalid_shape: bool,
+        unknown_field: bool,
+        empty: bool,
+    },
+}
+
+impl MembershipInput {
+    pub fn from_json(value: Value) -> Self {
+        let Value::Object(fields) = value else {
+            return Self::Update {
+                role: MemberField::Missing,
+                status: MemberField::Missing,
+                person_id: MemberField::Missing,
+                invalid_shape: true,
+                unknown_field: false,
+                empty: true,
+            };
+        };
+        let text = |field: &str| match fields.get(field) {
+            None => MemberField::Missing,
+            Some(Value::String(value)) => MemberField::Value(value.clone()),
+            Some(_) => MemberField::Invalid,
+        };
+        let person_id = match fields.get("person_id") {
+            None => MemberField::Missing,
+            Some(Value::Number(value)) => value
+                .as_i64()
+                .map_or(MemberField::Invalid, MemberField::Value),
+            Some(_) => MemberField::Invalid,
+        };
+        Self::Update {
+            role: text("role"),
+            status: text("status"),
+            person_id,
+            invalid_shape: false,
+            unknown_field: fields
+                .keys()
+                .any(|key| !matches!(key.as_str(), "role" | "status" | "person_id")),
+            empty: fields.is_empty(),
+        }
+    }
+}
+
 #[derive(Default)]
 struct Mutation {
     role: Option<MembershipRole>,
@@ -90,35 +145,39 @@ struct Mutation {
     browser_action: Option<LifecycleAction>,
 }
 impl Mutation {
-    fn from_api(attributes: &Value, revoke: bool) -> Result<Self, OperationError> {
-        if revoke {
+    fn from_api(input: MembershipInput) -> Result<Self, OperationError> {
+        let MembershipInput::Update {
+            role,
+            status,
+            person_id,
+            invalid_shape,
+            unknown_field,
+            empty,
+        } = input
+        else {
             return Ok(Self {
                 revoke: true,
                 ..Self::default()
             });
+        };
+        if invalid_shape || unknown_field || empty {
+            return Err(invalid("household_membership", "is invalid"));
         }
-        let fields = fields(
-            attributes,
-            &["role", "status", "person_id"],
-            "household_membership",
-        )?;
-        let role = fields
-            .get("role")
-            .map(|value| MembershipRole::parse(value.as_str().unwrap_or_default()))
-            .transpose()?;
-        let status = fields
-            .get("status")
-            .map(|value| MembershipStatus::parse(value.as_str().unwrap_or_default()))
-            .transpose()?;
-        let person_id = fields
-            .get("person_id")
-            .map(|value| {
-                value
-                    .as_i64()
-                    .filter(|id| *id > 0)
-                    .ok_or_else(|| invalid("person_id", "is invalid"))
-            })
-            .transpose()?;
+        let role = match role {
+            MemberField::Missing => None,
+            MemberField::Value(value) => Some(MembershipRole::parse(&value)?),
+            MemberField::Invalid => return Err(invalid("role", "is invalid")),
+        };
+        let status = match status {
+            MemberField::Missing => None,
+            MemberField::Value(value) => Some(MembershipStatus::parse(&value)?),
+            MemberField::Invalid => return Err(invalid("status", "is invalid")),
+        };
+        let person_id = match person_id {
+            MemberField::Missing => None,
+            MemberField::Value(id) if id > 0 => Some(id),
+            _ => return Err(invalid("person_id", "is invalid")),
+        };
         Ok(Self {
             role,
             status,
@@ -178,12 +237,11 @@ async fn values(
 pub async fn change(
     tenant: &TenantTransaction,
     id: i64,
-    attributes: Value,
-    revoke: bool,
+    input: MembershipInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
     authorize(tenant).await?;
-    let mutation = Mutation::from_api(&attributes, revoke)?;
+    let mutation = Mutation::from_api(input)?;
     let next = change_record(tenant, id, mutation, provenance).await?;
     Ok(json!({"data":values(tenant,&[next]).await?.remove(0)}))
 }

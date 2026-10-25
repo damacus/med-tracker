@@ -87,7 +87,13 @@ pub(super) async fn open(
         _ => "fullpage",
     };
     let duplicate_choices = if error.is_some() && !forms::field(&draft, "name").is_empty() {
-        let candidate = json!({"barcode":forms::field(&draft,"barcode"),"code":forms::field(&draft,"dmd_code"),"name":forms::field(&draft,"name")});
+        let candidate = medication_lookup::StockMatchCandidate {
+            barcode: forms::field(&draft, "barcode").to_owned(),
+            code: forms::field(&draft, "dmd_code").to_owned(),
+            name: forms::field(&draft, "name").to_owned(),
+            display: String::new(),
+            package_unit: None,
+        };
         match medication_lookup::stock_matches(&tenant, &candidate).await {
             Ok(rows) => rows.into_iter().map(|row| json!({"name":row.friendly_name.as_deref().filter(|name|!name.is_empty()).or(row.name.as_deref()).unwrap_or("Medication"),"location":context.locations.iter().find(|location|location.id==row.location_id).map(|location|location.name.as_str()).unwrap_or("Location"),"path":format!("/households/{slug}/medications/{}?refill=true",row.id)})).collect::<Vec<_>>(),
             Err(error) => return operation_error(error),
@@ -333,8 +339,13 @@ async fn save(
     draft: &HashMap<String, String>,
 ) -> std::result::Result<(i64, String), OperationError> {
     let value = |key| forms::field(draft, key);
-    let candidate =
-        json!({"barcode":value("barcode"),"code":value("dmd_code"),"name":value("name")});
+    let candidate = medication_lookup::StockMatchCandidate {
+        barcode: value("barcode").to_owned(),
+        code: value("dmd_code").to_owned(),
+        name: value("name").to_owned(),
+        display: String::new(),
+        package_unit: None,
+    };
     medications::lock_row(
         tenant.transaction(),
         "households",
@@ -349,55 +360,52 @@ async fn save(
             details: json!({"error":"A matching medication is already in this household. Return to Medication Finder and choose the medicine and location to refill."}),
         });
     }
-    let mut attrs = serde_json::Map::new();
-    for key in [
-        "name",
-        "friendly_name",
-        "description",
-        "warnings",
-        "dose_unit",
-        "reorder_threshold",
-        "barcode",
-        "dmd_code",
-        "dmd_system",
-        "dmd_concept_class",
-        "category",
-        "default_schedule_type",
-    ] {
-        if let Some(value) = draft.get(key) {
-            if key == "dmd_system"
-                && value == "https://dmd.nhs.uk"
+    use medications::crud::{Field, MedicationInput, ScheduleType};
+    let text = |key: &str| draft.get(key).cloned().map_or(Field::Missing, Field::Value);
+    let decimal = |key: &str| {
+        let raw = forms::field(draft, key);
+        if raw.is_empty() {
+            Field::Null
+        } else {
+            medications::crud::parse_decimal_text(raw).map_or(Field::InvalidText, Field::Value)
+        }
+    };
+    let mut attrs = MedicationInput::default();
+    attrs.name = text("name");
+    attrs.friendly_name = text("friendly_name");
+    attrs.description = text("description");
+    attrs.warnings = text("warnings");
+    attrs.dose_unit = text("dose_unit");
+    attrs.barcode = text("barcode");
+    attrs.dmd_code = text("dmd_code");
+    attrs.dmd_concept_class = text("dmd_concept_class");
+    attrs.category = text("category");
+    attrs.location_id = Field::Value(value("location_id").parse::<i64>().unwrap_or_default());
+    attrs.dose_amount = decimal("dose_amount");
+    attrs.current_supply = decimal("current_supply");
+    attrs.default_schedule_type =
+        ScheduleType::from_name(value("schedule_type")).map_or(Field::Invalid, Field::Value);
+    attrs.reorder_threshold = match draft.get("reorder_threshold") {
+        Some(raw) => {
+            medications::crud::parse_decimal_text(raw).map_or(Field::InvalidText, Field::Value)
+        }
+        None => Field::Missing,
+    };
+    attrs.dmd_system = match draft.get("dmd_system") {
+        Some(system)
+            if system == "https://dmd.nhs.uk"
                 && draft
                     .get("dmd_code")
-                    .is_none_or(|code| code.trim().is_empty())
-            {
-                continue;
-            }
-            attrs.insert(key.into(), json!(value));
+                    .is_none_or(|code| code.trim().is_empty()) =>
+        {
+            Field::Missing
         }
-    }
-    attrs.insert(
-        "location_id".into(),
-        json!(value("location_id").parse::<i64>().unwrap_or_default()),
-    );
-    for key in ["dose_amount", "current_supply"] {
-        attrs.insert(
-            key.into(),
-            if value(key).is_empty() {
-                Value::Null
-            } else {
-                json!(value(key))
-            },
-        );
-    }
-    attrs.insert(
-        "default_schedule_type".into(),
-        json!(value("schedule_type")),
-    );
+        _ => text("dmd_system"),
+    };
     let config = schedule_defaults(draft)?;
     let record = medications::crud::create_with_schedule_config(
         tenant,
-        Value::Object(attrs),
+        attrs,
         Some(config),
         Some(principal.provenance()),
     )
@@ -405,13 +413,39 @@ async fn save(
     let mut plan = draft.clone();
     plan.insert("medication_id".into(), record.id.to_string());
     if !value("dose_amount").is_empty() {
-        let body = json!({"dosage_option":{"medication_id":record.id.to_string(),"amount":value("dose_amount"),"unit":value("dose_unit"),"frequency":value("frequency"),"default_max_daily_doses":value("max_daily_doses").parse::<i32>().unwrap_or(2),"default_min_hours_between_doses":value("min_hours_between_doses"),"default_dose_cycle":value("dose_cycle"),"current_supply":if value("current_supply").is_empty(){Value::Null}else{json!(value("current_supply"))},"reorder_threshold":value("reorder_threshold")}});
-        let (created, _) =
-            dosages::create_with_parent(tenant, body, record.clone(), Some(principal.provenance()))
-                .await?;
-        if let Some(id) = created["id"].as_i64() {
-            plan.insert("source_dosage_option_id".into(), id.to_string());
-        }
+        let current_supply = if value("current_supply").is_empty() {
+            None
+        } else {
+            Some(value("current_supply").to_owned())
+        };
+        let default = dosages::DosageInput::from_form(
+            dosages::FormDosageInput {
+                medication_id: Some(record.id.to_string()),
+                amount: value("dose_amount").to_owned(),
+                unit: value("dose_unit").to_owned(),
+                frequency: value("frequency").to_owned(),
+                description: None,
+                default_for_adults: None,
+                default_for_children: None,
+                max_daily_doses: value("max_daily_doses")
+                    .parse::<i32>()
+                    .unwrap_or(2)
+                    .to_string(),
+                min_hours_between_doses: value("min_hours_between_doses").to_owned(),
+                dose_cycle: value("dose_cycle").to_owned(),
+                current_supply: Some(current_supply),
+                reorder_threshold: Some(Some(value("reorder_threshold").to_owned())),
+            },
+            true,
+        );
+        let created = dosages::create_with_parent(
+            tenant,
+            default,
+            record.clone(),
+            Some(principal.provenance()),
+        )
+        .await?;
+        plan.insert("source_dosage_option_id".into(), created.id.to_string());
     }
     if !value("extra_options").is_empty() {
         let options: Vec<Value> = serde_json::from_str(value("extra_options")).map_err(|_| {
@@ -425,26 +459,14 @@ async fn save(
             });
         }
         for option in options {
-            let mut attrs = option.as_object().cloned().unwrap_or_default();
-            attrs.insert("medication_id".into(), json!(record.id.to_string()));
-            for key in [
-                "amount",
-                "default_min_hours_between_doses",
-                "current_supply",
-                "reorder_threshold",
-            ] {
-                if let Some(Value::Number(number)) = attrs.get(key) {
-                    attrs.insert(key.into(), json!(number.to_string()));
-                }
-            }
-            for key in ["current_supply", "reorder_threshold"] {
-                if attrs.get(key).and_then(Value::as_str) == Some("") {
-                    attrs.insert(key.into(), Value::Null);
-                }
-            }
-            let body = json!({"dosage_option": attrs});
-            dosages::create_with_parent(tenant, body, record.clone(), Some(principal.provenance()))
-                .await?;
+            let input = dosages::DosageInput::from_wizard_extra(&option, record.id);
+            dosages::create_with_parent(
+                tenant,
+                input,
+                record.clone(),
+                Some(principal.provenance()),
+            )
+            .await?;
         }
     }
     if !value("person_id").is_empty() {

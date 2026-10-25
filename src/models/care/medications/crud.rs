@@ -1,8 +1,14 @@
 use loco_rs::model::TenantQueryExt;
 mod cascade;
 mod dose_mode;
+mod input;
 mod persistence;
 mod validation;
+
+pub use input::{
+    CreateInput, Field, LocationId, MedicationCreate, MedicationInput, ScheduleType,
+    parse_decimal_text,
+};
 
 use super::*;
 use crate::models::entities::{api_tombstone, person, person_medication, schedule};
@@ -11,18 +17,19 @@ use std::collections::HashMap;
 
 pub async fn create(
     tenant: &TenantTransaction,
-    attributes: Value,
+    input: impl Into<CreateInput>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<medication::Model, OperationError> {
-    create_with_schedule_config(tenant, attributes, None, provenance).await
+    create_with_schedule_config(tenant, input, None, provenance).await
 }
 
 pub(crate) async fn create_with_schedule_config(
     tenant: &TenantTransaction,
-    attributes: Value,
+    input: impl Into<CreateInput>,
     schedule_config: Option<Value>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<medication::Model, OperationError> {
+    let input = input.into();
     let context = StockContext { tenant, provenance };
     lock_row(
         tenant.transaction(),
@@ -34,7 +41,19 @@ pub(crate) async fn create_with_schedule_config(
     if !may_create(tenant).await? {
         return Err(OperationError::Forbidden);
     }
-    validate(tenant, &attributes, None).await?;
+    let location_id = match &input {
+        CreateInput::Draft(input) => input.location_for_scope(),
+        CreateInput::Validated(command) => command.0.location_id.map(|id| id.0),
+    };
+    validate_location(tenant, location_id).await?;
+    let attributes = match input {
+        CreateInput::Draft(input) => input.validate(None).map_err(field_error)?,
+        CreateInput::Validated(command) => {
+            command.validate().map_err(field_error)?;
+            command.0
+        }
+    };
+    validate_barcode(tenant, attributes.barcode.as_deref(), None).await?;
     let now = Utc::now().naive_utc();
     let mut active = medication::ActiveModel {
         household_id: Set(tenant.scope().household_id),
@@ -43,7 +62,7 @@ pub(crate) async fn create_with_schedule_config(
         updated_at: Set(now),
         ..Default::default()
     };
-    validation::assign_attributes(&mut active, &attributes).map_err(field_error)?;
+    attributes.assign(&mut active);
     if let Some(config) = schedule_config {
         active.default_schedule_config = Set(config);
     }
@@ -77,15 +96,17 @@ pub(crate) async fn create_with_schedule_config(
 pub async fn update(
     tenant: &TenantTransaction,
     id: &str,
-    attributes: Value,
+    input: MedicationInput,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<medication::Model, OperationError> {
     let context = StockContext { tenant, provenance };
     let found = locked_manager(tenant, id, etag).await?;
-    validate(tenant, &attributes, Some(&found)).await?;
+    validate_location(tenant, input.location_for_scope()).await?;
+    let attributes = input.validate(Some(&found)).map_err(field_error)?;
+    validate_barcode(tenant, attributes.barcode.as_deref(), Some(found.id)).await?;
     let switching =
-        found.dose_amount.is_none() && attributes.get("dose_amount").is_some_and(|v| !v.is_null());
+        found.dose_amount.is_none() && attributes.dose_amount.is_some_and(|value| value.is_some());
     if switching
         && schedule::Entity::find()
             .in_tenant(tenant.scope().household_id)
@@ -100,16 +121,12 @@ pub async fn update(
             "cannot switch dose mode while schedules exist",
         )));
     }
-    if found.dose_amount.is_none()
-        && attributes
-            .as_object()
-            .is_some_and(|v| v.len() == 1 && v.get("dose_amount") == Some(&Value::Null))
-    {
+    if found.dose_amount.is_none() && input.only_null_dose() {
         return Ok(found);
     }
     let before = audit::medication_snapshot(&found);
     let mut active: medication::ActiveModel = found.into();
-    validation::assign_attributes(&mut active, &attributes).map_err(field_error)?;
+    attributes.assign(&mut active);
     active.updated_at = Set(Utc::now().naive_utc());
     let updated = active
         .update(tenant.transaction())
@@ -230,24 +247,28 @@ pub async fn can_create(tenant: &TenantTransaction) -> Result<bool, OperationErr
     may_create(tenant).await
 }
 
-async fn validate(
+async fn validate_location(
     tenant: &TenantTransaction,
-    attributes: &Value,
-    existing: Option<&medication::Model>,
+    location_id: Option<i64>,
 ) -> Result<(), OperationError> {
     if !validation::valid_location(
         tenant.transaction(),
         tenant.scope().household_id,
-        attributes,
+        location_id,
     )
     .await?
     {
         return Err(OperationError::NotFound);
     }
-    validation::validate_attributes(attributes, existing).map_err(field_error)?;
-    if validation::barcode_conflict(tenant.transaction(), attributes, existing.map(|v| v.id))
-        .await?
-    {
+    Ok(())
+}
+
+async fn validate_barcode(
+    tenant: &TenantTransaction,
+    barcode: Option<&str>,
+    existing_id: Option<i64>,
+) -> Result<(), OperationError> {
+    if validation::barcode_conflict(tenant.transaction(), barcode, existing_id).await? {
         return Err(field_error(("barcode", "has already been taken")));
     }
     Ok(())

@@ -13,13 +13,14 @@ pub(super) async fn apply(
     operation: &Operation,
     provenance: &CredentialProvenance,
 ) -> Result<Value, OperationError> {
-    let mut attributes = Value::Object(operation.attributes.clone());
-    if let Some(Value::String(id)) = attributes.get("location_id") {
+    let mut medication_input =
+        medications::crud::MedicationInput::from_fields(operation.attributes.clone());
+    if let Some(Value::String(id)) = operation.attributes.get("location_id") {
         let row = locations::read(tenant, id).await?;
-        attributes["location_id"] = json!(row.id);
+        medication_input.location_id = medications::crud::Field::Value(row.id);
     }
     if operation.action == "create" {
-        let row = medications::crud::create(tenant, attributes, Some(provenance)).await?;
+        let row = medications::crud::create(tenant, medication_input, Some(provenance)).await?;
         let snapshot = medications::read_stock_snapshot(tenant, &row.id.to_string()).await?;
         return Ok(result(
             "Medication",
@@ -62,7 +63,7 @@ pub(super) async fn apply(
             medications::crud::update(
                 tenant,
                 id,
-                attributes,
+                medication_input,
                 operation.if_match.as_deref(),
                 Some(provenance),
             )
@@ -105,7 +106,7 @@ pub(super) async fn apply(
             orders::mark_as_ordered(
                 tenant,
                 id,
-                &json!({"order_details":attributes}),
+                orders::OrderInput::ordered_from_fields(&operation.attributes),
                 Some(provenance),
             )
             .await?;
@@ -114,7 +115,8 @@ pub(super) async fn apply(
             if !operation.attributes.is_empty() {
                 return Err(invalid());
             }
-            orders::mark_as_received(tenant, id, &json!({}), Some(provenance)).await?;
+            orders::mark_as_received(tenant, id, orders::OrderInput::received(), Some(provenance))
+                .await?;
         }
         "remove_stock" => {
             if operation.attributes.keys().any(|key| {
@@ -125,7 +127,15 @@ pub(super) async fn apply(
             }) {
                 return Err(invalid());
             }
-            if let Some(Value::String(id)) = attributes.get("dosage_id")
+            let text = |key: &str| {
+                operation
+                    .attributes
+                    .get(key)
+                    .and_then(Value::as_str)
+                    .map(str::to_owned)
+            };
+            let mut dosage_id = text("dosage_id");
+            if let Some(id) = dosage_id.as_deref()
                 && id.parse::<i64>().is_err()
             {
                 let option = dosage::Entity::find()
@@ -134,7 +144,7 @@ pub(super) async fn apply(
                     .one(tenant.transaction())
                     .await?
                     .ok_or(OperationError::NotFound)?;
-                attributes["dosage_id"] = json!(option.id.to_string());
+                dosage_id = Some(option.id.to_string());
             }
             let query = version::Entity::find()
                 .filter(version::Column::HouseholdId.eq(tenant.scope().household_id))
@@ -142,12 +152,6 @@ pub(super) async fn apply(
                 .filter(version::Column::ItemId.eq(row.id))
                 .filter(version::Column::Event.eq("stock_removal"));
             let before = query.clone().count(tenant.transaction()).await?;
-            let text = |key: &str| {
-                attributes
-                    .get(key)
-                    .and_then(Value::as_str)
-                    .map(str::to_owned)
-            };
             medications::stock_removals::create(
                 tenant,
                 medications::stock_removals::RemoveStock {
@@ -155,7 +159,7 @@ pub(super) async fn apply(
                     quantity: text("quantity").ok_or_else(invalid)?,
                     reason: text("reason").ok_or_else(invalid)?,
                     note: text("note"),
-                    dosage_id: text("dosage_id"),
+                    dosage_id,
                     submission_id: text("submission_id").ok_or_else(invalid)?,
                 },
                 Some(provenance),

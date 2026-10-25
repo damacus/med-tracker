@@ -50,12 +50,50 @@ tasks:
     desc: Build the root Loco release image for the local architecture
     cmds:
       - task: image:check
-      - 'docker build --tag {{.LOCO_IMAGE | default "medtracker-loco:local" | shellQuote}} .'
+      - 'docker build --build-arg CARGO_BUILD_JOBS={{.CARGO_BUILD_JOBS | default "2" | shellQuote}} --tag {{.LOCO_IMAGE | default "medtracker-loco:local" | shellQuote}} .'
   image:test:
     desc: Check release commands, runtime assets and non-root image ownership
     env:
       LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
+      LOCO_IMAGE_SUBNET: '{{.LOCO_IMAGE_SUBNET | default ""}}'
     cmds: [python3 scripts/test_loco_image.py]
+  test:scheduler:process:
+    desc: Check native scheduler arguments, environment and process failures
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: &scheduler_icu_major "78"
+      RUST_ICU_LINK_SEARCH_DIR: &scheduler_icu_lib
+        sh: 'if [ "$(uname -s)" = Darwin ]; then icu_prefix=$(brew --prefix icu4c@78) && printf "%s/lib" "$icu_prefix"; else pkg-config --variable=libdir icu-uc; fi'
+    cmds:
+      - cargo nextest run --locked --test scheduler_process --no-tests=fail --test-threads 2
+  test:scheduler:image:
+    desc: Prove scheduled expiry and audit writes in the scratch release image
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *scheduler_icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *scheduler_icu_lib
+      LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
+    vars:
+      OWNED_PROJECT:
+        sh: 'printf "mtloco-scheduler-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
+    cmds:
+      - defer:
+          task: foundation:db-down
+          vars:
+            FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
+      - '{{if .LOCO_IMAGE_SUBNET}}docker network create --subnet {{.LOCO_IMAGE_SUBNET | shellQuote}} --label {{printf "com.docker.compose.project=%s" .OWNED_PROJECT | shellQuote}} --label com.docker.compose.network=default {{printf "%s_default" .OWNED_PROJECT | shellQuote}}{{else}}true{{end}}'
+      - task: foundation:db-up
+        vars:
+          FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
+      - task: foundation:db-provision
+        vars:
+          FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
+      - >-
+        sh -eu -c '
+        db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
+        export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
+        export MEDTRACKER_OWNED_DATABASE=1;
+        export MEDTRACKER_IMAGE_NETWORK="${1}_default";
+        cargo nextest run --locked --test care_api --run-ignored only --no-tests=fail --test-threads 1 scheduler_image
+        ' sh {{.OWNED_PROJECT | shellQuote}}
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]

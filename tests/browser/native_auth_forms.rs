@@ -72,7 +72,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
         capture_sizes(page,"password-reset-confirm").await;
         page.get_by_label("New password",true).fill(NEW_PASSWORD,None).await.unwrap();
         page.get_by_role(AriaRole::Button,named("Save password")).click(None).await.unwrap();
-        expect(page.get_by_role(AriaRole::Heading,named("Sign in"))).to_be_visible().await.unwrap();
+        expect(page.get_by_role(AriaRole::Heading,named("Welcome back"))).to_be_visible().await.unwrap();
         sign_in(page,&journey.origin).await;
         expect(page.get_by_role(AriaRole::Button,named("Open household: Synthetic household"))).to_be_visible().await.unwrap();
         page.get_by_role(AriaRole::Button,named("Open household: Synthetic household")).click(None).await.unwrap();
@@ -118,7 +118,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
         expect(page.get_by_role(AriaRole::Heading,named("Account security"))).to_be_visible().await.unwrap();
         expect(page.get_by_text("Authenticator app: enabled",true)).to_be_visible().await.unwrap();
         page.get_by_role(AriaRole::Button,named("Sign out")).click(None).await.unwrap();
-        expect(page.get_by_role(AriaRole::Heading,named("Sign in"))).to_be_visible().await.unwrap();
+        expect(page.get_by_role(AriaRole::Heading,named("Welcome back"))).to_be_visible().await.unwrap();
         sign_in(page,&journey.origin).await;
         expect(page.get_by_role(AriaRole::Heading,named("Verify your identity"))).to_be_visible().await.unwrap();
         page.get_by_label("Backup code",true).fill("invalid-backup-code",None).await.unwrap();

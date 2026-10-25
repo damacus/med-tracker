@@ -71,6 +71,10 @@ backend only when its specific functionality is the documented limitation.
 
 Use published release versions for package dependencies, never Git SHA or unreleased
 branch dependencies. Retain committed lockfiles and artifact integrity checksums.
+The owner-approved temporary exception is the exact `damacus/loco` revision in
+`Cargo.toml` for shell-free scheduler execution, based on the published 1.2.0 source.
+Keep the full revision and lockfile pinned; return to a published release when the
+scheduler correction is available. This exception does not cover other dependencies.
 
 Use maintained protocol and crypto libraries. Search dependencies before custom
 security code; document an exact limitation and interoperability/negative tests

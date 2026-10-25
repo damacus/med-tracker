@@ -103,6 +103,23 @@ pub async fn list(
     .await
 }
 
+pub(crate) async fn key_for_row(
+    tenant: &TenantTransaction,
+    row: &dose_occurrence::Model,
+    secret: &Arc<[u8]>,
+) -> Result<String, OperationError> {
+    let (kind, id) = if let Some(id) = row.schedule_id {
+        ("schedule", id)
+    } else {
+        (
+            "person_medication",
+            row.person_medication_id.ok_or_else(invalid_occurrence)?,
+        )
+    };
+    let source = source(tenant, kind, &id.to_string(), false).await?;
+    Ok(key(secret, &source, row.window_starts_on, row.position))
+}
+
 pub(crate) async fn browser_list(
     tenant: &TenantTransaction,
     kind: &str,
@@ -159,39 +176,39 @@ pub async fn change(
     tenant: &TenantTransaction,
     source_path: (&str, &str),
     action: &str,
-    body: &Value,
+    input: ChangeInput,
     etag: Option<&str>,
     secret: &Arc<[u8]>,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<OccurrenceWritten, OperationError> {
     let (kind, id) = source_path;
     authorize(tenant, kind, id, action).await?;
     let source = source(tenant, kind, id, true).await?;
-    let attrs = attributes(body, action).map_err(OperationError::from)?;
-    let key = attrs
-        .get("key")
-        .and_then(Value::as_str)
-        .ok_or_else(invalid_occurrence)?;
+    let fields = input.fields()?;
     let mut row = find_row(
         tenant.transaction(),
         secret,
         &source,
-        key,
+        &fields.key,
         tenant.settings(),
     )
     .await?
     .ok_or_else(invalid_occurrence)?;
     let context = AuthContext { tenant, provenance };
-    match action {
-        "not_taken" => {
-            let (reason, note) = parse_not_taken(attrs).map_err(OperationError::from)?;
+    match fields.action {
+        ActionInput::NotTaken(values) if action == "not_taken" => {
+            let (reason, note) = values.map_err(OperationError::from)?;
             if let Some(record) = row.record.as_ref()
                 && record.outcome == "not_taken"
                 && record.reason == reason
                 && record.note == note
             {
                 let body = json!({"data":row_value(secret,&source,&row,tenant.settings())});
-                return Ok((body, record_etag(record)));
+                return Ok(OccurrenceWritten {
+                    row: record.clone(),
+                    body,
+                    etag: record_etag(record),
+                });
             }
             if row
                 .record
@@ -217,7 +234,7 @@ pub async fn change(
                 .await?,
             );
         }
-        "reopen" => {
+        ActionInput::Reopen if action == "reopen" => {
             let record = row
                 .record
                 .as_ref()
@@ -243,8 +260,12 @@ pub async fn change(
                 .await?,
             );
         }
-        "take" => {
-            let taken_at = parse_take(attrs).map_err(OperationError::from)?;
+        ActionInput::Take {
+            taken_at,
+            attempt,
+            client_uuid,
+        } if action == "take" => {
+            let taken_at = taken_at.map_err(OperationError::from)?;
             if row.legacy_take_id.is_some() {
                 return Err(conflict("already_resolved"));
             }
@@ -276,7 +297,7 @@ pub async fn change(
             if let Some(record) = row.record.as_ref()
                 && record.outcome == "taken"
             {
-                let supplied = attrs.get("client_uuid").and_then(Value::as_str);
+                let supplied = client_uuid.as_deref();
                 let stored = if let Some(id) = record.medication_take_id {
                     medication_take::Entity::find_by_id(id)
                         .one(tenant.transaction())
@@ -305,26 +326,7 @@ pub async fn change(
                     return Err(invalid("taken_at", "does not match the occurrence window"));
                 }
             }
-            let attempt = doses::TakeInput {
-                source_type: source.kind().name().into(),
-                source_id: source.portable_id().into(),
-                taken_at: attrs["taken_at"].as_str().unwrap_or_default().into(),
-                client_uuid: attrs
-                    .get("client_uuid")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned),
-                dose_amount: attrs
-                    .get("dose_amount")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned),
-                dose_unit: None,
-                taken_from_medication_id: attrs
-                    .get("taken_from_medication_id")
-                    .and_then(Value::as_i64),
-                expected_effective_amount: None,
-                expected_effective_unit: None,
-            }
-            .attempt()?;
+            let attempt = attempt.ok_or(OperationError::Unavailable)??;
             let outcome = doses::execute_attempt_in_timezone(
                 tenant,
                 attempt,
@@ -360,8 +362,11 @@ pub async fn change(
         .as_ref()
         .map(record_etag)
         .ok_or(OperationError::Unavailable)?;
-    Ok((
-        json!({"data":row_value(secret,&source,&row,tenant.settings())}),
+    let body = json!({"data":row_value(secret,&source,&row,tenant.settings())});
+    let record = row.record.ok_or(OperationError::Unavailable)?;
+    Ok(OccurrenceWritten {
+        body,
+        row: record,
         etag,
-    ))
+    })
 }

@@ -332,16 +332,16 @@ impl<'a> Page<'a> {
     }
 }
 
-fn attributes(draft: &[(String, String)]) -> Value {
-    let mut attributes =
-        json!({"email":field(draft,"email"),"membership_role":field(draft,"membership_role")});
-    for (name, value) in draft.iter().filter(|(name, _)| {
+fn attributes(draft: &[(String, String)]) -> invitations::InvitationInput {
+    let care_authority_requested = draft.iter().any(|(name, _)| {
         matches!(
             name.as_str(),
             "dependent_ids" | "dependent_ids[]" | "relationship_type" | "access_level"
         )
-    }) {
-        attributes[name] = json!(value);
-    }
-    attributes
+    });
+    invitations::InvitationInput::from_form(
+        field(draft, "email"),
+        field(draft, "membership_role"),
+        care_authority_requested,
+    )
 }

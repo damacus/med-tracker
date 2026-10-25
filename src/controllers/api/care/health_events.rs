@@ -132,8 +132,11 @@ async fn mutate(
         Ok(AxumJson(body)) => health_events::mutate(
             &tenant,
             id.as_deref(),
-            &body,
-            headers.get("if-match").and_then(|v| v.to_str().ok()),
+            health_events::HealthInput::from_api(
+                &body,
+                id.as_deref(),
+                headers.get("if-match").and_then(|v| v.to_str().ok()),
+            ),
             principal.provenance(),
         )
         .await

@@ -1,5 +1,11 @@
 use super::*;
 use crate::models::care::locations::KeyedResponse;
+use administration::app_tokens::{CreateInput, TextInput};
+
+enum Mutation {
+    Create(CreateInput),
+    Revoke(i64),
+}
 
 pub(in crate::controllers::api::care) async fn index(
     State(ctx): State<AppContext>,
@@ -52,7 +58,15 @@ fn path(household_id: i64, id: Option<&str>) -> String {
     }
 }
 
-fn attributes(body: &Value) -> std::result::Result<Value, response::Failure> {
+fn text_input(value: Option<&Value>) -> TextInput {
+    match value {
+        None => TextInput::Missing,
+        Some(Value::String(value)) => TextInput::Text(value.clone()),
+        Some(_) => TextInput::Invalid,
+    }
+}
+
+fn attributes(body: &Value) -> std::result::Result<CreateInput, response::Failure> {
     let outer = body
         .as_object()
         .ok_or_else(|| response::Failure::bad_request("Invalid request body"))?;
@@ -70,7 +84,10 @@ fn attributes(body: &Value) -> std::result::Result<Value, response::Failure> {
             "contains an unsupported field",
         ));
     }
-    Ok(json!(inner))
+    Ok(CreateInput {
+        name: text_input(inner.get("name")),
+        expires_at: text_input(inner.get("expires_at")),
+    })
 }
 
 async fn mutate(
@@ -163,22 +180,31 @@ async fn process(
             }
         }
     }
-    let attributes = if id.is_some() {
-        Value::Null
-    } else {
-        attributes(&body)?
+    let mutation = match numeric_id {
+        Some(id) => Mutation::Revoke(id),
+        None => Mutation::Create(attributes(&body)?),
     };
     let savepoint = tenant
         .transaction()
         .begin()
         .await
         .map_err(|_| response::unavailable())?;
-    let result = if let Some(id) = numeric_id {
-        administration::app_tokens::revoke(tenant, id, principal.provenance())
-            .await
-            .map(|()| Value::Null)
-    } else {
-        administration::app_tokens::create(tenant, &attributes, principal.provenance()).await
+    let (result, receipt) = match mutation {
+        Mutation::Revoke(id) => (
+            administration::app_tokens::revoke(tenant, id, principal.provenance())
+                .await
+                .map(|()| Value::Null),
+            None,
+        ),
+        Mutation::Create(input) => {
+            match administration::app_tokens::create(tenant, input, principal.provenance()).await {
+                Ok(issued) => {
+                    let receipt = json!({"receipt":{"token_id":issued.summary.id}});
+                    (Ok(json!({"data": issued})), Some(receipt))
+                }
+                Err(error) => (Err(error), None),
+            }
+        }
     };
     let (status, reply) = reply(
         savepoint,
@@ -192,14 +218,10 @@ async fn process(
     )
     .await?;
     if let Some(key) = key {
-        let stored = if status == StatusCode::CREATED {
-            json!({"receipt":{"token_id":reply["data"]["id"]}})
-        } else {
-            reply.clone()
-        };
-        store(
+        let stored = receipt.unwrap_or_else(|| reply.clone());
+        locations::store(
             tenant,
-            principal,
+            principal.provenance(),
             SavedResponse {
                 key,
                 method,
@@ -211,6 +233,8 @@ async fn process(
             },
         )
         .await
+        .map_err(response::operation)?;
+        Ok((status, reply, None, false))
     } else {
         Ok((status, reply, None, false))
     }

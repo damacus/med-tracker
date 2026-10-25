@@ -8,6 +8,7 @@
   const status = root.querySelector('[data-lookup-status]');
   const results = root.querySelector('[data-lookup-results]');
   const manual = root.querySelector('[data-manual-entry]');
+  const feedback = root.querySelector('[data-lookup-feedback]');
   const start = root.querySelector('[data-camera-start]');
   const stop = root.querySelector('[data-camera-stop]');
   const cameraStatus = root.querySelector('[data-camera-status]');
@@ -25,6 +26,8 @@
   };
 
   async function find(mode = 'barcode') {
+    const activeForm = mode === 'medicine' ? medicineForm : form;
+    if (feedback) activeForm.after(feedback);
     const sequence = ++generation;
     request?.abort();
     request = new AbortController();

@@ -1,6 +1,54 @@
 use super::*;
 use loco_rs::model::TenantQueryExt;
 
+pub struct EmptyChangeInput(bool);
+
+impl EmptyChangeInput {
+    pub fn from_body(body: &Value) -> Self {
+        Self(body.as_object().is_some_and(|body| body.is_empty()))
+    }
+
+    pub fn empty() -> Self {
+        Self(true)
+    }
+
+    fn validate(&self) -> Result<(), OperationError> {
+        if self.0 {
+            Ok(())
+        } else {
+            Err(invalid("body", "must be empty"))
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+}
+
+pub struct DirectionInput(Option<Direction>);
+
+impl DirectionInput {
+    pub fn from_body(body: &Value) -> Self {
+        let direction = body
+            .as_object()
+            .filter(|map| map.len() == 1)
+            .and_then(|map| map.get("direction"))
+            .and_then(Value::as_str);
+        Self(match direction {
+            Some("up") => Some(Direction::Up),
+            Some("down") => Some(Direction::Down),
+            _ => None,
+        })
+    }
+
+    fn validate(&self) -> Result<Direction, OperationError> {
+        self.0
+            .ok_or_else(|| invalid("direction", "must be up or down"))
+    }
+}
+
 async fn source_path(
     tenant: &TenantTransaction,
     kind: Kind,
@@ -29,7 +77,7 @@ async fn source_path(
 async fn change(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
     kind: Kind,
     pause: bool,
@@ -37,9 +85,7 @@ async fn change(
     lock(tenant).await?;
     let source = source_path(tenant, kind, id).await?;
     access::require_person_access(tenant, source.person_id(), PersonAccess::Manage).await?;
-    if body.as_object().is_none_or(|body| !body.is_empty()) {
-        return Err(invalid("body", "must be empty"));
-    }
+    input.validate()?;
     let context = AuthContext { tenant, provenance };
     let source = if pause {
         persistence::pause_source(
@@ -75,39 +121,39 @@ async fn change(
 pub async fn pause_schedule(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
-    change(tenant, id, body, provenance, Kind::Schedule, true).await
+    change(tenant, id, input, provenance, Kind::Schedule, true).await
 }
 pub async fn resume_schedule(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
-    change(tenant, id, body, provenance, Kind::Schedule, false).await
+    change(tenant, id, input, provenance, Kind::Schedule, false).await
 }
 pub async fn pause_assignment(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
-    change(tenant, id, body, provenance, Kind::Assignment, true).await
+    change(tenant, id, input, provenance, Kind::Assignment, true).await
 }
 pub async fn resume_assignment(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
-    change(tenant, id, body, provenance, Kind::Assignment, false).await
+    change(tenant, id, input, provenance, Kind::Assignment, false).await
 }
 pub async fn reorder_assignment(
     tenant: &TenantTransaction,
     id: &str,
-    body: &Value,
+    input: &DirectionInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
     lock(tenant).await?;
@@ -115,25 +161,17 @@ pub async fn reorder_assignment(
         return Err(OperationError::NotFound);
     };
     access::require_person_access(tenant, source.person_id, PersonAccess::Manage).await?;
-    let direction = body
-        .as_object()
-        .filter(|map| map.len() == 1)
-        .and_then(|map| map.get("direction"))
-        .and_then(Value::as_str);
-    if !matches!(direction, Some("up" | "down")) {
-        return Err(invalid("direction", "must be up or down"));
-    }
-    let direction = direction.expect("validated direction");
+    let direction = input.validate()?;
     let mut query = person_medication::Entity::find()
         .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
         .filter(person_medication::Column::PersonId.eq(source.person_id))
         .filter(person_medication::Column::RetiredAt.is_null())
-        .filter(if direction == "up" {
+        .filter(if matches!(direction, Direction::Up) {
             person_medication::Column::Position.lt(source.position)
         } else {
             person_medication::Column::Position.gt(source.position)
         });
-    query = if direction == "up" {
+    query = if matches!(direction, Direction::Up) {
         query
             .order_by_desc(person_medication::Column::Position)
             .order_by_desc(person_medication::Column::Id)

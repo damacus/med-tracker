@@ -466,7 +466,9 @@ impl<'a> Page<'a> {
                 Change::Settings => {
                     administration::settings::update(
                         &tenant,
-                        json!({"name":forms::field(&draft,"name")}),
+                        administration::settings::HouseholdSettingsInput::from_form_name(
+                            forms::field(&draft, "name"),
+                        ),
                         provenance,
                     )
                     .await?;

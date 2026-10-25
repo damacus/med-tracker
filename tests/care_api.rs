@@ -114,6 +114,8 @@ mod saved_status;
 mod schedule_lifecycle;
 #[path = "care_api/schedule_scope.rs"]
 mod schedule_scope;
+#[path = "care_api/scheduler_image.rs"]
+mod scheduler_image;
 #[path = "care_api/signup.rs"]
 mod signup;
 #[path = "care_api/signup_timezone.rs"]

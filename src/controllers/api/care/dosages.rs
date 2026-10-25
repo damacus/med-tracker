@@ -96,10 +96,37 @@ pub(super) async fn create(
         let body = body
             .map_err(|_| response::Failure::bad_request("Invalid JSON request body"))?
             .0;
-        dosages::create(&tenant, body, Some(principal.provenance()))
+        let savepoint = tenant
+            .transaction()
+            .begin()
             .await
-            .map(|(body, etag)| (StatusCode::CREATED, body, Some(etag)))
-            .map_err(response::operation)
+            .map_err(|_| response::unavailable())?;
+        let result = async {
+            let row = dosages::create(
+                &tenant,
+                dosages::DosageInput::from_json(body, true),
+                Some(principal.provenance()),
+            )
+            .await
+            .map_err(response::operation)?;
+            let (body, etag) = dosages::represent(&tenant, &row)
+                .await
+                .map_err(response::operation)?;
+            Ok((StatusCode::CREATED, body, Some(etag)))
+        }
+        .await;
+        if result.is_ok() {
+            savepoint
+                .commit()
+                .await
+                .map_err(|_| response::unavailable())?;
+        } else {
+            savepoint
+                .rollback()
+                .await
+                .map_err(|_| response::unavailable())?;
+        }
+        result
     }
     .await;
     finish(
@@ -161,10 +188,39 @@ async fn update(
         let etag = headers
             .get(axum::http::header::IF_MATCH)
             .map(|value| value.to_str().unwrap_or(""));
-        dosages::update(&tenant, &id, body, etag, Some(principal.provenance()))
+        let savepoint = tenant
+            .transaction()
+            .begin()
             .await
-            .map(|(body, etag)| (StatusCode::OK, body, Some(etag)))
-            .map_err(response::operation)
+            .map_err(|_| response::unavailable())?;
+        let result = async {
+            let row = dosages::update(
+                &tenant,
+                &id,
+                dosages::DosageInput::from_json(body, false),
+                etag,
+                Some(principal.provenance()),
+            )
+            .await
+            .map_err(response::operation)?;
+            let (body, etag) = dosages::represent(&tenant, &row)
+                .await
+                .map_err(response::operation)?;
+            Ok((StatusCode::OK, body, Some(etag)))
+        }
+        .await;
+        if result.is_ok() {
+            savepoint
+                .commit()
+                .await
+                .map_err(|_| response::unavailable())?;
+        } else {
+            savepoint
+                .rollback()
+                .await
+                .map_err(|_| response::unavailable())?;
+        }
+        result
     }
     .await;
     finish(

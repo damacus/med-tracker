@@ -1289,3 +1289,54 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
     drop(request);
     close(fixture, boot).await;
 }
+
+#[tokio::test]
+async fn malformed_auth_entry_links_offer_safe_recovery() {
+    let (fixture, boot) = boot_fixture().await;
+    let request = server(&boot);
+    for (path, recovery) in [
+        ("/reset-password/confirm", "/reset-password"),
+        ("/verify-account-confirm", "/verify-account-resend"),
+    ] {
+        for query in ["", "?callbackURL=private-callback-marker"] {
+            let response = request.get(&format!("{path}{query}")).await;
+            assert_eq!(response.status_code(), 400);
+            let html = response.text();
+            assert!(html.contains("Incomplete link"), "{html}");
+            assert!(html.contains(&format!("href=\"{recovery}\"")), "{html}");
+            assert!(html.contains("href=\"/login\""));
+            assert!(
+                response
+                    .header("content-type")
+                    .to_str()
+                    .unwrap()
+                    .starts_with("text/html")
+            );
+            assert_eq!(response.header("cache-control"), "no-store");
+            assert_eq!(response.header("referrer-policy"), "strict-origin");
+            for forbidden in [
+                "missing field",
+                "Failed to deserialize",
+                "private-callback-marker",
+                "name=\"token\"",
+                "<form",
+            ] {
+                assert!(!html.contains(forbidden), "{forbidden}: {html}");
+            }
+        }
+        let empty = request.get(&format!("{path}?token=")).await;
+        assert_eq!(empty.status_code(), 200);
+        let oversized = request
+            .get(&format!("{path}?token={}", "a".repeat(4097)))
+            .await;
+        assert_eq!(
+            oversized.status_code(),
+            if path.starts_with("/reset") { 400 } else { 303 }
+        );
+        let welsh = request.get(path).add_header("accept-language", "cy").await;
+        assert_eq!(welsh.status_code(), 400);
+        assert!(welsh.text().contains("Dolen anghyflawn"));
+    }
+    drop(request);
+    close(fixture, boot).await;
+}

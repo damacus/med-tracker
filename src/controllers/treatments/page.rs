@@ -330,14 +330,47 @@ impl<'a> Page<'a> {
             Err(error) => return browser::operation_error(error),
         };
         let result = match action {
-            "pause" => pause_periods::create(&tenant, &json!({"medication_pause_period":{"source_type":kind.envelope(),"source_id":record["portable_id"],"reason":browser_forms::field(&draft,"reason"),"note":browser_forms::field(&draft,"note")}}), Some(principal.provenance())).await.map(|_| ()),
+            "pause" => {
+                let Some(portable_id) = record["portable_id"].as_str() else {
+                    return browser::operation_error(OperationError::NotFound);
+                };
+                match pause_periods::authorize_source(&tenant, kind.envelope(), portable_id).await {
+                    Ok(()) => match pause_periods::PauseCreate::new(
+                        kind.envelope(),
+                        portable_id,
+                        browser_forms::field(&draft, "reason"),
+                        Some(browser_forms::field(&draft, "note").to_owned()),
+                    ) {
+                        Ok(input) => {
+                            pause_periods::create(&tenant, &input, Some(principal.provenance()))
+                                .await
+                                .map(|_| ())
+                        }
+                        Err(error) => Err(error),
+                    },
+                    Err(error) => Err(error),
+                }
+            }
             "resume" => {
-                let Some(period) = record["current_pause_period"]["id"].as_str() else { return browser::operation_error(OperationError::NotFound); };
-                pause_periods::resume(&tenant, period, &json!({}), None, Some(principal.provenance())).await.map(|_| ())
+                let Some(period) = record["current_pause_period"]["id"].as_str() else {
+                    return browser::operation_error(OperationError::NotFound);
+                };
+                pause_periods::resume(
+                    &tenant,
+                    &pause_periods::ResumeInput::new(period),
+                    None,
+                    Some(principal.provenance()),
+                )
+                .await
+                .map(|_| ())
             }
             "retire" => match kind {
-                Kind::Schedule => treatments::retire(&tenant, id, Some(principal.provenance())).await,
-                Kind::Assignment => assignments::unassign(&tenant, id, Some(principal.provenance())).await,
+                Kind::Schedule => {
+                    treatments::retire(&tenant, id, Some(principal.provenance())).await
+                }
+                Kind::Assignment => {
+                    assignments::unassign(&tenant, id, Some(principal.provenance())).await
+                }
             },
             _ => return browser::operation_error(OperationError::NotFound),
         };

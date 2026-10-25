@@ -6,6 +6,8 @@ pub mod fixtures;
 mod harness;
 #[path = "browser/journeys.rs"]
 mod journeys;
+#[path = "browser/malformed_auth_entry.rs"]
+mod malformed_auth_entry;
 #[path = "browser/native_auth.rs"]
 mod native_auth;
 #[path = "browser/native_auth_forms.rs"]
@@ -20,6 +22,15 @@ mod shared_layout;
 
 #[path = "browser/people_polish.rs"]
 mod people_polish;
+
+#[path = "browser/dependent_creation.rs"]
+mod dependent_creation;
+#[path = "browser/person_editing.rs"]
+mod person_editing;
+#[path = "browser/review_prompt_editing.rs"]
+mod review_prompt_editing;
+#[path = "browser/typed_care_operations.rs"]
+mod typed_care_operations;
 
 #[path = "browser/administration_polish.rs"]
 mod administration_polish;
@@ -43,3 +54,15 @@ mod accessibility_level_a;
 
 #[path = "browser/accessibility_journeys.rs"]
 mod accessibility_journeys;
+
+#[path = "browser/login_layout.rs"]
+mod login_layout;
+
+#[path = "browser/dashboard_cancellation.rs"]
+mod dashboard_cancellation;
+
+#[path = "browser/report_clarity.rs"]
+mod report_clarity;
+
+#[path = "browser/security_entry.rs"]
+mod security_entry;

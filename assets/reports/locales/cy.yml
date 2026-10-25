@@ -1606,6 +1606,7 @@ cy:
       has_capacity: Mae ganddo'r gallu i reoli ei feddyginiaeth ei hun
       note: 'Nodyn:'
       capacity_hint: "Gellir cadw person heb allu heb ofalwr gweithredol. Nid oes gan blant dan oed ac oedolion dibynnol allu."
+      dependent_capacity_hint: "Nid oes gan blant dan oed ac oedolion dibynnol allu."
       capacity_hint_assign_carer: "Gallwch aseinio neu wahodd gofalwr ar ôl cadw."
       save: Cadw
       cancel: Canslo
@@ -1961,6 +1962,11 @@ cy:
     overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
     security_flow:
+      incomplete_link: "Dolen anghyflawn"
+      incomplete_reset_guidance: "Mae’r ddolen ailosod cyfrinair hon yn anghyflawn. Gofynnwch am ddolen newydd i ailosod eich cyfrinair."
+      incomplete_verification_guidance: "Mae’r ddolen ddilysu hon yn anghyflawn. Gofynnwch am e-bost newydd i ddilysu eich cyfrif."
+      request_reset_link: "Gofyn am ddolen ailosod cyfrinair newydd"
+      request_verification_link: "Gofyn am e-bost dilysu newydd"
       change_password: "Newid cyfrinair"
       new_password: "Cyfrinair newydd"
       current_password: "Cyfrinair presennol"
@@ -2951,8 +2957,8 @@ cy:
         description: Meddyginiaethau a gymerwyd heddiw, wedi'u grwpio yn ôl person.
         empty: Dim meddyginiaethau wedi'u cymryd heddiw.
       summary:
-        overall_compliance: Cydymffurfiaeth Ddyddiol
-        total_doses_logged: Dosau dyddiol wedi’u cofnodi
+        overall_compliance: Cydymffurfiaeth dros y cyfnod
+        total_doses_logged: Dosau wedi’u cofnodi yn y cyfnod
         evidence_reviewed: Tystiolaeth wedi'i hadolygu
         excellent: Ardderchog
         needs_attention: Angen sylw
@@ -2960,6 +2966,7 @@ cy:
         missed_doses: Dosau wedi'u methu
         based_on_logs: Yn seiliedig ar ddosau wedi'u cofnodi
       timeline_title: Llinell Amser Cydymffurfiaeth
+      timeline_no_doses_expected: Dim dosau disgwyliedig
       download_pdf: Lawrlwytho PDF
       gp_person_label: Person ar gyfer adroddiad meddyg teulu
       gp_person_prompt: Dewiswch berson

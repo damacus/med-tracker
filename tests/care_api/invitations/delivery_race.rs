@@ -39,7 +39,7 @@ async fn queued(app: &Application) -> Result<InvitationMail, Box<dyn std::error:
     .await?;
     invitations::create(
         &tenant,
-        json!({"email":"race@example.test","membership_role":"member"}),
+        invitations::InvitationInput::from_form("race@example.test", "member", false),
         Some(&url::Url::parse(
             "https://synthetic.example.test/invitations/accept",
         )?),
@@ -172,7 +172,7 @@ async fn invitation_marker_capacity_failure_is_terminal_and_new_invitation_recov
     invitations::cancel(&tenant, invitation, None).await?;
     invitations::create(
         &tenant,
-        json!({"email":"race@example.test","membership_role":"member"}),
+        invitations::InvitationInput::from_form("race@example.test", "member", false),
         Some(&url::Url::parse(
             "https://synthetic.example.test/invitations/accept",
         )?),

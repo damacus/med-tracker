@@ -11,6 +11,30 @@ fn invalid_membership() -> OperationError {
     }
 }
 
+pub struct LocationMembershipInput {
+    person_id: Option<String>,
+}
+
+impl LocationMembershipInput {
+    pub fn from_json(value: &Value) -> Self {
+        let person_id = value
+            .as_object()
+            .filter(|outer| outer.len() == 1)
+            .and_then(|outer| outer.get("location_membership"))
+            .and_then(Value::as_object)
+            .filter(|inner| inner.len() == 1)
+            .and_then(|inner| inner.get("person_id"))
+            .and_then(Value::as_str)
+            .filter(|id| doses::valid_identifier(id))
+            .map(str::to_owned);
+        Self { person_id }
+    }
+
+    fn person_id(&self) -> Result<&str, OperationError> {
+        self.person_id.as_deref().ok_or_else(invalid_membership)
+    }
+}
+
 fn snapshot(record: &location_membership::Model) -> Value {
     json!({"id":record.id,"household_id":record.household_id,"location_id":record.location_id,"person_id":record.person_id,"created_at":record.created_at,"updated_at":record.updated_at})
 }
@@ -68,23 +92,10 @@ async fn record_person_change(
 pub async fn create_membership(
     tenant: &TenantTransaction,
     location: &location::Model,
-    attributes: &Value,
+    input: LocationMembershipInput,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(location_membership::Model, person::Model), OperationError> {
-    let outer = attributes
-        .as_object()
-        .filter(|outer| outer.len() == 1)
-        .ok_or_else(invalid_membership)?;
-    let inner = outer
-        .get("location_membership")
-        .and_then(Value::as_object)
-        .filter(|inner| inner.len() == 1)
-        .ok_or_else(invalid_membership)?;
-    let person_id = inner
-        .get("person_id")
-        .and_then(Value::as_str)
-        .filter(|id| doses::valid_identifier(id))
-        .ok_or_else(invalid_membership)?;
+    let person_id = input.person_id()?;
     let person = person_for(tenant, person_id).await?;
     require_manage(tenant, person.id).await?;
     if let Some(existing) = location_membership::Entity::find()

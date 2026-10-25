@@ -3,15 +3,18 @@ mod creation;
 mod me;
 mod persistence;
 mod projection;
+mod update_input;
 mod validation;
 mod writing;
 
 pub(crate) use creation::create_imported;
 pub use creation::{CreateDependent, create};
+pub(crate) use creation::{DependentInput, DependentKind};
 pub(crate) use me::me_read;
 pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};
-pub use writing::update;
+pub(crate) use update_input::{PersonKind, PersonUpdateInput, UpdateField};
+pub(crate) use writing::update;
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},

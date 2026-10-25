@@ -1,5 +1,6 @@
 package io.damacus.medtracker.data.api
 
+import com.squareup.moshi.JsonDataException
 import io.damacus.medtracker.data.model.AiSuggestionDto
 import io.damacus.medtracker.data.model.CapabilitiesDto
 import io.damacus.medtracker.data.model.CreateMedicationPayload
@@ -42,6 +43,7 @@ import io.medtracker.client.infrastructure.Serializer
 import io.medtracker.client.infrastructure.Success
 import io.medtracker.client.models.AiMedicationSuggestion
 import io.medtracker.client.models.Capabilities
+import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.HealthEvent
 import io.medtracker.client.models.HealthEventCreateRequest
 import io.medtracker.client.models.HealthEventCreateRequestHealthEvent
@@ -76,7 +78,7 @@ import java.util.UUID
 
 sealed class ApiResult<out T> {
     data class Success<T>(val data: T) : ApiResult<T>()
-    data class Error(val code: String?, val message: String, val statusCode: Int? = null) : ApiResult<Nothing>()
+    data class Error(val code: String?, val message: String, val statusCode: Int? = null, val requestId: String? = null) : ApiResult<Nothing>()
     data class NetworkError(val cause: Throwable) : ApiResult<Nothing>()
 }
 
@@ -297,8 +299,24 @@ class GeneratedMedTrackerApi(
         block(RequestAuthCallFactory(callFactory, accessToken))
     }
 
-    private fun ClientException.toResult() = ApiResult.Error("http_$statusCode", message.orEmpty(), statusCode)
-    private fun ServerException.toResult() = ApiResult.Error("http_$statusCode", message.orEmpty(), statusCode)
+    private fun ClientException.toResult() = errorResult(statusCode, (response as? ClientError<*>)?.body)
+    private fun ServerException.toResult() = errorResult(statusCode, (response as? ServerError<*>)?.body)
+
+    private fun errorResult(statusCode: Int, body: Any?): ApiResult.Error {
+        val error = try {
+            (body as? String)?.let { Serializer.moshi.adapter(ErrorEnvelope::class.java).fromJson(it)?.error }
+        } catch (_: JsonDataException) {
+            null
+        } catch (_: IOException) {
+            null
+        }
+        return if (error != null && error.code.isNotBlank() && error.message.isNotBlank() && error.requestId.isNotBlank()) {
+            ApiResult.Error(error.code, error.message, statusCode, error.requestId)
+        } else {
+            ApiResult.Error("http_$statusCode", "Request failed (HTTP $statusCode).", statusCode)
+        }
+    }
+
     internal fun apiBaseUrl(baseUrl: String): String = "${baseUrl.trimEnd('/')}/api/v1"
 
 }

@@ -80,41 +80,34 @@ pub(super) fn browser_hours_valid(
     }
 }
 
-pub(super) fn attributes(draft: &HashMap<String, String>, medication: Option<i64>) -> Value {
-    let mut attributes = serde_json::Map::new();
-    for name in [
-        "amount",
-        "unit",
-        "frequency",
-        "description",
-        "default_min_hours_between_doses",
-        "default_dose_cycle",
-    ] {
-        attributes.insert(name.into(), json!(forms::field(draft, name)));
-    }
-    for name in ["current_supply", "reorder_threshold"] {
+pub(super) fn attributes(
+    draft: &HashMap<String, String>,
+    medication: Option<i64>,
+) -> dosages::DosageInput {
+    let nullable = |name: &str| {
         let value = forms::field(draft, name).trim();
-        attributes.insert(
-            name.into(),
-            if value.is_empty() {
-                Value::Null
-            } else {
-                json!(value)
-            },
-        );
-    }
-    let maximum = forms::field(draft, "default_max_daily_doses");
-    attributes.insert(
-        "default_max_daily_doses".into(),
-        maximum
-            .parse::<i64>()
-            .map_or_else(|_| json!(maximum), |value| json!(value)),
-    );
-    for name in ["default_for_adults", "default_for_children"] {
-        attributes.insert(name.into(), json!(forms::field(draft, name) == "true"));
-    }
-    if let Some(id) = medication {
-        attributes.insert("medication_id".into(), json!(id.to_string()));
-    }
-    json!({"dosage_option":attributes})
+        if value.is_empty() {
+            None
+        } else {
+            Some(value.to_owned())
+        }
+    };
+    dosages::DosageInput::from_form(
+        dosages::FormDosageInput {
+            medication_id: medication.map(|id| id.to_string()),
+            amount: forms::field(draft, "amount").to_owned(),
+            unit: forms::field(draft, "unit").to_owned(),
+            frequency: forms::field(draft, "frequency").to_owned(),
+            description: Some(forms::field(draft, "description").to_owned()),
+            default_for_adults: Some(forms::field(draft, "default_for_adults") == "true"),
+            default_for_children: Some(forms::field(draft, "default_for_children") == "true"),
+            max_daily_doses: forms::field(draft, "default_max_daily_doses").to_owned(),
+            min_hours_between_doses: forms::field(draft, "default_min_hours_between_doses")
+                .to_owned(),
+            dose_cycle: forms::field(draft, "default_dose_cycle").to_owned(),
+            current_supply: Some(nullable("current_supply")),
+            reorder_threshold: Some(nullable("reorder_threshold")),
+        },
+        medication.is_some(),
+    )
 }

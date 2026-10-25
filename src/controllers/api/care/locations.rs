@@ -113,12 +113,13 @@ async fn process(
         .and_then(|outer| outer.get("location"))
         .cloned()
         .unwrap_or(Value::Null);
+    let input = locations::LocationInput::from_json(attributes);
     let savepoint = tenant
         .transaction()
         .begin()
         .await
         .map_err(|_| response::unavailable())?;
-    let created = locations::create(tenant, attributes, Some(provenance)).await;
+    let created = locations::create(tenant, input, Some(provenance)).await;
     let (status, representation, etag) = match created {
         Ok(record) => {
             savepoint

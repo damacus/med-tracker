@@ -139,7 +139,7 @@ pub async fn apply(
             if operation.action == "create" {
                 let row = locations::create(
                     tenant,
-                    Value::Object(operation.attributes.clone()),
+                    locations::LocationInput::from_fields(operation.attributes.clone()),
                     attribution,
                 )
                 .await?;
@@ -176,7 +176,7 @@ pub async fn apply(
                 let row = locations::update(
                     tenant,
                     id(operation)?,
-                    Value::Object(operation.attributes.clone()),
+                    locations::LocationInput::from_fields(operation.attributes.clone()),
                     &etag,
                     attribution,
                 )
@@ -197,10 +197,13 @@ pub async fn apply(
                 let today = chrono::Utc::now()
                     .with_timezone(&doses::app_zone(tenant.settings()))
                     .date_naive();
-                let command = people::CreateDependent::parse(
-                    &Value::Object(operation.attributes.clone()),
-                    today,
-                )?;
+                let input = serde_json::from_value::<people::DependentInput>(Value::Object(
+                    operation.attributes.clone(),
+                ))
+                .map_err(|_| OperationError::Validation {
+                    details: json!({"errors":{"person":["contains unsupported or invalid fields"]}}),
+                })?;
+                let command = people::CreateDependent::from_input(input, today)?;
                 people::create(tenant, command, today, attribution).await?
             } else {
                 people::authorize_update(tenant, id(operation)?).await?;
@@ -210,7 +213,7 @@ pub async fn apply(
                 people::update(
                     tenant,
                     id(operation)?,
-                    Value::Object(operation.attributes.clone()),
+                    people::PersonUpdateInput::from_fields(&operation.attributes),
                     chrono::Utc::now()
                         .with_timezone(&doses::app_zone(tenant.settings()))
                         .date_naive(),
@@ -229,18 +232,28 @@ pub async fn apply(
             ))
         }
         "medication_dosage_option" => {
-            let body = envelope(operation);
-            let (body, etag) = if operation.action == "create" {
-                dosages::create(tenant, body, attribution).await?
+            let input = dosages::DosageInput::from_fields(
+                &operation.attributes,
+                operation.action == "create",
+            );
+            let row = if operation.action == "create" {
+                dosages::create(tenant, input, attribution).await?
             } else {
                 if !dosages::can_manage(tenant).await? {
                     return Err(OperationError::Forbidden);
                 }
                 let (_, etag) = dosages::read(tenant, id(operation)?).await?;
                 required_etag(operation, &etag)?;
-                dosages::update(tenant, id(operation)?, body, Some(&etag), attribution).await?
+                dosages::update(tenant, id(operation)?, input, Some(&etag), attribution).await?
             };
-            wire("MedicationDosageOption", body, etag, None)
+            let (_, etag) = dosages::represent(tenant, &row).await?;
+            Ok(result(
+                "MedicationDosageOption",
+                row.id,
+                Some(&row.portable_id),
+                Some(etag),
+                None,
+            ))
         }
         "schedule" | "person_medication" => {
             super::sources::apply(tenant, operation, provenance).await

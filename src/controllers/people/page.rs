@@ -287,13 +287,12 @@ impl<'a> Page<'a> {
                 Ok(value) => value,
                 Err(error) => return authentication_error(error),
             };
-        let attributes = rendering::attributes(&draft);
         let result = match id {
             Some(id) => {
                 people::update(
                     &tenant,
                     id,
-                    attributes,
+                    super::input::update(&draft),
                     chrono::Utc::now()
                         .with_timezone(&principal.time_zone())
                         .date_naive(),
@@ -305,7 +304,9 @@ impl<'a> Page<'a> {
                 let today = chrono::Utc::now()
                     .with_timezone(&principal.time_zone())
                     .date_naive();
-                match people::CreateDependent::parse(&attributes, today) {
+                match super::input::creation(&draft)
+                    .and_then(|input| people::CreateDependent::from_input(input, today))
+                {
                     Ok(command) => {
                         people::create(&tenant, command, today, Some(principal.provenance())).await
                     }

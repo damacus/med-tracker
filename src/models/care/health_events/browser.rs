@@ -118,7 +118,7 @@ pub async fn save(
     id: Option<&str>,
     draft: &HashMap<String, String>,
     provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<health_event::Model, OperationError> {
     sync::lock(tenant).await?;
     access::require_person_access(
         tenant,
@@ -174,17 +174,6 @@ pub async fn save(
         return Err(invalid("medication_ids"));
     }
     let ongoing = field("ongoing") == "1" || field("ended_on").is_empty();
-    let mut attributes = serde_json::Map::new();
-    for name in ["event_kind", "title", "started_on", "notes"] {
-        attributes.insert(name.into(), json!(field(name)));
-    }
-    attributes.insert("person_id".into(), json!(person_id.to_string()));
-    if !field("severity").is_empty() {
-        attributes.insert("severity".into(), json!(field("severity")));
-    }
-    if !ongoing {
-        attributes.insert("ended_on".into(), json!(field("ended_on")));
-    }
     let input = sync::health_events::BrowserInput {
         person_id,
         medications,
@@ -196,13 +185,7 @@ pub async fn save(
     };
     sync::health_events::apply_browser(
         tenant,
-        &sync::Operation {
-            resource_type: "health_event".into(),
-            action: if id.is_some() { "update" } else { "create" }.into(),
-            id: id.map(str::to_owned),
-            if_match,
-            attributes,
-        },
+        &sync::health_events::HealthInput::from_browser(id, if_match, person_id, draft, ongoing),
         &input,
         provenance,
     )
@@ -226,15 +209,9 @@ pub async fn delete(
         });
     }
     let (_, api_etag) = sync::health_events::representation(tenant.transaction(), &row).await?;
-    sync::health_events::apply(
+    sync::health_events::apply_typed(
         tenant,
-        &sync::Operation {
-            resource_type: "health_event".into(),
-            action: "delete".into(),
-            id: Some(id.into()),
-            if_match: Some(api_etag),
-            attributes: serde_json::Map::new(),
-        },
+        &sync::health_events::HealthInput::delete(id, api_etag),
         provenance,
     )
     .await?;

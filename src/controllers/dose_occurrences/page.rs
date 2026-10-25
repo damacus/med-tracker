@@ -237,14 +237,19 @@ impl<'a> Page<'a> {
         };
         let result = async {
             dose_occurrences::authorize(&tenant, kind.model(), &self.path.3, action).await?;
-            let body = forms::payload(action, &draft, principal.time_zone())?;
+            let input = forms::payload(
+                (kind.model(), &self.path.3),
+                action,
+                &draft,
+                principal.time_zone(),
+            )?;
             dose_occurrences::with_dashboard_timezone(
                 principal.time_zone(),
                 dose_occurrences::change(
                     &tenant,
                     (kind.model(), &self.path.3),
                     action,
-                    &body,
+                    input,
                     browser_forms::optional(&draft, "etag").as_deref(),
                     &secret,
                     Some(principal.provenance()),
