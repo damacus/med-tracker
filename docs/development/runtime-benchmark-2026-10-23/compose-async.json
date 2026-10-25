@@ -1,0 +1,415 @@
+{
+  "name": "mt-idle-6577",
+  "networks": {
+    "default": {
+      "name": "mt-idle-6577_default",
+      "ipam": {}
+    }
+  },
+  "services": {
+    "loco": {
+      "command": [
+        "start",
+        "--all",
+        "--environment",
+        "production"
+      ],
+      "entrypoint": null,
+      "environment": {
+        "ACTIVE_STORAGE_S3_ACCESS_KEY_ID": "storage-smoke-access",
+        "ACTIVE_STORAGE_S3_BUCKET": "benchmark",
+        "ACTIVE_STORAGE_S3_ENDPOINT": "http://loco-storage:9000",
+        "ACTIVE_STORAGE_S3_FORCE_PATH_STYLE": "true",
+        "ACTIVE_STORAGE_S3_REGION": "us-east-1",
+        "ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY": "storage-smoke-secret",
+        "AUTH_SESSION_SECRET": "synthetic-benchmark-secret-at-least-32-characters",
+        "DATABASE_URL": "postgres://benchmark_runtime:benchmark_local_only@loco-db:5432/import_trial_a",
+        "MEDTRACKER_COOKIE_SECURE": "true",
+        "MEDTRACKER_PUBLIC_HOST": "http://localhost",
+        "MEDTRACKER_SESSION_KEY": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==",
+        "PORT": "15150",
+        "TZ": "UTC",
+        "S3_ENDPOINT": "http://loco-storage:9000",
+        "S3_BUCKET": "benchmark",
+        "AWS_REGION": "us-east-1",
+        "AWS_ACCESS_KEY_ID": "storage-smoke-access",
+        "AWS_SECRET_ACCESS_KEY": "storage-smoke-secret"
+      },
+      "image": "medtracker-loco:comparison-shell-20261023",
+      "networks": {
+        "default": null
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${WORKSPACE}/config/development.yaml",
+          "target": "/app/config/development.yaml",
+          "read_only": true,
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "${WORKSPACE}/src/fixtures",
+          "target": "/app/src/fixtures",
+          "read_only": true,
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "${BENCHMARK_DIR}/loco-async.yaml",
+          "target": "/app/config/production.yaml",
+          "read_only": true
+        }
+      ],
+      "depends_on": {
+        "loco-db": {
+          "condition": "service_healthy",
+          "required": true
+        },
+        "loco-storage": {
+          "condition": "service_healthy",
+          "required": true
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "host_ip": "127.0.0.1",
+          "target": 15150,
+          "published": "15150",
+          "protocol": "tcp"
+        }
+      ],
+      "mem_limit": "3g",
+      "restart": "no"
+    },
+    "loco-db": {
+      "command": null,
+      "entrypoint": null,
+      "environment": {
+        "POSTGRES_DB": "medtracker",
+        "POSTGRES_PASSWORD": "medtracker_password",
+        "POSTGRES_USER": "medtracker"
+      },
+      "image": "postgres:18-alpine",
+      "networks": {
+        "default": null
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "loco-db",
+          "target": "/var/lib/postgresql",
+          "volume": {}
+        }
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -U medtracker -d medtracker"
+        ],
+        "timeout": "3s",
+        "interval": "10s",
+        "retries": 20
+      }
+    },
+    "loco-storage": {
+      "command": null,
+      "entrypoint": null,
+      "environment": {
+        "RUSTFS_ACCESS_KEY": "storage-smoke-access",
+        "RUSTFS_ADDRESS": "0.0.0.0:9000",
+        "RUSTFS_CONSOLE_ENABLE": "false",
+        "RUSTFS_OBS_LOG_DIRECTORY": "/logs",
+        "RUSTFS_SECRET_KEY": "storage-smoke-secret",
+        "RUSTFS_VOLUMES": "/data"
+      },
+      "image": "rustfs/rustfs:1.0.0-alpha.90",
+      "networks": {
+        "default": null
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "loco-data",
+          "target": "/data",
+          "volume": {}
+        },
+        {
+          "type": "volume",
+          "source": "loco-logs",
+          "target": "/logs",
+          "volume": {}
+        }
+      ],
+      "depends_on": {
+        "loco-storage-init": {
+          "condition": "service_completed_successfully",
+          "required": true
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://127.0.0.1:9000/health"
+        ],
+        "timeout": "3s",
+        "interval": "10s",
+        "retries": 20
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "host_ip": "127.0.0.1",
+          "target": 9000,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    "loco-storage-init": {
+      "command": null,
+      "entrypoint": [
+        "/bin/sh",
+        "-c",
+        "chown 10001:10001 /data /logs"
+      ],
+      "image": "rustfs/rustfs:1.0.0-alpha.90",
+      "networks": {
+        "default": null
+      },
+      "user": "0:0",
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "loco-data",
+          "target": "/data",
+          "volume": {}
+        },
+        {
+          "type": "volume",
+          "source": "loco-logs",
+          "target": "/logs",
+          "volume": {}
+        }
+      ]
+    },
+    "rails": {
+      "command": [
+        "./bin/rails",
+        "server",
+        "-b",
+        "0.0.0.0",
+        "-p",
+        "3000"
+      ],
+      "entrypoint": null,
+      "environment": {
+        "ACTIVE_STORAGE_S3_ACCESS_KEY_ID": "storage-smoke-access",
+        "ACTIVE_STORAGE_S3_BUCKET": "benchmark",
+        "ACTIVE_STORAGE_S3_ENDPOINT": "http://rails-storage:9000",
+        "ACTIVE_STORAGE_S3_FORCE_PATH_STYLE": "true",
+        "ACTIVE_STORAGE_S3_REGION": "us-east-1",
+        "ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY": "storage-smoke-secret",
+        "ACTIVE_STORAGE_SERVICE": "s3",
+        "APP_URL": "https://localhost:13000",
+        "DATABASE_ROLE": "med_tracker_app",
+        "DATABASE_URL": "postgres://benchmark_runtime:benchmark_local_only@rails-db:5432/import_trial_a",
+        "OTEL_METRICS_EXPORTER": "none",
+        "OTEL_TRACES_EXPORTER": "none",
+        "RAILS_ENV": "production",
+        "SECRET_KEY_BASE": "synthetic-benchmark-secret-at-least-64-characters-long-for-local-use-only",
+        "SOLID_CABLE_DATABASE_URL": "postgres://benchmark_runtime:benchmark_local_only@rails-db:5432/import_trial_a_cable",
+        "SOLID_CACHE_DATABASE_URL": "postgres://benchmark_runtime:benchmark_local_only@rails-db:5432/import_trial_a_cache",
+        "SOLID_QUEUE_DATABASE_URL": "postgres://benchmark_runtime:benchmark_local_only@rails-db:5432/import_trial_a_queue",
+        "SOLID_QUEUE_IN_PUMA": "true",
+        "SOLID_QUEUE_SUPERVISOR_MODE": "async",
+        "TZ": "UTC",
+        "BENCHMARK_LOCAL_ONLY": "1",
+        "BENCHMARK_IMPORT_MODE": "async"
+      },
+      "image": "medtracker-rails:comparison-20261023",
+      "networks": {
+        "default": null
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${BENCHMARK_DIR}/seed.rb",
+          "target": "/benchmark/seed.rb",
+          "read_only": true,
+          "bind": {}
+        },
+        {
+          "type": "bind",
+          "source": "${BENCHMARK_DIR}/import_mode.rb",
+          "target": "/app/config/initializers/benchmark_import_mode.rb",
+          "read_only": true
+        }
+      ],
+      "depends_on": {
+        "rails-db": {
+          "condition": "service_healthy",
+          "required": true
+        },
+        "rails-storage": {
+          "condition": "service_healthy",
+          "required": true
+        }
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "host_ip": "127.0.0.1",
+          "target": 3000,
+          "published": "13000",
+          "protocol": "tcp"
+        }
+      ],
+      "mem_limit": "3g",
+      "restart": "no"
+    },
+    "rails-db": {
+      "command": null,
+      "entrypoint": null,
+      "environment": {
+        "POSTGRES_DB": "medtracker",
+        "POSTGRES_PASSWORD": "medtracker_password",
+        "POSTGRES_USER": "medtracker"
+      },
+      "image": "postgres:18-alpine",
+      "networks": {
+        "default": null
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "rails-db",
+          "target": "/var/lib/postgresql",
+          "volume": {}
+        },
+        {
+          "type": "bind",
+          "source": "${WORKSPACE}/rails/compose/init-roles.sql",
+          "target": "/docker-entrypoint-initdb.d/roles.sql",
+          "read_only": true,
+          "bind": {}
+        }
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -U medtracker -d medtracker"
+        ],
+        "timeout": "3s",
+        "interval": "10s",
+        "retries": 20
+      }
+    },
+    "rails-storage": {
+      "command": null,
+      "entrypoint": null,
+      "environment": {
+        "RUSTFS_ACCESS_KEY": "storage-smoke-access",
+        "RUSTFS_ADDRESS": "0.0.0.0:9000",
+        "RUSTFS_CONSOLE_ENABLE": "false",
+        "RUSTFS_OBS_LOG_DIRECTORY": "/logs",
+        "RUSTFS_SECRET_KEY": "storage-smoke-secret",
+        "RUSTFS_VOLUMES": "/data"
+      },
+      "image": "rustfs/rustfs:1.0.0-alpha.90",
+      "networks": {
+        "default": null
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "rails-data",
+          "target": "/data",
+          "volume": {}
+        },
+        {
+          "type": "volume",
+          "source": "rails-logs",
+          "target": "/logs",
+          "volume": {}
+        }
+      ],
+      "depends_on": {
+        "rails-storage-init": {
+          "condition": "service_completed_successfully",
+          "required": true
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://127.0.0.1:9000/health"
+        ],
+        "timeout": "3s",
+        "interval": "10s",
+        "retries": 20
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "host_ip": "127.0.0.1",
+          "target": 9000,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    "rails-storage-init": {
+      "command": null,
+      "entrypoint": [
+        "/bin/sh",
+        "-c",
+        "chown 10001:10001 /data /logs"
+      ],
+      "image": "rustfs/rustfs:1.0.0-alpha.90",
+      "networks": {
+        "default": null
+      },
+      "user": "0:0",
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "rails-data",
+          "target": "/data",
+          "volume": {}
+        },
+        {
+          "type": "volume",
+          "source": "rails-logs",
+          "target": "/logs",
+          "volume": {}
+        }
+      ]
+    }
+  },
+  "volumes": {
+    "loco-data": {
+      "name": "mt-idle-6577_loco-data"
+    },
+    "loco-db": {
+      "name": "mt-idle-6577_loco-db"
+    },
+    "loco-logs": {
+      "name": "mt-idle-6577_loco-logs"
+    },
+    "rails-data": {
+      "name": "mt-idle-6577_rails-data"
+    },
+    "rails-db": {
+      "name": "mt-idle-6577_rails-db"
+    },
+    "rails-logs": {
+      "name": "mt-idle-6577_rails-logs"
+    }
+  }
+}

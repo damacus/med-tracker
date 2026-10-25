@@ -1,0 +1,52 @@
+{
+  "rails-async": {
+    "nhs_dmd_barcodes": {
+      "rows": 84410,
+      "md5": "017479677c61d7e0e8491e1bb27eed0d"
+    },
+    "nhs_dmd_ampp_relationships": {
+      "rows": 187213,
+      "md5": "f652c77ab849e90b98d3f570c090e233"
+    }
+  },
+  "rails-inline": {
+    "nhs_dmd_barcodes": {
+      "rows": 84410,
+      "md5": "017479677c61d7e0e8491e1bb27eed0d"
+    },
+    "nhs_dmd_ampp_relationships": {
+      "rows": 187213,
+      "md5": "f652c77ab849e90b98d3f570c090e233"
+    }
+  },
+  "loco-async": {
+    "nhs_dmd_barcodes": {
+      "rows": 84410,
+      "md5": "017479677c61d7e0e8491e1bb27eed0d"
+    },
+    "nhs_dmd_ampp_relationships": {
+      "rows": 187213,
+      "md5": "f652c77ab849e90b98d3f570c090e233"
+    }
+  },
+  "loco-inline": {
+    "nhs_dmd_barcodes": {
+      "rows": 84410,
+      "md5": "017479677c61d7e0e8491e1bb27eed0d"
+    },
+    "nhs_dmd_ampp_relationships": {
+      "rows": 187213,
+      "md5": "f652c77ab849e90b98d3f570c090e233"
+    }
+  },
+  "rails-fork": {
+    "nhs_dmd_barcodes": {
+      "rows": 84410,
+      "md5": "017479677c61d7e0e8491e1bb27eed0d"
+    },
+    "nhs_dmd_ampp_relationships": {
+      "rows": 187213,
+      "md5": "f652c77ab849e90b98d3f570c090e233"
+    }
+  }
+}

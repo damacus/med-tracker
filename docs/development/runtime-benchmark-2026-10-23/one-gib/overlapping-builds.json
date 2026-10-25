@@ -1,0 +1,22 @@
+[
+  {
+    "cached_steps": 3,
+    "completed_at": "2026-10-23T08:44:18.117950793Z",
+    "completed_steps": 30,
+    "created_at": "2026-10-23T08:42:50.620492461Z",
+    "name": "rails (app)",
+    "ref": "default/default/506aaura5495rnejc0z2wo26n",
+    "status": "Completed",
+    "total_steps": 30
+  },
+  {
+    "cached_steps": 6,
+    "completed_at": "2026-10-23T09:06:25.631937177Z",
+    "completed_steps": 26,
+    "created_at": "2026-10-23T08:42:48.933775127Z",
+    "name": "med-tracker",
+    "ref": "default/default/i1n8trlh2dqjheriim7vyv1w0",
+    "status": "Error",
+    "total_steps": 31
+  }
+]

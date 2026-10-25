@@ -1,0 +1,31 @@
+{
+  "image": "sha256:16c5866c843a07659b2460d0dc88a9a0ecdf6416a6c2492a403e1a8ef322de41",
+  "container_id": "a3df8d755872d88100b061a22ad73a8d91930c7349e1e901929b11364d85c2b4",
+  "state": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 33402,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-10-23T13:15:36.789818126Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  },
+  "restart_count": 0,
+  "effective_host_config": {
+    "Memory": 1073741824,
+    "MemorySwap": 1073741824,
+    "MemoryReservation": 0,
+    "NanoCpus": 0,
+    "CpuPeriod": 0,
+    "CpuQuota": 0,
+    "RestartPolicy": {
+      "Name": "no",
+      "MaximumRetryCount": 0
+    },
+    "OomKillDisable": null
+  }
+}

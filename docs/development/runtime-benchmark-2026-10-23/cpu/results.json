@@ -1,0 +1,667 @@
+[
+  {
+    "app": "rails",
+    "mode": "async",
+    "import_seconds": 167.100058833,
+    "phases": {
+      "before": {
+        "application": {
+          "cpu_seconds": 2.384174,
+          "mean_percent_one_core": 3.949236852763973,
+          "median_percent_one_core": 2.9629461467829783,
+          "peak_percent_one_core": 17.49715334388712,
+          "sampled_seconds": 60.37049913406372,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 0.705783,
+          "mean_percent_one_core": 1.169085140328025,
+          "median_percent_one_core": 0.8934148414369485,
+          "peak_percent_one_core": 4.945026736613277,
+          "sampled_seconds": 60.37053894996643,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.08643599999999999,
+          "mean_percent_one_core": 0.14317600968194177,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 2.8103705129052394,
+          "sampled_seconds": 60.37044906616211,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 3.176393000000001,
+          "mean_percent_one_core": 5.261498952906085,
+          "median_percent_one_core": 4.1204668758928955,
+          "peak_percent_one_core": 20.38220274923161,
+          "sampled_seconds": 60.370495716730744,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        }
+      },
+      "during": {
+        "application": {
+          "cpu_seconds": 106.67975399999996,
+          "mean_percent_one_core": 63.877756699505696,
+          "median_percent_one_core": 62.19986254038081,
+          "peak_percent_one_core": 103.10209209621217,
+          "sampled_seconds": 167.0061058998108,
+          "intervals": 331,
+          "seconds_above_50_percent": 159.42766118049622,
+          "seconds_above_100_percent": 3.5379817485809326
+        },
+        "postgresql": {
+          "cpu_seconds": 34.32371899999999,
+          "mean_percent_one_core": 20.55236161983445,
+          "median_percent_one_core": 20.396267245071474,
+          "peak_percent_one_core": 102.03313638018766,
+          "sampled_seconds": 167.00620412826538,
+          "intervals": 331,
+          "seconds_above_50_percent": 5.0442140102386475,
+          "seconds_above_100_percent": 1.003709077835083
+        },
+        "rustfs": {
+          "cpu_seconds": 0.43840700000000005,
+          "mean_percent_one_core": 0.26250959970690263,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 27.063401527692697,
+          "sampled_seconds": 167.0060830116272,
+          "intervals": 331,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 141.44188,
+          "mean_percent_one_core": 84.69262723581764,
+          "median_percent_one_core": 83.52053683572967,
+          "peak_percent_one_core": 111.48806322656591,
+          "sampled_seconds": 167.00613101323458,
+          "intervals": 331,
+          "seconds_above_50_percent": 164.47913932800304,
+          "seconds_above_100_percent": 14.115816990534464
+        }
+      },
+      "after": {
+        "application": {
+          "cpu_seconds": 2.997482,
+          "mean_percent_one_core": 4.986831847939096,
+          "median_percent_one_core": 3.897959063311803,
+          "peak_percent_one_core": 24.8436925860156,
+          "sampled_seconds": 60.1079421043396,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 1.1233399999999993,
+          "mean_percent_one_core": 1.8688740002840012,
+          "median_percent_one_core": 1.1340349865263122,
+          "peak_percent_one_core": 25.280920621987352,
+          "sampled_seconds": 60.10785102844238,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.11764500000000006,
+          "mean_percent_one_core": 0.19572279372400359,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 5.836351996312208,
+          "sampled_seconds": 60.10797095298767,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 4.238467000000001,
+          "mean_percent_one_core": 7.05142833750521,
+          "median_percent_one_core": 5.374387066015844,
+          "peak_percent_one_core": 33.382638816898705,
+          "sampled_seconds": 60.10792136192321,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        }
+      }
+    }
+  },
+  {
+    "app": "rails",
+    "mode": "inline",
+    "import_seconds": 126.73645124999999,
+    "phases": {
+      "before": {
+        "application": {
+          "cpu_seconds": 2.7344480000000004,
+          "mean_percent_one_core": 4.554504210745701,
+          "median_percent_one_core": 3.643896628077601,
+          "peak_percent_one_core": 16.568931234034228,
+          "sampled_seconds": 60.03832411766052,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 0.7875240000000004,
+          "mean_percent_one_core": 1.311702414347427,
+          "median_percent_one_core": 0.9937075623203803,
+          "peak_percent_one_core": 5.110627645127119,
+          "sampled_seconds": 60.038312911987305,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.103849,
+          "mean_percent_one_core": 0.1729712594242291,
+          "median_percent_one_core": 0.002798136045429485,
+          "peak_percent_one_core": 4.9503450120202785,
+          "sampled_seconds": 60.03829789161682,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 3.625821000000002,
+          "mean_percent_one_core": 6.03917881921062,
+          "median_percent_one_core": 4.751395788971865,
+          "peak_percent_one_core": 20.719535383750344,
+          "sampled_seconds": 60.03831164042154,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        }
+      },
+      "during": {
+        "application": {
+          "cpu_seconds": 94.56098100000004,
+          "mean_percent_one_core": 74.64778309880055,
+          "median_percent_one_core": 75.38992094623877,
+          "peak_percent_one_core": 103.5696989794953,
+          "sampled_seconds": 126.67620801925659,
+          "intervals": 251,
+          "seconds_above_50_percent": 121.12006497383118,
+          "seconds_above_100_percent": 5.554781198501587
+        },
+        "postgresql": {
+          "cpu_seconds": 27.793548,
+          "mean_percent_one_core": 21.940611786210287,
+          "median_percent_one_core": 21.616429101907514,
+          "peak_percent_one_core": 102.06802744722114,
+          "sampled_seconds": 126.67626714706421,
+          "intervals": 251,
+          "seconds_above_50_percent": 4.551715135574341,
+          "seconds_above_100_percent": 1.0104429721832275
+        },
+        "rustfs": {
+          "cpu_seconds": 0.3179389999999998,
+          "mean_percent_one_core": 0.2509850803301314,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 22.049580446122135,
+          "sampled_seconds": 126.67645406723022,
+          "intervals": 251,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 122.67246800000001,
+          "mean_percent_one_core": 96.8393129286825,
+          "median_percent_one_core": 97.25680814600118,
+          "peak_percent_one_core": 128.37372490848523,
+          "sampled_seconds": 126.67630974451706,
+          "intervals": 251,
+          "seconds_above_50_percent": 125.67548473676051,
+          "seconds_above_100_percent": 23.702271779378254
+        }
+      },
+      "after": {
+        "application": {
+          "cpu_seconds": 2.2384140000000015,
+          "mean_percent_one_core": 3.7255694601604703,
+          "median_percent_one_core": 3.1765760145390995,
+          "peak_percent_one_core": 13.86960442655559,
+          "sampled_seconds": 60.0824658870697,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 0.9088289999999994,
+          "mean_percent_one_core": 1.5126494010671943,
+          "median_percent_one_core": 1.013254374367232,
+          "peak_percent_one_core": 19.212004177025317,
+          "sampled_seconds": 60.08193302154541,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.09133299999999996,
+          "mean_percent_one_core": 0.15201454947184354,
+          "median_percent_one_core": 0.0031466577390288283,
+          "peak_percent_one_core": 2.726958533589785,
+          "sampled_seconds": 60.081748962402344,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 3.2385760000000015,
+          "mean_percent_one_core": 5.390255555948132,
+          "median_percent_one_core": 4.405500118255785,
+          "peak_percent_one_core": 23.97513217625282,
+          "sampled_seconds": 60.08204929033916,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        }
+      }
+    }
+  },
+  {
+    "app": "rails",
+    "mode": "fork",
+    "import_seconds": 151.95968662500002,
+    "phases": {
+      "before": {
+        "application": {
+          "cpu_seconds": 3.862669999999999,
+          "mean_percent_one_core": 6.422555650067532,
+          "median_percent_one_core": 4.221374273407252,
+          "peak_percent_one_core": 57.959198574071635,
+          "sampled_seconds": 60.142258167266846,
+          "intervals": 119,
+          "seconds_above_50_percent": 0.5068237781524658,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 0.9278200000000004,
+          "mean_percent_one_core": 1.5427123939995002,
+          "median_percent_one_core": 1.2105400422633417,
+          "peak_percent_one_core": 7.510289633401378,
+          "sampled_seconds": 60.14212393760681,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.09718699999999998,
+          "mean_percent_one_core": 0.16159596222403347,
+          "median_percent_one_core": 0.0023722119527665787,
+          "peak_percent_one_core": 3.352278858548124,
+          "sampled_seconds": 60.14197301864624,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 4.887677,
+          "mean_percent_one_core": 8.126878686853527,
+          "median_percent_one_core": 5.766143826507929,
+          "peak_percent_one_core": 65.50570083753094,
+          "sampled_seconds": 60.14211837450665,
+          "intervals": 119,
+          "seconds_above_50_percent": 1.0068516731262207,
+          "seconds_above_100_percent": 0
+        }
+      },
+      "during": {
+        "application": {
+          "cpu_seconds": 95.36038499999998,
+          "mean_percent_one_core": 62.794516051598556,
+          "median_percent_one_core": 61.09363000643909,
+          "peak_percent_one_core": 105.72346681571672,
+          "sampled_seconds": 151.86100792884827,
+          "intervals": 301,
+          "seconds_above_50_percent": 143.2767379283905,
+          "seconds_above_100_percent": 9.110389947891235
+        },
+        "postgresql": {
+          "cpu_seconds": 32.27173699999997,
+          "mean_percent_one_core": 21.250779492147466,
+          "median_percent_one_core": 21.592010506992818,
+          "peak_percent_one_core": 98.49861953051332,
+          "sampled_seconds": 151.86142706871033,
+          "intervals": 301,
+          "seconds_above_50_percent": 4.540409088134766,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.38697700000000024,
+          "mean_percent_one_core": 0.25482265886803557,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 15.536654088144783,
+          "sampled_seconds": 151.86129903793335,
+          "intervals": 301,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 128.01909899999993,
+          "mean_percent_one_core": 84.30004592088449,
+          "median_percent_one_core": 83.27144640811684,
+          "peak_percent_one_core": 113.18597241936882,
+          "sampled_seconds": 151.86124467849726,
+          "intervals": 301,
+          "seconds_above_50_percent": 147.81732328732807,
+          "seconds_above_100_percent": 19.19294404983521
+        }
+      },
+      "after": {
+        "application": {
+          "cpu_seconds": 3.1459520000000016,
+          "mean_percent_one_core": 5.191433405390812,
+          "median_percent_one_core": 4.106231441846083,
+          "peak_percent_one_core": 22.961616021842417,
+          "sampled_seconds": 60.5989089012146,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 1.069459,
+          "mean_percent_one_core": 1.764820936342325,
+          "median_percent_one_core": 1.0593086509623126,
+          "peak_percent_one_core": 33.268533272730025,
+          "sampled_seconds": 60.59872579574585,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.136228,
+          "mean_percent_one_core": 0.22479899153994495,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 4.173973783553535,
+          "sampled_seconds": 60.599915981292725,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 4.3516390000000005,
+          "mean_percent_one_core": 7.181019189364492,
+          "median_percent_one_core": 5.652827049375063,
+          "peak_percent_one_core": 41.516084502788615,
+          "sampled_seconds": 60.59918355941774,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        }
+      }
+    }
+  },
+  {
+    "app": "loco",
+    "mode": "async",
+    "import_seconds": 10.688450416999999,
+    "phases": {
+      "before": {
+        "application": {
+          "cpu_seconds": 1.5493459999999997,
+          "mean_percent_one_core": 2.578072442714376,
+          "median_percent_one_core": 0.8396088515053173,
+          "peak_percent_one_core": 163.5342542803812,
+          "sampled_seconds": 60.09706997871399,
+          "intervals": 119,
+          "seconds_above_50_percent": 0.5070900917053223,
+          "seconds_above_100_percent": 0.5070900917053223
+        },
+        "postgresql": {
+          "cpu_seconds": 1.597486,
+          "mean_percent_one_core": 2.6581798514449244,
+          "median_percent_one_core": 2.1618233777537066,
+          "peak_percent_one_core": 22.848771042459575,
+          "sampled_seconds": 60.09698700904846,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.09362,
+          "mean_percent_one_core": 0.15578173534305292,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 3.4184534827159196,
+          "sampled_seconds": 60.096904039382935,
+          "intervals": 119,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 3.2404520000000008,
+          "mean_percent_one_core": 5.392037373707443,
+          "median_percent_one_core": 3.130692497588692,
+          "peak_percent_one_core": 175.61559812069342,
+          "sampled_seconds": 60.096987009048476,
+          "intervals": 119,
+          "seconds_above_50_percent": 0.5071013768513998,
+          "seconds_above_100_percent": 0.5071013768513998
+        }
+      },
+      "during": {
+        "application": {
+          "cpu_seconds": 1.7812129999999997,
+          "mean_percent_one_core": 16.767651015439604,
+          "median_percent_one_core": 8.774536001029903,
+          "peak_percent_one_core": 109.75052524369397,
+          "sampled_seconds": 10.622913122177124,
+          "intervals": 21,
+          "seconds_above_50_percent": 1.0063626766204834,
+          "seconds_above_100_percent": 0.5006718635559082
+        },
+        "postgresql": {
+          "cpu_seconds": 2.839478,
+          "mean_percent_one_core": 26.729666079453292,
+          "median_percent_one_core": 6.200634980752932,
+          "peak_percent_one_core": 110.5992983394237,
+          "sampled_seconds": 10.62294602394104,
+          "intervals": 21,
+          "seconds_above_50_percent": 2.5336508750915527,
+          "seconds_above_100_percent": 0.508516788482666
+        },
+        "rustfs": {
+          "cpu_seconds": 0.117342,
+          "mean_percent_one_core": 1.1046055099516454,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 12.72568493707329,
+          "sampled_seconds": 10.62297797203064,
+          "intervals": 21,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 4.738033,
+          "mean_percent_one_core": 44.601875328250664,
+          "median_percent_one_core": 28.317867733737742,
+          "peak_percent_one_core": 126.12492669745535,
+          "sampled_seconds": 10.6229457060496,
+          "intervals": 21,
+          "seconds_above_50_percent": 4.552549600601196,
+          "seconds_above_100_percent": 1.0092642307281494
+        }
+      },
+      "after": {
+        "application": {
+          "cpu_seconds": 0.5048270000000002,
+          "mean_percent_one_core": 0.8335090500037159,
+          "median_percent_one_core": 0.5651411363313983,
+          "peak_percent_one_core": 8.13758166743807,
+          "sampled_seconds": 60.566468954086304,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 1.4915520000000004,
+          "mean_percent_one_core": 2.462671808454959,
+          "median_percent_one_core": 0.8362844797433167,
+          "peak_percent_one_core": 36.161297546132595,
+          "sampled_seconds": 60.56641387939453,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.096909,
+          "mean_percent_one_core": 0.16000442268801332,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 2.999942053847627,
+          "sampled_seconds": 60.56645083427429,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 2.093288,
+          "mean_percent_one_core": 3.4561843861700643,
+          "median_percent_one_core": 1.484088232327878,
+          "peak_percent_one_core": 36.359567356295116,
+          "sampled_seconds": 60.56644455591838,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        }
+      }
+    }
+  },
+  {
+    "app": "loco",
+    "mode": "inline",
+    "import_seconds": 10.693753500000007,
+    "phases": {
+      "before": {
+        "application": {
+          "cpu_seconds": 0.38743800000000017,
+          "mean_percent_one_core": 0.6409887134662833,
+          "median_percent_one_core": 0.08861370633697721,
+          "peak_percent_one_core": 30.4298680660139,
+          "sampled_seconds": 60.4438099861145,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 0.49355600000000005,
+          "mean_percent_one_core": 0.8165534239376746,
+          "median_percent_one_core": 0.009839359762307117,
+          "peak_percent_one_core": 15.771748151528852,
+          "sampled_seconds": 60.4438099861145,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.12501700000000002,
+          "mean_percent_one_core": 0.2068317633455241,
+          "median_percent_one_core": 0.0,
+          "peak_percent_one_core": 4.097344190980623,
+          "sampled_seconds": 60.44381093978882,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 1.006011,
+          "mean_percent_one_core": 1.6643738952594238,
+          "median_percent_one_core": 0.13308080232172637,
+          "peak_percent_one_core": 36.365370670641276,
+          "sampled_seconds": 60.44381030400591,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        }
+      },
+      "during": {
+        "application": {
+          "cpu_seconds": 2.1826249999999994,
+          "mean_percent_one_core": 20.510833132211424,
+          "median_percent_one_core": 9.84347296699471,
+          "peak_percent_one_core": 109.67894182263571,
+          "sampled_seconds": 10.641327857971191,
+          "intervals": 20,
+          "seconds_above_50_percent": 2.095489978790283,
+          "seconds_above_100_percent": 0.5059120655059814
+        },
+        "postgresql": {
+          "cpu_seconds": 3.3885309999999995,
+          "mean_percent_one_core": 31.84326457448165,
+          "median_percent_one_core": 12.825611535877979,
+          "peak_percent_one_core": 93.90545376120089,
+          "sampled_seconds": 10.641280174255371,
+          "intervals": 20,
+          "seconds_above_50_percent": 3.518894910812378,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.117383,
+          "mean_percent_one_core": 1.103086415963382,
+          "median_percent_one_core": 0.007971156639821994,
+          "peak_percent_one_core": 19.841208636379204,
+          "sampled_seconds": 10.641324043273926,
+          "intervals": 20,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 5.688538999999998,
+          "mean_percent_one_core": 53.45712727254149,
+          "median_percent_one_core": 69.77288274327455,
+          "peak_percent_one_core": 130.01149120115025,
+          "sampled_seconds": 10.641310691833496,
+          "intervals": 20,
+          "seconds_above_50_percent": 6.114227612813314,
+          "seconds_above_100_percent": 1.003686745961507
+        }
+      },
+      "after": {
+        "application": {
+          "cpu_seconds": 0.309455,
+          "mean_percent_one_core": 0.5109942904587691,
+          "median_percent_one_core": 0.08281466429341774,
+          "peak_percent_one_core": 15.377286673196227,
+          "sampled_seconds": 60.55938506126404,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "postgresql": {
+          "cpu_seconds": 1.2141639999999994,
+          "mean_percent_one_core": 2.004917038077626,
+          "median_percent_one_core": 0.22542075635679437,
+          "peak_percent_one_core": 43.68362192045041,
+          "sampled_seconds": 60.55931377410889,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "rustfs": {
+          "cpu_seconds": 0.091166,
+          "mean_percent_one_core": 0.15053999715485022,
+          "median_percent_one_core": 0.0022144239448882814,
+          "peak_percent_one_core": 3.3008177187203525,
+          "sampled_seconds": 60.55932092666626,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        },
+        "whole_stack": {
+          "cpu_seconds": 1.614785,
+          "mean_percent_one_core": 2.6664507937421984,
+          "median_percent_one_core": 0.26858058927980133,
+          "peak_percent_one_core": 43.78817211688528,
+          "sampled_seconds": 60.5593399206797,
+          "intervals": 120,
+          "seconds_above_50_percent": 0,
+          "seconds_above_100_percent": 0
+        }
+      }
+    }
+  }
+]

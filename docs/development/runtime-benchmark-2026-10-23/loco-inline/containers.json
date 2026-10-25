@@ -1,0 +1,35 @@
+[
+  {
+    "name": "/mt-idle-6577-loco-1",
+    "id": "9f4e99db3d5df4a4960c754b6dec23ebeb34f2373bf76f07397d1674a3095ffd",
+    "image": "sha256:16c5866c843a07659b2460d0dc88a9a0ecdf6416a6c2492a403e1a8ef322de41",
+    "command": [
+      "start",
+      "--all",
+      "--environment",
+      "production"
+    ],
+    "memory_limit": 3221225472,
+    "started": "2026-10-23T10:26:46.157381172Z"
+  },
+  {
+    "name": "/mt-idle-6577-loco-db-1",
+    "id": "d05c88ec483e16701fdff64dac3abb9c38b6cb35e991fc4f4ca8707edebbdad5",
+    "image": "sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873",
+    "command": [
+      "postgres"
+    ],
+    "memory_limit": 0,
+    "started": "2026-10-23T08:44:45.712598667Z"
+  },
+  {
+    "name": "/mt-idle-6577-loco-storage-1",
+    "id": "c120133584dab1fa06b82b1dfb7a51a7e86cc6a715b888eaef9d586b1706bb49",
+    "image": "sha256:0725587f6fcca83c1898f321424327d6e6da5e01ea20382905dd258ed5af3be4",
+    "command": [
+      "rustfs"
+    ],
+    "memory_limit": 0,
+    "started": "2026-10-23T09:06:54.363601093Z"
+  }
+]
