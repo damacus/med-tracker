@@ -19,6 +19,7 @@ services:
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
       BINDING: 0.0.0.0
+      MT_FRONTEND_LOCK: ${MT_FRONTEND_LOCK}
       MEDTRACKER_SESSION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==
       S3_ENDPOINT: http://rustfs:9000
       S3_BUCKET: scanner-fixture
@@ -37,6 +38,7 @@ services:
       - cargo-git:/usr/local/cargo/git
       - target:/app/target
       - node-modules:/app/node_modules
+      - npm-cache:/root/.npm
       - browser-cache:/root/.cache
     command: [sleep, infinity]
   dev-app:
@@ -44,7 +46,7 @@ services:
     profiles: !override [dev]
     environment:
       DATABASE_URL: postgres://medtracker_runtime:synthetic_local_runtime_password@postgres/medtracker_loco
-    command: [cargo, watch, --poll, -w, src, -w, migration, -w, assets, -w, config, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, --ignore, assets/static/css/compiled.css, --ignore, assets/static/js/html5-qrcode.min.js, -s, "task --taskfile Taskfiles/frontend.yml --dir /app prepare && cargo run --locked -- start --server-and-worker --environment development"]
+    command: [cargo, watch, --poll, -w, src, -w, migration, -w, assets, -w, config, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, --ignore, assets/static/css/compiled.css, --ignore, assets/static/js/html5-qrcode.min.js, -s, "flock ${MT_FRONTEND_LOCK} task --taskfile Taskfiles/frontend.yml --dir /app prepare && cargo run --locked -- start --server-and-worker --environment development"]
     ports:
       - target: 5150
         host_ip: 127.0.0.1
@@ -57,7 +59,7 @@ services:
   test-app:
     extends: dev-app
     profiles: !override [test]
-    command: [cargo, watch, --poll, -w, src, -w, migration, -w, assets, -w, config, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, --ignore, assets/static/css/compiled.css, --ignore, assets/static/js/html5-qrcode.min.js, -s, "task --taskfile Taskfiles/frontend.yml --dir /app prepare && cargo run --locked -- start --server-and-worker --environment test"]
+    command: [cargo, watch, --poll, -w, src, -w, migration, -w, assets, -w, config, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, --ignore, assets/static/css/compiled.css, --ignore, assets/static/js/html5-qrcode.min.js, -s, "flock ${MT_FRONTEND_LOCK} task --taskfile Taskfiles/frontend.yml --dir /app prepare && cargo run --locked -- start --server-and-worker --environment test"]
     environment:
       MEDTRACKER_COOKIE_SECURE: "false"
   test-scheduler:
@@ -99,7 +101,20 @@ volumes:
     labels:
       io.medtracker.local-owner: ${MT_PROJECT}
   cargo-registry:
+    external: true
+    name: ${MT_CARGO_REGISTRY_CACHE}
   cargo-git:
+    external: true
+    name: ${MT_CARGO_GIT_CACHE}
   target:
+    external: true
+    name: ${MT_TARGET_CACHE}
   node-modules:
+    external: true
+    name: ${MT_NODE_CACHE}
+  npm-cache:
+    external: true
+    name: ${MT_NPM_CACHE}
   browser-cache:
+    external: true
+    name: ${MT_BROWSER_CACHE}

@@ -13,6 +13,53 @@ workflow = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(workflow)
 
 class Workflows(unittest.TestCase):
+    def configuration(self, environment, root=ROOT):
+        env = {**os.environ, **workflow.cache_names("arm64", root), "MT_FRONTEND_LOCK": workflow.frontend_lock(root), "MT_PROJECT": workflow.project(environment, root)}
+        return json.loads(subprocess.check_output(workflow.compose(environment) + ["config", "--format", "json"], env=env, text=True))
+
+    def test_dev_test_share_external_caches_but_not_data(self):
+        dev, test = self.configuration("dev"), self.configuration("test")
+        for name in ("target", "cargo-registry", "cargo-git", "node-modules", "npm-cache", "browser-cache"):
+            self.assertEqual(dev["volumes"][name]["name"], test["volumes"][name]["name"])
+            self.assertTrue(dev["volumes"][name]["external"])
+        self.assertNotEqual(dev["volumes"]["database"]["name"], test["volumes"]["database"]["name"])
+        self.assertFalse(dev["volumes"]["database"].get("external", False))
+
+    def test_other_checkout_shares_downloads_but_has_its_own_executable(self):
+        first = workflow.cache_names("arm64")
+        second = workflow.cache_names("arm64", pathlib.Path("/tmp/other-worktree"), lock_bytes=(ROOT / "package-lock.json").read_bytes())
+        self.assertEqual(first["MT_CARGO_REGISTRY_CACHE"], second["MT_CARGO_REGISTRY_CACHE"])
+        self.assertEqual(first["MT_CARGO_GIT_CACHE"], second["MT_CARGO_GIT_CACHE"])
+        self.assertNotEqual(first["MT_NODE_CACHE"], second["MT_NODE_CACHE"])
+        self.assertEqual(first["MT_NPM_CACHE"], second["MT_NPM_CACHE"])
+        self.assertNotEqual(first["MT_TARGET_CACHE"], second["MT_TARGET_CACHE"])
+
+    def test_node_cache_tracks_lock_and_platform(self):
+        first = workflow.cache_names("arm64")
+        self.assertNotEqual(first["MT_NODE_CACHE"], workflow.cache_names("arm64", lock_bytes=b"another lock")["MT_NODE_CACHE"])
+        self.assertNotEqual(first["MT_NODE_CACHE"], workflow.cache_names("amd64")["MT_NODE_CACHE"])
+
+    def test_target_override_cannot_use_another_worktrees_executable(self):
+        legacy = workflow.project("dev") + "_target"
+        self.assertEqual(workflow.cache_names("arm64", target_override=legacy)["MT_TARGET_CACHE"], legacy)
+        with self.assertRaisesRegex(ValueError, "checkout"):
+            workflow.cache_names("arm64", target_override="another-worktree-target")
+        for environment in ("dev", "test"):
+            for data in ("database", "scanner-data", "scanner-logs"):
+                with self.assertRaisesRegex(ValueError, "target"):
+                    workflow.cache_names("arm64", target_override=workflow.project(environment) + "_" + data)
+
+    def test_prepare_and_watch_share_one_lock_outside_node_modules(self):
+        with patch.object(workflow, "tool") as tool:
+            workflow.frontend("dev", "task", "prepare")
+            workflow.frontend("test", "task", "prepare")
+            for call in tool.call_args_list:
+                self.assertEqual(call.args[1:3], ("flock", workflow.frontend_lock()))
+        for environment in ("dev", "test"):
+            command = self.configuration(environment)["services"][environment + "-app"]["command"][-1]
+            self.assertTrue(command.startswith("flock " + workflow.frontend_lock() + " "))
+        self.assertTrue(workflow.frontend_lock().startswith("/root/.npm/"))
+
     def test_driver_exists(self):
         self.assertTrue((ROOT / "scripts/compose_workflows.py").exists())
 
@@ -76,7 +123,7 @@ class Workflows(unittest.TestCase):
         self.assertIn("assets/static/css/compiled.css", text)
 
     def test_production_config_has_one_tmpfs_and_no_source_mount(self):
-        env = {**os.environ, "MT_PROJECT": "mt-tooling-config"}
+        env = {**os.environ, **workflow.cache_names("arm64"), "MT_FRONTEND_LOCK": workflow.frontend_lock(), "MT_PROJECT": "mt-tooling-config"}
         configuration = subprocess.check_output(workflow.compose("prod") + ["config", "--format", "json"], env=env, text=True)
         app = json.loads(configuration)["services"]["app"]
         self.assertEqual(app["tmpfs"], ["/tmp:uid=65532,gid=65532"])

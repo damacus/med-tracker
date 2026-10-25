@@ -23,16 +23,47 @@ Run `task dev:ps`, `task test:ps` or `task prod:ps` to find them.
 | Synthetic seed | `task dev:seed` | `task test:seed` | Unavailable |
 
 Development and test use the same pinned Rust, Node and Task toolchain.
-Sources bind into the container; Cargo registry, Git downloads, target artifacts
-and node modules use persistent named volumes. Incremental compilation is enabled.
+Sources bind into the container. Build and download caches use named volumes,
+avoiding macOS bind-mount I/O for compiler artifacts. Incremental compilation is enabled.
 The application rebuilds frontend assets and reloads Rust, templates, CSS and
 configuration through cargo-watch. Generated CSS and vendor JS are excluded from
 the watcher to prevent restart loops.
 Build development once, then start it. Rebuild the image after toolchain changes.
 
 Each checkout has a project name derived from its absolute path, with a separate
-suffix for dev, test and prod. Each environment owns its database, storage and
-compiler caches. Inherited Compose project/file/profile settings are ignored.
+suffix for dev, test and prod. Each environment owns its processes, ports, database
+and storage. Dev and test share a target volume within the same checkout and native
+Docker Linux architecture. Cargo fingerprints handle compiler and flag changes.
+Different live worktrees retain separate targets: a shared final
+`target/debug/med-tracker` could make a scheduler using `current_exe`, or a test
+runner, execute another branch's program.
+
+Cargo registry/Git and npm downloads are shared across worktrees. Mutable
+`node_modules` stays within one checkout, keyed by package-lock, Node toolchain
+and Linux architecture, and shared by dev/test. Standard Linux `flock` serialises
+complete frontend prepare/install/build commands and watch-triggered preparation.
+Its checkout lock lives in the npm download volume, outside `node_modules`, so
+`npm ci` cannot remove the lock. Browser downloads share a cache
+keyed by Linux architecture and the development image recipe. These caches are
+explicit external volumes, so even Compose `down --volumes` leaves them intact.
+Release BuildKit caches remain shared per architecture in the builder backend;
+they are separate from runtime named volumes.
+
+Existing environment-specific caches are retained; nothing is copied or deleted
+automatically. To reuse this checkout's old warm dev target, replace `<dev-project>`
+with the checkout's dev project name and pass its exact existing target volume:
+
+```fish
+env MT_TARGET_CACHE='<dev-project>_target' task test:unit TARGET=med-tracker FILTER=dependent_input_form
+```
+
+Use the same override for dev/test operations while reusing that volume. Only
+this checkout's deterministic target name or its legacy dev/test target names are
+accepted; data volumes and other worktrees' targets are rejected. The older test
+target remains available until its owner explicitly chooses to clean it up.
+Sharing removes unnecessary cache separation; no startup speedup is claimed.
+
+Inherited Compose project/file/profile settings are ignored.
 No arbitrary database URL or existing Compose project can be selected. Data volumes
 without this workflow’s ownership label are rejected instead of adopted.
 
