@@ -1,0 +1,74 @@
+{
+  "mode": "Exact candidate markup response override; Loco cached template",
+  "results": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "motion": "no-preference",
+      "geometry": "pass",
+      "bounds": {
+        "x": 268.1875,
+        "y": 185,
+        "width": 1112.625,
+        "height": 83
+      },
+      "longList": {
+        "x": 268.1875,
+        "right": 1380.8125,
+        "bottom": 685,
+        "height": 500,
+        "scrollable": true
+      },
+      "keyboard": "pass",
+      "dismissal": "pass",
+      "selection": "pass",
+      "scrolled": 120
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "motion": "no-preference",
+      "geometry": "pass",
+      "bounds": {
+        "x": 13,
+        "y": 265.09375,
+        "width": 349,
+        "height": 141
+      },
+      "longList": {
+        "x": 13,
+        "right": 362,
+        "bottom": 687.09375,
+        "height": 422,
+        "scrollable": true
+      },
+      "keyboard": "pass",
+      "dismissal": "pass",
+      "selection": "pass",
+      "scrolled": 120
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "motion": "reduce",
+      "geometry": "pass",
+      "bounds": {
+        "x": 13,
+        "y": 265.09375,
+        "width": 279,
+        "height": 141
+      },
+      "longList": {
+        "x": 13,
+        "right": 292,
+        "bottom": 549.09375,
+        "height": 284,
+        "scrollable": true
+      },
+      "keyboard": "pass",
+      "dismissal": "pass",
+      "selection": "pass",
+      "scrolled": 120
+    }
+  ]
+}

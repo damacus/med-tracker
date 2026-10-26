@@ -38,6 +38,21 @@ The original width jump was not reproduced with macOS overlay scrollbars. The
 stable root gutter is retained, and drawer opening preserves the checked main
 rectangle. No claim of reproducing that original symptom is made.
 
+The separate dashboard Change person menu did reproduce a layout shift: opening
+the in-flow details panel moved the desktop metric cards down by 83px. It now uses
+DaisyUI Dropdown positioning, retaining the existing person choices and GET form.
+`person-dropdown-results.json` records checks at 1440×1000, 390×844 and 320×568:
+metrics/schedule rectangles and scroll stay identical on opening/closing, including
+a nonzero scroll offset. Person selection preserves grouping; keyboard navigation,
+Escape/focus return, click-away, focus departure and long-list bounds pass.
+The 320px case also exercises reduced motion. Captures are
+`person-dropdown-desktop.png` and `person-dropdown-mobile.png`.
+
+The live candidate on port18154 still caches the earlier Tera template. These
+person-menu checks use an exact candidate-markup browser response override with
+the served candidate CSS/JS; the candidate owner must reload views to display the
+new person markup live. Neither preview container was restarted for these checks.
+
 The approved search shell now uses the standard DaisyUI Modal with its backdrop,
 native focus containment and transitions. The shared immediate-hide override was
 removed. `approved-search-open.png` and `approved-search-mobile.png` show the
