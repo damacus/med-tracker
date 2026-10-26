@@ -1,0 +1,270 @@
+[
+  {
+    "platform": "MacIntel",
+    "hints": [
+      {
+        "text": "⌘K",
+        "aria": "Meta+K"
+      },
+      {
+        "text": "⌘K",
+        "aria": "Meta+K"
+      }
+    ],
+    "shortcut": "opens and focuses search"
+  },
+  {
+    "platform": "Win32",
+    "hints": [
+      {
+        "text": "Ctrl+K",
+        "aria": "Control+K"
+      },
+      {
+        "text": "Ctrl+K",
+        "aria": "Control+K"
+      }
+    ],
+    "shortcut": "opens and focuses search"
+  },
+  {
+    "id": "app-account",
+    "frames": [
+      {
+        "time": 14.599999904632568,
+        "translate": "0px -7.80333px",
+        "opacity": "0.0245832"
+      },
+      {
+        "time": 31,
+        "translate": "0px -7.55119px",
+        "opacity": "0.0561008"
+      },
+      {
+        "time": 47.69999980926514,
+        "translate": "0px -7.18817px",
+        "opacity": "0.101479"
+      },
+      {
+        "time": 64.2999997138977,
+        "translate": "0px -6.71647px",
+        "opacity": "0.160441"
+      },
+      {
+        "time": 81.09999990463257,
+        "translate": "0px -6.14628px",
+        "opacity": "0.231714"
+      },
+      {
+        "time": 97.69999980926514,
+        "translate": "0px -5.48481px",
+        "opacity": "0.314399"
+      },
+      {
+        "time": 114.2999997138977,
+        "translate": "0px -4.76237px",
+        "opacity": "0.404703"
+      },
+      {
+        "time": 131,
+        "translate": "0px -4.0006px",
+        "opacity": "0.499925"
+      },
+      {
+        "time": 147.69999980926514,
+        "translate": "0px -3.23879px",
+        "opacity": "0.595151"
+      },
+      {
+        "time": 164.39999961853027,
+        "translate": "0px -2.51628px",
+        "opacity": "0.685465"
+      },
+      {
+        "time": 181,
+        "translate": "0px -1.85468px",
+        "opacity": "0.768165"
+      },
+      {
+        "time": 197.69999980926514,
+        "translate": "0px -1.28435px",
+        "opacity": "0.839456"
+      },
+      {
+        "time": 214.2999997138977,
+        "translate": "0px -0.812482px",
+        "opacity": "0.89844"
+      },
+      {
+        "time": 231.09999990463257,
+        "translate": "0px -0.449286px",
+        "opacity": "0.943839"
+      },
+      {
+        "time": 247.69999980926514,
+        "translate": "0px -0.195393px",
+        "opacity": "0.975576"
+      },
+      {
+        "time": 264.5,
+        "translate": "0px -0.0480842px",
+        "opacity": "0.993989"
+      },
+      {
+        "time": 281,
+        "translate": "0px -2.8388e-08px",
+        "opacity": "1"
+      },
+      {
+        "time": 297.69999980926514,
+        "translate": "0px",
+        "opacity": "1"
+      },
+      {
+        "time": 314.2999997138977,
+        "translate": "0px",
+        "opacity": "1"
+      },
+      {
+        "time": 331,
+        "translate": "0px",
+        "opacity": "1"
+      },
+      {
+        "time": 347.09999990463257,
+        "translate": "0px",
+        "opacity": "1"
+      },
+      {
+        "time": 364.2999997138977,
+        "translate": "0px",
+        "opacity": "1"
+      }
+    ],
+    "clickAway": "closed",
+    "keyboard": "focus remains inside dialog"
+  },
+  {
+    "id": "app-drawer",
+    "frames": [
+      {
+        "time": 2.1999998092651367,
+        "translate": "-100%",
+        "opacity": "0"
+      },
+      {
+        "time": 19.299999713897705,
+        "translate": "-99.4035%",
+        "opacity": "0.00596548"
+      },
+      {
+        "time": 36,
+        "translate": "-97.5519%",
+        "opacity": "0.0244811"
+      },
+      {
+        "time": 52.69999980926514,
+        "translate": "-94.3982%",
+        "opacity": "0.0560178"
+      },
+      {
+        "time": 69.2999997138977,
+        "translate": "-89.8634%",
+        "opacity": "0.101366"
+      },
+      {
+        "time": 86.09999990463257,
+        "translate": "-83.97%",
+        "opacity": "0.1603"
+      },
+      {
+        "time": 102.59999990463257,
+        "translate": "-76.8453%",
+        "opacity": "0.231547"
+      },
+      {
+        "time": 119.2999997138977,
+        "translate": "-68.5789%",
+        "opacity": "0.314211"
+      },
+      {
+        "time": 136,
+        "translate": "-59.4938%",
+        "opacity": "0.405062"
+      },
+      {
+        "time": 152.7999997138977,
+        "translate": "-50.0282%",
+        "opacity": "0.499718"
+      },
+      {
+        "time": 169.39999961853027,
+        "translate": "-40.5051%",
+        "opacity": "0.594949"
+      },
+      {
+        "time": 186.09999990463257,
+        "translate": "-31.4724%",
+        "opacity": "0.685276"
+      },
+      {
+        "time": 202.69999980926514,
+        "translate": "-23.2002%",
+        "opacity": "0.767998"
+      },
+      {
+        "time": 219.39999961853027,
+        "translate": "-16.0292%",
+        "opacity": "0.839708"
+      },
+      {
+        "time": 236,
+        "translate": "-10.1673%",
+        "opacity": "0.898327"
+      },
+      {
+        "time": 252.69999980926514,
+        "translate": "-5.62439%",
+        "opacity": "0.943756"
+      },
+      {
+        "time": 269.3999996185303,
+        "translate": "-2.44781%",
+        "opacity": "0.975522"
+      },
+      {
+        "time": 286.09999990463257,
+        "translate": "-0.596403%",
+        "opacity": "0.994036"
+      },
+      {
+        "time": 302.59999990463257,
+        "translate": "-5.04156e-06%",
+        "opacity": "1"
+      },
+      {
+        "time": 318.7999997138977,
+        "translate": "0px",
+        "opacity": "1"
+      },
+      {
+        "time": 335.8999996185303,
+        "translate": "0px",
+        "opacity": "1"
+      },
+      {
+        "time": 352.69999980926514,
+        "translate": "0px",
+        "opacity": "1"
+      }
+    ],
+    "clickAway": "closed",
+    "keyboard": "focus remains inside dialog"
+  },
+  {
+    "touch320": "shortcut hint hidden; no horizontal overflow"
+  },
+  {
+    "reducedMotion": "1e-05s"
+  }
+]

@@ -7,6 +7,21 @@
   const status = panel.querySelector('[data-global-search-status]');
   const form = panel.querySelector('[data-global-search-form]');
   const triggers = [...document.querySelectorAll('[data-global-search-trigger]')];
+  const apple = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || '');
+  function shortcutHints() {
+    triggers.forEach(button => {
+      button.setAttribute('aria-keyshortcuts', apple ? 'Meta+K' : 'Control+K');
+      let hint = button.querySelector('kbd');
+      if (!hint) {
+        hint = document.createElement('kbd');
+        button.append(hint);
+      }
+      hint.className = 'app-search-shortcut';
+      hint.setAttribute('aria-hidden', 'true');
+      hint.textContent = apple ? '⌘K' : 'Ctrl+K';
+    });
+  }
+  shortcutHints();
   let opener;
   let active = -1;
   let controller;
@@ -25,6 +40,7 @@
           button.setAttribute('aria-label', translated.open);
           button.textContent = translated.open_short;
         });
+        shortcutHints();
         panel.setAttribute('aria-label', translated.dialog_label);
         panel.querySelector('label[for="global_search_query"]').textContent = translated.input_label;
         input.placeholder = translated.placeholder;
