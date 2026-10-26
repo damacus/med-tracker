@@ -150,13 +150,21 @@
       panel.setAttribute('aria-modal', 'true');
       panel.setAttribute('aria-label', data.navigation_label);
       side.inert = true;
+      let focusFrame;
+      const focusWhenVisible = () => {
+        if (!toggle.checked) return;
+        const button = panel.querySelector('button');
+        if (getComputedStyle(button).visibility === 'visible') button.focus({ preventScroll: true });
+        else focusFrame = requestAnimationFrame(focusWhenVisible);
+      };
       const sync = () => {
+        cancelAnimationFrame(focusFrame);
         const open = toggle.checked;
         trigger.setAttribute('aria-expanded', String(open));
         panel.toggleAttribute('open', open);
         side.inert = !open;
         content.inert = open;
-        if (open) panel.querySelector('button').focus({ preventScroll: true });
+        if (open) focusFrame = requestAnimationFrame(focusWhenVisible);
         else if (panel.contains(document.activeElement) || document.activeElement === document.body) trigger.focus({ preventScroll: true });
       };
       panel.close = () => {
