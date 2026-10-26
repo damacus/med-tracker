@@ -70,7 +70,7 @@ async fn navigation(viewport: Viewport, size: &'static str) {
         expect(page.locator("#app-account:popover-open")).to_be_visible().await.unwrap();
         expect(trigger.clone()).to_have_attribute("aria-expanded", "true").await.unwrap();
         page.keyboard().press("ArrowDown", None).await.unwrap();
-        expect(account.locator("button, a[href]").first()).to_be_focused().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => document.querySelector('#app-account').querySelector('button, a[href]') === document.activeElement", None).await.unwrap());
         let open_report = audit(page, &format!("navigation-account-open-{size}")).await;
         page.keyboard().press("Escape", None).await.unwrap();
         expect(account).to_be_hidden().await.unwrap();
