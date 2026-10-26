@@ -32,6 +32,8 @@ mod browser_push;
 mod browser_push_reminders;
 #[path = "care_api/contract.rs"]
 mod contract;
+#[path = "care_api/contract_tests.rs"]
+mod contract_tests;
 #[path = "care_api/crud.rs"]
 mod crud;
 #[path = "care_api/dashboard.rs"]
@@ -48,6 +50,8 @@ mod dose_history;
 mod dose_outcomes;
 #[path = "care_api/fixture.rs"]
 mod fixture;
+#[path = "care_api/fixture_acceptance.rs"]
+mod fixture_acceptance;
 #[path = "support/fixtures.rs"]
 pub mod fixtures;
 #[path = "care_api/guardian_declarations.rs"]

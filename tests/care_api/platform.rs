@@ -2767,7 +2767,7 @@ async fn platform_support_request_proof_binds_household_and_reason() {
 }
 
 #[tokio::test]
-async fn platform_support_owner_approves_and_admin_activates() {
+async fn platform_support_approval_read_and_termination_journey() {
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -2786,6 +2786,16 @@ async fn platform_support_owner_approves_and_admin_activates() {
     let (confirmed, outcome) = browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
     assert_eq!(confirmed, reqwest::StatusCode::OK, "{outcome}");
     let (support_id, ..) = support_session(&app, 72602).await.unwrap();
+    let unapproved = activate_support(&app, &cookie, support_id).await;
+    let (_, window, _, _) = support_window(&app, support_id).await.unwrap_or_default();
+    assert!(
+        !unapproved.is_success(),
+        "unapproved request must not activate"
+    );
+    assert!(
+        !window,
+        "unapproved request must not gain a 30 minute window"
+    );
     let page = app
         .client
         .get(format!("{}/account/support", app.origin))
@@ -2805,36 +2815,15 @@ async fn platform_support_owner_approves_and_admin_activates() {
     let activated = activate_support(&app, &cookie, support_id).await;
     assert_eq!(activated, reqwest::StatusCode::OK);
     let (_, window, started, open) = support_window(&app, support_id).await.unwrap();
-    app.close().await;
     assert!(started, "activation must stamp starts_at");
     assert!(
         window,
         "activation window must be 30 minutes from database time"
     );
     assert!(open);
-}
-
-#[tokio::test]
-async fn platform_support_cannot_activate_without_owner_approval() {
-    let app = Application::new().await;
-    supported_household(&app).await;
-    let cookie = admin_session(&app).await;
-    let (cookies, operation_id, confirm_token) =
-        request_support(&app, &cookie, 72602, "Confidential support reason alpha").await;
-    let (confirmed, outcome) = browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
-    assert_eq!(confirmed, reqwest::StatusCode::OK, "{outcome}");
-    let (support_id, ..) = support_session(&app, 72602).await.unwrap();
-    let activated = activate_support(&app, &cookie, support_id).await;
-    let (_, window, _, _) = support_window(&app, support_id).await.unwrap_or_default();
+    assert_support_is_read_only(&app, &cookie, support_id).await;
+    assert_support_end_is_idempotent_and_audited(&app, &cookie, support_id).await;
     app.close().await;
-    assert!(
-        !activated.is_success(),
-        "unapproved request must not activate"
-    );
-    assert!(
-        !window,
-        "unapproved request must not gain a 30 minute window"
-    );
 }
 
 #[tokio::test]
@@ -2857,15 +2846,11 @@ async fn platform_support_activate_replay_and_wrong_operator_rejected() {
     assert!(window && open);
 }
 
-#[tokio::test]
-async fn platform_support_read_is_a_read_only_projection() {
-    let app = Application::new().await;
-    let cookie = admin_session(&app).await;
-    let support_id = active_support(&app, &cookie).await;
+async fn assert_support_is_read_only(app: &Application, cookie: &str, support_id: i64) {
     let read = app
         .client
         .get(format!("{}/platform/support/{support_id}", app.origin))
-        .header("cookie", &cookie)
+        .header("cookie", cookie)
         .send()
         .await
         .unwrap();
@@ -2892,8 +2877,8 @@ async fn platform_support_read_is_a_read_only_projection() {
         "support must not insert a household membership"
     );
     let write = post_form(
-        &app,
-        &cookie,
+        app,
+        cookie,
         "/households/supported-fixture/admin/users/74605/membership_role",
         &[("household_membership[role]", "member")],
     )
@@ -2908,7 +2893,7 @@ async fn platform_support_read_is_a_read_only_projection() {
             "{}/households/supported-fixture/reports/health-history",
             app.origin
         ))
-        .header("cookie", &cookie)
+        .header("cookie", cookie)
         .send()
         .await
         .unwrap();
@@ -2916,21 +2901,20 @@ async fn platform_support_read_is_a_read_only_projection() {
         !download.status().is_success(),
         "exports/downloads stay denied under support"
     );
-    let role = membership_state(&app, 74605).await.map(|row| row.0);
-    app.close().await;
+    let role = membership_state(app, 74605).await.map(|row| row.0);
     assert_eq!(role, Some("owner".to_owned()));
 }
 
-#[tokio::test]
-async fn platform_support_end_is_idempotent_and_audited() {
-    let app = Application::new().await;
-    let cookie = admin_session(&app).await;
-    let support_id = active_support(&app, &cookie).await;
-    let owner = sign_in(&app, 71605, "support-owner@example.test").await;
-    let (cookies, body) = form_page(&app, &owner, "/account/support").await;
+async fn assert_support_end_is_idempotent_and_audited(
+    app: &Application,
+    cookie: &str,
+    support_id: i64,
+) {
+    let owner = sign_in(app, 71605, "support-owner@example.test").await;
+    let (cookies, body) = form_page(app, &owner, "/account/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
-        &app,
+        app,
         &cookies,
         "/account/support/end",
         &[
@@ -2945,7 +2929,7 @@ async fn platform_support_end_is_idempotent_and_audited() {
     let operation_id = hidden_field(&page, "operation_id");
     if !operation_id.is_empty() {
         let confirm_token = hidden_field(&page, "authenticity_token");
-        let (ended, outcome) = browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
+        let (ended, outcome) = browser_confirm(app, &cookies, &operation_id, &confirm_token).await;
         assert!(
             ended.is_success(),
             "owner termination must succeed: {outcome}"
@@ -2956,12 +2940,12 @@ async fn platform_support_end_is_idempotent_and_audited() {
             "owner termination must succeed: {status} {page}"
         );
     }
-    let first = support_session(&app, 72602).await.unwrap();
+    let first = support_session(app, 72602).await.unwrap();
     assert!(first.2.is_some(), "ending must stamp ended_at");
     let read = app
         .client
         .get(format!("{}/platform/support/{support_id}", app.origin))
-        .header("cookie", &cookie)
+        .header("cookie", cookie)
         .send()
         .await
         .unwrap();
@@ -2969,10 +2953,10 @@ async fn platform_support_end_is_idempotent_and_audited() {
         !read.status().is_success(),
         "terminated support must not read"
     );
-    let (cookies, body) = form_page(&app, &cookie, "/platform/support").await;
+    let (cookies, body) = form_page(app, cookie, "/platform/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let again = post_form(
-        &app,
+        app,
         &cookies,
         "/platform/support/end",
         &[
@@ -2988,7 +2972,7 @@ async fn platform_support_end_is_idempotent_and_audited() {
     if !operation_id.is_empty() {
         let confirm_token = hidden_field(&page, "authenticity_token");
         let (confirmed, outcome) =
-            browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
+            browser_confirm(app, &cookies, &operation_id, &confirm_token).await;
         assert!(
             confirmed.is_success(),
             "re-ending an ended session must be idempotent: {outcome}"
@@ -2999,9 +2983,8 @@ async fn platform_support_end_is_idempotent_and_audited() {
             "re-ending must not crash: {status} {page}"
         );
     }
-    let second = support_session(&app, 72602).await.unwrap();
-    let audits = platform_version_events(&app, "SupportAccessSession").await;
-    app.close().await;
+    let second = support_session(app, 72602).await.unwrap();
+    let audits = platform_version_events(app, "SupportAccessSession").await;
     assert_eq!(
         first.2, second.2,
         "ended_at must not move on repeat termination"

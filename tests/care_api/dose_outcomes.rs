@@ -609,11 +609,7 @@ async fn dose_outcomes_missed_take_requires_current_version_and_replays_headers(
     assert_eq!((stock_after, takes_after), ("8.00".into(), 1));
 }
 
-#[tokio::test]
-async fn dose_outcomes_invalid_date_ranges_keep_field_errors_and_no_history() {
-    let app = Application::new().await;
-    let token = app.token().await;
-    outcome_sources(&app).await;
+async fn assert_invalid_date_ranges_leave_no_history(app: &Application, token: &str) {
     let endpoint = format!(
         "{}/api/v1/households/72001/schedules/83997/dose_occurrences",
         app.origin
@@ -627,7 +623,7 @@ async fn dose_outcomes_invalid_date_ranges_keep_field_errors_and_no_history() {
         let response = app
             .client
             .get(format!("{endpoint}{query}"))
-            .bearer_auth(&token)
+            .bearer_auth(token)
             .send()
             .await
             .unwrap();
@@ -641,7 +637,7 @@ async fn dose_outcomes_invalid_date_ranges_keep_field_errors_and_no_history() {
         .get(format!(
             "{endpoint}?start_date=2026-10-01&end_date=2026-10-31"
         ))
-        .bearer_auth(&token)
+        .bearer_auth(token)
         .send()
         .await
         .unwrap()
@@ -659,7 +655,6 @@ async fn dose_outcomes_invalid_date_ranges_keep_field_errors_and_no_history() {
         .unwrap()
         .try_get("", "n")
         .unwrap();
-    app.close().await;
     assert_eq!(valid, 200);
     for (status, body) in replies {
         assert_eq!(status, 422);
@@ -715,10 +710,12 @@ async fn dose_outcomes_source_lookup_precedes_absent_signing_key() {
 }
 
 #[tokio::test]
-async fn dose_outcomes_retained_error_wire_and_cached_malformed_envelope() {
+async fn dose_outcomes_validation_replay_and_conflicts_preserve_stock_and_history() {
     let app = Application::new().await;
     let token = app.token().await;
     outcome_sources(&app).await;
+    assert_missing_source_precedes_malformed_requests(&app, &token).await;
+    assert_invalid_date_ranges_leave_no_history(&app, &token).await;
     let endpoint = format!(
         "{}/api/v1/households/72001/schedules/83997/dose_occurrences",
         app.origin
@@ -818,10 +815,7 @@ async fn dose_outcomes_retained_error_wire_and_cached_malformed_envelope() {
     assert_eq!((counts, stock), (vec![1, 0, 1], "10.00".into()));
 }
 
-#[tokio::test]
-async fn dose_outcomes_missing_source_precedes_malformed_query_and_body() {
-    let app = Application::new().await;
-    let token = app.token().await;
+async fn assert_missing_source_precedes_malformed_requests(app: &Application, token: &str) {
     let endpoint = format!(
         "{}/api/v1/households/72001/schedules/99999/dose_occurrences",
         app.origin
@@ -831,7 +825,7 @@ async fn dose_outcomes_missing_source_precedes_malformed_query_and_body() {
         .get(format!(
             "{endpoint}?start_date=2026-10-01&start_date=2026-10-02"
         ))
-        .bearer_auth(&token)
+        .bearer_auth(token)
         .send()
         .await
         .unwrap()
@@ -840,14 +834,13 @@ async fn dose_outcomes_missing_source_precedes_malformed_query_and_body() {
     let mutate = app
         .client
         .post(format!("{endpoint}/not_taken"))
-        .bearer_auth(&token)
+        .bearer_auth(token)
         .json(&json!({"wrong":{}}))
         .send()
         .await
         .unwrap()
         .status()
         .as_u16();
-    app.close().await;
     assert_eq!((get, mutate), (404, 404));
 }
 #[tokio::test]
