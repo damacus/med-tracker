@@ -11,6 +11,15 @@ The refreshed captures below use that integrated candidate. Dock stays inside
 the parent Drawer content so opening the Drawer makes Dock inert. Parent
 popover account menus and native modal search remain in place.
 
+Follow-up merge `5ed0aefd6f0f2a400f4efb75648e439303617cd3` integrates
+parent focus correction `0276eb9157dc9a8d0a0f9f77d18c17c10c72f2cc`.
+The refreshed mobile GIF and drawer capture include this correction. A focused
+390 px recheck passed initial focus on the first visible Drawer control,
+Shift+Tab and Tab wrapping, Escape dismissal and focus restoration to the
+Drawer opener. The existing profile, Dock and search handoff checks also passed
+at that width; all 24 frontend tests passed again. The prior five-width
+captures remain valid for the unchanged component styles and layout.
+
 Chrome checks covered 320, 390, 1023, 1024 and 1200 px: tab deep links, reload,
 URL query preservation, keyboard navigation, pointer and keyboard disclosure
 operation, and single-open groups in Profile, Notifications and Advanced.
