@@ -10,6 +10,38 @@ use crate::harness::{self, named};
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn report_export_controls_have_separate_readable_rows() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
+        Box::pin(async move {
+            harness::sign_in(journey).await;
+            let page = &journey.page;
+            page.goto(&format!("{}/households/persistence-fixture/reports", journey.origin), None).await.unwrap();
+            expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+            for (size, width, height) in [("desktop", 1440, 1000), ("mobile", 390, 844), ("narrow", 320, 844)] {
+                page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                let layout: Value = page.evaluate(r#"() => {
+                    const form = document.querySelector('form[action$="/reports/health-history"]');
+                    const label = form.querySelector('label:has(input[type="checkbox"])');
+                    const option = label.getBoundingClientRect();
+                    const button = form.querySelector('button').getBoundingClientRect();
+                    const checkbox = label.querySelector('input').getBoundingClientRect();
+                    const text = label.querySelector('span').getBoundingClientRect();
+                    return {
+                        separateRow: button.top >= option.bottom + 12,
+                        readableOption: text.left >= checkbox.right + 8 && text.right <= form.getBoundingClientRect().right + 1,
+                        contained: document.documentElement.scrollWidth <= innerWidth
+                    };
+                }"#, None::<&()>).await.unwrap();
+                assert_eq!(layout, json!({"separateRow":true,"readableOption":true,"contained":true}), "{size}");
+                page.evaluate::<(), bool>("() => { document.getElementById('gp-title').scrollIntoView({block:'start'}); return true; }", None).await.unwrap();
+                harness::capture(page, &format!("report-export-{size}")).await;
+            }
+        })
+    }).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn report_clarity_distinguishes_empty_days_from_completed_days() {
     harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
         Box::pin(async move {
