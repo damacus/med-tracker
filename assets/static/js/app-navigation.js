@@ -128,32 +128,124 @@
       form.append(token, button);
       return form;
     };
-    const dialog = (id, title, triggers) => {
-      const panel = element('dialog', null, `app-navigation-panel ${id}`);
-      panel.id = id;
-      panel.setAttribute('aria-label', title);
+    const heading = (panel, title, closePanel) => {
       const top = element('div', null, 'app-navigation-heading');
-      top.append(element('h2', id === 'app-drawer' ? labels.mobile_menu.brand : title));
+      top.append(element('h2', title));
       const close = element('button', '×', 'btn btn-ghost');
       close.type = 'button';
       close.setAttribute('aria-label', labels.mobile_menu.close_menu);
-      close.addEventListener('click', () => panel.close());
+      close.addEventListener('click', closePanel);
       top.append(close);
       panel.append(top);
+    };
+    const drawer = trigger => {
+      const layout = document.querySelector('[data-app-drawer-layout]');
+      const toggle = layout.querySelector('.drawer-toggle');
+      const content = layout.querySelector('.drawer-content');
+      const side = layout.querySelector('.drawer-side');
+      const overlay = layout.querySelector('.drawer-overlay');
+      const panel = layout.querySelector('#app-drawer');
+      overlay.setAttribute('aria-label', labels.mobile_menu.close_menu);
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-modal', 'true');
+      panel.setAttribute('aria-label', data.navigation_label);
+      side.inert = true;
+      const sync = () => {
+        const open = toggle.checked;
+        trigger.setAttribute('aria-expanded', String(open));
+        panel.toggleAttribute('open', open);
+        side.inert = !open;
+        content.inert = open;
+        if (open) panel.querySelector('button').focus({ preventScroll: true });
+        else if (panel.contains(document.activeElement) || document.activeElement === document.body) trigger.focus({ preventScroll: true });
+      };
+      panel.close = () => {
+        toggle.checked = false;
+        sync();
+        panel.dispatchEvent(new Event('close'));
+      };
+      heading(panel, labels.mobile_menu.brand, panel.close);
+      trigger.addEventListener('click', () => { toggle.checked = !toggle.checked; sync(); });
+      toggle.addEventListener('change', sync);
+      document.addEventListener('keydown', event => {
+        if (!toggle.checked) return;
+        if (event.key === 'Escape') { event.preventDefault(); panel.close(); }
+        if (event.key !== 'Tab') return;
+        const controls = [...panel.querySelectorAll('a[href], button:not([disabled]), [tabindex="0"]')].filter(node => node.getClientRects().length);
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      });
+      return panel;
+    };
+    const dropdown = triggers => {
+      const panel = element('nav', null, 'dropdown app-navigation-panel app-account');
+      panel.id = 'app-account';
+      panel.popover = 'auto';
+      panel.setAttribute('aria-label', labels.profile_menu.my_account);
       let activeTrigger;
-      for (const trigger of Array.isArray(triggers) ? triggers : [triggers]) {
-        trigger.setAttribute('aria-label', title);
-        trigger.addEventListener('click', () => { activeTrigger = trigger; panel.showModal(); trigger.setAttribute('aria-expanded', 'true'); });
+      const finishClose = () => {
+        if (!panel.hasAttribute('open')) return;
+        panel.removeAttribute('open');
+        activeTrigger?.setAttribute('aria-expanded', 'false');
+        panel.dispatchEvent(new Event('close'));
+      };
+      panel.close = () => {
+        if (panel.matches(':popover-open')) panel.hidePopover();
+        finishClose();
+      };
+      const anchorSupported = CSS.supports('position-anchor: --account-trigger') && CSS.supports('position-area: bottom');
+      if (!anchorSupported) {
+        panel.style.positionArea = 'none';
+        panel.style.inset = 'auto';
+        panel.style.margin = '0';
+      }
+      const position = () => {
+        if (!activeTrigger) return;
+        if (!activeTrigger.getClientRects().length) { panel.close(); return; }
+        if (anchorSupported) return;
+        const bounds = activeTrigger.getBoundingClientRect();
+        const sidebar = activeTrigger === sidebarTrigger;
+        panel.style.maxHeight = Math.max(0, sidebar ? bounds.top - 16 : innerHeight - bounds.bottom - 16) + 'px';
+        panel.style.left = Math.max(8, Math.min(sidebar ? bounds.left : bounds.right - panel.offsetWidth, innerWidth - panel.offsetWidth - 8)) + 'px';
+        panel.style.top = Math.max(8, sidebar ? bounds.top - panel.offsetHeight - 8 : bounds.bottom + 8) + 'px';
+      };
+      for (const [index, trigger] of triggers.entries()) {
+        const anchor = '--account-trigger-' + index;
+        trigger.style.anchorName = anchor;
+        trigger.setAttribute('popovertarget', panel.id);
+        trigger.removeAttribute('aria-haspopup');
+        trigger.addEventListener('click', () => {
+          activeTrigger = trigger;
+          panel.style.positionAnchor = anchor;
+          panel.classList.toggle('dropdown-top', trigger === sidebarTrigger);
+          panel.classList.toggle('dropdown-start', trigger === sidebarTrigger);
+          panel.classList.toggle('dropdown-bottom', trigger !== sidebarTrigger);
+          panel.classList.toggle('dropdown-end', trigger !== sidebarTrigger);
+        });
+        trigger.addEventListener('keydown', event => {
+          if (event.key !== 'ArrowDown') return;
+          event.preventDefault();
+          if (!panel.matches(':popover-open')) trigger.click();
+          panel.querySelector('button, a[href]')?.focus({ preventScroll: true });
+        });
         trigger.hidden = false;
       }
-      panel.addEventListener('close', () => {
-        activeTrigger?.setAttribute('aria-expanded', 'false');
-        if (document.activeElement === document.body || panel.contains(document.activeElement)) activeTrigger?.focus();
+      panel.addEventListener('beforetoggle', event => {
+        if (event.newState !== 'open') return;
+        panel.setAttribute('open', '');
+        activeTrigger?.setAttribute('aria-expanded', 'true');
       });
-      panel.addEventListener('click', event => {
-        const bounds = panel.getBoundingClientRect();
-        if (event.target === panel && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) panel.close();
+      panel.addEventListener('toggle', event => {
+        if (event.newState === 'closed') finishClose();
+        else position();
       });
+      document.addEventListener('focusin', event => {
+        if (panel.matches(':popover-open') && !panel.contains(event.target) && event.target !== activeTrigger) panel.close();
+      });
+      window.addEventListener('resize', position);
+      document.addEventListener('scroll', position, true);
       document.body.append(panel);
       return panel;
     };
@@ -161,7 +253,7 @@
       header.replaceChildren(template.content.cloneNode(true));
       if (searchTrigger) header.querySelector('.app-header').insertBefore(searchTrigger, header.querySelector('[data-app-account]'));
       const drawerTrigger = header.querySelector('[data-app-drawer]');
-      const drawer = dialog('app-drawer', data.navigation_label, drawerTrigger);
+      const navigationDrawer = drawer(drawerTrigger);
       drawerTrigger.setAttribute('aria-label', labels.mobile_menu.open_menu);
       const navigation = element('nav');
       navigation.setAttribute('aria-label', labels.mobile_rail.primary_navigation);
@@ -169,7 +261,7 @@
       const profile = data.choices.find(item => item.id === 'profile');
       if (profile) navigation.append(link(profile));
       if (sidebar) sidebar.querySelector('[data-sidebar-navigation]').replaceChildren(...[...data.sidebar, ...(profile ? [profile] : [])].map(link));
-      drawer.append(navigation, logout());
+      navigationDrawer.append(navigation, logout());
       header.querySelector('[data-account-name]').textContent = data.name;
       const avatar = header.querySelector('[data-profile-avatar]');
       avatar.classList.add('relative');
@@ -204,7 +296,7 @@
       } else sidebar.querySelector('.app-sidebar-account').append(logout());
     }
     const accountTriggers = [header.querySelector('[data-app-account]'), ...(sidebarTrigger ? [sidebarTrigger] : [])];
-    const account = dialog('app-account', labels.profile_menu.my_account, accountTriggers);
+    const account = dropdown(accountTriggers);
     for (const trigger of accountTriggers) trigger.setAttribute('aria-label', `${data.initials} ${data.name} ${labels.profile_menu.my_account}`);
     if (appearanceTrigger) {
       appearanceTrigger.className = 'app-navigation-link';

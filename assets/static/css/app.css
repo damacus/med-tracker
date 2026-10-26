@@ -17,19 +17,13 @@ body { margin: 0; font-family: var(--font-family); background: var(--background)
 .app-brand { margin-right: auto; }
 .app-avatar { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; overflow: hidden; background: var(--color-neutral); color: var(--color-neutral-content); }
 .app-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.app-navigation-panel { opacity: 0; translate: var(--navigation-closed-offset, 0 -.5rem); transition: translate .3s ease-in-out, opacity .3s ease-in-out, display .3s allow-discrete, overlay .3s allow-discrete; position: fixed; color: var(--foreground); background: var(--surface-container-low); border: 1px solid var(--border-color); padding: 1rem; max-height: 100dvh; overflow-y: auto; box-shadow: var(--elevation-1); }
-.app-navigation-panel[open] { opacity: 1; translate: 0 0; }
-.app-navigation-panel::backdrop { background: transparent; }
-.app-drawer::backdrop { background: rgb(0 0 0 / .45); opacity: 0; transition: opacity .3s ease-in-out, display .3s allow-discrete, overlay .3s allow-discrete; }
-.app-drawer[open]::backdrop { opacity: 1; }
-@starting-style {
-  .app-navigation-panel[open] { opacity: 0; translate: var(--navigation-closed-offset, 0 -.5rem); }
-  .app-drawer[open]::backdrop { opacity: 0; }
-}
-.app-drawer { --navigation-closed-offset: -100% 0; inset: 0 auto 0 0; margin: 0; width: min(85vw, 320px); height: 100dvh; }
-.app-account { inset: 5rem max(1rem, calc((100vw - 72rem) / 2)) auto auto; margin: 0; width: min(90vw, 320px); border-radius: 1rem; }
+.app-navigation-panel { color: var(--foreground); background: var(--surface-container-low); border: 1px solid var(--border-color); padding: 1rem; overflow-y: auto; box-shadow: var(--elevation-1); }
+.app-drawer-side { z-index: 40; }
+.app-drawer { width: min(85vw, 320px); min-height: 100%; }
+.app-account { width: min(90vw, 20rem); max-height: calc(100dvh - 2rem); margin: .5rem 0; border-radius: 1rem; position-try-fallbacks: flip-block; }
+.app-account::backdrop { background: transparent; }
+@supports not (position-area: bottom) { .app-account[popover] { position: fixed; margin: 0; inset: auto; } }
 html:has(.app-household) { scrollbar-gutter: stable; }
-html:has(.app-drawer[open]) { overflow: hidden; }
 .app-navigation-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-weight: 700; margin-bottom: 1rem; }
 .app-navigation-link { display: flex; align-items: center; gap: 1rem; width: 100%; min-height: 3rem; padding: .75rem 1rem; border-radius: 2rem; text-align: left; }
 .app-navigation-link:hover, .app-navigation-link[aria-current] { background: var(--secondary-container); color: var(--on-secondary-container); }

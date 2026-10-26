@@ -1,40 +1,45 @@
-# Shared navigation menus and search shortcuts
+# Shared navigation components and search shortcuts
 
-Captured on 26 October 2026 in installed desktop Chrome, using the existing
-synthetic fixture preview at localhost:18152. Browser request overrides served
-this checkout's CSS and JavaScript; the shared Compose app and its mounts were
-unchanged. The dashboard main region was extended to 1800px to check a nonzero
-180px scroll offset. No care data was changed.
+The final correction uses DaisyUI's documented Drawer structure and popover
+Dropdown. The account dropdown anchors to the pressed button: below the mobile
+header button, or above the desktop sidebar button. It has no full-page backdrop.
+The drawer uses drawer-toggle, drawer-content, drawer-side and drawer-overlay,
+with DaisyUI's own slide transition. Theme surfaces and panel elevation remain.
 
-The Rails references are the shared SheetContent and DropdownMenuContent:
-the drawer slides from the left; account dropdowns retain panel elevation without
-a page-wide dim layer. The Rust native dialog keyboard/focus behaviour remains.
+The initial patch animated custom dialogs without correcting the account menu's
+fixed top-right placement. The user rejected that behaviour after watching the
+recording. The corrected captures supersede the earlier after captures.
 
-- `before-*.png`: original application CSS, built from the branch baseline,
-  with current JavaScript to isolate the CSS behaviour.
-- `after-*.png`: updated shared CSS and JavaScript at 1440×1000 and 390×844.
-- `after-touch-320.png`: touch-only 320×740; desktop shortcut hint hidden and
-  no horizontal overflow.
-- `before-geometry.json` and `after-geometry.json`: root width, document height,
-  header/main/body rectangles and scroll offsets before opening, while open and
-  after closing the desktop account, mobile account and mobile drawer.
-- `interaction-checks.json`: actual opening animation frames, Escape/focus,
-  click-away, reduced-motion and simulated MacIntel/Win32 hint/shortcut checks.
+Captured on 26 October 2026 in installed Chrome against the existing synthetic
+fixture preview at localhost:18152. Browser request overrides served the current
+CSS/JavaScript and the exact static household drawer fragments from base.html.
+The running Compose app, its mounted views and care data remained unchanged.
+This verifies frontend behaviour against the seeded app; it does not represent
+a rebuilt Rust executable or the full browser suite.
 
-The fixed geometry is identical within each open/close sequence. Account backdrop
-colour changes from black at 45% opacity to transparent. Menu panels retain their
-theme elevation. Both menus have intermediate opacity/translation frames during
-their 300ms entrance. The existing global reduced-motion rule shortens transitions.
+- `before-*.png` and `before-geometry.json` retain the original modal baseline.
+- `corrected-desktop-account.png`: dropdown immediately above the sidebar button.
+- `corrected-mobile-account.png` and `corrected-small-mobile-account.png`:
+  dropdown immediately below the header button at 390px and 320px.
+- `corrected-mobile-drawer.png` and `corrected-small-mobile-drawer.png`:
+  standard Drawer, with its background inert and page geometry unchanged.
 
-The original body-level overflow lock and shared dark backdrop were confirmed in
-the owning CSS. The default macOS browser uses overlay scrollbars and did not
-reproduce the reported width jump; these captures do not prove that symptom's
-cause on the user's browser. The change reserves a stable root scrollbar gutter
-and moves drawer scroll locking from the body to the root. This reserves space
-before opening rather than changing available space during the interaction.
+The focused Playwright placement check failed against the original desktop menu.
+It passes at 1440×1000, 390×844 and 320×740, both with native CSS anchoring and
+with CSS anchor support disabled to exercise the measured-position fallback.
+Checks cover trigger-to-menu distance (0–12px), viewport bounds, native light
+dismissal, Escape/focus return, drawer structure, inert background, Tab containment
+and opening global search from either menu. Delaying the navigation response while
+typing into a main-page input preserves focus and selection after initialisation.
+The wrapper is rendered with the initial household layout, avoiding reparenting
+the live page. Login has no drawer wrapper.
 
-The shortcut regression checks fail against the original search script and pass
-against the updated script. They cover macOS, Windows, Linux and userAgentData
-platform precedence, visible hints, aria-keyshortcuts and both existing modifiers.
-The existing frontend task runs these checks. The full local Rust suite was
-explicitly waived for this bounded UI slice.
+The original width jump was not reproduced with macOS overlay scrollbars. The
+stable root gutter is retained, and drawer opening preserves the checked main
+rectangle. No claim of reproducing that original symptom is made.
+
+Frontend build, all 28 lightweight frontend checks, formatting and whitespace
+checks pass. Permanent Rust browser assertions now cover dropdown anchoring and
+Drawer structure; their local compilation/execution was not run. The owner waived
+the full local suite for this UI slice. Independent review findings about focus
+preservation and measuring after animation completion were addressed.

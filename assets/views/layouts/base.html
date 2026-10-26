@@ -14,6 +14,7 @@
     <script src="/static/js/app-navigation.js" defer></script>
   </head>
   <body{% if slug %} class="app-household"{% endif %}>
+    {% if slug %}<div class="drawer" data-app-drawer-layout><input id="app-drawer-toggle" type="checkbox" class="drawer-toggle" tabindex="-1" aria-hidden="true"><div class="drawer-content">{% endif %}
     <a href="#main" class="skip-link">{% if labels %}{{ labels.layouts.navigation.skip_to_content }}{% else %}Skip to content{% endif %}</a>
     {% block header %}
     {% if slug %}{% include "components/app-sidebar.html" %}{% endif %}
@@ -37,5 +38,6 @@
     <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% block content %}{% endblock content %}</main>
     {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · {% if labels %}{{ labels.layouts.navigation.care_tagline }}{% else %}Care, kept together.{% endif %}</div></footer>{% endblock footer %}
     {% block appearance %}{% include "components/appearance.html" %}{% endblock appearance %}
+    {% if slug %}</div><div class="drawer-side app-drawer-side" inert><label for="app-drawer-toggle" class="drawer-overlay" aria-hidden="true"></label><div id="app-drawer" class="app-navigation-panel app-drawer" role="dialog" aria-modal="true" tabindex="-1"></div></div></div>{% endif %}
   </body>
 </html>
