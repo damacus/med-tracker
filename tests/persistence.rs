@@ -327,7 +327,7 @@ async fn development_seed_creates_a_usable_account_and_household() {
         std::time::Duration::from_secs(120),
         tokio::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"))
             .args(["db", "seed", "--environment", "test"])
-            .env("DATABASE_URL", &format!("{base}/{database}"))
+            .env("DATABASE_URL", format!("{base}/{database}"))
             .kill_on_drop(true)
             .output(),
     )
