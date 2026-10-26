@@ -29,6 +29,15 @@ Do not change comments except for requested documentation/guardrails or lint fix
 Do not introduce broad lint suppressions, including tests and generated entities.
 Use `jq` for JSON inspection. Fixture passwords are `password`.
 
+## No Python
+
+Do not write or use Python for repository implementation, setup, build orchestration,
+helpers, code generation, validation or tests. This includes temporary scripts and
+one-off commands, not just committed files. Use native tool commands, Task/Compose,
+Fish, or the existing Rust/JavaScript test facilities. Replace existing Python
+helpers when changing the workflow they serve; do not extend them or introduce
+another scripting framework to replace them.
+
 ## Local Rust verification
 
 Run the repository Task entries directly from your checkout:

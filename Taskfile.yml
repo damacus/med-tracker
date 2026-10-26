@@ -4,6 +4,18 @@ silent: true
 run: when_changed
 
 includes:
+  host:
+    taskfile: Taskfiles/host.yml
+    dir: .
+  dev:
+    taskfile: Taskfiles/dev.yml
+    dir: .
+  test:
+    taskfile: Taskfiles/test.yml
+    dir: .
+  prod:
+    taskfile: Taskfiles/prod.yml
+    dir: .
   db:
     taskfile: Taskfiles/database.yml
     dir: .
@@ -54,456 +66,57 @@ tasks:
       LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
       LOCO_IMAGE_SUBNET: '{{.LOCO_IMAGE_SUBNET | default ""}}'
     cmds: [python3 scripts/test_loco_image.py]
-  test:scheduler:process:
-    desc: Check native scheduler arguments, environment and process failures
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: &scheduler_icu_major "78"
-      RUST_ICU_LINK_SEARCH_DIR: &scheduler_icu_lib
-        sh: 'if [ "$(uname -s)" = Darwin ]; then icu_prefix=$(brew --prefix icu4c@78) && printf "%s/lib" "$icu_prefix"; else pkg-config --variable=libdir icu-uc; fi'
-    cmds:
-      - cargo nextest run --locked --test scheduler_process --no-tests=fail --test-threads 2
-  test:scheduler:image:
-    desc: Prove scheduled expiry and audit writes in the scratch release image
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *scheduler_icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *scheduler_icu_lib
-      LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
-    vars:
-      OWNED_PROJECT:
-        sh: 'printf "mtloco-scheduler-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
-    cmds:
-      - defer:
-          task: foundation:db-down
-          vars:
-            FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
-      - '{{if .LOCO_IMAGE_SUBNET}}docker network create --subnet {{.LOCO_IMAGE_SUBNET | shellQuote}} --label {{printf "com.docker.compose.project=%s" .OWNED_PROJECT | shellQuote}} --label com.docker.compose.network=default {{printf "%s_default" .OWNED_PROJECT | shellQuote}}{{else}}true{{end}}'
-      - task: foundation:db-up
-        vars:
-          FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
-      - task: foundation:db-provision
-        vars:
-          FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
-      - >-
-        sh -eu -c '
-        db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
-        export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
-        export MEDTRACKER_OWNED_DATABASE=1;
-        export MEDTRACKER_IMAGE_NETWORK="${1}_default";
-        cargo nextest run --locked --test care_api --run-ignored only --no-tests=fail --test-threads 1 scheduler_image
-        ' sh {{.OWNED_PROJECT | shellQuote}}
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]
-  foundation:db-up:
-    requires:
-      vars: [FOUNDATION_PROJECT]
-    cmds:
-      [
-        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} up -d --wait postgres',
-      ]
-  foundation:storage-init:
-    requires:
-      vars: [STORAGE_ENDPOINT]
-    cmds:
-      [
-        'curl --fail --silent --show-error --aws-sigv4 aws:amz:us-east-1:s3 --user storage-smoke-access:storage-smoke-secret --request PUT {{printf "%s/scanner-fixture" .STORAGE_ENDPOINT | shellQuote}}',
-      ]
-  foundation:db-port:
-    requires:
-      vars: [FOUNDATION_PROJECT]
-    cmds:
-      [
-        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} port postgres 5432',
-      ]
-  foundation:storage-up:
-    requires:
-      vars: [FOUNDATION_PROJECT]
-    cmds:
-      [
-        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage up -d --wait rustfs',
-      ]
-  foundation:storage-port:
-    requires:
-      vars: [FOUNDATION_PROJECT]
-    cmds:
-      [
-        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage port rustfs 9000',
-      ]
-  foundation:db-provision:
-    requires:
-      vars: [FOUNDATION_PROJECT]
-    cmds:
-      - 'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} exec -T postgres psql -X -v ON_ERROR_STOP=1 -U medtracker -d medtracker_loco -c "CREATE DATABASE medtracker_reference"'
-  foundation:db-down:
-    requires:
-      vars: [FOUNDATION_PROJECT]
-    cmds:
-      [
-        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage down --volumes',
-      ]
-  host:dev:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: &icu_major "78"
-      RUST_ICU_LINK_SEARCH_DIR: &icu_lib
-        sh: 'if [ "$(uname -s)" = Darwin ]; then icu_prefix=$(brew --prefix icu4c@78) && printf "%s/lib" "$icu_prefix"; else pkg-config --variable=libdir icu-uc; fi'
-    desc: Start the Loco server
-    cmds:
-      - task: frontend:prepare
-      - 'cargo run --locked -- start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "development"}}'
-  scheduler:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    desc: Run configured Loco scheduled tasks
-    cmds:
-      [
-        'cargo run --locked -- scheduler --environment {{.LOCO_ENV | default "development"}} {{.CLI_ARGS}}',
-      ]
-  build:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    desc: Build Loco
-    cmds:
-      - task: frontend:prepare
-      - cargo build --locked
-  check:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    desc: Check Loco targets
-    cmds: [cargo check --locked --all-targets]
-  machete:
-    desc: Check direct dependencies of every active Rust workspace member
-    cmds:
-      - cargo machete --with-metadata --skip-target-dir ./Cargo.toml migration/Cargo.toml
-  lint:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    desc: Lint Loco
-    cmds:
-      - cargo clippy --locked --all-targets -- -D warnings
-      - task: machete
-  lint:fix:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    desc: Apply safe Loco Clippy suggestions
-    cmds:
-      [
-        cargo clippy --locked --all-targets --fix --allow-dirty --allow-staged -- -D warnings,
-      ]
-  fmt:
-    desc: Check Loco formatting
-    cmds: [cargo fmt --all -- --check]
-  fmt:apply:
-    cmds: [cargo fmt --all]
-  test:
-    desc: Run unit tests, then API integration and browser journeys
-    cmds:
-      - task: test:unit
-      - task: test:acceptance
-  host:test:unit:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    desc: Run database-free Rust library, doc and JavaScript unit tests
-    cmds:
-      - task: frontend:test
-      - 'cargo nextest run --locked --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
-      - cargo test --locked --workspace --doc
-  host:test:integration:
-    desc: Run compiled API, security and database integration tests
-    deps: [frontend:prepare]
-    vars:
-      OWNED_PROJECT:
-        sh: 'printf "mtloco-http-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
-    cmds:
-      - task: '{{if eq (.MEDTRACKER_OWNED_DATABASE | default "") "1"}}test:integration:direct{{else}}test:integration:owned{{end}}'
-        vars:
-          FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
-          TARGET: '{{.TARGET | default ""}}'
-          FILTER: '{{.FILTER | default ""}}'
-  test:integration:direct:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    internal: true
-    cmds:
-      - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--tests{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
-  test:integration:owned:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    internal: true
-    requires:
-      vars: [FOUNDATION_PROJECT]
-    cmds:
-      - defer:
-          task: foundation:db-down
-          vars:
-            FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
-      - task: foundation:db-up
-        vars:
-          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
-      - task: foundation:db-provision
-        vars:
-          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
-      - task: foundation:storage-up
-        vars:
-          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
-      - >-
-        sh -eu -c '
-        db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
-        storage_endpoint="http://$(task foundation:storage-port FOUNDATION_PROJECT="$1")";
-        task foundation:storage-init STORAGE_ENDPOINT="$storage_endpoint";
-        unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG DOCKER_TLS_VERIFY DOCKER_CERT_PATH;
-        export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
-        export MEDTRACKER_OWNED_DATABASE=1;
-        export MEDTRACKER_OWNED_STORAGE=1;
-        export S3_ENDPOINT="$storage_endpoint";
-        export S3_BUCKET=scanner-fixture;
-        export AWS_REGION=us-east-1;
-        export AWS_ACCESS_KEY_ID=storage-smoke-access;
-        export AWS_SECRET_ACCESS_KEY=storage-smoke-secret;
-        export ACTIVE_STORAGE_SERVICE=s3;
-        export ACTIVE_STORAGE_S3_ENDPOINT="$storage_endpoint";
-        export ACTIVE_STORAGE_S3_BUCKET=medtracker-fixture;
-        export ACTIVE_STORAGE_S3_REGION=us-east-1;
-        export ACTIVE_STORAGE_S3_ACCESS_KEY_ID=storage-smoke-access;
-        export ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY=storage-smoke-secret;
-        export ACTIVE_STORAGE_S3_FORCE_PATH_STYLE=true;
-        export MEDTRACKER_SESSION_KEY="BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==";
-        export RAILS_SECRET_KEY_BASE=synthetic-slice-rails-verification-secret;
-        target="$2";
-        filter="$3";
-        if [ -n "$target" ]; then
-          set -- --test "$target";
-        else
-          set -- --tests;
-        fi;
-        if [ -n "$filter" ]; then
-          set -- "$@" "$filter";
-        fi;
-        cargo nextest run --locked --no-tests=fail --test-threads 2 "$@";
-        if [ -z "$target" ] && [ -z "$filter" ]; then
-          cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
-        fi
-        ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}}
-  host:test:browser:
-    desc: Run the Rust browser journeys against a private owned database
-    deps: [frontend:prepare]
-    vars:
-      OWNED_PROJECT:
-        sh: 'printf "mtloco-browser-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
-    cmds:
-      - task: '{{if eq (.MEDTRACKER_OWNED_DATABASE | default "") "1"}}test:browser:direct{{else}}test:browser:owned{{end}}'
-        vars:
-          FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
-          TARGET: '{{.TARGET | default "browser"}}'
-          FILTER: '{{.FILTER | default ""}}'
-  test:browser:direct:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    internal: true
-    cmds:
-      - 'cargo nextest run --locked --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
-  test:browser:owned:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    internal: true
-    requires:
-      vars: [FOUNDATION_PROJECT]
-    cmds:
-      - defer:
-          task: foundation:db-down
-          vars:
-            FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
-      - task: foundation:db-up
-        vars:
-          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
-      - task: foundation:storage-up
-        vars:
-          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
-      - >-
-        sh -eu -c '
-        db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
-        storage_endpoint="http://$(task foundation:storage-port FOUNDATION_PROJECT="$1")";
-        task foundation:storage-init STORAGE_ENDPOINT="$storage_endpoint";
-        unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG DOCKER_TLS_VERIFY DOCKER_CERT_PATH;
-        export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
-        export MEDTRACKER_OWNED_DATABASE=1;
-        export MEDTRACKER_OWNED_STORAGE=1;
-        export ACTIVE_STORAGE_S3_ENDPOINT="$storage_endpoint";
-        export ACTIVE_STORAGE_S3_BUCKET=medtracker-fixture;
-        export ACTIVE_STORAGE_S3_REGION=us-east-1;
-        export ACTIVE_STORAGE_S3_ACCESS_KEY_ID=storage-smoke-access;
-        export ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY=storage-smoke-secret;
-        export ACTIVE_STORAGE_S3_FORCE_PATH_STYLE=true;
-        cargo nextest run --locked --test "$3" --run-ignored only --no-tests=fail --test-threads 2 "$2";
-        ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}} {{.TARGET | default "browser" | shellQuote}}
-  test:acceptance:
-    desc: Run integration and browser stages with separate or shared database scheduling
-    cmds:
-      - task: '{{if eq (.MEDTRACKER_OWNED_DATABASE | default "") "1"}}test:acceptance:shared{{else}}test:acceptance:isolated{{end}}'
-  test:acceptance:isolated:
-    internal: true
-    cmds:
-      - task: test:integration
-      - task: test:browser
-  test:acceptance:shared:
-    internal: true
-    cmds:
-      - task: test:integration
-      - task: test:browser
-  routes:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    desc: List Loco routes
-    cmds:
-      [
-        'cargo run --locked -- routes --environment {{.LOCO_ENV | default "development"}}',
-      ]
-  worker:
-    env:
-      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
-      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
-    desc: Start the Loco worker process
-    cmds:
-      [
-        'cargo run --locked -- start --worker --scheduler --environment {{.LOCO_ENV | default "development"}}',
-      ]
-  ci:
-    desc: Run formatting, lint, unit, integration and browser checks
-    cmds:
-      - task: fmt
-      - task: lint
-      - task: test:unit
-      - task: test:acceptance
   default:
     desc: List all available tasks
     summary: Default task - shows all available commands
     silent: true
     cmds: [task --list]
-  dev:up:
-    desc: Local dev up
-    cmds:
-      - python3 scripts/compose_workflows.py dev up
-  dev:down:
-    desc: Local dev down
-    cmds:
-      - python3 scripts/compose_workflows.py dev down
-  dev:restart:
-    desc: Local dev restart
-    cmds:
-      - python3 scripts/compose_workflows.py dev restart
-  dev:logs:
-    desc: Local dev logs
-    cmds:
-      - python3 scripts/compose_workflows.py dev logs
-  dev:ps:
-    desc: Local dev ps
-    cmds:
-      - python3 scripts/compose_workflows.py dev ps
-  dev:build:
-    desc: Local dev build
-    cmds:
-      - python3 scripts/compose_workflows.py dev build
-  dev:seed:
-    desc: Local dev seed
-    cmds:
-      - python3 scripts/compose_workflows.py dev seed
-  dev:reset:
-    desc: Local dev reset
-    cmds:
-      - python3 scripts/compose_workflows.py dev reset --confirm {{.CONFIRM | default "" | shellQuote}}
-  test:up:
-    desc: Local test up
-    cmds:
-      - python3 scripts/compose_workflows.py test up
-  test:down:
-    desc: Local test down
-    cmds:
-      - python3 scripts/compose_workflows.py test down
-  test:restart:
-    desc: Local test restart
-    cmds:
-      - python3 scripts/compose_workflows.py test restart
-  test:logs:
-    desc: Local test logs
-    cmds:
-      - python3 scripts/compose_workflows.py test logs
-  test:ps:
-    desc: Local test ps
-    cmds:
-      - python3 scripts/compose_workflows.py test ps
-  test:build:
-    desc: Local test build
-    cmds:
-      - python3 scripts/compose_workflows.py test build
-  test:seed:
-    desc: Local test seed
-    cmds:
-      - python3 scripts/compose_workflows.py test seed
-  test:reset:
-    desc: Local test reset
-    cmds:
-      - python3 scripts/compose_workflows.py test reset --confirm {{.CONFIRM | default "" | shellQuote}}
-  prod:up:
-    desc: Local prod up
-    cmds:
-      - python3 scripts/compose_workflows.py prod up
-  prod:down:
-    desc: Local prod down
-    cmds:
-      - python3 scripts/compose_workflows.py prod down
-  prod:restart:
-    desc: Local prod restart
-    cmds:
-      - python3 scripts/compose_workflows.py prod restart
-  prod:logs:
-    desc: Local prod logs
-    cmds:
-      - python3 scripts/compose_workflows.py prod logs
-  prod:ps:
-    desc: Local prod ps
-    cmds:
-      - python3 scripts/compose_workflows.py prod ps
-  prod:build:
-    desc: Local prod build
-    cmds:
-      - python3 scripts/compose_workflows.py prod build
+  build:
+    cmds: [{task: "host:build"}]
+  check:
+    cmds: [{task: "host:check"}]
+  machete:
+    cmds: [{task: "host:machete"}]
+  lint:
+    cmds: [{task: "host:lint"}]
+  lint:fix:
+    cmds: [{task: "host:lint:fix"}]
+  fmt:
+    cmds: [{task: "host:fmt"}]
+  fmt:apply:
+    cmds: [{task: "host:fmt:apply"}]
+  ci:
+    cmds: [{task: "host:ci"}]
+  scheduler:
+    cmds: [{task: "host:scheduler"}]
+  routes:
+    cmds: [{task: "host:routes"}]
+  worker:
+    cmds: [{task: "host:worker"}]
+  test:scheduler:process:
+    cmds: [{task: "host:test:scheduler:process"}]
+  test:scheduler:image:
+    cmds: [{task: "host:test:scheduler:image"}]
+  foundation:db-up:
+    cmds: [{task: "host:foundation:db-up"}]
+  foundation:storage-init:
+    cmds: [{task: "host:foundation:storage-init"}]
+  foundation:db-port:
+    cmds: [{task: "host:foundation:db-port"}]
+  foundation:storage-up:
+    cmds: [{task: "host:foundation:storage-up"}]
+  foundation:storage-port:
+    cmds: [{task: "host:foundation:storage-port"}]
+  foundation:db-provision:
+    cmds: [{task: "host:foundation:db-provision"}]
+  foundation:db-down:
+    cmds: [{task: "host:foundation:db-down"}]
   dev:
-    desc: Start isolated Docker development
-    cmds: [{task: dev:up}]
-  test:unit:
-    desc: Run unit tests (Docker locally, host in CI or owned harness)
-    cmds:
-      - task: '{{if or (eq (.CI | default "") "true") (eq (.MEDTRACKER_OWNED_DATABASE | default "") "1")}}host:test:unit{{else}}compose:test:unit{{end}}'
-  compose:test:unit:
-    internal: true
-    cmds:
-      - python3 scripts/compose_workflows.py test unit --target {{.TARGET | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}
-  test:integration:
-    desc: Run integration tests (Docker locally, host in CI or owned harness)
-    cmds:
-      - task: '{{if or (eq (.CI | default "") "true") (eq (.MEDTRACKER_OWNED_DATABASE | default "") "1")}}host:test:integration{{else}}compose:test:integration{{end}}'
-  compose:test:integration:
-    internal: true
-    cmds:
-      - python3 scripts/compose_workflows.py test integration --target {{.TARGET | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}
-  test:browser:
-    desc: Run browser tests (Docker locally, host in CI or owned harness)
-    cmds:
-      - task: '{{if or (eq (.CI | default "") "true") (eq (.MEDTRACKER_OWNED_DATABASE | default "") "1")}}host:test:browser{{else}}compose:test:browser{{end}}'
-  compose:test:browser:
-    internal: true
-    cmds:
-      - python3 scripts/compose_workflows.py test browser --target {{.TARGET | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}
+    cmds: [{task: "dev:up"}]
+  test:
+    cmds: [{task: "test:unit"}, {task: "test:integration"}, {task: "test:browser"}]
   test:tooling:
-    desc: Test local Compose routing and guards
-    cmds: [python3 scripts/test_compose_workflows.py]
+    cmds: [node --test scripts/test_compose_tasks.mjs]

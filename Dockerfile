@@ -32,14 +32,6 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
     libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=frontend-dependencies /usr/local/ /usr/local/
-RUN case "$TARGETARCH" in \
-      amd64) task_sha=02c679ffae53dca791804847d78b31731615894e292948397c971c87ac9e95bd ;; \
-      arm64) task_sha=7e0044108830cec0534577b289564e3b7c83e6df276feb631a1edc63d04e4ebe ;; \
-      *) exit 1 ;; esac \
-    && curl --fail --location --output /tmp/task.tar.gz "https://github.com/go-task/task/releases/download/v3.52.0/task_linux_${TARGETARCH}.tar.gz" \
-    && echo "$task_sha  /tmp/task.tar.gz" | sha256sum --check --strict \
-    && tar -xzf /tmp/task.tar.gz -C /usr/local/bin task \
-    && rm /tmp/task.tar.gz
 RUN cargo install --locked cargo-nextest --version 0.9.149 \
     && cargo install --locked cargo-watch --version 8.5.3
 RUN apt-get update && apt-get install --yes --no-install-recommends \
@@ -48,13 +40,10 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
 ENV CARGO_INCREMENTAL=1
 COPY --from=frontend-dependencies /app/node_modules/ node_modules/
 COPY package.json package-lock.json ./
-COPY Taskfiles/container.yml Taskfile.yml
-COPY Taskfiles/database.yml Taskfiles/frontend.yml Taskfiles/
 
 FROM development AS test
 COPY . .
 COPY --from=frontend /app/assets/ assets/
-COPY Taskfiles/container.yml Taskfile.yml
 
 FROM dependencies AS build
 COPY Cargo.toml Cargo.lock build.rs ./

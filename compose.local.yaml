@@ -48,8 +48,6 @@ services:
       - ./tests:/app/tests:ro
       - ./docs/api/openapi.v1.yaml:/app/docs/api/openapi.v1.yaml:ro
       - ./scripts:/app/scripts:ro
-      - ./Taskfiles:/app/Taskfiles:ro
-      - ./Taskfiles/container.yml:/app/Taskfile.yml:ro
       - ./Cargo.toml:/app/Cargo.toml:ro
       - ./Cargo.lock:/app/Cargo.lock:ro
       - ./build.rs:/app/build.rs:ro
@@ -66,7 +64,7 @@ services:
   dev-builder:
     extends: dev-tool
     profiles: !override [dev]
-    command: [cargo, watch, --poll, --postpone, -w, src, -w, migration, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, -w, Dockerfile, -w, Taskfiles/container.yml, -w, rails/config/ai_medication_sources.yml, -w, rails/config/medication_review_labels.yml, -w, assets/security, -w, assets/catalogue, -w, assets/reports/locales, -w, assets/reports/terminology, -w, assets/static/icon.png, -w, assets/static/js/profile-push-worker.js, -s, "task --dir /app dev-build"]
+    command: [cargo, watch, --poll, --postpone, -w, src, -w, migration, -w, Cargo.toml, -w, Cargo.lock, -w, build.rs, -w, Dockerfile, -w, rails/config/ai_medication_sources.yml, -w, rails/config/medication_review_labels.yml, -w, assets/security, -w, assets/catalogue, -w, assets/reports/locales, -w, assets/reports/terminology, -w, assets/static/icon.png, -w, assets/static/js/profile-push-worker.js, -s, "cargo install --path . --debug --locked --force --bin med-tracker --target-dir /app/target --root /app/run"]
   dev-app:
     extends: dev-tool
     profiles: !override [dev]

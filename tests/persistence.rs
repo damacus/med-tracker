@@ -325,17 +325,9 @@ async fn development_seed_creates_a_usable_account_and_household() {
     let (base, _) = owned_url.rsplit_once('/').unwrap();
     let result = tokio::time::timeout(
         std::time::Duration::from_secs(120),
-        tokio::process::Command::new("task")
-            .args([
-                "db:prepare",
-                &format!("SEED_DATABASE_URL={base}/{database}"),
-                &format!("SEED_EXECUTABLE={}", env!("CARGO_BIN_EXE_med-tracker")),
-                "LOCO_ENV=test",
-            ])
-            .env(
-                "DATABASE_URL",
-                "postgres://invalid:invalid@127.0.0.1:1/do_not_use",
-            )
+        tokio::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"))
+            .args(["db", "seed", "--environment", "test"])
+            .env("DATABASE_URL", &format!("{base}/{database}"))
             .kill_on_drop(true)
             .output(),
     )
