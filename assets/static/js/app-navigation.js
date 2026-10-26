@@ -101,8 +101,18 @@
     const appearanceTrigger = header?.querySelector('[data-dialog-open="appearance-dialog"]');
     const securityLink = header?.querySelector('a[href="/account/security"]');
     const selected = data.selected_section;
+    const menu = controls => {
+      const list = element('ul', null, 'menu w-full');
+      for (const control of controls) {
+        const item = element('li');
+        item.append(control);
+        list.append(item);
+      }
+      return list;
+    };
     const link = item => {
-      const anchor = element('a', item.label, 'app-navigation-link');
+      const anchor = element('a', null, 'min-w-0 whitespace-normal wrap-anywhere');
+      anchor.append(element('span', item.label, 'min-w-0 wrap-anywhere'));
       anchor.href = item.href;
       anchor.dataset.section = item.id;
       if (item.id === selected) anchor.setAttribute('aria-current', 'page');
@@ -124,9 +134,9 @@
       token.type = 'hidden';
       token.name = 'authenticity_token';
       token.value = data.authenticity_token;
-      const button = element('button', labels.sidebar.sign_out, 'app-navigation-link');
+      const button = element('button', labels.sidebar.sign_out, 'min-w-0 whitespace-normal wrap-anywhere');
       button.type = 'submit';
-      form.append(token, button);
+      form.append(token, menu([button]));
       return form;
     };
     const heading = (panel, title, closePanel) => {
@@ -265,10 +275,10 @@
       drawerTrigger.setAttribute('aria-label', labels.mobile_menu.open_menu);
       const navigation = element('nav');
       navigation.setAttribute('aria-label', labels.mobile_rail.primary_navigation);
-      data.sidebar.forEach(item => navigation.append(link(item)));
       const profile = data.choices.find(item => item.id === 'profile');
-      if (profile) navigation.append(link(profile));
-      if (sidebar) sidebar.querySelector('[data-sidebar-navigation]').replaceChildren(...[...data.sidebar, ...(profile ? [profile] : [])].map(link));
+      const destinations = [...data.sidebar, ...(profile ? [profile] : [])];
+      navigation.append(menu(destinations.map(link)));
+      if (sidebar) sidebar.querySelector('[data-sidebar-navigation]').replaceChildren(menu(destinations.map(link)));
       navigationDrawer.append(navigation, logout());
       header.querySelector('[data-account-name]').textContent = data.name;
       const avatar = header.querySelector('[data-profile-avatar]');
@@ -289,11 +299,12 @@
       sidebar.querySelector("[data-sidebar-navigation]").setAttribute("aria-label", labels.mobile_rail.primary_navigation);
       const switcher = sidebar.querySelector('a[href="/households/choose?switch=1"]');
       const selectedHousehold = data.households?.find(household => String(household.id) === String(data.active_household_id) && typeof household.name === 'string');
-      switcher.replaceChildren(element('span', labels.profile_menu.households));
+      const householdName = element('span', null, 'grid min-w-0 wrap-anywhere');
+      householdName.append(element('span', labels.profile_menu.households));
+      switcher.replaceChildren(householdName);
       if (selectedHousehold) {
-        switcher.append(element('span', selectedHousehold.name, 'text-xs shell-muted'));
+        householdName.append(element('span', selectedHousehold.name, 'text-xs shell-muted'));
       }
-      switcher.classList.add('app-household-switcher');
       sidebar.querySelector('[data-sidebar-name]').textContent = data.name;
       sidebar.querySelector('[data-sidebar-avatar]').replaceChildren(...[...header.querySelector('[data-profile-avatar]').childNodes].map(node => node.cloneNode(true)));
       sidebar.querySelector('[data-sidebar-profile]').hidden = true;
@@ -305,24 +316,26 @@
     }
     const accountTriggers = [header.querySelector('[data-app-account]'), ...(sidebarTrigger ? [sidebarTrigger] : [])];
     const account = dropdown(accountTriggers);
+    const accountControls = [];
     for (const trigger of accountTriggers) trigger.setAttribute('aria-label', `${data.initials} ${data.name} ${labels.profile_menu.my_account}`);
     if (appearanceTrigger) {
-      appearanceTrigger.className = 'app-navigation-link';
+      appearanceTrigger.className = 'min-w-0 whitespace-normal wrap-anywhere';
       appearanceTrigger.addEventListener('click', () => account.close());
-      account.append(appearanceTrigger);
+      accountControls.push(appearanceTrigger);
     }
     if (securityLink) {
-      securityLink.className = 'app-navigation-link';
-      account.append(securityLink);
+      securityLink.className = 'min-w-0 whitespace-normal wrap-anywhere';
+      accountControls.push(securityLink);
     }
     for (const id of ['dashboard', 'profile', 'administration']) {
       const item = data.choices.find(item => item.id === id);
-      if (item) account.append(link({ ...item, label: labels.profile_menu[id] }));
+      if (item) accountControls.push(link({ ...item, label: labels.profile_menu[id] }));
     }
-    if (data.platform_url === '/platform/users') account.append(link({ id: 'administration', label: 'Platform administration', href: '/platform/users' }));
+    if (data.platform_url === '/platform/users') accountControls.push(link({ id: 'administration', label: 'Platform administration', href: '/platform/users' }));
+    account.append(menu(accountControls));
     if (Array.isArray(data.households) && data.households.length) {
       const section = element('section', null, 'border-t border-base-300 mt-2 pt-3');
-      section.append(element('h3', labels.profile_menu.households, 'text-sm font-semibold px-4'));
+      section.append(element('h3', labels.profile_menu.households, 'menu-title'));
       for (const household of data.households) {
         if (!Number.isSafeInteger(household.id) || household.id <= 0 || typeof household.name !== 'string') continue;
         const form = element('form');
@@ -335,10 +348,10 @@
           input.value = value;
           form.append(input);
         }
-        const button = element('button', `${labels.profile_menu.switch_to} ${household.name}`, 'app-navigation-link');
+        const button = element('button', `${labels.profile_menu.switch_to} ${household.name}`, 'min-w-0 whitespace-normal wrap-anywhere');
         button.type = 'submit';
         if (String(household.id) === data.active_household_id) button.setAttribute('aria-current', 'true');
-        form.append(button);
+        form.append(menu([button]));
         section.append(form);
       }
       account.append(section);
