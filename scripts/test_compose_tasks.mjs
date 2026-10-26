@@ -98,6 +98,8 @@ test("native integration and browser commands preserve focused arguments", () =>
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout + result.stderr;
     assert.match(output, /run --rm --no-deps tool cargo nextest.*--test requests.*'two words'/);
+    if (kind === "integration") assert.match(output, /nextest run.*--profile api/);
+    else assert.doesNotMatch(output, /--profile api/);
     assert.match(output, /up -d --wait postgres rustfs/);
     assert.doesNotMatch(output, /\] task test:run/);
   }

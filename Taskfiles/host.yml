@@ -182,7 +182,7 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
-      - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
+      - 'cargo nextest run --locked --profile api {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
   test:integration:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -237,7 +237,7 @@ tasks:
         if [ -n "$filter" ]; then
           set -- "$@" "$filter";
         fi;
-        cargo nextest run --locked --no-tests=fail "$@";
+        cargo nextest run --locked --profile api --no-tests=fail "$@";
         if [ -z "$target" ] && [ -z "$filter" ]; then
           cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
         fi

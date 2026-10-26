@@ -48,7 +48,7 @@ tasks:
       - task: internal:services
       - task: run
         vars:
-          COMMAND: 'cargo nextest run --locked --no-tests=fail {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} {{.FILTER | default "" | shellQuote}}'
+          COMMAND: 'cargo nextest run --locked --profile api --no-tests=fail {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} {{.FILTER | default "" | shellQuote}}'
       - task: acceptance-process
   browser:
     desc: "Run Docker browser tests; TARGET and FILTER narrow selection"

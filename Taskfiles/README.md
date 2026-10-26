@@ -116,8 +116,9 @@ restricted roles/template databases. Unfiltered integration retains the ignored
 cross-process template acceptance. `host:ci` (also `ci`) is the native application
 gate; tooling changes use focused tests and image checks.
 
-Nextest runs four tests concurrently by default. Override its native setting for
-either Docker or host tests, for example:
+Nextest runs four tests concurrently by default. Integration tasks select the
+`api` profile with eight workers; unit and browser tasks retain four. Override
+the native setting for either Docker or host tests, for example:
 
 ```fish
 env NEXTEST_TEST_THREADS=2 rtk task test:integration TARGET=care_api FILTER=fixture
