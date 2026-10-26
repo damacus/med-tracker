@@ -56,14 +56,14 @@
   {% endif %}
   <section class="card bg-base-100 border border-base-300" aria-labelledby="gp-title">
     <div class="card-body space-y-4"><h2 class="card-title" id="gp-title">{{ labels.reports.index.export.health_history_title }}</h2><p>{{ labels.reports.browser.intro }}</p>
-      <form method="get" action="/households/{{ slug }}/reports/health-history" class="space-y-4">
+      <form method="get" action="/households/{{ slug }}/reports/health-history" class="grid gap-4">
         <div class="grid gap-4 sm:grid-cols-3">
           <label class="form-control"><span class="label-text">{{ labels.reports.index.gp_person_label }}</span><select class="select select-bordered" name="person_id" required><option value="">{{ labels.reports.index.gp_person_prompt }}</option>{% for person in report.manageable_people %}<option value="{{ person.id }}"{% if report.selected_person_id == person.id_string %} selected{% endif %}>{{ person.name }}</option>{% endfor %}</select></label>
           <label class="form-control"><span class="label-text">{{ labels.reports.index.start_date_label }}</span><input class="input input-bordered" type="date" name="start_date" value="{{ report.start_date }}" required></label>
           <label class="form-control"><span class="label-text">{{ labels.reports.index.end_date_label }}</span><input class="input input-bordered" type="date" name="end_date" value="{{ report.end_date }}" required></label>
         </div>
-        <label class="label cursor-pointer justify-start gap-3"><input class="checkbox" type="checkbox" name="include_medication_takes" value="1"{% if report.include_medication_takes %} checked{% endif %}><span class="label-text">{{ labels.reports.index.include_medication_takes }}</span></label>
-        <button class="btn btn-primary" type="submit">{{ labels.reports.index.download_pdf }}</button>
+        <label class="flex items-start cursor-pointer gap-3"><input class="checkbox shrink-0" type="checkbox" name="include_medication_takes" value="1"{% if report.include_medication_takes %} checked{% endif %}><span>{{ labels.reports.index.include_medication_takes }}</span></label>
+        <button class="btn btn-primary justify-self-start" type="submit">{{ labels.reports.index.download_pdf }}</button>
       </form>
     </div>
   </section>
