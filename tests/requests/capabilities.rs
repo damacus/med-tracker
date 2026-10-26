@@ -17,15 +17,12 @@ async fn credential_counts(fixture: &Fixture) -> (i64, i64) {
 }
 
 #[tokio::test]
-async fn advertised_features_match_executed_root_routes() {
+async fn public_capabilities_discovery_matches_contract_and_hides_secrets() {
     let (fixture, boot) = boot_fixture().await;
     let request = server(&boot);
     let response = request.get("/api/v1/capabilities").await;
     let status = response.status_code();
     let body: Value = response.json();
-    drop(request);
-    close(fixture, boot).await;
-
     assert_eq!(status, 200);
     let data = &body["data"];
     let advertised = json!({
@@ -59,19 +56,6 @@ async fn advertised_features_match_executed_root_routes() {
     assert_eq!(data["client_tools"]["cli"]["supported"], false);
     assert_eq!(data["client_tools"]["mcp_server"]["supported"], false);
     assert_eq!(data["fhir"]["resources"], json!([]));
-}
-
-#[tokio::test]
-async fn profile_and_avatar_support_is_discoverable() {
-    let (fixture, boot) = boot_fixture().await;
-    let request = server(&boot);
-    let response = request.get("/api/v1/capabilities").await;
-    let status = response.status_code();
-    let body: Value = response.json();
-    drop(request);
-    close(fixture, boot).await;
-
-    assert_eq!(status, 200);
     assert_eq!(
         body["data"]["profile"],
         json!({
@@ -84,14 +68,8 @@ async fn profile_and_avatar_support_is_discoverable() {
             }
         })
     );
-}
-
-#[tokio::test]
-async fn public_mobile_clients_include_name_and_exclude_secrets() {
-    let (fixture, boot) = boot_fixture().await;
     fixture.admin.execute_unprepared("INSERT INTO oauth_applications(id, account_id, client_id, client_kind, name, redirect_uri, scopes, token_endpoint_auth_method, created_at, updated_at) VALUES(75002,71001,'other-native','mobile','Other synthetic native','io.damacus.other:/callback','medtracker offline_access','none',now(),now())").await.unwrap();
     fixture.admin.execute_unprepared("INSERT INTO oauth_applications(id, account_id, client_id, client_kind, name, redirect_uri, scopes, token_endpoint_auth_method, client_secret_hash, created_at, updated_at) VALUES(75003,71001,'smart-journey','integration','Synthetic SMART journey','https://example.test/callback','launch/patient patient/*.rs','client_secret_post',crypt('password',gen_salt('bf',4)),now(),now())").await.unwrap();
-    let request = server(&boot);
     let response = request.get("/api/v1/capabilities").await;
     let status = response.status_code();
     let content_type = response

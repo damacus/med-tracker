@@ -21,10 +21,7 @@ pub(super) async fn stored_credentials(app: &Application) {
     )).await.unwrap();
 }
 
-#[tokio::test]
-async fn account_households_and_sessions_are_scoped_and_never_expose_tokens() {
-    let app = Application::new().await;
-    stored_credentials(&app).await;
+async fn assert_expanded_account_collections(app: &Application) {
     app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Archived household','archived-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,73001,'member',now(),now(),now())").await.unwrap();
     for bearer in ["synthetic-current-session", "synthetic-app-token"] {
         let households = app
@@ -61,7 +58,6 @@ async fn account_households_and_sessions_are_scoped_and_never_expose_tokens() {
         assert_eq!(body["data"][1]["id"], 88002);
         assert_eq!(body["data"][1]["device_name"], "Expired phone");
     }
-    app.close().await;
 }
 
 #[tokio::test]
@@ -489,7 +485,7 @@ async fn same_application_mobile_revocations_identify_each_grant_in_audit() {
 }
 
 #[tokio::test]
-async fn auth_household_list_matches_documented_contract() {
+async fn account_discovery_and_sessions_follow_contract_and_household_visibility() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
     stored_credentials(&app).await;
@@ -537,15 +533,6 @@ async fn auth_household_list_matches_documented_contract() {
         .await
         .unwrap();
     assert_eq!(anonymous.status().as_u16(), 401);
-    app.close().await;
-}
-
-#[tokio::test]
-async fn auth_session_list_matches_documented_contract() {
-    use super::contract::{assert_value, contract, resolve};
-    let app = Application::new().await;
-    stored_credentials(&app).await;
-    let contract = contract();
     let operation = &contract["paths"]["/auth/sessions"]["get"];
     assert_eq!(operation["operationId"], "listSessions");
     assert_eq!(
@@ -599,5 +586,6 @@ async fn auth_session_list_matches_documented_contract() {
         .await
         .unwrap();
     assert_eq!(anonymous.status().as_u16(), 401);
+    assert_expanded_account_collections(&app).await;
     app.close().await;
 }
