@@ -439,65 +439,77 @@ async fn fresh_authorization_after_revocation_can_choose_another_household() {
 }
 
 #[tokio::test]
-async fn changed_permissions_or_household_lifecycle_invalidates_displayed_consent() {
-    for changed in ["permissions", "held", "archived"] {
-        let (fixture, boot) = boot().await;
-        let mut request = server(&boot);
-        request.save_cookies();
-        sign_in_at(&request, &boot, changed).await;
-        select(&request, "72002").await;
-        let shown = consent(&request).await;
-        if changed == "permissions" {
-            let membership = household_memberships::Entity::find_by_id(74002)
-                .one(&fixture.admin)
-                .await
-                .unwrap()
-                .unwrap();
-            let mut membership = membership.into_active_model();
-            membership.permissions_version = Set(2);
-            membership.update(&fixture.admin).await.unwrap();
+async fn permission_change_invalidates_displayed_consent() {
+    assert_changed_consent_rejected("permissions").await;
+}
+
+#[tokio::test]
+async fn held_household_invalidates_displayed_consent() {
+    assert_changed_consent_rejected("held").await;
+}
+
+#[tokio::test]
+async fn archived_household_invalidates_displayed_consent() {
+    assert_changed_consent_rejected("archived").await;
+}
+
+async fn assert_changed_consent_rejected(changed: &str) {
+    let (fixture, boot) = boot().await;
+    let mut request = server(&boot);
+    request.save_cookies();
+    sign_in_at(&request, &boot, changed).await;
+    select(&request, "72002").await;
+    let shown = consent(&request).await;
+    if changed == "permissions" {
+        let membership = household_memberships::Entity::find_by_id(74002)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let mut membership = membership.into_active_model();
+        membership.permissions_version = Set(2);
+        membership.update(&fixture.admin).await.unwrap();
+    } else {
+        let household = households::Entity::find_by_id(72002)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let mut household = household.into_active_model();
+        if changed == "held" {
+            household.lifecycle_state = Set("held".into());
         } else {
-            let household = households::Entity::find_by_id(72002)
-                .one(&fixture.admin)
-                .await
-                .unwrap()
-                .unwrap();
-            let mut household = household.into_active_model();
-            if changed == "held" {
-                household.lifecycle_state = Set("held".into());
-            } else {
-                household.status = Set("archived".into());
-            }
-            household.update(&fixture.admin).await.unwrap();
+            household.status = Set("archived".into());
         }
-        let rejected = request
-            .post("/authorize")
-            .add_header("sec-fetch-site", "same-origin")
-            .form(&approval_fields(&shown))
-            .await;
-        assert!(
-            rejected.status_code().is_client_error(),
-            "{changed}: {}",
-            rejected.text()
-        );
-        assert_eq!(
-            oauth_grants::Entity::find()
-                .count(&fixture.admin)
-                .await
-                .unwrap(),
-            0
-        );
-        assert_eq!(
-            security_audit_events::Entity::find()
-                .filter(security_audit_events::Column::EventType.eq("smart_oauth.consent_granted"))
-                .count(&fixture.admin)
-                .await
-                .unwrap(),
-            0
-        );
-        drop(request);
-        close(fixture, boot).await;
+        household.update(&fixture.admin).await.unwrap();
     }
+    let rejected = request
+        .post("/authorize")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&approval_fields(&shown))
+        .await;
+    assert!(
+        rejected.status_code().is_client_error(),
+        "{changed}: {}",
+        rejected.text()
+    );
+    assert_eq!(
+        oauth_grants::Entity::find()
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::EventType.eq("smart_oauth.consent_granted"))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    drop(request);
+    close(fixture, boot).await;
 }
 
 #[tokio::test]

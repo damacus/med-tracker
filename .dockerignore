@@ -1,4 +1,6 @@
 **
+!.config/
+!.config/nextest.toml
 !Cargo.toml
 !Cargo.lock
 !build.rs

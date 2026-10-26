@@ -1,8 +1,29 @@
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, mkdtempSync, writeFileSync, chmodSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+test("public Compose tasks run from the repository root", () => {
+  const directory = mkdtempSync(join(tmpdir(), "medtracker-task-cwd-"));
+  const executable = join(directory, "docker");
+  const log = join(directory, "calls.jsonl");
+  writeFileSync(executable, '#!/usr/bin/env node\nconst fs = require("node:fs"); fs.appendFileSync(process.env.COMPOSE_CALL_LOG, JSON.stringify({cwd:process.cwd(),args:process.argv.slice(2)})+"\\n"); if(process.argv[2]==="info")console.log("arm64");\n');
+  chmodSync(executable, 0o755);
+  try {
+    for (const environment of ["dev", "test", "prod"]) {
+      const result = spawnSync("task", [`${environment}:build`], {encoding:"utf8", env:{...process.env, PATH:`${directory}:${process.env.PATH}`, COMPOSE_CALL_LOG:log}});
+      assert.equal(result.status, 0, result.stderr);
+    }
+    const calls = readFileSync(log, "utf8").trim().split("\n").map(JSON.parse);
+    assert.equal(calls.filter(call => call.args[0] === "compose").length, 3);
+    for (const call of calls.filter(call => call.args[0] === "compose")) assert.equal(call.cwd, resolve(fileURLToPath(new URL("..", import.meta.url))), JSON.stringify(call));
+  } finally {
+    rmSync(directory, {recursive:true, force:true});
+  }
+});
 test("containers use native tools without a Task installation or wrapper", () => {
   assert.doesNotMatch(read("Dockerfile"), /task_linux|COPY Taskfiles/);
   assert.doesNotMatch(read("compose.local.yaml"), /task --dir|container.yml/);
@@ -44,9 +65,9 @@ test("native integration and browser commands preserve focused arguments", () =>
   }
 });
 test("resolved Compose retains cache sharing, isolated data and native builder", () => {
-  const configs = ["dev", "test"].map(environment => {
+  const configs = [["dev", "3"], ["test", "3"], ["test", undefined]].map(([environment, threads]) => {
     const result = spawnSync("docker", ["compose", "--env-file", "/dev/null", "-p", `tooling-${environment}`, "-f", "compose.yaml", "-f", "compose.local.yaml", "--profile", environment, "config", "--format", "json"], {
-      encoding:"utf8", env:{...process.env, MT_PROJECT:`tooling-${environment}`, MT_TOOL_TARGET:environment === "dev" ? "development" : "test", MT_TARGET_CACHE:"checkout-target-linux-arm64", MT_CARGO_REGISTRY_CACHE:"mt-cargo-registry-v1", MT_CARGO_GIT_CACHE:"mt-cargo-git-v1", MT_BROWSER_CACHE:"mt-browser-linux-arm64-ubuntu26-v1"}
+      encoding:"utf8", env:{...process.env, NEXTEST_TEST_THREADS:threads, MT_PROJECT:`tooling-${environment}`, MT_TOOL_TARGET:environment === "dev" ? "development" : "test", MT_TARGET_CACHE:"checkout-target-linux-arm64", MT_CARGO_REGISTRY_CACHE:"mt-cargo-registry-v1", MT_CARGO_GIT_CACHE:"mt-cargo-git-v1", MT_BROWSER_CACHE:"mt-browser-linux-arm64-ubuntu26-v1"}
     });
     assert.equal(result.status, 0, result.stderr);
     return JSON.parse(result.stdout);
@@ -56,6 +77,8 @@ test("resolved Compose retains cache sharing, isolated data and native builder",
     assert.equal(configs[0].volumes[cache].name, configs[1].volumes[cache].name);
   }
   assert.notEqual(configs[0].volumes.database.name, configs[1].volumes.database.name);
+  for (const config of configs.slice(0, 2)) assert.equal(config.services.tool.environment.NEXTEST_TEST_THREADS, "3");
+  assert.equal(configs[2].services.tool.environment.NEXTEST_TEST_THREADS ?? null, null);
   assert.match(configs[0].services["dev-builder"].command.join(" "), /cargo install/);
   assert.doesNotMatch(configs[0].services["dev-builder"].command.join(" "), /task /);
   assert.equal(configs[1].services.tool.volumes.some(volume => volume.type === "bind"), false);

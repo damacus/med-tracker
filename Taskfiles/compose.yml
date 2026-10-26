@@ -7,7 +7,7 @@ vars:
   COMPOSE: >-
     env COMPOSE_PROFILES= MT_PROJECT={{.PROJECT}}
     MT_TOOL_TARGET={{if eq .ENV "test"}}test{{else}}development{{end}}
-    MT_TARGET_CACHE={{.CHECKOUT}}-target-linux-{{.ARCH}}
+    MT_TARGET_CACHE="${MT_TARGET_CACHE:-{{.CHECKOUT}}-target-linux-{{.ARCH}}}"
     MT_CARGO_REGISTRY_CACHE=mt-cargo-registry-v1 MT_CARGO_GIT_CACHE=mt-cargo-git-v1
     MT_BROWSER_CACHE=mt-browser-linux-{{.ARCH}}-ubuntu26-v1
     docker compose --env-file /dev/null -p {{.PROJECT}} -f compose.yaml -f compose.local.yaml
@@ -51,7 +51,7 @@ tasks:
     cmds:
       - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true mt-cargo-registry-v1{{else}}true{{end}}'
       - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true mt-cargo-git-v1{{else}}true{{end}}'
-      - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true {{.CHECKOUT}}-target-linux-{{.ARCH}}{{else}}true{{end}}'
+      - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true "${MT_TARGET_CACHE:-{{.CHECKOUT}}-target-linux-{{.ARCH}}}"{{else}}true{{end}}'
       - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true mt-browser-linux-{{.ARCH}}-ubuntu26-v1{{else}}true{{end}}'
   build:
     cmds:

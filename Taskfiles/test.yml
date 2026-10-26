@@ -4,6 +4,7 @@ vars:
 includes:
   internal:
     taskfile: compose.yml
+    dir: ..
     internal: true
 tasks:
   up:
@@ -37,7 +38,7 @@ tasks:
       - task: internal:caches
       - task: run
         vars:
-          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} {{.FILTER | default "" | shellQuote}}'
+          COMMAND: 'cargo nextest run --locked --no-tests=fail --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} {{.FILTER | default "" | shellQuote}}'
       - task: unit-extras
   integration:
     desc: "Run Docker integration tests; TARGET and FILTER narrow selection"
@@ -47,7 +48,7 @@ tasks:
       - task: internal:services
       - task: run
         vars:
-          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--tests{{end}} {{.FILTER | default "" | shellQuote}}'
+          COMMAND: 'cargo nextest run --locked --no-tests=fail {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} {{.FILTER | default "" | shellQuote}}'
       - task: acceptance-process
   browser:
     desc: "Run Docker browser tests; TARGET and FILTER narrow selection"
@@ -57,7 +58,7 @@ tasks:
       - task: internal:services
       - task: run
         vars:
-          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only {{.FILTER | default "" | shellQuote}}'
+          COMMAND: 'cargo nextest run --locked --no-tests=fail --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only {{.FILTER | default "" | shellQuote}}'
   run:
     internal: true
     requires: {vars: [COMMAND]}

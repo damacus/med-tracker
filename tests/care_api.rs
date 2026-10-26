@@ -228,14 +228,15 @@ impl Application {
     }
 
     async fn new_configured(signing_key: Option<&str>, configure: impl FnOnce(&mut Value)) -> Self {
-        Self::new_with_pool_size(signing_key, configure, None).await
+        Self::new_with_pool_size(signing_key, configure, None, None).await
     }
 
-    async fn new_single_connection() -> Self {
+    async fn new_single_connection(acquire_timeout_ms: Option<u64>) -> Self {
         Self::new_with_pool_size(
             Some("synthetic-dose-occurrence-signing-key"),
             |_| (),
             Some(1),
+            acquire_timeout_ms,
         )
         .await
     }
@@ -244,6 +245,7 @@ impl Application {
         signing_key: Option<&str>,
         configure: impl FnOnce(&mut Value),
         pool_size: Option<u32>,
+        acquire_timeout_ms: Option<u64>,
     ) -> Self {
         let fixture = Fixture::new().await;
         let mut config = Config::new(&Environment::Test).unwrap();
@@ -259,6 +261,9 @@ impl Application {
         }
         configure(settings);
         config.database.uri = fixture.runtime_uri.clone();
+        if let Some(acquire_timeout_ms) = acquire_timeout_ms {
+            config.database.acquire_timeout = Some(acquire_timeout_ms);
+        }
         if let Some(pool_size) = pool_size {
             config.database.min_connections = pool_size;
             config.database.max_connections = pool_size;

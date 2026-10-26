@@ -1,3 +1,6 @@
+[profile.default]
+test-threads = 4
+
 [[profile.default.overrides]]
 filter = 'binary(=migration_roles)'
 priority = 100

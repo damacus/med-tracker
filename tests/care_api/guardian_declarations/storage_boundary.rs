@@ -264,7 +264,7 @@ async fn clean_context(app: &Application, expected_pid: Option<i32>) -> Result<i
 async fn guardian_single_app_connection_cleans_context_after_commit_and_reached_audit_rollback()
 -> Result<(), DbErr> {
     for fail_audit in [false, true] {
-        let app = Application::new_single_connection().await;
+        let app = Application::new_single_connection(None).await;
         let result:Result<(),DbErr>=async {
             let token=app.token().await;
             let (_,id)=declaration(&app,&token).await?;

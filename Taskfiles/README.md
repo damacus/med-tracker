@@ -116,6 +116,20 @@ restricted roles/template databases. Unfiltered integration retains the ignored
 cross-process template acceptance. `host:ci` (also `ci`) is the native application
 gate; tooling changes use focused tests and image checks.
 
+Nextest runs four tests concurrently by default. Override its native setting for
+either Docker or host tests, for example:
+
+```fish
+env NEXTEST_TEST_THREADS=2 rtk task test:integration TARGET=care_api FILTER=fixture
+```
+
+The database-role mutation test still reserves every runner slot. Docker
+compilation remains limited to two jobs. Test concurrency is configured separately.
+
+`MT_TARGET_CACHE` can select an existing compatible Linux target volume for a
+test run. It changes the compiler cache only; networks, databases and processes
+retain their normal project isolation. Cargo supplies its own build-directory lock.
+
 Previous macOS/ARM64 observations (one sample each): cold Cargo install 4m43s,
 Rust edit/install 20.84s, unchanged install 2.08s. These preceded the public-origin
 correction (subsequent install 1m24s). Different workloads are not a before/after

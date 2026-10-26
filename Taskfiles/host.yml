@@ -20,7 +20,7 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: &scheduler_icu_lib
         sh: 'if [ "$(uname -s)" = Darwin ]; then icu_prefix=$(brew --prefix icu4c@78) && printf "%s/lib" "$icu_prefix"; else pkg-config --variable=libdir icu-uc; fi'
     cmds:
-      - cargo nextest run --locked --test scheduler_process --no-tests=fail --test-threads 2
+      - cargo nextest run --locked --test scheduler_process --no-tests=fail
   test:scheduler:image:
     desc: Prove scheduled expiry and audit writes in the scratch release image
     env:
@@ -162,7 +162,7 @@ tasks:
     desc: Run database-free Rust library, doc and JavaScript unit tests
     cmds:
       - task: :frontend:test
-      - 'cargo nextest run --locked --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
+      - 'cargo nextest run --locked --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}}'
       - cargo test --locked --workspace --doc
   test:integration:
     desc: Run compiled API, security and database integration tests
@@ -182,7 +182,7 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
-      - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--tests{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
+      - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
   test:integration:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -232,12 +232,12 @@ tasks:
         if [ -n "$target" ]; then
           set -- --test "$target";
         else
-          set -- --tests;
+          set -- --test "*";
         fi;
         if [ -n "$filter" ]; then
           set -- "$@" "$filter";
         fi;
-        cargo nextest run --locked --no-tests=fail --test-threads 2 "$@";
+        cargo nextest run --locked --no-tests=fail "$@";
         if [ -z "$target" ] && [ -z "$filter" ]; then
           cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
         fi
@@ -260,7 +260,7 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
-      - 'cargo nextest run --locked --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
+      - 'cargo nextest run --locked --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only --no-tests=fail {{.FILTER | default "" | shellQuote}}'
   test:browser:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -294,7 +294,7 @@ tasks:
         export ACTIVE_STORAGE_S3_ACCESS_KEY_ID=storage-smoke-access;
         export ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY=storage-smoke-secret;
         export ACTIVE_STORAGE_S3_FORCE_PATH_STYLE=true;
-        cargo nextest run --locked --test "$3" --run-ignored only --no-tests=fail --test-threads 2 "$2";
+        cargo nextest run --locked --test "$3" --run-ignored only --no-tests=fail "$2";
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}} {{.TARGET | default "browser" | shellQuote}}
   routes:
     env:

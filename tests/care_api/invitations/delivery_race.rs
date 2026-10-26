@@ -114,7 +114,7 @@ async fn invitation_live_duplicate_cannot_suppress_a_committed_start() -> TestRe
 #[tokio::test]
 async fn invitation_marker_capacity_failure_is_terminal_and_new_invitation_recovers() -> TestResult
 {
-    let mut app = Application::new_single_connection().await;
+    let mut app = Application::new_single_connection(Some(250)).await;
     app.context.mailer = Some(EmailSender::stub());
     let mail = queued(&app).await?;
     let worker = InvitationMailWorker::build(&app.context);
