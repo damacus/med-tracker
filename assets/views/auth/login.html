@@ -4,6 +4,7 @@
 {% block footer %}{% endblock footer %}
 {% block content %}
 <div class="login-content">
+  <button type="button" class="btn btn-ghost login-appearance" data-dialog-open="appearance-dialog">Appearance</button>
   <section class="card shell-card login-surface">
     <div class="login-brand">
       <div class="login-brand-name">
@@ -49,7 +50,7 @@
   </section>
   <div class="login-footer">
     {% if registration_open is defined and registration_open %}<p>Need an account? <a href="/create-account">Create one</a></p>{% endif %}
-    <div><a href="/verify-account-resend">Resend verification email</a><button type="button" class="btn btn-ghost" data-dialog-open="appearance-dialog">Appearance</button></div>
+    <p><a href="/verify-account-resend">Resend verification email</a></p>
   </div>
 </div>
 <script src="/static/js/passkeys.js" defer></script>
