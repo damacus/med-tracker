@@ -44,7 +44,6 @@ html:has(.app-household) { scrollbar-gutter: stable; }
 .skip-link:focus { top: 1rem; }
 [hidden] { display: none !important; }
 .modal-box { background: var(--card); color: var(--foreground); max-height: min(90vh, 50rem); }
-dialog.modal:not([open]) { display: none; }
 .tabs { flex-wrap: wrap; }
 .tab { color: var(--foreground); }
 .btn { max-width: 100%; }

@@ -38,8 +38,17 @@ The original width jump was not reproduced with macOS overlay scrollbars. The
 stable root gutter is retained, and drawer opening preserves the checked main
 rectangle. No claim of reproducing that original symptom is made.
 
-Frontend build, all 28 lightweight frontend checks, formatting and whitespace
-checks pass. Permanent Rust browser assertions now cover dropdown anchoring and
+The approved search shell now uses the standard DaisyUI Modal with its backdrop,
+native focus containment and transitions. The shared immediate-hide override was
+removed. `approved-search-open.png` and `approved-search-mobile.png` show the
+implemented search at desktop and 320px. Playwright checks covered real fixture
+results, Escape/focus return, account-to-search handoff, Tab containment, mobile
+bounds and backdrop dismissal. Search data and permission handling are retained.
+
+Frontend build, all 24 remaining lightweight frontend checks, formatting and
+whitespace checks pass. The owner explicitly requested removal of the search
+shortcut test and its task entry after the UI correction; both were removed.
+Permanent Rust browser assertions cover dropdown anchoring and
 Drawer structure; their local compilation/execution was not run. The owner waived
 the full local suite for this UI slice. Independent review findings about focus
 preservation and measuring after animation completion were addressed.
