@@ -78,3 +78,24 @@ test("approved provisioning retains restricted role and existing-role refusal", 
   assert.match(provision, /pg_has_role\('medtracker_runtime', 'med_tracker_app', 'MEMBER'\)/);
   assert.match(provision, /test "\$restricted" = t \|\|.*refusing to alter an existing role/);
 });
+test("production app and scheduler receive both synthetic storage operators", () => {
+  const result = spawnSync("docker", ["compose", "--env-file", "/dev/null", "-p", "tooling-prod", "-f", "compose.yaml", "-f", "compose.local.yaml", "--profile", "prod", "config", "--format", "json"], {
+    encoding: "utf8", env: {...process.env, MT_PROJECT:"tooling-prod", MT_TOOL_TARGET:"development", MT_TARGET_CACHE:"test-target", MT_CARGO_REGISTRY_CACHE:"test-registry", MT_CARGO_GIT_CACHE:"test-git", MT_BROWSER_CACHE:"test-browser"}
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const config = JSON.parse(result.stdout);
+  for (const service of ["app", "scheduler"]) {
+    const env = config.services[service].environment;
+    assert.equal(env.ACTIVE_STORAGE_S3_ENDPOINT, "http://rustfs:9000");
+    assert.equal(env.ACTIVE_STORAGE_S3_BUCKET, "medtracker-fixture");
+    assert.equal(env.ACTIVE_STORAGE_S3_REGION, "us-east-1");
+    assert.equal(env.ACTIVE_STORAGE_S3_ACCESS_KEY_ID, "storage-smoke-access");
+    assert.equal(env.ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY, "storage-smoke-secret");
+    assert.equal(env.ACTIVE_STORAGE_S3_FORCE_PATH_STYLE, "true");
+    assert.equal(env.S3_ENDPOINT, "http://rustfs:9000");
+    assert.equal(env.S3_BUCKET, "scanner-fixture");
+    assert.equal(env.AWS_REGION, "us-east-1");
+    assert.equal(env.AWS_ACCESS_KEY_ID, "storage-smoke-access");
+    assert.equal(env.AWS_SECRET_ACCESS_KEY, "storage-smoke-secret");
+  }
+});
