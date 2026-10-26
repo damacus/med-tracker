@@ -29,6 +29,15 @@ Do not change comments except for requested documentation/guardrails or lint fix
 Do not introduce broad lint suppressions, including tests and generated entities.
 Use `jq` for JSON inspection. Fixture passwords are `password`.
 
+## No Python
+
+Do not write or use Python for repository implementation, setup, build orchestration,
+helpers, code generation, validation or tests. This includes temporary scripts and
+one-off commands, not just committed files. Use native tool commands, Task/Compose,
+Fish, or the existing Rust/JavaScript test facilities. Replace existing Python
+helpers when changing the workflow they serve; do not extend them or introduce
+another scripting framework to replace them.
+
 ## Local Rust verification
 
 Run the repository Task entries directly from your checkout:
@@ -71,6 +80,10 @@ backend only when its specific functionality is the documented limitation.
 
 Use published release versions for package dependencies, never Git SHA or unreleased
 branch dependencies. Retain committed lockfiles and artifact integrity checksums.
+The owner-approved temporary exception is the exact `damacus/loco` revision in
+`Cargo.toml` for shell-free scheduler execution, based on the published 1.2.0 source.
+Keep the full revision and lockfile pinned; return to a published release when the
+scheduler correction is available. This exception does not cover other dependencies.
 
 Use maintained protocol and crypto libraries. Search dependencies before custom
 security code; document an exact limitation and interoperability/negative tests

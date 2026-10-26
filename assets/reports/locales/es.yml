@@ -1624,6 +1624,7 @@ es:
       has_capacity: Tiene capacidad para gestionar su propia medicación
       note: 'Nota:'
       capacity_hint: "Se puede guardar una persona sin capacidad sin un cuidador activo. Los menores y los adultos dependientes no tienen capacidad."
+      dependent_capacity_hint: "Los menores y los adultos dependientes no tienen capacidad."
       capacity_hint_assign_carer: "Puedes asignar o invitar a un cuidador después de guardar."
       create: Crear persona
       update: Actualizar persona
@@ -1933,6 +1934,11 @@ es:
     overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
   profiles:
     security_flow:
+      incomplete_link: "Enlace incompleto"
+      incomplete_reset_guidance: "Este enlace para restablecer la contraseña está incompleto. Solicita uno nuevo para restablecer tu contraseña."
+      incomplete_verification_guidance: "Este enlace de verificación está incompleto. Solicita un nuevo correo para verificar tu cuenta."
+      request_reset_link: "Solicitar un nuevo enlace para restablecer la contraseña"
+      request_verification_link: "Solicitar un nuevo correo de verificación"
       change_password: "Cambiar contraseña"
       new_password: "Nueva contraseña"
       current_password: "Contraseña actual"
@@ -3013,8 +3019,8 @@ es:
         description: Medicamentos tomados hoy, agrupados por persona.
         empty: No se han tomado medicamentos hoy.
       summary:
-        overall_compliance: Adherencia diaria
-        total_doses_logged: Dosis diarias registradas
+        overall_compliance: Adherencia del período
+        total_doses_logged: Dosis registradas en el período
         evidence_reviewed: Evidencia revisada
         excellent: Excelente
         needs_attention: Necesita atención
@@ -3022,6 +3028,7 @@ es:
         missed_doses: Dosis omitidas
         based_on_logs: Basado en dosis registradas
       timeline_title: Cronología de adherencia
+      timeline_no_doses_expected: No se esperan dosis
       download_pdf: Descargar PDF
       gp_person_label: Persona para el informe del médico de cabecera
       gp_person_prompt: Selecciona una persona

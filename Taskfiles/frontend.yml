@@ -28,7 +28,7 @@ tasks:
       - assets/static/css/compiled.css
       - assets/static/js/html5-qrcode.min.js
     cmds:
-      - ./node_modules/.bin/tailwindcss -i assets/static/css/app.css -o assets/static/css/compiled.css --minify
+      - ./node_modules/.bin/tailwindcss --cwd assets -i static/css/app.css -o static/css/compiled.css --minify
       - cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js
   prepare:
     cmds:
@@ -37,5 +37,5 @@ tasks:
   test:
     cmds:
       [
-        node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs,
+        node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs tests/browser/dashboard-cancellation.test.mjs,
       ]

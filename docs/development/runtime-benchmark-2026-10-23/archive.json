@@ -1,0 +1,49 @@
+{
+  "source": "nhsbsa_dmd_9.3.0_20260928000001",
+  "archive": "release.zip",
+  "archive_bytes": 16607265,
+  "expanded_bytes": 228220965,
+  "sha256": "36bf248199088229c5107061403c3a0a2e896a55d0e9e79088201bfad540d6c9",
+  "files": [
+    {
+      "name": "f_amp2_3240926.xml",
+      "bytes": 76550703,
+      "sha256": "444211ec816a4c9d14bcb2977d4bdf577f1ae9126b6e62dc8711236ec7cbd804"
+    },
+    {
+      "name": "f_ampp2_3240926.xml",
+      "bytes": 120646895,
+      "sha256": "f681e83fbd278195e840c0a722bc52b9096ab0ba6c413403bf3990be6d138e4b"
+    },
+    {
+      "name": "f_ingredient2_3240926.xml",
+      "bytes": 417944,
+      "sha256": "092cc35c10b140827b0ad3128c01239aea54249c8011231aa1db40964fc23119"
+    },
+    {
+      "name": "f_lookup2_3240926.xml",
+      "bytes": 271751,
+      "sha256": "ada6981b30de336103c95ec4af4c8b9621a366a60fec04ca7b42f870408bbc4f"
+    },
+    {
+      "name": "f_vmp2_3240926.xml",
+      "bytes": 20478449,
+      "sha256": "7a9075a9ed96903ed852ba9421eaef93f5e444f7a4f1768210d209b31a3325bc"
+    },
+    {
+      "name": "f_vmpp2_3240926.xml",
+      "bytes": 8185973,
+      "sha256": "9a8d9e7551e417ea04d6c9dd3f6b0e6d366f5a33c23ae046f9bcfd6863a9cebb"
+    },
+    {
+      "name": "f_vtm2_3240926.xml",
+      "bytes": 363866,
+      "sha256": "2392cce79b48b1b10059de2f7a6c61bbb2d320f0ef2fb5d1f85006b33264ca76"
+    },
+    {
+      "name": "week402026-r2_3-GTIN.zip",
+      "bytes": 1305384,
+      "sha256": "72f81c7e98799b39bb4d09a9c6c84c97c2be5236ada5d057d5ffca5f092119d2"
+    }
+  ]
+}

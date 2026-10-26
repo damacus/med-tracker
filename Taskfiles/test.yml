@@ -1,0 +1,82 @@
+version: "3"
+vars:
+  ENV: test
+includes:
+  internal:
+    taskfile: compose.yml
+    internal: true
+tasks:
+  up:
+    desc: "Local test up"
+    cmds: [{task: "internal:up"}]
+  down:
+    desc: "Local test down"
+    cmds: [{task: "internal:down"}]
+  restart:
+    desc: "Local test restart"
+    cmds: [{task: "internal:restart"}]
+  logs:
+    desc: "Local test logs"
+    cmds: [{task: "internal:logs"}]
+  ps:
+    desc: "Local test ps"
+    cmds: [{task: "internal:ps"}]
+  build:
+    desc: "Local test build"
+    cmds: [{task: "internal:build"}]
+  seed:
+    desc: "Local test seed"
+    cmds: [{task: "internal:seed"}]
+  reset:
+    desc: "Local test reset"
+    cmds: [{task: "internal:reset"}]
+  unit:
+    desc: "Run Docker unit tests; TARGET and FILTER narrow selection"
+    cmds:
+      - task: internal:build
+      - task: internal:caches
+      - task: run
+        vars:
+          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} {{.FILTER | default "" | shellQuote}}'
+      - task: unit-extras
+  integration:
+    desc: "Run Docker integration tests; TARGET and FILTER narrow selection"
+    cmds:
+      - task: internal:build
+      - task: internal:caches
+      - task: internal:services
+      - task: run
+        vars:
+          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--tests{{end}} {{.FILTER | default "" | shellQuote}}'
+      - task: acceptance-process
+  browser:
+    desc: "Run Docker browser tests; TARGET and FILTER narrow selection"
+    cmds:
+      - task: internal:build
+      - task: internal:caches
+      - task: internal:services
+      - task: run
+        vars:
+          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only {{.FILTER | default "" | shellQuote}}'
+  run:
+    internal: true
+    requires: {vars: [COMMAND]}
+    cmds:
+      - task: internal:run
+        vars: {COMMAND: '{{.COMMAND}}'}
+  unit-extras:
+    internal: true
+    status: ['test -n {{.FILTER | default "" | shellQuote}}']
+    cmds:
+      - task: run
+        vars:
+          COMMAND: node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs tests/browser/dashboard-cancellation.test.mjs
+      - task: run
+        vars: {COMMAND: cargo test --locked --workspace --doc}
+  acceptance-process:
+    internal: true
+    status: ['test -n {{printf "%s%s" (.TARGET | default "") (.FILTER | default "") | shellQuote}}']
+    cmds:
+      - task: run
+        vars:
+          COMMAND: cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact

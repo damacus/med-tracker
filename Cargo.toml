@@ -2,6 +2,9 @@
 members = ["migration"]
 exclude = ["rust", "client-tools"]
 
+[patch.crates-io]
+loco-rs = { git = "https://github.com/damacus/loco", rev = "5224bc58f9292a2f4713ee333bded785e5266f09" }
+
 [package]
 name = "med-tracker"
 version = "0.1.0"
@@ -30,7 +33,7 @@ md-5 = "=0.11.0"
 quick-xml = "=0.41.0"
 regex = "=1.13.1"
 tempfile = "3"
-zip = { version = "=9.0.4", default-features = false, features = ["deflate"] }
+zip = { version = "=9.1.2", default-features = false, features = ["deflate"] }
 aes-gcm = "=0.11.1"
 base64 = "=0.23.1"
 bcrypt = "=0.19.3"
@@ -125,3 +128,6 @@ playwright-rs = { version = "=0.20.1", default-features = false, features = [
 
 [profile.dev.package.scrypt]
 opt-level = 3
+
+[profile.dev.package."*"]
+opt-level = 1

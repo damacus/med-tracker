@@ -1,0 +1,47 @@
+{
+  "image": "sha256:4cfa90ebf1a3ad5c73a9764158e89aa3a4f667c50d48d863db2eb9f9e7007885",
+  "container_id": "209f835104c4b4f5f2d4e1712ac08df4a54e7959330b53fea24b5a22d1f9fd98",
+  "state": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 32671,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-10-23T13:43:22.036016466Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  },
+  "restart_count": 0,
+  "effective_host_config": {
+    "Memory": 1073741824,
+    "MemorySwap": 1073741824,
+    "MemoryReservation": 0,
+    "NanoCpus": 0,
+    "CpuPeriod": 0,
+    "CpuQuota": 0,
+    "RestartPolicy": {
+      "Name": "no",
+      "MaximumRetryCount": 0
+    },
+    "OomKillDisable": null
+  },
+  "cgroup": {
+    "memory.max": 1073741824,
+    "memory.swap.max": 0,
+    "memory.peak": 380768256,
+    "memory.current": 379998208,
+    "memory.swap.current": 0,
+    "memory.events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0,
+      "sock_throttled": 0
+    }
+  }
+}

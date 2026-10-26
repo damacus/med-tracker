@@ -61,7 +61,7 @@ async fn integration_consent_desktop_and_mobile() {
                 page.goto(&format!("{}/authorize?{query}", journey.origin), None)
                     .await
                     .unwrap();
-                expect(page.get_by_role(AriaRole::Heading, named("Sign in")))
+                expect(page.get_by_role(AriaRole::Heading, named("Welcome back")))
                     .to_be_visible()
                     .await
                     .unwrap();

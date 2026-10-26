@@ -24,11 +24,11 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                 return image.currentSrc;
             }"#, None::<&()>).await.unwrap();
             assert!(saved_source.ends_with("login-med-illustration-dark-desktop.webp"));
-            let directory = std::path::Path::new("docs/screenshots/login-layout");
+            let directory = std::path::Path::new("docs/screenshots/login-reference");
             std::fs::create_dir_all(directory).unwrap();
             let mut observations = Vec::new();
             let mut audits = Vec::new();
-            for (width, height) in [(1440, 1000), (768, 1000), (390, 844), (320, 844)] {
+            for (width, height) in [(1440, 1000), (768, 1000), (390, 844), (375, 844), (320, 844)] {
                 page.set_viewport_size(Viewport { width, height }).await.unwrap();
                 for appearance in ["light", "dark"] {
                     page.get_by_role(AriaRole::Button, harness::named("Appearance"))
@@ -42,23 +42,43 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                         const brand = document.querySelector('.login-brand')?.getBoundingClientRect();
                         const form = document.querySelector('.login-form-panel')?.getBoundingClientRect();
                         const card = getComputedStyle(document.querySelector('.shell-card'));
+                        const passkey = getComputedStyle(document.querySelector('[data-passkey-login]'));
+                        const appearanceButton = document.querySelector('[data-dialog-open="appearance-dialog"]');
+                        const appearanceBounds = appearanceButton.getBoundingClientRect();
+                        const surface = document.querySelector('.login-surface').getBoundingClientRect();
+                        const resend = document.querySelector('a[href="/verify-account-resend"]');
+                        const resendBounds = resend.getBoundingClientRect();
                         return {
+                            appearanceAboveCard: appearanceBounds.bottom <= surface.top && Math.abs(appearanceBounds.right - surface.right) <= 1,
+                            appearanceTargetHeight: appearanceBounds.height,
+                            appearanceFocusRestored: document.activeElement === appearanceButton,
+                            resendCentred: Math.abs((resendBounds.left + resendBounds.right) / 2 - (surface.left + surface.right) / 2) <= 1,
+                            resendAlone: !resend.parentElement.querySelector('button'),
                             source: image?.currentSrc ?? '',
                             decorative: image?.alt === '',
                             loaded: Boolean(image?.naturalWidth),
                             desktop: Boolean(brand && form && brand.right <= form.left && brand.top < form.bottom && form.top < brand.bottom),
                             stacked: Boolean(brand && form && brand.bottom <= form.top),
                             fits: document.documentElement.scrollWidth <= innerWidth,
-                            card: {background: card.backgroundColor, border: card.borderColor, shadow: card.boxShadow}
+                            referenceBrand: Boolean(document.querySelector('[data-login-logo="mt"] use[href="/static/auth-icons.svg#brand"]')),
+                            benefitIcons: document.querySelectorAll('[data-login-benefit-icon]').length,
+                            appHeader: Boolean(document.querySelector('.shell-header')),
+                            fieldHeight: document.getElementById('email').getBoundingClientRect().height,
+                            actionHeight: document.querySelector('form[action="/login"] button[type="submit"]').getBoundingClientRect().height,
+                            footerBelowCard: Boolean(document.querySelector('.login-footer') && document.querySelector('.login-footer').getBoundingClientRect().top >= document.querySelector('.login-surface').getBoundingClientRect().bottom),
+                            card: {background: card.backgroundColor, border: card.borderColor, shadow: card.boxShadow},
+                            passkey: {border: passkey.borderColor, text: passkey.color}
                         };
                     }"#, None::<&()>).await.unwrap();
                     let size = if width <= 520 { "mobile" } else { "desktop" };
+                    assert_ne!(observation["passkey"]["border"], observation["passkey"]["text"], "passkey outline should be softer than its text at {width}/{appearance}");
                     observations.push((width, appearance, size, observation));
                     audits.push(audit(page, &format!("login-layout-{width}-{appearance}")).await);
-                    if width == 1440 || width == 390 {
+                    if width == 1440 || width == 375 {
+                        page.evaluate::<(), ()>("async () => { await document.fonts.ready; window.scrollTo(0, 0); }", None).await.unwrap();
                         page.screenshot_to_file(
                             &directory.join(format!("{size}-{appearance}.png")),
-                            ScreenshotOptions::builder().animations(Animations::Disabled).build(),
+                            ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build(),
                         ).await.unwrap();
                     }
                 }
@@ -71,6 +91,17 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                 assert_eq!(observation["loaded"], true);
                 assert_eq!(observation["decorative"], true);
                 assert_eq!(observation["fits"], true);
+                assert_eq!(observation["referenceBrand"], true, "missing original MedTracker brand at {width}/{appearance}");
+                assert_eq!(observation["benefitIcons"], 4);
+                assert_eq!(observation["appHeader"], false);
+                assert!(observation["fieldHeight"].as_f64().unwrap() >= if width >= 768 { 56.0 } else { 48.0 });
+                assert!(observation["actionHeight"].as_f64().unwrap() >= if width >= 768 { 72.0 } else { 64.0 });
+                assert_eq!(observation["footerBelowCard"], true);
+                assert_eq!(observation["appearanceAboveCard"], true, "Appearance must sit above the card at {width}/{appearance}");
+                assert!(observation["appearanceTargetHeight"].as_f64().unwrap() >= 44.0);
+                assert_eq!(observation["appearanceFocusRestored"], true);
+                assert_eq!(observation["resendCentred"], true);
+                assert_eq!(observation["resendAlone"], true);
                 assert_eq!(observation[if width >= 768 { "desktop" } else { "stacked" }], true);
             }
             assert_no_violations(&audits);
@@ -92,6 +123,11 @@ async fn login_images_follow_viewport_and_selected_appearance() {
             page.get_by_label("Password", true).fill("password", None).await.unwrap();
             page.get_by_role(AriaRole::Button, harness::named("Sign in")).press("Enter", None).await.unwrap();
             expect(page.get_by_role(AriaRole::Button, harness::named("Open household: Synthetic household")))
+                .to_be_visible().await.unwrap();
+            let security = page.get_by_role(AriaRole::Link, harness::named("Security settings"));
+            expect(security.clone()).to_have_attribute("href", "/account/security").await.unwrap();
+            security.press("Enter", None).await.unwrap();
+            expect(page.get_by_role(AriaRole::Heading, harness::named("Account security")))
                 .to_be_visible().await.unwrap();
         })
     }).await;

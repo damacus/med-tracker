@@ -129,8 +129,8 @@ async fn resend_record(
     {
         return Ok(saved);
     }
-    let target = url::Url::parse(&ctx.config.server.full_url())
-        .and_then(|url| url.join("/invitations/accept"))
+    let target = crate::models::settings::public_origin(ctx)
+        .and_then(|url| url.join("/invitations/accept").map_err(Into::into))
         .map_err(|_| response::unavailable())?;
     let savepoint = tenant
         .transaction()

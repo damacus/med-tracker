@@ -77,9 +77,10 @@
   {% endif %}
   </div>
 {% include "medications/record-dose-dialog.html" %}
-<dialog id="refill-inventory-dialog" class="modal" aria-labelledby="refill-inventory-title" {% if refill_open %}data-dialog-auto-open{% endif %}>
+<dialog id="refill-inventory-dialog" class="modal" aria-labelledby="refill-inventory-title" aria-describedby="refill-medication" {% if refill_open %}data-dialog-auto-open{% endif %}>
   <div class="modal-box max-w-xl">
     <h2 id="refill-inventory-title" class="text-xl font-semibold">{{ labels.medications.show.browser.refill_inventory }}</h2>
+    <p id="refill-medication" class="mt-2 font-semibold">{{ name }}</p>
     <p class="mt-2">{{ labels.medications.show.browser.add_delivered }}</p>
     {% if refill_error %}<p id="refill-dialog-error" role="alert" class="alert mt-4" tabindex="-1" data-dialog-error-focus>{{ refill_error }}</p>{% endif %}
     {% if refill_conflict %}<div class="rounded-box border border-base-300 p-3 mt-3"><p>{{ labels.medications.show.browser.latest_stock }}: <strong>{{ quantity }} {{ unit }}</strong></p><button type="button" class="btn btn-ghost min-h-11 mt-2" data-refill-use-latest="{{ etag }}">{{ labels.medications.show.browser.use_latest }}</button></div>{% endif %}
@@ -87,7 +88,10 @@
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{% if refill_open %}{{ refill_etag }}{% else %}{{ etag }}{% endif %}">
       {% if refill_options %}<div class="grid gap-2"><label for="refill-option">{{ labels.medications.show.browser.dose_option }}</label><select id="refill-option" name="dosage_option_id" class="select w-full" required><option value="">{{ labels.medications.show.browser.choose_dose_option }}</option>{% for option in refill_options %}<option value="{{ option.id }}">{{ option.label }}</option>{% endfor %}</select></div>{% endif %}
-      <label class="grid gap-2" for="refill-quantity">{{ labels.medications.show.browser.quantity_to_add }}<input id="refill-quantity" name="quantity" type="number" min="0.01" step="0.01" class="input w-full" {% if refill_open %}value="{{ refill_quantity }}"{% endif %} {% if refill_quantity_error %}aria-invalid="true" aria-describedby="refill-dialog-error"{% endif %} autofocus required></label>
+      <div class="grid gap-2">
+        <div class="flex gap-2 items-baseline"><label for="refill-quantity">{{ labels.medications.show.browser.quantity_to_add }}</label>{% if unit and not refill_options %}<span id="refill-quantity-unit">{{ unit }}</span>{% endif %}</div>
+        <input id="refill-quantity" name="quantity" type="number" min="0.01" step="0.01" class="input w-full" {% if refill_open %}value="{{ refill_quantity }}"{% endif %} {% if refill_quantity_error %}aria-invalid="true"{% endif %} aria-describedby="{% if refill_quantity_error %}refill-dialog-error{% endif %}{% if unit and not refill_options %} refill-quantity-unit{% endif %}" autofocus required>
+      </div>
       <label class="grid gap-2" for="refill-date">{{ labels.medications.show.browser.restock_date }}<input id="refill-date" name="restock_date" type="date" class="input w-full" value="{% if refill_open %}{{ refill_date }}{% else %}{{ restock_date }}{% endif %}" {% if refill_date_error %}aria-invalid="true" aria-describedby="refill-dialog-error"{% endif %} required></label>
       <div class="modal-action"><button type="button" class="btn btn-ghost min-h-11" data-dialog-close>{{ labels.medications.show.browser.cancel }}</button><button type="submit" class="btn btn-neutral min-h-11">{{ labels.medications.show.browser.add_stock }}</button></div>
     </form>

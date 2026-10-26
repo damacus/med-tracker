@@ -1,10 +1,12 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
     namespace = "io.damacus.medtracker.wear"
-    compileSdk { version = release(36) }
+    compileSdk { version = release(37) }
     defaultConfig {
         applicationId = "io.damacus.medtracker"
         minSdk = 30
@@ -18,14 +20,37 @@ android {
             initWith(getByName("debug"))
             applicationIdSuffix = ".staging"
         }
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            matchingFallbacks += listOf("debug")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    buildFeatures { compose = true }
+}
+
+androidComponents {
+    beforeVariants(selector().withBuildType("preview")) {
+        (it as com.android.build.api.variant.HasHostTestsBuilder).hostTests["UnitTest"]?.enable = true
+    }
 }
 
 dependencies {
+    compileOnly(platform(libs.androidx.compose.bom))
+    compileOnly(libs.androidx.compose.runtime)
+    testCompileOnly(platform(libs.androidx.compose.bom))
+    testCompileOnly(libs.androidx.compose.runtime)
+    "previewImplementation"(platform(libs.androidx.compose.bom))
+    "previewImplementation"(libs.androidx.activity.compose)
+    "previewImplementation"(libs.wear.compose.material3)
+    "previewImplementation"(libs.wear.compose.foundation)
+    "previewImplementation"(libs.wear.compose.navigation3)
+    "previewImplementation"(libs.navigation3.runtime)
+    "previewImplementation"(libs.navigation3.ui)
     implementation(project(":wear-protocol"))
     implementation(libs.wearable)
     implementation(libs.kotlinx.coroutines.android)

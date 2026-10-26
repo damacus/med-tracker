@@ -260,6 +260,33 @@ async fn barcode_miss_flows_into_manual_medication_wizard() {
                 .fill("9999999999999", None)
                 .await
                 .unwrap();
+            for mode in ["barcode", "medicine"] {
+                if mode == "medicine" {
+                    page.get_by_label("Medicine name", true)
+                        .fill("Unmatched synthetic medicine", None).await.unwrap();
+                }
+                let action = if mode == "barcode" { "Find barcode" } else { "Search medicines" };
+                page.get_by_role(AriaRole::Button, named(action))
+                    .click(None).await.unwrap();
+                expect(page.get_by_role(AriaRole::Status, None))
+                    .to_contain_text("No matching product").await.unwrap();
+                for (width, height, name) in [(1440, 1000, "desktop"), (390, 844, "mobile")] {
+                    page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                    let before_catalogue = page.evaluate::<(), Vec<bool>>(
+                        r#"() => { const catalogue = document.querySelector("[data-medicine-form]"); return ["[data-lookup-status]", "[data-lookup-results]", "[data-manual-entry]"].map(selector => Boolean(document.querySelector(selector).compareDocumentPosition(catalogue) & Node.DOCUMENT_POSITION_FOLLOWING)); }"#,
+                        None,
+                    ).await.unwrap();
+                    assert_eq!(before_catalogue, vec![mode == "barcode"; 3]);
+                    page.evaluate::<(), bool>(
+                        r#"() => { document.querySelector("[data-lookup-status]").scrollIntoView({block: "center"}); return true; }"#,
+                        None,
+                    ).await.unwrap();
+                    expect(page.get_by_role(AriaRole::Status, None)).to_be_visible().await.unwrap();
+                    expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+                    harness::capture(page, &format!("finder-{mode}-miss-{name}")).await;
+                }
+            }
+            page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
             page.get_by_role(AriaRole::Button, named("Find barcode"))
                 .click(None)
                 .await
@@ -433,6 +460,36 @@ async fn treatment_forms_create_and_edit_without_losing_clinical_fields() {
                     .fill("2026-10-22", None)
                     .await
                     .unwrap();
+                assert!(page.evaluate::<(), bool>(
+                    r#"() => ["start_date", "end_date"].every(id => document.getElementById(id).required)"#,
+                    None,
+                ).await.unwrap());
+                page.evaluate::<(), bool>(
+                    r#"() => { document.getElementById("end_date").form.noValidate = true; return true; }"#,
+                    None,
+                ).await.unwrap();
+                page.get_by_role(AriaRole::Button, named("Add schedule"))
+                    .click(None).await.unwrap();
+                expect(page.locator("main")).to_contain_text("Check the highlighted fields and try again.")
+                    .await.unwrap();
+                assert!(page.evaluate::<(), bool>(
+                    r#"() => { const input = document.getElementById("end_date"); return input.getAttribute("aria-invalid") === "true" && input.classList.contains("input-error") && input.parentElement.contains(document.getElementById("end_date-error")) && document.getElementById("dose_amount").value === "0.10"; }"#,
+                    None,
+                ).await.unwrap());
+                for (width, height, name) in [(1440, 1000, "desktop"), (390, 844, "mobile")] {
+                    page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                    assert!(!page.evaluate::<(), bool>(
+                        "() => document.documentElement.scrollWidth > innerWidth", None,
+                    ).await.unwrap());
+                    assert!(page.evaluate::<(), bool>(
+                        r#"() => { const start = document.getElementById("start_date").getBoundingClientRect(); const end = document.getElementById("end_date").getBoundingClientRect(); return innerWidth < 640 || Math.abs(start.top - end.top) < 1; }"#, None,
+                    ).await.unwrap());
+                    page.screenshot_to_file(
+                        Path::new(&format!("docs/screenshots/browser-journeys/schedule-required-date-{name}.png")),
+                        ScreenshotOptions::builder().full_page(true).build(),
+                    ).await.unwrap();
+                }
+                page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
                 page.get_by_label("End date", true)
                     .fill("2026-11-22", None)
                     .await
@@ -733,7 +790,38 @@ window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
                 .to_be_visible()
                 .await
                 .unwrap();
-            harness::capture(page, "barcode-hit-mobile").await;
+            let refill = page.get_by_role(AriaRole::Dialog, named("Refill inventory"));
+            expect(refill.clone())
+                .to_contain_text("Synthetic tablets")
+                .await
+                .unwrap();
+            expect(refill.get_by_text("tablets", true))
+                .to_be_visible()
+                .await
+                .unwrap();
+            for (width, height, name) in [
+                (1440, 1000, "refill-context-desktop"),
+                (390, 844, "barcode-hit-mobile"),
+            ] {
+                page.set_viewport_size(Viewport { width, height })
+                    .await
+                    .unwrap();
+                expect(refill.clone()).to_be_visible().await.unwrap();
+                assert!(
+                    !page
+                        .evaluate::<(), bool>(
+                            "() => document.documentElement.scrollWidth > innerWidth",
+                            None,
+                        )
+                        .await
+                        .unwrap()
+                );
+                expect(page.locator("body[data-navigation-ready]"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                harness::capture(page, name).await;
+            }
         })
     })
     .await;

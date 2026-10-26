@@ -1,0 +1,37 @@
+[
+  {
+    "name": "/mt-idle-6577-rails-1",
+    "id": "d00c7aabd2c8bbb941972f0aae6f01efaf22c9d67d89ccd24e4e18ff46a85e3f",
+    "image": "sha256:4cfa90ebf1a3ad5c73a9764158e89aa3a4f667c50d48d863db2eb9f9e7007885",
+    "command": [
+      "./bin/rails",
+      "server",
+      "-b",
+      "0.0.0.0",
+      "-p",
+      "3000"
+    ],
+    "memory_limit": 3221225472,
+    "started": "2026-10-23T12:10:29.514898303Z"
+  },
+  {
+    "name": "/mt-idle-6577-rails-db-1",
+    "id": "a82d136e410efb0ce896999d2ae44cf6543c81c1386fe99f7c016e99106481ed",
+    "image": "sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873",
+    "command": [
+      "postgres"
+    ],
+    "memory_limit": 0,
+    "started": "2026-10-23T08:44:45.412316458Z"
+  },
+  {
+    "name": "/mt-idle-6577-rails-storage-1",
+    "id": "6b245154cb612ab524910d1f9f78ba39ed941a6b0b4ba029053e3a5b0e3c78f3",
+    "image": "sha256:0725587f6fcca83c1898f321424327d6e6da5e01ea20382905dd258ed5af3be4",
+    "command": [
+      "rustfs"
+    ],
+    "memory_limit": 0,
+    "started": "2026-10-23T09:06:54.47789401Z"
+  }
+]

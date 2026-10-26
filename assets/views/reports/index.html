@@ -26,11 +26,28 @@
     <div class="card-body grid gap-4 sm:grid-cols-3"><div><p>{{ labels.reports.index.summary.overall_compliance }}</p><p class="text-3xl font-bold">{{ report.summary.compliance }}%</p></div><div><p>{{ labels.reports.index.summary.total_doses_logged }}</p><p class="text-3xl font-bold">{{ report.summary.actual }}/{{ report.summary.expected }}</p></div><div><p>{{ labels.reports.index.summary.evidence_reviewed }}</p><p>{{ report.smart_insights.evidence_summary }}</p></div></div>
   </section>
   <section class="card bg-base-100 border border-base-300" aria-labelledby="timeline-title">
-    <div class="card-body"><h2 class="card-title" id="timeline-title">{{ labels.reports.index.timeline_title }}</h2><div class="flex h-48 items-end gap-2 overflow-x-auto" role="img" aria-label="{{ labels.reports.index.timeline_title }}">{% for day in report.daily_outcomes %}<div class="flex min-w-8 flex-1 flex-col items-center justify-end h-full"><span class="sr-only">{{ day.date }}: {{ day.percentage }}%</span><div data-testid="report-compliance-bar" class="w-full bg-primary rounded-t" style="height: {{ day.percentage }}%;" title="{{ day.date }}: {{ day.percentage }}%"></div><span class="text-xs">{{ day.day_name }}</span></div>{% endfor %}</div></div>
+    <div class="card-body">
+      <h2 class="card-title" id="timeline-title">{{ labels.reports.index.timeline_title }}</h2>
+      <p id="timeline-description" class="sr-only">{% for day in report.daily_outcomes %}{% set percentage = day.percentage | str %}{{ day.date }}: {% if day.expected == 0 and day.actual == 0 %}{{ labels.reports.index.timeline_no_doses_expected }}{% else %}{{ labels.reports.index.timeline_compliance | replace(from="%{percentage}", to=percentage) }}{% endif %}. {% endfor %}</p>
+      <div class="flex h-48 items-end gap-2 overflow-x-auto" role="img" aria-label="{{ labels.reports.index.timeline_title }}" aria-describedby="timeline-description">
+        {% for day in report.daily_outcomes %}
+        {% set percentage = day.percentage | str %}
+        <div class="flex min-w-8 flex-1 flex-col items-center justify-end h-full">
+          {% if day.expected == 0 and day.actual == 0 %}
+          <div data-testid="report-no-doses-marker" class="w-full h-1 bg-base-300 rounded" title="{{ day.date }}: {{ labels.reports.index.timeline_no_doses_expected }}"></div>
+          {% else %}
+          <div data-testid="report-compliance-bar" class="w-full bg-primary rounded-t" style="height: {{ day.percentage }}%;" title="{{ day.date }}: {{ labels.reports.index.timeline_compliance | replace(from="%{percentage}", to=percentage) }}"></div>
+          {% endif %}
+          <span class="text-xs">{{ day.day_name }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="flex items-center gap-2 text-sm"><span class="w-6 h-1 bg-base-300 rounded" aria-hidden="true"></span>{{ labels.reports.index.timeline_no_doses_expected }}</p>
+    </div>
   </section>
   <section class="card bg-base-100 border border-base-300" aria-labelledby="daily-title">
     <div class="card-body"><h2 class="card-title" id="daily-title">{{ labels.reports.health_history.outcomes.title }}</h2>
-      <div class="overflow-x-auto"><table class="table table-zebra"><thead><tr><th scope="col">{{ labels.reports.health_history.outcomes.date }}</th><th scope="col">{{ labels.reports.health_history.outcomes.expected }}</th><th scope="col">{{ labels.reports.health_history.outcomes.taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.not_taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.unexplained_missed }}</th></tr></thead><tbody>{% for day in report.daily_outcomes %}<tr><th scope="row">{{ day.date }}</th><td>{{ day.expected }}</td><td>{{ day.actual }}</td><td>{{ day.not_taken }}</td><td>{{ day.unexplained_missed }}</td></tr>{% else %}<tr><td colspan="5">{{ labels.reports.health_history.empty_section }}</td></tr>{% endfor %}</tbody></table></div>
+      <div class="table-scroll overflow-x-auto" role="region" aria-labelledby="daily-title" tabindex="0"><table class="table table-zebra"><thead><tr><th scope="col">{{ labels.reports.health_history.outcomes.date }}</th><th scope="col">{{ labels.reports.health_history.outcomes.expected }}</th><th scope="col">{{ labels.reports.health_history.outcomes.taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.not_taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.unexplained_missed }}</th></tr></thead><tbody>{% for day in report.daily_outcomes %}<tr><th scope="row" class="whitespace-nowrap">{{ day.date }}</th><td>{{ day.expected }}</td><td>{{ day.actual }}</td><td>{{ day.not_taken }}</td><td>{{ day.unexplained_missed }}</td></tr>{% else %}<tr><td colspan="5">{{ labels.reports.health_history.empty_section }}</td></tr>{% endfor %}</tbody></table></div>
     </div>
   </section>
   {% if report.cycle_summaries | length > 0 %}<section class="card bg-base-100 border border-base-300" aria-labelledby="cycles-title"><div class="card-body"><h2 class="card-title" id="cycles-title">{{ labels.reports.health_history.cycles.title }}</h2><p>{{ labels.reports.health_history.cycles.description }}</p><div class="overflow-x-auto"><table class="table table-zebra"><thead><tr><th scope="col">{{ labels.reports.health_history.cycles.window }}</th><th scope="col">{{ labels.reports.health_history.medication_takes.person }}</th><th scope="col">{{ labels.reports.health_history.medication_takes.medication }}</th><th scope="col">{{ labels.reports.health_history.outcomes.expected }}</th><th scope="col">{{ labels.reports.health_history.outcomes.taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.not_taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.unexplained_missed }}</th></tr></thead><tbody>{% for row in report.cycle_summaries %}<tr><th scope="row">{{ row.window_starts_on }} – {{ row.window_ends_on }}</th><td>{{ row.person_name }}</td><td>{{ row.medication_name }}</td><td>{{ row.expected }}</td><td>{{ row.actual }}</td><td>{{ row.not_taken }}</td><td>{{ row.unexplained_missed }}</td></tr>{% endfor %}</tbody></table></div></div></section>{% endif %}
@@ -39,14 +56,14 @@
   {% endif %}
   <section class="card bg-base-100 border border-base-300" aria-labelledby="gp-title">
     <div class="card-body space-y-4"><h2 class="card-title" id="gp-title">{{ labels.reports.index.export.health_history_title }}</h2><p>{{ labels.reports.browser.intro }}</p>
-      <form method="get" action="/households/{{ slug }}/reports/health-history" class="space-y-4">
+      <form method="get" action="/households/{{ slug }}/reports/health-history" class="grid gap-4">
         <div class="grid gap-4 sm:grid-cols-3">
           <label class="form-control"><span class="label-text">{{ labels.reports.index.gp_person_label }}</span><select class="select select-bordered" name="person_id" required><option value="">{{ labels.reports.index.gp_person_prompt }}</option>{% for person in report.manageable_people %}<option value="{{ person.id }}"{% if report.selected_person_id == person.id_string %} selected{% endif %}>{{ person.name }}</option>{% endfor %}</select></label>
           <label class="form-control"><span class="label-text">{{ labels.reports.index.start_date_label }}</span><input class="input input-bordered" type="date" name="start_date" value="{{ report.start_date }}" required></label>
           <label class="form-control"><span class="label-text">{{ labels.reports.index.end_date_label }}</span><input class="input input-bordered" type="date" name="end_date" value="{{ report.end_date }}" required></label>
         </div>
-        <label class="label cursor-pointer justify-start gap-3"><input class="checkbox" type="checkbox" name="include_medication_takes" value="1"{% if report.include_medication_takes %} checked{% endif %}><span class="label-text">{{ labels.reports.index.include_medication_takes }}</span></label>
-        <button class="btn btn-primary" type="submit">{{ labels.reports.index.download_pdf }}</button>
+        <label class="flex items-start cursor-pointer gap-3"><input class="checkbox shrink-0" type="checkbox" name="include_medication_takes" value="1"{% if report.include_medication_takes %} checked{% endif %}><span>{{ labels.reports.index.include_medication_takes }}</span></label>
+        <button class="btn btn-primary justify-self-start" type="submit">{{ labels.reports.index.download_pdf }}</button>
       </form>
     </div>
   </section>

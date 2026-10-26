@@ -1621,6 +1621,7 @@ pt:
       has_capacity: Tem capacidade para gerir a própria medicação
       note: 'Nota:'
       capacity_hint: "É possível guardar uma pessoa sem capacidade sem um cuidador ativo. Menores e adultos dependentes não têm capacidade."
+      dependent_capacity_hint: "Menores e adultos dependentes não têm capacidade."
       capacity_hint_assign_carer: "Pode atribuir ou convidar um cuidador depois de guardar."
       save: Guardar
       cancel: Cancelar
@@ -2155,8 +2156,8 @@ pt:
         description: Medicações tomadas hoje, agrupadas por pessoa.
         empty: Nenhuma medicação tomada hoje.
       summary:
-        overall_compliance: Cumprimento diário
-        total_doses_logged: Doses diárias registadas
+        overall_compliance: Adesão no período
+        total_doses_logged: Doses registadas no período
         evidence_reviewed: Evidência revista
         excellent: Excelente
         needs_attention: Precisa de atenção
@@ -2164,6 +2165,7 @@ pt:
         missed_doses: Doses em falta
         based_on_logs: Com base nas doses registadas
       timeline_title: Linha temporal de adesão
+      timeline_no_doses_expected: Nenhuma dose prevista
       download_pdf: Descarregar PDF
       gp_person_label: Pessoa para o relatório do médico de família
       gp_person_prompt: Selecione uma pessoa
@@ -2269,6 +2271,11 @@ pt:
         metric_value: Horário
   profiles:
     security_flow:
+      incomplete_link: "Ligação incompleta"
+      incomplete_reset_guidance: "Esta ligação para repor a palavra-passe está incompleta. Peça uma nova ligação para repor a sua palavra-passe."
+      incomplete_verification_guidance: "Esta ligação de verificação está incompleta. Peça um novo email para verificar a sua conta."
+      request_reset_link: "Pedir uma nova ligação para repor a palavra-passe"
+      request_verification_link: "Pedir um novo email de verificação"
       change_password: "Alterar palavra-passe"
       new_password: "Nova palavra-passe"
       current_password: "Palavra-passe atual"

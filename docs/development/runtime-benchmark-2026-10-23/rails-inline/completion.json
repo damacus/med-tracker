@@ -1,0 +1,25 @@
+{
+  "state": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 67547,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-10-23T10:12:12.855745587Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  },
+  "image": "sha256:4cfa90ebf1a3ad5c73a9764158e89aa3a4f667c50d48d863db2eb9f9e7007885",
+  "memory.peak": 1628811264,
+  "memory.swap.current": 0,
+  "record_counts": {
+    "nhs_dmd_trade_families": 0,
+    "nhs_dmd_trade_family_groups": 0,
+    "nhs_dmd_amp_trade_families": 0,
+    "nhs_dmd_barcodes": 84410,
+    "nhs_dmd_ampp_relationships": 187213
+  }
+}

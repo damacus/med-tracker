@@ -48,7 +48,7 @@ jobs:
   loco_unit:
     name: Rust and JavaScript unit tests
     runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       CARGO_INCREMENTAL: "0"
       CARGO_PROFILE_DEV_DEBUG: "0"
@@ -81,12 +81,12 @@ jobs:
         with:
           shared-key: loco-tests-v1
           cache-bin: false
-      - run: task test:unit
+      - run: task host:test:unit
 
   loco_integration:
     name: API, security and database integration tests
     runs-on: ubuntu-26.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:18-alpine
@@ -158,12 +158,12 @@ jobs:
           echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
           task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
           psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "CREATE DATABASE medtracker_reference"
-      - run: task test:integration
+      - run: task host:test:integration
 
   loco_browser:
     name: Browser journeys
     runs-on: ubuntu-26.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:18-alpine
@@ -229,7 +229,7 @@ jobs:
           STORAGE_PORT=$(docker compose -f compose.yaml --env-file /dev/null -p mtloco-browser-ci --profile fixture-storage port rustfs 9000 | cut -d: -f2)
           echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
           task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
-      - run: task test:browser
+      - run: task host:test:browser
       - name: Preserve browser screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
