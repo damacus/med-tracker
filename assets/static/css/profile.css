@@ -1,27 +1,12 @@
 .profile-page { overflow-wrap: anywhere; }
 .profile-page * { min-width: 0; }
-.profile-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .375rem; padding: .375rem; border: 1px solid var(--color-base-300); border-radius: 1.25rem; background: var(--color-base-200); }
-.profile-tab { display: flex; min-width: 0; min-height: 3rem; align-items: center; justify-content: center; border-radius: .875rem; padding: .5rem .75rem; color: var(--color-base-content); font-weight: 600; line-height: 1.25; text-align: center; overflow-wrap: anywhere; opacity: .78; transition: background-color .15s, color .15s, box-shadow .15s, opacity .15s; }
-.profile-tab:hover { background: var(--color-base-300); opacity: 1; }
-.profile-tab[aria-selected="true"] { background: var(--color-base-100); color: var(--color-primary); opacity: 1; box-shadow: 0 1px 3px rgb(0 0 0 / .12); outline: 1px solid var(--color-base-300); }
-.profile-tab:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 [data-profile-status]:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
-.profile-setting { grid-template-columns: minmax(0,1fr) auto; gap: .3rem 1rem; }
+.profile-setting:not(details) { grid-template-columns: minmax(0,1fr) auto; gap: .3rem 1rem; }
 .profile-setting > span { grid-column: 1; color: var(--on-surface-variant); }
 .profile-setting .profile-setting-action { grid-column: 2; grid-row: 1/3; align-self: center; }
-.profile-setting summary { list-style: none; position: relative; padding-right: 3rem; }
-.profile-setting summary::-webkit-details-marker { display: none; }
-.profile-setting summary::after { content: '+'; position: absolute; right: 1rem; top: 1rem; font-size: 1.5rem; }
-.profile-setting[open] > summary::after { content: '−'; }
-.profile-setting[open] > summary { border-bottom: 1px solid var(--border-color); }
 .profile-setting summary [data-profile-summary], .profile-setting summary [data-profile-appearance], .profile-setting summary [data-profile-palette] { color: var(--foreground); font-weight: 600; }
 .profile-setting summary [data-profile-avatar] { display: grid; margin-top: .75rem; color: var(--color-neutral-content); }
 .profile-panel-content [data-profile-push] { margin-top: 1rem; padding: 0; border: 0; }
 .profile-panel-content .profile-notifications { padding-top: 1rem; }
 .profile-section summary > span:not([data-profile-avatar]) { display: block; margin-top: .25rem; color: var(--on-surface-variant); }
 .profile-security-method + .profile-security-method { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
-.profile-mobile-shortcuts { display: none; }
-.profile-mobile-shortcuts a { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; border-radius: 1rem; font-size: .75rem; font-weight: 600; }
-.profile-mobile-shortcuts a[aria-current] { background: var(--secondary-container); color: var(--on-secondary-container); }
-@media (min-width: 640px) { .profile-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 1023px) { .profile-mobile-shortcuts { display: flex; position: fixed; bottom: 0; inset-inline: 0; z-index: 20; justify-content: space-around; gap: .5rem; padding: .75rem .5rem max(.75rem, env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--border-color); } .profile-mobile-shortcuts a { min-width: 0; padding: .5rem; overflow-wrap: anywhere; text-align: center; } body:has(.profile-mobile-shortcuts) { padding-bottom: 6rem; } }
