@@ -122,5 +122,6 @@ tasks:
       - task: down
       - 'docker volume rm {{.PROJECT}}_database {{.PROJECT}}_scanner-data {{.PROJECT}}_scanner-logs'
   run:
+    run: always
     requires: {vars: [COMMAND]}
     cmds: ['{{.COMPOSE}} run --rm --no-deps {{.TOOL}} {{.COMMAND}}']

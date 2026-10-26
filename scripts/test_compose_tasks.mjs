@@ -6,6 +6,44 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+test("public test runs every lane and propagates integration failures", () => {
+  const directory = mkdtempSync(join(tmpdir(), "medtracker-test-lanes-"));
+  const executable = join(directory, "docker");
+  writeFileSync(executable, `#!/usr/bin/env node
+const fs = require("node:fs");
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.COMPOSE_CALL_LOG, JSON.stringify(args)+"\\n");
+if (args[0] === "info") console.log("arm64");
+if (args.includes("port")) console.log("127.0.0.1:19000");
+if (args.includes("psql")) console.log("1");
+if (process.env.FAIL_INTEGRATION === "1" && args.includes("nextest") && args.includes("*")) process.exit(42);
+`);
+  chmodSync(executable, 0o755);
+  const curl = join(directory, "curl");
+  writeFileSync(curl, "#!/usr/bin/env node\nprocess.exit(0);\n");
+  chmodSync(curl, 0o755);
+  try {
+    for (const fail of [false, true]) {
+      const log = join(directory, `calls-${fail}.jsonl`);
+      const result = spawnSync("task", ["test"], {encoding:"utf8", env:{...process.env, TARGET:"", FILTER:"", PATH:`${directory}:${process.env.PATH}`, COMPOSE_CALL_LOG:log, FAIL_INTEGRATION:fail ? "1" : "0"}});
+      const calls = readFileSync(log, "utf8").trim().split("\n").map(JSON.parse);
+      const commands = calls.filter(args => args.includes("--no-deps")).map(args => args.slice(args.indexOf("--no-deps")+2).join(" "));
+      if (fail) {
+        assert.notEqual(result.status, 0, "integration failure must fail task test");
+        assert.equal(commands.some(command => command.includes("--test browser")), false);
+      } else {
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(commands.length, 6, JSON.stringify(commands));
+        assert.match(commands[0], /nextest.*--lib/);
+        assert.match(commands[1], /^node --test/);
+        assert.match(commands[2], /cargo test.*--doc/);
+        assert.match(commands[3], /nextest.*--test \*/);
+        assert.match(commands[4], /template_concurrency.*--ignored --exact/);
+        assert.match(commands[5], /nextest.*--test browser.*--run-ignored only/);
+      }
+    }
+  } finally { rmSync(directory, {recursive:true, force:true}); }
+});
 test("public Compose tasks run from the repository root", () => {
   const directory = mkdtempSync(join(tmpdir(), "medtracker-task-cwd-"));
   const executable = join(directory, "docker");

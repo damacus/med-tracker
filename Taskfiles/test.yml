@@ -61,6 +61,7 @@ tasks:
           COMMAND: 'cargo nextest run --locked --no-tests=fail --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only {{.FILTER | default "" | shellQuote}}'
   run:
     internal: true
+    run: always
     requires: {vars: [COMMAND]}
     cmds:
       - task: internal:run
