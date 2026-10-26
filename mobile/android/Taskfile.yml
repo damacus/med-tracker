@@ -2,6 +2,18 @@
 version: "3"
 
 tasks:
+  wear:preview:test:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Test sample-dose preview state without contacting a phone or backend
+    cmds:
+      - ./gradlew :wear:testPreviewUnitTest {{.CLI_ARGS}} --no-daemon --max-workers=1
+
+  wear:preview:build:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Build and lint the separate interactive watch preview
+    cmds:
+      - ./gradlew :wear:assemblePreview :wear:lintPreview :wear:assembleDebug :wear:verifyCompanionDependencies --no-daemon --max-workers=1
+
   jvm:check:
     dir: "{{.TASKFILE_DIR}}"
     desc: Verify Gradle runs on the pinned JDK 17 daemon
@@ -108,3 +120,5 @@ tasks:
       - task: release:check
       - task: wear:boundary
       - task: api:check
+      - task: wear:preview:test
+      - task: wear:preview:build

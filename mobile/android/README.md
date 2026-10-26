@@ -6,6 +6,41 @@ The Android phone application is an independent Gradle project. Run its checks f
 
 Open `mobile/android` in Android Studio to discover `:phone`, `:wear`, and the pure Kotlin `:wear-protocol` module. `task android:projects` also lists these modules. Wear displays connectivity only; it has no medication UI, Rails client, credential storage or direct network transport.
 
+### Interactive design preview
+
+The separate `preview` build installs as **MedTracker Preview**, application ID
+`io.damacus.medtracker.preview`. It does not replace the paired companion app.
+Build and check it with `task android:wear:preview:test` and
+`task android:wear:preview:build`. The APK is
+`mobile/android/wear/build/outputs/apk/preview/wear-preview.apk`.
+
+The preview uses sample vitamins and a local Today → dose → result flow.
+The central outlined action fills horizontally during a one-second hold and
+completes while the finger is still down. Releasing early drains the fill over
+150 ms; leaving the button, changing screens or interrupting the app cancels
+the hold. Keyboard and accessibility activation remain available.
+“Take dose” marks only that sample as recorded. “Later” returns to Today without
+recording. Swipe right to go back; scroll or use the crown to reach later items.
+The result explicitly identifies the simulation. No phone session or clinical
+write is involved. Recorded samples survive activity recreation, but the preview
+does not provide durable history or backend synchronisation.
+
+Compose UI and navigation runtime dependencies belong only to the preview
+variant. The module-wide Compose compiler needs a compile-only Compose runtime;
+it is not packaged in the debug, staging or release companions, which retain
+their dependency check. Android CI also runs the preview tests, build and lint,
+including debug compilation.
+
+The intended real workflow is next due dose → review medicine, person and amount
+→ deliberate hold confirmation → authoritative confirmed, pending or error
+result. The connection protocol below has no dose feed, recording command,
+idempotency key or recording acknowledgement. Phone-backed dose display and
+recording need a separately verified Loco/API and Data Layer integration that
+retains phone session authority and current care permissions. The preview does
+not establish offline retry or guardianship policy.
+
+### Phone connection protocol
+
 The phone advertises `medtracker_phone_companion_v1` and persistently publishes `/medtracker/companion/status`. Version 1 contains only `protocolVersion`, `phoneAppVersion`, `sessionState` (`signed_in` or `signed_out`) and `publishedAt` (Unix milliseconds). Encoding is deterministic UTF-8 JSON. Missing or malformed data cannot make Wear ready. An unsupported version displays an incompatible-app state.
 
 Phone publication observes the same application-owned session as the phone UI. Wear queries both known and reachable capability nodes, reads persistent data when opened, and refreshes on Data Layer events. While visible, it retries discovery every five seconds. Status never overrides missing or unreachable capability discovery. Publication failures retry against the current session, so a later sign-out does not leave an earlier failed sign-in queued indefinitely.
