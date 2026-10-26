@@ -43,7 +43,17 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                         const form = document.querySelector('.login-form-panel')?.getBoundingClientRect();
                         const card = getComputedStyle(document.querySelector('.shell-card'));
                         const passkey = getComputedStyle(document.querySelector('[data-passkey-login]'));
+                        const appearanceButton = document.querySelector('[data-dialog-open="appearance-dialog"]');
+                        const appearanceBounds = appearanceButton.getBoundingClientRect();
+                        const surface = document.querySelector('.login-surface').getBoundingClientRect();
+                        const resend = document.querySelector('a[href="/verify-account-resend"]');
+                        const resendBounds = resend.getBoundingClientRect();
                         return {
+                            appearanceAboveCard: appearanceBounds.bottom <= surface.top && Math.abs(appearanceBounds.right - surface.right) <= 1,
+                            appearanceTargetHeight: appearanceBounds.height,
+                            appearanceFocusRestored: document.activeElement === appearanceButton,
+                            resendCentred: Math.abs((resendBounds.left + resendBounds.right) / 2 - (surface.left + surface.right) / 2) <= 1,
+                            resendAlone: !resend.parentElement.querySelector('button'),
                             source: image?.currentSrc ?? '',
                             decorative: image?.alt === '',
                             loaded: Boolean(image?.naturalWidth),
@@ -87,6 +97,11 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                 assert!(observation["fieldHeight"].as_f64().unwrap() >= if width >= 768 { 56.0 } else { 48.0 });
                 assert!(observation["actionHeight"].as_f64().unwrap() >= if width >= 768 { 72.0 } else { 64.0 });
                 assert_eq!(observation["footerBelowCard"], true);
+                assert_eq!(observation["appearanceAboveCard"], true, "Appearance must sit above the card at {width}/{appearance}");
+                assert!(observation["appearanceTargetHeight"].as_f64().unwrap() >= 44.0);
+                assert_eq!(observation["appearanceFocusRestored"], true);
+                assert_eq!(observation["resendCentred"], true);
+                assert_eq!(observation["resendAlone"], true);
                 assert_eq!(observation[if width >= 768 { "desktop" } else { "stacked" }], true);
             }
             assert_no_violations(&audits);

@@ -52,6 +52,7 @@ dialog.modal:not([open]) { display: none; }
 
 .login-page { min-height: 100dvh; padding: 1rem; background: radial-gradient(circle at 50% -10%, var(--surface-container-lowest) 0%, var(--surface-container-low) 42%, var(--surface-container-high) 100%); }
 .login-content { display: flex; flex-direction: column; justify-content: center; gap: 1rem; min-height: calc(100dvh - 2rem); max-width: 72rem; margin-inline: auto; }
+.login-appearance { align-self: flex-end; min-height: 2.75rem; font-size: .875rem; }
 .login-surface { display: grid; width: 100%; overflow: hidden; border-radius: 1rem; }
 .login-brand { display: flex; flex-direction: column; gap: .75rem; min-width: 0; padding: 1rem; text-align: center; border-bottom: 1px solid var(--border-color); }
 .login-brand-name { display: flex; align-items: center; justify-content: center; gap: 1rem; font-size: 1.25rem; font-weight: 700; }
@@ -86,9 +87,7 @@ dialog.modal:not([open]) { display: none; }
 .login-option-chevron { flex: none; width: 1.5rem; height: 1.5rem; }
 .login-error { margin-bottom: 1rem; }
 .login-footer { display: grid; gap: 1rem; text-align: center; font-size: .875rem; font-weight: 600; color: var(--on-surface-variant); }
-.login-footer > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .5rem 1.5rem; }
 .login-footer a:hover, .login-field-heading a:hover { text-decoration: underline; }
-.login-footer .btn { min-height: 2.75rem; font-size: .875rem; }
 @media (max-width: 520px) { .login-illustration { width: min(42vw, 6rem); aspect-ratio: 2 / 3; } }
 @media (min-width: 640px) { .login-brand, .login-form-panel { padding: 2rem; } .login-welcome { font-size: 2.25rem; } }
 @media (min-width: 768px) {
