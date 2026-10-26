@@ -32,6 +32,11 @@ async fn report_outcomes_keep_dates_readable_and_scroll_by_keyboard() {
                     return document.activeElement === region && (region.scrollWidth <= region.clientWidth || region.scrollLeft > 0);
                 }"#, None::<&()>).await.unwrap();
                 assert!(keyboard_access, "outcomes must be keyboard-scrollable at {size}");
+                let restrained_focus: bool = page.evaluate(r#"() => {
+                    const style = getComputedStyle(document.activeElement);
+                    return style.outlineStyle === 'none' && style.boxShadow !== 'none';
+                }"#, None::<&()>).await.unwrap();
+                assert!(restrained_focus, "keyboard focus must remain visible without framing the whole table at {size}");
                 page.evaluate::<(), bool>("() => { document.querySelector('[aria-labelledby=\"daily-title\"] [role=\"region\"]').scrollLeft = 0; document.getElementById('daily-title').scrollIntoView({block:'center'}); return true; }", None).await.unwrap();
                 harness::capture(page, &format!("report-outcomes-{size}")).await;
             }
