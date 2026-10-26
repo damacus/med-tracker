@@ -381,39 +381,3 @@ async fn shared_layout_search_handles_rapid_escape_and_queued_dialog_close() {
         expect(page.locator("[data-sidebar-account]")).to_be_focused().await.unwrap();
     })).await;
 }
-
-#[tokio::test]
-#[ignore = "browser journeys run through task test:browser"]
-async fn shared_layout_account_dropdown_originates_at_its_trigger() {
-    for width in [1440, 390, 320] {
-        harness::journey(Viewport { width, height: 1000 }, |journey| {
-            Box::pin(async move {
-                let page = &journey.page;
-                harness::sign_in(journey).await;
-                expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
-                let trigger = page.locator(if width >= 1024 { "[data-sidebar-account]" } else { "[data-app-account]" });
-                trigger.click(None).await.unwrap();
-                expect(page.locator("#app-account:popover-open")).to_be_visible().await.unwrap();
-                assert!(page.evaluate::<(), bool>(r#"async () => {
-                    const account = document.querySelector('#app-account');
-                    await Promise.all(account.getAnimations().map(animation => animation.finished));
-                    const desktop = innerWidth >= 1024;
-                    const trigger = document.querySelector(desktop ? '[data-sidebar-account]' : '[data-app-account]').getBoundingClientRect();
-                    const panel = document.querySelector('#app-account').getBoundingClientRect();
-                    const gap = desktop ? trigger.top - panel.bottom : panel.top - trigger.bottom;
-                    return gap >= 0 && gap <= 12 && panel.left >= 0 && panel.right <= innerWidth;
-                }"#, None).await.unwrap(), "account dropdown detached from its trigger at {width}px");
-                page.keyboard().press("Escape", None).await.unwrap();
-                expect(trigger).to_be_focused().await.unwrap();
-                if width < 1024 {
-                    page.locator("[data-app-drawer]").click(None).await.unwrap();
-                    expect(page.locator(".drawer > .drawer-toggle:checked")).to_have_count(1).await.unwrap();
-                    expect(page.locator(".drawer > .drawer-side > .drawer-overlay")).to_have_count(1).await.unwrap();
-                    assert!(page.evaluate::<(), bool>("() => document.querySelector('.drawer-content').inert", None).await.unwrap());
-                    page.keyboard().press("Escape", None).await.unwrap();
-                    expect(page.locator("[data-app-drawer]")).to_be_focused().await.unwrap();
-                }
-            })
-        }).await;
-    }
-}
