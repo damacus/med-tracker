@@ -1340,3 +1340,58 @@ async fn malformed_auth_entry_links_offer_safe_recovery() {
     drop(request);
     close(fixture, boot).await;
 }
+
+#[tokio::test]
+async fn public_origin_auth_discovery_and_secure_session_use_proxy_origin() {
+    let public = "https://mt-proof.localhost:1356";
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let settings = config.settings.get_or_insert_with(|| json!({}));
+        settings["public_origin"] = json!(public);
+        settings["browser_session"] = json!({
+            "key": base64::engine::general_purpose::STANDARD.encode([7_u8; 64]),
+            "secure": true,
+        });
+    })
+    .await;
+    assert_ne!(boot.app_context.config.server.port, 1356);
+    let request = server(&boot);
+    let discovery = request.get("/.well-known/oauth-authorization-server").await;
+    assert_eq!(discovery.status_code(), 200);
+    let discovery = discovery.json::<Value>();
+    assert_eq!(discovery["issuer"], public);
+    assert_eq!(discovery["token_endpoint"], format!("{public}/token"));
+    let capabilities = request.get("/api/v1/capabilities").await;
+    assert_eq!(capabilities.status_code(), 200);
+    assert_eq!(
+        capabilities.json::<Value>()["data"]["authentication"]["mobile_oauth"]["discovery_url"],
+        format!("{public}/.well-known/oauth-authorization-server")
+    );
+    let rejected = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", "https://untrusted.example.test")
+        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .await;
+    assert_eq!(rejected.status_code(), 403);
+    let signed_in = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", public)
+        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .await;
+    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+    let header = signed_in.header("set-cookie");
+    let header = header.to_str().unwrap();
+    assert!(
+        header
+            .split(';')
+            .any(|part| part.trim().eq_ignore_ascii_case("secure"))
+    );
+    let cookie = header.split(';').next().unwrap();
+    let session = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", cookie)
+        .await;
+    assert_eq!(session.status_code(), 200);
+    assert_eq!(session.json::<Value>()["user"]["id"], "71001");
+    drop(request);
+    close(fixture, boot).await;
+}

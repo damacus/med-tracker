@@ -9,7 +9,11 @@ fn git(arguments: &[&str]) -> Option<String> {
 }
 
 fn main() {
-    let worktree = git(&["rev-parse", "--show-toplevel"]).unwrap_or_else(|| "unknown".into());
+    let worktree = git(&["rev-parse", "--show-toplevel"]);
+    if worktree.is_none() {
+        println!("cargo:rerun-if-changed=build.rs");
+    }
+    let worktree = worktree.unwrap_or_else(|| "unknown".into());
     let mut commit = git(&["rev-parse", "--short", "HEAD"]).unwrap_or_else(|| "unknown".into());
     if git(&["status", "--porcelain", "--untracked-files=no"])
         .is_some_and(|value| !value.is_empty())

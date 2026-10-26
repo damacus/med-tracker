@@ -1,0 +1,32 @@
+version: "3"
+vars:
+  ENV: dev
+includes:
+  internal:
+    taskfile: compose.yml
+    internal: true
+tasks:
+  up:
+    desc: "Local dev up"
+    cmds: [{task: "internal:up"}]
+  down:
+    desc: "Local dev down"
+    cmds: [{task: "internal:down"}]
+  restart:
+    desc: "Local dev restart"
+    cmds: [{task: "internal:restart"}]
+  logs:
+    desc: "Local dev logs"
+    cmds: [{task: "internal:logs"}]
+  ps:
+    desc: "Local dev ps"
+    cmds: [{task: "internal:ps"}]
+  build:
+    desc: "Local dev build"
+    cmds: [{task: "internal:build"}]
+  seed:
+    desc: "Local dev seed"
+    cmds: [{task: "internal:seed"}]
+  reset:
+    desc: "Local dev reset"
+    cmds: [{task: "internal:reset"}]

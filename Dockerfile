@@ -1,14 +1,17 @@
 # syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
-FROM node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS frontend
+FROM node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS frontend-dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts --no-audit --no-fund
+RUN --mount=type=cache,id=loco-npm,target=/root/.npm,sharing=locked \
+    npm ci --ignore-scripts --no-audit --no-fund
+
+FROM frontend-dependencies AS frontend
 COPY assets/ assets/
 RUN ./node_modules/.bin/tailwindcss -i assets/static/css/app.css -o assets/static/css/compiled.css --minify \
     && cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js
 
 FROM rust:1.99.1-slim-trixie@sha256:1a939748a7cbab172de91a014e3804a97af1394a8c844faa67fce9401c4e40fb AS toolchain
-FROM ubuntu:26.04@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944 AS build
+FROM ubuntu:26.04@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944 AS dependencies
 ARG CARGO_BUILD_JOBS=2
 ARG TARGETARCH
 RUN apt-get update && apt-get install --yes --no-install-recommends \
@@ -22,6 +25,27 @@ ENV CARGO_HOME=/usr/local/cargo \
     RUST_ICU_MAJOR_VERSION_NUMBER=78 \
     CARGO_INCREMENTAL=0
 WORKDIR /app
+FROM dependencies AS development
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    curl libasound2t64 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcups2t64 \
+    libdbus-1-3 libdrm2 libgbm1 libnspr4 libnss3 libx11-6 libxcb1 libxcomposite1 \
+    libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=frontend-dependencies /usr/local/ /usr/local/
+RUN cargo install --locked cargo-nextest --version 0.9.149 \
+    && cargo install --locked cargo-watch --version 8.5.3
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    libcairo2 libpango-1.0-0 fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+ENV CARGO_INCREMENTAL=1
+COPY --from=frontend-dependencies /app/node_modules/ node_modules/
+COPY package.json package-lock.json ./
+
+FROM development AS test
+COPY . .
+COPY --from=frontend /app/assets/ assets/
+
+FROM dependencies AS build
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY migration/ migration/
 COPY src/ src/

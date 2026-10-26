@@ -19,7 +19,10 @@ pub fn routes() -> Routes {
 }
 
 async fn discovery(State(ctx): State<AppContext>) -> Response {
-    let issuer = ctx.config.server.full_url();
+    let issuer = match crate::models::settings::public_origin(&ctx) {
+        Ok(origin) => origin.origin().ascii_serialization(),
+        Err(_) => return failure(ExchangeError::Unavailable),
+    };
     axum::Json(serde_json::json!({"issuer":issuer,"authorization_endpoint":format!("{issuer}/authorize"),"token_endpoint":format!("{issuer}/token"),"revocation_endpoint":format!("{issuer}/revoke"),"response_types_supported":["code"],"response_modes_supported":["query","form_post"],"grant_types_supported":["authorization_code","refresh_token"],"code_challenge_methods_supported":["S256"],"token_endpoint_auth_methods_supported":["none","client_secret_basic","client_secret_post"]})).into_response()
 }
 
@@ -29,10 +32,14 @@ async fn capabilities(State(ctx): State<AppContext>) -> Response {
             Ok(lifetime) => lifetime,
             Err(error) => return failure(error),
         };
+    let origin = match crate::models::settings::public_origin(&ctx) {
+        Ok(origin) => origin.origin().ascii_serialization(),
+        Err(_) => return failure(ExchangeError::Unavailable),
+    };
     match oauth::mobile_clients(&ctx.db).await {
         Ok(clients) => {
             let body = crate::views::capabilities::CapabilitiesResponse::new(
-                &ctx.config.server.full_url(),
+                &origin,
                 lifetime.inactivity_days(),
                 lifetime.maximum_age_days(),
                 clients,

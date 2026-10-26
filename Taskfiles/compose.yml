@@ -1,0 +1,126 @@
+version: "3"
+vars:
+  CHECKOUT:
+    sh: 'printf "mt-%s" "$(printf "%s" "$(pwd -P)" | shasum -a 256 | cut -c1-12)"'
+  PROJECT: '{{.CHECKOUT}}-{{.ENV}}'
+  ARCH: '$(docker info --format ''{{"{{.Architecture}}"}}'' | sed ''s/aarch64/arm64/;s/x86_64/amd64/'')'
+  COMPOSE: >-
+    env COMPOSE_PROFILES= MT_PROJECT={{.PROJECT}}
+    MT_TOOL_TARGET={{if eq .ENV "test"}}test{{else}}development{{end}}
+    MT_TARGET_CACHE={{.CHECKOUT}}-target-linux-{{.ARCH}}
+    MT_CARGO_REGISTRY_CACHE=mt-cargo-registry-v1 MT_CARGO_GIT_CACHE=mt-cargo-git-v1
+    MT_BROWSER_CACHE=mt-browser-linux-{{.ARCH}}-ubuntu26-v1
+    docker compose --env-file /dev/null -p {{.PROJECT}} -f compose.yaml -f compose.local.yaml
+    --profile fixture-storage --profile {{.ENV}}
+  APP: '{{if eq .ENV "prod"}}app{{else}}{{.ENV}}-app{{end}}'
+  LOCO_ENV: '{{if eq .ENV "dev"}}development{{else if eq .ENV "prod"}}production{{else}}test{{end}}'
+  TOOL: '{{if eq .ENV "dev"}}dev-tool{{else}}tool{{end}}'
+  EXECUTABLE: '{{if eq .ENV "dev"}}/app/run/bin/med-tracker{{else if eq .ENV "test"}}cargo run --locked --{{end}}'
+  APPLICATION: '{{.COMPOSE}} run --rm --no-deps {{if eq .ENV "prod"}}app{{else}}{{.TOOL}} {{.EXECUTABLE}}{{end}}'
+tasks:
+  check:
+    cmds:
+      - task: ::host:docker
+      - task: data-check
+  provision:
+    cmds:
+      - |
+        set -eu
+        exists=$({{.COMPOSE}} exec -T postgres psql -X -U medtracker -d medtracker_loco -tAc "SELECT 1 FROM pg_roles WHERE rolname = 'medtracker_runtime'")
+        if [ -z "$exists" ]; then
+          {{.COMPOSE}} exec -T postgres createuser -U medtracker --login --inherit --no-superuser --no-createdb --no-createrole --member-of=med_tracker_app medtracker_runtime
+          # SeaORM has no PostgreSQL role-administration API. This fixed local
+          # statement retains the existing synthetic-only runtime credentials.
+          {{.COMPOSE}} exec -T postgres psql -X -v ON_ERROR_STOP=1 -U medtracker -d medtracker_loco -c "ALTER ROLE medtracker_runtime NOBYPASSRLS PASSWORD 'synthetic_local_runtime_password'"
+        fi
+        restricted=$({{.COMPOSE}} exec -T postgres psql -X -v ON_ERROR_STOP=1 -U medtracker -d medtracker_loco -tAc "SELECT rolcanlogin AND rolinherit AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolbypassrls AND pg_has_role('medtracker_runtime', 'med_tracker_app', 'MEMBER') FROM pg_roles WHERE rolname = 'medtracker_runtime'")
+        test "$restricted" = t || { echo 'Expected a restricted runtime identity; refusing to alter an existing role' >&2; exit 1; }
+  data-check:
+    cmds:
+      - |
+        set -eu
+        volumes=$(docker volume ls --format '{{"{{.Name}}"}}')
+        for name in database scanner-data scanner-logs; do
+          volume='{{.PROJECT}}_'"$name"
+          if printf '%s\n' "$volumes" | grep -Fxq "$volume"; then
+            owner=$(docker volume inspect "$volume" | jq -er '.[0].Labels["io.medtracker.local-owner"]')
+            test "$owner" = '{{.PROJECT}}' || { echo "Refusing unowned data volume $volume" >&2; exit 1; }
+          fi
+        done
+  caches:
+    cmds:
+      - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true mt-cargo-registry-v1{{else}}true{{end}}'
+      - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true mt-cargo-git-v1{{else}}true{{end}}'
+      - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true {{.CHECKOUT}}-target-linux-{{.ARCH}}{{else}}true{{end}}'
+      - '{{if ne .ENV "prod"}}docker volume create --label io.medtracker.cache=true mt-browser-linux-{{.ARCH}}-ubuntu26-v1{{else}}true{{end}}'
+  build:
+    cmds:
+      - '{{.COMPOSE}} build {{if eq .ENV "prod"}}app{{else}}{{.TOOL}}{{end}}'
+  services:
+    cmds:
+      - task: check
+      - '{{.COMPOSE}} up -d --wait postgres rustfs'
+      - |
+        set -eu
+        exists=$({{.COMPOSE}} exec -T postgres psql -X -U medtracker -d medtracker_loco -tAc "SELECT 1 FROM pg_database WHERE datname = 'medtracker_reference'")
+        test -n "$exists" || {{.COMPOSE}} exec -T postgres createdb -U medtracker medtracker_reference
+      - |
+        set -eu
+        endpoint=$({{.COMPOSE}} port rustfs 9000)
+        for bucket in scanner-fixture medtracker-fixture; do
+          curl --fail --silent --show-error --aws-sigv4 aws:amz:us-east-1:s3 --user storage-smoke-access:storage-smoke-secret --request PUT "http://$endpoint/$bucket" || exit $?
+        done
+  up:
+    vars:
+      OLD_PORT:
+        sh: '{{.COMPOSE}} port {{.APP}} 5150 2>/dev/null | cut -d: -f2'
+      HTTP_PORT:
+        sh: 'if [ "${PORTLESS:-1}" = 0 ] && [ "{{.ENV}}" != prod ]; then printf "%s" "{{.OLD_PORT | default (.PORT | default "")}}"; else printf 0; fi'
+      ORIGIN:
+        sh: 'if [ "${PORTLESS:-1}" = 0 ]; then test "{{.ENV}}" = prod || printf "http://127.0.0.1:{{.HTTP_PORT}}"; else printf "https://{{.PROJECT}}.localhost%s" "$(test "${PORTLESS_PORT:-443}" = 443 || printf ":%s" "$PORTLESS_PORT")"; fi'
+    cmds:
+      - 'test "${PORTLESS:-1}" != 0 || test "{{.ENV}}" = prod || test -n "{{.HTTP_PORT}}" || { echo "PORTLESS=0 needs PORT=<free-loopback-port> on first startup" >&2; exit 1; }'
+      - task: ::host:portless
+        vars: {PROJECT: '{{.PROJECT}}', OLD_PORT: '{{.OLD_PORT}}', ORIGIN: '{{.ORIGIN}}'}
+      - task: check
+      - '{{if eq .ENV "prod"}}docker image inspect {{.LOCO_IMAGE | default (printf "%s-runtime" .PROJECT) | shellQuote}} >/dev/null{{else}}{{.COMPOSE}} build {{.TOOL}}{{end}}'
+      - task: caches
+      - '{{if eq .ENV "dev"}}{{.COMPOSE}} stop dev-frontend dev-builder{{else}}true{{end}}'
+      - '{{if eq .ENV "dev"}}{{.COMPOSE}} run --rm --no-deps dev-tool sh -ec ''./node_modules/.bin/tailwindcss --cwd assets -i static/css/app.css -o static/css/compiled.css --minify; cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js; cargo install --path . --debug --locked --force --bin med-tracker --target-dir /app/target --root /app/run''{{else}}true{{end}}'
+      - task: services
+      - '{{.COMPOSE}} run --rm --no-deps -e DATABASE_URL=postgres://medtracker:medtracker_password@postgres/medtracker_loco {{if eq .ENV "prod"}}app{{else}}{{.TOOL}} {{.EXECUTABLE}}{{end}} db migrate --environment {{.LOCO_ENV}}'
+      - task: provision
+      - 'env MT_HTTP_PORT={{.HTTP_PORT | default "0"}} MT_PUBLIC_ORIGIN={{.ORIGIN | shellQuote}} MT_COOKIE_SECURE={{if eq (.PORTLESS | default "1") "0"}}false{{else}}true{{end}} {{.COMPOSE}} up -d {{if eq .ENV "dev"}}dev-frontend dev-builder dev-app dev-scheduler{{else if eq .ENV "test"}}test-app test-scheduler{{else}}app scheduler{{end}}'
+      - |
+        set -eu
+        endpoint=$({{.COMPOSE}} port {{.APP}} 5150)
+        curl --fail --silent --show-error --max-time 2 --retry 30 --retry-delay 1 --retry-all-errors --retry-max-time 90 "http://$endpoint/health" >/dev/null
+        fish scripts/portless.fish register '{{.PROJECT}}' '{{.ORIGIN}}' '{{.OLD_PORT}}' "$endpoint"
+  down:
+    cmds:
+      - 'fish scripts/portless.fish remove {{.PROJECT}} "" "$({{.COMPOSE}} port {{.APP}} 5150 2>/dev/null | cut -d: -f2)"'
+      - '{{.COMPOSE}} down'
+  restart:
+    cmds: ['{{.COMPOSE}} restart']
+  logs:
+    cmds: ['{{.COMPOSE}} logs --follow']
+  ps:
+    cmds: ['{{.COMPOSE}} ps']
+  seed:
+    preconditions:
+      - sh: 'test "{{.ENV}}" != prod'
+        msg: Production has no synthetic seed operation
+    cmds:
+      - task: services
+      - '{{.APPLICATION}} db seed --environment {{.LOCO_ENV}}'
+  reset:
+    preconditions:
+      - sh: 'test "{{.ENV}}" != prod && test {{.CONFIRM | default "" | shellQuote}} = {{.PROJECT | shellQuote}}'
+        msg: 'Reset requires CONFIRM={{.PROJECT}} (dev/test only)'
+    cmds:
+      - task: data-check
+      - task: down
+      - 'docker volume rm {{.PROJECT}}_database {{.PROJECT}}_scanner-data {{.PROJECT}}_scanner-logs'
+  run:
+    requires: {vars: [COMMAND]}
+    cmds: ['{{.COMPOSE}} run --rm --no-deps {{.TOOL}} {{.COMMAND}}']

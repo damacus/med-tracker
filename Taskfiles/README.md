@@ -1,186 +1,126 @@
 # Task runner guide
 
-MedTracker uses [Task](https://taskfile.dev/) as the public entry point for
-development, tests, documentation, security checks, and local production-image
-validation. Run `task -l` for the current command list.
+Task runs on the host and calls Docker Compose directly. Containers run native
+Cargo, Node, Tailwind and Loco commands. There is no Python lifecycle wrapper or
+container Task installation. Rails tasks remain read-only references under
+`rails:*`; obsolete `rust:*` and `api:*` namespaces are removed.
 
-Do not call Docker Compose or Rails commands directly when a Task command owns
-the workflow.
+## Commands
 
-## File layout
+Host prerequisites: Docker Compose 2.24.4+, Task, Fish, curl and jq.
+`task host:docker` checks them. Install the pinned host Portless CLI with
+`mise install npm:portless`, then run `portless doctor`. Start/trust the shared
+HTTPS proxy explicitly if requested; this may need administrator access.
+Tasks never change system trust, start/stop that proxy or force aliases.
 
-`Taskfile.yml` includes the files owned by each application and tool. Application
-commands live beside their owner; this directory holds repository automation.
-Existing root commands remain available while callers adopt the explicit namespaces.
+| Operation | Development | Test | Local release image |
+| --- | --- | --- | --- |
+| Build | `dev:build` | `test:build` | `prod:build` |
+| Start | `dev:up` | `test:up` | `prod:up` |
+| Stop | `dev:down` | `test:down` | `prod:down` |
+| Restart | `dev:restart` | `test:restart` | `prod:restart` |
+| Logs | `dev:logs` | `test:logs` | `prod:logs` |
+| Status | `dev:ps` | `test:ps` | `prod:ps` |
+| Synthetic seed | `dev:seed` | `test:seed` | Unavailable |
 
-| File                                             | Scope                                              |
-|--------------------------------------------------|----------------------------------------------------|
-| `../rails/Taskfile.yml`                          | Rails commands and environment includes            |
-| `../rails/tasks/internal.yml`                    | Shared Docker Compose operations                   |
-| `../rails/tasks/dev.yml`                         | Development services and data                      |
-| `../rails/tasks/test.yml`                        | Docker-backed test services                        |
-| `../rails/tasks/local.yml`                       | Host tests with a local database                   |
-| `../rails/tasks/prod.yml`                        | Local production-image checks                      |
-| `../rails/tasks/audit.yml`                       | Audit export and verification                      |
-| `../rails/tasks/lighthouse.yml`                  | Browser quality checks                             |
-| `../rust/Taskfile.yml`                           | Rust API, web and UI package commands              |
-| `../client-tools/Taskfile.yml`                   | CLI and MCP Cargo workspace                        |
-| `../client-tools/openapi-generator/Taskfile.yml` | Native API generation                              |
-| `../docs/Taskfile.yml`                           | Documentation build and preview                    |
-| `../mobile/android/Taskfile.yml`                 | Android build and checks                           |
-| `frontend.yml`                                   | Tailwind CSS, static assets and Playwright runners |
-| `agents.yml`                                     | Translator integration                             |
-| `openspec.yml`                                   | OpenSpec validation and status                     |
-| `worktree.yml`                                   | Worktree creation and cleanup                      |
+Prefix commands with `task`; `task dev` aliases `dev:up`.
+`Taskfiles/compose.yml` holds shared native Compose operations; small environment
+Taskfiles expose their commands. `Taskfiles/host.yml` holds host prerequisites and
+native Rust checks. CI calls `host:test:*` explicitly; local `test:*` uses Docker.
 
-Keep user-facing commands in the file that owns their environment. Put shared
-Compose mechanics in `rails/tasks/internal.yml`.
+The project name hashes the checkout's absolute path. Each environment has
+separate processes, networks, loopback ports and database/storage volumes.
+Compose files/project are explicit and inherited profiles are cleared.
+Existing data volumes require the project's ownership label. Startup migrates
+with the migration identity, then validates a restricted runtime login without
+superuser, database/role creation or RLS bypass privileges. Fixed local role
+administration is a narrow exception because SeaORM cannot manage PostgreSQL roles.
 
-Rails source and Docker configuration still live at the repository root. Only
-its Taskfiles have moved under `rails/`; the source relocation is a separate change.
-`Taskfiles/local.yml` is a compatibility symlink for the existing database-login spec.
+## Public URL
 
-## Namespaces and working directories
+`host:portless` checks the existing trusted HTTPS proxy before building.
+After direct HTTP health, a small Fish adapter registers the project's
+`.localhost` alias and checks trusted HTTPS health with bounded curl retries.
+The current Compose app port proves alias ownership; conflicts fail and down
+removes only a matching alias. No ownership files are created. The proxy must
+serve exclusively `.localhost`, since alias commands affect every configured
+suffix. Hosts-file sync/LAN mode stay disabled. Set `PORTLESS_PORT` for an
+existing proxy on a nondefault port.
 
-Prefer `rails:*`, `rust:api:*`, `rust:web:*`, `rust:ui:*`, `api-clients:*`,
-`client-tools:*`, `mobile:android:*` and `docs:*`.
-The old Rails commands, `api:*`, `api-clients:*` and `android:*`
-remain available. New code should use the explicit namespace.
-
-Root and local invocation use the same commands and working directories:
-
-```fish
-task rails:rubocop
-task -d rails rubocop
-task rust:api:check
-task -d rust/api check
-task client-tools:check
-task -d client-tools check
-task mobile:android:test
-task -d mobile/android test
-task docs:build
-task -d docs build
-```
-
-Rails, API compatibility runners and API generation execute from the repository
-root because they use root-owned Compose, scripts, contracts and output paths.
-The client-tools, Android, web and UI packages execute from their own directories.
-Explicit task directories also make direct local invocation work.
-
-`task rust:build` compiles the UI and API packages. It does not rebuild a running
-container. Existing `api:contract-up` and `rust:api:contract-up` commands build
-and start only a named disposable contract environment; they are not development
-or production restart commands. This refactor does not introduce a Rust development
-runtime or change database-reset behaviour.
-
-## Common commands
+For explicit proxy bypass, choose a free loopback port on first startup:
 
 ```fish
-task test
-task test TEST_FILE=spec/models/person_spec.rb
-task test:preflight
-task rubocop
-task rubocop:test
-task brakeman
+rtk env PORTLESS=0 task dev:up PORT=18150
+rtk env PORTLESS=0 task dev:down
 ```
+
+Subsequent up reuses the owned port. A conflicting port fails visibly.
+The port is known before app start so the trusted public origin matches its URL.
+Normal Portless mode keeps Docker-assigned ports. Production keeps secure cookies;
+its HTTP bypass is health-only. The validated `MEDTRACKER_PUBLIC_ORIGIN` remains
+separate from the internal listen address; forwarded request headers are not trusted.
+
+## Builds and data
+
+Dev/test share pinned Rust/Node tooling. npm dependencies belong to an image
+stage with BuildKit download caching; test/prod share built frontend output.
+Explicit dev source mounts keep image-owned `node_modules` visible.
+One Tailwind watcher scans only assets. Ordinary CSS/JS edits do not compile or
+restart Rust. Tera edits rebuild CSS and restart web with the existing binary.
+
+One cargo-watch builder installs successful dev builds into a dev-owned runtime
+volume. Web/scheduler watch that executable, avoiding duplicate compilation and
+preventing an older test snapshot from replacing the live dev executable.
+Embedded worker JS, icon, security/catalogue/report assets and two reference
+YAML files remain Rust compilation inputs. Cargo fingerprints provide incremental
+reuse. Source-only image builds track `build.rs` itself rather than unavailable
+Git metadata; native checkouts retain their existing Git metadata behaviour.
+
+Every test invocation and `test:up` builds an immutable current source snapshot,
+including allowed uncommitted files. Unchanged layers are cached; secrets, Git
+metadata and build outputs remain excluded. Tests have no source mounts, frontend
+writers or watchers. `test:restart` retains its snapshot; `test:up` refreshes it.
+Rebuild dev after dependency/toolchain changes.
+
+Dev/test share an external target per checkout/native Docker architecture.
+Different live worktrees keep separate targets to prevent executable collisions.
+Registry/Git downloads are global external volumes. Browser downloads use an
+architecture/Ubuntu cache with library-versioned directories. Named volumes avoid
+macOS bind-mount cache I/O. BuildKit npm/release caches remain separate.
+Older cache volumes are never automatically copied or deleted.
+
+Down preserves data/caches. Dev/test reset requires
+`CONFIRM=<exact-project-name>` and removes only that environment's database and
+fixture-storage volumes. External compiler/download caches survive.
+Seed retains the empty-database application guard; populated data is never reset
+or adopted. Production has no public seed/reset commands and never deploys.
+`LOCO_IMAGE=<existing-local-tag>` selects an existing release image for prod up.
+The shell-free, non-root scratch runtime remains unchanged.
+
+## Focused checks
 
 ```fish
-task dev:up
-task dev:seed
-task dev:logs
-task dev:stop
+rtk task test:unit TARGET=med-tracker FILTER=domain_name
+rtk task test:integration TARGET=care_api FILTER=fixture
+rtk task test:browser FILTER=login
+rtk task test:tooling
+rtk task host:fmt
+rtk task host:lint
+rtk task host:test:integration TARGET=care_api FILTER=fixture
 ```
 
-```fish
-task docs:build
-task docs:serve
-task openspec:validate
-```
+Unit TARGET selects a package; integration/browser TARGET selects a test binary.
+FILTER is one argument; zero matches fail. Units start no database/storage.
+Integration/browser services belong to the test project; their harness uses
+restricted roles/template databases. Unfiltered integration retains the ignored
+cross-process template acceptance. `host:ci` (also `ci`) is the native application
+gate; tooling changes use focused tests and image checks.
 
-`task dev:rebuild`, `task test:rebuild`, and `task prod:rebuild` delete the
-selected environment's database volumes. Use them only when a clean database is
-required.
+Previous macOS/ARM64 observations (one sample each): cold Cargo install 4m43s,
+Rust edit/install 20.84s, unchanged install 2.08s. These preceded the public-origin
+correction (subsequent install 1m24s). Different workloads are not a before/after
+speedup comparison. This host-orchestration simplification claims no new compile
+speedup.
 
-RuboCop runs with the Performance plugin and preview behaviour for the next
-major release. The project explicitly keeps its quote and indentation styles,
-selected complexity limits, and file exclusions. Convention offences still fail
-CI. Use `task rubocop:test` to check that performance findings and style failures
-remain enforced when RuboCop or its configuration changes.
-
-## Compose isolation
-
-The shared internal tasks use one `compose.yaml` with `dev`, `test`, and `prod`
-profiles. The Compose project name contains the worktree directory name and a
-hash of its absolute path. This keeps containers, networks, and volumes separate
-between worktrees.
-
-Every internal Compose task requires an `ENVIRONMENT` value. Public task files
-pass that value when they call `internal:*` tasks.
-
-`internal:run` starts a temporary service container through the worktree's
-Compose lock, so pass the complete command once. The root Taskfile defaults to
-`run: once`, which would deduplicate repeated calls to the same task, so every
-internal helper declares `run: always`. These helpers are imperative operations
-where deduplication would silently skip requested work.
-
-## Add a public command
-
-1. Choose the task file that owns the command's environment or purpose.
-2. Reuse an `internal:*` task for shared Compose work.
-3. Pass required values through `vars` — task-level `env` does not cross `task:` calls, so an `internal:*` callee can only forward into its container env values it received through `vars`.
-4. Add a short `desc` so the command appears clearly in `task -l`.
-5. Add a `summary` when the command needs usage examples or safety notes.
-
-Example:
-
-```yaml
-console:
-  desc: Open the development Rails console
-  cmds:
-    - task: internal:run
-      vars:
-        ENVIRONMENT: dev
-        COMMAND: rails console
-```
-
-Use `requires.vars` when a command must refuse missing input. Use environment
-transport for values that can contain spaces or shell metacharacters. Do not
-interpolate untrusted values into a shell command.
-
-## Change an internal task
-
-An internal task can affect development, test, and local production-image
-workflows. Check every caller before changing it:
-
-```fish
-rg 'internal:task-name|task: task-name' Taskfile.yml Taskfiles rails rust
-```
-
-Verify the narrow public commands that use the changed boundary. Run the normal
-repository gates when executable task configuration changes.
-
-## Variables
-
-Common public variables include:
-
-| Variable      | Use                                           |
-|---------------|-----------------------------------------------|
-| `TEST_FILE`   | Limit `task test` to a spec path              |
-| `AUTOCORRECT` | Enable RuboCop correction                     |
-| `NO_CACHE`    | Rebuild a selected image without Docker cache |
-| `COMPONENTS`  | Select RubyUI families for comparison         |
-| `OUTPUT`      | Set an external RubyUI comparison directory   |
-
-Each operator command can define additional required variables. Read its
-`summary` with `task --summary <task-name>` before use.
-
-## Troubleshooting
-
-- If Task cannot find a command, run `task -l` and use its full namespace.
-- If an internal task reports a missing variable, check the caller's `vars` and
-  `env` blocks.
-- If Docker uses an unexpected service or volume, confirm the selected profile
-  and worktree before changing data.
-- A wrapper can call `internal:run` several times in one execution: internal
-  helpers declare `run: always`, so each call runs in order instead of being
-  deduplicated.
+Other owners: `frontend:*`, `client-tools:*`, `api-clients:*`,
+`mobile:android:*`, `docs:*`. `task --list` shows the public commands.

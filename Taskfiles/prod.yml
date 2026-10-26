@@ -1,0 +1,26 @@
+version: "3"
+vars:
+  ENV: prod
+includes:
+  internal:
+    taskfile: compose.yml
+    internal: true
+tasks:
+  up:
+    desc: "Local prod up"
+    cmds: [{task: "internal:up"}]
+  down:
+    desc: "Local prod down"
+    cmds: [{task: "internal:down"}]
+  restart:
+    desc: "Local prod restart"
+    cmds: [{task: "internal:restart"}]
+  logs:
+    desc: "Local prod logs"
+    cmds: [{task: "internal:logs"}]
+  ps:
+    desc: "Local prod ps"
+    cmds: [{task: "internal:ps"}]
+  build:
+    desc: "Local prod build"
+    cmds: [{task: "internal:build"}]

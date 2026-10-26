@@ -4,6 +4,7 @@ logger:
   level: info
   format: compact
 settings:
+  public_origin: <%= get_env(name="MEDTRACKER_PUBLIC_ORIGIN", default="") %>
   time_zone: <%= get_env(name="TZ", default="UTC") %>
   registration:
     invite_only: <%= get_env(name="INVITE_ONLY", default="") %>
