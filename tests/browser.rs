@@ -66,3 +66,6 @@ mod report_clarity;
 
 #[path = "browser/security_entry.rs"]
 mod security_entry;
+
+#[path = "browser/report_table_layout.rs"]
+mod report_table_layout;
