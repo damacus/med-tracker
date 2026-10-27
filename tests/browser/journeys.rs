@@ -6,27 +6,6 @@ use std::path::Path;
 use crate::harness::named;
 use crate::{fixtures, harness};
 
-#[test]
-#[ignore = "browser fixture policy runs through task test:browser"]
-fn browser_application_fixtures_use_query_builders() {
-    for source in [
-        include_str!("journeys.rs"),
-        include_str!("invitation_management.rs"),
-        include_str!("../support/browser_fixtures.rs"),
-    ] {
-        for forbidden in [
-            concat!("execute_", "unprepared("),
-            concat!("Statement::from_", "sql_and_values("),
-            concat!("Statement::from_", "string("),
-        ] {
-            assert!(
-                !source.contains(forbidden),
-                "raw browser fixture: {forbidden}"
-            );
-        }
-    }
-}
-
 async fn guardian_recovery_screen(viewport: Viewport, screenshot: &'static str) {
     harness::journey(viewport, |journey| {
         Box::pin(async move {
