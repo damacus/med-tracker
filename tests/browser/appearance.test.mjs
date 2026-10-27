@@ -6,6 +6,79 @@ import test from 'node:test';
 const source = () => readFileSync('assets/static/js/appearance.js', 'utf8');
 const classes = new Set();
 
+function searchControls(platform, translated) {
+  class Element {
+    constructor(text = '') { this.text = text; this.attributes = {}; this.children = []; this.listeners = {}; }
+    get textContent() { return this.text + this.children.map(child => child.textContent).join(''); }
+    set textContent(text) { this.text = text; this.children = []; }
+    setAttribute(name, value) { this.attributes[name] = value; }
+    addEventListener(name, listener) { this.listeners[name] = listener; }
+    append(...children) { this.children.push(...children); }
+    querySelector(selector) { return this.children.find(child => child.tag === selector); }
+  }
+  const triggers = [new Element('Search'), new Element('Search')];
+  for (const trigger of triggers) trigger.setAttribute('aria-label', 'Open global search');
+  const fields = new Map();
+  const panel = new Element();
+  panel.dataset = { labelsReady: translated ? 'false' : 'true', household: 'synthetic' };
+  panel.querySelector = selector => {
+    if (!fields.has(selector)) fields.set(selector, new Element());
+    return fields.get(selector);
+  };
+  panel.querySelectorAll = () => [];
+  const document = {
+    querySelector() { return panel; },
+    querySelectorAll() { return triggers; },
+    createElement(tag) { const node = new Element(); node.tag = tag; return node; },
+    createTextNode(text) { return new Element(text); },
+    addEventListener() {},
+  };
+  runInNewContext(readFileSync('assets/static/js/global-search.js', 'utf8'), {
+    document, Element, navigator: { platform },
+    fetch: async () => ({ ok: true, json: async () => ({ locale: 'es', labels: translated }) }),
+  });
+  return { triggers, panel };
+}
+
+for (const [platform, hint, shortcut] of [['MacIntel', '⌘K', 'Meta+K'], ['Win32', 'Ctrl+K', 'Control+K']]) {
+  test(`search keeps descriptive names separate from ${platform} shortcut hints`, () => {
+    for (const trigger of searchControls(platform).triggers) {
+      assert.equal(trigger.attributes['aria-label'], 'Open global search');
+      assert.equal(trigger.attributes['aria-keyshortcuts'], shortcut);
+      assert.equal(trigger.querySelector('kbd').textContent, hint);
+      assert.equal(trigger.querySelector('kbd').attributes['aria-hidden'], 'true');
+    }
+  });
+}
+
+test('search retains fetched descriptive names after shortcut hints refresh', async () => {
+  const translated = { open: 'Abrir búsqueda global', open_short: 'Buscar', results: {}, types: {} };
+  const { triggers, panel } = searchControls('MacIntel', translated);
+  await new Promise(setImmediate);
+  assert.equal(panel.dataset.labelsReady, 'true');
+  for (const trigger of triggers) {
+    assert.equal(trigger.attributes['aria-label'], translated.open);
+    assert.equal(trigger.textContent, 'Buscar ⌘K');
+    assert.equal(trigger.attributes['aria-keyshortcuts'], 'Meta+K');
+    assert.equal(trigger.querySelector('kbd').attributes['aria-hidden'], 'true');
+  }
+});
+
+test('navigation leaves standalone validation pages without a household drawer intact', async () => {
+  const listeners = {};
+  const header = { querySelector() { throw Error('standalone header must not be replaced'); } };
+  const document = {
+    querySelector(selector) { return selector === '.shell-header' ? header : null; },
+    getElementById() { return {}; },
+    addEventListener(name, listener) { listeners[name] = listener; },
+  };
+  runInNewContext(readFileSync('assets/static/js/app-navigation.js', 'utf8'), {
+    document, window: {}, navigator: {}, sessionStorage: { getItem() { return null; } },
+  });
+  await Promise.resolve();
+  assert.doesNotThrow(() => listeners['app-navigation']({ detail: { labels: {} } }));
+});
+
 test('login reuses the original Rails brand and benefit artwork', () => {
   const sprite = readFileSync('assets/static/auth-icons.svg', 'utf8');
   for (const file of [

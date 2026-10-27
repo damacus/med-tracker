@@ -94,7 +94,8 @@
     const sidebar = document.querySelector('.app-sidebar');
     const sidebarTrigger = document.querySelector('[data-sidebar-account]');
     const template = document.getElementById('app-navigation-template');
-    if (!header || !template || !data?.labels || installed) return;
+    const layout = document.querySelector('[data-app-drawer-layout]');
+    if (!header || !template || !layout || !data?.labels || installed) return;
     const labels = data.labels;
     const searchTrigger = header?.querySelector('[data-global-search-trigger]');
     const appearanceTrigger = header?.querySelector('[data-dialog-open="appearance-dialog"]');
@@ -139,7 +140,6 @@
       panel.append(top);
     };
     const drawer = trigger => {
-      const layout = document.querySelector('[data-app-drawer-layout]');
       const toggle = layout.querySelector('.drawer-toggle');
       const content = layout.querySelector('.drawer-content');
       const side = layout.querySelector('.drawer-side');

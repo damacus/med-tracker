@@ -62,10 +62,12 @@ async fn cancellation_state(admin: &sea_orm::DatabaseConnection) -> (Vec<members
 }
 
 async fn capture(page: &Page, name: &str) {
-    expect(page.locator("body[data-navigation-ready]"))
-        .to_be_visible()
-        .await
-        .unwrap();
+    if page.locator("body.app-household").count().await.unwrap() > 0 {
+        expect(page.locator("body[data-navigation-ready]"))
+            .to_be_visible()
+            .await
+            .unwrap();
+    }
     assert!(
         !page
             .evaluate::<(), bool>(
