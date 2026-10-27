@@ -42,13 +42,20 @@ tasks:
       - task: unit-extras
   integration:
     desc: "Run Docker integration tests; TARGET and FILTER narrow selection"
+    vars:
+      API_RUN_ID:
+        sh: uuidgen
     cmds:
+      - defer:
+          task: run
+          vars:
+            COMMAND: 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo run --locked --example api-fixtures -- cleanup'
       - task: internal:build
       - task: internal:caches
       - task: internal:services
       - task: run
         vars:
-          COMMAND: 'cargo nextest run --locked --profile api --no-tests=fail {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} {{.FILTER | default "" | shellQuote}}'
+          COMMAND: 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo nextest run --locked --profile api --no-tests=fail {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} {{.FILTER | default "" | shellQuote}} {{.CLI_ARGS}}'
       - task: acceptance-process
   browser:
     desc: "Run Docker browser tests; TARGET and FILTER narrow selection"
@@ -77,7 +84,7 @@ tasks:
         vars: {COMMAND: cargo test --locked --workspace --doc}
   acceptance-process:
     internal: true
-    status: ['test -n {{printf "%s%s" (.TARGET | default "") (.FILTER | default "") | shellQuote}}']
+    status: ['test -n {{printf "%s%s%s" (.TARGET | default "") (.FILTER | default "") .CLI_ARGS | shellQuote}}']
     cmds:
       - task: run
         vars:

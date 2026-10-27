@@ -1,48 +1,51 @@
 use super::*;
 use base64::{Engine, engine::general_purpose::STANDARD};
+use med_tracker::models::_entities as rows;
 use std::io::{Cursor, Read};
 
 const PASSPHRASE: &str = "synthetic portable secret";
 
 fn export_url(app: &Application, mode: &str) -> String {
-    format!("{}/api/v1/households/72001/data_exports/{mode}", app.origin)
+    let fixture_household_id = app.fixture.household.id;
+    format!(
+        "{}/api/v1/households/{fixture_household_id}/data_exports/{mode}",
+        app.origin
+    )
 }
 
 async fn exported_events(app: &Application, mode: &str) -> i64 {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            format!(
-                "SELECT count(*) AS count FROM security_audit_events WHERE event_type='portable_data.exported' AND metadata->>'export_mode'='{mode}'"
-            ),
-        ))
+    super::portable_imports::audit_fields(app, "portable_data.exported", &[("export_mode", mode)])
         .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
-        .unwrap()
 }
 
 #[tokio::test]
 async fn data_export_health_data_json_returns_the_documented_shape() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared(
-        "INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79003,72001,'Unreferenced shelf',now(),now()); INSERT INTO medications(id,household_id,location_id,name,created_at,updated_at) VALUES(80003,72001,79003,'Unreferenced stock',now(),now())"
-    ).await.unwrap();
-    let portable = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT portable_id FROM medications WHERE id=80003) AS med_pid,(SELECT portable_id FROM locations WHERE id=79003) AS loc_pid,(SELECT portable_id FROM medications WHERE id=80001) AS linked_med_pid",
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    let med_pid: String = portable.try_get("", "med_pid").unwrap();
-    let loc_pid: String = portable.try_get("", "loc_pid").unwrap();
-    let linked_med_pid: String = portable.try_get("", "linked_med_pid").unwrap();
+    let now = chrono::Utc::now().naive_utc();
+    let location = rows::locations::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        name: Set("Unreferenced shelf".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let stock = rows::medications::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        location_id: Set(location.id),
+        name: Set(Some("Unreferenced stock".into())),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let med_pid = stock.portable_id;
+    let loc_pid = location.portable_id;
+    let linked_med_pid = app.fixture.medication.portable_id.clone();
     let token = app.token().await;
     let response = app
         .client
@@ -59,18 +62,16 @@ async fn data_export_health_data_json_returns_the_documented_shape() {
         .map(str::to_owned);
     let body: Value = response.json().await.unwrap();
     let audits = exported_events(&app, "health_data_json").await;
-    let requests: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/data_exports' AND metadata->>'action'='show' AND metadata->>'status'='200'",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
-        .unwrap();
+    let requests = super::portable_imports::audit_fields(
+        &app,
+        "api.request",
+        &[
+            ("controller", "api/v1/data_exports"),
+            ("action", "show"),
+            ("status", "200"),
+        ],
+    )
+    .await;
     app.close().await;
     assert_eq!(status, 200);
     assert_eq!(cache_control.as_deref(), Some("no-store"));
@@ -282,7 +283,9 @@ async fn data_export_encrypted_migration_bundle_requires_a_passphrase() {
 #[tokio::test]
 async fn data_export_rejects_unknown_modes_and_anonymous_requests() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(99999).await;
+    let foreign = app.fixture.foreign_household().await;
+    let foreign_id = foreign.household.id;
+    foreign.close().await;
     let token = app.token().await;
     let invalid = app
         .client
@@ -313,7 +316,7 @@ async fn data_export_rejects_unknown_modes_and_anonymous_requests() {
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/99999/data_exports/health_data_json",
+            "{}/api/v1/households/{foreign_id}/data_exports/health_data_json",
             app.origin
         ))
         .bearer_auth(&token)

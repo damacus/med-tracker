@@ -6,6 +6,11 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+test("Docker and host tests use the same pinned nextest release", () => {
+  const release = read("mise.toml").match(/"cargo:cargo-nextest" = "([0-9.]+)"/)?.[1];
+  assert.ok(release, "mise must pin nextest");
+  assert.match(read("Dockerfile"), new RegExp(`cargo install --locked cargo-nextest --version ${release.replaceAll(".", "\\.")}\\s`));
+});
 test("public test runs every lane and propagates integration failures", () => {
   const directory = mkdtempSync(join(tmpdir(), "medtracker-test-lanes-"));
   const executable = join(directory, "docker");
@@ -27,7 +32,12 @@ if (process.env.FAIL_INTEGRATION === "1" && args.includes("nextest") && args.inc
       const log = join(directory, `calls-${fail}.jsonl`);
       const result = spawnSync("task", ["test"], {encoding:"utf8", env:{...process.env, TARGET:"", FILTER:"", PATH:`${directory}:${process.env.PATH}`, COMPOSE_CALL_LOG:log, FAIL_INTEGRATION:fail ? "1" : "0"}});
       const calls = readFileSync(log, "utf8").trim().split("\n").map(JSON.parse);
-      const commands = calls.filter(args => args.includes("--no-deps")).map(args => args.slice(args.indexOf("--no-deps")+2).join(" "));
+      const allCommands = calls.filter(args => args.includes("--no-deps")).map(args => args.slice(args.indexOf("--no-deps")+2).join(" "));
+      const cleanup = allCommands.filter(command => command.includes("api-fixtures -- cleanup"));
+      assert.equal(cleanup.length, 1, "run cleanup after successful or failed integration");
+      const integration = allCommands.find(command => command.includes("nextest") && command.includes("--profile api"));
+      assert.equal(cleanup[0].match(/MEDTRACKER_TEST_RUN_ID=([^ ]+)/)?.[1], integration.match(/MEDTRACKER_TEST_RUN_ID=([^ ]+)/)?.[1]);
+      const commands = allCommands.filter(command => !command.includes("api-fixtures -- cleanup"));
       if (fail) {
         assert.notEqual(result.status, 0, "integration failure must fail task test");
         assert.equal(commands.some(command => command.includes("--test browser")), false);
@@ -97,12 +107,15 @@ test("native integration and browser commands preserve focused arguments", () =>
     const result = spawnSync("task", ["--dry", "--verbose", `test:${kind}`, "TARGET=requests", "FILTER=two words"], {encoding:"utf8"});
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout + result.stderr;
-    assert.match(output, /run --rm --no-deps tool cargo nextest.*--test requests.*'two words'/);
+    assert.match(output, /run --rm --no-deps tool (?:env MEDTRACKER_TEST_RUN_ID=[\da-f-]+ )?cargo nextest.*--test requests.*'two words'/i);
     if (kind === "integration") assert.match(output, /nextest run.*--profile api/);
     else assert.doesNotMatch(output, /--profile api/);
     assert.match(output, /up -d --wait postgres rustfs/);
     assert.doesNotMatch(output, /\] task test:run/);
   }
+  const combined = spawnSync("task", ["--dry", "--verbose", "test:integration", "TARGET=care_doses", "--", "--test", "care_medications"], {encoding:"utf8"});
+  assert.equal(combined.status, 0, combined.stderr);
+  assert.match(combined.stdout + combined.stderr, /nextest.*--test care_doses.*--test care_medications/);
 });
 test("resolved Compose retains cache sharing, isolated data and native builder", () => {
   const configs = [["dev", "3"], ["test", "3"], ["test", undefined]].map(([environment, threads]) => {

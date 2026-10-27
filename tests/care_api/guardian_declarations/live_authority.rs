@@ -1,11 +1,19 @@
 use super::super::platform::{form_page, hidden_field, post_form, sign_in};
 use super::{Application, effects, require, withdrawal::declaration};
-use sea_orm::{ConnectionTrait, DbBackend, DbErr, Statement, TransactionTrait};
+use med_tracker::models::_entities::{
+    accounts, audit_ledger_entries, carer_relationships, household_memberships, people,
+    person_access_grants, schedules, security_audit_events, versions,
+};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, DbErr, EntityTrait, IntoActiveModel,
+    PaginatorTrait, QueryFilter, Set, Statement, TransactionTrait,
+    sea_query::{Alias, Expr, ExprTrait, Func, Query},
+};
 use serde_json::{Value, json};
 use std::time::Duration;
 
-fn schedule_body(subject: i64) -> Value {
-    json!({"schedule":{"person_id":subject.to_string(),"medication_id":"80001","dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}})
+fn schedule_body(app: &Application, subject: i64) -> Value {
+    json!({"schedule":{"person_id":subject.to_string(),"medication_id":app.fixture.medication.id.to_string(),"dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}})
 }
 
 async fn schedule(
@@ -13,20 +21,25 @@ async fn schedule(
     token: &str,
     subject: i64,
 ) -> Result<reqwest::Response, DbErr> {
+    let household = app.fixture.household.id;
     app.client
-        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .post(format!(
+            "{}/api/v1/households/{household}/schedules",
+            app.origin
+        ))
         .bearer_auth(token)
-        .json(&schedule_body(subject))
+        .json(&schedule_body(app, subject))
         .send()
         .await
         .map_err(|_| DbErr::Custom("Live guardian plan request failed before response".into()))
 }
 
 async fn manageable(app: &Application, token: &str, subject: i64) -> Result<bool, DbErr> {
+    let household = app.fixture.household.id;
     let response = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/ui_capabilities",
+            "{}/api/v1/households/{household}/ui_capabilities",
             app.origin
         ))
         .bearer_auth(token)
@@ -78,22 +91,67 @@ async fn authority(
 }
 
 async fn legacy_fixture(app: &Application) -> Result<(), DbErr> {
-    app.fixture.admin.execute_unprepared(
-        "UPDATE public.accounts SET preferences=jsonb_set(COALESCE(preferences,'{}'::jsonb),'{time_zone}','\"UTC\"') WHERE id=71001;
-         INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78991,72001,74001,73003,'manage','family_member',now(),now())"
-    ).await?;
+    let mut account = app.fixture.account.clone().into_active_model();
+    let mut preferences = app.fixture.account.preferences.clone();
+    preferences["time_zone"] = json!("UTC");
+    account.preferences = Set(preferences);
+    account.update(&app.fixture.admin).await?;
+    let now = chrono::Utc::now().naive_utc();
+    person_access_grants::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        household_membership_id: Set(app.fixture.membership.id),
+        person_id: Set(app.fixture.dependent.id),
+        access_level: Set("manage".into()),
+        relationship_type: Set("family_member".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await?;
     Ok(())
 }
 
 async fn unchanged_alternatives(app: &Application, token: &str) -> Result<(), DbErr> {
-    authority(app, token, 73001, true).await?;
-    authority(app, token, 73003, false).await
+    authority(app, token, app.fixture.adult.id, true).await?;
+    authority(app, token, app.fixture.dependent.id, false).await
 }
 
 async fn declaration_state(app: &Application, id: i64) -> Result<Value, DbErr> {
-    app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT jsonb_build_object('withdrawn',d.withdrawn_at IS NOT NULL,'revision',d.revision,'local_active',c.active,'withdrawals',(SELECT count(*) FROM public.versions v WHERE v.item_type='GuardianDeclaration' AND v.item_id=d.id AND v.event='withdraw'),'subject_grants',(SELECT count(*) FROM public.person_access_grants g WHERE g.person_id=d.subject_person_id)) AS state FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.household_id=72001 WHERE d.id=$1",
-        [id.into()])).await?.ok_or_else(||DbErr::Custom("Expected committed guardian provenance".into()))?.try_get("","state")
+    let query = Query::select()
+        .column("subject_person_id")
+        .column("revision")
+        .expr_as(Expr::col("withdrawn_at").is_not_null(), "withdrawn")
+        .from("guardian_declarations")
+        .and_where(Expr::col("id").eq(id))
+        .to_owned();
+    let declaration = app
+        .fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await?
+        .ok_or_else(|| DbErr::Custom("Expected committed guardian provenance".into()))?;
+    let subject: i64 = declaration.try_get("", "subject_person_id")?;
+    let link = carer_relationships::Entity::find()
+        .filter(carer_relationships::Column::GuardianDeclarationId.eq(id))
+        .filter(carer_relationships::Column::HouseholdId.eq(app.fixture.household.id))
+        .one(&app.fixture.admin)
+        .await?
+        .ok_or_else(|| DbErr::Custom("Expected committed guardian provenance".into()))?;
+    let withdrawals = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("GuardianDeclaration"))
+        .filter(versions::Column::ItemId.eq(id))
+        .filter(versions::Column::Event.eq("withdraw"))
+        .count(&app.fixture.admin)
+        .await?;
+    let grants = person_access_grants::Entity::find()
+        .filter(person_access_grants::Column::PersonId.eq(subject))
+        .count(&app.fixture.admin)
+        .await?;
+    Ok(
+        json!({"withdrawn":declaration.try_get::<bool>("","withdrawn")?,"revision":declaration.try_get::<i64>("","revision")?,
+    "local_active":link.active,"withdrawals":withdrawals,"subject_grants":grants}),
+    )
 }
 
 async fn withdraw(app: &Application, token: &str, id: i64) -> Result<reqwest::Response, DbErr> {
@@ -112,27 +170,36 @@ async fn withdraw(app: &Application, token: &str, id: i64) -> Result<reqwest::Re
 #[tokio::test]
 async fn guardian_authority_stops_at_eighteenth_birthday_without_retyping() -> Result<(), DbErr> {
     let app = Application::new().await;
-    let result=async {
-        let token=app.token().await;
+    let result = async {
+        let token = app.token().await;
         legacy_fixture(&app).await?;
-        let (subject,id)=declaration(&app,&token).await?;
-        app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "UPDATE public.people SET date_of_birth=(timezone('UTC',clock_timestamp())::date-interval '18 years'+interval '1 day')::date WHERE id=$1",[subject.into()])).await?;
-        authority(&app,&token,subject,true).await?;
-        unchanged_alternatives(&app,&token).await?;
-        let before=declaration_state(&app,id).await?;
-        app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "UPDATE public.people SET date_of_birth=(timezone('UTC',clock_timestamp())::date-interval '18 years')::date WHERE id=$1",[subject.into()])).await?;
-        authority(&app,&token,subject,false).await?;
-        unchanged_alternatives(&app,&token).await?;
-        require(declaration_state(&app,id).await?==before,"Birthday must not withdraw or manufacture declaration authority")?;
-        let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT person_type,(SELECT count(*) FROM public.accounts WHERE person_id=$1) AS accounts FROM public.people WHERE id=$1",[subject.into()])).await?
-            .ok_or_else(||DbErr::Custom("Birthday subject must remain present".into()))?;
-        require(row.try_get::<i32>("","person_type")?==1 && row.try_get::<i64>("","accounts")?==0,
-            "Eighteenth birthday must not silently retype or create an Account")?;
+        let (subject, id) = declaration(&app, &token).await?;
+        birthday(&app, subject, true).await?;
+        authority(&app, &token, subject, true).await?;
+        unchanged_alternatives(&app, &token).await?;
+        let before = declaration_state(&app, id).await?;
+        birthday(&app, subject, false).await?;
+        authority(&app, &token, subject, false).await?;
+        unchanged_alternatives(&app, &token).await?;
+        require(
+            declaration_state(&app, id).await? == before,
+            "Birthday must not withdraw or manufacture declaration authority",
+        )?;
+        let person = people::Entity::find_by_id(subject)
+            .one(&app.fixture.admin)
+            .await?
+            .ok_or_else(|| DbErr::Custom("Birthday subject must remain present".into()))?;
+        let accounts = accounts::Entity::find()
+            .filter(accounts::Column::PersonId.eq(subject))
+            .count(&app.fixture.admin)
+            .await?;
+        require(
+            person.person_type == 1 && accounts == 0,
+            "Eighteenth birthday must not silently retype or create an Account",
+        )?;
         Ok(())
-    }.await;
+    }
+    .await;
     app.close().await;
     result
 }
@@ -147,9 +214,10 @@ async fn guardian_capacity_loss_stops_derived_authority_only() -> Result<(), DbE
         authority(&app, &token, subject, true).await?;
         unchanged_alternatives(&app, &token).await?;
         let before = declaration_state(&app, id).await?;
-        app.fixture
-            .admin
-            .execute_unprepared("UPDATE public.people SET has_capacity=false WHERE id=73001")
+        people::Entity::update_many()
+            .col_expr(people::Column::HasCapacity, Expr::val(false))
+            .filter(people::Column::Id.eq(app.fixture.adult.id))
+            .exec(&app.fixture.admin)
             .await?;
         authority(&app, &token, subject, false).await?;
         unchanged_alternatives(&app, &token).await?;
@@ -167,6 +235,7 @@ async fn guardian_capacity_loss_stops_derived_authority_only() -> Result<(), DbE
 #[tokio::test]
 async fn household_manager_removes_local_link_without_withdrawing_personal_declaration()
 -> Result<(), DbErr> {
+    crate::authentication_fixture::reset_source_quota().await;
     let mut app = Application::new().await;
     let result=async {
         app.client=reqwest::Client::builder().timeout(Duration::from_secs(5))
@@ -176,24 +245,27 @@ async fn household_manager_removes_local_link_without_withdrawing_personal_decla
         legacy_fixture(&app).await?;
         let (subject,id)=declaration(&app,&token).await?;
         authority(&app,&token,subject,true).await?;
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Synthetic local manager','1990-01-01',0,true,now(),now());
-             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71992,73992,'local-guardian-manager@example.test',2,now(),now());
-             INSERT INTO public.users(id,person_id,email_address,active,created_at,updated_at) VALUES(77992,73992,'local-guardian-manager@example.test',true,now(),now());
-             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74992,72001,73992,'administrator','active',now(),now(),now())"
-        ).await?;
-        crate::fixtures::seed_native_password(&app.fixture.admin,71992).await;
-        let cookie=sign_in(&app,71992,"local-guardian-manager@example.test").await;
-        let (cookies,page)=form_page(&app,&cookie,&format!("/households/persistence-fixture/people/{subject}/carer_relationships")).await;
+let manager=crate::scenario::Scenario::new().await;
+let now=chrono::Utc::now().naive_utc();
+household_memberships::ActiveModel {
+    household_id:Set(app.fixture.household.id),person_id:Set(manager.account.person_id),
+    role:Set("administrator".into()),status:Set("active".into()),joined_at:Set(now),
+    created_at:Set(now),updated_at:Set(now),..Default::default()
+}.insert(&app.fixture.admin).await?;
+let cookie=sign_in(&app,manager.account.id,&manager.account.email).await;
+let slug=&app.fixture.household.slug;
+        let (cookies,page)=form_page(&app,&cookie,&format!("/households/{slug}/people/{subject}/carer_relationships")).await;
         let csrf=hidden_field(&page,"authenticity_token");
         let version=hidden_field(&page,"version");
         require(!csrf.is_empty() && !version.is_empty(),"Local manager must reach the actual protected removal form")?;
-        let link=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT id FROM public.carer_relationships WHERE guardian_declaration_id=$1 AND household_id=72001",[id.into()])).await?
-            .ok_or_else(||DbErr::Custom("Expected active local declaration link".into()))?.try_get::<i64>("","id")?;
-        let removed=post_form(&app,&cookies,&format!("/households/persistence-fixture/people/{subject}/carer_relationships/{link}/remove"),
+let link=carer_relationships::Entity::find().filter(carer_relationships::Column::GuardianDeclarationId.eq(id))
+    .filter(carer_relationships::Column::HouseholdId.eq(app.fixture.household.id)).one(&app.fixture.admin).await?
+    .ok_or_else(||DbErr::Custom("Expected active local declaration link".into()))?.id;
+
+        let removed=post_form(&app,&cookies,&format!("/households/{slug}/people/{subject}/carer_relationships/{link}/remove"),
             &[("authenticity_token",csrf.as_str()),("version",version.as_str()),("locale","en")]).await;
         require(removed.status().as_u16()==303,"A different live household manager must be able to remove the local care link")?;
+        manager.close().await;
         authority(&app,&token,subject,false).await?;
         unchanged_alternatives(&app,&token).await?;
         let state=declaration_state(&app,id).await?;
@@ -205,7 +277,7 @@ async fn household_manager_removes_local_link_without_withdrawing_personal_decla
         require(own.status().as_u16()==200,"Guardian must retain own declaration read after local removal")?;
         let own:Value=own.json().await.map_err(|_|DbErr::Custom("Own declaration refresh must be JSON".into()))?;
         let expected_id=id.to_string();
-        require(own["data"].as_array().is_some_and(|rows|rows.iter().any(|row|row["id"].as_str()==Some(expected_id.as_str()) && row["withdrawn_at"].is_null())),
+        require(own["data"].as_array().is_some_and(|rows|rows.iter().any(|row|row["id"].as_str()==Some(expected_id.as_str()) && serde_json::Value::is_null(&row["withdrawn_at"]))),
             "Personal declaration must remain Recorded after household-local removal")?;
         Ok(())
     }.await;
@@ -284,40 +356,7 @@ async fn blocked_waiter(app: &Application, blocker: i32) -> Result<i32, DbErr> {
 }
 
 async fn second_native_token(app: &Application) -> Result<String, DbErr> {
-    app.fixture.admin.execute_unprepared(
-        "INSERT INTO public.oauth_grants(id,account_id,oauth_application_id,client_kind,code,code_challenge,code_challenge_method,redirect_uri,scopes,expires_in,authenticated_at,last_used_at,created_at,updated_at) VALUES(76993,71001,75001,'mobile','synthetic-guardian-race-code','E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM','S256','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',now()+interval '5 minutes',now(),now(),now(),now())"
-    ).await?;
-    let encoded = serde_urlencoded::to_string([
-        ("grant_type", "authorization_code"),
-        ("client_id", "native"),
-        ("code", "synthetic-guardian-race-code"),
-        ("redirect_uri", "io.damacus.medtracker:/oauth2redirect"),
-        (
-            "code_verifier",
-            "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-        ),
-    ])
-    .map_err(|_| DbErr::Custom("Second native exchange encoding failed".into()))?;
-    let response = app
-        .client
-        .post(format!("{}/token", app.origin))
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(encoded)
-        .send()
-        .await
-        .map_err(|_| DbErr::Custom("Second native exchange failed before response".into()))?;
-    require(
-        response.status().as_u16() == 200,
-        "Race must use two genuinely issued distinct native credentials",
-    )?;
-    let response: Value = response
-        .json()
-        .await
-        .map_err(|_| DbErr::Custom("Second native exchange must return JSON".into()))?;
-    response["access_token"]
-        .as_str()
-        .map(str::to_owned)
-        .ok_or_else(|| DbErr::Custom("Second native access token missing".into()))
+    super::security::native_token(app, app.fixture.account.id).await
 }
 
 #[tokio::test]
@@ -341,9 +380,9 @@ async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() 
             .await?.ok_or_else(||DbErr::Custom("Owned gate backend PID missing".into()))?.try_get::<i32>("","pid")?;
         gate.execute_unprepared("SELECT pg_advisory_xact_lock(1746879441,93)").await?;
         let client=app.client.clone();
-        let endpoint=format!("{}/api/v1/households/72001/schedules",app.origin);
+        let endpoint=format!("{}/api/v1/households/{}/schedules",app.origin,app.fixture.household.id);
         let plan_token=token.clone();
-        let body=schedule_body(subject);
+        let body=schedule_body(&app, subject);
         let mut plan=PendingRequest(tokio::spawn(async move {client.post(endpoint).bearer_auth(plan_token).json(&body).send().await}));
         let plan_pid=blocked_waiter(&app,gate_pid).await?;
         let client=app.client.clone();
@@ -368,18 +407,70 @@ async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() 
         let plan_id=saved["data"]["id"].as_i64().ok_or_else(||DbErr::Custom("Concurrent plan ID missing".into()))?;
         let withdrawn=withdrawal.finish().await?;
         require(withdrawn.status().as_u16()==200,"Waiting withdrawal must commit after the authorised plan and audit")?;
-        let audit=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT (SELECT count(*) FROM public.versions WHERE item_type='Schedule' AND item_id=$1 AND event='create') AS plan_versions,(SELECT count(*) FROM public.audit_ledger_entries l JOIN public.versions v ON l.source_table='versions' AND l.source_id=v.id WHERE v.item_type='Schedule' AND v.item_id=$1 AND v.event='create') AS plan_ledger,(SELECT count(*) FROM public.schedules WHERE id=$1 AND person_id=$2) AS plans,(SELECT count(*) FROM public.security_audit_events WHERE request_id=$3 AND actor_account_id=71001 AND event_type='api.request' AND metadata->>'status'='201') AS account_fk_audits",
-            [plan_id.into(),subject.into(),plan_request.into()])).await?.ok_or_else(||DbErr::Custom("Concurrent plan audit facts missing".into()))?;
-        require(audit.try_get::<i64>("","plans")?==1 && audit.try_get::<i64>("","plan_versions")?==1 && audit.try_get::<i64>("","plan_ledger")?==1
-            && audit.try_get::<i64>("","account_fk_audits")?==1,
-            "The authorised plan, version/ledger and real Account-FK request audit must remain committed after withdrawal")?;
+        let version_ids=Query::select().column("id").from("versions")
+            .and_where(Expr::col("item_type").eq("Schedule"))
+            .and_where(Expr::col("item_id").eq(plan_id))
+            .and_where(Expr::col("event").eq("create")).to_owned();
+        let plan_versions=versions::Entity::find().filter(versions::Column::Id.in_subquery(version_ids.clone()))
+            .count(&app.fixture.admin).await?;
+        let plan_ledger=audit_ledger_entries::Entity::find()
+            .filter(audit_ledger_entries::Column::SourceTable.eq("versions"))
+            .filter(audit_ledger_entries::Column::SourceId.in_subquery(version_ids))
+            .count(&app.fixture.admin).await?;
+        let plans=schedules::Entity::find_by_id(plan_id).filter(schedules::Column::PersonId.eq(subject))
+            .count(&app.fixture.admin).await?;
+        let account_fk_audits=security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::RequestId.eq(&plan_request))
+            .filter(security_audit_events::Column::ActorAccountId.eq(app.fixture.account.id))
+            .filter(security_audit_events::Column::EventType.eq("api.request"))
+            .filter(Expr::expr(Func::cust("jsonb_extract_path_text").args([
+                Expr::col(security_audit_events::Column::Metadata),Expr::val("status")])).eq("201"))
+            .count(&app.fixture.admin).await?;
+        require(plans==1 && plan_versions==1 && plan_ledger==1 && account_fk_audits==1,
+            &format!("The authorised plan, version/ledger and real Account-FK request audit must remain committed after withdrawal: plans={plans}, plan_versions={plan_versions}, plan_ledger={plan_ledger}, account_fk_audits={account_fk_audits}"))?;
         let state=declaration_state(&app,id).await?;
         require(state["withdrawn"]==true && state["withdrawals"]==1,"Concurrent withdrawal must commit exactly one terminal event")?;
         require(effects(&app).await?["people"]==before["people"],"Concurrent authority transition must not manufacture identities")?;
         authority(&app,&token,subject,false).await?;
         Ok(())
     }.await;
+    let cleanup = app
+        .fixture
+        .admin
+        .execute_unprepared(
+            "DROP TRIGGER IF EXISTS synthetic_guardian_plan_audit_gate ON public.versions;
+     DROP FUNCTION IF EXISTS public.synthetic_guardian_plan_audit_gate()",
+        )
+        .await;
     app.close().await;
+    cleanup?;
+
     result
+}
+
+async fn birthday(app: &Application, subject: i64, tomorrow: bool) -> Result<(), DbErr> {
+    let today = Expr::expr(
+        Func::cust("timezone").args([Expr::val("UTC"), Expr::expr(Func::cust("clock_timestamp"))]),
+    )
+    .cast_as(Alias::new("date"));
+    let birthday = today.sub(Func::cust("make_interval").arg(Expr::val(18)));
+    let birthday = if tomorrow {
+        birthday.add(Func::cust("make_interval").args([
+            Expr::val(0),
+            Expr::val(0),
+            Expr::val(0),
+            Expr::val(1),
+        ]))
+    } else {
+        birthday
+    };
+    people::Entity::update_many()
+        .col_expr(
+            people::Column::DateOfBirth,
+            birthday.cast_as(Alias::new("date")),
+        )
+        .filter(people::Column::Id.eq(subject))
+        .exec(&app.fixture.admin)
+        .await?;
+    Ok(())
 }

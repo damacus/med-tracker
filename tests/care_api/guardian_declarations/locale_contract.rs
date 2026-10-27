@@ -3,15 +3,20 @@ use super::super::{
     platform::{hidden_field, response_cookies, sign_in},
 };
 use super::{Application, create, dependent, effects, require, withdrawal::no_store};
-use sea_orm::{ConnectionTrait, DbBackend, DbErr, Statement};
+use sea_orm::{
+    ConnectionTrait, DbErr,
+    sea_query::{Expr, ExprTrait, Query},
+};
 use serde_json::{Value, json};
 
 #[tokio::test]
 async fn guardian_creation_form_and_validation_keep_selected_declaration_language()
 -> Result<(), DbErr> {
+    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
+    let slug = &app.fixture.household.slug;
     let result=async {
-        let cookie=sign_in(&app,71001,"persistence@example.test").await;
+        let cookie=sign_in(&app,app.fixture.account.id,&app.fixture.account.email).await;
         let public=app.context.config.server.full_url();
         let public_url=url::Url::parse(&public).map_err(|_|DbErr::Custom("Maintained browser origin must be valid".into()))?;
         let host=public_url.host_str().ok_or_else(||DbErr::Custom("Maintained browser host missing".into()))?;
@@ -26,7 +31,7 @@ async fn guardian_creation_form_and_validation_keep_selected_declaration_languag
         ] {
             let labels:Value=serde_yaml_ng::from_str(source)
                 .map_err(|_|DbErr::Custom("Maintained declaration translations must parse".into()))?;
-            let response=app.client.get(format!("{}/households/persistence-fixture/people/new",app.origin))
+            let response=app.client.get(format!("{}/households/{slug}/people/new",app.origin))
                 .header("cookie",&cookie).header("accept-language",language).send().await
                 .map_err(|_|DbErr::Custom("Selected-language creation form failed before response".into()))?;
             require(response.status().as_u16()==200,"Genuine guardian must reach the existing creation form")?;
@@ -39,7 +44,7 @@ async fn guardian_creation_form_and_validation_keep_selected_declaration_languag
                 ("name","Synthetic localized declared dependent"),("date_of_birth","2020-01-01"),
                 ("person_type","minor"),("has_capacity","false"),("authenticity_token",csrf.as_str())
             ]).map_err(|_|DbErr::Custom("Localized validation form encoding failed".into()))?;
-            let invalid=app.client.post(format!("{}/households/persistence-fixture/people",app.origin))
+            let invalid=app.client.post(format!("{}/households/{slug}/people",app.origin))
                 .header("cookie",&cookies).header("accept-language",language)
                 .header("host",&authority).header("origin",public.trim_end_matches('/'))
                 .header("content-type","application/x-www-form-urlencoded").body(encoded).send().await
@@ -152,8 +157,10 @@ async fn guardian_existing_create_list_and_withdraw_wire_match_openapi() -> Resu
         let create_response=response_contract(doc,create_path,"post","201")?;
         documented_value(doc,&create_response["content"]["application/json"]["schema"],&created,"declared dependent creation response")?;
         let subject=created["data"]["id"].as_i64().ok_or_else(||DbErr::Custom("Created dependent ID missing".into()))?;
-        let id=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT id FROM public.guardian_declarations WHERE subject_person_id=$1 AND guardian_person_id=73001",[subject.into()]))
+        let query = Query::select().column("id").from("guardian_declarations")
+            .and_where(Expr::col("subject_person_id").eq(subject))
+            .and_where(Expr::col("guardian_person_id").eq(app.fixture.adult.id)).to_owned();
+        let id = app.fixture.admin.query_one_raw(app.fixture.admin.get_database_backend().build(&query))
             .await?.ok_or_else(||DbErr::Custom("Genuinely created declaration ID missing".into()))?.try_get::<i64>("","id")?;
         let listed=app.client.get(format!("{}/api/v1/auth/guardian-declarations?limit=1",app.origin)).bearer_auth(&token).send().await
             .map_err(|_|DbErr::Custom("Documented own declaration list failed before response".into()))?;

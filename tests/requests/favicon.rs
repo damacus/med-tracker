@@ -2,7 +2,7 @@ use super::*;
 
 #[tokio::test]
 async fn favicon_is_public_and_serves_the_existing_png() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_shared_fixture().await;
     let request = server(&boot);
     let response = request.get("/favicon.ico").await;
     let status = response.status_code();
@@ -11,7 +11,7 @@ async fn favicon_is_public_and_serves_the_existing_png() {
     let login = request.get("/login").await;
     let login_html = login.text();
     drop(request);
-    close(fixture, boot).await;
+    close_shared(fixture, boot).await;
 
     assert_eq!(status, 200);
     assert_eq!(

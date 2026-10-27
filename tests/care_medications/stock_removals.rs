@@ -1,14 +1,14 @@
 use super::*;
 use medications::stock_removals::{self, RemoveStock};
 
-fn input() -> RemoveStock {
+fn input(fixture: &Fixture) -> RemoveStock {
     RemoveStock {
-        medication_id: "90001".into(),
+        medication_id: fixture.medication_id.to_string(),
         quantity: "2".into(),
         reason: "dropped".into(),
         note: Some(" synthetic note ".into()),
         dosage_id: None,
-        submission_id: "106b49d9-1da2-42f1-800b-8c80867aee1c".into(),
+        submission_id: fixture.submission_id.clone(),
     }
 }
 
@@ -16,7 +16,7 @@ async fn remove(
     fixture: &Fixture,
     input: RemoveStock,
 ) -> Result<serde_json::Value, OperationError> {
-    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
+    let tenant = access::begin(&fixture.runtime, &fixture.scope, None).await?;
     match stock_removals::create(&tenant, input, None).await {
         Ok(result) => {
             tenant.commit().await?;
@@ -32,9 +32,9 @@ async fn remove(
 #[tokio::test]
 async fn stock_removal_scalar_replay_and_changed_facts() {
     let fixture = Fixture::new().await;
-    let first = remove(&fixture, input()).await;
-    let replay = remove(&fixture, input()).await;
-    let mut changed = input();
+    let first = remove(&fixture, input(&fixture)).await;
+    let replay = remove(&fixture, input(&fixture)).await;
+    let mut changed = input(&fixture);
     changed.quantity = "3".into();
     let conflict = remove(&fixture, changed).await;
     let effect = fixture.effect().await;
@@ -48,7 +48,10 @@ async fn stock_removal_scalar_replay_and_changed_facts() {
 #[tokio::test]
 async fn stock_removal_concurrent_submission_has_one_effect() {
     let fixture = Fixture::new().await;
-    let (first, second) = tokio::join!(remove(&fixture, input()), remove(&fixture, input()));
+    let (first, second) = tokio::join!(
+        remove(&fixture, input(&fixture)),
+        remove(&fixture, input(&fixture))
+    );
     let effect = fixture.effect().await;
     fixture.close().await;
     assert!(first.is_ok());
@@ -59,15 +62,11 @@ async fn stock_removal_concurrent_submission_has_one_effect() {
 #[tokio::test]
 async fn stock_removal_insufficient_stock_and_nonmanager_are_rejected() {
     let fixture = Fixture::new().await;
-    let mut too_much = input();
+    let mut too_much = input(&fixture);
     too_much.quantity = "11".into();
     let insufficient = remove(&fixture, too_much).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
-        .await
-        .unwrap();
-    let denied = remove(&fixture, input()).await;
+    fixture.demote().await;
+    let denied = remove(&fixture, input(&fixture)).await;
     let effect = fixture.effect().await;
     fixture.close().await;
     assert!(matches!(
@@ -81,14 +80,14 @@ async fn stock_removal_insufficient_stock_and_nonmanager_are_rejected() {
 #[tokio::test]
 async fn stock_removal_history_is_bounded_and_newest_first() {
     let fixture = Fixture::new().await;
-    assert!(remove(&fixture, input()).await.is_ok());
-    let mut second = input();
+    assert!(remove(&fixture, input(&fixture)).await.is_ok());
+    let mut second = input(&fixture);
     second.submission_id = uuid::Uuid::new_v4().to_string();
     let newest = remove(&fixture, second).await.unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope(), None)
+    let tenant = access::begin(&fixture.runtime, &fixture.scope, None)
         .await
         .unwrap();
-    let history = stock_removals::history(&tenant, "90001", 1, 1).await;
+    let history = stock_removals::history(&tenant, &fixture.medication_id.to_string(), 1, 1).await;
     tenant.rollback().await.unwrap();
     fixture.close().await;
     let history = history.unwrap();
@@ -100,13 +99,18 @@ async fn stock_removal_history_is_bounded_and_newest_first() {
 #[tokio::test]
 async fn stock_removal_tracked_option_updates_parent_and_history() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("INSERT INTO dosages(id,household_id,medication_id,amount,unit,frequency,current_supply,default_dose_cycle,default_max_daily_doses,default_min_hours_between_doses,created_at,updated_at) VALUES(92001,72001,90001,2,'tablet','daily',6,0,4,0,'2020-01-01','2020-01-01'),(92002,72001,90001,1,'tablet','daily',4,0,4,0,'2020-01-01','2020-01-01')").await.unwrap();
-    let mut command = input();
-    command.dosage_id = Some("92001".into());
+    let option = fixture.option(2, 6).await;
+    fixture.option(1, 4).await;
+    let mut command = input(&fixture);
+    command.dosage_id = Some(option.id.to_string());
     let result = remove(&fixture, command).await;
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT current_supply::text AS supply,updated_at>'2020-01-01'::timestamp AS touched FROM dosages WHERE id=92001")).await.unwrap().unwrap();
-    let supply: String = row.try_get("", "supply").unwrap();
-    let touched: bool = row.try_get("", "touched").unwrap();
+    let row = dosage::Entity::find_by_id(option.id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let supply = row.current_supply.unwrap().to_string();
+    let touched = row.updated_at > option.updated_at;
     let effect = fixture.effect().await;
     fixture.close().await;
     let result = result.unwrap();
@@ -119,18 +123,10 @@ async fn stock_removal_tracked_option_updates_parent_and_history() {
 #[tokio::test]
 async fn stock_removal_audit_failure_rolls_back_stock_and_change() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_stock_removal_attempt; GRANT USAGE ON SEQUENCE synthetic_stock_removal_attempt TO med_tracker_app; CREATE FUNCTION synthetic_stock_removal_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationStockRemoval' THEN IF (SELECT current_supply FROM medications WHERE id=90001)=8 THEN PERFORM nextval('synthetic_stock_removal_attempt'); END IF; RAISE EXCEPTION 'synthetic removal audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER synthetic_stock_removal_failure BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION synthetic_stock_removal_failure()").await.unwrap();
-    let result = remove(&fixture, input()).await;
-    let row = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT is_called FROM synthetic_stock_removal_attempt",
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    let reached: bool = row.try_get("", "is_called").unwrap();
+    let failure =
+        AuditFailure::install(&fixture, "MedicationStockRemoval", Decimal::new(8, 0)).await;
+    let result = remove(&fixture, input(&fixture)).await;
+    let reached = failure.reached_and_remove(&fixture).await;
     let effect = fixture.effect().await;
     fixture.close().await;
     assert!(matches!(result, Err(OperationError::Unavailable)));
@@ -141,13 +137,13 @@ async fn stock_removal_audit_failure_rolls_back_stock_and_change() {
 #[tokio::test]
 async fn stock_removal_current_role_controls_replay_and_history() {
     let fixture = Fixture::new().await;
-    assert!(remove(&fixture, input()).await.is_ok());
-    let tenant = access::begin(&fixture.runtime, &scope(), None)
+    assert!(remove(&fixture, input(&fixture)).await.is_ok());
+    let tenant = access::begin(&fixture.runtime, &fixture.scope, None)
         .await
         .unwrap();
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member',permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
-    let replay = stock_removals::create(&tenant, input(), None).await;
-    let history = stock_removals::history(&tenant, "90001", 1, 20).await;
+    fixture.demote().await;
+    let replay = stock_removals::create(&tenant, input(&fixture), None).await;
+    let history = stock_removals::history(&tenant, &fixture.medication_id.to_string(), 1, 20).await;
     tenant.rollback().await.unwrap();
     let effect = fixture.effect().await;
     fixture.close().await;
@@ -160,32 +156,32 @@ async fn stock_removal_current_role_controls_replay_and_history() {
 async fn stock_removal_rejects_invalid_contract_fields_without_effect() {
     let fixture = Fixture::new().await;
     for quantity in ["0", "-1", "0.001", "NaN", "1e1", "+1", " 1", "100000000"] {
-        let mut command = input();
+        let mut command = input(&fixture);
         command.quantity = quantity.into();
         assert!(matches!(
             remove(&fixture, command).await,
             Err(OperationError::Validation { .. })
         ));
     }
-    let mut command = input();
+    let mut command = input(&fixture);
     command.reason = "private-invalid".into();
     assert!(matches!(
         remove(&fixture, command).await,
         Err(OperationError::Validation { .. })
     ));
-    let mut command = input();
+    let mut command = input(&fixture);
     command.note = Some("x".repeat(1001));
     assert!(matches!(
         remove(&fixture, command).await,
         Err(OperationError::Validation { .. })
     ));
-    let mut command = input();
+    let mut command = input(&fixture);
     command.submission_id = "invalid".into();
     assert!(matches!(
         remove(&fixture, command).await,
         Err(OperationError::Validation { .. })
     ));
-    let mut command = input();
+    let mut command = input(&fixture);
     command.medication_id = "missing-medication".into();
     assert!(matches!(
         remove(&fixture, command).await,

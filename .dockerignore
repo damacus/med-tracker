@@ -43,6 +43,8 @@ rails/config/**
 scripts/__pycache__/
 !tests/
 !tests/**
+!examples/
+!examples/api-fixtures.rs
 
 !docs/
 !docs/api/

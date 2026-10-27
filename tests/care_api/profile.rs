@@ -1,5 +1,137 @@
 use super::contract::{assert_value, contract, resolve};
 use super::*;
+use med_tracker::models::_entities::{
+    accounts, api_change_events, api_idempotency_keys, carer_relationships,
+    notification_preferences as preference_rows, people,
+};
+use med_tracker::models::entities::identity_api_key;
+use sea_orm::{
+    Condition,
+    sea_query::{Expr, ExprTrait, Func, Query},
+};
+
+async fn account(app: &Application) -> accounts::Model {
+    accounts::Entity::find_by_id(app.fixture.account.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+}
+
+async fn set_preferences(app: &Application, preferences: Value) {
+    let mut row = account(app).await.into_active_model();
+    row.preferences = Set(preferences);
+    row.update(&app.fixture.admin).await.unwrap();
+}
+
+async fn revoke_self_grant(app: &Application) {
+    let mut grant = app.fixture.grant.clone().into_active_model();
+    grant.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    grant.update(&app.fixture.admin).await.unwrap();
+}
+
+async fn membership_state(app: &Application, active: bool, increment: bool) {
+    let current = household_memberships::Entity::find_by_id(app.fixture.membership.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let mut row = current.clone().into_active_model();
+    row.status = Set(if active { "active" } else { "revoked" }.into());
+    row.revoked_at = Set((!active).then(|| chrono::Utc::now().naive_utc()));
+    if increment {
+        row.permissions_version = Set(current.permissions_version + 1);
+    }
+    row.update(&app.fixture.admin).await.unwrap();
+}
+
+struct ProfileEffects {
+    versions: u64,
+    preferences: u64,
+    keys: u64,
+    changes: u64,
+}
+
+async fn profile_effects(app: &Application) -> ProfileEffects {
+    let versions = versions::Entity::find()
+        .filter(versions::Column::ItemType.is_in(["Account", "Person", "NotificationPreference"]))
+        .filter(
+            Condition::any()
+                .add(versions::Column::HouseholdId.eq(app.fixture.household.id))
+                .add(
+                    Condition::all()
+                        .add(versions::Column::ItemType.eq("Account"))
+                        .add(versions::Column::ItemId.eq(app.fixture.account.id)),
+                ),
+        )
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let preferences = preference_rows::Entity::find()
+        .filter(preference_rows::Column::PersonId.eq(app.fixture.adult.id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let keys = api_idempotency_keys::Entity::find()
+        .filter(api_idempotency_keys::Column::HouseholdId.eq(app.fixture.household.id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let changes = api_change_events::Entity::find()
+        .filter(api_change_events::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(api_change_events::Column::RecordType.is_in(["Person", "NotificationPreference"]))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    ProfileEffects {
+        versions,
+        preferences,
+        keys,
+        changes,
+    }
+}
+
+async fn blocked_by(app: &Application, blocker: i32) -> usize {
+    let query = Query::select()
+        .column("pid")
+        .expr_as(
+            Func::cust("to_jsonb").arg(Func::cust("pg_blocking_pids").arg(Expr::col("pid"))),
+            "blockers",
+        )
+        .from("pg_stat_activity")
+        .and_where(Expr::col("datname").eq(Func::cust("current_database")))
+        .and_where(Expr::col("wait_event_type").eq("Lock"))
+        .to_owned();
+    let rows = app
+        .fixture
+        .admin
+        .query_all_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap();
+    let graph = rows
+        .iter()
+        .map(|row| {
+            (
+                row.try_get::<i32>("", "pid").unwrap(),
+                serde_json::from_value::<Vec<i32>>(row.try_get::<Value>("", "blockers").unwrap())
+                    .unwrap(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let mut blocked = std::collections::HashSet::from([blocker]);
+    loop {
+        let before = blocked.len();
+        for (pid, blockers) in &graph {
+            if blockers.iter().any(|pid| blocked.contains(pid)) {
+                blocked.insert(*pid);
+            }
+        }
+        if blocked.len() == before {
+            break;
+        }
+    }
+    blocked.len() - 1
+}
 
 #[tokio::test]
 async fn age_validation_ignores_existing_and_submitted_account_timezones() {
@@ -7,9 +139,33 @@ async fn age_validation_ignores_existing_and_submitted_account_timezones() {
     use med_tracker::controllers::api::care::AgeValidationClock;
 
     let app = profile_application().await;
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"time_zone\":\"Pacific/Kiritimati\"}' WHERE id=71001; UPDATE people SET person_type=2,has_capacity=false WHERE id=73001; UPDATE people SET person_type=0,has_capacity=true,date_of_birth='1980-01-01' WHERE id=73002; INSERT INTO carer_relationships(household_id,carer_id,patient_id,relationship_type,active,created_at,updated_at) VALUES(72001,73002,73001,'family_member',true,now(),now())").await.unwrap();
+    let household_id = app.fixture.household.id;
+    set_preferences(&app, json!({"time_zone":"Pacific/Kiritimati"})).await;
+    let mut patient = app.fixture.adult.clone().into_active_model();
+    patient.person_type = Set(2);
+    patient.has_capacity = Set(false);
+    patient.update(&app.fixture.admin).await.unwrap();
+    let mut carer = app.fixture.minor.clone().into_active_model();
+    carer.person_type = Set(0);
+    carer.has_capacity = Set(true);
+    carer.date_of_birth = Set(Some("1980-01-01".parse().unwrap()));
+    carer.update(&app.fixture.admin).await.unwrap();
+    let now = chrono::Utc::now().naive_utc();
+    carer_relationships::ActiveModel {
+        household_id: Set(household_id),
+        carer_id: Set(app.fixture.minor.id),
+        patient_id: Set(app.fixture.adult.id),
+        relationship_type: Set(Some("family_member".into())),
+        active: Set(true),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     for method in [reqwest::Method::PATCH, reqwest::Method::PUT] {
         for (hour, minute, second, expected) in [(23, 59, 59, 422), (0, 0, 0, 200)] {
             let day = if hour == 23 { 30 } else { 1 };
@@ -49,7 +205,15 @@ async fn age_validation_ignores_existing_and_submitted_account_timezones() {
                     "Pacific/Kiritimati"
                 }
             );
-            app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"time_zone\":\"Pacific/Kiritimati\"}' WHERE id=71001; UPDATE people SET date_of_birth='1985-02-03' WHERE id=73001").await.unwrap();
+            set_preferences(&app, json!({"time_zone":"Pacific/Kiritimati"})).await;
+            let current = people::Entity::find_by_id(app.fixture.adult.id)
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .unwrap();
+            let mut person = current.into_active_model();
+            person.date_of_birth = Set(Some("1985-02-03".parse().unwrap()));
+            person.update(&app.fixture.admin).await.unwrap();
         }
     }
     app.close().await;
@@ -59,8 +223,9 @@ use sea_orm::TransactionTrait;
 #[tokio::test]
 async fn current_person_profile_api_saves_nonsecurity_fields_and_preserves_omitted_values() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     let read = app
         .client
         .get(&endpoint)
@@ -70,8 +235,14 @@ async fn current_person_profile_api_saves_nonsecurity_fields_and_preserves_omitt
         .unwrap();
     assert_eq!(read.status().as_u16(), 200);
     let original: Value = read.json().await.unwrap();
-    assert_eq!(original["data"]["person_id"], "73001");
-    assert_eq!(original["data"]["account_id"], "71001");
+    assert_eq!(
+        original["data"]["person_id"],
+        app.fixture.adult.id.to_string()
+    );
+    assert_eq!(
+        original["data"]["account_id"],
+        app.fixture.account.id.to_string()
+    );
 
     let updated = app
         .client
@@ -95,11 +266,23 @@ async fn current_person_profile_api_saves_nonsecurity_fields_and_preserves_omitt
         updated["data"]["mobile_shortcuts"],
         json!(["dashboard", "inventory"])
     );
-    let audit = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM versions WHERE item_type='Person' AND item_id=73001 AND event='update') AS versions, (SELECT count(*) FROM api_change_events WHERE record_type='Person' AND record_id=73001 AND action='update') AS changes"
-    )).await.unwrap().unwrap();
-    assert_eq!(audit.try_get::<i64>("", "versions").unwrap(), 1);
-    assert_eq!(audit.try_get::<i64>("", "changes").unwrap(), 1);
+    let audit = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("Person"))
+        .filter(versions::Column::ItemId.eq(app.fixture.adult.id))
+        .filter(versions::Column::Event.eq("update"))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let changes = api_change_events::Entity::find()
+        .filter(api_change_events::Column::HouseholdId.eq(household_id))
+        .filter(api_change_events::Column::RecordType.eq("Person"))
+        .filter(api_change_events::Column::RecordId.eq(app.fixture.adult.id))
+        .filter(api_change_events::Column::Action.eq("update"))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(audit, 1);
+    assert_eq!(changes, 1);
 
     let partial = app
         .client
@@ -126,9 +309,10 @@ async fn current_person_profile_api_saves_nonsecurity_fields_and_preserves_omitt
 #[tokio::test]
 async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_membership() {
     let app = profile_application().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let household_id = app.fixture.household.id;
+    let other = app.fixture.foreign_household().await;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     let initial = app
         .client
         .get(&endpoint)
@@ -169,17 +353,16 @@ async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks
     }
     let foreign = app
         .client
-        .get(format!("{}/api/v1/households/72002/profile", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/profile",
+            app.origin, other.household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     assert_eq!(foreign.status().as_u16(), 403);
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
-        .await
-        .unwrap();
+    revoke_self_grant(&app).await;
     let canonical_self = app
         .client
         .get(&endpoint)
@@ -188,7 +371,7 @@ async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks
         .await
         .unwrap();
     assert_eq!(canonical_self.status().as_u16(), 200);
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    membership_state(&app, false, true).await;
     let revoked = app
         .client
         .get(&endpoint)
@@ -197,14 +380,16 @@ async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks
         .await
         .unwrap();
     assert_eq!(revoked.status().as_u16(), 403);
+    other.close().await;
     app.close().await;
 }
 
 #[tokio::test]
 async fn profile_get_matches_documented_contract() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/profile"]["get"];
     assert_eq!(operation["operationId"], "getHouseholdProfile");
@@ -256,15 +441,14 @@ async fn profile_get_matches_documented_contract() {
         &body,
         "profile response",
     );
-    assert_eq!(body["data"]["person_id"], "73001");
-    assert_eq!(body["data"]["account_id"], "71001");
+    assert_eq!(body["data"]["person_id"], app.fixture.adult.id.to_string());
+    assert_eq!(
+        body["data"]["account_id"],
+        app.fixture.account.id.to_string()
+    );
     assert_eq!(body["data"]["date_of_birth"], "1985-02-03");
 
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
-        .await
-        .unwrap();
+    revoke_self_grant(&app).await;
     let canonical_self = app
         .client
         .get(&endpoint)
@@ -273,7 +457,7 @@ async fn profile_get_matches_documented_contract() {
         .await
         .unwrap();
     assert_eq!(canonical_self.status().as_u16(), 200);
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    membership_state(&app, false, true).await;
     let denied = app
         .client
         .get(&endpoint)
@@ -297,11 +481,7 @@ async fn profile_get_matches_documented_contract() {
     assert_eq!(denied_body["error"]["code"], "forbidden");
     assert_eq!(denied_body["error"]["request_id"], denied_request_id);
 
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET status='active',revoked_at=NULL,permissions_version=permissions_version+1 WHERE id=74001")
-        .await
-        .unwrap();
+    membership_state(&app, true, true).await;
     let restored = app
         .client
         .get(&endpoint)
@@ -316,9 +496,12 @@ async fn profile_get_matches_documented_contract() {
 #[tokio::test]
 async fn profile_api_clears_stored_timezone_and_reads_legacy_gravatar_without_cache() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_set(preferences,'{gravatar_enabled}','\"1\"') WHERE id=71001").await.unwrap();
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
+    let mut preferences = account(&app).await.preferences;
+    preferences["gravatar_enabled"] = json!("1");
+    set_preferences(&app, preferences).await;
     let read = app
         .client
         .get(&endpoint)
@@ -345,25 +528,16 @@ async fn profile_api_clears_stored_timezone_and_reads_legacy_gravatar_without_ca
         cleared["data"]["time_zone"],
         std::env::var("TZ").unwrap_or_else(|_| "UTC".into())
     );
-    let row = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT preferences->>'time_zone' AS time_zone FROM accounts WHERE id=71001",
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(row.try_get::<String>("", "time_zone").unwrap(), "");
+    assert_eq!(account(&app).await.preferences["time_zone"], "");
     app.close().await;
 }
 
 #[tokio::test]
 async fn simultaneous_profile_preferences_updates_preserve_both_supplied_fields() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     let zone = app
         .client
         .patch(&endpoint)
@@ -397,14 +571,16 @@ async fn simultaneous_profile_preferences_updates_preserve_both_supplied_fields(
 #[tokio::test]
 async fn keyed_profile_update_replays_without_a_second_account_version() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     let body = json!({"profile":{"time_zone":"London"}});
+    let replay_key = uuid::Uuid::new_v4().to_string();
     let first = app
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-profile-key")
+        .header("idempotency-key", &replay_key)
         .json(&body)
         .send()
         .await
@@ -415,7 +591,7 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-profile-key")
+        .header("idempotency-key", &replay_key)
         .json(&body)
         .send()
         .await
@@ -431,7 +607,7 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-profile-key")
+        .header("idempotency-key", &replay_key)
         .json(&json!({"profile":{"time_zone":"UTC"}}))
         .send()
         .await
@@ -439,15 +615,15 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
     assert_eq!(conflict.status().as_u16(), 409);
     let conflict: Value = conflict.json().await.unwrap();
     assert_eq!(conflict["error"]["code"], "idempotency_key_reused");
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS n FROM versions WHERE item_type='Account' AND item_id=71001 AND event='update'"
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "n").unwrap(), 1);
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+    let versions = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("Account"))
+        .filter(versions::Column::ItemId.eq(app.fixture.account.id))
+        .filter(versions::Column::Event.eq("update"))
+        .count(&app.fixture.admin)
         .await
         .unwrap();
+    assert_eq!(versions, 1);
+    revoke_self_grant(&app).await;
     let canonical_self = app
         .client
         .get(&endpoint)
@@ -456,12 +632,12 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
         .await
         .unwrap();
     assert_eq!(canonical_self.status().as_u16(), 200);
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    membership_state(&app, false, true).await;
     let denied_replay = app
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-profile-key")
+        .header("idempotency-key", &replay_key)
         .json(&body)
         .send()
         .await
@@ -479,9 +655,10 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
 #[tokio::test]
 async fn profile_and_notification_apis_reject_malformed_requests_without_writes() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
     for resource in ["profile", "notification_preference"] {
-        let endpoint = format!("{}/api/v1/households/72001/{resource}", app.origin);
+        let endpoint = format!("{}/api/v1/households/{household_id}/{resource}", app.origin);
         for method in [reqwest::Method::PATCH, reqwest::Method::PUT] {
             let malformed = app
                 .client
@@ -512,25 +689,37 @@ async fn profile_and_notification_apis_reject_malformed_requests_without_writes(
             assert_eq!(unauthenticated.status().as_u16(), 401);
         }
     }
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM versions WHERE item_type IN ('Account','Person','NotificationPreference')) AS versions, (SELECT count(*) FROM notification_preferences WHERE person_id=73001) AS preferences"
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "versions").unwrap(), 0);
-    assert_eq!(row.try_get::<i64>("", "preferences").unwrap(), 0);
+    let effects = profile_effects(&app).await;
+    assert_eq!(effects.versions, 0);
+    assert_eq!(effects.preferences, 0);
     app.close().await;
 }
 
 #[tokio::test]
 async fn profile_and_notification_apis_require_the_account_linked_membership_person() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
-    app.fixture
-        .admin
-        .execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72004,71001,'Canonical participation boundary','canonical-participation-boundary','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74404,72004,73002,'member','active',now(),now(),now())")
-        .await
-        .unwrap();
+    let other = app.fixture.foreign_household().await;
+    let now = chrono::Utc::now().naive_utc();
+    let other_membership = household_memberships::ActiveModel {
+        household_id: Set(other.household.id),
+        person_id: Set(app.fixture.minor.id),
+        role: Set("member".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     for resource in ["profile", "notification_preference"] {
-        let endpoint = format!("{}/api/v1/households/72004/{resource}", app.origin);
+        let endpoint = format!(
+            "{}/api/v1/households/{}/{resource}",
+            app.origin, other.household.id
+        );
         for method in [
             reqwest::Method::GET,
             reqwest::Method::PATCH,
@@ -551,20 +740,32 @@ async fn profile_and_notification_apis_require_the_account_linked_membership_per
             assert_eq!(response.status().as_u16(), 403);
         }
     }
-    let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT person_id FROM accounts WHERE id=71001) AS canonical,(SELECT person_id FROM household_memberships WHERE id=74001) AS original,(SELECT person_id FROM household_memberships WHERE id=74404) AS other,(SELECT count(*) FROM versions WHERE item_type IN ('Account','Person','NotificationPreference')) AS versions")).await.unwrap().unwrap();
+    let canonical = account(&app).await.person_id;
+    let original = household_memberships::Entity::find_by_id(app.fixture.membership.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let other_link = household_memberships::Entity::find_by_id(other_membership.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(canonical, app.fixture.adult.id);
+    assert_eq!(original.person_id, app.fixture.adult.id);
+    assert_eq!(original.household_id, household_id);
+    assert_eq!(other_link.person_id, app.fixture.minor.id);
+    assert_eq!(profile_effects(&app).await.versions, 0);
+    other.close().await;
     app.close().await;
-    assert_eq!(state.try_get::<i64>("", "canonical").unwrap(), 73001);
-    assert_eq!(state.try_get::<i64>("", "original").unwrap(), 73001);
-    assert_eq!(state.try_get::<i64>("", "other").unwrap(), 73002);
-    assert_eq!(state.try_get::<i64>("", "versions").unwrap(), 0);
 }
 
 #[tokio::test]
 async fn profile_and_notification_apis_roll_back_mutations_when_request_audit_fails() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
-    let profile = format!("{}/api/v1/households/72001/profile", app.origin);
+    let profile = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     let initial: Value = app
         .client
         .get(&profile)
@@ -575,7 +776,11 @@ async fn profile_and_notification_apis_roll_back_mutations_when_request_audit_fa
         .json()
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE profile_request_audit_reached; GRANT USAGE,SELECT ON SEQUENCE profile_request_audit_reached TO med_tracker_app; CREATE FUNCTION reject_profile_request_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='api.request' AND NEW.metadata->>'controller' IN ('api/v1/profiles','api/v1/notification_preferences') AND NEW.metadata->>'action'='update' THEN PERFORM nextval('profile_request_audit_reached'); RAISE EXCEPTION 'Synthetic profile request audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_profile_request_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_profile_request_audit()").await.unwrap();
+    let fault = format!("profile_request_audit_{}", uuid::Uuid::new_v4().simple());
+    let marker = format!("{fault}_reached");
+    // SeaORM has no trigger, PL/pgSQL function or GRANT builder. This schema
+    // fault requires whole-run exclusivity; all objects are removed below.
+    app.fixture.admin.execute_unprepared(&format!("CREATE SEQUENCE {marker}; GRANT USAGE,SELECT ON SEQUENCE {marker} TO med_tracker_app; CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='api.request' AND NEW.metadata->>'controller' IN ('api/v1/profiles','api/v1/notification_preferences') AND NEW.metadata->>'action'='update' THEN PERFORM nextval('{marker}'); RAISE EXCEPTION 'Synthetic profile request audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION {fault}()")).await.unwrap();
     for (resource, body) in [
         (
             "profile",
@@ -588,9 +793,15 @@ async fn profile_and_notification_apis_roll_back_mutations_when_request_audit_fa
     ] {
         let response = app
             .client
-            .patch(format!("{}/api/v1/households/72001/{resource}", app.origin))
+            .patch(format!(
+                "{}/api/v1/households/{household_id}/{resource}",
+                app.origin
+            ))
             .bearer_auth(&token)
-            .header("idempotency-key", format!("synthetic-audit-{resource}"))
+            .header(
+                "idempotency-key",
+                format!("{}-synthetic-audit-{resource}", app.fixture.client_uuid),
+            )
             .json(&body)
             .send()
             .await
@@ -608,19 +819,37 @@ async fn profile_and_notification_apis_roll_back_mutations_when_request_audit_fa
         .await
         .unwrap();
     assert_eq!(current, initial);
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT is_called FROM profile_request_audit_reached) AS reached, (SELECT count(*) FROM versions WHERE item_type IN ('Account','Person','NotificationPreference')) AS versions, (SELECT count(*) FROM notification_preferences WHERE person_id=73001) AS preferences, (SELECT count(*) FROM api_idempotency_keys WHERE key LIKE 'synthetic-audit-%') AS keys, (SELECT count(*) FROM api_change_events WHERE record_type IN ('Person','NotificationPreference')) AS changes"
-    )).await.unwrap().unwrap();
-    assert!(row.try_get::<bool>("", "reached").unwrap());
-    for column in ["versions", "preferences", "keys", "changes"] {
-        assert_eq!(row.try_get::<i64>("", column).unwrap(), 0);
-    }
+    let query = Query::select()
+        .column("is_called")
+        .from(sea_orm::sea_query::Alias::new(marker.clone()))
+        .to_owned();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap();
+    let reached: bool = row.try_get("", "is_called").unwrap();
+    app.fixture.admin.execute_unprepared(&format!("DROP TRIGGER {fault} ON security_audit_events; DROP FUNCTION {fault}(); DROP SEQUENCE {marker}")).await.unwrap();
+    let effects = profile_effects(&app).await;
+    assert!(reached);
+    assert_eq!(
+        [
+            effects.versions,
+            effects.preferences,
+            effects.keys,
+            effects.changes
+        ],
+        [0; 4]
+    );
     app.close().await;
 }
 
 #[tokio::test]
 async fn profile_and_notification_keyed_replays_reject_revoked_oauth_credentials() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
     for (resource, body) in [
         ("profile", json!({"profile":{"time_zone":"London"}})),
@@ -631,20 +860,24 @@ async fn profile_and_notification_keyed_replays_reject_revoked_oauth_credentials
     ] {
         let response = app
             .client
-            .patch(format!("{}/api/v1/households/72001/{resource}", app.origin))
+            .patch(format!(
+                "{}/api/v1/households/{household_id}/{resource}",
+                app.origin
+            ))
             .bearer_auth(&token)
-            .header("idempotency-key", format!("synthetic-revoke-{resource}"))
+            .header(
+                "idempotency-key",
+                format!("{}-synthetic-revoke-{resource}", app.fixture.client_uuid),
+            )
             .json(&body)
             .send()
             .await
             .unwrap();
         assert_eq!(response.status().as_u16(), 200);
     }
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE oauth_grants SET revoked_at=now() WHERE id=76001")
-        .await
-        .unwrap();
+    let mut grant = app.fixture.authorization.clone().into_active_model();
+    grant.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    grant.update(&app.fixture.admin).await.unwrap();
     for (resource, body) in [
         ("profile", json!({"profile":{"time_zone":"London"}})),
         (
@@ -652,7 +885,7 @@ async fn profile_and_notification_keyed_replays_reject_revoked_oauth_credentials
             json!({"notification_preference":{"enabled":false}}),
         ),
     ] {
-        let endpoint = format!("{}/api/v1/households/72001/{resource}", app.origin);
+        let endpoint = format!("{}/api/v1/households/{household_id}/{resource}", app.origin);
         let read = app
             .client
             .get(&endpoint)
@@ -665,7 +898,10 @@ async fn profile_and_notification_keyed_replays_reject_revoked_oauth_credentials
             .client
             .patch(&endpoint)
             .bearer_auth(&token)
-            .header("idempotency-key", format!("synthetic-revoke-{resource}"))
+            .header(
+                "idempotency-key",
+                format!("{}-synthetic-revoke-{resource}", app.fixture.client_uuid),
+            )
             .json(&body)
             .send()
             .await
@@ -684,40 +920,57 @@ async fn overlapping_profile_requests(
     bodies: [Value; 2],
 ) -> [reqwest::Response; 2] {
     let (table, id) = if resource == "profile" {
-        ("accounts", 71001)
+        ("accounts", app.fixture.account.id)
     } else {
-        ("households", 72001)
+        ("households", app.fixture.household.id)
     };
+    let household_id = app.fixture.household.id;
     let blocker = app.fixture.admin.begin().await.unwrap();
+    let query = Query::select()
+        .column("id")
+        .from(table)
+        .and_where(Expr::col("id").eq(id))
+        .lock(sea_orm::sea_query::LockType::Update)
+        .to_owned();
     blocker
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            format!("SELECT id FROM {table} WHERE id={id} FOR UPDATE"),
-        ))
+        .query_one_raw(blocker.get_database_backend().build(&query))
         .await
         .unwrap();
-    let endpoint = format!("{}/api/v1/households/72001/{resource}", app.origin);
+    let pid_query = Query::select()
+        .expr_as(Func::cust("pg_backend_pid"), "pid")
+        .to_owned();
+    let blocker_pid: i32 = blocker
+        .query_one_raw(blocker.get_database_backend().build(&pid_query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "pid")
+        .unwrap();
+    let endpoint = format!("{}/api/v1/households/{household_id}/{resource}", app.origin);
     let first = app
         .client
         .patch(&endpoint)
         .bearer_auth(token)
-        .header("idempotency-key", key)
+        .header(
+            "idempotency-key",
+            format!("{}-{key}", app.fixture.client_uuid),
+        )
         .json(&bodies[0])
         .send();
     let second = app
         .client
         .patch(&endpoint)
         .bearer_auth(token)
-        .header("idempotency-key", key)
+        .header(
+            "idempotency-key",
+            format!("{}-{key}", app.fixture.client_uuid),
+        )
         .json(&bodies[1])
         .send();
     let release = async {
         let mut reached = false;
         for _ in 0..200 {
-            let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-                "SELECT count(*) AS waiting FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND (query LIKE '%FOR UPDATE%' OR query LIKE '%FOR NO KEY UPDATE%')"
-            )).await.unwrap().unwrap();
-            if row.try_get::<i64>("", "waiting").unwrap() >= 2 {
+            if blocked_by(app, blocker_pid).await >= 2 {
                 reached = true;
                 break;
             }
@@ -736,6 +989,7 @@ async fn overlapping_profile_requests(
 #[tokio::test]
 async fn overlapping_keyed_profile_and_notification_requests_replay_once_and_conflict() {
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
     for (resource, body, conflicting) in [
         (
@@ -787,20 +1041,22 @@ async fn overlapping_keyed_profile_and_notification_requests_replay_once_and_con
         statuses.sort();
         assert_eq!(statuses, [200, 409]);
     }
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM versions WHERE item_type='NotificationPreference' AND event='create') AS preference_creates, (SELECT count(*) FROM api_idempotency_keys WHERE key LIKE 'synthetic-overlap-%') AS keys"
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "preference_creates").unwrap(), 1);
-    assert_eq!(row.try_get::<i64>("", "keys").unwrap(), 4);
+    let creates = versions::Entity::find()
+        .filter(versions::Column::HouseholdId.eq(household_id))
+        .filter(versions::Column::ItemType.eq("NotificationPreference"))
+        .filter(versions::Column::Event.eq("create"))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(creates, 1);
+    assert_eq!(profile_effects(&app).await.keys, 4);
     app.close().await;
 }
 
 pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) -> String {
     use better_auth_core::{AuthRequest, HttpMethod};
     use med_tracker::models::identity::better_auth::{IdentityService, dispatch};
-    app.fixture.admin.execute_unprepared(
-        "INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=EXCLUDED.completed_at",
-    ).await.unwrap();
+
     let service = app.context.shared_store.get::<IdentityService>().unwrap();
     let origin = url::Url::parse(service.context().config.base_url.as_static().unwrap())
         .unwrap()
@@ -811,7 +1067,7 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
         .headers
         .insert("content-type".into(), "application/json".into());
     login.body = Some(
-        serde_json::to_vec(&json!({"email":"persistence@example.test","password":"password"}))
+        serde_json::to_vec(&json!({"email":app.fixture.account.email,"password":"password"}))
             .unwrap(),
     );
     let signed_in = dispatch(&service, login, "synthetic-profile-personal-login".into())
@@ -831,7 +1087,7 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
         .insert("content-type".into(), "application/json".into());
     create.headers.insert("cookie".into(), cookie);
     create.headers.insert("origin".into(), origin);
-    create.body=Some(serde_json::to_vec(&json!({"name":name,"households":[72001],"permissions":["care:read","care:write"],"expires_days":1})).unwrap());
+    create.body=Some(serde_json::to_vec(&json!({"name":name,"households":[app.fixture.household.id],"permissions":["care:read","care:write"],"expires_days":1})).unwrap());
     let issued = dispatch(&service, create, "synthetic-profile-personal-create".into())
         .await
         .unwrap();
@@ -842,7 +1098,9 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
 
 #[tokio::test]
 async fn personal_key_profile_and_preferences_overlap_and_revoked_keys_cannot_replay() {
+    crate::authentication_fixture::reset_source_quota().await;
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let first = issue_profile_personal_key(&app, "Synthetic profile writer one").await;
     let second = issue_profile_personal_key(&app, "Synthetic profile writer two").await;
     for index in 0..10 {
@@ -854,24 +1112,33 @@ async fn personal_key_profile_and_preferences_overlap_and_revoked_keys_cannot_re
         let enabled = index % 2 == 0;
         let profile = app
             .client
-            .patch(format!("{}/api/v1/households/72001/profile", app.origin))
+            .patch(format!(
+                "{}/api/v1/households/{household_id}/profile",
+                app.origin
+            ))
             .bearer_auth(&first)
             .header(
                 "idempotency-key",
-                format!("synthetic-personal-profile-{index}"),
+                format!(
+                    "{}-synthetic-personal-profile-{index}",
+                    app.fixture.client_uuid
+                ),
             )
             .json(&json!({"profile":{"time_zone":zone}}))
             .send();
         let preferences = app
             .client
             .patch(format!(
-                "{}/api/v1/households/72001/notification_preference",
+                "{}/api/v1/households/{household_id}/notification_preference",
                 app.origin
             ))
             .bearer_auth(&second)
             .header(
                 "idempotency-key",
-                format!("synthetic-personal-pref-{index}"),
+                format!(
+                    "{}-synthetic-personal-pref-{index}",
+                    app.fixture.client_uuid
+                ),
             )
             .json(&json!({"notification_preference":{"enabled":enabled}}))
             .send();
@@ -879,9 +1146,10 @@ async fn personal_key_profile_and_preferences_overlap_and_revoked_keys_cannot_re
         assert_eq!(profile.unwrap().status().as_u16(), 200);
         assert_eq!(preferences.unwrap().status().as_u16(), 200);
     }
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE identity_api_keys SET enabled=false WHERE reference_id=71001")
+    identity_api_key::Entity::update_many()
+        .col_expr(identity_api_key::Column::Enabled, Expr::value(false))
+        .filter(identity_api_key::Column::ReferenceId.eq(app.fixture.account.id))
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     for (resource, body, key, token) in [
@@ -900,9 +1168,15 @@ async fn personal_key_profile_and_preferences_overlap_and_revoked_keys_cannot_re
     ] {
         let rejected = app
             .client
-            .patch(format!("{}/api/v1/households/72001/{resource}", app.origin))
+            .patch(format!(
+                "{}/api/v1/households/{household_id}/{resource}",
+                app.origin
+            ))
             .bearer_auth(token)
-            .header("idempotency-key", key)
+            .header(
+                "idempotency-key",
+                format!("{}-{key}", app.fixture.client_uuid),
+            )
             .json(&body)
             .send()
             .await
@@ -920,12 +1194,15 @@ async fn profile_write_does_not_deadlock_a_household_writer_recording_actor_audi
         care::locations,
     };
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
     let tenant = access::begin(
         &app.fixture.runtime,
         &HouseholdScope {
-            actor: Actor { account_id: 71001 },
-            household_id: 72001,
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
             request_id: "synthetic-opposite-household-writer".into(),
         },
         None,
@@ -933,8 +1210,24 @@ async fn profile_write_does_not_deadlock_a_household_writer_recording_actor_audi
     .await
     .unwrap();
     locations::authorize(&tenant).await.unwrap();
+    let pid_query = Query::select()
+        .expr_as(Func::cust("pg_backend_pid"), "pid")
+        .to_owned();
+    let blocker: i32 = tenant
+        .transaction()
+        .query_one_raw(
+            tenant
+                .transaction()
+                .get_database_backend()
+                .build(&pid_query),
+        )
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "pid")
+        .unwrap();
     let client = app.client.clone();
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     let profile = tokio::spawn(async move {
         client
             .patch(endpoint)
@@ -946,10 +1239,7 @@ async fn profile_write_does_not_deadlock_a_household_writer_recording_actor_audi
     });
     let mut waiting = false;
     for _ in 0..200 {
-        let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-            "SELECT count(*) AS waiting FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%households%' AND query LIKE '%FOR UPDATE%'"
-        )).await.unwrap().unwrap();
-        if row.try_get::<i64>("", "waiting").unwrap() > 0 {
+        if blocked_by(&app, blocker).await > 0 {
             waiting = true;
             break;
         }
@@ -959,7 +1249,21 @@ async fn profile_write_does_not_deadlock_a_household_writer_recording_actor_audi
         waiting,
         "Profile write must reach the household lock before the actor audit"
     );
-    let inserted = tenant.transaction().execute_unprepared("INSERT INTO security_audit_events(household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) VALUES(72001,71001,74001,'synthetic.opposite_writer','synthetic-opposite-household-writer','{}','{}',now(),now())").await;
+    let now = chrono::Utc::now().naive_utc();
+    let inserted = security_audit_events::ActiveModel {
+        household_id: Set(household_id),
+        actor_account_id: Set(Some(app.fixture.account.id)),
+        actor_membership_id: Set(Some(app.fixture.membership.id)),
+        event_type: Set("synthetic.opposite_writer".into()),
+        request_id: Set(Some(uuid::Uuid::new_v4().to_string())),
+        metadata: Set(json!({})),
+        audit_context: Set(json!({})),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(tenant.transaction())
+    .await;
     if inserted.is_ok() {
         tenant.commit().await.unwrap();
     } else {
@@ -975,25 +1279,18 @@ async fn profile_write_does_not_deadlock_a_household_writer_recording_actor_audi
 }
 
 async fn profile_application() -> Application {
-    let app = Application::new().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1985-02-03' WHERE id=73001")
-        .await
-        .unwrap();
-    app
+    Application::new().await
 }
 
 #[tokio::test]
 async fn profile_requires_a_date_of_birth_and_rejects_incomplete_records_without_writes() {
     let app = Application::new().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth=NULL WHERE id=73001")
-        .await
-        .unwrap();
-    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let mut person = app.fixture.adult.clone().into_active_model();
+    person.date_of_birth = Set(None);
+    person.update(&app.fixture.admin).await.unwrap();
+    let endpoint = format!("{}/api/v1/households/{household_id}/profile", app.origin);
     let read = app
         .client
         .get(&endpoint)
@@ -1013,14 +1310,8 @@ async fn profile_requires_a_date_of_birth_and_rejects_incomplete_records_without
             .unwrap();
         assert_eq!(denied.status().as_u16(), 422);
     }
-    let unchanged = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT preferences FROM accounts WHERE id=71001) AS preferences, (SELECT count(*) FROM versions WHERE item_type IN ('Account','Person')) AS versions"
-    )).await.unwrap().unwrap();
-    assert_eq!(
-        unchanged.try_get::<Value>("", "preferences").unwrap(),
-        json!({})
-    );
-    assert_eq!(unchanged.try_get::<i64>("", "versions").unwrap(), 0);
+    assert_eq!(account(&app).await.preferences, json!({}));
+    assert_eq!(profile_effects(&app).await.versions, 0);
     let repaired = app
         .client
         .patch(&endpoint)
@@ -1055,11 +1346,12 @@ async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
         notification_preferences, profile,
     };
     let app = profile_application().await;
+    let household_id = app.fixture.household.id;
     let token = app.token().await;
     let initial = app
         .client
         .put(format!(
-            "{}/api/v1/households/72001/notification_preference",
+            "{}/api/v1/households/{household_id}/notification_preference",
             app.origin
         ))
         .bearer_auth(&token)
@@ -1069,36 +1361,30 @@ async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
         .unwrap();
     assert_eq!(initial.status().as_u16(), 200);
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-midread-membership".into(),
     };
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE household_memberships SET permissions_version=permissions_version+1 WHERE id=74001",
-        )
-        .await
-        .unwrap();
-    let snapshot = profile::read(&tenant, 71001).await;
-    let preferences = notification_preferences::read(&tenant, 71001).await;
+    membership_state(&app, true, true).await;
+    let snapshot = profile::read(&tenant, app.fixture.account.id).await;
+    let preferences = notification_preferences::read(&tenant, app.fixture.account.id).await;
     tenant.rollback().await.unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
-        .await
-        .unwrap();
+    revoke_self_grant(&app).await;
     let current = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
-    let current_profile = profile::read(&current, 71001).await;
-    let current_preferences = notification_preferences::read(&current, 71001).await;
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
-    let revoked_profile = profile::read(&current, 71001).await;
-    let revoked_preferences = notification_preferences::read(&current, 71001).await;
+    let current_profile = profile::read(&current, app.fixture.account.id).await;
+    let current_preferences =
+        notification_preferences::read(&current, app.fixture.account.id).await;
+    membership_state(&app, false, true).await;
+    let revoked_profile = profile::read(&current, app.fixture.account.id).await;
+    let revoked_preferences =
+        notification_preferences::read(&current, app.fixture.account.id).await;
     current.rollback().await.unwrap();
     let fresh = access::begin(&app.fixture.runtime, &scope, None).await;
     let fresh_denied = matches!(fresh, Err(OperationError::Forbidden));

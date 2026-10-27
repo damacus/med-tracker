@@ -1,60 +1,52 @@
-#[allow(dead_code)]
-#[path = "support/template.rs"]
-mod template;
+#[path = "support/scenario.rs"]
+pub mod scenario;
 use migration::{MigratorTrait, sea_orm::ConnectionTrait};
+use sea_orm::sea_query::{Expr, ExprTrait, Query};
 
 #[tokio::test]
 async fn fresh_migration_rejects_inherited_privileges_without_changing_the_database() {
-    let uri = template::owned_database_url();
-    let admin = migration::sea_orm::Database::connect(&uri).await.unwrap();
+    let admin = scenario::setup_connection().await;
     let suffix = uuid::Uuid::new_v4().simple().to_string();
-    let setup_name = format!("role_setup_{suffix}");
-    let target_name = format!("role_target_{suffix}");
     let bridge = format!("role_bridge_{suffix}");
-    let (base, _) = uri.rsplit_once('/').unwrap();
-    for name in [&setup_name, &target_name] {
-        admin
-            .execute_unprepared(&format!("CREATE DATABASE {name} TEMPLATE template0"))
-            .await
-            .unwrap();
-    }
-    let setup = migration::sea_orm::Database::connect(format!("{base}/{setup_name}"))
+    // SeaQuery has no PostgreSQL schema/role administration statements. This
+    // exclusive migration test resets only the UUID/marker-verified run database;
+    // production migration/reset guards remain unchanged.
+    admin
+        .execute_unprepared(
+            "DROP SCHEMA public CASCADE; DROP SCHEMA med_tracker CASCADE; CREATE SCHEMA public AUTHORIZATION pg_database_owner; GRANT USAGE ON SCHEMA public TO PUBLIC",
+        )
         .await
         .unwrap();
-    migration::Migrator::up(&setup, None).await.unwrap();
-    setup.close().await.unwrap();
     admin
         .execute_unprepared(&format!(
             "CREATE ROLE {bridge} NOLOGIN; GRANT med_tracker_owner TO {bridge}; GRANT {bridge} TO med_tracker_app"
         ))
         .await
         .unwrap();
-    let target = migration::sea_orm::Database::connect(format!("{base}/{target_name}"))
-        .await
-        .unwrap();
-    let result = migration::Migrator::up(&target, None).await;
-    let row = target
-        .query_one_raw(migration::sea_orm::Statement::from_string(
-            migration::sea_orm::DbBackend::Postgres,
-            "SELECT count(*) AS objects FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname IN ('public', 'med_tracker')",
-        ))
+    let result = migration::Migrator::up(&admin, None).await;
+    let query = Query::select()
+        .column(("c", "oid"))
+        .from_as(("pg_catalog", "pg_class"), "c")
+        .join_as(
+            sea_orm::sea_query::JoinType::InnerJoin,
+            ("pg_catalog", "pg_namespace"),
+            "n",
+            Expr::col(("n", "oid")).equals(("c", "relnamespace")),
+        )
+        .and_where(Expr::col(("n", "nspname")).is_in(["public", "med_tracker"]))
+        .to_owned();
+    let objects = admin
+        .query_all_raw(admin.get_database_backend().build(&query))
         .await
         .unwrap()
-        .unwrap();
-    let objects: i64 = row.try_get("", "objects").unwrap();
-    target.close().await.unwrap();
+        .len();
     admin
         .execute_unprepared(&format!(
             "REVOKE {bridge} FROM med_tracker_app; REVOKE med_tracker_owner FROM {bridge}; DROP ROLE {bridge}"
         ))
         .await
         .unwrap();
-    for name in [&setup_name, &target_name] {
-        admin
-            .execute_unprepared(&format!("DROP DATABASE {name}"))
-            .await
-            .unwrap();
-    }
+    migration::Migrator::up(&admin, None).await.unwrap();
     admin.close().await.unwrap();
     assert!(
         result.is_err(),

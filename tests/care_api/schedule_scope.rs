@@ -1,12 +1,16 @@
 use super::*;
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Query};
 
 async fn create(app: &Application, token: &str, date: &str) -> i64 {
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_medication_id = app.fixture.medication.id;
     let created = app
         .client
-        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .post(format!("{}/api/v1/households/{fixture_household_id}/schedules", app.origin))
         .bearer_auth(token)
         .json(&json!({"schedule": {
-            "person_id":"73001", "medication_id":"80001", "dose_amount":"2", "dose_unit":"tablet",
+            "person_id":fixture_person_id.to_string(), "medication_id":fixture_medication_id.to_string(), "dose_amount":"2", "dose_unit":"tablet",
             "start_date":date, "end_date":date, "schedule_type":"prn", "schedule_config":{}
         }}))
         .send()
@@ -21,12 +25,39 @@ async fn create(app: &Application, token: &str, date: &str) -> i64 {
 #[tokio::test]
 async fn schedule_scope_requires_live_membership_and_preserves_canonical_self_without_grants() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
     let id = create(&app, &token, "2026-10-06").await;
-    let collection = format!("{}/api/v1/households/72001/schedules", app.origin);
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules",
+        app.origin
+    );
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::value("revoked".to_owned()),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            sea_orm::sea_query::Expr::col(
+                med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            )
+            .add(1),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let revoked = app
@@ -38,12 +69,47 @@ async fn schedule_scope_requires_live_membership_and_preserves_canonical_self_wi
         .unwrap()
         .status()
         .as_u16();
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE household_memberships SET status='active',revoked_at=NULL,permissions_version=permissions_version+1 WHERE id=74001;
-         UPDATE person_access_grants SET revoked_at=now() WHERE household_membership_id=74001",
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::value("active".to_owned()),
         )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(None::<chrono::NaiveDateTime>),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            sea_orm::sea_query::Expr::col(
+                med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            )
+            .add(1),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::person_access_grants::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::person_access_grants::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::HouseholdMembershipId
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let index = app
@@ -78,11 +144,18 @@ async fn schedule_scope_requires_live_membership_and_preserves_canonical_self_wi
     let notes: Option<String> = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT notes FROM schedules WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr(QueryExpr::col("notes"))
+                .from("schedules")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap()
@@ -105,6 +178,7 @@ async fn schedule_scope_requires_live_membership_and_preserves_canonical_self_wi
 #[tokio::test]
 async fn schedule_scope_active_dates_follow_the_configured_application_timezone() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
     let zone = std::env::var("TZ")
         .ok()
@@ -115,7 +189,7 @@ async fn schedule_scope_active_dates_follow_the_configured_application_timezone(
     let response = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/schedules/{id}",
+            "{}/api/v1/households/{fixture_household_id}/schedules/{id}",
             app.origin
         ))
         .bearer_auth(&token)
@@ -135,18 +209,30 @@ async fn schedule_scope_active_dates_follow_the_configured_application_timezone(
 #[tokio::test]
 async fn schedule_scope_retired_schedules_are_absent_from_current_reads_and_updates() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
     let id = create(&app, &token, "2026-10-06").await;
-    app.fixture
-        .admin
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE schedules SET retired_at=now(),active=false WHERE id=$1",
-            [id.into()],
-        ))
+    med_tracker::models::_entities::schedules::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::schedules::Column::RetiredAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .col_expr(
+            med_tracker::models::_entities::schedules::Column::Active,
+            sea_orm::sea_query::Expr::value(false),
+        )
+        .filter(med_tracker::models::_entities::schedules::Column::Id.eq(id))
+        .filter(
+            med_tracker::models::_entities::schedules::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
-    let collection = format!("{}/api/v1/households/72001/schedules", app.origin);
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules",
+        app.origin
+    );
     let index = app
         .client
         .get(&collection)
@@ -179,11 +265,18 @@ async fn schedule_scope_retired_schedules_are_absent_from_current_reads_and_upda
     let notes: Option<String> = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT notes FROM schedules WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr(QueryExpr::col("notes"))
+                .from("schedules")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap()

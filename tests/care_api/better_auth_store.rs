@@ -25,6 +25,9 @@ async fn development_boot_uses_configured_session_key_without_environment_overri
     assert!(std::env::var_os("MEDTRACKER_SESSION_KEY").is_none());
     let fixture = Fixture::new().await;
     let mut config = Config::new(&Environment::Development).unwrap();
+    assert!(!config.database.auto_migrate);
+    assert!(!config.database.dangerously_recreate);
+    assert!(!config.database.dangerously_truncate);
     config.database.uri = fixture.runtime_uri.clone();
     let Some(loco_rs::config::QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
         panic!("PostgreSQL queue required");
@@ -54,11 +57,16 @@ async fn development_boot_uses_configured_session_key_without_environment_overri
             .await
             .is_err()
     );
+    if let Some(queue) = boot.app_context.queue_provider.as_ref() {
+        queue.shutdown().unwrap();
+    }
+    boot.app_context.db.close().await.unwrap();
     fixture.close().await;
 }
 
 #[tokio::test]
 async fn production_identity_cookies_stay_secure_behind_an_http_proxy() {
+    crate::authentication_fixture::reset_source_quota().await;
     use loco_rs::{
         app::{AppContext, Hooks},
         config::Config,
@@ -114,14 +122,14 @@ async fn production_identity_cookies_stay_secure_behind_an_http_proxy() {
         .insert("x-forwarded-for".into(), "127.0.0.1".into());
     request.body = Some(
         serde_json::to_vec(
-            &serde_json::json!({"email": "persistence@example.test", "password": "password"}),
+            &serde_json::json!({"email": fixture.account.email, "password": "password"}),
         )
         .unwrap(),
     );
     let response = med_tracker::models::identity::better_auth::dispatch(
         &service,
         request,
-        "production-cookie-fixture".into(),
+        uuid::Uuid::new_v4().to_string(),
     )
     .await
     .unwrap();

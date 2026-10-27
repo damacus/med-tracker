@@ -1,12 +1,13 @@
 use super::{Application, database_code, declaration, effects, require, scope, withdraw};
 use med_tracker::models::{
-    _entities::{accounts, carer_relationships, household_memberships, people, users},
+    _entities::{accounts, carer_relationships, household_memberships, people},
     access::{self, PersonAccess},
     care::administration::recovery::{
         self, RecoveryAction, RecoveryCommand, RecoveryGuardianId, RecoverySubjectId,
     },
 };
 use sea_orm::{
+    ActiveModelTrait,
     ActiveValue::Set,
     ColumnTrait, ConnectionTrait, DbErr, EntityTrait, QueryFilter, TransactionTrait,
     sea_query::{Alias, Expr, ExprTrait, Func, Query},
@@ -16,13 +17,18 @@ fn operation_error(error: impl std::fmt::Display) -> DbErr {
     DbErr::Custom(error.to_string())
 }
 
-fn link(subject: i64, declaration_id: i64) -> carer_relationships::ActiveModel {
+fn link(
+    subject: i64,
+    declaration_id: i64,
+    carer: i64,
+    household: i64,
+) -> carer_relationships::ActiveModel {
     let now = chrono::Utc::now().naive_utc();
     carer_relationships::ActiveModel {
         active: Set(true),
-        carer_id: Set(73001),
+        carer_id: Set(carer),
         patient_id: Set(subject),
-        household_id: Set(72001),
+        household_id: Set(household),
         guardian_declaration_id: Set(Some(declaration_id)),
         relationship_type: Set(Some("family_member".into())),
         created_at: Set(now),
@@ -33,8 +39,7 @@ fn link(subject: i64, declaration_id: i64) -> carer_relationships::ActiveModel {
 
 async fn unlinked_initial(app: &Application) -> Result<(i64, i64), DbErr> {
     let now = chrono::Utc::now().naive_utc();
-    people::Entity::insert(people::ActiveModel {
-        id: Set(73994),
+    let subject = people::ActiveModel {
         name: Set("Synthetic unlinked initial minor".into()),
         date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(2020, 1, 1)),
         person_type: Set(1),
@@ -42,13 +47,12 @@ async fn unlinked_initial(app: &Application) -> Result<(i64, i64), DbErr> {
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()
-    })
-    .exec(&app.fixture.admin)
+    }
+    .insert(&app.fixture.admin)
     .await?;
     household_memberships::Entity::insert(household_memberships::ActiveModel {
-        id: Set(74994),
-        household_id: Set(72001),
-        person_id: Set(73994),
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(subject.id),
         role: Set("member".into()),
         status: Set("active".into()),
         permissions_version: Set(1),
@@ -59,9 +63,13 @@ async fn unlinked_initial(app: &Application) -> Result<(i64, i64), DbErr> {
     })
     .exec(&app.fixture.admin)
     .await?;
-    let tenant = access::begin(&app.fixture.runtime, &scope(71001, 72001), None)
-        .await
-        .map_err(operation_error)?;
+    let tenant = access::begin(
+        &app.fixture.runtime,
+        &scope(app.fixture.account.id, app.fixture.household.id),
+        None,
+    )
+    .await
+    .map_err(operation_error)?;
     let role_query = Query::select()
         .expr_as(
             Func::cust("pg_catalog.current_setting").arg(Expr::val("is_superuser")),
@@ -98,10 +106,10 @@ async fn unlinked_initial(app: &Application) -> Result<(i64, i64), DbErr> {
             "subject_name_at_declaration",
         ])
         .values_panic([
-            Expr::val(73994_i64),
-            Expr::val(73001_i64),
-            Expr::val(72001_i64),
-            Expr::val(71001_i64),
+            Expr::val(subject.id),
+            Expr::val(app.fixture.adult.id),
+            Expr::val(app.fixture.household.id),
+            Expr::val(app.fixture.account.id),
             Expr::val("Synthetic unlinked initial minor"),
         ])
         .returning_col("id")
@@ -113,48 +121,15 @@ async fn unlinked_initial(app: &Application) -> Result<(i64, i64), DbErr> {
         .ok_or_else(|| DbErr::Custom("Initial declaration missing".into()))?;
     let id = row.try_get("", "id")?;
     tenant.commit().await.map_err(operation_error)?;
-    Ok((73994, id))
+    Ok((subject.id, id))
 }
 
-async fn local_administrator(app: &Application) -> Result<(), DbErr> {
+async fn local_administrator(app: &Application) -> Result<crate::scenario::Scenario, DbErr> {
+    let manager = crate::scenario::Scenario::new().await;
     let now = chrono::Utc::now().naive_utc();
-    people::Entity::insert(people::ActiveModel {
-        id: Set(73999),
-        name: Set("Synthetic link administrator".into()),
-        date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(1980, 1, 1)),
-        person_type: Set(0),
-        has_capacity: Set(true),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    })
-    .exec(&app.fixture.admin)
-    .await?;
-    accounts::Entity::insert(accounts::ActiveModel {
-        id: Set(71999),
-        person_id: Set(73999),
-        email: Set("link-manager@example.test".into()),
-        status: Set(2),
-        created_at: Set(now.and_utc()),
-        updated_at: Set(now.and_utc()),
-        ..Default::default()
-    })
-    .exec(&app.fixture.admin)
-    .await?;
-    users::Entity::insert(users::ActiveModel {
-        id: Set(77999),
-        person_id: Set(73999),
-        email_address: Set("link-manager@example.test".into()),
-        active: Set(true),
-        created_at: Set(now),
-        updated_at: Set(now),
-    })
-    .exec(&app.fixture.admin)
-    .await?;
-    household_memberships::Entity::insert(household_memberships::ActiveModel {
-        id: Set(74999),
-        household_id: Set(72001),
-        person_id: Set(73999),
+    household_memberships::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(manager.account.person_id),
         role: Set("administrator".into()),
         status: Set("active".into()),
         permissions_version: Set(1),
@@ -162,43 +137,47 @@ async fn local_administrator(app: &Application) -> Result<(), DbErr> {
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()
-    })
-    .exec(&app.fixture.admin)
+    }
+    .insert(&app.fixture.admin)
     .await?;
-    Ok(())
+    Ok(manager)
 }
 
 async fn terminal_insert(superseded: bool) -> Result<(), DbErr> {
     let app = Application::new().await;
+    let account = app.fixture.account.id;
+    let household = app.fixture.household.id;
+    let carer = app.fixture.adult.id;
     let result = async {
         let token = app.token().await;
         let (subject, id) = unlinked_initial(&app).await?;
         if superseded {
-            local_administrator(&app).await?;
+            let administrator = local_administrator(&app).await?;
             accounts::Entity::update_many().col_expr(accounts::Column::Status, Expr::val(1))
-                .filter(accounts::Column::Id.eq(71001)).exec(&app.fixture.admin).await?;
-            let manager = access::begin(&app.fixture.runtime, &scope(71999, 72001), None)
+                .filter(accounts::Column::Id.eq(account)).exec(&app.fixture.admin).await?;
+            let manager = access::begin(&app.fixture.runtime, &scope(administrator.account.id, household), None)
                 .await.map_err(operation_error)?;
             let selected = recovery::options(&manager).await.map_err(operation_error)?.subjects
                 .into_iter().find(|item| item.id.get() == subject)
                 .ok_or_else(|| DbErr::Custom("Unlinked orphan unavailable for verified recovery".into()))?;
             recovery::execute(&manager, RecoveryCommand {
                 subject: RecoverySubjectId::parse(subject).map_err(operation_error)?,
-                guardian: RecoveryGuardianId::parse(73999).map_err(operation_error)?,
+                guardian: RecoveryGuardianId::parse(administrator.account.person_id).map_err(operation_error)?,
                 expected: selected.snapshot, action: RecoveryAction::Appoint,
                 reason: "Appoint a replacement for this orphaned minor.".into(),
             }).await.map_err(operation_error)?;
             manager.commit().await.map_err(operation_error)?;
             accounts::Entity::update_many().col_expr(accounts::Column::Status, Expr::val(2))
-                .filter(accounts::Column::Id.eq(71001)).exec(&app.fixture.admin).await?;
+                .filter(accounts::Column::Id.eq(account)).exec(&app.fixture.admin).await?;
+            administrator.close().await;
         } else {
             require(withdraw(&app, &token, id).await?.status().as_u16() == 200,
                 "Terminal prerequisite must use genuine withdrawal")?;
         }
         let before = effects(&app).await?;
-        let tenant = access::begin(&app.fixture.runtime, &scope(71001, 72001), None)
+        let tenant = access::begin(&app.fixture.runtime, &scope(account, household), None)
             .await.map_err(operation_error)?;
-        let attempted = carer_relationships::Entity::insert(link(subject, id))
+        let attempted = carer_relationships::Entity::insert(link(subject, id, carer, household))
             .exec(tenant.transaction()).await;
         tenant.rollback().await.map_err(operation_error)?;
         require(attempted.as_ref().err().is_some_and(|error| database_code(error, "42501")),
@@ -223,20 +202,26 @@ async fn guardian_recovery_link_rejects_superseded_initial_insert() -> Result<()
 #[tokio::test]
 async fn guardian_recovery_link_rejects_duplicate_and_other_actor() -> Result<(), DbErr> {
     let app = Application::new().await;
+    let account = app.fixture.account.id;
+    let household = app.fixture.household.id;
+    let carer = app.fixture.adult.id;
     let result = async {
         let token = app.token().await;
         let (subject, id) = declaration(&app, &token).await?;
         let (unlinked_subject, unlinked_id) = unlinked_initial(&app).await?;
-        local_administrator(&app).await?;
+        let administrator = local_administrator(&app).await?;
         let before = effects(&app).await?;
-        for (account, subject, id) in [(71001, subject, id), (71999, unlinked_subject, unlinked_id)]
-        {
-            let tenant = access::begin(&app.fixture.runtime, &scope(account, 72001), None)
+        for (account, subject, id) in [
+            (account, subject, id),
+            (administrator.account.id, unlinked_subject, unlinked_id),
+        ] {
+            let tenant = access::begin(&app.fixture.runtime, &scope(account, household), None)
                 .await
                 .map_err(operation_error)?;
-            let attempted = carer_relationships::Entity::insert(link(subject, id))
-                .exec(tenant.transaction())
-                .await;
+            let attempted =
+                carer_relationships::Entity::insert(link(subject, id, carer, household))
+                    .exec(tenant.transaction())
+                    .await;
             tenant.rollback().await.map_err(operation_error)?;
             require(
                 attempted
@@ -246,6 +231,7 @@ async fn guardian_recovery_link_rejects_duplicate_and_other_actor() -> Result<()
                 "Only a fresh initial link by its declaring guardian may reach INSERT",
             )?;
         }
+        administrator.close().await;
         require(
             effects(&app).await? == before,
             "Rejected actor and duplicate inserts must preserve all effects",
@@ -260,10 +246,13 @@ async fn guardian_recovery_link_rejects_duplicate_and_other_actor() -> Result<()
 #[tokio::test]
 async fn guardian_recovery_link_delete_reinsert_cannot_restore_authority() -> Result<(), DbErr> {
     let app = Application::new().await;
+    let account = app.fixture.account.id;
+    let household = app.fixture.household.id;
+    let carer = app.fixture.adult.id;
     let result = async {
         let token = app.token().await;
         let (subject, id) = declaration(&app, &token).await?;
-        let tenant = access::begin(&app.fixture.runtime, &scope(71001, 72001), None)
+        let tenant = access::begin(&app.fixture.runtime, &scope(account, household), None)
             .await.map_err(operation_error)?;
         access::require_person_access(&tenant, subject, PersonAccess::Manage).await.map_err(operation_error)?;
         carer_relationships::Entity::update_many()
@@ -272,7 +261,7 @@ async fn guardian_recovery_link_delete_reinsert_cannot_restore_authority() -> Re
             .exec(tenant.transaction()).await?;
         tenant.commit().await.map_err(operation_error)?;
         let before = effects(&app).await?;
-        let tenant = access::begin(&app.fixture.runtime, &scope(71001, 72001), None)
+        let tenant = access::begin(&app.fixture.runtime, &scope(account, household), None)
             .await.map_err(operation_error)?;
         require(matches!(access::require_person_access(&tenant, subject, PersonAccess::Manage).await,
             Err(med_tracker::models::errors::OperationError::Forbidden)), "Inactive link must not grant management")?;
@@ -283,7 +272,7 @@ async fn guardian_recovery_link_delete_reinsert_cannot_restore_authority() -> Re
             Err(error) => database_code(&error, "23514"),
             Ok(deleted) => {
                 require(deleted.rows_affected == 1, "Attack must reach the genuine inactive relationship")?;
-                carer_relationships::Entity::insert(link(subject, id)).exec(&attempt).await?;
+                carer_relationships::Entity::insert(link(subject, id, carer, household)).exec(&attempt).await?;
                 access::require_person_access(&tenant, subject, PersonAccess::Manage).await.map_err(operation_error)?;
                 false
             }
@@ -301,15 +290,18 @@ async fn guardian_recovery_link_delete_reinsert_cannot_restore_authority() -> Re
 #[tokio::test]
 async fn guardian_recovery_link_valid_initial_insert_remains_available() -> Result<(), DbErr> {
     let app = Application::new().await;
+    let account = app.fixture.account.id;
+    let household = app.fixture.household.id;
+    let carer = app.fixture.adult.id;
     let result = async {
         let (subject, id) = unlinked_initial(&app).await?;
-        let tenant = access::begin(&app.fixture.runtime, &scope(71001, 72001), None)
+        let tenant = access::begin(&app.fixture.runtime, &scope(account, household), None)
             .await
             .map_err(operation_error)?;
-        carer_relationships::Entity::insert(link(subject, id))
+        carer_relationships::Entity::insert(link(subject, id, carer, household))
             .exec(tenant.transaction())
             .await?;
-        let mut generic = link(subject, id);
+        let mut generic = link(subject, id, carer, household);
         generic.guardian_declaration_id = Set(None);
         let inserted = carer_relationships::Entity::insert(generic)
             .exec(tenant.transaction())
@@ -335,9 +327,12 @@ async fn guardian_recovery_link_valid_initial_insert_remains_available() -> Resu
 #[tokio::test]
 async fn guardian_recovery_link_insert_waits_for_terminal_transition() -> Result<(), DbErr> {
     let app = Application::new().await;
+    let account = app.fixture.account.id;
+    let household = app.fixture.household.id;
+    let carer = app.fixture.adult.id;
     let result = async {
         let (subject, id) = unlinked_initial(&app).await?;
-        let terminal = access::begin(&app.fixture.runtime, &scope(71001, 72001), None)
+        let terminal = access::begin(&app.fixture.runtime, &scope(account, household), None)
             .await
             .map_err(operation_error)?;
         let query = Query::update()
@@ -358,7 +353,7 @@ async fn guardian_recovery_link_insert_waits_for_terminal_transition() -> Result
         let runtime = app.fixture.runtime.clone();
         let (send_pid, receive_pid) = tokio::sync::oneshot::channel();
         let attempt = tokio::spawn(async move {
-            let tenant = access::begin(&runtime, &scope(71001, 72001), None)
+            let tenant = access::begin(&runtime, &scope(account, household), None)
                 .await
                 .map_err(operation_error)?;
             let query = Query::select()
@@ -372,7 +367,7 @@ async fn guardian_recovery_link_insert_waits_for_terminal_transition() -> Result
             send_pid
                 .send(row.try_get::<i32>("", "pid")?)
                 .map_err(operation_error)?;
-            let result = carer_relationships::Entity::insert(link(subject, id))
+            let result = carer_relationships::Entity::insert(link(subject, id, carer, household))
                 .exec(tenant.transaction())
                 .await;
             tenant.rollback().await.map_err(operation_error)?;

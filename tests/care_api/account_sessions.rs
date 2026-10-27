@@ -1,76 +1,235 @@
 use super::*;
+use med_tracker::models::_entities::{api_app_tokens, api_sessions, oauth_grants};
+use sea_orm::{ActiveValue, QueryOrder};
 use sha2::{Digest, Sha256};
 
-pub(super) async fn stored_credentials(app: &Application) {
-    let current = hex::encode(Sha256::digest(b"synthetic-current-session"));
-    let app_token = hex::encode(Sha256::digest(b"synthetic-app-token"));
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,device_name,created_at,updated_at) VALUES (88001,71001,74001,$1,'synthetic-current-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),'Current phone',now()-interval '1 day',now()),(88002,71001,74001,'synthetic-expired-digest','synthetic-expired-refresh',1,now()-interval '1 hour',now()-interval '1 minute',now()-interval '2 days','Expired phone',now()-interval '2 days',now()),(88003,71001,74001,'synthetic-revoked-digest','synthetic-revoked-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),'Revoked phone',now()-interval '3 days',now())",
-        [current.into()],
-    )).await.unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE api_sessions SET revoked_at=now() WHERE id=88003")
-        .await
-        .unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES (88010,71001,74001,'Synthetic app',$1,1,now()+interval '1 month',now(),now(),now())",
-        [app_token.into()],
-    )).await.unwrap();
+pub(super) fn credential_token(app: &Application, label: &str) -> String {
+    format!("{}-{label}", app.fixture.client_uuid)
 }
 
-async fn assert_expanded_account_collections(app: &Application) {
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Archived household','archived-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,73001,'member',now(),now(),now())").await.unwrap();
-    for bearer in ["synthetic-current-session", "synthetic-app-token"] {
+pub(super) struct StoredCredentials {
+    pub current: api_sessions::Model,
+    pub expired: api_sessions::Model,
+    pub revoked: api_sessions::Model,
+    pub app_token: api_app_tokens::Model,
+}
+
+pub(super) async fn stored_credentials(app: &Application) -> StoredCredentials {
+    let now = chrono::Utc::now().naive_utc();
+    let mut rows = Vec::new();
+    for (label, device, age, expires, revoked) in [
+        ("current", "Current phone", 1, 15, false),
+        ("expired", "Expired phone", 2, -60, false),
+        ("revoked", "Revoked phone", 3, 15, true),
+    ] {
+        rows.push(
+            api_sessions::ActiveModel {
+                account_id: Set(app.fixture.account.id),
+                household_membership_id: Set(Some(app.fixture.membership.id)),
+                access_token_digest: Set(hex::encode(Sha256::digest(
+                    credential_token(app, label).as_bytes(),
+                ))),
+                refresh_token_digest: Set(credential_token(app, &format!("{label}-refresh"))),
+                permissions_version: Set(app.fixture.membership.permissions_version),
+                access_expires_at: Set(now + chrono::Duration::minutes(expires)),
+                refresh_expires_at: Set(if expires < 0 {
+                    now - chrono::Duration::minutes(1)
+                } else {
+                    now + chrono::Duration::days(1)
+                }),
+                last_used_at: Set(if expires < 0 {
+                    now - chrono::Duration::days(age)
+                } else {
+                    now
+                }),
+                device_name: Set(Some(device.into())),
+                revoked_at: Set(revoked.then_some(now)),
+                created_at: Set(now - chrono::Duration::days(age)),
+                updated_at: Set(now),
+                ..Default::default()
+            }
+            .insert(&app.fixture.admin)
+            .await
+            .unwrap(),
+        );
+    }
+    let [current, expired, revoked]: [api_sessions::Model; 3] = rows.try_into().unwrap();
+    let app_token = api_app_tokens::ActiveModel {
+        account_id: Set(app.fixture.account.id),
+        household_membership_id: Set(app.fixture.membership.id),
+        name: Set("Synthetic app".into()),
+        token_digest: Set(hex::encode(Sha256::digest(
+            credential_token(app, "app").as_bytes(),
+        ))),
+        permissions_version: Set(app.fixture.membership.permissions_version),
+        expires_at: Set(now + chrono::Duration::days(30)),
+        last_used_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    StoredCredentials {
+        current,
+        expired,
+        revoked,
+        app_token,
+    }
+}
+
+async fn account_versions(app: &Application, kind: &str, events: &[&str]) -> Vec<versions::Model> {
+    versions::Entity::find()
+        .filter(versions::Column::ItemType.eq(kind))
+        .filter(versions::Column::ItemId.eq(app.fixture.account.id))
+        .filter(versions::Column::Event.is_in(events.iter().copied()))
+        .order_by_asc(versions::Column::Id)
+        .all(&app.fixture.admin)
+        .await
+        .unwrap()
+}
+
+async fn mobile_grant(app: &Application, age: i64, expired: bool) -> oauth_grants::Model {
+    let now = chrono::Utc::now().naive_utc();
+    let mut row = app.fixture.authorization.clone().into_active_model();
+    row.id = ActiveValue::NotSet;
+    row.code = Set(None);
+    row.token_hash = Set(Some(uuid::Uuid::new_v4().to_string()));
+    row.expires_in = Set(if expired {
+        now - chrono::Duration::days(1)
+    } else {
+        now + chrono::Duration::minutes(15)
+    });
+    row.authenticated_at = Set(Some(now - chrono::Duration::days(age)));
+    row.last_used_at = Set(Some(now - chrono::Duration::days(age)));
+    row.device_name = Set(Some(
+        if expired { "Old phone" } else { "Second phone" }.into(),
+    ));
+    row.created_at = Set(now - chrono::Duration::days(age));
+    row.insert(&app.fixture.admin).await.unwrap()
+}
+
+async fn last_used(app: &Application) -> chrono::NaiveDateTime {
+    oauth_grants::Entity::find_by_id(app.fixture.authorization.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .last_used_at
+        .unwrap()
+}
+
+async fn assert_expanded_account_collections(app: &Application, credentials: &StoredCredentials) {
+    let other = app.fixture.foreign_household().await;
+    let held = app.fixture.foreign_household().await;
+    let now = chrono::Utc::now().naive_utc();
+    let mut held_household = held.household.clone().into_active_model();
+    held_household.lifecycle_state = Set("held".into());
+    held_household.update(&app.fixture.admin).await.unwrap();
+    let mut memberships = Vec::new();
+    for household in [&other.household, &held.household] {
+        memberships.push(
+            household_memberships::ActiveModel {
+                household_id: Set(household.id),
+                person_id: Set(app.fixture.adult.id),
+                role: Set("member".into()),
+                joined_at: Set(now),
+                status: Set("active".into()),
+                created_at: Set(now),
+                updated_at: Set(now),
+                ..Default::default()
+            }
+            .insert(&app.fixture.admin)
+            .await
+            .unwrap(),
+        );
+    }
+    for bearer in [
+        credential_token(app, "current"),
+        credential_token(app, "app"),
+    ] {
         let households = app
             .client
             .get(format!("{}/api/v1/auth/households", app.origin))
-            .bearer_auth(bearer)
+            .bearer_auth(&bearer)
             .send()
             .await
             .unwrap();
         assert_eq!(households.status().as_u16(), 200);
         let body: Value = households.json().await.unwrap();
-        assert_eq!(body["account_id"], 71001);
-        assert_eq!(body["data"].as_array().unwrap().len(), 2);
-        assert_eq!(body["data"][0]["id"], 72001);
-        assert_eq!(body["data"][1]["id"], 72002);
-        assert_eq!(body["data"][1]["membership_id"], 74002);
-
+        assert_eq!(body["account_id"], app.fixture.account.id);
+        let households = body["data"].as_array().unwrap();
+        assert_eq!(households.len(), 2);
+        assert_eq!(households[0]["id"], app.fixture.household.id);
+        assert_eq!(households[0]["membership_id"], app.fixture.membership.id);
+        assert_eq!(households[1]["id"], other.household.id);
+        assert_eq!(households[1]["membership_id"], memberships[0].id);
         let sessions = app
             .client
             .get(format!("{}/api/v1/auth/sessions", app.origin))
-            .bearer_auth(bearer)
+            .bearer_auth(&bearer)
             .send()
             .await
             .unwrap();
         assert_eq!(sessions.status().as_u16(), 200);
         let text = sessions.text().await.unwrap();
-        assert!(!text.contains("synthetic-current-session"));
-        assert!(!text.contains("synthetic-current-refresh"));
-        assert!(!text.contains("synthetic-expired-digest"));
+        for secret in [
+            credential_token(app, "current"),
+            credentials.current.refresh_token_digest.clone(),
+            credentials.expired.access_token_digest.clone(),
+        ] {
+            assert!(!text.contains(&secret));
+        }
         let body: Value = serde_json::from_str(&text).unwrap();
         assert_eq!(body["data"].as_array().unwrap().len(), 2);
-        assert_eq!(body["data"][0]["id"], 88001);
-        assert_eq!(body["data"][0]["household_id"], 72001);
-        assert_eq!(body["data"][1]["id"], 88002);
+        assert_eq!(body["data"][0]["id"], credentials.current.id);
+        assert_eq!(body["data"][0]["household_id"], app.fixture.household.id);
+        assert_eq!(body["data"][1]["id"], credentials.expired.id);
         assert_eq!(body["data"][1]["device_name"], "Expired phone");
     }
+    held.close().await;
+    other.close().await;
 }
 
 #[tokio::test]
 async fn stored_session_revoke_is_account_scoped_and_invalidates_the_credential() {
     let app = Application::new().await;
-    stored_credentials(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Foreign person',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73004,'other-session-account@example.test',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-session-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73004,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88004,71002,74002,'foreign-digest','foreign-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())").await.unwrap();
+    let credentials = stored_credentials(&app).await;
+    let other = app.fixture.foreign_household().await;
+    let now = chrono::Utc::now().naive_utc();
+    let foreign = api_sessions::ActiveModel {
+        account_id: Set(other.account.id),
+        household_membership_id: Set(Some(other.membership.id)),
+        access_token_digest: Set(uuid::Uuid::new_v4().to_string()),
+        refresh_token_digest: Set(uuid::Uuid::new_v4().to_string()),
+        permissions_version: Set(1),
+        access_expires_at: Set(now + chrono::Duration::minutes(15)),
+        refresh_expires_at: Set(now + chrono::Duration::days(1)),
+        last_used_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let path = format!("{}/api/v1/auth/sessions", app.origin);
-    for id in [99999, 88003, 88004, 76001] {
+    let mut wrong_grant = mobile_grant(&app, 60, true).await;
+    while [
+        credentials.current.id,
+        credentials.expired.id,
+        credentials.revoked.id,
+    ]
+    .contains(&wrong_grant.id)
+    {
+        wrong_grant = mobile_grant(&app, 60, true).await;
+    }
+    for id in [-1, credentials.revoked.id, foreign.id, wrong_grant.id] {
         let response = app
             .client
             .delete(format!("{path}/{id}"))
-            .bearer_auth("synthetic-current-session")
+            .bearer_auth(credential_token(&app, "current"))
             .send()
             .await
             .unwrap();
@@ -78,24 +237,24 @@ async fn stored_session_revoke_is_account_scoped_and_invalidates_the_credential(
     }
     let revoked = app
         .client
-        .delete(format!("{path}/88002"))
-        .bearer_auth("synthetic-app-token")
+        .delete(format!("{path}/{}", credentials.expired.id))
+        .bearer_auth(credential_token(&app, "app"))
         .send()
         .await
         .unwrap();
     assert_eq!(revoked.status().as_u16(), 204);
     let repeat = app
         .client
-        .delete(format!("{path}/88002"))
-        .bearer_auth("synthetic-app-token")
+        .delete(format!("{path}/{}", credentials.expired.id))
+        .bearer_auth(credential_token(&app, "app"))
         .send()
         .await
         .unwrap();
     assert_eq!(repeat.status().as_u16(), 404);
     let own = app
         .client
-        .delete(format!("{path}/88001"))
-        .bearer_auth("synthetic-current-session")
+        .delete(format!("{path}/{}", credentials.current.id))
+        .bearer_auth(credential_token(&app, "current"))
         .send()
         .await
         .unwrap();
@@ -103,22 +262,28 @@ async fn stored_session_revoke_is_account_scoped_and_invalidates_the_credential(
     let after = app
         .client
         .get(&path)
-        .bearer_auth("synthetic-current-session")
+        .bearer_auth(credential_token(&app, "current"))
         .send()
         .await
         .unwrap();
     assert_eq!(after.status().as_u16(), 401);
-    let audit = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS events FROM versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/api_session/revoked'")).await.unwrap().unwrap();
-    assert_eq!(audit.try_get::<i64>("", "events").unwrap(), 2);
+    let audit = account_versions(
+        &app,
+        "AuthenticationToken",
+        &["auth_token/api_session/revoked"],
+    )
+    .await;
+    assert_eq!(audit.len(), 2);
+    other.close().await;
     app.close().await;
 }
 
 #[tokio::test]
 async fn mobile_oauth_sessions_use_grant_namespace_and_lifetime() {
     let app = Application::new().await;
-    stored_credentials(&app).await;
+    let credentials = stored_credentials(&app).await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76002,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access','synthetic-old-mobile',now()-interval '1 day',now()-interval '60 days',now()-interval '60 days','Old phone',now()-interval '60 days',now())").await.unwrap();
+    let old_mobile = mobile_grant(&app, 60, true).await;
     let path = format!("{}/api/v1/auth/sessions", app.origin);
     let response = app
         .client
@@ -130,10 +295,20 @@ async fn mobile_oauth_sessions_use_grant_namespace_and_lifetime() {
     assert_eq!(response.status().as_u16(), 200);
     let body: Value = response.json().await.unwrap();
     assert_eq!(body["data"].as_array().unwrap().len(), 1);
-    assert_eq!(body["data"][0]["id"], 76001);
+    assert_eq!(body["data"][0]["id"], app.fixture.authorization.id);
     let wrong_namespace = app
         .client
-        .delete(format!("{path}/88001"))
+        .delete(format!(
+            "{path}/{}",
+            [
+                credentials.current.id,
+                credentials.expired.id,
+                credentials.revoked.id
+            ]
+            .into_iter()
+            .find(|id| *id != app.fixture.authorization.id && *id != old_mobile.id)
+            .unwrap()
+        ))
         .bearer_auth(&token)
         .send()
         .await
@@ -141,7 +316,7 @@ async fn mobile_oauth_sessions_use_grant_namespace_and_lifetime() {
     assert_eq!(wrong_namespace.status().as_u16(), 404);
     let own = app
         .client
-        .delete(format!("{path}/76001"))
+        .delete(format!("{path}/{}", app.fixture.authorization.id))
         .bearer_auth(&token)
         .send()
         .await
@@ -155,8 +330,8 @@ async fn mobile_oauth_sessions_use_grant_namespace_and_lifetime() {
         .await
         .unwrap();
     assert_eq!(after.status().as_u16(), 401);
-    let audit = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS events FROM versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.revoked'")).await.unwrap().unwrap();
-    assert_eq!(audit.try_get::<i64>("", "events").unwrap(), 1);
+    let audit = account_versions(&app, "Account", &["mobile_oauth.revoked"]).await;
+    assert_eq!(audit.len(), 1);
     app.close().await;
 }
 
@@ -188,14 +363,14 @@ async fn logout_is_idempotent_and_revokes_each_presented_credential_kind() {
         204
     );
     for bearer in [
-        "synthetic-current-session",
-        "synthetic-app-token",
-        mobile.as_str(),
+        credential_token(&app, "current"),
+        credential_token(&app, "app"),
+        mobile.clone(),
     ] {
         assert_eq!(
             app.client
                 .delete(&path)
-                .bearer_auth(bearer)
+                .bearer_auth(&bearer)
                 .send()
                 .await
                 .unwrap()
@@ -206,7 +381,7 @@ async fn logout_is_idempotent_and_revokes_each_presented_credential_kind() {
         assert_eq!(
             app.client
                 .delete(&path)
-                .bearer_auth(bearer)
+                .bearer_auth(&bearer)
                 .send()
                 .await
                 .unwrap()
@@ -217,7 +392,7 @@ async fn logout_is_idempotent_and_revokes_each_presented_credential_kind() {
         assert_eq!(
             app.client
                 .get(format!("{}/api/v1/auth/sessions", app.origin))
-                .bearer_auth(bearer)
+                .bearer_auth(&bearer)
                 .send()
                 .await
                 .unwrap()
@@ -232,12 +407,21 @@ async fn logout_is_idempotent_and_revokes_each_presented_credential_kind() {
 #[tokio::test]
 async fn audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content() {
     let app = Application::new().await;
-    stored_credentials(&app).await;
-    app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_account_session_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='AuthenticationToken' AND NEW.event='auth_token/api_session/revoked' THEN RAISE EXCEPTION 'Synthetic session audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_account_session_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_account_session_audit()").await.unwrap();
+    let credentials = stored_credentials(&app).await;
+    let fault = format!(
+        "reject_account_session_audit_{}",
+        uuid::Uuid::new_v4().simple()
+    );
+    // SeaORM has no trigger or PL/pgSQL function builder. This fault injection
+    // requires whole-run exclusivity and removes both objects below.
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='AuthenticationToken' AND NEW.event='auth_token/api_session/revoked' THEN RAISE EXCEPTION 'Synthetic session audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION {fault}()")).await.unwrap();
     let revoke = app
         .client
-        .delete(format!("{}/api/v1/auth/sessions/88001", app.origin))
-        .bearer_auth("synthetic-current-session")
+        .delete(format!(
+            "{}/api/v1/auth/sessions/{}",
+            app.origin, credentials.current.id
+        ))
+        .bearer_auth(credential_token(&app, "current"))
         .send()
         .await
         .unwrap();
@@ -245,26 +429,28 @@ async fn audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_
     let logout = app
         .client
         .delete(format!("{}/api/v1/auth/logout", app.origin))
-        .bearer_auth("synthetic-current-session")
+        .bearer_auth(credential_token(&app, "current"))
         .send()
         .await
         .unwrap();
     assert_eq!(logout.status().as_u16(), 500);
-    let row = app
-        .fixture
+    app.fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT revoked_at IS NULL AS active FROM api_sessions WHERE id=88001",
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON versions; DROP FUNCTION {fault}()"
         ))
+        .await
+        .unwrap();
+    let row = api_sessions::Entity::find_by_id(credentials.current.id)
+        .one(&app.fixture.admin)
         .await
         .unwrap()
         .unwrap();
-    assert!(row.try_get::<bool>("", "active").unwrap());
+    assert!(row.revoked_at.is_none());
     let still_valid = app
         .client
         .get(format!("{}/api/v1/auth/sessions", app.origin))
-        .bearer_auth("synthetic-current-session")
+        .bearer_auth(credential_token(&app, "current"))
         .send()
         .await
         .unwrap();
@@ -275,11 +461,14 @@ async fn audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_
 #[tokio::test]
 async fn revocation_audit_identifies_the_target_credential_and_actor_without_secrets() {
     let app = Application::new().await;
-    stored_credentials(&app).await;
+    let credentials = stored_credentials(&app).await;
     let selected = app
         .client
-        .delete(format!("{}/api/v1/auth/sessions/88002", app.origin))
-        .bearer_auth("synthetic-app-token")
+        .delete(format!(
+            "{}/api/v1/auth/sessions/{}",
+            app.origin, credentials.expired.id
+        ))
+        .bearer_auth(credential_token(&app, "app"))
         .send()
         .await
         .unwrap();
@@ -287,50 +476,60 @@ async fn revocation_audit_identifies_the_target_credential_and_actor_without_sec
     let logout = app
         .client
         .delete(format!("{}/api/v1/auth/logout", app.origin))
-        .bearer_auth("synthetic-app-token")
+        .bearer_auth(credential_token(&app, "app"))
         .send()
         .await
         .unwrap();
     assert_eq!(logout.status().as_u16(), 204);
-    let rows = app.fixture.admin.query_all_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT event,object,whodunnit,audit_context FROM versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event IN ('auth_token/api_session/revoked','auth_token/api_app_token/revoked') ORDER BY event"
-    )).await.unwrap();
+    let rows = account_versions(
+        &app,
+        "AuthenticationToken",
+        &[
+            "auth_token/api_session/revoked",
+            "auth_token/api_app_token/revoked",
+        ],
+    )
+    .await;
     assert_eq!(rows.len(), 2);
     for row in rows {
-        let event: String = row.try_get("", "event").unwrap();
-        let object: String = row.try_get("", "object").unwrap();
+        let event = row.event;
+        let object = row.object.unwrap();
         let metadata: Value = serde_json::from_str(&object).unwrap();
         let expected_id = if event == "auth_token/api_app_token/revoked" {
-            88010
+            credentials.app_token.id
         } else {
-            88002
+            credentials.expired.id
         };
         assert_eq!(metadata["credential_id"], expected_id);
         assert_eq!(
-            row.try_get::<Option<String>>("", "whodunnit")
-                .unwrap()
-                .as_deref(),
-            Some("77001")
+            row.whodunnit.as_deref(),
+            Some(app.fixture.user.id.to_string().as_str())
         );
-        let context: Value = row.try_get("", "audit_context").unwrap();
-        assert_eq!(context["actor_account_id"], 71001);
-        assert_eq!(context["actor_user_id"], 77001);
-        assert!(!object.contains("synthetic-app-token"));
-        assert!(!object.contains("synthetic-expired-refresh"));
+        let context = row.audit_context;
+        assert_eq!(context["actor_account_id"], app.fixture.account.id);
+        assert_eq!(context["actor_user_id"], app.fixture.user.id);
+        assert!(!object.contains(&credential_token(&app, "app")));
+        assert!(!object.contains(&credentials.expired.refresh_token_digest));
     }
-    let security = app.fixture.admin.query_all_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT event_type,metadata FROM security_audit_events WHERE actor_account_id=71001 AND event_type IN ('auth_token/api_session/revoked','auth_token/api_app_token/revoked') ORDER BY event_type"
-    )).await.unwrap();
+    let security = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::ActorAccountId.eq(app.fixture.account.id))
+        .filter(security_audit_events::Column::EventType.is_in([
+            "auth_token/api_session/revoked",
+            "auth_token/api_app_token/revoked",
+        ]))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
     assert_eq!(security.len(), 2);
     for row in security {
-        let event: String = row.try_get("", "event_type").unwrap();
-        let metadata: Value = row.try_get("", "metadata").unwrap();
+        let event = row.event_type;
+        let metadata = row.metadata;
         assert_eq!(
             metadata["credential_id"],
             if event == "auth_token/api_app_token/revoked" {
-                88010
+                credentials.app_token.id
             } else {
-                88002
+                credentials.expired.id
             }
         );
     }
@@ -341,7 +540,15 @@ async fn revocation_audit_identifies_the_target_credential_and_actor_without_sec
 async fn insufficient_mobile_scope_preserves_the_bearer_challenge() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("UPDATE oauth_grants SET access_token_scopes='patient/*.read',access_token_scope_hash=token_hash WHERE id=76001").await.unwrap();
+    let current = oauth_grants::Entity::find_by_id(app.fixture.authorization.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let mut grant = current.clone().into_active_model();
+    grant.access_token_scopes = Set(Some("patient/*.read".into()));
+    grant.access_token_scope_hash = Set(current.token_hash);
+    grant.update(&app.fixture.admin).await.unwrap();
     let response = app
         .client
         .get(format!("{}/api/v1/auth/sessions", app.origin))
@@ -364,38 +571,19 @@ async fn insufficient_mobile_scope_preserves_the_bearer_challenge() {
 async fn successful_mobile_bearer_use_extends_the_inactivity_deadline() {
     let app = Application::new().await;
     let token = app.token().await;
-    let before = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT last_used_at FROM oauth_grants WHERE id=76001",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get::<chrono::NaiveDateTime>("", "last_used_at")
-        .unwrap();
+    let before = last_used(&app).await;
     let response = app
         .client
-        .get(format!("{}/api/v1/households/72001/people", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/people",
+            app.origin, app.fixture.household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     assert_eq!(response.status().as_u16(), 200);
-    let after = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT last_used_at FROM oauth_grants WHERE id=76001",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get::<chrono::NaiveDateTime>("", "last_used_at")
-        .unwrap();
+    let after = last_used(&app).await;
     assert!(after > before + chrono::Duration::days(1));
     app.close().await;
 }
@@ -404,48 +592,41 @@ async fn successful_mobile_bearer_use_extends_the_inactivity_deadline() {
 async fn rejected_mobile_bearers_do_not_restore_activity() {
     let app = Application::new().await;
     let token = app.token().await;
-    for invalidation in [
-        "UPDATE oauth_grants SET last_used_at=now()-interval '31 days' WHERE id=76001",
-        "UPDATE oauth_grants SET last_used_at=now()-interval '1 day',expires_in=now()-interval '1 minute' WHERE id=76001",
-        "UPDATE oauth_grants SET expires_in=now()+interval '15 minutes',revoked_at=now() WHERE id=76001",
-    ] {
-        app.fixture
-            .admin
-            .execute_unprepared(invalidation)
-            .await
-            .unwrap();
-        let before = app
-            .fixture
-            .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT last_used_at FROM oauth_grants WHERE id=76001",
-            ))
+    for kind in 0..3 {
+        let now = chrono::Utc::now().naive_utc();
+        let current = oauth_grants::Entity::find_by_id(app.fixture.authorization.id)
+            .one(&app.fixture.admin)
             .await
             .unwrap()
-            .unwrap()
-            .try_get::<chrono::NaiveDateTime>("", "last_used_at")
             .unwrap();
+        let mut grant = current.into_active_model();
+        match kind {
+            0 => {
+                grant.last_used_at = Set(Some(now - chrono::Duration::days(31)));
+            }
+            1 => {
+                grant.last_used_at = Set(Some(now - chrono::Duration::days(1)));
+                grant.expires_in = Set(now - chrono::Duration::minutes(1));
+            }
+            _ => {
+                grant.expires_in = Set(now + chrono::Duration::minutes(15));
+                grant.revoked_at = Set(Some(now));
+            }
+        }
+        grant.update(&app.fixture.admin).await.unwrap();
+        let before = last_used(&app).await;
         let response = app
             .client
-            .get(format!("{}/api/v1/households/72001/people", app.origin))
+            .get(format!(
+                "{}/api/v1/households/{}/people",
+                app.origin, app.fixture.household.id
+            ))
             .bearer_auth(&token)
             .send()
             .await
             .unwrap();
         assert_eq!(response.status().as_u16(), 401);
-        let after = app
-            .fixture
-            .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT last_used_at FROM oauth_grants WHERE id=76001",
-            ))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get::<chrono::NaiveDateTime>("", "last_used_at")
-            .unwrap();
+        let after = last_used(&app).await;
         assert_eq!(after, before);
     }
     app.close().await;
@@ -455,9 +636,9 @@ async fn rejected_mobile_bearers_do_not_restore_activity() {
 async fn same_application_mobile_revocations_identify_each_grant_in_audit() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76003,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access','synthetic-second-mobile-hash',now()+interval '15 minutes',now()-interval '1 day',now()-interval '1 day','Second phone',now()-interval '1 day',now())").await.unwrap();
+    let second = mobile_grant(&app, 1, false).await;
     let path = format!("{}/api/v1/auth/sessions", app.origin);
-    for id in [76003, 76001] {
+    for id in [second.id, app.fixture.authorization.id] {
         let response = app
             .client
             .delete(format!("{path}/{id}"))
@@ -467,20 +648,18 @@ async fn same_application_mobile_revocations_identify_each_grant_in_audit() {
             .unwrap();
         assert_eq!(response.status().as_u16(), 204);
     }
-    let rows = app.fixture.admin.query_all_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT object FROM versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.revoked' ORDER BY id"
-    )).await.unwrap();
+    let rows = account_versions(&app, "Account", &["mobile_oauth.revoked"]).await;
     assert_eq!(rows.len(), 2);
     let ids = rows
         .into_iter()
         .map(|row| {
-            let object: String = row.try_get("", "object").unwrap();
+            let object = row.object.unwrap();
             let metadata: Value = serde_json::from_str(&object).unwrap();
             metadata["oauth_grant_id"].as_i64().unwrap()
         })
         .collect::<Vec<_>>();
-    assert!(ids.contains(&76001));
-    assert!(ids.contains(&76003));
+    assert!(ids.contains(&app.fixture.authorization.id));
+    assert!(ids.contains(&second.id));
     app.close().await;
 }
 
@@ -488,7 +667,7 @@ async fn same_application_mobile_revocations_identify_each_grant_in_audit() {
 async fn account_discovery_and_sessions_follow_contract_and_household_visibility() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
-    stored_credentials(&app).await;
+    let credentials = stored_credentials(&app).await;
     let contract = contract();
     let operation = &contract["paths"]["/auth/households"]["get"];
     assert_eq!(operation["operationId"], "listHouseholds");
@@ -500,7 +679,7 @@ async fn account_discovery_and_sessions_follow_contract_and_household_visibility
     let list = app
         .client
         .get(format!("{}/api/v1/auth/households", app.origin))
-        .bearer_auth("synthetic-current-session")
+        .bearer_auth(credential_token(&app, "current"))
         .send()
         .await
         .unwrap();
@@ -520,11 +699,11 @@ async fn account_discovery_and_sessions_follow_contract_and_household_visibility
         &body,
         "auth household collection",
     );
-    assert_eq!(body["account_id"], 71001);
+    assert_eq!(body["account_id"], app.fixture.account.id);
     let households = body["data"].as_array().unwrap();
     assert_eq!(households.len(), 1);
-    assert_eq!(households[0]["id"], 72001);
-    assert_eq!(households[0]["membership_id"], 74001);
+    assert_eq!(households[0]["id"], app.fixture.household.id);
+    assert_eq!(households[0]["membership_id"], app.fixture.membership.id);
 
     let anonymous = app
         .client
@@ -543,7 +722,7 @@ async fn account_discovery_and_sessions_follow_contract_and_household_visibility
     let list = app
         .client
         .get(format!("{}/api/v1/auth/sessions", app.origin))
-        .bearer_auth("synthetic-current-session")
+        .bearer_auth(credential_token(&app, "current"))
         .send()
         .await
         .unwrap();
@@ -551,12 +730,12 @@ async fn account_discovery_and_sessions_follow_contract_and_household_visibility
     let text = list.text().await.unwrap();
     assert_eq!(list_status, 200);
     for secret in [
-        "synthetic-current-session",
-        "synthetic-current-refresh",
-        "synthetic-expired-digest",
-        "synthetic-revoked-digest",
+        credential_token(&app, "current"),
+        credentials.current.refresh_token_digest.clone(),
+        credentials.expired.access_token_digest.clone(),
+        credentials.revoked.access_token_digest.clone(),
     ] {
-        assert!(!text.contains(secret), "leaked {secret}");
+        assert!(!text.contains(&secret), "leaked {secret}");
     }
     let body: Value = serde_json::from_str(&text).unwrap();
     assert_eq!(
@@ -574,10 +753,14 @@ async fn account_discovery_and_sessions_follow_contract_and_household_visibility
     );
     let sessions = body["data"].as_array().unwrap();
     assert_eq!(sessions.len(), 2);
-    assert_eq!(sessions[0]["id"], 88001);
+    assert_eq!(sessions[0]["id"], credentials.current.id);
     assert_eq!(sessions[0]["device_name"], "Current phone");
-    assert_eq!(sessions[1]["id"], 88002);
-    assert!(sessions.iter().all(|session| session["id"] != 88003));
+    assert_eq!(sessions[1]["id"], credentials.expired.id);
+    assert!(
+        sessions
+            .iter()
+            .all(|session| session["id"] != credentials.revoked.id)
+    );
 
     let anonymous = app
         .client
@@ -586,6 +769,6 @@ async fn account_discovery_and_sessions_follow_contract_and_household_visibility
         .await
         .unwrap();
     assert_eq!(anonymous.status().as_u16(), 401);
-    assert_expanded_account_collections(&app).await;
+    assert_expanded_account_collections(&app, &credentials).await;
     app.close().await;
 }

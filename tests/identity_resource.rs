@@ -1,66 +1,117 @@
-#[path = "support/fixtures.rs"]
-pub mod fixtures;
-#[path = "support/template.rs"]
-mod template;
+#[path = "support/scenario.rs"]
+pub mod scenario;
 use axum::{
     body::Body,
     http::{HeaderMap, Request},
 };
+use base64::Engine;
+use med_tracker::models::_entities::{oauth_applications, oauth_grants};
 use med_tracker::models::identity::{
     self,
     resource::{self, AuthenticationError},
 };
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use scenario::Scenario;
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, EntityTrait, IntoActiveModel};
+use sha2::{Digest, Sha256};
 
 struct Fixture {
-    admin: DatabaseConnection,
-    runtime: DatabaseConnection,
+    scenario: Scenario,
+    application: oauth_applications::Model,
+    grant: oauth_grants::Model,
+}
+
+impl std::ops::Deref for Fixture {
+    type Target = Scenario;
+    fn deref(&self) -> &Self::Target {
+        &self.scenario
+    }
 }
 
 impl Fixture {
     async fn new() -> Self {
-        let uri = template::owned_database_url();
-        let endpoint = uri
-            .strip_prefix("postgres://medtracker:medtracker_password@127.0.0.1:")
-            .unwrap();
-        let (port, _) = endpoint.split_once('/').unwrap();
-        assert!(port.parse::<u16>().unwrap() > 0);
-        template::prepare(&uri, "identity_resource_template", |admin| async move {
-            fixtures::seed_persistence(&admin).await;
-            fixtures::seed_identity_oauth(&admin).await;
-        })
-        .await;
-        let suffix = uuid::Uuid::new_v4().simple();
-        let name = format!("resource_{suffix}");
-        let role = format!("resource_runtime_{suffix}");
-        let control = Database::connect(&uri).await.unwrap();
-        control
-            .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE identity_resource_template"
+        let scenario = Scenario::new().await;
+        let now = chrono::Utc::now().naive_utc();
+        let application = oauth_applications::ActiveModel {
+            account_id: Set(Some(scenario.account.id)),
+            client_id: Set(uuid::Uuid::new_v4().to_string()),
+            client_kind: Set("mobile".into()),
+            name: Set("Synthetic resource client".into()),
+            redirect_uri: Set("io.damacus.medtracker:/oauth2redirect".into()),
+            scopes: Set("medtracker offline_access".into()),
+            token_endpoint_auth_method: Set("none".into()),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&scenario.admin)
+        .await
+        .unwrap();
+        let grant = oauth_grants::ActiveModel {
+            account_id: Set(scenario.account.id),
+            oauth_application_id: Set(application.id),
+            client_kind: Set("mobile".into()),
+            code: Set(Some(uuid::Uuid::new_v4().to_string())),
+            code_challenge: Set(Some("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".into())),
+            code_challenge_method: Set(Some("S256".into())),
+            redirect_uri: Set(Some(application.redirect_uri.clone())),
+            scopes: Set(application.scopes.clone()),
+            expires_in: Set(now + chrono::Duration::minutes(5)),
+            authenticated_at: Set(Some(now - chrono::Duration::days(2))),
+            last_used_at: Set(Some(now - chrono::Duration::days(2))),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&scenario.admin)
+        .await
+        .unwrap();
+        Self {
+            scenario,
+            application,
+            grant,
+        }
+    }
+
+    fn code_request(&self) -> Request<Body> {
+        Request::builder()
+            .method("POST")
+            .uri("/oauth/token")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from(
+                serde_urlencoded::to_string([
+                    ("grant_type", "authorization_code"),
+                    ("client_id", self.application.client_id.as_str()),
+                    ("code", self.grant.code.as_deref().unwrap()),
+                    ("redirect_uri", self.application.redirect_uri.as_str()),
+                    (
+                        "code_verifier",
+                        "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+                    ),
+                ])
+                .unwrap(),
             ))
+            .unwrap()
+    }
+
+    async fn update_grant(&self, edit: impl FnOnce(&mut oauth_grants::ActiveModel)) {
+        let mut grant = oauth_grants::Entity::find_by_id(self.grant.id)
+            .one(&self.admin)
             .await
-            .unwrap();
-        control.execute_unprepared(&format!("CREATE ROLE {role} LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app")).await.unwrap();
-        control.close().await.unwrap();
-        let admin = Database::connect(format!(
-            "postgres://medtracker:medtracker_password@127.0.0.1:{port}/{name}"
-        ))
-        .await
-        .unwrap();
-        fixtures::seed_mobile_grant(&admin).await;
-        let runtime = Database::connect(format!(
-            "postgres://{role}:password@127.0.0.1:{port}/{name}"
-        ))
-        .await
-        .unwrap();
-        Self { admin, runtime }
+            .unwrap()
+            .unwrap()
+            .into_active_model();
+        edit(&mut grant);
+        grant.update(&self.admin).await.unwrap();
+    }
+
+    async fn timezone(&self, timezone: &str) {
+        let mut account = self.account.clone().into_active_model();
+        account.preferences = Set(serde_json::json!({"time_zone":timezone}));
+        account.update(&self.admin).await.unwrap();
     }
 
     async fn headers(&self) -> HeaderMap {
-        let request = Request::builder().method("POST").uri("/oauth/token")
-            .header("content-type", "application/x-www-form-urlencoded")
-            .body(Body::from("grant_type=authorization_code&client_id=native&code=synthetic-legacy-code&redirect_uri=io.damacus.medtracker%3A%2Foauth2redirect&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).unwrap();
-        let token = identity::exchange(&self.runtime, request, None)
+        let token = identity::exchange(&self.runtime, self.code_request(), None)
             .await
             .unwrap();
         let mut headers = HeaderMap::new();
@@ -74,21 +125,14 @@ impl Fixture {
     }
 
     async fn close(self) {
-        self.runtime.close().await.unwrap();
-        self.admin.close().await.unwrap();
+        self.scenario.close().await;
     }
 }
 
 #[tokio::test]
 async fn retained_rails_friendly_time_zone_is_resolved() {
     let fixture = Fixture::new().await;
-    fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE accounts SET preferences = '{\"time_zone\":\"London\"}' WHERE id = 71001",
-        )
-        .await
-        .unwrap();
+    fixture.timezone("London").await;
     let headers = fixture.headers().await;
     let result = resource::authenticate(&fixture.runtime, &headers, None).await;
     assert!(
@@ -102,21 +146,22 @@ async fn retained_rails_friendly_time_zone_is_resolved() {
 #[tokio::test]
 async fn access_scope_is_bound_to_the_issued_token_and_refresh_scope_is_preserved() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("UPDATE oauth_grants SET scopes = 'medtracker offline_access' WHERE id = 76001; UPDATE oauth_applications SET scopes = 'medtracker offline_access' WHERE id = 75001").await.unwrap();
-    let code_request = Request::builder().method("POST").uri("/oauth/token")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(Body::from("grant_type=authorization_code&client_id=native&code=synthetic-legacy-code&redirect_uri=io.damacus.medtracker%3A%2Foauth2redirect&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).unwrap();
-    let original = identity::exchange(&fixture.runtime, code_request, None)
+    let original = identity::exchange(&fixture.runtime, fixture.code_request(), None)
         .await
         .unwrap();
     let refresh_request = Request::builder()
         .method("POST")
         .uri("/oauth/token")
         .header("content-type", "application/x-www-form-urlencoded")
-        .body(Body::from(format!(
-            "grant_type=refresh_token&client_id=native&refresh_token={}&scope=offline_access",
-            original["refresh_token"].as_str().unwrap()
-        )))
+        .body(Body::from(
+            serde_urlencoded::to_string([
+                ("grant_type", "refresh_token"),
+                ("client_id", fixture.application.client_id.as_str()),
+                ("refresh_token", original["refresh_token"].as_str().unwrap()),
+                ("scope", "offline_access"),
+            ])
+            .unwrap(),
+        ))
         .unwrap();
     let narrowed = identity::exchange(&fixture.runtime, refresh_request, None)
         .await
@@ -132,10 +177,18 @@ async fn access_scope_is_bound_to_the_issued_token_and_refresh_scope_is_preserve
         resource::authenticate(&fixture.runtime, &headers, None).await,
         Err(AuthenticationError::InsufficientScope { .. })
     ));
-    fixture.admin.execute_unprepared("UPDATE oauth_grants SET token_hash = translate(encode(digest('rollback-issued-token', 'sha256'), 'base64'), '+/', '-_') WHERE id = 76001").await.unwrap();
+    let replacement = uuid::Uuid::new_v4().to_string();
+    fixture
+        .update_grant(|grant| {
+            grant.token_hash = Set(Some(
+                base64::engine::general_purpose::URL_SAFE
+                    .encode(Sha256::digest(replacement.as_bytes())),
+            ))
+        })
+        .await;
     headers.insert(
         "authorization",
-        "Bearer rollback-issued-token".parse().unwrap(),
+        format!("Bearer {replacement}").parse().unwrap(),
     );
     assert!(
         resource::authenticate(&fixture.runtime, &headers, None)
@@ -149,23 +202,31 @@ async fn access_scope_is_bound_to_the_issued_token_and_refresh_scope_is_preserve
 #[tokio::test]
 async fn real_mobile_access_token_opens_only_current_household() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("UPDATE accounts SET preferences = '{\"time_zone\":\"Pacific/Auckland\"}' WHERE id = 71001").await.unwrap();
+    fixture.timezone("Pacific/Auckland").await;
     let headers = fixture.headers().await;
     let principal = resource::authenticate(&fixture.runtime, &headers, None)
         .await
         .unwrap();
-    assert_eq!(principal.account_id(), 71001);
+    assert_eq!(principal.account_id(), fixture.account.id);
     assert_eq!(principal.time_zone(), chrono_tz::Pacific::Auckland);
-    assert_eq!(principal.provenance().reference, "76001");
+    assert_eq!(
+        principal.provenance().reference,
+        fixture.grant.id.to_string()
+    );
     let tenant = principal
-        .begin_household(&fixture.runtime, 72001, "resource-proof".into(), None)
+        .begin_household(
+            &fixture.runtime,
+            fixture.household.id,
+            "resource-proof".into(),
+            None,
+        )
         .await
         .unwrap();
-    assert_eq!(tenant.membership().id, 74001);
+    assert_eq!(tenant.membership().id, fixture.membership.id);
     tenant.rollback().await.unwrap();
     assert!(matches!(
         principal
-            .begin_household(&fixture.runtime, 72002, "missing-household".into(), None)
+            .begin_household(&fixture.runtime, i64::MAX, "missing-household".into(), None)
             .await,
         Err(AuthenticationError::NotFound)
     ));
@@ -179,10 +240,17 @@ async fn revocation_between_authentication_and_operation_is_rechecked() {
     let principal = resource::authenticate(&fixture.runtime, &headers, None)
         .await
         .unwrap();
-    fixture.admin.execute_unprepared("UPDATE oauth_grants SET revoked_at = timezone('UTC', clock_timestamp()) WHERE id = 76001").await.unwrap();
+    fixture
+        .update_grant(|grant| grant.revoked_at = Set(Some(chrono::Utc::now().naive_utc())))
+        .await;
     assert!(matches!(
         principal
-            .begin_household(&fixture.runtime, 72001, "revoked".into(), None)
+            .begin_household(
+                &fixture.runtime,
+                fixture.household.id,
+                "revoked".into(),
+                None
+            )
             .await,
         Err(AuthenticationError::Unauthenticated)
     ));
@@ -201,7 +269,12 @@ async fn a_household_operation_does_not_block_another_mobile_authentication() {
         .await
         .unwrap();
     let tenant = principal
-        .begin_household(&fixture.runtime, 72001, "held-household".into(), None)
+        .begin_household(
+            &fixture.runtime,
+            fixture.household.id,
+            "held-household".into(),
+            None,
+        )
         .await
         .unwrap();
     let second = resource::authenticate(&fixture.runtime, &headers, None).await;
@@ -217,10 +290,23 @@ async fn token_rotation_between_authentication_and_operation_is_rechecked() {
     let principal = resource::authenticate(&fixture.runtime, &headers, None)
         .await
         .unwrap();
-    fixture.admin.execute_unprepared("UPDATE oauth_grants SET token_hash = translate(encode(digest('rotated-token', 'sha256'), 'base64'), '+/', '-_') WHERE id = 76001").await.unwrap();
+    let rotated = uuid::Uuid::new_v4().to_string();
+    fixture
+        .update_grant(|grant| {
+            grant.token_hash = Set(Some(
+                base64::engine::general_purpose::URL_SAFE
+                    .encode(Sha256::digest(rotated.as_bytes())),
+            ))
+        })
+        .await;
     assert!(matches!(
         principal
-            .begin_household(&fixture.runtime, 72001, "rotated".into(), None)
+            .begin_household(
+                &fixture.runtime,
+                fixture.household.id,
+                "rotated".into(),
+                None
+            )
             .await,
         Err(AuthenticationError::Unauthenticated)
     ));
@@ -239,12 +325,21 @@ async fn resource_rejects_ambiguous_expired_and_insufficient_scope_credentials()
             Err(AuthenticationError::Unauthenticated)
         ));
     }
-    fixture.admin.execute_unprepared("UPDATE oauth_grants SET expires_in = timezone('UTC', clock_timestamp()) - interval '1 second' WHERE id = 76001").await.unwrap();
+    fixture
+        .update_grant(|grant| {
+            grant.expires_in = Set(chrono::Utc::now().naive_utc() - chrono::Duration::seconds(1))
+        })
+        .await;
     assert!(matches!(
         resource::authenticate(&fixture.runtime, &headers, None).await,
         Err(AuthenticationError::Unauthenticated)
     ));
-    fixture.admin.execute_unprepared("UPDATE oauth_grants SET expires_in = timezone('UTC', clock_timestamp()) + interval '15 minutes', scopes = 'offline_access' WHERE id = 76001").await.unwrap();
+    fixture
+        .update_grant(|grant| {
+            grant.expires_in = Set(chrono::Utc::now().naive_utc() + chrono::Duration::minutes(15));
+            grant.scopes = Set("offline_access".into());
+        })
+        .await;
     assert!(matches!(
         resource::authenticate(&fixture.runtime, &headers, None).await,
         Err(AuthenticationError::Unauthenticated) | Err(AuthenticationError::Forbidden)

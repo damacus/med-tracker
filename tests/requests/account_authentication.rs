@@ -1,11 +1,17 @@
 use super::*;
 use base64::Engine as _;
 use chrono::{Duration, Utc};
+use med_tracker::models::_entities::{
+    account_lockouts, household_memberships, households, oauth_grants, users, versions,
+};
 use med_tracker::models::_entities::{accounts, app_settings, identity_onboarding, people};
 use med_tracker::models::entities::{
     identity_api_key as identity_api_keys, identity_passkey, identity_session,
 };
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use sea_orm::sea_query::{Expr, Query};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, Set,
+};
 
 fn is_auth_session_cookie(header: &str) -> bool {
     matches!(
@@ -14,7 +20,7 @@ fn is_auth_session_cookie(header: &str) -> bool {
     )
 }
 
-async fn enable_completed_onboarding(fixture: &Fixture, account_id: i64) {
+async fn enable_completed_onboarding(fixture: &RequestFixture, account_id: i64) {
     let active = identity_onboarding::ActiveModel {
         account_id: Set(account_id),
         completed_at: Set(Some(Utc::now().fixed_offset())),
@@ -32,7 +38,7 @@ async fn enable_completed_onboarding(fixture: &Fixture, account_id: i64) {
 }
 
 fn inventory_key(
-    id: i64,
+    account_id: i64,
     name: &str,
     config_id: &str,
     created_at: chrono::DateTime<Utc>,
@@ -41,11 +47,10 @@ fn inventory_key(
     remaining: f64,
 ) -> identity_api_keys::ActiveModel {
     identity_api_keys::ActiveModel {
-        id: Set(id),
-        reference_id: Set(71001),
+        reference_id: Set(account_id),
         name: Set(Some(name.into())),
         config_id: Set(config_id.into()),
-        key_hash: Set(format!("synthetic-inventory-{id}")),
+        key_hash: Set(format!("synthetic-inventory-{}", uuid::Uuid::new_v4())),
         enabled: Set(enabled),
         remaining: Set(Some(remaining)),
         rate_limit_enabled: Set(true),
@@ -59,25 +64,163 @@ fn inventory_key(
     }
 }
 
-async fn authentication_only_account(fixture: &Fixture, name: Option<&str>, status: i32) {
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Synthetic account identity','1990-01-01',0,true,now(),now())").await.unwrap();
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO accounts(id,person_id,email,name,status,email_verified,created_at,updated_at) VALUES(71002,73992,'account-auth-only@example.test',$1,$2,true,now(),now())",[name.map(str::to_owned).into(),status.into()])).await.unwrap();
-    fixture.admin.execute_unprepared("INSERT INTO auth_credentials(account_id,provider_id,user_id,password,created_at,updated_at) SELECT '71002','credential',71002,password,now(),now() FROM auth_credentials WHERE user_id=71001 AND provider_id='credential'; INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71002,now())").await.unwrap();
+async fn native_account_fields(fixture: &RequestFixture, id: i64) -> sea_orm::QueryResult {
+    let query = {
+        use sea_orm::sea_query::ExprTrait;
+        Query::select()
+            .columns(["status", "email_verified", "metadata"])
+            .from("accounts")
+            .and_where(Expr::col("id").eq(id))
+            .to_owned()
+    };
+    fixture
+        .admin
+        .query_one_raw(fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+}
+
+async fn verification_mails(fixture: &RequestFixture, email: &str) -> Vec<Value> {
+    let query = {
+        use sea_orm::sea_query::{ExprTrait, extension::postgres::PgExpr};
+        Query::select()
+            .column("task_data")
+            .from("pg_loco_queue")
+            .and_where(PgExpr::cast_json_field(Expr::col("task_data"), "to").eq(email))
+            .and_where(
+                PgExpr::cast_json_field(Expr::col("task_data"), "subject")
+                    .eq("Verify your account"),
+            )
+            .order_by("created_at", sea_orm::sea_query::Order::Desc)
+            .to_owned()
+    };
+    fixture
+        .admin
+        .query_all_raw(fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| row.try_get("", "task_data").unwrap())
+        .collect()
+}
+
+async fn native_credential(fixture: &RequestFixture, account_id: i64) -> (String, String) {
+    let query = {
+        use sea_orm::sea_query::ExprTrait;
+        Query::select()
+            .columns(["id", "password"])
+            .from("auth_credentials")
+            .and_where(Expr::col("user_id").eq(account_id))
+            .and_where(Expr::col("provider_id").eq("credential"))
+            .to_owned()
+    };
+    let row = fixture
+        .admin
+        .query_one_raw(fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap();
+    (
+        row.try_get("", "id").unwrap(),
+        row.try_get("", "password").unwrap(),
+    )
+}
+
+async fn account_status(fixture: &RequestFixture, id: i64, status: i32, verified: bool) {
+    for (column, value) in [
+        ("email_verified", Expr::val(verified)),
+        ("status", Expr::val(status)),
+    ] {
+        let query = {
+            use sea_orm::sea_query::ExprTrait;
+            Query::update()
+                .table("accounts")
+                .value(column, value)
+                .and_where(Expr::col("id").eq(id))
+                .to_owned()
+        };
+        fixture
+            .admin
+            .execute_raw(fixture.admin.get_database_backend().build(&query))
+            .await
+            .unwrap();
+    }
+}
+
+async fn authentication_only_account(fixture: &RequestFixture, name: Option<&str>, status: i32) {
+    household_memberships::Entity::delete_by_id(fixture.foreign.membership.id)
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    users::Entity::delete_many()
+        .filter(users::Column::PersonId.eq(fixture.foreign.account.person_id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    let mut account = fixture.foreign.account.clone().into_active_model();
+    account.name = Set(name.map(str::to_owned));
+    account.status = Set(status);
+    account.update(&fixture.admin).await.unwrap();
+}
+
+pub(super) struct RegistrationSetting {
+    previous: Option<app_settings::Model>,
+    id: i64,
+}
+
+pub(super) async fn registration_setting(fixture: &RequestFixture) -> RegistrationSetting {
+    let previous = app_settings::Entity::find()
+        .one(&fixture.admin)
+        .await
+        .unwrap();
+    let now = Utc::now().naive_utc();
+    let setting = if let Some(previous) = previous.clone() {
+        let mut setting = previous.into_active_model();
+        setting.invite_only = Set(false);
+        setting.update(&fixture.admin).await.unwrap()
+    } else {
+        app_settings::ActiveModel {
+            invite_only: Set(false),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&fixture.admin)
+        .await
+        .unwrap()
+    };
+    RegistrationSetting {
+        previous,
+        id: setting.id,
+    }
+}
+
+pub(super) async fn restore_registration(fixture: &RequestFixture, saved: RegistrationSetting) {
+    if let Some(previous) = saved.previous {
+        previous
+            .into_active_model()
+            .reset_all()
+            .update(&fixture.admin)
+            .await
+            .unwrap();
+    } else {
+        app_settings::Entity::delete_by_id(saved.id)
+            .exec(&fixture.admin)
+            .await
+            .unwrap();
+    }
 }
 
 #[tokio::test]
 async fn account_authentication_password_signup_verifies_email_and_retains_first_login() {
-    let (fixture, boot) = boot_fixture().await;
-    app_settings::ActiveModel {
-        invite_only: Set(false),
-        created_at: Set(Utc::now().naive_utc()),
-        updated_at: Set(Utc::now().naive_utc()),
-        ..Default::default()
-    }
-    .insert(&fixture.admin)
-    .await
-    .unwrap();
-    let email = "password-confirmation@example.test";
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let previous_settings = registration_setting(&fixture).await;
+    let email = format!(
+        "{}@example.test",
+        fixture.credential("password-confirmation")
+    );
     let password = "Verification-passphrase-42";
     let mut request = server(&boot);
     request.save_cookies();
@@ -87,23 +230,19 @@ async fn account_authentication_password_signup_verifies_email_and_retains_first
         .json(&json!({"name":"Password confirmation owner","email":email,"date_of_birth":"1990-04-12","credential":"password","password":password}))
         .await;
     assert_eq!(signup.status_code(), 200, "{}", signup.text());
-    let pending = fixture.admin.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT a.id,a.status,p.id AS credential_id,p.password AS credential_password,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=$1 AND q.task_data->>'subject'='Verify your account') AS mail_count FROM accounts a JOIN auth_credentials p ON p.user_id=a.id AND p.provider_id='credential' WHERE a.email=$1",
-        [email.into()],
-    )).await.unwrap().unwrap();
-    let account_id: i64 = pending.try_get("", "id").unwrap();
-    let credential_id: String = pending.try_get("", "credential_id").unwrap();
-    let credential_password: String = pending.try_get("", "credential_password").unwrap();
-    assert_eq!(pending.try_get::<i32>("", "status").unwrap(), 1);
-    assert_eq!(pending.try_get::<i64>("", "mail_count").unwrap(), 1);
+    let pending = accounts::Entity::find()
+        .filter(accounts::Column::Email.eq(&email))
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let account_id = pending.id;
+    let (credential_id, credential_password) = native_credential(&fixture, account_id).await;
+    assert_eq!(pending.status, 1);
+    let mails = verification_mails(&fixture, &email).await;
+    assert_eq!(mails.len(), 1);
     assert!(!credential_password.is_empty());
-    let mail = fixture.admin.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT task_data FROM pg_loco_queue WHERE task_data->>'to'=$1 AND task_data->>'subject'='Verify your account' ORDER BY created_at DESC LIMIT 1",
-        [email.into()],
-    )).await.unwrap().unwrap();
-    let mail: Value = mail.try_get("", "task_data").unwrap();
+    let mail = &mails[0];
     let link = url::Url::parse(
         mail["text"]
             .as_str()
@@ -160,17 +299,12 @@ async fn account_authentication_password_signup_verifies_email_and_retains_first
         .unwrap()
         .unwrap();
     assert_eq!(pending.status, 1);
-    let pending_sessions = fixture
-        .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT count(*) AS sessions FROM identity_sessions WHERE account_id=$1",
-            [account_id.into()],
-        ))
+    let pending_sessions = identity_session::Entity::find()
+        .filter(identity_session::Column::UserId.eq(account_id))
+        .count(&fixture.admin)
         .await
-        .unwrap()
         .unwrap();
-    assert_eq!(pending_sessions.try_get::<i64>("", "sessions").unwrap(), 0);
+    assert_eq!(pending_sessions, 0);
     let confirmed = request
         .post("/verify-account-confirm")
         .add_header("origin", boot.app_context.config.server.full_url())
@@ -234,19 +368,34 @@ async fn account_authentication_password_signup_verifies_email_and_retains_first
             .filter_map(|header| header.to_str().ok())
             .any(is_auth_session_cookie)
     );
-    let verified = fixture.admin.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT a.status,p.password,(SELECT count(*) FROM versions v WHERE v.item_type='NativeAuthentication' AND v.item_id=a.id AND v.event='native_auth/account/updated') AS audits,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=a.email::text AND q.task_data->>'subject'='Verify your account') AS mail_count,(SELECT count(*) FROM identity_sessions s WHERE s.account_id=a.id AND s.active AND s.purpose='enrolment') AS sessions FROM accounts a JOIN auth_credentials p ON p.user_id=a.id AND p.id=$2 WHERE a.id=$1",
-        [account_id.into(), credential_id.into()],
-    )).await.unwrap().unwrap();
-    assert_eq!(verified.try_get::<i32>("", "status").unwrap(), 2);
+    let verified = accounts::Entity::find_by_id(account_id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(verified.status, 2);
+    let (verified_credential_id, verified_password) = native_credential(&fixture, account_id).await;
+    assert_eq!(verified_credential_id, credential_id);
+    assert_eq!(verified_password, credential_password);
+    let audits = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("NativeAuthentication"))
+        .filter(versions::Column::ItemId.eq(account_id))
+        .filter(versions::Column::Event.eq("native_auth/account/updated"))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(audits, 1);
+    assert_eq!(verification_mails(&fixture, &email).await.len(), 1);
     assert_eq!(
-        verified.try_get::<String>("", "password").unwrap(),
-        credential_password
+        identity_session::Entity::find()
+            .filter(identity_session::Column::UserId.eq(account_id))
+            .filter(identity_session::Column::Active.eq(true))
+            .filter(identity_session::Column::ClinicalSessionPurpose.eq("enrolment"))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
     );
-    assert_eq!(verified.try_get::<i64>("", "audits").unwrap(), 1);
-    assert_eq!(verified.try_get::<i64>("", "mail_count").unwrap(), 1);
-    assert_eq!(verified.try_get::<i64>("", "sessions").unwrap(), 1);
     let fresh = server(&boot);
     let signed_in = fresh
         .post("/api/auth/sign-in/email")
@@ -265,35 +414,48 @@ async fn account_authentication_password_signup_verifies_email_and_retains_first
         .await;
     assert_eq!(denied.status_code(), 401, "{}", denied.text());
     drop(fresh);
+    restore_registration(&fixture, previous_settings).await;
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_open_signup_without_invitation_persists_identity_and_mail() {
-    let (fixture, boot) = boot_fixture().await;
-    let settings = app_settings::ActiveModel {
-        invite_only: Set(false),
-        created_at: Set(Utc::now().naive_utc()),
-        updated_at: Set(Utc::now().naive_utc()),
-        ..Default::default()
-    }
-    .insert(&fixture.admin)
-    .await
-    .unwrap();
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
+    let previous_settings = registration_setting(&fixture).await;
+    let settings = app_settings::Entity::find()
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let open_email = format!(
+        "{}@example.test",
+        fixture.credential("open-null-invitation")
+    );
+    let closed_email = format!(
+        "{}@example.test",
+        fixture.credential("closed-null-invitation")
+    );
     let request = server(&boot);
     let signed_up = request
         .post("/api/auth/onboarding/signup")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"name":"Open registration owner","email":"open-null-invitation@example.test","date_of_birth":"1990-04-12","credential":"passkey"}))
+        .json(&json!({"name":"Open registration owner","email":open_email,"date_of_birth":"1990-04-12","credential":"passkey"}))
         .await;
     assert_eq!(signed_up.status_code(), 200, "{}", signed_up.text());
     assert_eq!(signed_up.json::<Value>()["status"], true);
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM accounts WHERE email='open-null-invitation@example.test' AND status=1) AS accounts,(SELECT count(*) FROM pg_loco_queue WHERE task_data->>'to'='open-null-invitation@example.test') AS messages"
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "accounts").unwrap(), 1);
-    assert_eq!(row.try_get::<i64>("", "messages").unwrap(), 1);
+    assert_eq!(
+        accounts::Entity::find()
+            .filter(accounts::Column::Email.eq(&open_email))
+            .filter(accounts::Column::Status.eq(1))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(verification_mails(&fixture, &open_email).await.len(), 1);
     app_settings::ActiveModel {
         id: Set(settings.id),
         invite_only: Set(true),
@@ -305,55 +467,36 @@ async fn account_authentication_open_signup_without_invitation_persists_identity
     let closed = request
         .post("/api/auth/onboarding/signup")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"name":"Closed registration","email":"closed-null-invitation@example.test","date_of_birth":"1990-04-12","credential":"passkey"}))
+        .json(&json!({"name":"Closed registration","email":closed_email,"date_of_birth":"1990-04-12","credential":"passkey"}))
         .await;
     assert_eq!(closed.status_code(), 403, "{}", closed.text());
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS accounts FROM accounts WHERE email='closed-null-invitation@example.test'"
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "accounts").unwrap(), 0);
+    assert_eq!(
+        accounts::Entity::find()
+            .filter(accounts::Column::Email.eq(&closed_email))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    restore_registration(&fixture, previous_settings).await;
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_security_inventory_includes_later_credentials() {
-    let (fixture, boot) = boot_fixture().await;
-    people::ActiveModel {
-        id: Set(73992),
-        name: Set("Other account owner".into()),
-        person_type: Set(0),
-        has_capacity: Set(true),
-        date_of_birth: Set(Some(chrono::NaiveDate::from_ymd_opt(1990, 1, 1).unwrap())),
-        created_at: Set(Utc::now().naive_utc()),
-        updated_at: Set(Utc::now().naive_utc()),
-        ..Default::default()
-    }
-    .insert(&fixture.admin)
-    .await
-    .unwrap();
-    accounts::ActiveModel {
-        id: Set(71002),
-        person_id: Set(73992),
-        email: Set("foreign@example.test".into()),
-        status: Set(2),
-        created_at: Set(Utc::now()),
-        updated_at: Set(Utc::now()),
-        ..Default::default()
-    }
-    .insert(&fixture.admin)
-    .await
-    .unwrap();
-    fixture.admin.execute_unprepared("UPDATE accounts SET email_verified=true WHERE id=71002; INSERT INTO auth_credentials(account_id,provider_id,user_id,password,created_at,updated_at) SELECT '71002','credential',71002,password,now(),now() FROM auth_credentials WHERE user_id=71001 AND provider_id='credential'").await.unwrap();
-    enable_completed_onboarding(&fixture, 71001).await;
-    enable_completed_onboarding(&fixture, 71002).await;
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
+    enable_completed_onboarding(&fixture, fixture.account.id).await;
+    enable_completed_onboarding(&fixture, fixture.foreign.account.id).await;
     let now = Utc::now();
     let mut keys = (0..101)
         .map(|index| {
             let created = now - Duration::days(2) + Duration::seconds(index);
             let expired = index % 3 == 0;
             inventory_key(
-                90000 + index,
+                fixture.account.id,
                 &format!("earlier-{index:03}"),
                 if index % 2 == 0 {
                     "medtracker-personal"
@@ -372,7 +515,7 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         })
         .collect::<Vec<_>>();
     keys.push(inventory_key(
-        90101,
+        fixture.account.id,
         "later-active-personal",
         "medtracker-personal",
         now,
@@ -384,11 +527,18 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .exec(&fixture.admin)
         .await
         .unwrap();
+    let later_key = identity_api_keys::Entity::find()
+        .filter(identity_api_keys::Column::ReferenceId.eq(fixture.account.id))
+        .filter(identity_api_keys::Column::Name.eq("later-active-personal"))
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
     let request = server(&boot);
     let signed_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
     let owner_cookie = signed_in
@@ -406,7 +556,7 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
     assert_eq!(listing.status_code(), 200, "{}", listing.text());
     assert!(listing.text().contains("later-active-personal"));
     let profile = request
-        .get("/households/persistence-fixture/profile")
+        .get(&format!("/households/{}/profile", fixture.household.slug))
         .add_header("cookie", owner_cookie.clone())
         .await;
     assert_eq!(profile.status_code(), 200, "{}", profile.text());
@@ -426,7 +576,7 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
     let foreign_sign_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"foreign@example.test","password":"password"}))
+        .json(&json!({"email":fixture.foreign.account.email,"password":"password"}))
         .await;
     assert_eq!(
         foreign_sign_in.status_code(),
@@ -457,14 +607,14 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .post("/api/auth/security/api-key/revoke")
         .add_header("origin", boot.app_context.config.server.full_url())
         .add_header("cookie", foreign_cookie)
-        .json(&json!({"key_id":"90101"}))
+        .json(&json!({"key_id":later_key.id.to_string()}))
         .await;
     assert_eq!(denied.status_code(), 401, "{}", denied.text());
     let revoked = request
         .post("/api/auth/security/api-key/revoke")
         .add_header("origin", boot.app_context.config.server.full_url())
         .add_header("cookie", owner_cookie.clone())
-        .json(&json!({"key_id":"90101"}))
+        .json(&json!({"key_id":later_key.id.to_string()}))
         .await;
     assert_eq!(revoked.status_code(), 200, "{}", revoked.text());
     let listing = request
@@ -474,23 +624,26 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
     assert_eq!(listing.status_code(), 200, "{}", listing.text());
     assert!(!listing.text().contains("later-active-personal"));
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_accepts_split_cookie_headers() {
-    let (fixture, boot) = boot_fixture_with(|config| {
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture_with(|config| {
         let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
             json!({"key":key,"secure":false});
     })
     .await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await.unwrap();
+
+    let account_id = fixture.account.id;
+    enable_completed_onboarding(&fixture, fixture.account.id).await;
     let request = server(&boot);
     let signed_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
     let cookie = signed_in
@@ -505,7 +658,10 @@ async fn account_authentication_accepts_split_cookie_headers() {
         .get("/api/auth/get-session")
         .add_header("cookie", cookie.clone())
         .await;
-    assert_eq!(ordinary.json::<Value>()["user"]["id"], "71001");
+    assert_eq!(
+        ordinary.json::<Value>()["user"]["id"],
+        account_id.to_string()
+    );
     let anonymous = request.get("/api/auth/get-session").await;
     assert!(anonymous.json::<Value>().is_null());
     let refreshed = request
@@ -514,13 +670,19 @@ async fn account_authentication_accepts_split_cookie_headers() {
         .add_header("cookie", "unrelated=1")
         .await;
     assert_eq!(refreshed.status_code(), 200, "{}", refreshed.text());
-    assert_eq!(refreshed.json::<Value>()["user"]["id"], "71001");
+    assert_eq!(
+        refreshed.json::<Value>()["user"]["id"],
+        account_id.to_string()
+    );
     let reversed = request
         .get("/api/auth/get-session")
         .add_header("cookie", "unrelated=1")
         .add_header("cookie", cookie.clone())
         .await;
-    assert_eq!(reversed.json::<Value>()["user"]["id"], "71001");
+    assert_eq!(
+        reversed.json::<Value>()["user"]["id"],
+        account_id.to_string()
+    );
     let browser = request
         .get("/account/security")
         .add_header("cookie", cookie)
@@ -541,18 +703,21 @@ async fn account_authentication_accepts_split_cookie_headers() {
     assert_eq!(rejected.status_code(), 400);
     assert_eq!(rejected.header("cache-control"), "no-store");
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_without_clinical_records_can_login_and_refresh() {
-    let (fixture, boot) = boot_fixture().await;
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let foreign_account_id = fixture.foreign.account.id;
+
     authentication_only_account(&fixture, Some("Canonical account name"), 2).await;
     let request = server(&boot);
     let signed_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"account-auth-only@example.test","password":"password","active_household_id":72001}))
+        .json(&json!({"email":fixture.foreign.account.email,"password":"password","active_household_id":fixture.household.id}))
         .await;
     assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
     let body: Value = signed_in.json();
@@ -572,10 +737,26 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
     assert!(
         untouched
             .iter()
-            .filter(|session| session.user_id == 71002)
+            .filter(|session| session.user_id == foreign_account_id)
             .all(|session| session.active_household_id.is_none())
     );
-    fixture.admin.execute_unprepared("UPDATE identity_sessions SET created_at=now()-interval '2 days',updated_at=now()-interval '2 days',expires_at=now()+interval '1 hour' WHERE account_id=71002").await.unwrap();
+    identity_session::Entity::update_many()
+        .col_expr(
+            identity_session::Column::CreatedAt,
+            Expr::value(Utc::now() - Duration::days(2)),
+        )
+        .col_expr(
+            identity_session::Column::UpdatedAt,
+            Expr::value(Utc::now() - Duration::days(2)),
+        )
+        .col_expr(
+            identity_session::Column::ExpiresAt,
+            Expr::value(Utc::now() + Duration::hours(1)),
+        )
+        .filter(identity_session::Column::UserId.eq(fixture.foreign.account.id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
     let refreshed = request
         .get("/api/auth/get-session")
         .add_header("cookie", cookie.clone())
@@ -585,10 +766,13 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
         refreshed.json::<Value>()["user"]["name"],
         "Canonical account name"
     );
-    let renewed = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT expires_at>now()+interval '2 hours' AS renewed FROM identity_sessions WHERE account_id=71002"
-    )).await.unwrap().unwrap();
-    assert!(renewed.try_get::<bool>("", "renewed").unwrap());
+    let renewed = identity_session::Entity::find()
+        .filter(identity_session::Column::UserId.eq(fixture.foreign.account.id))
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(renewed.expires_at > Utc::now() + Duration::hours(2));
     let security = request
         .get("/account/security")
         .add_header("cookie", cookie.clone())
@@ -603,7 +787,7 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
     let fresh = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"account-auth-only@example.test","password":"password"}))
+        .json(&json!({"email":fixture.foreign.account.email,"password":"password"}))
         .await;
     assert_eq!(fresh.status_code(), 200);
     let fresh_cookie = fresh
@@ -620,17 +804,28 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
         .await;
     assert_eq!(registration.status_code(), 200, "{}", registration.text());
     let clinical = request
-        .get("/households/persistence-fixture/profile")
+        .get(&format!("/households/{}/profile", fixture.household.slug))
         .add_header("cookie", cookie)
         .await;
     assert_eq!(clinical.status_code(), 403, "{}", clinical.text());
-    let audit = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS events,bool_and(whodunnit IS NULL AND audit_context->>'actor_account_id' IS NULL AND audit_context->>'actor_user_id' IS NULL) AS account_only FROM versions WHERE item_type='NativeAuthentication' AND item_id=71002")).await.unwrap().unwrap();
-    assert!(audit.try_get::<i64>("", "events").unwrap() > 0);
-    assert!(audit.try_get::<bool>("", "account_only").unwrap());
-    let token = super::account::mobile_token(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE oauth_grants SET account_id=71002 WHERE client_kind='mobile'")
+    let audit = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("NativeAuthentication"))
+        .filter(versions::Column::ItemId.eq(fixture.foreign.account.id))
+        .all(&fixture.admin)
+        .await
+        .unwrap();
+    assert!(!audit.is_empty());
+    assert!(audit.iter().all(|row| row.whodunnit.is_none()
+        && row.audit_context["actor_account_id"].is_null()
+        && row.audit_context["actor_user_id"].is_null()));
+    let token = fixture.token().await;
+    oauth_grants::Entity::update_many()
+        .col_expr(
+            oauth_grants::Column::AccountId,
+            Expr::value(fixture.foreign.account.id),
+        )
+        .filter(oauth_grants::Column::Id.eq(fixture.authorization.id))
+        .exec(&fixture.admin)
         .await
         .unwrap();
     let profile = request
@@ -643,23 +838,34 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
         "Canonical account name"
     );
     let clinical = request
-        .get("/api/v1/households/72001/people")
+        .get(&format!(
+            "/api/v1/households/{}/people",
+            fixture.household.id
+        ))
         .add_header("authorization", format!("Bearer {token}"))
         .await;
     assert_eq!(clinical.status_code(), 403);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_locked_session_cannot_authenticate_or_change_credentials() {
-    let (fixture, boot) = boot_fixture().await;
-    fixture.admin.execute_unprepared("UPDATE users SET active=false; INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await.unwrap();
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
+    users::Entity::update_many()
+        .col_expr(users::Column::Active, Expr::value(false))
+        .filter(users::Column::PersonId.eq(fixture.account.person_id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    enable_completed_onboarding(&fixture, fixture.account.id).await;
     let request = server(&boot);
     let signed_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
     assert!(signed_in.json::<Value>()["user"]["name"].is_null());
@@ -671,7 +877,32 @@ async fn account_authentication_locked_session_cannot_authenticate_or_change_cre
         .next()
         .unwrap()
         .to_owned();
-    fixture.admin.execute_unprepared("UPDATE identity_sessions SET created_at=now()-interval '2 days',updated_at=now()-interval '2 days',expires_at=now()+interval '1 hour' WHERE account_id=71001; INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'synthetic-account-auth-lock',now()+interval '1 hour')").await.unwrap();
+    identity_session::Entity::update_many()
+        .col_expr(
+            identity_session::Column::CreatedAt,
+            Expr::value(Utc::now() - Duration::days(2)),
+        )
+        .col_expr(
+            identity_session::Column::UpdatedAt,
+            Expr::value(Utc::now() - Duration::days(2)),
+        )
+        .col_expr(
+            identity_session::Column::ExpiresAt,
+            Expr::value(Utc::now() + Duration::hours(1)),
+        )
+        .filter(identity_session::Column::UserId.eq(fixture.account.id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    account_lockouts::ActiveModel {
+        account_id: Set(fixture.account.id),
+        key: Set(fixture.credential("synthetic-account-auth-lock")),
+        deadline: Set((Utc::now() + Duration::hours(1)).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
     let rejected = request
         .get("/api/auth/get-session")
         .add_header("cookie", cookie.clone())
@@ -683,7 +914,7 @@ async fn account_authentication_locked_session_cannot_authenticate_or_change_cre
         .await;
     assert_eq!(registration.status_code(), 401);
     let clinical = request
-        .get("/households/persistence-fixture/profile")
+        .get(&format!("/households/{}/profile", fixture.household.slug))
         .add_header("cookie", cookie)
         .await;
     assert_eq!(clinical.status_code(), 303);
@@ -694,60 +925,80 @@ async fn account_authentication_locked_session_cannot_authenticate_or_change_cre
             .unwrap()
             .starts_with("/login")
     );
-    let state = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM identity_sessions WHERE account_id=71001) AS sessions,(SELECT count(*) FROM identity_passkeys WHERE account_id=71001) AS passkeys")).await.unwrap().unwrap();
-    assert_eq!(state.try_get::<i64>("", "sessions").unwrap(), 1);
-    assert_eq!(state.try_get::<i64>("", "passkeys").unwrap(), 0);
+    assert_eq!(
+        identity_session::Entity::find()
+            .filter(identity_session::Column::UserId.eq(fixture.account.id))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        identity_passkey::Entity::find()
+            .filter(identity_passkey::Column::UserId.eq(fixture.account.id))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
     let login = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     assert_eq!(login.status_code(), 401, "{}", login.text());
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_audit_failure_rolls_back_session() {
-    let (fixture, boot) = boot_fixture().await;
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let foreign_account_id = fixture.foreign.account.id;
+
     authentication_only_account(&fixture, None, 2).await;
-    fixture.admin.execute_unprepared("CREATE FUNCTION reject_account_auth_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='NativeAuthentication' AND NEW.event='native_auth/session/created' AND NEW.item_id=71002 THEN RAISE EXCEPTION 'synthetic authentication audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_account_auth_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_account_auth_audit()").await.unwrap();
+    fixture.admin.execute_unprepared(&format!("CREATE FUNCTION reject_account_auth_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='NativeAuthentication' AND NEW.event='native_auth/session/created' AND NEW.item_id={foreign_account_id} THEN RAISE EXCEPTION 'synthetic authentication audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_account_auth_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_account_auth_audit()")).await.unwrap();
     let request = server(&boot);
     let rejected = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"account-auth-only@example.test","password":"password"}))
+        .json(&json!({"email":fixture.foreign.account.email,"password":"password"}))
         .await;
     assert_eq!(rejected.status_code(), 500);
-    let state = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM identity_sessions WHERE account_id=71002) AS sessions,(SELECT count(*) FROM versions WHERE item_type='NativeAuthentication' AND event='native_auth/session/created' AND item_id=71002) AS audits")).await.unwrap().unwrap();
-    assert_eq!(state.try_get::<i64>("", "sessions").unwrap(), 0);
-    assert_eq!(state.try_get::<i64>("", "audits").unwrap(), 0);
+    assert_eq!(
+        identity_session::Entity::find()
+            .filter(identity_session::Column::UserId.eq(fixture.foreign.account.id))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("NativeAuthentication"))
+            .filter(versions::Column::Event.eq("native_auth/session/created"))
+            .filter(versions::Column::ItemId.eq(fixture.foreign.account.id))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    fixture.admin.execute_unprepared("DROP TRIGGER reject_account_auth_audit ON versions; DROP FUNCTION reject_account_auth_audit()").await.unwrap();
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_account_status_and_session_lifetime_remain_required() {
-    let (fixture, boot) = boot_fixture().await;
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
     authentication_only_account(&fixture, None, 1).await;
     let request = server(&boot);
     for (status, verified) in [(1, false), (3, true)] {
-        fixture
-            .admin
-            .execute_unprepared(&format!(
-                "UPDATE accounts SET email_verified={verified} WHERE id=71002; UPDATE accounts SET status={status} WHERE id=71002"
-            ))
-            .await
-            .unwrap();
-        let stored = fixture
-            .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT status,email_verified FROM accounts WHERE id=71002",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
+        account_status(&fixture, fixture.foreign.account.id, status, verified).await;
+        let stored = native_account_fields(&fixture, fixture.foreign.account.id).await;
         assert_eq!(stored.try_get::<i32>("", "status").unwrap(), status);
         assert_eq!(
             stored.try_get::<bool>("", "email_verified").unwrap(),
@@ -756,29 +1007,23 @@ async fn account_authentication_account_status_and_session_lifetime_remain_requi
         let rejected = request
             .post("/api/auth/sign-in/email")
             .add_header("origin", boot.app_context.config.server.full_url())
-            .json(&json!({"email":"account-auth-only@example.test","password":"password"}))
+            .json(&json!({"email":fixture.foreign.account.email,"password":"password"}))
             .await;
         assert!(
             rejected.status_code().is_client_error(),
             "status {status}: {}",
             rejected.status_code()
         );
-        let state = fixture
-            .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT count(*) AS sessions FROM identity_sessions WHERE account_id=71002",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(state.try_get::<i64>("", "sessions").unwrap(), 0);
+        assert_eq!(
+            identity_session::Entity::find()
+                .filter(identity_session::Column::UserId.eq(fixture.foreign.account.id))
+                .count(&fixture.admin)
+                .await
+                .unwrap(),
+            0
+        );
     }
-    fixture
-        .admin
-        .execute_unprepared("UPDATE accounts SET status=2,email_verified=true WHERE id=71002")
-        .await
-        .unwrap();
+    account_status(&fixture, fixture.foreign.account.id, 2, true).await;
     for mutation in [
         "active=false",
         "expires_at=now()-interval '1 second'",
@@ -787,7 +1032,7 @@ async fn account_authentication_account_status_and_session_lifetime_remain_requi
         let signed_in = request
             .post("/api/auth/sign-in/email")
             .add_header("origin", boot.app_context.config.server.full_url())
-            .json(&json!({"email":"account-auth-only@example.test","password":"password"}))
+            .json(&json!({"email":fixture.foreign.account.email,"password":"password"}))
             .await;
         assert_eq!(signed_in.status_code(), 200);
         let body: Value = signed_in.json();
@@ -817,16 +1062,24 @@ async fn account_authentication_account_status_and_session_lifetime_remain_requi
                 .trim_matches('"')
                 .to_owned()
         });
-        let updated = fixture
-            .admin
-            .execute_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                format!("UPDATE identity_sessions SET {mutation} WHERE id=$1"),
-                [id.parse::<i64>().unwrap().into()],
-            ))
+        let query = identity_session::Entity::update_many();
+        let query = match mutation {
+            "active=false" => query.col_expr(identity_session::Column::Active, Expr::value(false)),
+            "expires_at=now()-interval '1 second'" => query.col_expr(
+                identity_session::Column::ExpiresAt,
+                Expr::value(Utc::now() - Duration::seconds(1)),
+            ),
+            _ => query.col_expr(
+                identity_session::Column::CreatedAt,
+                Expr::value(Utc::now() - Duration::days(31)),
+            ),
+        };
+        let updated = query
+            .filter(identity_session::Column::Id.eq(id.parse::<i64>().unwrap()))
+            .exec(&fixture.admin)
             .await
             .unwrap();
-        assert_eq!(updated.rows_affected(), 1);
+        assert_eq!(updated.rows_affected, 1);
         let rejected = request
             .get("/api/auth/get-session")
             .add_header("cookie", cookie.clone())
@@ -844,20 +1097,22 @@ async fn account_authentication_account_status_and_session_lifetime_remain_requi
         assert_ne!(security.status_code(), 200, "{mutation}");
     }
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_session_revocation_clears_only_current_cookie_family() {
-    let (fixture, boot) = boot_fixture().await;
-    enable_completed_onboarding(&fixture, 71001).await;
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
+    enable_completed_onboarding(&fixture, fixture.account.id).await;
     let request = server(&boot);
     let mut sessions = Vec::new();
     for _ in 0..2 {
         let login = request
             .post("/api/auth/sign-in/email")
             .add_header("origin", boot.app_context.config.server.full_url())
-            .json(&json!({"email":"persistence@example.test","password":"password"}))
+            .json(&json!({"email":fixture.account.email,"password":"password"}))
             .await;
         assert_eq!(login.status_code(), 200, "{}", login.text());
         let cookie = login
@@ -975,12 +1230,14 @@ async fn account_authentication_session_revocation_clears_only_current_cookie_fa
         }
     }
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_throttle_retains_body_and_retry_after() {
-    let (fixture, boot) = boot_fixture().await;
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
     let request = server(&boot);
     for attempt in 0..11 {
         let response = request
@@ -1006,11 +1263,12 @@ async fn account_authentication_throttle_retains_body_and_retry_after() {
         }
     }
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_native_signup_uses_canonical_account_and_native_credentials() {
+    crate::authentication_fixture::reset_source_quota().await;
     let mut logger = loco_rs::config::Config::new(&loco_rs::environment::Environment::Test)
         .unwrap()
         .logger;
@@ -1018,49 +1276,75 @@ async fn account_authentication_native_signup_uses_canonical_account_and_native_
     logger.level = loco_rs::logger::LogLevel::Error;
     logger.override_filter = Some("error".into());
     loco_rs::logger::init::<med_tracker::app::App>(&logger).unwrap();
-    let (fixture, boot) = boot_fixture().await;
-    app_settings::ActiveModel {
-        invite_only: Set(false),
-        created_at: Set(Utc::now().naive_utc()),
-        updated_at: Set(Utc::now().naive_utc()),
-        ..Default::default()
-    }
-    .insert(&fixture.admin)
-    .await
-    .unwrap();
+    let (fixture, boot) = boot_request_fixture().await;
+
+    let native_email = format!("{}@example.test", fixture.credential("native-account"));
+    let previous_settings = registration_setting(&fixture).await;
     let mut request = server(&boot);
     request.save_cookies();
     let response = request
         .post("/api/auth/sign-up/email")
         .add_header("origin", boot.app_context.config.server.full_url())
         .json(&json!({
-            "name":"Native account owner", "email":"native-account@example.test",
+            "name":"Native account owner", "email":native_email,
             "password":"Native-account-passphrase-42",
             "metadata":{"date_of_birth":"1990-04-12"}
         }))
         .await;
     assert_eq!(response.status_code(), 200, "{}", response.text());
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT a.id,a.person_id,(SELECT count(*) FROM people p WHERE p.id=a.person_id) AS people,(SELECT count(*) FROM auth_credentials c WHERE c.user_id=a.id AND c.provider_id='credential' AND c.password IS NOT NULL) AS credentials,(SELECT count(*) FROM users u WHERE u.person_id=a.person_id) AS clinical_profiles,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=a.email::text AND q.task_data->>'subject'='Verify your account') AS mails FROM accounts a WHERE a.email='native-account@example.test'"
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "people").unwrap(), 1);
-    assert_eq!(row.try_get::<i64>("", "credentials").unwrap(), 1);
-    assert_eq!(row.try_get::<i64>("", "clinical_profiles").unwrap(), 1);
-    let metadata = fixture
+    let account = accounts::Entity::find()
+        .filter(accounts::Column::Email.eq(&native_email))
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        people::Entity::find_by_id(account.person_id)
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    let credential_query = {
+        use sea_orm::sea_query::ExprTrait;
+        Query::select()
+            .expr_as(Expr::col("id").count(), "total")
+            .from("auth_credentials")
+            .and_where(Expr::col("user_id").eq(account.id))
+            .and_where(Expr::col("provider_id").eq("credential"))
+            .and_where(Expr::col("password").is_not_null())
+            .to_owned()
+    };
+    let credentials: i64 = fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT metadata FROM accounts WHERE email='native-account@example.test'",
-        ))
+        .query_one_raw(
+            fixture
+                .admin
+                .get_database_backend()
+                .build(&credential_query),
+        )
         .await
         .unwrap()
         .unwrap()
+        .try_get("", "total")
+        .unwrap();
+    assert_eq!(credentials, 1);
+    assert_eq!(
+        users::Entity::find()
+            .filter(users::Column::PersonId.eq(account.person_id))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    let metadata = native_account_fields(&fixture, account.id)
+        .await
         .try_get::<Value>("", "metadata")
         .unwrap();
     assert_eq!(metadata, json!({}));
-    assert_eq!(row.try_get::<i64>("", "mails").unwrap(), 1);
-    let mail = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT task_data FROM pg_loco_queue WHERE task_data->>'to'='native-account@example.test' AND task_data->>'subject'='Verify your account'")).await.unwrap().unwrap();
-    let mail: Value = mail.try_get("", "task_data").unwrap();
+    let mails = verification_mails(&fixture, &native_email).await;
+    assert_eq!(mails.len(), 1);
+    let mail = &mails[0];
     let link = url::Url::parse(
         mail["text"]
             .as_str()
@@ -1135,9 +1419,19 @@ async fn account_authentication_native_signup_uses_canonical_account_and_native_
         .json(&json!({}))
         .await;
     assert_eq!(completed.status_code(), 200, "{}", completed.text());
-    let home = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT h.id,h.slug FROM households h JOIN household_memberships m ON m.household_id=h.id JOIN accounts a ON a.person_id=m.person_id WHERE a.email='native-account@example.test'")).await.unwrap().unwrap();
-    let home_id: i64 = home.try_get("", "id").unwrap();
-    let slug: String = home.try_get("", "slug").unwrap();
+    let membership = household_memberships::Entity::find()
+        .filter(household_memberships::Column::PersonId.eq(account.person_id))
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let home = households::Entity::find_by_id(membership.household_id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let home_id = home.id;
+    let slug = home.slug;
     let dashboard = request
         .get(&format!("/households/{slug}/dashboard"))
         .add_header("cookie", cookie.clone())
@@ -1153,23 +1447,35 @@ async fn account_authentication_native_signup_uses_canonical_account_and_native_
         .add_header("cookie", cookie)
         .await;
     assert_eq!(api.status_code(), 401, "{}", api.text());
-    let login = request.post("/api/auth/sign-in/email").add_header("origin",boot.app_context.config.server.full_url()).json(&json!({"email":"NATIVE-ACCOUNT@EXAMPLE.TEST","password":"Native-account-passphrase-42"})).await;
+    let login = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(
+            &json!({"email":native_email.to_uppercase(),"password":"Native-account-passphrase-42"}),
+        )
+        .await;
     assert_eq!(login.status_code(), 200, "{}", login.text());
+    restore_registration(&fixture, previous_settings).await;
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn account_authentication_security_inventory_is_complete_live_and_account_scoped() {
-    let (fixture, boot) = boot_fixture().await;
+    crate::authentication_fixture::reset_source_quota().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
     authentication_only_account(&fixture, Some("Other inventory owner"), 2).await;
-    enable_completed_onboarding(&fixture, 71001).await;
+    enable_completed_onboarding(&fixture, fixture.account.id).await;
     let now = Utc::now();
     let sessions = (0..203)
         .map(|index| identity_session::ActiveModel {
-            id: Set(92000 + index),
-            user_id: Set(if index == 202 { 71002 } else { 71001 }),
-            token: Set(format!("inventory-secret-{index}")),
+            user_id: Set(if index == 202 {
+                fixture.foreign.account.id
+            } else {
+                fixture.account.id
+            }),
+            token: Set(fixture.credential(&format!("inventory-secret-{index}"))),
             created_at: Set(now - Duration::days(1) + Duration::seconds(index)),
             updated_at: Set(now),
             expires_at: Set(if index < 100 {
@@ -1188,11 +1494,14 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
         .unwrap();
     let passkeys = (0..103)
         .map(|index| identity_passkey::ActiveModel {
-            id: Set(93000 + index),
-            user_id: Set(if index == 102 { 71002 } else { 71001 }),
+            user_id: Set(if index == 102 {
+                fixture.foreign.account.id
+            } else {
+                fixture.account.id
+            }),
             name: Set(Some(format!("inventory-passkey-{index}"))),
             public_key: Set("inventory-only".into()),
-            credential_id: Set(format!("inventory-credential-{index}")),
+            credential_id: Set(fixture.credential(&format!("inventory-credential-{index}"))),
             counter: Set(0),
             device_type: Set("singleDevice".into()),
             backed_up: Set(false),
@@ -1206,11 +1515,54 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
         .exec(&fixture.admin)
         .await
         .unwrap();
+    let mut invisible_sessions = Vec::new();
+    for index in [0, 99, 202] {
+        invisible_sessions.push(
+            identity_session::Entity::find()
+                .filter(
+                    identity_session::Column::Token
+                        .eq(fixture.credential(&format!("inventory-secret-{index}"))),
+                )
+                .one(&fixture.admin)
+                .await
+                .unwrap()
+                .unwrap()
+                .id,
+        );
+    }
+    let own_session = identity_session::Entity::find()
+        .filter(identity_session::Column::Token.eq(fixture.credential("inventory-secret-201")))
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .id;
+    let own_passkey = identity_passkey::Entity::find()
+        .filter(
+            identity_passkey::Column::CredentialId
+                .eq(fixture.credential("inventory-credential-101")),
+        )
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .id;
+    let foreign_session = *invisible_sessions.last().unwrap();
+    let foreign_passkey = identity_passkey::Entity::find()
+        .filter(
+            identity_passkey::Column::CredentialId
+                .eq(fixture.credential("inventory-credential-102")),
+        )
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .id;
     let request = server(&boot);
     let login = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     assert_eq!(login.status_code(), 200, "{}", login.text());
     let cookie = login
@@ -1244,7 +1596,7 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
         102,
         "passkey inventory must be complete"
     );
-    for id in [92000, 92099, 92202] {
+    for id in invisible_sessions {
         assert!(!html.contains(&format!("name=\"session_id\" value=\"{id}\"")));
     }
     assert!(!html.contains("inventory-passkey-102"));
@@ -1254,14 +1606,14 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
         .post("/api/auth/security/session/revoke")
         .add_header("origin", boot.app_context.config.server.full_url())
         .add_header("cookie", cookie.clone())
-        .json(&json!({"session_id":"92201"}))
+        .json(&json!({"session_id":own_session.to_string()}))
         .await;
     assert_eq!(revoked.status_code(), 200, "{}", revoked.text());
     let removed = request
         .post("/api/auth/passkey/delete-passkey")
         .add_header("origin", boot.app_context.config.server.full_url())
         .add_header("cookie", cookie.clone())
-        .json(&json!({"id":"93101"}))
+        .json(&json!({"id":own_passkey.to_string()}))
         .await;
     assert_eq!(removed.status_code(), 200, "{}", removed.text());
     let listing = request
@@ -1273,26 +1625,27 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
     assert_eq!(listing.text().matches("data-passkey-id=").count(), 101);
     assert!(!listing.text().contains("inventory-passkey-101"));
     assert!(
-        identity_session::Entity::find_by_id(92202)
+        identity_session::Entity::find_by_id(foreign_session)
             .one(&fixture.admin)
             .await
             .unwrap()
             .is_some()
     );
     assert!(
-        identity_passkey::Entity::find_by_id(93102)
+        identity_passkey::Entity::find_by_id(foreign_passkey)
             .one(&fixture.admin)
             .await
             .unwrap()
             .is_some()
     );
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn malformed_auth_entry_links_offer_safe_recovery() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
     let request = server(&boot);
     for (path, recovery) in [
         ("/reset-password/confirm", "/reset-password"),
@@ -1338,13 +1691,14 @@ async fn malformed_auth_entry_links_offer_safe_recovery() {
         assert!(welsh.text().contains("Dolen anghyflawn"));
     }
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn public_origin_auth_discovery_and_secure_session_use_proxy_origin() {
+    crate::authentication_fixture::reset_source_quota().await;
     let public = "https://mt-proof.localhost:1356";
-    let (fixture, boot) = boot_fixture_with(|config| {
+    let (fixture, boot) = boot_request_fixture_with(|config| {
         let settings = config.settings.get_or_insert_with(|| json!({}));
         settings["public_origin"] = json!(public);
         settings["browser_session"] = json!({
@@ -1353,6 +1707,8 @@ async fn public_origin_auth_discovery_and_secure_session_use_proxy_origin() {
         });
     })
     .await;
+
+    let account_id = fixture.account.id;
     assert_ne!(boot.app_context.config.server.port, 1356);
     let request = server(&boot);
     let discovery = request.get("/.well-known/oauth-authorization-server").await;
@@ -1369,13 +1725,13 @@ async fn public_origin_auth_discovery_and_secure_session_use_proxy_origin() {
     let rejected = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", "https://untrusted.example.test")
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     assert_eq!(rejected.status_code(), 403);
     let signed_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", public)
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
     let header = signed_in.header("set-cookie");
@@ -1391,7 +1747,10 @@ async fn public_origin_auth_discovery_and_secure_session_use_proxy_origin() {
         .add_header("cookie", cookie)
         .await;
     assert_eq!(session.status_code(), 200);
-    assert_eq!(session.json::<Value>()["user"]["id"], "71001");
+    assert_eq!(
+        session.json::<Value>()["user"]["id"],
+        account_id.to_string()
+    );
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
 }

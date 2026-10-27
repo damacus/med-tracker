@@ -1,24 +1,154 @@
 use super::*;
+use med_tracker::models::_entities::{
+    api_change_events, api_sessions, locations, medication_takes, medications, oauth_applications,
+    oauth_grants, versions,
+};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, prelude::Decimal, sea_query::Table,
+};
 
-async fn credential_counts(fixture: &Fixture) -> (i64, i64) {
-    let row = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT count(*) FROM api_sessions) AS sessions, (SELECT count(*) FROM oauth_grants) AS grants".to_owned(),
-        ))
-        .await
-        .unwrap()
-        .unwrap();
+async fn oauth_client(scenario: &Scenario, mobile: bool) -> oauth_applications::Model {
+    let now = chrono::Utc::now().naive_utc();
+    oauth_applications::ActiveModel {
+        account_id: Set(Some(scenario.account.id)),
+        client_id: Set(format!("capability-{}", uuid::Uuid::new_v4())),
+        client_kind: Set(if mobile { "mobile" } else { "integration" }.into()),
+        name: Set(if mobile {
+            "Other synthetic native"
+        } else {
+            "Synthetic SMART journey"
+        }
+        .into()),
+        redirect_uri: Set(if mobile {
+            "io.damacus.other:/callback"
+        } else {
+            "https://example.test/callback"
+        }
+        .into()),
+        scopes: Set(if mobile {
+            "medtracker offline_access"
+        } else {
+            "launch/patient patient/*.rs"
+        }
+        .into()),
+        token_endpoint_auth_method: Set(if mobile { "none" } else { "client_secret_post" }.into()),
+        client_secret_hash: Set(if mobile {
+            None
+        } else {
+            Some(bcrypt::hash("password", 4).unwrap())
+        }),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&scenario.admin)
+    .await
+    .unwrap()
+}
+
+async fn seed_capability_rows(scenario: &Scenario) {
+    let application = oauth_client(scenario, true).await;
+    let now = chrono::Utc::now().naive_utc();
+    oauth_grants::ActiveModel {
+        account_id: Set(scenario.account.id),
+        oauth_application_id: Set(application.id),
+        client_kind: Set("mobile".into()),
+        code: Set(Some(uuid::Uuid::new_v4().to_string())),
+        code_challenge: Set(Some("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".into())),
+        code_challenge_method: Set(Some("S256".into())),
+        redirect_uri: Set(Some(application.redirect_uri)),
+        scopes: Set(application.scopes),
+        expires_in: Set(now + chrono::Duration::minutes(5)),
+        authenticated_at: Set(Some(now)),
+        last_used_at: Set(Some(now)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&scenario.admin)
+    .await
+    .unwrap();
+    let location = locations::ActiveModel {
+        household_id: Set(scenario.household.id),
+        name: Set("Capability stock sentinel".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&scenario.admin)
+    .await
+    .unwrap();
+    medications::ActiveModel {
+        household_id: Set(scenario.household.id),
+        location_id: Set(location.id),
+        name: Set(Some("Capability stock sentinel".into())),
+        current_supply: Set(Some(Decimal::new(10, 0))),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&scenario.admin)
+    .await
+    .unwrap();
+}
+
+async fn credential_counts(scenario: &Scenario) -> (u64, u64) {
     (
-        row.try_get("", "sessions").unwrap(),
-        row.try_get("", "grants").unwrap(),
+        api_sessions::Entity::find()
+            .count(&scenario.admin)
+            .await
+            .unwrap(),
+        oauth_grants::Entity::find()
+            .count(&scenario.admin)
+            .await
+            .unwrap(),
     )
+}
+
+#[derive(Debug, PartialEq)]
+struct GlobalEffects {
+    takes: u64,
+    supplies: Vec<(i64, Option<Decimal>)>,
+    audits: u64,
+    changes: u64,
+}
+
+async fn global_effects(scenario: &Scenario) -> GlobalEffects {
+    // Public requests have no tenant binding. Keep these observations global;
+    // callers comparing snapshots must run with whole-run exclusivity.
+    GlobalEffects {
+        takes: medication_takes::Entity::find()
+            .count(&scenario.admin)
+            .await
+            .unwrap(),
+        supplies: medications::Entity::find()
+            .select_only()
+            .columns([medications::Column::Id, medications::Column::CurrentSupply])
+            .order_by_asc(medications::Column::Id)
+            .into_tuple()
+            .all(&scenario.admin)
+            .await
+            .unwrap(),
+        audits: versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("MedicationTake"))
+            .filter(versions::Column::Event.eq("create"))
+            .count(&scenario.admin)
+            .await
+            .unwrap(),
+        changes: api_change_events::Entity::find()
+            .filter(api_change_events::Column::RecordType.eq("MedicationTake"))
+            .filter(api_change_events::Column::Action.eq("create"))
+            .count(&scenario.admin)
+            .await
+            .unwrap(),
+    }
 }
 
 #[tokio::test]
 async fn public_capabilities_discovery_matches_contract_and_hides_secrets() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_shared_fixture().await;
+    seed_capability_rows(&fixture).await;
     let request = server(&boot);
     let response = request.get("/api/v1/capabilities").await;
     let status = response.status_code();
@@ -68,8 +198,8 @@ async fn public_capabilities_discovery_matches_contract_and_hides_secrets() {
             }
         })
     );
-    fixture.admin.execute_unprepared("INSERT INTO oauth_applications(id, account_id, client_id, client_kind, name, redirect_uri, scopes, token_endpoint_auth_method, created_at, updated_at) VALUES(75002,71001,'other-native','mobile','Other synthetic native','io.damacus.other:/callback','medtracker offline_access','none',now(),now())").await.unwrap();
-    fixture.admin.execute_unprepared("INSERT INTO oauth_applications(id, account_id, client_id, client_kind, name, redirect_uri, scopes, token_endpoint_auth_method, client_secret_hash, created_at, updated_at) VALUES(75003,71001,'smart-journey','integration','Synthetic SMART journey','https://example.test/callback','launch/patient patient/*.rs','client_secret_post',crypt('password',gen_salt('bf',4)),now(),now())").await.unwrap();
+    let mobile = oauth_client(&fixture, true).await;
+    let integration = oauth_client(&fixture, false).await;
     let response = request.get("/api/v1/capabilities").await;
     let status = response.status_code();
     let content_type = response
@@ -94,7 +224,7 @@ async fn public_capabilities_discovery_matches_contract_and_hides_secrets() {
         .map(str::to_owned);
     let body: Value = response.json();
     drop(request);
-    close(fixture, boot).await;
+    close_shared(fixture, boot).await;
 
     assert_eq!(status, 200);
     assert_eq!(
@@ -110,7 +240,7 @@ async fn public_capabilities_discovery_matches_contract_and_hides_secrets() {
         .unwrap();
     let client = clients
         .iter()
-        .find(|client| client["client_id"] == "other-native")
+        .find(|client| client["client_id"] == mobile.client_id)
         .unwrap();
     assert_eq!(client["name"], "Other synthetic native");
     assert_eq!(
@@ -121,7 +251,7 @@ async fn public_capabilities_discovery_matches_contract_and_hides_secrets() {
     assert!(
         clients
             .iter()
-            .all(|client| client["client_id"] != "smart-journey")
+            .all(|client| client["client_id"] != integration.client_id)
     );
     for client in clients {
         assert!(client.get("client_secret").is_none());
@@ -144,19 +274,20 @@ async fn public_capabilities_discovery_matches_contract_and_hides_secrets() {
 async fn configured_mobile_lifetimes_include_disabled_maximum_age() {
     let mut observed = Vec::new();
     for (inactivity_days, maximum_age_days) in [(3, 14), (3, 0)] {
-        let (fixture, boot) = boot_fixture_with(|config| {
+        let (fixture, boot) = boot_shared_fixture_with(|config| {
             config.settings.get_or_insert_with(|| json!({}))["session"] = json!({
                 "inactivity_timeout_days": inactivity_days,
                 "max_age_days": maximum_age_days,
             });
         })
         .await;
+        seed_capability_rows(&fixture).await;
         let request = server(&boot);
         let response = request.get("/api/v1/capabilities").await;
         let status = response.status_code().as_u16();
         let body: Value = response.json();
         drop(request);
-        close(fixture, boot).await;
+        close_shared(fixture, boot).await;
         observed.push((
             maximum_age_days,
             status,
@@ -172,15 +303,16 @@ async fn configured_mobile_lifetimes_include_disabled_maximum_age() {
 
 #[tokio::test]
 async fn capability_requests_use_the_fixed_general_limit() {
-    let (fixture, boot) = boot_rate_fixture(&[]).await;
+    let (fixture, boot) = boot_shared_rate_fixture(&[]).await;
+    seed_capability_rows(&fixture).await;
     let request = server(&boot);
-    let initial_effects = fixture.effect().await;
+    let initial_effects = global_effects(&fixture).await;
     let initial_credentials = credential_counts(&fixture).await;
     for attempt in 1..=300 {
         let response = request.get("/api/v1/capabilities").await;
         assert_eq!(response.status_code(), 200, "request {attempt}");
     }
-    let effects_after_success = fixture.effect().await;
+    let effects_after_success = global_effects(&fixture).await;
     let credentials_after_success = credential_counts(&fixture).await;
     let rejected = request.get("/api/v1/capabilities").await;
     let status = rejected.status_code();
@@ -192,10 +324,10 @@ async fn capability_requests_use_the_fixed_general_limit() {
     let remaining = rejected.header("ratelimit-remaining").to_owned();
     let reset = rejected.header("ratelimit-reset").to_owned();
     let body: Value = rejected.json();
-    let effects_after = fixture.effect().await;
+    let effects_after = global_effects(&fixture).await;
     let credentials_after = credential_counts(&fixture).await;
     drop(request);
-    close(fixture, boot).await;
+    close_shared(fixture, boot).await;
 
     assert_eq!(status, 429);
     assert_eq!(content_type, "application/json");
@@ -224,23 +356,35 @@ async fn capability_requests_use_the_fixed_general_limit() {
 
 #[tokio::test]
 async fn capability_database_lookup_failure_uses_existing_unavailable_envelope() {
-    let (fixture, boot) = boot_fixture().await;
-    let effects = fixture.effect().await;
+    let (fixture, boot) = boot_shared_fixture().await;
+    seed_capability_rows(&fixture).await;
+    let effects = global_effects(&fixture).await;
     let credentials = credential_counts(&fixture).await;
+    let request = server(&boot);
+    // The schema fault also requires whole-run exclusivity. Restore the table
+    // before inspecting response headers or making assertions.
+    let unavailable_table = format!("oauth_unavailable_{}", uuid::Uuid::new_v4().simple());
+    let rename = Table::rename()
+        .table(
+            "oauth_applications",
+            sea_orm::sea_query::Alias::new(unavailable_table.clone()),
+        )
+        .to_owned();
     fixture
         .admin
-        .execute_unprepared(
-            "ALTER TABLE oauth_applications RENAME TO oauth_applications_unavailable",
-        )
+        .execute_raw(fixture.admin.get_database_backend().build(&rename))
         .await
         .unwrap();
-    let request = server(&boot);
     let unavailable = request.get("/api/v1/capabilities").await;
+    let restore = Table::rename()
+        .table(
+            sea_orm::sea_query::Alias::new(unavailable_table.clone()),
+            "oauth_applications",
+        )
+        .to_owned();
     fixture
         .admin
-        .execute_unprepared(
-            "ALTER TABLE oauth_applications_unavailable RENAME TO oauth_applications",
-        )
+        .execute_raw(fixture.admin.get_database_backend().build(&restore))
         .await
         .unwrap();
     let status = unavailable.status_code();
@@ -249,10 +393,10 @@ async fn capability_database_lookup_failure_uses_existing_unavailable_envelope()
     let pragma = unavailable.header("pragma").to_owned();
     let request_id = unavailable.header("x-request-id").to_owned();
     let body: Value = unavailable.json();
-    let effects_after = fixture.effect().await;
+    let effects_after = global_effects(&fixture).await;
     let credentials_after = credential_counts(&fixture).await;
     drop(request);
-    close(fixture, boot).await;
+    close_shared(fixture, boot).await;
 
     assert_eq!(status, 503);
     assert_eq!(content_type, "application/json");

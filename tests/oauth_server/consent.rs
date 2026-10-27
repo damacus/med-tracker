@@ -1,5 +1,4 @@
-use super::contract::fixture::Fixture;
-use super::fixtures;
+use crate::scenario::Scenario;
 use loco_rs::{
     TestServer,
     app::Hooks,
@@ -8,8 +7,7 @@ use loco_rs::{
     environment::Environment,
 };
 use med_tracker::models::_entities::{
-    accounts, household_memberships, households, identity_onboarding, oauth_applications,
-    oauth_grants, people, security_audit_events,
+    household_memberships, households, oauth_applications, oauth_grants, security_audit_events,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait,
@@ -17,69 +15,102 @@ use sea_orm::{
 };
 use serde_json::json;
 
+struct Fixture {
+    scenario: Scenario,
+    second_household: households::Model,
+    second_membership: household_memberships::Model,
+    application: oauth_applications::Model,
+    state: String,
+}
+
+impl std::ops::Deref for Fixture {
+    type Target = Scenario;
+    fn deref(&self) -> &Self::Target {
+        &self.scenario
+    }
+}
+
+async fn client(
+    scenario: &Scenario,
+    kind: &str,
+    redirect: &str,
+    scopes: &str,
+) -> oauth_applications::Model {
+    let now = chrono::Utc::now().naive_utc();
+    oauth_applications::ActiveModel {
+        account_id: Set(Some(scenario.account.id)),
+        client_id: Set(format!("consent-{}", uuid::Uuid::new_v4())),
+        client_kind: Set(kind.into()),
+        name: Set("Synthetic consent client".into()),
+        redirect_uri: Set(redirect.into()),
+        scopes: Set(scopes.into()),
+        token_endpoint_auth_method: Set("none".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&scenario.admin)
+    .await
+    .unwrap()
+}
+
 async fn boot() -> (Fixture, BootResult) {
-    let fixture = Fixture::new().await;
-    oauth_grants::Entity::delete_by_id(76001)
-        .exec(&fixture.admin)
-        .await
-        .unwrap();
-    let application = oauth_applications::Entity::find_by_id(75001)
-        .one(&fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    let mut application = application.into_active_model();
-    application.client_kind = Set("integration".into());
-    application.redirect_uri = Set("https://example.test/callback".into());
-    application.scopes = Set("patient/*.read".into());
-    application.update(&fixture.admin).await.unwrap();
-    identity_onboarding::Entity::insert(identity_onboarding::ActiveModel {
-        account_id: Set(71001),
-        completed_at: Set(Some(chrono::Utc::now().fixed_offset())),
-    })
-    .on_conflict(
-        sea_orm::sea_query::OnConflict::column(identity_onboarding::Column::AccountId)
-            .do_nothing()
-            .to_owned(),
+    let scenario = Scenario::new().await;
+    let mut membership = scenario.membership.clone().into_active_model();
+    membership.role = Set("administrator".into());
+    membership.update(&scenario.admin).await.unwrap();
+    let application = client(
+        &scenario,
+        "integration",
+        "https://example.test/callback",
+        "patient/*.read",
     )
-    .exec(&fixture.admin)
-    .await
-    .unwrap();
-    households::Entity::insert(households::ActiveModel {
-        id: Set(72002),
-        created_by_account_id: Set(Some(71001)),
+    .await;
+    let now = chrono::Utc::now().naive_utc();
+    let second_household = households::ActiveModel {
+        created_by_account_id: Set(Some(scenario.account.id)),
         name: Set("Second care home".into()),
-        slug: Set("second-care-home".into()),
+        slug: Set(format!("second-care-home-{}", uuid::Uuid::new_v4())),
         timezone: Set("Europe/London".into()),
-        created_at: Set(chrono::Utc::now().naive_utc()),
-        updated_at: Set(chrono::Utc::now().naive_utc()),
+        created_at: Set(now),
+        updated_at: Set(now),
         ..Default::default()
-    })
-    .exec(&fixture.admin)
+    }
+    .insert(&scenario.admin)
     .await
     .unwrap();
-    household_memberships::Entity::insert(household_memberships::ActiveModel {
-        id: Set(74002),
-        household_id: Set(72002),
-        person_id: Set(73001),
+    let second_membership = household_memberships::ActiveModel {
+        household_id: Set(second_household.id),
+        person_id: Set(scenario.account.person_id),
         role: Set("administrator".into()),
-        joined_at: Set(chrono::Utc::now().naive_utc()),
-        created_at: Set(chrono::Utc::now().naive_utc()),
-        updated_at: Set(chrono::Utc::now().naive_utc()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
         ..Default::default()
-    })
-    .exec(&fixture.admin)
+    }
+    .insert(&scenario.admin)
     .await
     .unwrap();
+    let fixture = Fixture {
+        scenario,
+        second_household,
+        second_membership,
+        application,
+        state: uuid::Uuid::new_v4().to_string(),
+    };
     let mut config = Config::new(&Environment::Test).unwrap();
     config.settings = Some(
         json!({"browser_session": {"key":base64::Engine::encode(&base64::engine::general_purpose::STANDARD, [7_u8; 64]),"secure":false}}),
     );
-    config.database.uri = fixture.runtime_uri.clone();
+    config.database.uri = std::env::var("DATABASE_URL").unwrap();
+    assert!(!config.database.auto_migrate);
+    assert!(!config.database.dangerously_recreate);
+    assert!(!config.database.dangerously_truncate);
     let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
         panic!("PostgreSQL queue required")
     };
-    queue.uri = fixture.runtime_uri.clone();
+    queue.uri = config.database.uri.clone();
     let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
         .await
         .unwrap();
@@ -114,13 +145,13 @@ fn nonce(html: &str) -> &str {
         .unwrap()
 }
 
-fn query() -> String {
+fn query(fixture: &Fixture) -> String {
     serde_urlencoded::to_string([
-        ("client_id", "native"),
+        ("client_id", fixture.application.client_id.as_str()),
         ("response_type", "code"),
         ("redirect_uri", "https://example.test/callback"),
         ("scope", "patient/*.read"),
-        ("state", "second-household-test"),
+        ("state", fixture.state.as_str()),
         (
             "code_challenge",
             "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
@@ -130,14 +161,14 @@ fn query() -> String {
     .unwrap()
 }
 
-fn approval_fields(html: &str) -> Vec<(&str, &str)> {
+fn approval_fields<'a>(fixture: &'a Fixture, html: &'a str) -> Vec<(&'static str, &'a str)> {
     vec![
         ("authenticity_token", csrf(html)),
         ("consent_nonce", nonce(html)),
-        ("client_id", "native"),
+        ("client_id", fixture.application.client_id.as_str()),
         ("response_type", "code"),
         ("redirect_uri", "https://example.test/callback"),
-        ("state", "second-household-test"),
+        ("state", fixture.state.as_str()),
         (
             "code_challenge",
             "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
@@ -152,18 +183,18 @@ async fn close(fixture: Fixture, boot: BootResult) {
         queue.shutdown().unwrap();
     }
     boot.app_context.db.close().await.unwrap();
-    fixture.close().await;
+    fixture.scenario.close().await;
 }
 
-async fn sign_in(request: &TestServer, boot: &BootResult) {
-    sign_in_at(request, boot, "shared sign-in").await;
+async fn sign_in(request: &TestServer, boot: &BootResult, fixture: &Fixture) {
+    sign_in_at(request, boot, fixture, "shared sign-in").await;
 }
 
-async fn sign_in_at(request: &TestServer, boot: &BootResult, stage: &str) {
+async fn sign_in_at(request: &TestServer, boot: &BootResult, fixture: &Fixture, stage: &str) {
     let signed_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     let request_id = signed_in
         .headers()
@@ -205,19 +236,22 @@ async fn select(request: &TestServer, household_id: &str) -> String {
     selected.header("location").to_str().unwrap().to_owned()
 }
 
-async fn consent(request: &TestServer) -> String {
-    let response = request.get(&format!("/authorize?{}", query())).await;
+async fn consent(request: &TestServer, fixture: &Fixture) -> String {
+    let response = request.get(&format!("/authorize?{}", query(fixture))).await;
     assert_eq!(response.status_code(), 200, "{}", response.text());
     response.text()
 }
 
 #[tokio::test]
 async fn selected_second_household_is_shown_on_integration_consent() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
-    let without_selection = request.get(&format!("/authorize?{}", query())).await;
+    sign_in(&request, &boot, &fixture).await;
+    let without_selection = request
+        .get(&format!("/authorize?{}", query(&fixture)))
+        .await;
     assert_eq!(
         without_selection.status_code(),
         303,
@@ -225,40 +259,53 @@ async fn selected_second_household_is_shown_on_integration_consent() {
         without_selection.text()
     );
     assert_eq!(without_selection.header("location"), "/households/choose");
-    let resumed = select(&request, "72002").await;
+    let resumed = select(&request, &fixture.second_household.id.to_string()).await;
     assert!(resumed.starts_with("/authorize?"), "{resumed}");
-    let consent = consent(&request).await;
+    let consent = consent(&request, &fixture).await;
     assert!(consent.contains("Household: Second care home"), "{consent}");
     let approved = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&consent))
+        .form(&approval_fields(&fixture, &consent))
         .await;
     assert_eq!(approved.status_code(), 200, "{}", approved.text());
     let grant = oauth_grants::Entity::find()
+        .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
         .one(&fixture.admin)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(grant.household_membership_id, Some(74002));
-    assert_eq!(grant.person_id, Some(73001));
-    assert_eq!(grant.permissions_version, Some(1));
+    assert_eq!(
+        grant.household_membership_id,
+        Some(fixture.second_membership.id)
+    );
+    assert_eq!(grant.person_id, Some(fixture.account.person_id));
+    assert_eq!(
+        grant.permissions_version,
+        Some(fixture.second_membership.permissions_version)
+    );
     assert_eq!(grant.scopes, "patient/*.read");
     let audits = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::ActorAccountId.eq(fixture.account.id))
+        .filter(
+            security_audit_events::Column::HouseholdId
+                .is_in([fixture.household.id, fixture.second_household.id]),
+        )
         .filter(security_audit_events::Column::EventType.eq("smart_oauth.consent_granted"))
         .all(&fixture.admin)
         .await
         .unwrap();
     assert_eq!(audits.len(), 1);
-    assert_eq!(audits[0].household_id, 72002);
+    assert_eq!(audits[0].household_id, fixture.second_household.id);
     let replay = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&consent))
+        .form(&approval_fields(&fixture, &consent))
         .await;
     assert_eq!(replay.status_code(), 400, "{}", replay.text());
     assert_eq!(
         oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
             .count(&fixture.admin)
             .await
             .unwrap(),
@@ -270,53 +317,60 @@ async fn selected_second_household_is_shown_on_integration_consent() {
 
 #[tokio::test]
 async fn consent_keeps_its_displayed_household_after_session_switch() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
-    select(&request, "72002").await;
-    let shown = consent(&request).await;
+    sign_in(&request, &boot, &fixture).await;
+    select(&request, &fixture.second_household.id.to_string()).await;
+    let shown = consent(&request, &fixture).await;
     assert!(shown.contains("Household: Second care home"));
     assert_eq!(
-        select(&request, "72001").await,
-        "/households/persistence-fixture/dashboard"
+        select(&request, &fixture.household.id.to_string()).await,
+        format!("/households/{}/dashboard", fixture.household.slug)
     );
     let approved = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&shown))
+        .form(&approval_fields(&fixture, &shown))
         .await;
     assert_eq!(approved.status_code(), 200, "{}", approved.text());
     let grant = oauth_grants::Entity::find()
+        .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
         .one(&fixture.admin)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(grant.household_membership_id, Some(74002));
+    assert_eq!(
+        grant.household_membership_id,
+        Some(fixture.second_membership.id)
+    );
     drop(request);
     close(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn newer_consent_page_invalidates_old_form_even_with_identical_oauth_fields() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
-    select(&request, "72002").await;
-    let old = consent(&request).await;
-    select(&request, "72001").await;
-    let new = consent(&request).await;
+    sign_in(&request, &boot, &fixture).await;
+    select(&request, &fixture.second_household.id.to_string()).await;
+    let old = consent(&request, &fixture).await;
+    select(&request, &fixture.household.id.to_string()).await;
+    let new = consent(&request, &fixture).await;
     assert!(new.contains("Household: Synthetic household"));
     assert_ne!(nonce(&old), nonce(&new));
     let rejected = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&old))
+        .form(&approval_fields(&fixture, &old))
         .await;
     assert_eq!(rejected.status_code(), 400, "{}", rejected.text());
     assert_eq!(
         oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
             .count(&fixture.admin)
             .await
             .unwrap(),
@@ -324,6 +378,11 @@ async fn newer_consent_page_invalidates_old_form_even_with_identical_oauth_field
     );
     assert_eq!(
         security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::ActorAccountId.eq(fixture.account.id))
+            .filter(
+                security_audit_events::Column::HouseholdId
+                    .is_in([fixture.household.id, fixture.second_household.id])
+            )
             .filter(security_audit_events::Column::EventType.eq("smart_oauth.consent_granted"))
             .count(&fixture.admin)
             .await
@@ -333,28 +392,30 @@ async fn newer_consent_page_invalidates_old_form_even_with_identical_oauth_field
     let approved = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&new))
+        .form(&approval_fields(&fixture, &new))
         .await;
     assert_eq!(approved.status_code(), 200, "{}", approved.text());
     let grant = oauth_grants::Entity::find()
+        .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
         .one(&fixture.admin)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(grant.household_membership_id, Some(74001));
+    assert_eq!(grant.household_membership_id, Some(fixture.membership.id));
     drop(request);
     close(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn revoked_displayed_membership_cannot_create_grant_or_audit() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
-    select(&request, "72002").await;
-    let shown = consent(&request).await;
-    let membership = household_memberships::Entity::find_by_id(74002)
+    sign_in(&request, &boot, &fixture).await;
+    select(&request, &fixture.second_household.id.to_string()).await;
+    let shown = consent(&request, &fixture).await;
+    let membership = household_memberships::Entity::find_by_id(fixture.second_membership.id)
         .one(&fixture.admin)
         .await
         .unwrap()
@@ -366,7 +427,7 @@ async fn revoked_displayed_membership_cannot_create_grant_or_audit() {
     let rejected = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&shown))
+        .form(&approval_fields(&fixture, &shown))
         .await;
     assert!(
         rejected.status_code().is_client_error(),
@@ -375,6 +436,7 @@ async fn revoked_displayed_membership_cannot_create_grant_or_audit() {
     );
     assert_eq!(
         oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
             .count(&fixture.admin)
             .await
             .unwrap(),
@@ -382,6 +444,11 @@ async fn revoked_displayed_membership_cannot_create_grant_or_audit() {
     );
     assert_eq!(
         security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::ActorAccountId.eq(fixture.account.id))
+            .filter(
+                security_audit_events::Column::HouseholdId
+                    .is_in([fixture.household.id, fixture.second_household.id])
+            )
             .filter(security_audit_events::Column::EventType.eq("smart_oauth.consent_granted"))
             .count(&fixture.admin)
             .await
@@ -394,13 +461,14 @@ async fn revoked_displayed_membership_cannot_create_grant_or_audit() {
 
 #[tokio::test]
 async fn fresh_authorization_after_revocation_can_choose_another_household() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
-    select(&request, "72002").await;
-    let old = consent(&request).await;
-    let membership = household_memberships::Entity::find_by_id(74002)
+    sign_in(&request, &boot, &fixture).await;
+    select(&request, &fixture.second_household.id.to_string()).await;
+    let old = consent(&request, &fixture).await;
+    let membership = household_memberships::Entity::find_by_id(fixture.second_membership.id)
         .one(&fixture.admin)
         .await
         .unwrap()
@@ -409,47 +477,53 @@ async fn fresh_authorization_after_revocation_can_choose_another_household() {
     membership.status = Set("revoked".into());
     membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
     membership.update(&fixture.admin).await.unwrap();
-    let fresh = request.get(&format!("/authorize?{}", query())).await;
+    let fresh = request
+        .get(&format!("/authorize?{}", query(&fixture)))
+        .await;
     assert_eq!(fresh.status_code(), 303, "{}", fresh.text());
     assert_eq!(fresh.header("location"), "/households/choose");
-    let resumed = select(&request, "72001").await;
+    let resumed = select(&request, &fixture.household.id.to_string()).await;
     assert!(resumed.starts_with("/authorize?"), "{resumed}");
-    let new = consent(&request).await;
+    let new = consent(&request, &fixture).await;
     assert!(new.contains("Household: Synthetic household"));
     let old_post = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&old))
+        .form(&approval_fields(&fixture, &old))
         .await;
     assert_eq!(old_post.status_code(), 400, "{}", old_post.text());
     let approved = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&new))
+        .form(&approval_fields(&fixture, &new))
         .await;
     assert_eq!(approved.status_code(), 200, "{}", approved.text());
     let grant = oauth_grants::Entity::find()
+        .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
         .one(&fixture.admin)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(grant.household_membership_id, Some(74001));
+    assert_eq!(grant.household_membership_id, Some(fixture.membership.id));
     drop(request);
     close(fixture, boot).await;
 }
 
 #[tokio::test]
 async fn permission_change_invalidates_displayed_consent() {
+    crate::authentication_fixture::reset_source_quota().await;
     assert_changed_consent_rejected("permissions").await;
 }
 
 #[tokio::test]
 async fn held_household_invalidates_displayed_consent() {
+    crate::authentication_fixture::reset_source_quota().await;
     assert_changed_consent_rejected("held").await;
 }
 
 #[tokio::test]
 async fn archived_household_invalidates_displayed_consent() {
+    crate::authentication_fixture::reset_source_quota().await;
     assert_changed_consent_rejected("archived").await;
 }
 
@@ -457,20 +531,20 @@ async fn assert_changed_consent_rejected(changed: &str) {
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_at(&request, &boot, changed).await;
-    select(&request, "72002").await;
-    let shown = consent(&request).await;
+    sign_in_at(&request, &boot, &fixture, changed).await;
+    select(&request, &fixture.second_household.id.to_string()).await;
+    let shown = consent(&request, &fixture).await;
     if changed == "permissions" {
-        let membership = household_memberships::Entity::find_by_id(74002)
+        let membership = household_memberships::Entity::find_by_id(fixture.second_membership.id)
             .one(&fixture.admin)
             .await
             .unwrap()
             .unwrap();
         let mut membership = membership.into_active_model();
-        membership.permissions_version = Set(2);
+        membership.permissions_version = Set(fixture.second_membership.permissions_version + 1);
         membership.update(&fixture.admin).await.unwrap();
     } else {
-        let household = households::Entity::find_by_id(72002)
+        let household = households::Entity::find_by_id(fixture.second_household.id)
             .one(&fixture.admin)
             .await
             .unwrap()
@@ -486,7 +560,7 @@ async fn assert_changed_consent_rejected(changed: &str) {
     let rejected = request
         .post("/authorize")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&approval_fields(&shown))
+        .form(&approval_fields(&fixture, &shown))
         .await;
     assert!(
         rejected.status_code().is_client_error(),
@@ -495,6 +569,7 @@ async fn assert_changed_consent_rejected(changed: &str) {
     );
     assert_eq!(
         oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
             .count(&fixture.admin)
             .await
             .unwrap(),
@@ -502,6 +577,11 @@ async fn assert_changed_consent_rejected(changed: &str) {
     );
     assert_eq!(
         security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::ActorAccountId.eq(fixture.account.id))
+            .filter(
+                security_audit_events::Column::HouseholdId
+                    .is_in([fixture.household.id, fixture.second_household.id])
+            )
             .filter(security_audit_events::Column::EventType.eq("smart_oauth.consent_granted"))
             .count(&fixture.admin)
             .await
@@ -514,20 +594,21 @@ async fn assert_changed_consent_rejected(changed: &str) {
 
 #[tokio::test]
 async fn two_browser_sessions_keep_distinct_household_consent() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut first = server(&boot);
     let mut second = server(&boot);
     first.save_cookies();
     second.save_cookies();
-    sign_in(&first, &boot).await;
-    sign_in(&second, &boot).await;
-    select(&first, "72001").await;
-    select(&second, "72002").await;
-    let first_page = consent(&first).await;
-    let second_page = consent(&second).await;
+    sign_in(&first, &boot, &fixture).await;
+    sign_in(&second, &boot, &fixture).await;
+    select(&first, &fixture.household.id.to_string()).await;
+    select(&second, &fixture.second_household.id.to_string()).await;
+    let first_page = consent(&first, &fixture).await;
+    let second_page = consent(&second, &fixture).await;
     assert!(first_page.contains("Household: Synthetic household"));
     assert!(second_page.contains("Household: Second care home"));
-    let mut substituted = approval_fields(&first_page);
+    let mut substituted = approval_fields(&fixture, &first_page);
     substituted[0].1 = csrf(&second_page);
     let rejected = second
         .post("/authorize")
@@ -537,6 +618,7 @@ async fn two_browser_sessions_keep_distinct_household_consent() {
     assert_eq!(rejected.status_code(), 400, "{}", rejected.text());
     assert_eq!(
         oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
             .count(&fixture.admin)
             .await
             .unwrap(),
@@ -546,11 +628,12 @@ async fn two_browser_sessions_keep_distinct_household_consent() {
         let response = request
             .post("/authorize")
             .add_header("sec-fetch-site", "same-origin")
-            .form(&approval_fields(page))
+            .form(&approval_fields(&fixture, page))
             .await;
         assert_eq!(response.status_code(), 200, "{}", response.text());
     }
     let grants = oauth_grants::Entity::find()
+        .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
         .all(&fixture.admin)
         .await
         .unwrap();
@@ -558,12 +641,12 @@ async fn two_browser_sessions_keep_distinct_household_consent() {
     assert!(
         grants
             .iter()
-            .any(|grant| grant.household_membership_id == Some(74001))
+            .any(|grant| grant.household_membership_id == Some(fixture.membership.id))
     );
     assert!(
         grants
             .iter()
-            .any(|grant| grant.household_membership_id == Some(74002))
+            .any(|grant| grant.household_membership_id == Some(fixture.second_membership.id))
     );
     drop(first);
     drop(second);
@@ -572,13 +655,20 @@ async fn two_browser_sessions_keep_distinct_household_consent() {
 
 #[tokio::test]
 async fn mobile_consent_stays_account_bound_without_selected_household() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
-    fixtures::seed_oauth_clients(&fixture.admin).await;
+    let mobile = client(
+        &fixture,
+        "mobile",
+        "io.damacus.medtracker:/oauth2redirect",
+        "medtracker offline_access",
+    )
+    .await;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
+    sign_in(&request, &boot, &fixture).await;
     let query = serde_urlencoded::to_string([
-        ("client_id", "native-journey"),
+        ("client_id", mobile.client_id.as_str()),
         ("response_type", "code"),
         ("redirect_uri", "io.damacus.medtracker:/oauth2redirect"),
         ("scope", "medtracker offline_access"),
@@ -600,7 +690,7 @@ async fn mobile_consent_stays_account_bound_without_selected_household() {
         .form(&[
             ("authenticity_token", csrf(&page.text())),
             ("consent_nonce", nonce(&page.text())),
-            ("client_id", "native-journey"),
+            ("client_id", mobile.client_id.as_str()),
             ("response_type", "code"),
             ("redirect_uri", "io.damacus.medtracker:/oauth2redirect"),
             ("state", "mobile-no-household"),
@@ -614,11 +704,12 @@ async fn mobile_consent_stays_account_bound_without_selected_household() {
         .await;
     assert_eq!(approved.status_code(), 200, "{}", approved.text());
     let grant = oauth_grants::Entity::find()
+        .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
         .one(&fixture.admin)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(grant.account_id, 71001);
+    assert_eq!(grant.account_id, fixture.account.id);
     assert_eq!(grant.client_kind, "mobile");
     assert_eq!(grant.household_membership_id, None);
     assert_eq!(grant.person_id, None);
@@ -629,13 +720,14 @@ async fn mobile_consent_stays_account_bound_without_selected_household() {
 
 #[tokio::test]
 async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
-    select(&request, "72002").await;
-    let shown = consent(&request).await;
-    let mut invalid_csrf = approval_fields(&shown);
+    sign_in(&request, &boot, &fixture).await;
+    select(&request, &fixture.second_household.id.to_string()).await;
+    let shown = consent(&request, &fixture).await;
+    let mut invalid_csrf = approval_fields(&fixture, &shown);
     invalid_csrf[0].1 = "invalid";
     let response = request
         .post("/authorize")
@@ -643,7 +735,7 @@ async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
         .form(&invalid_csrf)
         .await;
     assert_eq!(response.status_code(), 403, "{}", response.text());
-    let mut changed_state = approval_fields(&shown);
+    let mut changed_state = approval_fields(&fixture, &shown);
     changed_state[5].1 = "changed-state";
     let response = request
         .post("/authorize")
@@ -651,7 +743,7 @@ async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
         .form(&changed_state)
         .await;
     assert_eq!(response.status_code(), 400, "{}", response.text());
-    let mut invalid_scope = approval_fields(&shown);
+    let mut invalid_scope = approval_fields(&fixture, &shown);
     invalid_scope.last_mut().unwrap().1 = "admin";
     let response = request
         .post("/authorize")
@@ -659,7 +751,7 @@ async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
         .form(&invalid_scope)
         .await;
     assert_eq!(response.status_code(), 400, "{}", response.text());
-    let mut duplicate_nonce = approval_fields(&shown);
+    let mut duplicate_nonce = approval_fields(&fixture, &shown);
     duplicate_nonce.push(("consent_nonce", nonce(&shown)));
     let response = request
         .post("/authorize")
@@ -669,12 +761,13 @@ async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
     assert_eq!(response.status_code(), 400, "{}", response.text());
     assert_eq!(
         oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
             .count(&fixture.admin)
             .await
             .unwrap(),
         0
     );
-    let mut denial = approval_fields(&shown);
+    let mut denial = approval_fields(&fixture, &shown);
     denial.pop();
     denial.push(("consent_action", "deny"));
     let response = request
@@ -685,6 +778,7 @@ async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
     assert_eq!(response.status_code(), 200, "{}", response.text());
     assert_eq!(
         oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::AccountId.eq(fixture.account.id))
             .count(&fixture.admin)
             .await
             .unwrap(),
@@ -692,6 +786,11 @@ async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
     );
     assert_eq!(
         security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::ActorAccountId.eq(fixture.account.id))
+            .filter(
+                security_audit_events::Column::HouseholdId
+                    .is_in([fixture.household.id, fixture.second_household.id])
+            )
             .filter(security_audit_events::Column::EventType.eq("smart_oauth.consent_granted"))
             .count(&fixture.admin)
             .await
@@ -704,52 +803,38 @@ async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
 
 #[tokio::test]
 async fn first_household_creation_resumes_pending_integration_consent() {
+    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
-    people::Entity::insert(people::ActiveModel {
-        id: Set(73050),
-        name: Set("New account person".into()),
-        date_of_birth: Set(Some(chrono::NaiveDate::from_ymd_opt(1990, 1, 1).unwrap())),
-        person_type: Set(0),
-        has_capacity: Set(true),
-        created_at: Set(chrono::Utc::now().naive_utc()),
-        updated_at: Set(chrono::Utc::now().naive_utc()),
-        ..Default::default()
-    })
-    .exec(&fixture.admin)
-    .await
-    .unwrap();
-    accounts::Entity::insert(accounts::ActiveModel {
-        id: Set(71050),
-        person_id: Set(73050),
-        email: Set("new-oauth@example.test".into()),
-        status: Set(2),
-        created_at: Set(chrono::Utc::now()),
-        updated_at: Set(chrono::Utc::now()),
-        ..Default::default()
-    })
-    .exec(&fixture.admin)
-    .await
-    .unwrap();
-    identity_onboarding::Entity::insert(identity_onboarding::ActiveModel {
-        account_id: Set(71050),
-        completed_at: Set(Some(chrono::Utc::now().fixed_offset())),
-    })
-    .exec(&fixture.admin)
-    .await
-    .unwrap();
-    fixtures::seed_native_password(&fixture.admin, 71050).await;
+    let newcomer = Scenario::new().await;
+    household_memberships::Entity::delete_by_id(newcomer.membership.id)
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(
+        household_memberships::Entity::find()
+            .filter(household_memberships::Column::PersonId.eq(newcomer.account.person_id))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    let household_name = format!("New OAuth household {}", uuid::Uuid::new_v4());
     let mut request = server(&boot);
     request.save_cookies();
-    let unauthenticated = request.get(&format!("/authorize?{}", query())).await;
+    let unauthenticated = request
+        .get(&format!("/authorize?{}", query(&fixture)))
+        .await;
     assert_eq!(unauthenticated.status_code(), 303);
     assert_eq!(unauthenticated.header("location"), "/login");
     let signed_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"new-oauth@example.test","password":"password"}))
+        .json(&json!({"email":newcomer.account.email,"password":"password"}))
         .await;
     assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
-    let chooser_redirect = request.get(&format!("/authorize?{}", query())).await;
+    let chooser_redirect = request
+        .get(&format!("/authorize?{}", query(&fixture)))
+        .await;
     assert_eq!(
         chooser_redirect.status_code(),
         303,
@@ -763,7 +848,7 @@ async fn first_household_creation_resumes_pending_integration_consent() {
         .post("/households")
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
-            ("name", "New OAuth household"),
+            ("name", household_name.as_str()),
             ("authenticity_token", csrf(&chooser.text())),
         ])
         .await;
@@ -779,7 +864,12 @@ async fn first_household_creation_resumes_pending_integration_consent() {
         .get(created.header("location").to_str().unwrap())
         .await;
     assert_eq!(shown.status_code(), 200, "{}", shown.text());
-    assert!(shown.text().contains("Household: New OAuth household"));
+    assert!(
+        shown
+            .text()
+            .contains(&format!("Household: {household_name}"))
+    );
     drop(request);
+    newcomer.close().await;
     close(fixture, boot).await;
 }

@@ -1,6 +1,13 @@
 use super::*;
+#[path = "guardian_declarations.rs"]
+mod guardian_declarations;
+use med_tracker::models::_entities::{
+    accounts, api_change_events, carer_relationships, household_memberships, location_memberships,
+    people, person_access_grants, security_audit_events, users, versions,
+};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect};
+
 use axum::http::Method;
-use base64::Engine;
 
 struct Reply {
     status: u16,
@@ -67,10 +74,10 @@ async fn send(
     )
 }
 
-async fn send_malformed(server: &TestServer, method: Method, path: &str) -> Reply {
+async fn send_malformed(server: &TestServer, method: Method, path: &str, bearer: &str) -> Reply {
     let response = server
         .method(method, path)
-        .add_header("authorization", "Bearer people-session")
+        .add_header("authorization", format!("Bearer {bearer}"))
         .text("{")
         .content_type("application/json")
         .await;
@@ -111,91 +118,189 @@ fn assert_wire(reply: &Reply) {
     }
 }
 
-async fn mobile_token(fixture: &Fixture) -> String {
-    let request = axum::http::Request::builder()
-        .method("POST")
-        .uri("/token")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(axum::body::Body::from(
-            serde_urlencoded::to_string([
-                ("grant_type", "authorization_code"),
-                ("client_id", "native"),
-                ("code", "synthetic-legacy-code"),
-                ("redirect_uri", "io.damacus.medtracker:/oauth2redirect"),
-                (
-                    "code_verifier",
-                    "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-                ),
-            ])
-            .unwrap(),
-        ))
-        .unwrap();
-    med_tracker::models::identity::exchange(&fixture.runtime, request, None)
+async fn mobile_token(fixture: &RequestFixture) -> String {
+    fixture.token().await
+}
+async fn seed_credentials_and_foreign_household(fixture: &RequestFixture) {
+    fixture.session(&fixture.credential("people-session")).await;
+    fixture.app_token(&fixture.credential("people-app")).await;
+}
+async fn participants(fixture: &RequestFixture) -> Vec<i64> {
+    household_memberships::Entity::find()
+        .filter(household_memberships::Column::HouseholdId.eq(fixture.household.id))
+        .select_only()
+        .column(household_memberships::Column::PersonId)
+        .into_tuple()
+        .all(&fixture.admin)
         .await
-        .unwrap()["access_token"]
-        .as_str()
         .unwrap()
-        .to_owned()
 }
-
-async fn seed_credentials_and_foreign_household(fixture: &Fixture) {
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73005,'foreign-people@example.test',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign operational household','foreign-people','UTC','active','active',now(),now());  INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner','active',now(),now(),now())").await.unwrap();
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88021,71001,74001,$1,'people-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())",[hex::encode(Sha256::digest(b"people-session")).into()])).await.unwrap();
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES(88022,71001,74001,'People app',$1,1,now()+interval '1 month',now(),now(),now())",[hex::encode(Sha256::digest(b"people-app")).into()])).await.unwrap();
-}
-
-async fn people_effect(fixture: &Fixture) -> (i64, i64, i64) {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001)) AS people, (SELECT count(*) FROM versions WHERE item_type='Person') AS versions, (SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes")).await.unwrap().unwrap();
+async fn people_effect(fixture: &RequestFixture) -> (i64, i64, i64) {
+    let ids = participants(fixture).await;
+    let people = people::Entity::find()
+        .filter(people::Column::Id.is_in(ids))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let versions = versions::Entity::find()
+        .filter(versions::Column::HouseholdId.eq(fixture.household.id))
+        .filter(versions::Column::ItemType.eq("Person"))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let changes = api_change_events::Entity::find()
+        .filter(api_change_events::Column::HouseholdId.eq(fixture.household.id))
+        .filter(api_change_events::Column::RecordType.eq("Person"))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
     (
-        row.try_get("", "people").unwrap(),
-        row.try_get("", "versions").unwrap(),
-        row.try_get("", "changes").unwrap(),
+        i64::try_from(people).unwrap(),
+        i64::try_from(versions).unwrap(),
+        i64::try_from(changes).unwrap(),
     )
 }
-
-async fn request_audits(fixture: &Fixture) -> i64 {
-    fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS total FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/people'")).await.unwrap().unwrap().try_get("","total").unwrap()
+async fn request_audits(fixture: &RequestFixture) -> i64 {
+    let events = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+        .filter(security_audit_events::Column::EventType.eq("api.request"))
+        .all(&fixture.admin)
+        .await
+        .unwrap();
+    i64::try_from(
+        events
+            .into_iter()
+            .filter(|event| event.metadata["controller"] == "api/v1/people")
+            .count(),
+    )
+    .unwrap()
 }
-
-async fn people_state(fixture: &Fixture) -> Value {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001)) AS people,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT count(*) FROM location_memberships) AS links,(SELECT count(*) FROM versions WHERE item_type='Person') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes,(SELECT count(*) FROM security_audit_events WHERE metadata->>'controller'='api/v1/people') AS audits,(SELECT permissions_version FROM household_memberships WHERE id=74001) AS permissions,(SELECT name FROM people WHERE id=73001) AS name")).await.unwrap().unwrap();
-    json!({
-        "people": row.try_get::<i64>("", "people").unwrap(),
-        "grants": row.try_get::<i64>("", "grants").unwrap(),
-        "links": row.try_get::<i64>("", "links").unwrap(),
-        "versions": row.try_get::<i64>("", "versions").unwrap(),
-        "changes": row.try_get::<i64>("", "changes").unwrap(),
-        "audits": row.try_get::<i64>("", "audits").unwrap(),
-        "permissions": row.try_get::<i32>("", "permissions").unwrap(),
-        "name": row.try_get::<String>("", "name").unwrap(),
-    })
+async fn people_state(fixture: &RequestFixture) -> Value {
+    let (people, versions, changes) = people_effect(fixture).await;
+    let grants = person_access_grants::Entity::find()
+        .filter(person_access_grants::Column::HouseholdId.eq(fixture.household.id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let links = location_memberships::Entity::find()
+        .filter(location_memberships::Column::HouseholdId.eq(fixture.household.id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let events = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+        .all(&fixture.admin)
+        .await
+        .unwrap();
+    let audits = events
+        .into_iter()
+        .filter(|event| event.metadata["controller"] == "api/v1/people")
+        .count();
+    let membership = household_memberships::Entity::find_by_id(fixture.membership.id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let person = people::Entity::find_by_id(fixture.account.person_id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    json!({"people":people,"versions":versions,"changes":changes,"grants":grants,"links":links,"audits":audits,
+        "permissions":membership.permissions_version,"name":person.name})
 }
-
-async fn dependent_effect(fixture: &Fixture) -> (i64, i64, i64, i64, i64, i64) {
-    let row=fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM household_memberships WHERE household_id=72001) AS memberships,(SELECT count(*) FROM guardian_declarations WHERE guardian_person_id=73001 AND declared_by_account_id=71001 AND origin_household_id=72001) AS declarations,(SELECT count(*) FROM carer_relationships WHERE household_id=72001 AND carer_id=73001 AND guardian_declaration_id IS NOT NULL AND active) AS carers,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT count(*) FROM accounts) AS accounts,(SELECT count(*) FROM users) AS users")).await.unwrap().unwrap();
+async fn dependent_effect(fixture: &RequestFixture) -> (i64, i64, i64, i64, i64, i64) {
+    let ids = participants(fixture).await;
+    let memberships = household_memberships::Entity::find()
+        .filter(household_memberships::Column::HouseholdId.eq(fixture.household.id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let declarations = guardian_declarations::Entity::find()
+        .filter(guardian_declarations::Column::GuardianPersonId.eq(fixture.account.person_id))
+        .filter(guardian_declarations::Column::DeclaredByAccountId.eq(fixture.account.id))
+        .filter(guardian_declarations::Column::OriginHouseholdId.eq(fixture.household.id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let carers = carer_relationships::Entity::find()
+        .filter(carer_relationships::Column::HouseholdId.eq(fixture.household.id))
+        .filter(carer_relationships::Column::CarerId.eq(fixture.account.person_id))
+        .filter(carer_relationships::Column::GuardianDeclarationId.is_not_null())
+        .filter(carer_relationships::Column::Active.eq(true))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let grants = person_access_grants::Entity::find()
+        .filter(person_access_grants::Column::HouseholdId.eq(fixture.household.id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let accounts = accounts::Entity::find()
+        .filter(accounts::Column::PersonId.is_in(ids.clone()))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let users = users::Entity::find()
+        .filter(users::Column::PersonId.is_in(ids))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
     (
-        row.try_get("", "memberships").unwrap(),
-        row.try_get("", "declarations").unwrap(),
-        row.try_get("", "carers").unwrap(),
-        row.try_get("", "grants").unwrap(),
-        row.try_get("", "accounts").unwrap(),
-        row.try_get("", "users").unwrap(),
+        i64::try_from(memberships).unwrap(),
+        i64::try_from(declarations).unwrap(),
+        i64::try_from(carers).unwrap(),
+        i64::try_from(grants).unwrap(),
+        i64::try_from(accounts).unwrap(),
+        i64::try_from(users).unwrap(),
     )
 }
-
-async fn assert_created_dependent(fixture: &Fixture, body: &Value) {
+async fn assert_created_dependent(fixture: &RequestFixture, body: &Value) {
     let subject = body["data"]["id"]
         .as_i64()
-        .or_else(|| {
-            body["data"]["id"]
-                .as_str()
-                .and_then(|id| id.parse::<i64>().ok())
-        })
+        .or_else(|| body["data"]["id"].as_str().and_then(|id| id.parse().ok()))
         .expect("Successful dependent response must identify its Person");
-    let row=fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT count(*) AS linked FROM guardian_declarations d JOIN accounts a ON a.id=d.declared_by_account_id AND a.person_id=d.guardian_person_id JOIN household_memberships m ON m.person_id=d.subject_person_id AND m.household_id=d.origin_household_id JOIN carer_relationships c ON c.guardian_declaration_id=d.id AND c.patient_id=d.subject_person_id AND c.carer_id=d.guardian_person_id AND c.household_id=d.origin_household_id WHERE d.subject_person_id=$1 AND d.guardian_person_id=73001 AND a.id=71001 AND d.origin_household_id=72001 AND d.statement_version=1 AND d.revision=1 AND d.withdrawn_at IS NULL AND m.status='active' AND m.revoked_at IS NULL AND c.active",[subject.into()])).await.unwrap().unwrap();
+    let account = accounts::Entity::find_by_id(fixture.account.id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let declarations = guardian_declarations::Entity::find()
+        .filter(guardian_declarations::Column::SubjectPersonId.eq(subject))
+        .filter(guardian_declarations::Column::GuardianPersonId.eq(fixture.account.person_id))
+        .filter(guardian_declarations::Column::DeclaredByAccountId.eq(account.id))
+        .filter(guardian_declarations::Column::OriginHouseholdId.eq(fixture.household.id))
+        .filter(guardian_declarations::Column::StatementVersion.eq(1))
+        .filter(guardian_declarations::Column::Revision.eq(1))
+        .filter(guardian_declarations::Column::WithdrawnAt.is_null())
+        .all(&fixture.admin)
+        .await
+        .unwrap();
+    let mut linked = 0;
+    for declaration in declarations {
+        let members = household_memberships::Entity::find()
+            .filter(household_memberships::Column::PersonId.eq(subject))
+            .filter(household_memberships::Column::HouseholdId.eq(fixture.household.id))
+            .filter(household_memberships::Column::Status.eq("active"))
+            .filter(household_memberships::Column::RevokedAt.is_null())
+            .count(&fixture.admin)
+            .await
+            .unwrap();
+        let carers = carer_relationships::Entity::find()
+            .filter(carer_relationships::Column::GuardianDeclarationId.eq(declaration.id))
+            .filter(carer_relationships::Column::PatientId.eq(subject))
+            .filter(carer_relationships::Column::CarerId.eq(fixture.account.person_id))
+            .filter(carer_relationships::Column::HouseholdId.eq(fixture.household.id))
+            .filter(carer_relationships::Column::Active.eq(true))
+            .count(&fixture.admin)
+            .await
+            .unwrap();
+        if account.person_id == declaration.guardian_person_id {
+            linked += members * carers;
+        }
+    }
     assert_eq!(
-        row.try_get::<i64>("", "linked").unwrap(),
-        1,
+        linked, 1,
         "Returned Person must own the active participation and declaration-linked care relationship"
     );
 }
@@ -247,15 +352,22 @@ fn people_write_routes_document_existing_idempotency_conflict() {
 
 #[tokio::test]
 async fn people_collection_scopes_credentials_and_validates_queries() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+    let foreign_id = fixture.foreign.household.id;
+    let person_id = fixture.account.person_id;
+
+    let absent_id = i64::MAX;
+    let session = fixture.credential("people-session");
+    let app = fixture.credential("people-app");
     seed_credentials_and_foreign_household(&fixture).await;
     let mobile = mobile_token(&fixture).await;
     let server = server(&boot);
-    let credentials = ["people-session", "people-app", mobile.as_str()];
+    let credentials = [session.as_str(), app.as_str(), mobile.as_str()];
     let path = "/households/{household_id}/people";
     let mut replies = Vec::new();
     for credential in credentials {
-        for household in [72001, 72004, 99999] {
+        for household in [household_id, foreign_id, i64::MAX] {
             let route = format!("/api/v1/households/{household}/people");
             replies.push((
                 household,
@@ -266,8 +378,8 @@ async fn people_collection_scopes_credentials_and_validates_queries() {
     let invalid = send(
         &server,
         Method::GET,
-        "/api/v1/households/72001/people?page=0",
-        Some("people-session"),
+        &format!("/api/v1/households/{household_id}/people?page=0"),
+        Some(session.as_str()),
         None,
         None,
     )
@@ -275,7 +387,7 @@ async fn people_collection_scopes_credentials_and_validates_queries() {
     let anonymous = send(
         &server,
         Method::GET,
-        "/api/v1/households/72004/people",
+        &format!("/api/v1/households/{foreign_id}/people"),
         None,
         None,
         None,
@@ -285,7 +397,7 @@ async fn people_collection_scopes_credentials_and_validates_queries() {
     let invalid_credential = send(
         &server,
         Method::GET,
-        "/api/v1/households/99999/people",
+        &format!("/api/v1/households/{absent_id}/people"),
         Some("invalid"),
         None,
         None,
@@ -293,13 +405,13 @@ async fn people_collection_scopes_credentials_and_validates_queries() {
     .await;
     let after = people_effect(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(
         replies
             .iter()
             .map(|(household, reply)| (*household, reply.status))
             .collect::<Vec<_>>(),
-        [(72001, 200), (72004, 403), (99999, 404)].repeat(3)
+        [(household_id, 200), (foreign_id, 403), (i64::MAX, 404)].repeat(3)
     );
     assert_eq!(
         (invalid.status, anonymous.status, invalid_credential.status),
@@ -309,8 +421,8 @@ async fn people_collection_scopes_credentials_and_validates_queries() {
     for (household, reply) in replies {
         assert_schema("get", path, &reply);
         assert_wire(&reply);
-        if household == 72001 {
-            assert_eq!(reply.body["data"][0]["id"], 73001);
+        if household == household_id {
+            assert_eq!(reply.body["data"][0]["id"], person_id);
         }
     }
     for reply in [invalid, anonymous, invalid_credential] {
@@ -321,10 +433,16 @@ async fn people_collection_scopes_credentials_and_validates_queries() {
 
 #[tokio::test]
 async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+    let foreign_id = fixture.foreign.household.id;
+
+    let absent_id = i64::MAX;
+    let session = fixture.credential("people-session");
+
     seed_credentials_and_foreign_household(&fixture).await;
     let server = server(&boot);
-    let path = "/api/v1/households/72001/people";
+    let path = &format!("/api/v1/households/{household_id}/people");
     let document = contract::contract();
     let payload = json!({"person":{"name":"People TestServer child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}});
     contract::assert_value(
@@ -340,8 +458,8 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
     let denied = send(
         &server,
         Method::POST,
-        "/api/v1/households/72004/people",
-        Some("people-session"),
+        &format!("/api/v1/households/{foreign_id}/people"),
+        Some(session.as_str()),
         Some(&payload),
         None,
     )
@@ -349,8 +467,8 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
     let missing = send(
         &server,
         Method::POST,
-        "/api/v1/households/99999/people",
-        Some("people-session"),
+        &format!("/api/v1/households/{absent_id}/people"),
+        Some(session.as_str()),
         Some(&payload),
         None,
     )
@@ -364,8 +482,8 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
         None,
     )
     .await;
-    let malformed = send_malformed(&server, Method::POST, path).await;
-    let invalid = send(&server, Method::POST, path, Some("people-session"), Some(&json!({"person":{"name":"Wrong age","date_of_birth":"2020-01-01","person_type":"dependent_adult","has_capacity":false,"initial_guardian_declaration":true}})), None).await;
+    let malformed = send_malformed(&server, Method::POST, path, &session).await;
+    let invalid = send(&server, Method::POST, path, Some(session.as_str()), Some(&json!({"person":{"name":"Wrong age","date_of_birth":"2020-01-01","person_type":"dependent_adult","has_capacity":false,"initial_guardian_declaration":true}})), None).await;
     let dependent_after_denial = dependent_effect(&fixture).await;
     let after_denial = people_effect(&fixture).await;
     let audits_after_denial = request_audits(&fixture).await;
@@ -373,23 +491,41 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
         &server,
         Method::POST,
         path,
-        Some("people-session"),
+        Some(session.as_str()),
         Some(&payload),
         None,
     )
     .await;
-    let links = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE name='People TestServer child') AS people, (SELECT count(*) FROM person_access_grants WHERE person_id=(SELECT id FROM people WHERE name='People TestServer child')) AS grants, (SELECT count(*) FROM location_memberships WHERE person_id=(SELECT id FROM people WHERE name='People TestServer child')) AS locations")).await.unwrap().unwrap();
+    let children = people::Entity::find()
+        .filter(people::Column::Id.is_in(participants(&fixture).await))
+        .filter(people::Column::Name.eq("People TestServer child"))
+        .all(&fixture.admin)
+        .await
+        .unwrap();
+    let ids = children.iter().map(|person| person.id).collect::<Vec<_>>();
+    let grants = person_access_grants::Entity::find()
+        .filter(person_access_grants::Column::PersonId.is_in(ids.clone()))
+        .filter(person_access_grants::Column::HouseholdId.eq(fixture.household.id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let locations = location_memberships::Entity::find()
+        .filter(location_memberships::Column::PersonId.is_in(ids))
+        .filter(location_memberships::Column::HouseholdId.eq(fixture.household.id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
     let effects = (
-        links.try_get::<i64>("", "people").unwrap(),
-        links.try_get::<i64>("", "grants").unwrap(),
-        links.try_get::<i64>("", "locations").unwrap(),
+        i64::try_from(children.len()).unwrap(),
+        i64::try_from(grants).unwrap(),
+        i64::try_from(locations).unwrap(),
     );
     let dependent_after = dependent_effect(&fixture).await;
     if created.status == 201 {
         assert_created_dependent(&fixture, &created.body).await;
     }
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(created.status, 201);
     assert_eq!(created.body["data"]["has_capacity"], false);
     assert!(created.etag.as_ref().is_some_and(|etag| !etag.is_empty()));
@@ -422,14 +558,16 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
 
 #[tokio::test]
 async fn people_methods_reject_invalid_and_wrong_namespace_credentials_before_writes() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
+    let foreign_id = fixture.foreign.household.id;
+    let person_id = fixture.account.person_id;
+
     seed_credentials_and_foreign_household(&fixture).await;
     let mobile = mobile_token(&fixture).await;
-    let smart = "synthetic-people-smart-access";
-    let digest = base64::engine::general_purpose::URL_SAFE.encode(Sha256::digest(smart.as_bytes()));
-    fixture.admin.execute_unprepared("INSERT INTO oauth_applications(id,account_id,client_id,client_kind,name,redirect_uri,scopes,token_endpoint_auth_method,client_secret_hash,created_at,updated_at) VALUES(75003,71001,'smart-people','integration','Synthetic SMART people','https://example.test/callback?tenant=7','launch/patient patient/*.rs offline_access','client_secret_post',crypt('password',gen_salt('bf',4)),now(),now())").await.unwrap();
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,household_membership_id,person_id,permissions_version,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76003,71001,75003,'integration',74001,73001,1,'https://example.test/callback?tenant=7','launch/patient patient/*.rs offline_access',$1,now()+interval '15 minutes',now(),now(),'SMART client',now(),now())",[digest.into()])).await.unwrap();
-    fixture.admin.execute_unprepared("UPDATE oauth_grants SET access_token_scopes='patient/*.read',access_token_scope_hash=token_hash WHERE id=76001").await.unwrap();
+    let smart = fixture.credential("synthetic-people-smart");
+    fixture.integration(&smart).await;
+    fixture.wrong_scope().await;
     let before = people_effect(&fixture).await;
     let audits_before = request_audits(&fixture).await;
     let server = server(&boot);
@@ -437,28 +575,28 @@ async fn people_methods_reject_invalid_and_wrong_namespace_credentials_before_wr
     let cases = [
         (
             Method::GET,
-            "/api/v1/households/72004/people",
+            &format!("/api/v1/households/{foreign_id}/people"),
             "/households/{household_id}/people",
             "get",
             false,
         ),
         (
             Method::POST,
-            "/api/v1/households/72004/people",
+            &format!("/api/v1/households/{foreign_id}/people"),
             "/households/{household_id}/people",
             "post",
             true,
         ),
         (
             Method::PATCH,
-            "/api/v1/households/72004/people/73001",
+            &format!("/api/v1/households/{foreign_id}/people/{person_id}"),
             "/households/{household_id}/people/{id}",
             "patch",
             true,
         ),
         (
             Method::PUT,
-            "/api/v1/households/72004/people/73001",
+            &format!("/api/v1/households/{foreign_id}/people/{person_id}"),
             "/households/{household_id}/people/{id}",
             "put",
             true,
@@ -468,7 +606,7 @@ async fn people_methods_reject_invalid_and_wrong_namespace_credentials_before_wr
     for (method, route, path, verb, has_body) in cases {
         for (credential, bearer, expected) in [
             ("invalid", "invalid", 401),
-            ("smart", smart, 401),
+            ("smart", smart.as_str(), 401),
             ("mobile_wrong_scope", mobile.as_str(), 403),
         ] {
             let reply = send(
@@ -486,7 +624,7 @@ async fn people_methods_reject_invalid_and_wrong_namespace_credentials_before_wr
     let after = people_effect(&fixture).await;
     let audits_after = request_audits(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(before, after);
     assert_eq!(audits_after, audits_before);
     for (path, verb, credential, expected, reply) in replies {
@@ -507,17 +645,26 @@ async fn people_methods_reject_invalid_and_wrong_namespace_credentials_before_wr
 
 #[tokio::test]
 async fn people_write_methods_recheck_current_manage_permission() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let person_id = fixture.account.person_id;
+    let minor_id = fixture.minor.id;
+
+    let session = fixture.credential("people-session");
+
     seed_credentials_and_foreign_household(&fixture).await;
-    fixture.admin.execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001").await.unwrap();
+    fixture.view_grant().await;
+    fixture.member().await;
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     let server = server(&boot);
     for method in [Method::PATCH, Method::PUT] {
         let verb = method.as_str().to_lowercase();
         let own = send(
             &server,
             method,
-            "/api/v1/households/72001/people/73001",
-            Some("people-session"),
+            &format!("/api/v1/households/{household_id}/people/{person_id}"),
+            Some(session.as_str()),
             Some(&json!({"person":{"name":"Canonical self remains writable"}})),
             None,
         )
@@ -533,19 +680,19 @@ async fn people_write_methods_recheck_current_manage_permission() {
     let cases = [
         (
             Method::POST,
-            "/api/v1/households/72001/people",
+            &format!("/api/v1/households/{household_id}/people"),
             "/households/{household_id}/people",
             "post",
         ),
         (
             Method::PATCH,
-            "/api/v1/households/72001/people/73002",
+            &format!("/api/v1/households/{household_id}/people/{minor_id}"),
             "/households/{household_id}/people/{id}",
             "patch",
         ),
         (
             Method::PUT,
-            "/api/v1/households/72001/people/73002",
+            &format!("/api/v1/households/{household_id}/people/{minor_id}"),
             "/households/{household_id}/people/{id}",
             "put",
         ),
@@ -559,7 +706,7 @@ async fn people_write_methods_recheck_current_manage_permission() {
                 &server,
                 method,
                 route,
-                Some("people-session"),
+                Some(session.as_str()),
                 Some(&body),
                 None,
             )
@@ -570,7 +717,7 @@ async fn people_write_methods_recheck_current_manage_permission() {
     let after = people_effect(&fixture).await;
     let audits_after = request_audits(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(before, after);
     assert_eq!(dependent_before, dependent_after);
     assert_eq!(audits_after, audits_before + 3);
@@ -585,27 +732,26 @@ async fn people_write_methods_recheck_current_manage_permission() {
 async fn app_and_mobile_credentials_can_each_write_all_people_methods() {
     for credential in ["app", "mobile"] {
         for method in [Method::POST, Method::PATCH, Method::PUT] {
-            let (fixture, boot) = boot_fixture().await;
+            let (fixture, boot) = boot_request_fixture().await;
+            let household_id = fixture.household.id;
+
+            let person_id = fixture.account.person_id;
+
+            let app = fixture.credential("people-app");
             seed_credentials_and_foreign_household(&fixture).await;
             if method != Method::POST {
-                fixture
-                    .admin
-                    .execute_unprepared(
-                        "UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001",
-                    )
-                    .await
-                    .unwrap();
+                fixture.birth(Some("1990-01-01".parse().unwrap())).await;
             }
             let mobile = if credential == "mobile" {
                 Some(mobile_token(&fixture).await)
             } else {
                 None
             };
-            let bearer = mobile.as_deref().unwrap_or("people-app");
+            let bearer = mobile.as_deref().unwrap_or(app.as_str());
             let route = if method == Method::POST {
-                "/api/v1/households/72001/people"
+                &format!("/api/v1/households/{household_id}/people")
             } else {
-                "/api/v1/households/72001/people/73001"
+                &format!("/api/v1/households/{household_id}/people/{person_id}")
             };
             let contract_path = if method == Method::POST {
                 "/households/{household_id}/people"
@@ -634,22 +780,17 @@ async fn app_and_mobile_credentials_can_each_write_all_people_methods() {
             let dependent_after = dependent_effect(&fixture).await;
             let after = people_effect(&fixture).await;
             let audits_after = request_audits(&fixture).await;
-            let row = fixture
-                .admin
-                .query_one_raw(Statement::from_sql_and_values(
-                    DbBackend::Postgres,
-                    "SELECT count(*) AS total FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001) AND name=$1",
-                    [name.clone().into()],
-                ))
+            let persisted = people::Entity::find()
+                .filter(people::Column::Id.is_in(participants(&fixture).await))
+                .filter(people::Column::Name.eq(&name))
+                .count(&fixture.admin)
                 .await
-                .unwrap()
                 .unwrap();
-            let persisted: i64 = row.try_get("", "total").unwrap();
             if method == Method::POST && reply.status == 201 {
                 assert_created_dependent(&fixture, &reply.body).await;
             }
             drop(server);
-            close(fixture, boot).await;
+            close_request(fixture, boot).await;
             assert_eq!(
                 reply.status,
                 if method == Method::POST { 201 } else { 200 },
@@ -677,34 +818,40 @@ async fn app_and_mobile_credentials_can_each_write_all_people_methods() {
 
 #[tokio::test]
 async fn revoked_credentials_and_withdrawn_membership_block_every_people_method() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let person_id = fixture.account.person_id;
+
+    let session = fixture.credential("people-session");
+    let app = fixture.credential("people-app");
     seed_credentials_and_foreign_household(&fixture).await;
     let mobile = mobile_token(&fixture).await;
     let cases = [
         (
             Method::GET,
-            "/api/v1/households/72001/people",
+            &format!("/api/v1/households/{household_id}/people"),
             "/households/{household_id}/people",
             "get",
             false,
         ),
         (
             Method::POST,
-            "/api/v1/households/72001/people",
+            &format!("/api/v1/households/{household_id}/people"),
             "/households/{household_id}/people",
             "post",
             true,
         ),
         (
             Method::PATCH,
-            "/api/v1/households/72001/people/73001",
+            &format!("/api/v1/households/{household_id}/people/{person_id}"),
             "/households/{household_id}/people/{id}",
             "patch",
             true,
         ),
         (
             Method::PUT,
-            "/api/v1/households/72001/people/73001",
+            &format!("/api/v1/households/{household_id}/people/{person_id}"),
             "/households/{household_id}/people/{id}",
             "put",
             true,
@@ -712,14 +859,14 @@ async fn revoked_credentials_and_withdrawn_membership_block_every_people_method(
     ];
     let body = json!({"person":{"name":"Must not write"}});
     let server = server(&boot);
-    fixture.admin.execute_unprepared("UPDATE api_sessions SET revoked_at=now() WHERE id=88021; UPDATE api_app_tokens SET revoked_at=now() WHERE id=88022; UPDATE oauth_grants SET revoked_at=now() WHERE id=76001").await.unwrap();
+    fixture.revoke_all().await;
     let before = people_effect(&fixture).await;
     let audits_before = request_audits(&fixture).await;
     let mut replies = Vec::new();
     for (method, route, path, verb, has_body) in &cases {
         for (kind, bearer) in [
-            ("api_session", "people-session"),
-            ("app_token", "people-app"),
+            ("api_session", session.as_str()),
+            ("app_token", app.as_str()),
             ("mobile", mobile.as_str()),
         ] {
             let reply = send(
@@ -734,11 +881,16 @@ async fn revoked_credentials_and_withdrawn_membership_block_every_people_method(
             replies.push(("revoked", path, verb, kind, 401, reply));
         }
     }
-    fixture.admin.execute_unprepared("UPDATE api_sessions SET revoked_at=NULL WHERE id=88021; UPDATE api_app_tokens SET revoked_at=NULL WHERE id=88022; UPDATE oauth_grants SET revoked_at=NULL WHERE id=76001; UPDATE household_memberships SET revoked_at=now() WHERE id=74001").await.unwrap();
+    fixture.revoke(CredentialKind::Session, false).await;
+    fixture.revoke(CredentialKind::App, false).await;
+    fixture.revoke(CredentialKind::Mobile, false).await;
+    fixture
+        .membership_state(fixture.membership.permissions_version, true)
+        .await;
     for (method, route, path, verb, has_body) in &cases {
         for (kind, bearer, expected) in [
-            ("api_session", "people-session", 401),
-            ("app_token", "people-app", 401),
+            ("api_session", session.as_str(), 401),
+            ("app_token", app.as_str(), 401),
             ("mobile", mobile.as_str(), 403),
         ] {
             let reply = send(
@@ -756,7 +908,7 @@ async fn revoked_credentials_and_withdrawn_membership_block_every_people_method(
     let after = people_effect(&fixture).await;
     let audits_after = request_audits(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(before, after);
     assert_eq!(audits_before, audits_after);
     for (boundary, path, verb, kind, expected, reply) in replies {
@@ -768,15 +920,18 @@ async fn revoked_credentials_and_withdrawn_membership_block_every_people_method(
 }
 
 async fn update_person_merges_fields_and_rejects_changed_key_replay(method: Method) {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+    let foreign_id = fixture.foreign.household.id;
+    let person_id = fixture.account.person_id;
+
+    let absent_id = i64::MAX;
+    let session = fixture.credential("people-session");
+    let app = fixture.credential("people-app");
     seed_credentials_and_foreign_household(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
-        .await
-        .unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     let server = server(&boot);
-    let path = "/api/v1/households/72001/people/73001";
+    let path = &format!("/api/v1/households/{household_id}/people/{person_id}");
     let method_name = method.as_str().to_lowercase();
     let first = json!({"person":{"name":format!("People {method} first")}});
     let changed = json!({"person":{"name":format!("People {method} changed")}});
@@ -793,7 +948,7 @@ async fn update_person_merges_fields_and_rejects_changed_key_replay(method: Meth
         &server,
         method.clone(),
         path,
-        Some("people-session"),
+        Some(session.as_str()),
         Some(&first),
         Some(&key),
     )
@@ -802,7 +957,7 @@ async fn update_person_merges_fields_and_rejects_changed_key_replay(method: Meth
         &server,
         method.clone(),
         path,
-        Some("people-app"),
+        Some(app.as_str()),
         Some(&first),
         Some(&key),
     )
@@ -812,7 +967,7 @@ async fn update_person_merges_fields_and_rejects_changed_key_replay(method: Meth
         &server,
         method.clone(),
         path,
-        Some("people-session"),
+        Some(session.as_str()),
         Some(&changed),
         Some(&key),
     )
@@ -820,8 +975,8 @@ async fn update_person_merges_fields_and_rejects_changed_key_replay(method: Meth
     let foreign = send(
         &server,
         method.clone(),
-        "/api/v1/households/72004/people/73001",
-        Some("people-session"),
+        &format!("/api/v1/households/{foreign_id}/people/{person_id}"),
+        Some(session.as_str()),
         Some(&changed),
         None,
     )
@@ -829,8 +984,8 @@ async fn update_person_merges_fields_and_rejects_changed_key_replay(method: Meth
     let absent = send(
         &server,
         method.clone(),
-        "/api/v1/households/99999/people/73001",
-        Some("people-session"),
+        &format!("/api/v1/households/{absent_id}/people/{person_id}"),
+        Some(session.as_str()),
         Some(&changed),
         None,
     )
@@ -839,12 +994,12 @@ async fn update_person_merges_fields_and_rejects_changed_key_replay(method: Meth
         &server,
         method.clone(),
         path,
-        Some("people-session"),
+        Some(session.as_str()),
         Some(&json!({"person":{"name":""}})),
         None,
     )
     .await;
-    let malformed = send_malformed(&server, method.clone(), path).await;
+    let malformed = send_malformed(&server, method.clone(), path, &session).await;
     let unauthorized = send(
         &server,
         method.clone(),
@@ -855,21 +1010,14 @@ async fn update_person_merges_fields_and_rejects_changed_key_replay(method: Meth
     )
     .await;
     let after_denial = people_effect(&fixture).await;
-    let row = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT name,person_type FROM people WHERE id=73001",
-        ))
+    let person = people::Entity::find_by_id(fixture.account.person_id)
+        .one(&fixture.admin)
         .await
         .unwrap()
         .unwrap();
-    let stored: (String, i32) = (
-        row.try_get("", "name").unwrap(),
-        row.try_get("", "person_type").unwrap(),
-    );
+    let stored = (person.name, person.person_type);
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     let contract_path = "/households/{household_id}/people/{id}";
     assert_eq!(
         (
@@ -918,7 +1066,10 @@ async fn put_person_merges_fields_and_rejects_changed_key_replay() {
 
 #[tokio::test]
 async fn all_four_people_methods_share_fixed_general_limit_without_write_effects() {
-    let (fixture, boot) = boot_rate_fixture(&[]).await;
+    let (fixture, boot) = boot_request_rate_fixture(&[]).await;
+    let household_id = fixture.household.id;
+    let person_id = fixture.account.person_id;
+    let session = fixture.credential("people-session");
     seed_credentials_and_foreign_household(&fixture).await;
     let server = server(&boot);
     for _ in 0..300 {
@@ -936,28 +1087,28 @@ async fn all_four_people_methods_share_fixed_general_limit_without_write_effects
     let cases = [
         (
             Method::GET,
-            "/api/v1/households/72001/people",
+            &format!("/api/v1/households/{household_id}/people"),
             "/households/{household_id}/people",
             "get",
             false,
         ),
         (
             Method::POST,
-            "/api/v1/households/72001/people",
+            &format!("/api/v1/households/{household_id}/people"),
             "/households/{household_id}/people",
             "post",
             true,
         ),
         (
             Method::PATCH,
-            "/api/v1/households/72001/people/73001",
+            &format!("/api/v1/households/{household_id}/people/{person_id}"),
             "/households/{household_id}/people/{id}",
             "patch",
             true,
         ),
         (
             Method::PUT,
-            "/api/v1/households/72001/people/73001",
+            &format!("/api/v1/households/{household_id}/people/{person_id}"),
             "/households/{household_id}/people/{id}",
             "put",
             true,
@@ -969,7 +1120,7 @@ async fn all_four_people_methods_share_fixed_general_limit_without_write_effects
             &server,
             method,
             route,
-            Some("people-session"),
+            Some(session.as_str()),
             has_body.then_some(&body),
             None,
         )
@@ -978,7 +1129,7 @@ async fn all_four_people_methods_share_fixed_general_limit_without_write_effects
     }
     let after = people_effect(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(before, after);
     for (path, verb, reply) in replies {
         assert_eq!(reply.status, 429, "{verb} {path}");
@@ -993,14 +1144,16 @@ async fn all_four_people_methods_share_fixed_general_limit_without_write_effects
 }
 
 async fn concurrent_person_key_replays_one_write(method: Method) {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let person_id = fixture.account.person_id;
+
+    let session = fixture.credential("people-session");
+    let app = fixture.credential("people-app");
     seed_credentials_and_foreign_household(&fixture).await;
     if method != Method::POST {
-        fixture
-            .admin
-            .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
-            .await
-            .unwrap();
+        fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     }
     let mobile = if method == Method::POST {
         mobile_token(&fixture).await
@@ -1010,18 +1163,18 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
     let first_bearer = if method == Method::POST {
         mobile.as_str()
     } else {
-        "people-session"
+        session.as_str()
     };
     let second_bearer = if method == Method::POST {
         mobile.as_str()
     } else {
-        "people-app"
+        app.as_str()
     };
     let server = server(&boot);
     let path = if method == Method::POST {
-        "/api/v1/households/72001/people"
+        &format!("/api/v1/households/{household_id}/people")
     } else {
-        "/api/v1/households/72001/people/73001"
+        &format!("/api/v1/households/{household_id}/people/{person_id}")
     };
     let body = if method == Method::POST {
         json!({"person":{"name":"Concurrent People child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})
@@ -1124,7 +1277,7 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
         }
     }
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     let expected_status = if method == Method::POST { 201 } else { 200 };
     let expected_people = if method == Method::POST { 1 } else { 0 };
     if method == Method::POST {
@@ -1218,13 +1371,15 @@ async fn concurrent_put_person_key_replays_one_write() {
 
 #[tokio::test]
 async fn people_audit_insert_failure_rolls_back_every_route_without_private_data() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let person_id = fixture.account.person_id;
+
+    let session = fixture.credential("people-session");
+
     seed_credentials_and_foreign_household(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
-        .await
-        .unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     fixture.admin.execute_unprepared("ALTER TABLE security_audit_events ADD CONSTRAINT reject_people_request_audit CHECK (metadata->>'controller' IS DISTINCT FROM 'api/v1/people') NOT VALID").await.unwrap();
     let server = server(&boot);
     let before = people_state(&fixture).await;
@@ -1233,28 +1388,28 @@ async fn people_audit_insert_failure_rolls_back_every_route_without_private_data
     let cases = [
         (
             Method::GET,
-            "/api/v1/households/72001/people",
+            &format!("/api/v1/households/{household_id}/people"),
             "/households/{household_id}/people",
             "get",
             false,
         ),
         (
             Method::POST,
-            "/api/v1/households/72001/people",
+            &format!("/api/v1/households/{household_id}/people"),
             "/households/{household_id}/people",
             "post",
             true,
         ),
         (
             Method::PATCH,
-            "/api/v1/households/72001/people/73001",
+            &format!("/api/v1/households/{household_id}/people/{person_id}"),
             "/households/{household_id}/people/{id}",
             "patch",
             true,
         ),
         (
             Method::PUT,
-            "/api/v1/households/72001/people/73001",
+            &format!("/api/v1/households/{household_id}/people/{person_id}"),
             "/households/{household_id}/people/{id}",
             "put",
             true,
@@ -1266,7 +1421,7 @@ async fn people_audit_insert_failure_rolls_back_every_route_without_private_data
             &server,
             method,
             path,
-            Some("people-session"),
+            Some(session.as_str()),
             has_body.then_some(&body),
             None,
         )
@@ -1274,8 +1429,15 @@ async fn people_audit_insert_failure_rolls_back_every_route_without_private_data
         let after = people_state(&fixture).await;
         replies.push((contract_path, verb, response, after));
     }
+    fixture
+        .admin
+        .execute_unprepared(
+            "ALTER TABLE security_audit_events DROP CONSTRAINT reject_people_request_audit",
+        )
+        .await
+        .unwrap();
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     for (path, verb, response, after) in &replies {
         assert_eq!(response.status, 500, "{verb} {path}");
         assert_eq!(
@@ -1293,7 +1455,9 @@ async fn people_audit_insert_failure_rolls_back_every_route_without_private_data
 
 #[tokio::test]
 async fn people_listing_hides_data_when_restricted_household_read_fails() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
     let mobile = mobile_token(&fixture).await;
     fixture
         .admin
@@ -1305,15 +1469,20 @@ async fn people_listing_hides_data_when_restricted_household_read_fails() {
     let response = send(
         &server,
         Method::GET,
-        "/api/v1/households/72001/people",
+        &format!("/api/v1/households/{household_id}/people"),
         Some(&mobile),
         None,
         None,
     )
     .await;
     let after = people_state(&fixture).await;
+    fixture
+        .admin
+        .execute_unprepared("GRANT SELECT ON public.households TO med_tracker_app")
+        .await
+        .unwrap();
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(response.status, 500);
     assert_eq!(response.body["error"]["code"], "internal_error");
     assert!(response.body.get("data").is_none());
@@ -1324,26 +1493,46 @@ async fn people_listing_hides_data_when_restricted_household_read_fails() {
 
 #[tokio::test]
 async fn people_listing_rechecks_account_closed_during_mobile_authentication() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let account_id = fixture.account.id;
+
     let mobile = mobile_token(&fixture).await;
-    fixture.admin.execute_unprepared("CREATE SEQUENCE public.people_account_closure_reached; CREATE FUNCTION public.close_account_after_mobile_touch() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$ BEGIN PERFORM nextval('public.people_account_closure_reached'); UPDATE public.accounts SET status=3 WHERE id=71001; RETURN NEW; END $$; CREATE TRIGGER close_account_after_mobile_touch AFTER UPDATE OF last_used_at ON public.oauth_grants FOR EACH ROW WHEN (NEW.account_id=71001) EXECUTE FUNCTION public.close_account_after_mobile_touch()").await.unwrap();
+    fixture.admin.execute_unprepared(&format!("CREATE SEQUENCE public.people_account_closure_reached; CREATE FUNCTION public.close_account_after_mobile_touch() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$ BEGIN PERFORM nextval('public.people_account_closure_reached'); UPDATE public.accounts SET status=3 WHERE id={account_id}; RETURN NEW; END $$; CREATE TRIGGER close_account_after_mobile_touch AFTER UPDATE OF last_used_at ON public.oauth_grants FOR EACH ROW WHEN (NEW.account_id={account_id}) EXECUTE FUNCTION public.close_account_after_mobile_touch()")).await.unwrap();
     let before = people_state(&fixture).await;
     let server = server(&boot);
     let response = send(
         &server,
         Method::GET,
-        "/api/v1/households/72001/people",
+        &format!("/api/v1/households/{household_id}/people"),
         Some(&mobile),
         None,
         None,
     )
     .await;
-    let state = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM public.people_account_closure_reached) AS reached,(SELECT status FROM public.accounts WHERE id=71001) AS status")).await.unwrap().unwrap();
-    let reached: bool = state.try_get("", "reached").unwrap();
-    let status: i32 = state.try_get("", "status").unwrap();
+    let query = sea_orm::sea_query::Query::select()
+        .column("is_called")
+        .from("people_account_closure_reached")
+        .to_owned();
+    let reached: bool = fixture
+        .admin
+        .query_one_raw(fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "is_called")
+        .unwrap();
+    let status = accounts::Entity::find_by_id(fixture.account.id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .status;
     let after = people_state(&fixture).await;
+    fixture.admin.execute_unprepared("DROP TRIGGER close_account_after_mobile_touch ON oauth_grants; DROP FUNCTION public.close_account_after_mobile_touch(); DROP SEQUENCE public.people_account_closure_reached").await.unwrap();
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert!(reached);
     assert_eq!(status, 3);
     assert_eq!(response.status, 401);

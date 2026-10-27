@@ -58,7 +58,11 @@ are already set, the same tasks reuse that instance instead of provisioning.
 Runtime settings come through `ctx.config.settings`, never `std::env` in `src/`.
 Declare variables via `get_env` in `config/*.yaml`; preserve absent/null fallback
 to stored settings. Use full `App::boot` Loco TestServer acceptance with restricted
-runtime credentials, template-cloned PostgreSQL and ConnectInfo where needed.
+runtime credentials and ConnectInfo where needed. API tests share one run-owned,
+pre-migrated PostgreSQL database prepared by native nextest setup; use generated
+scenario IDs and tenant-scoped assertions. Reserve all nextest workers for true
+global schema, role, catalogue or queue tests. Privileged reset stays in the test
+harness. Browser journeys retain template-cloned fixtures.
 Retain socket-specific coverage, real RLS, email stub/outbox and audit assertions.
 Never enable global truncation or use administrator credentials at runtime.
 

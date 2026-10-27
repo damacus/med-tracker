@@ -1,15 +1,38 @@
 use super::*;
+use med_tracker::models::_entities::{accounts, household_memberships, versions};
+use sea_orm::sea_query::Expr;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, Set,
+};
 
 type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
 #[tokio::test]
 async fn account_preferences_are_household_independent_and_preserve_other_settings() -> TestResult {
-    let (fixture, boot) = boot_fixture().await;
-    let token = super::account::mobile_token(&fixture).await;
-    fixture.admin.execute_unprepared(
-        "UPDATE accounts SET preferences=preferences || '{\"theme\":\"dark\",\"density\":\"compact\"}'::jsonb WHERE id=71001;
-         UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001)"
-    ).await?;
+    let (fixture, boot) = boot_request_fixture().await;
+    let token = fixture.token().await;
+    let mut account = fixture.account.clone().into_active_model();
+    let mut preferences = fixture.account.preferences.clone();
+    preferences["theme"] = json!("dark");
+    preferences["density"] = json!("compact");
+    account.preferences = Set(preferences);
+    account.update(&fixture.admin).await?;
+    household_memberships::Entity::update_many()
+        .col_expr(
+            household_memberships::Column::Status,
+            Expr::value("revoked"),
+        )
+        .col_expr(
+            household_memberships::Column::RevokedAt,
+            Expr::value(chrono::Utc::now().naive_utc()),
+        )
+        .col_expr(household_memberships::Column::PermissionsVersion, {
+            use sea_orm::sea_query::ExprTrait;
+            Expr::col(household_memberships::Column::PermissionsVersion).add(1)
+        })
+        .filter(household_memberships::Column::PersonId.eq(fixture.account.person_id))
+        .exec(&fixture.admin)
+        .await?;
     let request = server(&boot);
     let initial = request
         .get("/api/v1/auth/profile")
@@ -35,11 +58,24 @@ async fn account_preferences_are_household_independent_and_preserve_other_settin
         .await;
     let refreshed_status = refreshed.status_code();
     let refreshed: Value = refreshed.json();
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT a.preferences,(SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=a.id AND event='update') AS audits,(SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=a.id AND household_id IS NOT NULL) AS household_audits FROM accounts a WHERE a.id=71001"
-    )).await?.ok_or("profile account must remain present")?;
+    let account = accounts::Entity::find_by_id(fixture.account.id)
+        .one(&fixture.admin)
+        .await?
+        .unwrap();
+    let audits = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("Account"))
+        .filter(versions::Column::ItemId.eq(fixture.account.id))
+        .filter(versions::Column::Event.eq("update"))
+        .count(&fixture.admin)
+        .await?;
+    let household_audits = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("Account"))
+        .filter(versions::Column::ItemId.eq(fixture.account.id))
+        .filter(versions::Column::HouseholdId.is_not_null())
+        .count(&fixture.admin)
+        .await?;
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(initial_status, 200);
     assert_eq!(initial["data"]["time_zone"], "Etc/UTC");
     assert_eq!(initial["data"]["gravatar_enabled"], false);
@@ -60,18 +96,18 @@ async fn account_preferences_are_household_independent_and_preserve_other_settin
         refreshed["data"]["mobile_shortcuts"],
         json!(["people", "reports"])
     );
-    let preferences = row.try_get::<Value>("", "preferences")?;
+    let preferences = account.preferences;
     assert_eq!(preferences["theme"], "dark");
     assert_eq!(preferences["density"], "compact");
-    assert_eq!(row.try_get::<i64>("", "audits")?, 2);
-    assert_eq!(row.try_get::<i64>("", "household_audits")?, 0);
+    assert_eq!(audits, 2);
+    assert_eq!(household_audits, 0);
     Ok(())
 }
 
 #[tokio::test]
 async fn invalid_account_preferences_cannot_partially_change_the_name() -> TestResult {
-    let (fixture, boot) = boot_fixture().await;
-    let token = super::account::mobile_token(&fixture).await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let token = fixture.token().await;
     let request = server(&boot);
     for profile in [
         json!({"name":"Must not persist","time_zone":"Unknown/Zone"}),
@@ -105,23 +141,30 @@ async fn invalid_account_preferences_cannot_partially_change_the_name() -> TestR
         assert_eq!(response.status_code(), 400);
         assert_eq!(response.header("cache-control"), "no-store");
     }
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT name,(SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=71001 AND event='update') AS audits FROM accounts WHERE id=71001"
-    )).await?.ok_or("profile account must remain present")?;
+    let account = accounts::Entity::find_by_id(fixture.account.id)
+        .one(&fixture.admin)
+        .await?
+        .unwrap();
+    let audits = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("Account"))
+        .filter(versions::Column::ItemId.eq(fixture.account.id))
+        .filter(versions::Column::Event.eq("update"))
+        .count(&fixture.admin)
+        .await?;
     drop(request);
-    close(fixture, boot).await;
-    assert_eq!(row.try_get::<Option<String>>("", "name")?, None);
-    assert_eq!(row.try_get::<i64>("", "audits")?, 0);
+    close_request(fixture, boot).await;
+    assert_eq!(account.name, None);
+    assert_eq!(audits, 0);
     Ok(())
 }
 
 #[tokio::test]
 async fn clearing_account_time_zone_restores_the_application_default() -> TestResult {
-    let (fixture, boot) = boot_fixture_with(|config| {
+    let (fixture, boot) = boot_request_fixture_with(|config| {
         config.settings.get_or_insert_with(|| json!({}))["time_zone"] = json!("Asia/Tokyo");
     })
     .await;
-    let token = super::account::mobile_token(&fixture).await;
+    let token = fixture.token().await;
     let request = server(&boot);
     let retained = request
         .patch("/api/v1/auth/profile")
@@ -143,7 +186,7 @@ async fn clearing_account_time_zone_restores_the_application_default() -> TestRe
         .await;
     let refreshed: Value = refreshed.json();
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(retained_status, 200);
     assert_eq!(retained["data"]["time_zone"], "Europe/London");
     assert_eq!(cleared_status, 200);
