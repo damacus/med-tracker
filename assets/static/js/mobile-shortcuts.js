@@ -24,7 +24,7 @@ async function refreshMobileShortcuts() {
     const selectedSection = navigationSection(location.pathname, data.shell?.choices || []);
     const navigation = document.querySelector('[data-mobile-shortcuts]') || document.createElement('nav');
     navigation.dataset.mobileShortcuts = '';
-    navigation.className = 'profile-mobile-shortcuts';
+    navigation.className = 'dock lg:hidden';
     navigation.setAttribute('aria-label', data.label);
     navigation.replaceChildren(...data.links.flatMap(link => {
       const url = new URL(link.href, location.origin);
@@ -41,12 +41,14 @@ async function refreshMobileShortcuts() {
       use.setAttribute('href', `/static/profile-icons.svg#${link.id}`);
       icon.append(use);
       const label = document.createElement('span');
+      label.className = 'dock-label';
       label.textContent = link.label;
       anchor.append(icon, label);
       if (selectedSection === link.id) anchor.setAttribute('aria-current', 'page');
       return [anchor];
     }));
     if (!navigation.isConnected) (document.querySelector('.drawer-content') || document.body).append(navigation);
+    document.body.classList.add('pb-[calc(4rem+env(safe-area-inset-bottom))]', 'lg:pb-0');
     document.dispatchEvent(new CustomEvent('app-navigation', { detail: { ...data.shell, slug: match[1], selected_section: selectedSection } }));
   } catch { }
 }

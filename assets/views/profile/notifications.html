@@ -11,17 +11,17 @@
       <label class="flex items-center justify-between gap-4 py-3" for="profile-notification-{{ field }}"><span><strong id="profile-notification-{{ field }}-label">{{ labels.notification_settings.categories[field].title }}</strong><small class="block text-sm text-base-content/70 mt-1" id="profile-notification-{{ field }}-description">{{ labels.notification_settings.categories[field].description }}</small></span><input class="toggle" id="profile-notification-{{ field }}" aria-labelledby="profile-notification-{{ field }}-label" aria-describedby="profile-notification-{{ field }}-description" type="checkbox" name="{{ field }}" value="true" {% if notifications[field] %}checked{% endif %}></label>
       {% endfor %}
       {% if notifications.managed_people %}
-      <details id="profile-managed-people" class="card bg-base-100 border border-base-300" {% if notifications_error %}open{% endif %}>
-        <summary class="cursor-pointer p-4"><strong>{{ labels.profiles.notifications.managed_people.title }}</strong><span>{{ labels.profiles.notifications.managed_people.description }}</span></summary>
-        <div class="grid gap-3 px-4 pb-4">{% for person in notifications.managed_people %}
+      <details id="profile-managed-people" name="profile-notifications" class="collapse collapse-arrow bg-base-100 border border-base-300" {% if notifications_error %}open{% endif %}>
+        <summary class="collapse-title"><strong>{{ labels.profiles.notifications.managed_people.title }}</strong><span>{{ labels.profiles.notifications.managed_people.description }}</span></summary>
+        <div class="collapse-content grid gap-3">{% for person in notifications.managed_people %}
           {% if person.adult %}<label class="flex items-center justify-between gap-4 py-3"><strong>{{ person.name }}</strong><input class="toggle" type="checkbox" name="managed_{{ person.id }}" value="true" aria-label="{{ person.label }}" {% if person.enabled %}checked{% endif %}></label>
           {% else %}<div class="flex items-center justify-between gap-4 py-3"><strong>{{ person.name }}</strong><span class="badge">{{ labels.profiles.notifications.managed_people.automatic }}</span></div>{% endif %}
         {% endfor %}</div>
       </details>
       {% endif %}
-      <details id="profile-reminder-times" class="card bg-base-100 border border-base-300" {% if notifications_error %}open{% endif %}>
-        <summary class="cursor-pointer p-4"><strong>{{ labels.profiles.notifications.reminder_times_title }}</strong><span>{{ labels.profiles.notifications.reminder_times_description }}</span></summary>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">{% for period in ['morning', 'afternoon', 'evening', 'night'] %}
+      <details id="profile-reminder-times" name="profile-notifications" class="collapse collapse-arrow bg-base-100 border border-base-300" {% if notifications_error and not notifications.managed_people %}open{% endif %}>
+        <summary class="collapse-title"><strong>{{ labels.profiles.notifications.reminder_times_title }}</strong><span>{{ labels.profiles.notifications.reminder_times_description }}</span></summary>
+        <div class="collapse-content grid grid-cols-1 sm:grid-cols-2 gap-4">{% for period in ['morning', 'afternoon', 'evening', 'night'] %}
           {% set field = period ~ '_time' %}
           <label for="profile-{{ field }}">{{ labels.profiles.notifications.periods[period] }}<input class="input w-full mt-2" id="profile-{{ field }}" name="{{ field }}" type="time" value="{{ notifications[field] }}"></label>
         {% endfor %}</div>
