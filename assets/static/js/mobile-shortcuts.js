@@ -46,7 +46,7 @@ async function refreshMobileShortcuts() {
       if (selectedSection === link.id) anchor.setAttribute('aria-current', 'page');
       return [anchor];
     }));
-    if (!navigation.isConnected) document.body.append(navigation);
+    if (!navigation.isConnected) (document.querySelector('.drawer-content') || document.body).append(navigation);
     document.dispatchEvent(new CustomEvent('app-navigation', { detail: { ...data.shell, slug: match[1], selected_section: selectedSection } }));
   } catch { }
 }

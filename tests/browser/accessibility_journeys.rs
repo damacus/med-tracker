@@ -118,9 +118,9 @@ async fn keyboard_dialogs_and_errors(viewport: Viewport, size: &'static str) {
                 .await
                 .unwrap();
             assert!(page.evaluate::<(), bool>(
-                r#"() => [...document.querySelectorAll('[aria-haspopup="dialog"][aria-controls]')].every(trigger => document.getElementById(trigger.getAttribute('aria-controls')) instanceof HTMLDialogElement)"#,
+                r#"() => [...document.querySelectorAll('[aria-haspopup="dialog"][aria-controls]')].every(trigger => { const panel = document.getElementById(trigger.getAttribute('aria-controls')); return panel instanceof HTMLDialogElement || panel?.getAttribute('role') === 'dialog'; })"#,
                 None,
-            ).await.unwrap(), "a dialog trigger must reference an existing native dialog");
+            ).await.unwrap(), "a dialog trigger must reference an existing dialog");
             let search_opener = page.locator(if mobile {
                 "[data-app-drawer]"
             } else {

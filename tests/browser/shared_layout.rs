@@ -361,15 +361,15 @@ async fn shared_layout_search_handles_rapid_escape_and_queued_dialog_close() {
             search.focus();
             search.click();
             const rapidBefore=document.activeElement===input?'input':'opener';
-            document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
-            const rapid={closed:panel.hidden,restored:document.activeElement===search,before:rapidBefore};
+            panel.dispatchEvent(new Event('cancel',{cancelable:true}));
+            const rapid={closed:!panel.open,restored:document.activeElement===search,before:rapidBefore};
             panel.querySelector('[data-global-search-close]').click();
             account.click();
             const closed=new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
             document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
             input.focus();
             await closed;
-            const queued={closed:panel.hidden,inputFocused:document.activeElement===input,dialogClosed:!dialog.open};
+            const queued={closed:!panel.open,inputFocused:document.activeElement===input,dialogClosed:!dialog.matches(':popover-open')};
             return {rapid,queued,focus};
         }"#,None).await.unwrap();
         assert_eq!(observed["rapid"]["closed"],true,"{observed}");

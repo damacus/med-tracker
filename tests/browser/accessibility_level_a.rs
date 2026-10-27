@@ -58,6 +58,7 @@ async fn navigation(viewport: Viewport, size: &'static str) {
         harness::sign_in(journey).await;
         let page = &journey.page;
         let report = audit(page, &format!("navigation-{size}")).await;
+        assert!(page.evaluate::<(), bool>("() => [...document.querySelectorAll('[data-global-search-trigger]')].every(trigger => trigger.getAttribute('aria-label').startsWith('Open global search — Search ') && ['Meta+K', 'Control+K'].includes(trigger.getAttribute('aria-keyshortcuts')) && trigger.querySelector('kbd[aria-hidden=\"true\"]'))", None).await.unwrap());
         expect(page.get_by_role(AriaRole::Button, harness::named("SA Synthetic adult My Account"))).to_be_visible().await.unwrap();
         let directory = std::path::Path::new("docs/screenshots/accessibility-level-a");
         std::fs::create_dir_all(directory).unwrap();
@@ -65,10 +66,18 @@ async fn navigation(viewport: Viewport, size: &'static str) {
         let trigger = page.locator(if desktop { "[data-sidebar-account]" } else { "[data-app-account]" });
         trigger.focus().await.unwrap();
         page.keyboard().press("Enter", None).await.unwrap();
-        expect(page.get_by_role(AriaRole::Dialog, harness::named("My Account"))).to_be_visible().await.unwrap();
+        let account = page.get_by_role(AriaRole::Navigation, harness::named("My Account"));
+        expect(account.clone()).to_be_visible().await.unwrap();
+        expect(page.locator("#app-account:popover-open")).to_be_visible().await.unwrap();
+        expect(trigger.clone()).to_have_attribute("aria-expanded", "true").await.unwrap();
+        page.keyboard().press("ArrowDown", None).await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => document.querySelector('#app-account').querySelector('button, a[href]') === document.activeElement", None).await.unwrap());
+        let open_report = audit(page, &format!("navigation-account-open-{size}")).await;
         page.keyboard().press("Escape", None).await.unwrap();
+        expect(account).to_be_hidden().await.unwrap();
+        expect(trigger.clone()).to_have_attribute("aria-expanded", "false").await.unwrap();
         expect(trigger).to_be_focused().await.unwrap();
-        assert_no_violations(&[report]);
+        assert_no_violations(&[report, open_report]);
         page.evaluate::<(), bool>("() => { const button = document.createElement('button'); button.id = 'a11y-negative-control'; button.textContent = 'Visible audit label'; button.setAttribute('aria-label', 'Different accessible name'); document.querySelector('main').append(button); return true; }", None).await.unwrap();
         let negative = audit(page, &format!("negative-control-{size}")).await;
         assert!(negative["violations"].as_array().unwrap().iter().any(|violation| violation["id"] == "label-content-name-mismatch"), "audit failed to detect a visible-label mismatch");
