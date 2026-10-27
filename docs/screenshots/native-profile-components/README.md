@@ -46,3 +46,16 @@ to the parent template markup. No running app or server mount was changed.
 No form submissions, alternate permission roles, translated labels or physical
 devices with non-zero safe-area insets were exercised. The GIFs play at normal
 speed. No container was restarted and no fixture data was changed.
+
+## Fresh-template integration follow-up
+
+After rebasing onto current main, 11 focused Rust browser journeys passed against
+the rebuilt application, without response or DOM overrides. These exercise the
+rendered profile page, native authentication forms, desktop and mobile navigation,
+account popovers, search handoff and bulk-member validation. Navigation checks
+include 1440, 390 and 320 px viewports and desktop/mobile Level A audits.
+
+The captures described above remain the earlier simulated evidence. This fresh
+integration run does not repeat every accordion interaction at all five widths or
+establish physical-device safe-area behaviour. Its new screenshots are retained
+as local verification artifacts rather than added to this pull request.
