@@ -39,3 +39,16 @@ records the focused checks without CSRF values.
 passed. The full Rust suite was explicitly waived for this bounded UI change.
 The integrated source and evidence still need the delivery review. No hosted
 acceptance, merge to main or deployment is claimed.
+
+## Fresh-template integration follow-up
+
+After rebasing onto current main, 11 focused Rust browser journeys passed against
+the rebuilt application, without response or DOM overrides. These exercise actual
+Tera sidebar and menu rendering, desktop/mobile Level A audits, account popovers,
+keyboard focus, search handoff and bulk-member validation. Navigation checks use
+1440, 390 and 320 px viewports. Fresh screenshots were inspected and retained as
+local verification artifacts rather than added to this pull request.
+
+The earlier captures above retain their documented simulated-backend limits.
+This follow-up establishes template integration; it does not repeat the earlier
+synthetic long-label variants or claim physical-device acceptance.
