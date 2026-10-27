@@ -3,7 +3,10 @@ use med_tracker::models::{
     access::{Actor, HouseholdScope},
 };
 use sea_orm::sea_query::{Expr, ExprTrait, Func, Query};
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait, Database, DatabaseConnection};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::Set, ConnectionTrait, Database, DatabaseConnection,
+    TransactionTrait,
+};
 
 pub struct Scenario {
     pub admin: DatabaseConnection,
@@ -52,6 +55,7 @@ impl Scenario {
         let runtime = Database::connect(std::env::var("DATABASE_URL").unwrap())
             .await
             .unwrap();
+        let transaction = admin.begin().await.unwrap();
         let unique = uuid::Uuid::new_v4().simple().to_string();
         let email = format!("carer-{unique}@example.test");
         let now = chrono::Utc::now();
@@ -64,7 +68,7 @@ impl Scenario {
             updated_at: Set(now.naive_utc()),
             ..Default::default()
         }
-        .insert(&admin)
+        .insert(&transaction)
         .await
         .unwrap();
         let account = accounts::ActiveModel {
@@ -75,7 +79,7 @@ impl Scenario {
             updated_at: Set(now),
             ..Default::default()
         }
-        .insert(&admin)
+        .insert(&transaction)
         .await
         .unwrap();
         let verified = Query::update()
@@ -83,8 +87,8 @@ impl Scenario {
             .value("email_verified", true)
             .and_where(Expr::col("id").eq(account.id))
             .to_owned();
-        admin
-            .execute_raw(admin.get_database_backend().build(&verified))
+        transaction
+            .execute_raw(transaction.get_database_backend().build(&verified))
             .await
             .unwrap();
         #[derive(serde::Deserialize)]
@@ -123,15 +127,15 @@ impl Scenario {
             ])
             .unwrap()
             .to_owned();
-        admin
-            .execute_raw(admin.get_database_backend().build(&credential))
+        transaction
+            .execute_raw(transaction.get_database_backend().build(&credential))
             .await
             .unwrap();
         identity_onboarding::ActiveModel {
             account_id: Set(account.id),
             completed_at: Set(Some(now.fixed_offset())),
         }
-        .insert(&admin)
+        .insert(&transaction)
         .await
         .unwrap();
         users::ActiveModel {
@@ -142,7 +146,7 @@ impl Scenario {
             updated_at: Set(now.naive_utc()),
             ..Default::default()
         }
-        .insert(&admin)
+        .insert(&transaction)
         .await
         .unwrap();
         let household = households::ActiveModel {
@@ -154,7 +158,7 @@ impl Scenario {
             updated_at: Set(now.naive_utc()),
             ..Default::default()
         }
-        .insert(&admin)
+        .insert(&transaction)
         .await
         .unwrap();
         let membership = household_memberships::ActiveModel {
@@ -167,9 +171,10 @@ impl Scenario {
             updated_at: Set(now.naive_utc()),
             ..Default::default()
         }
-        .insert(&admin)
+        .insert(&transaction)
         .await
         .unwrap();
+        transaction.commit().await.unwrap();
         Self {
             admin,
             runtime,

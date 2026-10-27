@@ -1,10 +1,11 @@
 use crate::scenario::Scenario;
 use med_tracker::models::_entities::{locations, medications, person_medications};
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, prelude::Decimal};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, TransactionTrait, prelude::Decimal};
 
 impl Scenario {
     pub async fn medication(&self, name: &str, supply: Decimal) -> medications::Model {
         let now = chrono::Utc::now().naive_utc();
+        let transaction = self.admin.begin().await.unwrap();
         let location = locations::ActiveModel {
             household_id: Set(self.household.id),
             name: Set(format!("Synthetic cabinet {}", uuid::Uuid::new_v4())),
@@ -12,10 +13,10 @@ impl Scenario {
             updated_at: Set(now),
             ..Default::default()
         }
-        .insert(&self.admin)
+        .insert(&transaction)
         .await
         .unwrap();
-        medications::ActiveModel {
+        let medication = medications::ActiveModel {
             household_id: Set(self.household.id),
             location_id: Set(location.id),
             created_by_membership_id: Set(Some(self.membership.id)),
@@ -27,9 +28,11 @@ impl Scenario {
             updated_at: Set(now),
             ..Default::default()
         }
-        .insert(&self.admin)
+        .insert(&transaction)
         .await
-        .unwrap()
+        .unwrap();
+        transaction.commit().await.unwrap();
+        medication
     }
 
     pub async fn personal_assignment(

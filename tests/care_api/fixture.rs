@@ -6,7 +6,7 @@ use med_tracker::models::_entities::{
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, Condition, EntityTrait, IntoActiveModel,
-    PaginatorTrait, QueryFilter, prelude::Decimal,
+    PaginatorTrait, QueryFilter, TransactionTrait, prelude::Decimal,
 };
 
 pub struct Fixture {
@@ -38,19 +38,17 @@ impl std::ops::Deref for Fixture {
 
 impl Fixture {
     pub async fn new() -> Self {
-        let mut scenario = Scenario::new().await;
-        let mut membership = scenario.membership.clone().into_active_model();
-        membership.role = Set("administrator".into());
-        scenario.membership = membership.update(&scenario.admin).await.unwrap();
+        let scenario = Scenario::new().await;
+        let transaction = scenario.admin.begin().await.unwrap();
         let now = chrono::Utc::now().naive_utc();
         let adult = people::Entity::find_by_id(scenario.account.person_id)
-            .one(&scenario.admin)
+            .one(&transaction)
             .await
             .unwrap()
             .unwrap();
         let user = users::Entity::find()
             .filter(users::Column::PersonId.eq(adult.id))
-            .one(&scenario.admin)
+            .one(&transaction)
             .await
             .unwrap()
             .unwrap();
@@ -64,7 +62,7 @@ impl Fixture {
                 updated_at: Set(now),
                 ..Default::default()
             }
-            .insert(&scenario.admin)
+            .insert(&transaction)
             .await
             .unwrap();
             let membership = household_memberships::ActiveModel {
@@ -77,7 +75,7 @@ impl Fixture {
                 updated_at: Set(now),
                 ..Default::default()
             }
-            .insert(&scenario.admin)
+            .insert(&transaction)
             .await
             .unwrap();
             participants.push((person, membership));
@@ -96,9 +94,10 @@ impl Fixture {
             updated_at: Set(now),
             ..Default::default()
         }
-        .insert(&scenario.admin)
+        .insert(&transaction)
         .await
         .unwrap();
+        transaction.commit().await.unwrap();
         let medication = scenario
             .medication("Synthetic tablets", Decimal::new(10, 0))
             .await;
@@ -110,6 +109,7 @@ impl Fixture {
         let assignment = scenario.personal_assignment(medication.id, 0).await;
         let client_id = format!("native-{}", uuid::Uuid::new_v4());
         let code = uuid::Uuid::new_v4().to_string();
+        let authorization_transaction = scenario.admin.begin().await.unwrap();
         let application = oauth_applications::ActiveModel {
             account_id: Set(Some(scenario.account.id)),
             client_id: Set(client_id.clone()),
@@ -122,7 +122,7 @@ impl Fixture {
             updated_at: Set(now),
             ..Default::default()
         }
-        .insert(&scenario.admin)
+        .insert(&authorization_transaction)
         .await
         .unwrap();
         let authorization = oauth_grants::ActiveModel {
@@ -141,9 +141,10 @@ impl Fixture {
             updated_at: Set(now),
             ..Default::default()
         }
-        .insert(&scenario.admin)
+        .insert(&authorization_transaction)
         .await
         .unwrap();
+        authorization_transaction.commit().await.unwrap();
         let runtime_uri = std::env::var("DATABASE_URL").unwrap();
         Self {
             scenario,

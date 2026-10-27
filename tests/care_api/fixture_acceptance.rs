@@ -6,6 +6,65 @@ use med_tracker::models::{
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, Database, EntityTrait, IntoActiveModel};
 
 #[tokio::test]
+async fn scenario_seed_rolls_back_identity_if_membership_insert_fails() {
+    use futures_util::FutureExt;
+    use sea_orm::sea_query::{Alias, Expr, Func, Query};
+    use sea_orm::{ConnectionTrait, DatabaseConnection};
+    use std::panic::AssertUnwindSafe;
+
+    async fn identity_counts(admin: &DatabaseConnection) -> Vec<i64> {
+        let mut counts = Vec::new();
+        for table in ["people", "accounts", "users", "households"] {
+            let query = Query::select()
+                .expr_as(Func::count(Expr::col("id")), "rows")
+                .from(Alias::new(table))
+                .to_owned();
+            counts.push(
+                admin
+                    .query_one_raw(admin.get_database_backend().build(&query))
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .try_get("", "rows")
+                    .unwrap(),
+            );
+        }
+        counts
+    }
+
+    let admin = crate::scenario::setup_connection().await;
+    let before = identity_counts(&admin).await;
+    // SeaORM Schema/SeaQuery cannot express PostgreSQL trigger/function DDL.
+    // This run-owned, nextest-exclusive probe fails the last fixture insertion.
+    admin.execute_unprepared("CREATE FUNCTION public.fixture_reject_scenario_membership() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic late scenario failure'; END; $$; CREATE TRIGGER fixture_reject_scenario_membership BEFORE INSERT ON public.household_memberships FOR EACH ROW EXECUTE FUNCTION public.fixture_reject_scenario_membership()").await.unwrap();
+    let failed = match AssertUnwindSafe(crate::scenario::Scenario::new())
+        .catch_unwind()
+        .await
+    {
+        Ok(scenario) => {
+            scenario.close().await;
+            false
+        }
+        Err(payload) => {
+            payload
+                .downcast_ref::<String>()
+                .is_some_and(|message| message.contains("synthetic late scenario failure"))
+                || payload
+                    .downcast_ref::<&str>()
+                    .is_some_and(|message| message.contains("synthetic late scenario failure"))
+        }
+    };
+    admin.execute_unprepared("DROP TRIGGER fixture_reject_scenario_membership ON public.household_memberships; DROP FUNCTION public.fixture_reject_scenario_membership()").await.unwrap();
+    let after = identity_counts(&admin).await;
+    admin.close().await.unwrap();
+    assert!(failed, "the late fixture insertion must fail");
+    assert_eq!(
+        after, before,
+        "failed fixture setup must not leave partial identity rows"
+    );
+}
+
+#[tokio::test]
 async fn shared_scenarios_use_one_database_and_isolate_clinical_rows() {
     let first = Fixture::new().await;
     let second = Fixture::new().await;
