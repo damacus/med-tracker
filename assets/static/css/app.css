@@ -25,9 +25,6 @@ body { margin: 0; font-family: var(--font-family); background: var(--background)
 @supports not (position-area: bottom) { .app-account[popover] { position: fixed; margin: 0; inset: auto; } }
 html:has(.app-household) { scrollbar-gutter: stable; }
 .app-navigation-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-weight: 700; margin-bottom: 1rem; }
-.app-navigation-link { display: flex; align-items: center; gap: 1rem; width: 100%; min-height: 3rem; padding: .75rem 1rem; border-radius: 2rem; text-align: left; }
-.app-navigation-link:hover, .app-navigation-link[aria-current] { background: var(--secondary-container); color: var(--on-secondary-container); }
-.app-navigation-panel form { border-top: 1px solid var(--border-color); margin-top: 1rem; padding-top: 1rem; }
 @media (max-width: 640px) { [data-account-name] { display: none; } }
 .shell-main { padding-block: 3rem; }
 .shell-card { background: var(--card); border: 1px solid var(--border-color); box-shadow: var(--elevation-1); }
