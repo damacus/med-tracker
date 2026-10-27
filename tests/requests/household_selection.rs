@@ -1754,3 +1754,6 @@ async fn household_revocation_serializes_with_selection() -> TestResult {
     close_request(fixture, boot).await;
     Ok(())
 }
+
+#[path = "household_selection/personal_review.rs"]
+mod personal_review;

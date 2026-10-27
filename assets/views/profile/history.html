@@ -13,6 +13,6 @@
     </li>
   {% else %}<li>{{ labels.profiles.personal.history_empty }}</li>{% endfor %}
   </ul>
-  {% if next_before_id %}<a class="btn btn-outline justify-self-start" href="/profile/history?before_id={{ next_before_id }}">{{ labels.profiles.personal.history_next }}</a>{% endif %}
+  {% if next_page %}<a class="btn btn-outline justify-self-start" href="{{ next_page }}">{{ labels.profiles.personal.history_next }}</a>{% endif %}
 </div>
 {% endblock content %}

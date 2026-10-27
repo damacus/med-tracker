@@ -72,6 +72,7 @@ pub(crate) async fn update_self(
         audit_context: Set(json!({"actor_account_id":account_id.get(),"actor_person_id":person_id,"actor_user_id":user.map(|user|user.id),"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"PersonalClinicalAccess","policy_query":"update_self"})),
         created_at: Set(Some(Utc::now().naive_utc())), ..Default::default()
     }.insert(transaction).await?;
+    persistence::self_changes(transaction, account_id, &saved, request_id).await?;
     Ok(())
 }
 

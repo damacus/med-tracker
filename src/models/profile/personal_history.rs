@@ -5,8 +5,8 @@ use crate::models::{
     ids::AccountId,
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseTransaction, EntityTrait, QueryFilter,
-    QueryOrder, QuerySelect, Set,
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, EntityTrait,
+    QueryFilter, QueryOrder, QuerySelect, Set,
     sea_query::{Expr, Func, Query},
 };
 use serde_json::json;
@@ -32,10 +32,15 @@ pub(crate) mod taken_dose {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+pub(crate) struct Cursor {
+    pub taken_at: chrono::NaiveDateTime,
+    pub id: i64,
+}
+
 pub(crate) async fn page(
     transaction: &DatabaseTransaction,
     account_id: AccountId,
-    before_id: Option<i64>,
+    before: Option<Cursor>,
     request_id: &str,
     provenance: &CredentialProvenance,
 ) -> Result<Vec<taken_dose::Model>, OperationError> {
@@ -55,10 +60,19 @@ pub(crate) async fn page(
         .await?;
     let mut query =
         taken_dose::Entity::find().filter(taken_dose::Column::PersonId.eq(actor.person_id));
-    if let Some(before_id) = before_id {
-        query = query.filter(taken_dose::Column::Id.lt(before_id));
+    if let Some(before) = before {
+        query = query.filter(
+            Condition::any()
+                .add(taken_dose::Column::TakenAt.lt(before.taken_at))
+                .add(
+                    Condition::all()
+                        .add(taken_dose::Column::TakenAt.eq(before.taken_at))
+                        .add(taken_dose::Column::Id.lt(before.id)),
+                ),
+        );
     }
     let records = query
+        .order_by_desc(taken_dose::Column::TakenAt)
         .order_by_desc(taken_dose::Column::Id)
         .limit(26)
         .all(transaction)
