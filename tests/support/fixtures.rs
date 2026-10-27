@@ -1,4 +1,6 @@
 use chrono::{FixedOffset, Utc};
+#[path = "browser_fixtures.rs"]
+pub mod browser;
 use med_tracker::models::_entities::{
     accounts, household_memberships, households, identity_onboarding, locations, medications,
     oauth_applications, oauth_grants, people, person_access_grants, person_medications, users,
