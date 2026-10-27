@@ -12,6 +12,7 @@ function searchControls(platform, translated) {
     get textContent() { return this.text + this.children.map(child => child.textContent).join(''); }
     set textContent(text) { this.text = text; this.children = []; }
     setAttribute(name, value) { this.attributes[name] = value; }
+    getAttribute(name) { return this.attributes[name]; }
     addEventListener(name, listener) { this.listeners[name] = listener; }
     append(...children) { this.children.push(...children); }
     querySelector(selector) { return this.children.find(child => child.tag === selector); }
@@ -43,7 +44,7 @@ function searchControls(platform, translated) {
 for (const [platform, hint, shortcut] of [['MacIntel', '⌘K', 'Meta+K'], ['Win32', 'Ctrl+K', 'Control+K']]) {
   test(`search keeps descriptive names separate from ${platform} shortcut hints`, () => {
     for (const trigger of searchControls(platform).triggers) {
-      assert.equal(trigger.attributes['aria-label'], 'Open global search');
+      assert.equal(trigger.attributes['aria-label'], `Open global search (Search ${hint})`);
       assert.equal(trigger.attributes['aria-keyshortcuts'], shortcut);
       assert.equal(trigger.querySelector('kbd').textContent, hint);
       assert.equal(trigger.querySelector('kbd').attributes['aria-hidden'], 'true');
@@ -57,7 +58,7 @@ test('search retains fetched descriptive names after shortcut hints refresh', as
   await new Promise(setImmediate);
   assert.equal(panel.dataset.labelsReady, 'true');
   for (const trigger of triggers) {
-    assert.equal(trigger.attributes['aria-label'], translated.open);
+    assert.equal(trigger.attributes['aria-label'], `${translated.open} (Buscar ⌘K)`);
     assert.equal(trigger.textContent, 'Buscar ⌘K');
     assert.equal(trigger.attributes['aria-keyshortcuts'], 'Meta+K');
     assert.equal(trigger.querySelector('kbd').attributes['aria-hidden'], 'true');
