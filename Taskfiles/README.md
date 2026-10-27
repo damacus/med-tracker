@@ -132,13 +132,16 @@ env NEXTEST_TEST_THREADS=2 rtk task test:integration TARGET=care_api FILTER=fixt
 ```
 
 Schema, role, catalogue and global queue tests reserve every runner slot through
-native nextest overrides. Only schema acceptance resets the owned run schema.
+native nextest overrides and run first, avoiding repeated waits for other workers
+to finish. Only schema acceptance resets the owned run schema.
 Ordinary tenant tests neither reset it nor create another database. Docker
 compilation remains limited to two jobs. Test concurrency is configured separately.
 
 Ordinary browser setup uses native Better Auth session fixtures. Real sign-in,
-security and quota journeys retain their authentication requests; those cases
-reserve the runner and clear only the synthetic source-IP quota at test entry.
+security and quota journeys retain their authentication requests. Authentication
+cases run one at a time in their native nextest group and clear only the synthetic
+source-IP quota at test entry. Ordinary tenant tests can run alongside them;
+authentication cases that also mutate global state still reserve every worker.
 Account quotas stay intact within each journey. Storage fixtures accept loopback
 or the exact `http://rustfs:9000` service when owned Compose storage is enabled;
 synthetic credentials, bucket and URL restrictions remain required.
