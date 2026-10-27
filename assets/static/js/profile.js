@@ -78,7 +78,7 @@ document.addEventListener('submit', async event => {
     }
     if (!response.ok && response.status !== 422) throw new Error('Setting unavailable');
     const documentResult = new DOMParser().parseFromString(await response.text(), 'text/html');
-    const replacement = region ? documentResult.getElementById(region.id) : documentResult.getElementById(dialog?.id)?.querySelector('form');
+    const replacement = (region ? documentResult.getElementById(region.id) : documentResult.getElementById(dialog?.id)?.querySelector('form'))?.cloneNode(true);
     if (!replacement) throw new Error('Missing setting response');
     const expanded = [...(region || form).querySelectorAll('details[open][id]')].map(element => element.id);
     (region || form).replaceWith(replacement);
@@ -93,7 +93,7 @@ document.addEventListener('submit', async event => {
     const avatar = documentResult.querySelector('[data-profile-avatar]');
     if (avatar) for (const current of document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')) current.replaceChildren(...avatar.cloneNode(true).childNodes);
     if (dialog) dialog.close();
-    else replacement.querySelector('[type="submit"]')?.focus();
+    else (region ? document.getElementById(region.id) : replacement)?.querySelector('[type="submit"]')?.focus();
     const status = document.querySelector('[data-profile-status]');
     if (status) status.textContent = status.dataset.savedLabel;
     document.dispatchEvent(new Event('profile-saved'));

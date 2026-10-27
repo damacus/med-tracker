@@ -5,7 +5,7 @@ use playwright_rs::{
     protocol::{FilePayload, Viewport},
 };
 
-async fn prepare_avatar_storage() {
+pub(crate) async fn prepare_avatar_storage() {
     crate::template::require_owned_database();
     let endpoint = std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").unwrap();
     let url = reqwest::Url::parse(&endpoint).unwrap();

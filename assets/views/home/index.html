@@ -6,6 +6,8 @@
   {% if auth_notice is defined and auth_notice %}<p role="status" class="mt-4">{{ auth_notice }}</p>{% endif %}
   {% if signed_in %}
   <nav class="mt-6" aria-label="Account">
+    <a class="btn btn-ghost" href="/profile">Profile</a>
+    {% if pending_invitation %}<a class="btn btn-outline" href="{{ pending_invitation }}">Continue invitation</a>{% endif %}
     <a class="link" href="/account/security">Security settings</a>
   </nav>
   <section class="mt-8">

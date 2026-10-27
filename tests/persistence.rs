@@ -197,6 +197,10 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         let mut expected: serde_json::Map<String, serde_json::Value> =
             serde_json::from_str(include_str!("../migration/catalog.json"))?;
         apply_guardian_recovery_catalogue(&mut expected)?;
+        let personal_history: CanonicalIdentityCatalogue =
+            serde_json::from_str(include_str!("../migration/personal-history-catalog.json"))?;
+        assert!(personal_history.removed.is_empty());
+        expected.extend(personal_history.changed);
         let actual = before.as_object().unwrap();
         let differences: Vec<_> = expected
             .keys()
@@ -216,14 +220,15 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             differences.join("\n")
         );
         let ledger = ledger_rows(&db).await;
-        assert_eq!(ledger.len(), 16);
+        assert_eq!(ledger.len(), 17);
         assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
         assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
         assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
         assert_eq!(ledger[13].0, "m20261021_000014_member_directory_identity");
+        assert_eq!(ledger[15].0, "m20261022_000017_guardian_recovery");
         assert_eq!(
             ledger.last().map(|row| row.0.as_str()),
-            Some("m20261022_000017_guardian_recovery")
+            Some("m20261027_000018_personal_history")
         );
         migration::Migrator::up(&db, None).await.unwrap();
         assert_eq!(catalog(&db).await, before);

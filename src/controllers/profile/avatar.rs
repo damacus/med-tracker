@@ -213,7 +213,7 @@ async fn show_image(
     )
 }
 
-async fn uploaded(
+pub(super) async fn uploaded(
     mut form: Multipart,
     token: &CsrfToken,
 ) -> std::result::Result<avatar::Image, OperationError> {

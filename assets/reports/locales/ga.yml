@@ -1934,6 +1934,15 @@ ga:
     paused: 'Ní féidir an leigheas a thógáil: ar sos'
     overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
   profiles:
+    personal:
+      clinical_invalid: "Cuir isteach ainm agus dáta breithe bailí. Caithfidh sealbhóirí cuntais a bheith 18 mbliana d'aois ar a laghad."
+      description: "Bainistigh do chuntas agus d'eolas cliniciúil."
+      account_name: "Ainm taispeána an chuntais"
+      clinical: "Eolas cliniciúil"
+      history: "Stair na ndáileog a ghlac mé"
+      history_description: "An méid a ghlac tú, lena n-áirítear taifid ó theaghlaigh a d'fhág tú."
+      history_empty: "Níor taifeadadh aon dáileoga a ghlac tú."
+      history_next: "Taifid níos sine"
     security_flow:
       incomplete_link: "Nasc neamhiomlán"
       incomplete_reset_guidance: "Tá an nasc athshocraithe pasfhocail seo neamhiomlán. Iarr nasc nua chun do phasfhocal a athshocrú."

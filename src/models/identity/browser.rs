@@ -61,6 +61,14 @@ impl BrowserPrincipal {
         db: &DatabaseConnection,
         write: bool,
     ) -> Result<DatabaseTransaction, AuthenticationError> {
+        self.account_transaction(db, write).await
+    }
+
+    pub(crate) async fn account_transaction(
+        &self,
+        db: &DatabaseConnection,
+        write: bool,
+    ) -> Result<DatabaseTransaction, AuthenticationError> {
         let database_error = |error: sea_orm::DbErr| super::resource::operation_error(error.into());
         let transaction = db.begin().await.map_err(database_error)?;
         let checked = async {
