@@ -40,6 +40,15 @@ settings:
     secret_access_key: <%= get_env(name="AWS_SECRET_ACCESS_KEY", default="") %>
   api_rate_limit:
     trusted_proxy_ips: "<%= get_env(name="API_TRUSTED_PROXY_IPS", default="") %>"
+  identity_rate_limits:
+    source_maximum: <%= get_env(name="MEDTRACKER_AUTH_LIMIT_SOURCE_MAXIMUM", default="40") %>
+    source_window_seconds: <%= get_env(name="MEDTRACKER_AUTH_LIMIT_SOURCE_WINDOW_SECONDS", default="60") %>
+    password_maximum: <%= get_env(name="MEDTRACKER_AUTH_LIMIT_PASSWORD_MAXIMUM", default="10") %>
+    password_window_seconds: <%= get_env(name="MEDTRACKER_AUTH_LIMIT_PASSWORD_WINDOW_SECONDS", default="900") %>
+    email_maximum: <%= get_env(name="MEDTRACKER_AUTH_LIMIT_EMAIL_MAXIMUM", default="1") %>
+    email_window_seconds: <%= get_env(name="MEDTRACKER_AUTH_LIMIT_EMAIL_WINDOW_SECONDS", default="60") %>
+    security_maximum: <%= get_env(name="MEDTRACKER_AUTH_LIMIT_SECURITY_MAXIMUM", default="30") %>
+    security_window_seconds: <%= get_env(name="MEDTRACKER_AUTH_LIMIT_SECURITY_WINDOW_SECONDS", default="60") %>
   dose_occurrences:
     signing_key: <%= get_env(name="AUTH_SESSION_SECRET", default="synthetic-development-dose-occurrence-key") %>
   ai_medication_help:

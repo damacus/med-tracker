@@ -202,7 +202,6 @@ household_memberships::Entity::update_many()
 #[tokio::test]
 async fn guardian_real_account_closure_retains_declaration_and_restricts_destructive_deletion()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result=async {
         let token=app.token().await;

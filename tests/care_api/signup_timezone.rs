@@ -3,7 +3,6 @@ use med_tracker::models::_entities::accounts;
 
 #[tokio::test]
 async fn account_creation_initialises_timezone_for_password_and_passkey_signup() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let registration = super::signup::open_registration(&app).await;
     for (email, name, credential) in [

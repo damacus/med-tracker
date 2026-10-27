@@ -799,7 +799,6 @@ async fn registered_worker_pages_past_500_failures_and_retries_them()
 #[tokio::test]
 async fn real_listing_and_worker_overlap_without_deadlock_or_lost_audits()
 -> Result<(), Box<dyn std::error::Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let fault = format!("support_listing_{}", uuid::Uuid::new_v4().simple());
     let probe = format!("{fault}_pid");

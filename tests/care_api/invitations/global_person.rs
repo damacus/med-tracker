@@ -358,7 +358,6 @@ struct MemberCare {
 #[tokio::test]
 async fn canonical_invitation_browser_offers_membership_without_care_authority() -> Result<(), DbErr>
 {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result=async {
         let _care=seed_member_care(&app).await?;
@@ -379,7 +378,6 @@ async fn canonical_invitation_browser_offers_membership_without_care_authority()
 #[tokio::test]
 async fn canonical_invitation_browser_rejects_parent_manage_promises_without_effects()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result=async {
         let _care=seed_member_care(&app).await?;
@@ -489,7 +487,6 @@ async fn write_member_plan(app: &Application, token: &str, id: i64) -> Result<u1
 
 #[tokio::test]
 async fn member_reader_detail_offers_both_source_kinds_without_grants() -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let care=seed_member_care(&app).await?;
@@ -511,7 +508,6 @@ async fn member_reader_detail_offers_both_source_kinds_without_grants() -> Resul
 
 #[tokio::test]
 async fn member_reader_report_selectors_include_participants_without_grants() -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let care=seed_member_care(&app).await?;
@@ -540,7 +536,6 @@ async fn member_reader_report_selectors_include_participants_without_grants() ->
 #[tokio::test]
 async fn member_self_authority_reaches_capabilities_chooser_and_stock_creation() -> Result<(), DbErr>
 {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let care=seed_member_care(&app).await?;
@@ -577,7 +572,6 @@ async fn member_self_authority_reaches_capabilities_chooser_and_stock_creation()
 
 #[tokio::test]
 async fn ordinary_member_care_routes_cannot_remove_or_invite_new_authority() -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let _care=seed_member_care(&app).await?;
@@ -608,7 +602,6 @@ async fn ordinary_member_care_routes_cannot_remove_or_invite_new_authority() -> 
 #[tokio::test]
 async fn member_recorded_relationship_page_preserves_read_and_removal_without_new_authority()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let _care=seed_member_care(&app).await?;
@@ -983,7 +976,6 @@ let result=app.fixture.admin.execute_raw(app.fixture.admin.get_database_backend(
 
 #[tokio::test]
 async fn member_membership_relationship_labels_preserve_retained_ids() -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let care=seed_member_care(&app).await?;
@@ -1547,7 +1539,6 @@ async fn invitation_fields_cannot_claim_an_existing_accountless_person() -> Resu
 #[tokio::test]
 async fn signup_ignores_injected_existing_person_and_creates_a_distinct_self() -> Result<(), DbErr>
 {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let acceptance=seed_membership_invitation(&app).await?;
@@ -1726,21 +1717,18 @@ async fn signup_control(target_email: &str, expected_status: u16) -> Result<(), 
 #[tokio::test]
 async fn signup_without_injection_matching_contact_email_preserves_existing_identity()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     signup_control("synthetic-signup-control@example.test", 500).await
 }
 
 #[tokio::test]
 async fn signup_without_injection_distinct_contact_email_creates_new_identity() -> Result<(), DbErr>
 {
-    crate::authentication_fixture::reset_source_quota().await;
     signup_control("synthetic-other-contact@example.test", 200).await
 }
 
 #[tokio::test]
 async fn invited_signup_person_audit_failure_rolls_back_identity_and_acceptance()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let acceptance=seed_membership_invitation(&app).await?;

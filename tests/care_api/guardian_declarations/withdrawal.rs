@@ -301,7 +301,6 @@ async fn guardian_withdrawal_survives_last_departure_without_current_foreign_pro
 #[tokio::test]
 async fn guardian_browser_creation_requires_unchecked_declaration_and_supports_own_withdrawal()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let mut app = Application::new().await;
     let result = async {
         app.client = reqwest::Client::builder()

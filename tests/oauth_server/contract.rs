@@ -240,10 +240,10 @@ impl Application {
         let mut config = Config::new(&Environment::Test).unwrap();
         config.server.host = "http://localhost".into();
         config.server.port = i32::from(listener.local_addr().unwrap().port());
-        config.settings = Some(json!({"browser_session": {
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] = json!({
             "key": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==",
             "secure": false
-        }}));
+        });
         config.database.uri = std::env::var("DATABASE_URL").unwrap();
         assert!(!config.database.auto_migrate);
         assert!(!config.database.dangerously_recreate);

@@ -51,7 +51,6 @@ fn csrf(html: &str) -> &str {
 
 #[tokio::test]
 async fn polish_people_explicit_language_survives_routes_forms_and_invalid_input() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot, request) = signed_in().await;
     let slug = fixture.household.slug.clone();
     let person_id = fixture.account.person_id;
@@ -174,7 +173,6 @@ async fn polish_people_explicit_language_survives_routes_forms_and_invalid_input
 
 #[tokio::test]
 async fn polish_expired_attention_reaches_old_invitations_beyond_new_pending_page() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot, request) = signed_in().await;
     let slug = fixture.household.slug.clone();
 
@@ -226,7 +224,6 @@ async fn polish_expired_attention_reaches_old_invitations_beyond_new_pending_pag
 
 #[tokio::test]
 async fn polish_people_counts_keep_source_date_pause_and_visibility_semantics() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot, request) = signed_in_with_zone("Pacific/Kiritimati").await;
     let slug = fixture.household.slug.clone();
     let now = chrono::Utc::now().naive_utc();

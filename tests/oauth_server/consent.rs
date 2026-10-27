@@ -100,9 +100,8 @@ async fn boot() -> (Fixture, BootResult) {
         state: uuid::Uuid::new_v4().to_string(),
     };
     let mut config = Config::new(&Environment::Test).unwrap();
-    config.settings = Some(
-        json!({"browser_session": {"key":base64::Engine::encode(&base64::engine::general_purpose::STANDARD, [7_u8; 64]),"secure":false}}),
-    );
+    config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+        json!({"key":base64::Engine::encode(&base64::engine::general_purpose::STANDARD, [7_u8; 64]),"secure":false});
     config.database.uri = std::env::var("DATABASE_URL").unwrap();
     assert!(!config.database.auto_migrate);
     assert!(!config.database.dangerously_recreate);
@@ -244,7 +243,6 @@ async fn consent(request: &TestServer, fixture: &Fixture) -> String {
 
 #[tokio::test]
 async fn selected_second_household_is_shown_on_integration_consent() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
@@ -317,7 +315,6 @@ async fn selected_second_household_is_shown_on_integration_consent() {
 
 #[tokio::test]
 async fn consent_keeps_its_displayed_household_after_session_switch() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
@@ -351,7 +348,6 @@ async fn consent_keeps_its_displayed_household_after_session_switch() {
 
 #[tokio::test]
 async fn newer_consent_page_invalidates_old_form_even_with_identical_oauth_fields() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
@@ -408,7 +404,6 @@ async fn newer_consent_page_invalidates_old_form_even_with_identical_oauth_field
 
 #[tokio::test]
 async fn revoked_displayed_membership_cannot_create_grant_or_audit() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
@@ -461,7 +456,6 @@ async fn revoked_displayed_membership_cannot_create_grant_or_audit() {
 
 #[tokio::test]
 async fn fresh_authorization_after_revocation_can_choose_another_household() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
@@ -511,19 +505,16 @@ async fn fresh_authorization_after_revocation_can_choose_another_household() {
 
 #[tokio::test]
 async fn permission_change_invalidates_displayed_consent() {
-    crate::authentication_fixture::reset_source_quota().await;
     assert_changed_consent_rejected("permissions").await;
 }
 
 #[tokio::test]
 async fn held_household_invalidates_displayed_consent() {
-    crate::authentication_fixture::reset_source_quota().await;
     assert_changed_consent_rejected("held").await;
 }
 
 #[tokio::test]
 async fn archived_household_invalidates_displayed_consent() {
-    crate::authentication_fixture::reset_source_quota().await;
     assert_changed_consent_rejected("archived").await;
 }
 
@@ -594,7 +585,6 @@ async fn assert_changed_consent_rejected(changed: &str) {
 
 #[tokio::test]
 async fn two_browser_sessions_keep_distinct_household_consent() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut first = server(&boot);
     let mut second = server(&boot);
@@ -655,7 +645,6 @@ async fn two_browser_sessions_keep_distinct_household_consent() {
 
 #[tokio::test]
 async fn mobile_consent_stays_account_bound_without_selected_household() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mobile = client(
         &fixture,
@@ -720,7 +709,6 @@ async fn mobile_consent_stays_account_bound_without_selected_household() {
 
 #[tokio::test]
 async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let mut request = server(&boot);
     request.save_cookies();
@@ -803,7 +791,6 @@ async fn consent_rejects_csrf_protocol_scope_and_nonce_tampering() {
 
 #[tokio::test]
 async fn first_household_creation_resumes_pending_integration_consent() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot().await;
     let newcomer = Scenario::new().await;
     household_memberships::Entity::delete_by_id(newcomer.membership.id)

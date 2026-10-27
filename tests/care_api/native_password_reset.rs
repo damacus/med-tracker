@@ -29,7 +29,6 @@ pub(super) async fn queued_mail(app: &Application, email: &str, subject: &str) -
 #[tokio::test]
 async fn native_password_reset_enrols_numeric_account_without_existing_password_and_rejects_replay()
 {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let delete = Query::delete()
         .from_table("auth_credentials")

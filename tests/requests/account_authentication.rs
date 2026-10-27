@@ -214,7 +214,6 @@ pub(super) async fn restore_registration(fixture: &RequestFixture, saved: Regist
 
 #[tokio::test]
 async fn account_authentication_password_signup_verifies_email_and_retains_first_login() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
     let previous_settings = registration_setting(&fixture).await;
     let email = format!(
@@ -421,7 +420,6 @@ async fn account_authentication_password_signup_verifies_email_and_retains_first
 
 #[tokio::test]
 async fn account_authentication_open_signup_without_invitation_persists_identity_and_mail() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
 
     let previous_settings = registration_setting(&fixture).await;
@@ -485,7 +483,6 @@ async fn account_authentication_open_signup_without_invitation_persists_identity
 
 #[tokio::test]
 async fn account_authentication_security_inventory_includes_later_credentials() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
 
     enable_completed_onboarding(&fixture, fixture.account.id).await;
@@ -629,7 +626,6 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
 
 #[tokio::test]
 async fn account_authentication_accepts_split_cookie_headers() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture_with(|config| {
         let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
@@ -708,7 +704,6 @@ async fn account_authentication_accepts_split_cookie_headers() {
 
 #[tokio::test]
 async fn account_authentication_without_clinical_records_can_login_and_refresh() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
     let foreign_account_id = fixture.foreign.account.id;
 
@@ -851,7 +846,6 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
 
 #[tokio::test]
 async fn account_authentication_locked_session_cannot_authenticate_or_change_credentials() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
 
     users::Entity::update_many()
@@ -953,7 +947,6 @@ async fn account_authentication_locked_session_cannot_authenticate_or_change_cre
 
 #[tokio::test]
 async fn account_authentication_audit_failure_rolls_back_session() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
     let foreign_account_id = fixture.foreign.account.id;
 
@@ -991,7 +984,6 @@ async fn account_authentication_audit_failure_rolls_back_session() {
 
 #[tokio::test]
 async fn account_authentication_account_status_and_session_lifetime_remain_required() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
 
     authentication_only_account(&fixture, None, 1).await;
@@ -1102,7 +1094,6 @@ async fn account_authentication_account_status_and_session_lifetime_remain_requi
 
 #[tokio::test]
 async fn account_authentication_session_revocation_clears_only_current_cookie_family() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
 
     enable_completed_onboarding(&fixture, fixture.account.id).await;
@@ -1235,7 +1226,6 @@ async fn account_authentication_session_revocation_clears_only_current_cookie_fa
 
 #[tokio::test]
 async fn account_authentication_throttle_retains_body_and_retry_after() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
 
     let request = server(&boot);
@@ -1268,7 +1258,6 @@ async fn account_authentication_throttle_retains_body_and_retry_after() {
 
 #[tokio::test]
 async fn account_authentication_native_signup_uses_canonical_account_and_native_credentials() {
-    crate::authentication_fixture::reset_source_quota().await;
     let mut logger = loco_rs::config::Config::new(&loco_rs::environment::Environment::Test)
         .unwrap()
         .logger;
@@ -1462,7 +1451,6 @@ async fn account_authentication_native_signup_uses_canonical_account_and_native_
 
 #[tokio::test]
 async fn account_authentication_security_inventory_is_complete_live_and_account_scoped() {
-    crate::authentication_fixture::reset_source_quota().await;
     let (fixture, boot) = boot_request_fixture().await;
 
     authentication_only_account(&fixture, Some("Other inventory owner"), 2).await;
@@ -1696,7 +1684,6 @@ async fn malformed_auth_entry_links_offer_safe_recovery() {
 
 #[tokio::test]
 async fn public_origin_auth_discovery_and_secure_session_use_proxy_origin() {
-    crate::authentication_fixture::reset_source_quota().await;
     let public = "https://mt-proof.localhost:1356";
     let (fixture, boot) = boot_request_fixture_with(|config| {
         let settings = config.settings.get_or_insert_with(|| json!({}));

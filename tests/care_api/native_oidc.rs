@@ -355,7 +355,6 @@ async fn verification(app: &Application, identifier: &str) -> Option<String> {
 
 #[tokio::test]
 async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounted_provider() {
-    crate::authentication_fixture::reset_source_quota().await;
     let issuer = Issuer::new().await;
     let settings = issuer.state.origin.clone();
     let mut app=Application::new_configured(Some("synthetic-dose-occurrence-signing-key"),move |value|value["zitadel"]=json!({"issuer":settings,"client_id":"native-test-client","client_secret":"synthetic-native-client-secret"})).await;

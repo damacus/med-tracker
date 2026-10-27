@@ -235,7 +235,6 @@ async fn guardian_capacity_loss_stops_derived_authority_only() -> Result<(), DbE
 #[tokio::test]
 async fn household_manager_removes_local_link_without_withdrawing_personal_declaration()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let mut app = Application::new().await;
     let result=async {
         app.client=reqwest::Client::builder().timeout(Duration::from_secs(5))

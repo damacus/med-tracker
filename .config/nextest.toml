@@ -6,9 +6,6 @@ command = ["cargo", "run", "--locked", "--example", "api-fixtures", "--", "prepa
 [test-groups.api-global]
 max-threads = 1
 
-[test-groups.api-authentication]
-max-threads = 1
-
 [profile.default]
 test-threads = 4
 
@@ -22,6 +19,10 @@ inherits = "default"
 test-threads = 8
 fail-fast = false
 
+[profile.api.junit]
+path = "junit.xml"
+store-failure-output = true
+
 [[profile.api.scripts]]
 filter = 'binary(=shared_api) | binary(=care_api) | binary(=care_doses) | binary(=care_medications) | binary(=identity_resource) | binary(=identity_compatibility) | binary(=tenant_access) | binary(=migration_roles) | binary(=oauth_server) | binary(=queue_runtime) | binary(=persistence) | binary(=requests)'
 setup = 'api-fixtures'
@@ -32,6 +33,7 @@ binary(=migration_roles)
 | test(=fixture_acceptance::scenario_seed_rolls_back_identity_if_membership_insert_fails)
 | (binary(=requests) & test(=api_v1::administration_overview::member_administration_lists_inactive_identity_and_changes_membership_state))
 | test(=invitations::invitations_mail_committed_job_has_durable_attempt_and_provider_receipt)
+| test(=authentication_quota_fixture_resets_only_source_buckets_between_real_journeys)
 | test(=native_browser_session_fixture_uses_real_routes_without_consuming_source_quota)
 | test(=dose_take_audit_failure_rolls_back_stock_and_take)
 | test(=dose_take_unrelated_unique_collision_is_not_a_replay_conflict)
@@ -242,118 +244,3 @@ binary(=migration_roles)
 test-group = 'api-global'
 threads-required = "num-test-threads"
 priority = 100
-
-[[profile.api.overrides]]
-filter = '''
-(binary(=care_api) & test(=account_closure_mail::account_closure_mail_success_and_replay))
-| (binary(=care_api) & test(=better_auth_feature_stores::native_personal_key_create_retains_authoritative_admission_and_typed_scopes))
-| (binary(=care_api) & test(=better_auth_feature_stores::native_personal_key_create_waits_for_account_closure_and_rechecks_status))
-| (binary(=care_api) & test(=better_auth_feature_stores::public_authenticator_setup_replaces_pending_factor_and_finishes_once))
-| (binary(=care_api) & test(=better_auth_store::production_identity_cookies_stay_secure_behind_an_http_proxy))
-| (binary(=care_api) & test(=guardian_declarations::live_authority::household_manager_removes_local_link_without_withdrawing_personal_declaration))
-| (binary(=care_api) & test(=guardian_declarations::locale_contract::guardian_creation_form_and_validation_keep_selected_declaration_language))
-| (binary(=care_api) & test(=guardian_declarations::security::guardian_global_withdrawal_excludes_valid_household_and_integration_credentials))
-| (binary(=care_api) & test(=guardian_declarations::storage_boundary::guardian_real_account_closure_retains_declaration_and_restricts_destructive_deletion))
-| (binary(=care_api) & test(=guardian_declarations::withdrawal::guardian_browser_creation_requires_unchecked_declaration_and_supports_own_withdrawal))
-| (binary(=care_api) & test(=invitations::browser_administration::invitation_acceptance_selects_only_the_current_session))
-| (binary(=care_api) & test(=invitations::browser_administration::invitation_signup_invalid_draft_rerenders_localized_form_without_effects))
-| (binary(=care_api) & test(=invitations::global_person::canonical_invitation_browser_offers_membership_without_care_authority))
-| (binary(=care_api) & test(=invitations::global_person::canonical_invitation_browser_rejects_parent_manage_promises_without_effects))
-| (binary(=care_api) & test(=invitations::global_person::member_membership_relationship_labels_preserve_retained_ids))
-| (binary(=care_api) & test(=invitations::global_person::member_reader_detail_offers_both_source_kinds_without_grants))
-| (binary(=care_api) & test(=invitations::global_person::member_reader_report_selectors_include_participants_without_grants))
-| (binary(=care_api) & test(=invitations::global_person::member_recorded_relationship_page_preserves_read_and_removal_without_new_authority))
-| (binary(=care_api) & test(=invitations::global_person::member_self_authority_reaches_capabilities_chooser_and_stock_creation))
-| (binary(=care_api) & test(=invitations::global_person::ordinary_member_care_routes_cannot_remove_or_invite_new_authority))
-| (binary(=care_api) & test(=invitations::global_person::signup_ignores_injected_existing_person_and_creates_a_distinct_self))
-| (binary(=care_api) & test(=invitations::global_person::signup_without_injection_distinct_contact_email_creates_new_identity))
-| (binary(=care_api) & test(=invitations::global_person::signup_without_injection_matching_contact_email_preserves_existing_identity))
-| (binary(=care_api) & test(=native_email_change::native_email_change_uses_stock_confirmation_and_rejects_a_different_signed_in_account))
-| (binary(=care_api) & test(=native_password_reset::native_password_reset_enrols_numeric_account_without_existing_password_and_rejects_replay))
-| (binary(=care_api) & test(=platform::platform_administrator_grant_after_password_proof))
-| (binary(=care_api) & test(=platform::platform_administrator_grant_refuses_ineligible_accounts))
-| (binary(=care_api) & test(=platform::platform_administrator_revoke_after_password_proof))
-| (binary(=care_api) & test(=platform::platform_audit_does_not_trust_spoofed_forwarded_for))
-| (binary(=care_api) & test(=platform::platform_browser_administrator_grant_roundtrip))
-| (binary(=care_api) & test(=platform::platform_browser_administrator_revoke_roundtrip))
-| (binary(=care_api) & test(=platform::platform_browser_forms_require_csrf_and_platform_rights))
-| (binary(=care_api) & test(=platform::platform_browser_preserves_the_authentication_origin_boundary))
-| (binary(=care_api) & test(=platform::platform_browser_user_disable_and_enable_roundtrip))
-| (binary(=care_api) & test(=platform::platform_confirmation_cannot_replace_the_bound_target_or_action))
-| (binary(=care_api) & test(=platform::platform_operation_denied_without_platform_rights))
-| (binary(=care_api) & test(=platform::platform_operation_refused_when_admin_rights_withdrawn_before_confirm))
-| (binary(=care_api) & test(=platform::platform_operation_refused_when_session_revoked_before_confirm))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_cannot_be_bypassed_through_membership_updates))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_excludes_accountless_participants))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_promotes_eligible_member_via_browser_proof))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_proof_binds_household_target_and_reason))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_refused_when_admin_rights_withdrawn_before_confirm))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_refuses_cross_household_target))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_refuses_healthy_owner_household))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_refuses_ineligible_members))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_refuses_self_promotion))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_requires_csrf))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_resulting_owner_authority_is_immediate))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_serializes_concurrent_confirmations))
-| (binary(=care_api) & test(=platform::platform_owner_recovery_treats_accountless_owner_as_unusable))
-| (binary(=care_api) & test(=platform::platform_proof_bound_to_action))
-| (binary(=care_api) & test(=platform::platform_proof_bound_to_requesting_session))
-| (binary(=care_api) & test(=platform::platform_proof_bound_to_target_account))
-| (binary(=care_api) & test(=platform::platform_proof_expires))
-| (binary(=care_api) & test(=platform::platform_proof_single_use))
-| (binary(=care_api) & test(=platform::platform_support_activate_replay_and_wrong_operator_rejected))
-| (binary(=care_api) & test(=platform::platform_support_activation_rechecks_admin_after_row_wait))
-| (binary(=care_api) & test(=platform::platform_support_activation_rechecks_household_after_row_wait))
-| (binary(=care_api) & test(=platform::platform_support_approval_read_and_termination_journey))
-| (binary(=care_api) & test(=platform::platform_support_approval_rechecks_owner_lockout_after_row_wait))
-| (binary(=care_api) & test(=platform::platform_support_approval_waiting_on_owner_lock_denies_after_deadline))
-| (binary(=care_api) & test(=platform::platform_support_end_on_expired_session_records_expiry_once))
-| (binary(=care_api) & test(=platform::platform_support_end_rechecks_actor_after_row_wait))
-| (binary(=care_api) & test(=platform::platform_support_expired_request_denies_approval_and_records_expiry))
-| (binary(=care_api) & test(=platform::platform_support_expiry_revokes_read_access))
-| (binary(=care_api) & test(=platform::platform_support_listing_does_not_expire_an_ended_session))
-| (binary(=care_api) & test(=platform::platform_support_pagination_keeps_older_approved_requests_reachable))
-| (binary(=care_api) & test(=platform::platform_support_read_denied_after_authority_changes))
-| (binary(=care_api) & test(=platform::platform_support_read_waiting_on_row_lock_denies_after_deadline))
-| (binary(=care_api) & test(=platform::platform_support_reason_is_not_leaked_in_denied_responses))
-| (binary(=care_api) & test(=platform::platform_support_request_deadline_is_enforced))
-| (binary(=care_api) & test(=platform::platform_support_request_proof_binds_household_and_reason))
-| (binary(=care_api) & test(=platform::platform_support_request_requires_reason_and_sets_request_deadline))
-| (binary(=care_api) & test(=platform::platform_user_deactivate_and_reactivate_after_password_proof))
-| (binary(=care_api) & test(=platform::platform_user_enable_refuses_closed_and_unverified_accounts))
-| (binary(=care_api) & test(=platform::platform_user_reactivation_does_not_revive_old_sessions))
-| (binary(=care_api) & test(=platform::platform_users_rechecks_a_deactivated_account))
-| (binary(=care_api) & test(=platform::platform_users_rechecks_withdrawn_platform_rights))
-| (binary(=care_api) & test(=platform::platform_users_requires_a_live_identity_session))
-| (binary(=care_api) & test(=profile::personal_key_profile_and_preferences_overlap_and_revoked_keys_cannot_replay))
-| (binary(=oauth_server) & test(=consent::archived_household_invalidates_displayed_consent))
-| (binary(=oauth_server) & test(=consent::consent_keeps_its_displayed_household_after_session_switch))
-| (binary(=oauth_server) & test(=consent::consent_rejects_csrf_protocol_scope_and_nonce_tampering))
-| (binary(=oauth_server) & test(=consent::first_household_creation_resumes_pending_integration_consent))
-| (binary(=oauth_server) & test(=consent::fresh_authorization_after_revocation_can_choose_another_household))
-| (binary(=oauth_server) & test(=consent::held_household_invalidates_displayed_consent))
-| (binary(=oauth_server) & test(=consent::mobile_consent_stays_account_bound_without_selected_household))
-| (binary(=oauth_server) & test(=consent::newer_consent_page_invalidates_old_form_even_with_identical_oauth_fields))
-| (binary(=oauth_server) & test(=consent::permission_change_invalidates_displayed_consent))
-| (binary(=oauth_server) & test(=consent::revoked_displayed_membership_cannot_create_grant_or_audit))
-| (binary(=oauth_server) & test(=consent::selected_second_household_is_shown_on_integration_consent))
-| (binary(=oauth_server) & test(=consent::two_browser_sessions_keep_distinct_household_consent))
-| (binary(=requests) & test(=api_v1::account_authentication::account_authentication_accepts_split_cookie_headers))
-| (binary(=requests) & test(=api_v1::account_authentication::account_authentication_account_status_and_session_lifetime_remain_required))
-| (binary(=requests) & test(=api_v1::account_authentication::account_authentication_locked_session_cannot_authenticate_or_change_credentials))
-| (binary(=requests) & test(=api_v1::account_authentication::account_authentication_security_inventory_includes_later_credentials))
-| (binary(=requests) & test(=api_v1::account_authentication::account_authentication_security_inventory_is_complete_live_and_account_scoped))
-| (binary(=requests) & test(=api_v1::account_authentication::account_authentication_throttle_retains_body_and_retry_after))
-| (binary(=requests) & test(=api_v1::account_authentication::account_authentication_without_clinical_records_can_login_and_refresh))
-| (binary(=requests) & test(=api_v1::account_authentication::public_origin_auth_discovery_and_secure_session_use_proxy_origin))
-| (binary(=requests) & test(=api_v1::polish_followups::polish_expired_attention_reaches_old_invitations_beyond_new_pending_page))
-| (binary(=requests) & test(=api_v1::polish_followups::polish_people_counts_keep_source_date_pause_and_visibility_semantics))
-| (binary(=requests) & test(=api_v1::polish_followups::polish_people_explicit_language_survives_routes_forms_and_invalid_input))
-| (binary(=shared_api) & test(=standard_loco_requests_use_the_shared_database_and_real_identity))
-| (binary(=care_api) & test(=invitations::browser_administration::invitation_acceptance_pages_keep_locale_and_safe_invalid_link_recovery))
-| (binary(=care_api) & test(=platform::platform_support_read_includes_allocation_and_schedule_details))
-| (binary(=care_api) & test(=platform::platform_support_owner_page_shows_requester_reason_and_scope))
-| (binary(=care_api) & test(=platform::platform_support_pages_render_readable_utc_deadlines))
-| test(=authentication_quota_fixture_resets_only_source_buckets_between_real_journeys)
-'''
-test-group = 'api-authentication'

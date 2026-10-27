@@ -144,7 +144,6 @@ pub(super) async fn native_token(app: &Application, account: i64) -> Result<Stri
 #[tokio::test]
 async fn guardian_global_withdrawal_excludes_valid_household_and_integration_credentials()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result=async {
         let native=app.token().await;

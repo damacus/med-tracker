@@ -420,25 +420,21 @@ async fn rollback_case(deferred: bool, enqueue: bool) {
 
 #[tokio::test]
 async fn account_closure_mail_late_failure_rolls_back() {
-    crate::authentication_fixture::reset_source_quota().await;
     rollback_case(false, false).await;
 }
 
 #[tokio::test]
 async fn account_closure_mail_commit_failure_rolls_back() {
-    crate::authentication_fixture::reset_source_quota().await;
     rollback_case(true, false).await;
 }
 
 #[tokio::test]
 async fn account_closure_mail_enqueue_failure_rolls_back() {
-    crate::authentication_fixture::reset_source_quota().await;
     rollback_case(false, true).await;
 }
 
 #[tokio::test]
 async fn account_closure_mail_success_and_replay() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let prepared = prepare(&app).await;
     let cookie = prepared.cookie.clone();
@@ -521,7 +517,6 @@ async fn account_closure_mail_success_and_replay() {
 
 #[tokio::test]
 async fn account_closure_mail_later_household_owner_denial_rolls_back() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let prepared = prepare(&app).await;
     let cookie = prepared.cookie.clone();

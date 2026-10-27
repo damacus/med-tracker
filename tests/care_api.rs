@@ -16,8 +16,7 @@ mod assignments;
 mod audit_logs;
 #[path = "care_api/audit_logs_browser.rs"]
 mod audit_logs_browser;
-#[path = "support/authentication_fixture.rs"]
-mod authentication_fixture;
+
 #[path = "care_api/avatar.rs"]
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]

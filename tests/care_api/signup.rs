@@ -152,7 +152,6 @@ async fn signup(app: &Application, email: &str, credential: &str) -> reqwest::Re
 
 #[tokio::test]
 async fn signup_create_saves_canonical_account_and_queued_verification_together() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let registration = open_registration(&app).await;
     for (email, credential) in [
@@ -233,7 +232,6 @@ async fn signup_create_saves_canonical_account_and_queued_verification_together(
 
 #[tokio::test]
 async fn signup_create_queue_failure_rolls_back_account_household_and_verification() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let registration = open_registration(&app).await;
     let before = rollback_state(&app).await;

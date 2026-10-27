@@ -1098,7 +1098,6 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
 
 #[tokio::test]
 async fn personal_key_profile_and_preferences_overlap_and_revoked_keys_cannot_replay() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = profile_application().await;
     let household_id = app.fixture.household.id;
     let first = issue_profile_personal_key(&app, "Synthetic profile writer one").await;

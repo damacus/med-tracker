@@ -66,7 +66,6 @@ async fn development_boot_uses_configured_session_key_without_environment_overri
 
 #[tokio::test]
 async fn production_identity_cookies_stay_secure_behind_an_http_proxy() {
-    crate::authentication_fixture::reset_source_quota().await;
     use loco_rs::{
         app::{AppContext, Hooks},
         config::Config,

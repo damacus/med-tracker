@@ -9,7 +9,6 @@ use sea_orm::{ActiveValue::NotSet, IntoActiveModel};
 
 #[tokio::test]
 async fn platform_owner_recovery_cannot_be_bypassed_through_membership_updates() {
-    crate::authentication_fixture::reset_source_quota().await;
     for other in [false, true] {
         let app = Application::new().await;
         synthetic_account(&app, "platform-recovery-member", 2).await;
@@ -682,7 +681,6 @@ async fn platform_users_clamps_pages_beyond_the_listing() {
 
 #[tokio::test]
 async fn platform_users_rechecks_withdrawn_platform_rights() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     app.fixture
         .admin
@@ -730,7 +728,6 @@ async fn platform_users_rechecks_withdrawn_platform_rights() {
 
 #[tokio::test]
 async fn platform_users_rechecks_a_deactivated_account() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     app.fixture
         .admin
@@ -787,7 +784,6 @@ async fn platform_users_rechecks_a_deactivated_account() {
 
 #[tokio::test]
 async fn platform_users_requires_a_live_identity_session() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     app.fixture
         .admin
@@ -843,7 +839,6 @@ async fn platform_users_requires_a_live_identity_session() {
 
 #[tokio::test]
 async fn platform_administrator_grant_after_password_proof() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -871,7 +866,6 @@ async fn platform_administrator_grant_after_password_proof() {
 
 #[tokio::test]
 async fn platform_administrator_revoke_after_password_proof() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     app.fixture
@@ -911,7 +905,6 @@ async fn platform_administrator_revoke_after_password_proof() {
 
 #[tokio::test]
 async fn platform_user_deactivate_and_reactivate_after_password_proof() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -958,7 +951,6 @@ async fn platform_user_deactivate_and_reactivate_after_password_proof() {
 
 #[tokio::test]
 async fn platform_operation_denied_without_platform_rights() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = session(&app).await;
@@ -978,7 +970,6 @@ async fn platform_operation_denied_without_platform_rights() {
 
 #[tokio::test]
 async fn platform_operation_refused_when_admin_rights_withdrawn_before_confirm() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -1013,7 +1004,6 @@ async fn platform_operation_refused_when_admin_rights_withdrawn_before_confirm()
 
 #[tokio::test]
 async fn platform_operation_refused_when_session_revoked_before_confirm() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -1047,7 +1037,6 @@ async fn platform_operation_refused_when_session_revoked_before_confirm() {
 
 #[tokio::test]
 async fn platform_proof_bound_to_requesting_session() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -1071,7 +1060,6 @@ async fn platform_proof_bound_to_requesting_session() {
 
 #[tokio::test]
 async fn platform_proof_bound_to_target_account() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     synthetic_account(&app, "platform-third", 2).await;
@@ -1097,7 +1085,6 @@ async fn platform_proof_bound_to_target_account() {
 
 #[tokio::test]
 async fn platform_proof_bound_to_action() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -1125,7 +1112,6 @@ async fn platform_proof_bound_to_action() {
 
 #[tokio::test]
 async fn platform_proof_expires() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -1167,7 +1153,6 @@ async fn platform_proof_expires() {
 
 #[tokio::test]
 async fn platform_proof_single_use() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -1195,7 +1180,6 @@ async fn platform_proof_single_use() {
 
 #[tokio::test]
 async fn platform_administrator_revoke_refuses_last_active_administrator() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     let cookie = admin_session(&app).await;
@@ -1218,7 +1202,6 @@ async fn platform_administrator_revoke_refuses_last_active_administrator() {
 
 #[tokio::test]
 async fn platform_user_disable_refuses_last_active_administrator() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     let cookie = admin_session(&app).await;
@@ -1241,7 +1224,6 @@ async fn platform_user_disable_refuses_last_active_administrator() {
 
 #[tokio::test]
 async fn platform_last_administrator_guard_survives_concurrent_removals() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     synthetic_account(&app, "platform-second", 2).await;
@@ -1374,7 +1356,6 @@ async fn platform_last_administrator_guard_survives_concurrent_removals() {
 
 #[tokio::test]
 async fn platform_audit_failure_rolls_back_mutation_and_proof() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -1416,7 +1397,6 @@ async fn platform_audit_failure_rolls_back_mutation_and_proof() {
 
 #[tokio::test]
 async fn platform_inactive_user_administrator_is_not_viable_remaining_admin() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     synthetic_account(&app, "platform-second", 2).await;
@@ -1526,7 +1506,6 @@ async fn platform_inactive_user_administrator_is_not_viable_remaining_admin() {
 
 #[tokio::test]
 async fn platform_administrator_grant_refuses_ineligible_accounts() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-closed", 3).await;
     synthetic_account(&app, "platform-unverified", 1).await;
@@ -1632,7 +1611,6 @@ async fn platform_administrator_grant_refuses_ineligible_accounts() {
 
 #[tokio::test]
 async fn platform_user_enable_refuses_closed_and_unverified_accounts() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-closed", 3).await;
     synthetic_account(&app, "platform-unverified", 1).await;
@@ -1689,7 +1667,6 @@ async fn platform_user_enable_refuses_closed_and_unverified_accounts() {
 
 #[tokio::test]
 async fn platform_last_administrator_cannot_close_own_account() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     let cookie = admin_session(&app).await;
@@ -1714,7 +1691,6 @@ async fn platform_last_administrator_cannot_close_own_account() {
 
 #[tokio::test]
 async fn platform_last_administrator_guard_survives_concurrent_self_closures() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     synthetic_account(&app, "platform-second", 2).await;
@@ -1769,7 +1745,6 @@ async fn platform_last_administrator_guard_survives_concurrent_self_closures() {
 
 #[tokio::test]
 async fn platform_can_revoke_an_inactive_administrator_without_removing_the_last_usable_admin() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     synthetic_account(&app, "platform-second", 2).await;
@@ -1823,7 +1798,6 @@ async fn platform_can_revoke_an_inactive_administrator_without_removing_the_last
 
 #[tokio::test]
 async fn platform_confirmation_cannot_replace_the_bound_target_or_action() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     synthetic_account(&app, "platform-third", 2).await;
@@ -1866,7 +1840,6 @@ async fn platform_confirmation_cannot_replace_the_bound_target_or_action() {
 
 #[tokio::test]
 async fn platform_user_reactivation_does_not_revive_old_sessions() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let administrator_cookie = admin_session(&app).await;
@@ -2019,7 +1992,6 @@ async fn platform_users_page_links_are_bounded() {
 
 #[tokio::test]
 async fn platform_browser_administrator_grant_roundtrip() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -2065,7 +2037,6 @@ async fn platform_browser_administrator_grant_roundtrip() {
 
 #[tokio::test]
 async fn platform_browser_preserves_the_authentication_origin_boundary() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -2105,7 +2076,6 @@ async fn platform_browser_preserves_the_authentication_origin_boundary() {
 
 #[tokio::test]
 async fn platform_settings_initialization_cannot_race_signup_into_two_rows() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let settings_before = isolate_settings(&app).await;
     // SeaQuery has no PostgreSQL trigger/function DDL builder; this barrier exercises singleton initialization.
@@ -2239,7 +2209,6 @@ async fn platform_settings_initialization_cannot_race_signup_into_two_rows() {
 
 #[tokio::test]
 async fn platform_browser_administrator_revoke_roundtrip() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     app.fixture
@@ -2298,7 +2267,6 @@ async fn platform_browser_administrator_revoke_roundtrip() {
 
 #[tokio::test]
 async fn platform_browser_user_disable_and_enable_roundtrip() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -2345,7 +2313,6 @@ async fn platform_browser_user_disable_and_enable_roundtrip() {
 
 #[tokio::test]
 async fn platform_browser_forms_require_csrf_and_platform_rights() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
@@ -2419,7 +2386,6 @@ async fn platform_browser_forms_require_csrf_and_platform_rights() {
 
 #[tokio::test]
 async fn platform_browser_last_administrator_revoke_conflicts() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     let cookie = admin_session(&app).await;
@@ -2544,7 +2510,6 @@ async fn platform_settings_requires_platform_administrator() {
 
 #[tokio::test]
 async fn platform_settings_update_via_browser_proof() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let settings_before = isolate_settings(&app).await;
     let cookie = admin_session(&app).await;
@@ -2597,7 +2562,6 @@ async fn platform_settings_update_via_browser_proof() {
 
 #[tokio::test]
 async fn platform_settings_rejects_insecure_and_unknown_values() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let settings_before = isolate_settings(&app).await;
     let cookie = admin_session(&app).await;
@@ -2666,7 +2630,6 @@ async fn platform_settings_rejects_insecure_and_unknown_values() {
 
 #[tokio::test]
 async fn platform_settings_audit_failure_rolls_back() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let settings_before = isolate_settings(&app).await;
     let cookie = admin_session(&app).await;
@@ -3166,7 +3129,6 @@ async fn platform_owner_recovery_page_requires_platform_administrator() {
 
 #[tokio::test]
 async fn platform_owner_recovery_promotes_eligible_member_via_browser_proof() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -3241,7 +3203,6 @@ async fn platform_owner_recovery_promotes_eligible_member_via_browser_proof() {
 
 #[tokio::test]
 async fn platform_owner_recovery_resulting_owner_authority_is_immediate() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -3305,7 +3266,6 @@ async fn platform_owner_recovery_resulting_owner_authority_is_immediate() {
 
 #[tokio::test]
 async fn platform_owner_recovery_requires_csrf() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -3347,7 +3307,6 @@ async fn platform_owner_recovery_requires_csrf() {
 
 #[tokio::test]
 async fn platform_owner_recovery_refuses_self_promotion() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -3402,7 +3361,6 @@ async fn platform_owner_recovery_refuses_self_promotion() {
 
 #[tokio::test]
 async fn platform_owner_recovery_refuses_ineligible_members() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     household_member(
@@ -3644,7 +3602,6 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
 
 #[tokio::test]
 async fn platform_owner_recovery_refuses_healthy_owner_household() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -3705,7 +3662,6 @@ async fn platform_owner_recovery_refuses_healthy_owner_household() {
 
 #[tokio::test]
 async fn platform_owner_recovery_refuses_cross_household_target() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     supported_household(&app).await;
@@ -3775,7 +3731,6 @@ async fn platform_owner_recovery_refuses_cross_household_target() {
 
 #[tokio::test]
 async fn platform_owner_recovery_refused_when_admin_rights_withdrawn_before_confirm() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -3848,7 +3803,6 @@ async fn platform_owner_recovery_refused_when_admin_rights_withdrawn_before_conf
 
 #[tokio::test]
 async fn platform_owner_recovery_proof_binds_household_target_and_reason() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     supported_household(&app).await;
@@ -3968,7 +3922,6 @@ async fn platform_owner_recovery_proof_binds_household_target_and_reason() {
 
 #[tokio::test]
 async fn platform_owner_recovery_serializes_concurrent_confirmations() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     household_member(
@@ -4108,7 +4061,6 @@ async fn platform_owner_recovery_serializes_concurrent_confirmations() {
 
 #[tokio::test]
 async fn platform_owner_recovery_audit_failure_rolls_back() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -4228,7 +4180,6 @@ async fn platform_support_requires_platform_administrator() {
 
 #[tokio::test]
 async fn platform_support_pagination_keeps_older_approved_requests_reachable() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_fixture_session(&app).await;
     let support_id = active_fixture_support(&app, &cookie).await;
@@ -4273,7 +4224,6 @@ async fn platform_support_pagination_keeps_older_approved_requests_reachable() {
 
 #[tokio::test]
 async fn platform_support_request_requires_reason_and_sets_request_deadline() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -4374,7 +4324,6 @@ async fn platform_support_request_requires_reason_and_sets_request_deadline() {
 
 #[tokio::test]
 async fn platform_support_request_proof_binds_household_and_reason() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     supported_household(&app).await;
     recovery_household(&app).await;
@@ -4452,7 +4401,6 @@ async fn platform_support_request_proof_binds_household_and_reason() {
 
 #[tokio::test]
 async fn platform_support_approval_read_and_termination_journey() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -4534,7 +4482,6 @@ async fn platform_support_approval_read_and_termination_journey() {
 
 #[tokio::test]
 async fn platform_support_activate_replay_and_wrong_operator_rejected() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     app.fixture
@@ -4779,7 +4726,6 @@ async fn assert_support_end_is_idempotent_and_audited(
 
 #[tokio::test]
 async fn platform_support_expiry_revokes_read_access() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -4832,7 +4778,6 @@ async fn platform_support_expiry_revokes_read_access() {
 
 #[tokio::test]
 async fn platform_support_read_denied_after_authority_changes() {
-    crate::authentication_fixture::reset_source_quota().await;
     for change in 0..4 {
         let app = Application::new().await;
         let cookie = admin_session(&app).await;
@@ -4892,7 +4837,6 @@ async fn platform_support_read_denied_after_authority_changes() {
 
 #[tokio::test]
 async fn platform_support_reason_is_not_leaked_in_denied_responses() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -4942,7 +4886,6 @@ async fn platform_support_reason_is_not_leaked_in_denied_responses() {
 
 #[tokio::test]
 async fn platform_support_audit_failure_rolls_back_request() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -4987,7 +4930,6 @@ async fn platform_support_audit_failure_rolls_back_request() {
 
 #[tokio::test]
 async fn platform_support_request_deadline_is_enforced() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_session(&app).await;
@@ -5309,7 +5251,6 @@ async fn platform_owner_recovery_page_omits_the_administrator_membership() {
 
 #[tokio::test]
 async fn platform_owner_recovery_excludes_accountless_participants() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     recovery_household(&app).await;
     app.fixture
@@ -5447,7 +5388,6 @@ async fn platform_owner_recovery_excludes_accountless_participants() {
 
 #[tokio::test]
 async fn platform_owner_recovery_treats_accountless_owner_as_unusable() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     household(
         &app,
@@ -5570,7 +5510,6 @@ async fn platform_owner_recovery_treats_accountless_owner_as_unusable() {
 
 #[tokio::test]
 async fn platform_support_read_waiting_on_row_lock_denies_after_deadline() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -5872,7 +5811,6 @@ async fn expiry_rejection_reached(app: &Application) -> Result<bool, sea_orm::Db
 #[tokio::test]
 async fn platform_support_expiry_audit_failure_rolls_back() -> Result<(), Box<dyn std::error::Error>>
 {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -5945,7 +5883,6 @@ async fn platform_support_expiry_audit_failure_rolls_back() -> Result<(), Box<dy
 
 #[tokio::test]
 async fn platform_support_read_includes_allocation_and_schedule_details() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_fixture_session(&app).await;
     let support_id = active_fixture_support(&app, &cookie).await;
@@ -6049,7 +5986,6 @@ fn raw_timestamp_present(body: &str) -> bool {
 
 #[tokio::test]
 async fn platform_support_owner_page_shows_requester_reason_and_scope() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_fixture_session(&app).await;
@@ -6111,7 +6047,6 @@ async fn platform_support_owner_page_shows_requester_reason_and_scope() {
 
 #[tokio::test]
 async fn platform_support_pages_render_readable_utc_deadlines() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_fixture_session(&app).await;
     let support_id = active_fixture_support(&app, &cookie).await;
@@ -6248,7 +6183,6 @@ fn confirm_task(
 
 #[tokio::test]
 async fn platform_support_read_waiting_on_authority_query_denies_after_deadline() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -6324,7 +6258,6 @@ async fn platform_support_read_waiting_on_authority_query_denies_after_deadline(
 
 #[tokio::test]
 async fn platform_support_approval_waiting_on_owner_lock_denies_after_deadline() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     supported_household(&app).await;
@@ -6407,7 +6340,6 @@ async fn platform_support_approval_waiting_on_owner_lock_denies_after_deadline()
 
 #[tokio::test]
 async fn platform_support_activation_waiting_on_authority_query_denies_after_deadline() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     supported_household(&app).await;
@@ -6583,7 +6515,6 @@ async fn session_lock(app: &Application, support_id: i64) -> (sea_orm::DatabaseT
 
 #[tokio::test]
 async fn platform_support_read_rechecks_admin_authority_after_authority_wait() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -6635,7 +6566,6 @@ async fn platform_support_read_rechecks_admin_authority_after_authority_wait() {
 
 #[tokio::test]
 async fn platform_support_approval_rechecks_owner_lockout_after_row_wait() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     supported_household(&app).await;
@@ -6713,7 +6643,6 @@ async fn platform_support_approval_rechecks_owner_lockout_after_row_wait() {
 
 #[tokio::test]
 async fn platform_support_activation_rechecks_admin_after_row_wait() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     supported_household(&app).await;
@@ -6785,7 +6714,6 @@ async fn platform_support_activation_rechecks_admin_after_row_wait() {
 
 #[tokio::test]
 async fn platform_support_activation_rechecks_household_after_row_wait() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     supported_household(&app).await;
@@ -6859,7 +6787,6 @@ async fn platform_support_activation_rechecks_household_after_row_wait() {
 
 #[tokio::test]
 async fn platform_support_end_rechecks_actor_after_row_wait() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -6949,7 +6876,6 @@ async fn platform_support_end_rechecks_actor_after_row_wait() {
 
 #[tokio::test]
 async fn platform_support_expired_request_denies_approval_and_records_expiry() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     supported_household(&app).await;
@@ -7019,7 +6945,6 @@ async fn platform_support_expired_request_denies_approval_and_records_expiry() {
 #[tokio::test]
 async fn platform_support_pending_expiry_audit_failure_rolls_back()
 -> Result<(), Box<dyn std::error::Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     supported_household(&app).await;
@@ -7110,7 +7035,6 @@ async fn platform_support_pending_expiry_audit_failure_rolls_back()
 
 #[tokio::test]
 async fn platform_support_end_on_expired_session_records_expiry_once() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -7242,7 +7166,6 @@ async fn platform_settings_get_renders_defaults_without_creating_the_singleton()
 
 #[tokio::test]
 async fn platform_audit_does_not_trust_spoofed_forwarded_for() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -7315,7 +7238,6 @@ async fn platform_audit_does_not_trust_spoofed_forwarded_for() {
 #[tokio::test]
 async fn platform_support_listing_expiry_audit_is_race_safe()
 -> Result<(), Box<dyn std::error::Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -7463,7 +7385,6 @@ async fn platform_support_listing_expiry_audit_is_race_safe()
 
 #[tokio::test]
 async fn platform_support_listing_does_not_expire_an_ended_session() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;

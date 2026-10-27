@@ -12,7 +12,6 @@ use serde_json::{Value, json};
 #[tokio::test]
 async fn guardian_creation_form_and_validation_keep_selected_declaration_language()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let slug = &app.fixture.household.slug;
     let result=async {

@@ -106,7 +106,6 @@ async fn login(app: &Application) -> reqwest::Response {
 
 #[tokio::test]
 async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie =
         super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
@@ -559,7 +558,6 @@ async fn create_lifecycle_key(app: &Application, cookie: &str) -> reqwest::Respo
 
 #[tokio::test]
 async fn native_personal_key_lifecycle_rolls_back_notice_and_audit() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie =
         super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
@@ -667,7 +665,6 @@ async fn native_personal_key_lifecycle_rolls_back_notice_and_audit() {
 
 #[tokio::test]
 async fn native_personal_key_create_retains_authoritative_admission_and_typed_scopes() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let other = app.fixture.foreign_household().await;
     let cookie =
@@ -789,7 +786,6 @@ async fn native_personal_key_create_retains_authoritative_admission_and_typed_sc
 
 #[tokio::test]
 async fn native_personal_key_create_waits_for_account_closure_and_rechecks_status() {
-    crate::authentication_fixture::reset_source_quota().await;
     use sea_orm::TransactionTrait;
     let app = Application::new().await;
     let cookie =

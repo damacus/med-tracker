@@ -82,7 +82,6 @@ async fn issued_change(app: &Application, cookie: &str, email: &str) -> String {
 }
 #[tokio::test]
 async fn native_email_change_uses_stock_confirmation_and_rejects_a_different_signed_in_account() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie =
         super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
@@ -136,7 +135,6 @@ async fn native_email_change_uses_stock_confirmation_and_rejects_a_different_sig
 }
 #[tokio::test]
 async fn native_email_change_notice_failure_rolls_back_account_profile_and_subject_audit() {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let cookie =
         super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;

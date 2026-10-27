@@ -59,7 +59,6 @@ async fn concurrent_households_share_one_database_without_rls_leakage() {
 
 #[tokio::test]
 async fn standard_loco_requests_use_the_shared_database_and_real_identity() {
-    crate::authentication_fixture::reset_source_quota().await;
     let fixture = scenario::Scenario::new().await;
     loco_rs::testing::request::request::<med_tracker::app::App, _, _>(
         |request, context| async move {
@@ -237,9 +236,51 @@ async fn native_browser_session_fixture_uses_real_routes_without_consuming_sourc
 }
 
 #[tokio::test]
+async fn guarded_requests_share_the_generous_test_source_limit() {
+    let fixture = scenario::Scenario::new().await;
+    let boot = loco_rs::testing::request::boot_test::<med_tracker::app::App>()
+        .await
+        .unwrap();
+    let server = loco_rs::TestServer::new(
+        boot.router
+            .clone()
+            .unwrap()
+            .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .unwrap();
+    for attempt in 0..45 {
+        let response = server
+            .post("/api/auth/sign-in/email")
+            .add_header("origin", boot.app_context.config.server.full_url())
+            .json(&serde_json::json!({
+                "email": format!("missing-shared-{}-{attempt}@example.test", fixture.household.slug),
+                "password": "wrong-password"
+            }))
+            .await;
+        assert_ne!(
+            response.status_code(),
+            429,
+            "attempt {attempt}: {}",
+            response.text()
+        );
+    }
+    drop(server);
+    if let Some(queue) = &boot.app_context.queue_provider {
+        queue.shutdown().unwrap();
+    }
+    boot.app_context.db.close().await.unwrap();
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn authentication_quota_fixture_resets_only_source_buckets_between_real_journeys() {
     use med_tracker::models::_entities::identity_rate_limits;
     use sea_orm::{ActiveModelTrait, Set};
+
+    unsafe {
+        std::env::set_var("MEDTRACKER_AUTH_LIMIT_SOURCE_MAXIMUM", "40");
+        std::env::set_var("MEDTRACKER_AUTH_LIMIT_SOURCE_WINDOW_SECONDS", "60");
+    }
 
     let fixture = scenario::Scenario::new().await;
     let unrelated = format!("synthetic-unrelated-{}", uuid::Uuid::new_v4());
