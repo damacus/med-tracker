@@ -100,8 +100,7 @@ async fn boot() -> (Fixture, BootResult) {
         state: uuid::Uuid::new_v4().to_string(),
     };
     let mut config = Config::new(&Environment::Test).unwrap();
-    config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
-        json!({"key":base64::Engine::encode(&base64::engine::general_purpose::STANDARD, [7_u8; 64]),"secure":false});
+    config.settings.get_or_insert_with(|| json!({}))["browser_session"] = json!({"key":base64::Engine::encode(&base64::engine::general_purpose::STANDARD, [7_u8; 64]),"secure":false});
     config.database.uri = std::env::var("DATABASE_URL").unwrap();
     assert!(!config.database.auto_migrate);
     assert!(!config.database.dangerously_recreate);
