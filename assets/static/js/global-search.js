@@ -19,7 +19,7 @@
       hint.className = 'app-search-shortcut';
       hint.setAttribute('aria-hidden', 'true');
       hint.textContent = apple ? '⌘K' : 'Ctrl+K';
-      button.setAttribute('aria-label', `${button.getAttribute('aria-label')} (${button.textContent.trim()})`);
+      button.setAttribute('aria-label', `${button.getAttribute('aria-label')} — ${button.textContent.trim()}`);
     });
   }
   shortcutHints();
