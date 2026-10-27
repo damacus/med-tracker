@@ -205,14 +205,14 @@ async fn shared_scenario_issues_an_independently_usable_authorization_code() {
 }
 #[test]
 fn storage_fixture_endpoints_require_exact_loopback_or_owned_compose() {
-    use super::avatar_storage::is_owned_endpoint;
+    use super::avatar_storage::storage_endpoint::is_owned_storage_endpoint as is_owned_endpoint;
     for endpoint in ["http://127.0.0.1:8123", "http://rustfs:9000"] {
         assert!(is_owned_endpoint(
             &reqwest::Url::parse(endpoint).unwrap(),
             true
         ));
     }
-    assert!(is_owned_endpoint(
+    assert!(!is_owned_endpoint(
         &reqwest::Url::parse("http://127.0.0.1:8123").unwrap(),
         false
     ));
