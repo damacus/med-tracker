@@ -4,6 +4,7 @@ vars:
 includes:
   internal:
     taskfile: compose.yml
+    dir: ..
     internal: true
 tasks:
   up:
@@ -37,17 +38,24 @@ tasks:
       - task: internal:caches
       - task: run
         vars:
-          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} {{.FILTER | default "" | shellQuote}}'
+          COMMAND: 'cargo nextest run --locked --no-tests=fail --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} {{.FILTER | default "" | shellQuote}}'
       - task: unit-extras
   integration:
     desc: "Run Docker integration tests; TARGET and FILTER narrow selection"
+    vars:
+      API_RUN_ID:
+        sh: uuidgen
     cmds:
+      - defer:
+          task: run
+          vars:
+            COMMAND: 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo run --locked --example api-fixtures -- cleanup'
       - task: internal:build
       - task: internal:caches
       - task: internal:services
       - task: run
         vars:
-          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--tests{{end}} {{.FILTER | default "" | shellQuote}}'
+          COMMAND: 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo nextest run --locked --profile api --no-tests=fail {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} {{.FILTER | default "" | shellQuote}} {{.CLI_ARGS}}'
       - task: acceptance-process
   browser:
     desc: "Run Docker browser tests; TARGET and FILTER narrow selection"
@@ -57,9 +65,10 @@ tasks:
       - task: internal:services
       - task: run
         vars:
-          COMMAND: 'cargo nextest run --locked --no-tests=fail --test-threads 2 --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only {{.FILTER | default "" | shellQuote}}'
+          COMMAND: 'cargo nextest run --locked --no-tests=fail --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only {{.FILTER | default "" | shellQuote}}'
   run:
     internal: true
+    run: always
     requires: {vars: [COMMAND]}
     cmds:
       - task: internal:run
@@ -75,7 +84,7 @@ tasks:
         vars: {COMMAND: cargo test --locked --workspace --doc}
   acceptance-process:
     internal: true
-    status: ['test -n {{printf "%s%s" (.TARGET | default "") (.FILTER | default "") | shellQuote}}']
+    status: ['test -n {{printf "%s%s%s" (.TARGET | default "") (.FILTER | default "") .CLI_ARGS | shellQuote}}']
     cmds:
       - task: run
         vars:

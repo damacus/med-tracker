@@ -2,7 +2,18 @@ use super::{
     Application, effects, identity, require,
     withdrawal::{declaration, no_store},
 };
-use sea_orm::{ConnectionTrait, DbBackend, DbErr, Statement};
+use med_tracker::models::_entities::{
+    account_lockouts, accounts, audit_export_deliveries, audit_ledger_entries,
+    household_memberships, oauth_applications, oauth_grants, versions,
+};
+use sea_orm::{
+    ActiveModelTrait,
+    ActiveValue::{NotSet, Set},
+    ColumnTrait, ConnectionTrait, DbBackend, DbErr, EntityTrait, IntoActiveModel, PaginatorTrait,
+    QueryFilter, Statement,
+    sea_query::{Alias, Expr, ExprTrait, Func, Query},
+};
+
 use serde_json::{Value, json};
 
 async fn withdrawal(app: &Application, token: &str, id: i64) -> Result<reqwest::Response, DbErr> {
@@ -19,9 +30,48 @@ async fn withdrawal(app: &Application, token: &str, id: i64) -> Result<reqwest::
 }
 
 async fn state(app: &Application, id: i64) -> Result<Value, DbErr> {
-    app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT jsonb_build_object('declaration',(SELECT to_jsonb(d) FROM public.guardian_declarations d WHERE d.id=$1),'withdrawals',(SELECT count(*) FROM public.versions WHERE item_type='GuardianDeclaration' AND item_id=$1 AND event='withdraw'),'ledger',(SELECT count(*) FROM public.audit_ledger_entries),'deliveries',(SELECT count(*) FROM public.audit_export_deliveries),'active_guardian_memberships',(SELECT count(*) FROM public.household_memberships WHERE person_id=73001 AND status='active' AND revoked_at IS NULL)) AS state",
-        [id.into()])).await?.ok_or_else(||DbErr::Custom("Guardian persisted state missing".into()))?.try_get("","state")
+    let query = Query::select()
+        .expr_as(
+            Func::cust("to_jsonb").arg(Expr::col(Alias::new("declaration"))),
+            "state",
+        )
+        .from_as("guardian_declarations", "declaration")
+        .and_where(Expr::col(("declaration", "id")).eq(id))
+        .to_owned();
+    let declaration = app
+        .fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await?
+        .ok_or_else(|| DbErr::Custom("Guardian persisted state missing".into()))?
+        .try_get::<Value>("", "state")?;
+    let history = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("GuardianDeclaration"))
+        .filter(versions::Column::ItemId.eq(id))
+        .all(&app.fixture.admin)
+        .await?;
+    let ledger = audit_ledger_entries::Entity::find()
+        .filter(audit_ledger_entries::Column::SourceTable.eq("versions"))
+        .filter(audit_ledger_entries::Column::SourceId.is_in(history.iter().map(|row| row.id)))
+        .all(&app.fixture.admin)
+        .await?;
+    let deliveries = audit_export_deliveries::Entity::find()
+        .filter(
+            audit_export_deliveries::Column::AuditLedgerEntryId
+                .is_in(ledger.iter().map(|row| row.id)),
+        )
+        .count(&app.fixture.admin)
+        .await?;
+    let memberships = household_memberships::Entity::find()
+        .filter(household_memberships::Column::PersonId.eq(app.fixture.adult.id))
+        .filter(household_memberships::Column::Status.eq("active"))
+        .filter(household_memberships::Column::RevokedAt.is_null())
+        .count(&app.fixture.admin)
+        .await?;
+    Ok(
+        json!({"declaration":declaration,"withdrawals":history.iter().filter(|row|row.event=="withdraw").count(),"ledger":ledger.len(),
+    "deliveries":deliveries,"active_guardian_memberships":memberships}),
+    )
 }
 
 async fn exchange(
@@ -70,6 +120,27 @@ async fn exchange(
         .ok_or_else(|| DbErr::Custom("Credential exchange omitted access token".into()))
 }
 
+pub(super) async fn native_token(app: &Application, account: i64) -> Result<String, DbErr> {
+    let code = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().naive_utc();
+    let mut grant = app.fixture.authorization.clone().into_active_model();
+    grant.id = NotSet;
+    grant.account_id = Set(account);
+    grant.code = Set(Some(code.clone()));
+    grant.expires_in = Set(now + chrono::Duration::minutes(5));
+    grant.authenticated_at = Set(Some(now));
+    grant.last_used_at = Set(Some(now));
+    grant.insert(&app.fixture.admin).await?;
+    exchange(
+        app,
+        &app.fixture.client_id,
+        &code,
+        &app.fixture.application.redirect_uri,
+        None,
+    )
+    .await
+}
+
 #[tokio::test]
 async fn guardian_global_withdrawal_excludes_valid_household_and_integration_credentials()
 -> Result<(), DbErr> {
@@ -78,10 +149,12 @@ async fn guardian_global_withdrawal_excludes_valid_household_and_integration_cre
         let native=app.token().await;
         let (_,id)=declaration(&app,&native).await?;
         super::super::account_sessions::stored_credentials(&app).await;
+        let current = super::super::account_sessions::credential_token(&app,"current");
+        let app_token = super::super::account_sessions::credential_token(&app,"app");
         let key=super::super::profile::issue_profile_personal_key(&app,"Guardian exclusion").await;
-        for (kind,token,expected) in [("household session","synthetic-current-session",403_u16),
-            ("household app token","synthetic-app-token",403_u16),("personal key",key.as_str(),401_u16)] {
-            let positive=app.client.get(format!("{}/api/v1/households/72001/people",app.origin))
+        for (kind,token,expected) in [("household session",current.as_str(),403_u16),
+            ("household app token",app_token.as_str(),403_u16),("personal key",key.as_str(),401_u16)] {
+            let positive=app.client.get(format!("{}/api/v1/households/{}/people",app.origin,app.fixture.household.id))
                 .bearer_auth(token).send().await.map_err(|_|DbErr::Custom("Local credential prerequisite failed before response".into()))?;
             require(positive.status().as_u16()==200,&format!("The {kind} must first prove valid local care access"))?;
             let before=state(&app,id).await?;
@@ -92,11 +165,28 @@ async fn guardian_global_withdrawal_excludes_valid_household_and_integration_cre
             require(state(&app,id).await?==before && effects(&app).await?==clinical && identity(&app).await?==identities,
                 "Credential exclusion must preserve declaration, clinical state, identities and audit")?;
         }
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO public.oauth_applications(id,account_id,client_id,client_kind,name,redirect_uri,scopes,token_endpoint_auth_method,client_secret_hash,created_at,updated_at) VALUES(75991,71001,'smart-guardian-exclusion','integration','Synthetic guardian integration','https://example.test/guardian-callback','launch/patient patient/*.rs offline_access','client_secret_post',crypt('password',gen_salt('bf',4)),now(),now());
-             INSERT INTO public.oauth_grants(id,account_id,oauth_application_id,client_kind,household_membership_id,person_id,permissions_version,code,code_challenge,code_challenge_method,redirect_uri,scopes,expires_in,authenticated_at,last_used_at,created_at,updated_at) VALUES(76991,71001,75991,'integration',74001,73001,1,'synthetic-guardian-integration-code','E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM','S256','https://example.test/guardian-callback','launch/patient patient/*.rs offline_access',now()+interval '5 minutes',now(),now(),now(),now())"
-        ).await?;
-        let integration=exchange(&app,"smart-guardian-exclusion","synthetic-guardian-integration-code","https://example.test/guardian-callback",Some("password")).await?;
+        let client_id = format!("guardian-integration-{}",uuid::Uuid::new_v4());
+        let code = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().naive_utc();
+        let application = oauth_applications::ActiveModel {
+            account_id:Set(Some(app.fixture.account.id)), client_id:Set(client_id.clone()),
+            client_kind:Set("integration".into()), name:Set("Synthetic guardian integration".into()),
+            redirect_uri:Set("https://example.test/guardian-callback".into()),
+            scopes:Set("launch/patient patient/*.rs offline_access".into()),
+            token_endpoint_auth_method:Set("client_secret_post".into()),
+            client_secret_hash:Set(Some(bcrypt::hash("password",4).map_err(|error|DbErr::Custom(error.to_string()))?)),
+            created_at:Set(now),updated_at:Set(now),..Default::default()
+        }.insert(&app.fixture.admin).await?;
+        oauth_grants::ActiveModel {
+            account_id:Set(app.fixture.account.id),oauth_application_id:Set(application.id),
+            client_kind:Set("integration".into()),household_membership_id:Set(Some(app.fixture.membership.id)),
+            person_id:Set(Some(app.fixture.adult.id)),permissions_version:Set(Some(app.fixture.membership.permissions_version)),
+            code:Set(Some(code.clone())),code_challenge:Set(Some("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".into())),
+            code_challenge_method:Set(Some("S256".into())),redirect_uri:Set(Some(application.redirect_uri.clone())),
+            scopes:Set(application.scopes.clone()),expires_in:Set(now+chrono::Duration::minutes(5)),
+            authenticated_at:Set(Some(now)),last_used_at:Set(Some(now)),created_at:Set(now),updated_at:Set(now),..Default::default()
+        }.insert(&app.fixture.admin).await?;
+        let integration=exchange(&app,&client_id,&code,&application.redirect_uri,Some("password")).await?;
         let before=state(&app,id).await?;
         let denied=withdrawal(&app,&integration,id).await?;
         require(denied.status().as_u16()==401 && no_store(&denied),"A genuinely exchanged integration credential must not withdraw global declarations")?;
@@ -111,24 +201,58 @@ async fn guardian_global_withdrawal_excludes_valid_household_and_integration_cre
 async fn guardian_withdrawal_rejects_foreign_owner_after_live_native_profile_prerequisite()
 -> Result<(), DbErr> {
     let app = Application::new().await;
-    let result=async {
-        let token=app.token().await;
-        let (_,id)=declaration(&app,&token).await?;
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO public.people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73991,'Synthetic other declaration owner',0,true,now(),now());
-             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71991,73991,'other-guardian@example.test',2,now(),now());
-             INSERT INTO public.oauth_grants(id,account_id,oauth_application_id,client_kind,code,code_challenge,code_challenge_method,redirect_uri,scopes,expires_in,authenticated_at,last_used_at,created_at,updated_at) VALUES(76992,71991,75001,'mobile','synthetic-other-guardian-code','E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM','S256','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',now()+interval '5 minutes',now(),now(),now(),now())"
-        ).await?;
-        let foreign=exchange(&app,"native","synthetic-other-guardian-code","io.damacus.medtracker:/oauth2redirect",None).await?;
-        let positive=app.client.get(format!("{}/api/v1/auth/profile",app.origin)).bearer_auth(&foreign).send().await
-            .map_err(|_|DbErr::Custom("Foreign native profile prerequisite failed before response".into()))?;
-        require(positive.status().as_u16()==200,"Foreign zero-household native Account must be genuinely authenticated")?;
-        let before=state(&app,id).await?;
-        let denied=withdrawal(&app,&foreign,id).await?;
-        require(denied.status().as_u16()==404 && no_store(&denied),"A valid foreign Account must not discover or withdraw another guardian's declaration")?;
-        require(state(&app,id).await?==before,"Foreign denial must preserve declaration and audit")?;
+    let result = async {
+        let token = app.token().await;
+        let (_, id) = declaration(&app, &token).await?;
+        let foreign_account = app.fixture.foreign_household().await;
+        household_memberships::Entity::delete_by_id(foreign_account.membership.id)
+            .exec(&app.fixture.admin)
+            .await?;
+        let code = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().naive_utc();
+        let mut grant = app.fixture.authorization.clone().into_active_model();
+        grant.id = NotSet;
+        grant.account_id = Set(foreign_account.account.id);
+        grant.code = Set(Some(code.clone()));
+        grant.expires_in = Set(now + chrono::Duration::minutes(5));
+        grant.authenticated_at = Set(Some(now));
+        grant.last_used_at = Set(Some(now));
+        grant.insert(&app.fixture.admin).await?;
+        let foreign = exchange(
+            &app,
+            &app.fixture.client_id,
+            &code,
+            &app.fixture.application.redirect_uri,
+            None,
+        )
+        .await?;
+        foreign_account.close().await;
+        let positive = app
+            .client
+            .get(format!("{}/api/v1/auth/profile", app.origin))
+            .bearer_auth(&foreign)
+            .send()
+            .await
+            .map_err(|_| {
+                DbErr::Custom("Foreign native profile prerequisite failed before response".into())
+            })?;
+        require(
+            positive.status().as_u16() == 200,
+            "Foreign zero-household native Account must be genuinely authenticated",
+        )?;
+        let before = state(&app, id).await?;
+        let denied = withdrawal(&app, &foreign, id).await?;
+        require(
+            denied.status().as_u16() == 404 && no_store(&denied),
+            "A valid foreign Account must not discover or withdraw another guardian's declaration",
+        )?;
+        require(
+            state(&app, id).await? == before,
+            "Foreign denial must preserve declaration and audit",
+        )?;
         Ok(())
-    }.await;
+    }
+    .await;
     app.close().await;
     result
 }
@@ -136,11 +260,7 @@ async fn guardian_withdrawal_rejects_foreign_owner_after_live_native_profile_pre
 #[tokio::test]
 async fn guardian_terminal_replay_rechecks_revoked_locked_and_closed_native_authority()
 -> Result<(), DbErr> {
-    for mutation in [
-        "UPDATE public.oauth_grants SET revoked_at=now() WHERE id=76001",
-        "INSERT INTO public.account_lockouts(account_id,key,deadline) VALUES(71001,'synthetic-guardian-lock',now()+interval '1 hour')",
-        "UPDATE public.accounts SET status=3 WHERE id=71001",
-    ] {
+    for mutation in 0..3 {
         let app = Application::new().await;
         let result: Result<(), DbErr> = async {
             let token = app.token().await;
@@ -156,7 +276,34 @@ async fn guardian_terminal_replay_rechecks_revoked_locked_and_closed_native_auth
                 replay.status().as_u16() == 200 && state(&app, id).await? == before,
                 "Live terminal replay must add no second version or ledger event",
             )?;
-            app.fixture.admin.execute_unprepared(mutation).await?;
+            let now = chrono::Utc::now().naive_utc();
+            match mutation {
+                0 => {
+                    oauth_grants::Entity::update_many()
+                        .col_expr(oauth_grants::Column::RevokedAt, Expr::val(now))
+                        .filter(oauth_grants::Column::Id.eq(app.fixture.authorization.id))
+                        .exec(&app.fixture.admin)
+                        .await?;
+                }
+                1 => {
+                    account_lockouts::ActiveModel {
+                        account_id: Set(app.fixture.account.id),
+                        key: Set(uuid::Uuid::new_v4().to_string()),
+                        deadline: Set(now + chrono::Duration::hours(1)),
+                        ..Default::default()
+                    }
+                    .insert(&app.fixture.admin)
+                    .await?;
+                }
+                _ => {
+                    accounts::Entity::update_many()
+                        .col_expr(accounts::Column::Status, Expr::val(3))
+                        .filter(accounts::Column::Id.eq(app.fixture.account.id))
+                        .exec(&app.fixture.admin)
+                        .await?;
+                }
+            }
+
             let before = state(&app, id).await?;
             let denied = withdrawal(&app, &token, id).await?;
             require(
@@ -211,7 +358,15 @@ async fn guardian_withdrawal_reached_version_and_ledger_failures_rollback_and_re
             require(replay.status().as_u16()==200 && state(&app,id).await?==committed,"Recovered terminal replay must preserve exact audit count")?;
             Ok(())
         }.await;
+        let cleanup = app.fixture.admin.execute_unprepared(
+            "DROP TRIGGER IF EXISTS synthetic_guardian_withdrawal_failure ON public.versions;
+             DROP TRIGGER IF EXISTS synthetic_guardian_withdrawal_failure ON public.audit_ledger_entries;
+             DROP FUNCTION IF EXISTS public.synthetic_guardian_withdrawal_failure();
+             DROP SEQUENCE IF EXISTS public.synthetic_guardian_withdrawal_reached"
+        ).await;
         app.close().await;
+        cleanup?;
+
         result?;
     }
     Ok(())

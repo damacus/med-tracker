@@ -4,10 +4,11 @@ use super::*;
 async fn app_tokens_issue_list_authenticate_and_revoke() {
     let app = Application::new().await;
     let token = app.token().await;
+    let household_id = app.fixture.household.id;
     let issued = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .bearer_auth(&token)
@@ -33,7 +34,10 @@ async fn app_tokens_issue_list_authenticate_and_revoke() {
     let token_id = issued_body["data"]["id"].as_i64().unwrap();
     let me = app
         .client
-        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{household_id}/me",
+            app.origin
+        ))
         .bearer_auth(&secret)
         .send()
         .await
@@ -42,7 +46,7 @@ async fn app_tokens_issue_list_authenticate_and_revoke() {
     let list = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .bearer_auth(&token)
@@ -54,7 +58,7 @@ async fn app_tokens_issue_list_authenticate_and_revoke() {
     let revoked = app
         .client
         .delete(format!(
-            "{}/api/v1/households/72001/admin/app_tokens/{token_id}",
+            "{}/api/v1/households/{household_id}/admin/app_tokens/{token_id}",
             app.origin
         ))
         .bearer_auth(&token)
@@ -64,7 +68,10 @@ async fn app_tokens_issue_list_authenticate_and_revoke() {
     let revoked_status = revoked.status().as_u16();
     let dead = app
         .client
-        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{household_id}/me",
+            app.origin
+        ))
         .bearer_auth(&secret)
         .send()
         .await
@@ -73,7 +80,7 @@ async fn app_tokens_issue_list_authenticate_and_revoke() {
     let after = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .bearer_auth(&token)
@@ -81,15 +88,12 @@ async fn app_tokens_issue_list_authenticate_and_revoke() {
         .await
         .unwrap();
     let after_body: Value = after.json().await.unwrap();
-    let events = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(DbBackend::Postgres,
-            "SELECT count(*) AS total FROM security_audit_events WHERE event_type LIKE 'auth_token/api_app_token/%'"))
+    let events = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::HouseholdId.eq(household_id))
+        .filter(security_audit_events::Column::ActorAccountId.eq(app.fixture.account.id))
+        .filter(security_audit_events::Column::EventType.starts_with("auth_token/api_app_token/"))
+        .count(&app.fixture.admin)
         .await
-        .unwrap()
-        .unwrap()
-        .try_get::<i64>("", "total")
         .unwrap();
     app.close().await;
     assert_eq!(me_status, 200);
@@ -122,12 +126,17 @@ async fn app_tokens_keyed_create_hides_the_secret_on_replay() {
 
     let app = Application::new().await;
     let token = app.token().await;
-    let url = format!("{}/api/v1/households/72001/admin/app_tokens", app.origin);
+    let household_id = app.fixture.household.id;
+    let url = format!(
+        "{}/api/v1/households/{household_id}/admin/app_tokens",
+        app.origin
+    );
+    let replay_key = uuid::Uuid::new_v4().to_string();
     let first = app
         .client
         .post(&url)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-app-token")
+        .header("idempotency-key", &replay_key)
         .json(&json!({"api_app_token":{"name":"Keyed device"}}))
         .send()
         .await
@@ -139,7 +148,10 @@ async fn app_tokens_keyed_create_hides_the_secret_on_replay() {
     let issued_id = first_body["data"]["id"].as_i64().unwrap();
     let authenticated = app
         .client
-        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{household_id}/me",
+            app.origin
+        ))
         .bearer_auth(secret)
         .send()
         .await
@@ -149,7 +161,7 @@ async fn app_tokens_keyed_create_hides_the_secret_on_replay() {
         .client
         .post(&url)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-app-token")
+        .header("idempotency-key", &replay_key)
         .json(&json!({"api_app_token":{"name":"Keyed device"}}))
         .send()
         .await
@@ -160,7 +172,7 @@ async fn app_tokens_keyed_create_hides_the_secret_on_replay() {
         .client
         .post(&url)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-app-token")
+        .header("idempotency-key", &replay_key)
         .json(&json!({"api_app_token":{"name":"Changed device"}}))
         .send()
         .await
@@ -168,27 +180,32 @@ async fn app_tokens_keyed_create_hides_the_secret_on_replay() {
     let conflict_status = conflict.status().as_u16();
     let conflict_body: Value = conflict.json().await.unwrap();
     let saved = api_idempotency_key::Entity::find()
-        .filter(api_idempotency_key::Column::Key.eq("synthetic-app-token"))
+        .filter(api_idempotency_key::Column::HouseholdId.eq(household_id))
+        .filter(api_idempotency_key::Column::Key.eq(&replay_key))
         .one(&app.fixture.admin)
         .await
         .unwrap()
         .unwrap();
     let issued = api_app_token::Entity::find()
+        .filter(api_app_token::Column::AccountId.eq(app.fixture.account.id))
         .filter(api_app_token::Column::Name.eq("Keyed device"))
         .all(&app.fixture.admin)
         .await
         .unwrap();
     let changed = api_app_token::Entity::find()
+        .filter(api_app_token::Column::AccountId.eq(app.fixture.account.id))
         .filter(api_app_token::Column::Name.eq("Changed device"))
         .all(&app.fixture.admin)
         .await
         .unwrap();
     let audit = security_audit_event::Entity::find()
+        .filter(security_audit_event::Column::ActorAccountId.eq(app.fixture.account.id))
         .filter(security_audit_event::Column::EventType.eq("auth_token/api_app_token/created"))
         .all(&app.fixture.admin)
         .await
         .unwrap();
     let versions = version::Entity::find()
+        .filter(version::Column::HouseholdId.eq(household_id))
         .filter(version::Column::Event.eq("auth_token/api_app_token/created"))
         .all(&app.fixture.admin)
         .await
@@ -240,13 +257,14 @@ async fn app_tokens_failed_receipt_does_not_issue_a_credential() {
 
     let app = Application::new().await;
     let token = app.token().await;
+    let household_id = app.fixture.household.id;
     let long_key = (0..100)
         .map(|_| uuid::Uuid::new_v4().simple().to_string())
         .collect::<String>();
     let response = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .bearer_auth(&token)
@@ -257,16 +275,19 @@ async fn app_tokens_failed_receipt_does_not_issue_a_credential() {
         .unwrap();
     let status = response.status().as_u16();
     let tokens = api_app_token::Entity::find()
+        .filter(api_app_token::Column::AccountId.eq(app.fixture.account.id))
         .filter(api_app_token::Column::Name.eq("Failed receipt"))
         .all(&app.fixture.admin)
         .await
         .unwrap();
     let receipts = api_idempotency_key::Entity::find()
+        .filter(api_idempotency_key::Column::HouseholdId.eq(household_id))
         .filter(api_idempotency_key::Column::Key.eq(long_key.clone()))
         .all(&app.fixture.admin)
         .await
         .unwrap();
     let audits = security_audit_event::Entity::find()
+        .filter(security_audit_event::Column::ActorAccountId.eq(app.fixture.account.id))
         .filter(security_audit_event::Column::EventType.eq("auth_token/api_app_token/created"))
         .all(&app.fixture.admin)
         .await
@@ -274,7 +295,7 @@ async fn app_tokens_failed_receipt_does_not_issue_a_credential() {
     let issued: Value = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .bearer_auth(&token)
@@ -290,7 +311,7 @@ async fn app_tokens_failed_receipt_does_not_issue_a_credential() {
     let revoke = app
         .client
         .delete(format!(
-            "{}/api/v1/households/72001/admin/app_tokens/{issued_id}",
+            "{}/api/v1/households/{household_id}/admin/app_tokens/{issued_id}",
             app.origin
         ))
         .bearer_auth(&token)
@@ -304,13 +325,17 @@ async fn app_tokens_failed_receipt_does_not_issue_a_credential() {
         .unwrap()
         .unwrap();
     let revoke_audits = security_audit_event::Entity::find()
+        .filter(security_audit_event::Column::ActorAccountId.eq(app.fixture.account.id))
         .filter(security_audit_event::Column::EventType.eq("auth_token/api_app_token/revoked"))
         .all(&app.fixture.admin)
         .await
         .unwrap();
     let still_authenticated = app
         .client
-        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{household_id}/me",
+            app.origin
+        ))
         .bearer_auth(issued_secret)
         .send()
         .await
@@ -330,10 +355,11 @@ async fn app_tokens_failed_receipt_does_not_issue_a_credential() {
 async fn app_tokens_keyed_revoke_replays_and_is_idempotent() {
     let app = Application::new().await;
     let token = app.token().await;
+    let household_id = app.fixture.household.id;
     let issued: Value = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .bearer_auth(&token)
@@ -346,14 +372,15 @@ async fn app_tokens_keyed_revoke_replays_and_is_idempotent() {
         .unwrap();
     let token_id = issued["data"]["id"].as_i64().unwrap();
     let url = format!(
-        "{}/api/v1/households/72001/admin/app_tokens/{token_id}",
+        "{}/api/v1/households/{household_id}/admin/app_tokens/{token_id}",
         app.origin
     );
+    let replay_key = uuid::Uuid::new_v4().to_string();
     let first = app
         .client
         .delete(&url)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-app-token-delete")
+        .header("idempotency-key", &replay_key)
         .send()
         .await
         .unwrap();
@@ -362,7 +389,7 @@ async fn app_tokens_keyed_revoke_replays_and_is_idempotent() {
         .client
         .delete(&url)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-app-token-delete")
+        .header("idempotency-key", &replay_key)
         .send()
         .await
         .unwrap();
@@ -387,7 +414,11 @@ async fn app_tokens_keyed_revoke_replays_and_is_idempotent() {
 async fn app_tokens_validation_and_scoping() {
     let app = Application::new().await;
     let token = app.token().await;
-    let url = format!("{}/api/v1/households/72001/admin/app_tokens", app.origin);
+    let household_id = app.fixture.household.id;
+    let url = format!(
+        "{}/api/v1/households/{household_id}/admin/app_tokens",
+        app.origin
+    );
     let mut statuses = Vec::new();
     for body in [
         json!({}),
@@ -427,7 +458,7 @@ async fn app_tokens_validation_and_scoping() {
     statuses.push(bad_id.status().as_u16());
     let missing = app
         .client
-        .delete(format!("{url}/99999"))
+        .delete(format!("{url}/-1"))
         .bearer_auth(&token)
         .send()
         .await
@@ -441,7 +472,11 @@ async fn app_tokens_validation_and_scoping() {
 async fn app_tokens_validation_preserves_field_errors_and_null_expiry() {
     let app = Application::new().await;
     let token = app.token().await;
-    let url = format!("{}/api/v1/households/72001/admin/app_tokens", app.origin);
+    let household_id = app.fixture.household.id;
+    let url = format!(
+        "{}/api/v1/households/{household_id}/admin/app_tokens",
+        app.origin
+    );
     let mut results = Vec::new();
     for body in [
         json!({"api_app_token":{"name":"  ","expires_at":"tomorrow"}}),
@@ -483,15 +518,12 @@ async fn app_tokens_validation_preserves_field_errors_and_null_expiry() {
 async fn app_tokens_require_household_administration() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
-        .await
-        .unwrap();
+    let household_id = app.fixture.household.id;
+    app.fixture.member().await;
     let list = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .bearer_auth(&token)
@@ -501,7 +533,7 @@ async fn app_tokens_require_household_administration() {
     let create = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .bearer_auth(&token)
@@ -512,7 +544,7 @@ async fn app_tokens_require_household_administration() {
     let destroy = app
         .client
         .delete(format!(
-            "{}/api/v1/households/72001/admin/app_tokens/1",
+            "{}/api/v1/households/{household_id}/admin/app_tokens/-1",
             app.origin
         ))
         .bearer_auth(&token)
@@ -522,7 +554,7 @@ async fn app_tokens_require_household_administration() {
     let anonymous = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/admin/app_tokens",
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
             app.origin
         ))
         .send()

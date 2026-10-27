@@ -1,13 +1,24 @@
 use super::contract::{assert_value, contract, resolve};
 use super::*;
 
+async fn preference_version(app: &Application, event: &str) -> versions::Model {
+    versions::Entity::find()
+        .filter(versions::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(versions::Column::ItemType.eq("NotificationPreference"))
+        .filter(versions::Column::Event.eq(event))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+}
+
 #[tokio::test]
 async fn notification_preference_api_creates_defaults_and_preserves_omitted_fields() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(
-        "{}/api/v1/households/72001/notification_preference",
-        app.origin
+        "{}/api/v1/households/{}/notification_preference",
+        app.origin, app.fixture.household.id
     );
     let missing = app
         .client
@@ -35,7 +46,7 @@ async fn notification_preference_api_creates_defaults_and_preserves_omitted_fiel
         .unwrap()
         .to_owned();
     let created: Value = created.json().await.unwrap();
-    assert_eq!(created["data"]["person_id"], 73001);
+    assert_eq!(created["data"]["person_id"], app.fixture.adult.id);
     assert_eq!(created["data"]["enabled"], false);
     assert_eq!(created["data"]["dose_due_enabled"], true);
     assert_eq!(created["data"]["private_text_enabled"], false);
@@ -89,8 +100,8 @@ async fn notification_preference_api_rejects_invalid_input_without_partial_write
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(
-        "{}/api/v1/households/72001/notification_preference",
-        app.origin
+        "{}/api/v1/households/{}/notification_preference",
+        app.origin, app.fixture.household.id
     );
     for body in [
         json!({"notification_preference": {}}),
@@ -98,7 +109,7 @@ async fn notification_preference_api_rejects_invalid_input_without_partial_write
         json!({"notification_preference": {"enabled": true, "morning_time": "24:00"}}),
         json!({"notification_preference": {"enabled": true, "morning_time": "23:59:60"}}),
         json!({"notification_preference": {"enabled": true, "morning_time": "07:5"}}),
-        json!({"notification_preference": {"enabled": true, "person_id": 73001}}),
+        json!({"notification_preference": {"enabled": true, "person_id": app.fixture.adult.id}}),
     ] {
         let rejected = app
             .client
@@ -126,15 +137,16 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_membershi
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(
-        "{}/api/v1/households/72001/notification_preference",
-        app.origin
+        "{}/api/v1/households/{}/notification_preference",
+        app.origin, app.fixture.household.id
     );
     let body = json!({"notification_preference":{"enabled":false}});
+    let replay_key = uuid::Uuid::new_v4().to_string();
     let first = app
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-notification-key")
+        .header("idempotency-key", &replay_key)
         .json(&body)
         .send()
         .await
@@ -146,7 +158,7 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_membershi
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-notification-key")
+        .header("idempotency-key", &replay_key)
         .json(&body)
         .send()
         .await
@@ -163,7 +175,7 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_membershi
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-notification-key")
+        .header("idempotency-key", &replay_key)
         .json(&json!({"notification_preference":{"enabled":true}}))
         .send()
         .await
@@ -171,16 +183,14 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_membershi
     assert_eq!(conflict.status().as_u16(), 409);
     let conflict: Value = conflict.json().await.unwrap();
     assert_eq!(conflict["error"]["code"], "idempotency_key_reused");
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
-        .await
-        .unwrap();
+    let mut grant = app.fixture.grant.clone().into_active_model();
+    grant.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    grant.update(&app.fixture.admin).await.unwrap();
     let still_self = app
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-notification-key")
+        .header("idempotency-key", &replay_key)
         .json(&body)
         .send()
         .await
@@ -190,16 +200,14 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_membershi
         still_self.headers().get("idempotency-replayed").unwrap(),
         "true"
     );
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
-        .await
-        .unwrap();
+    let mut membership = app.fixture.membership.clone().into_active_model();
+    membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    membership.update(&app.fixture.admin).await.unwrap();
     let denied_replay = app
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .header("idempotency-key", "synthetic-notification-key")
+        .header("idempotency-key", &replay_key)
         .json(&body)
         .send()
         .await
@@ -219,8 +227,8 @@ async fn notification_audit_versions_record_old_new_pairs_and_omit_unchanged_fie
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(
-        "{}/api/v1/households/72001/notification_preference",
-        app.origin
+        "{}/api/v1/households/{}/notification_preference",
+        app.origin, app.fixture.household.id
     );
     let created = app
         .client
@@ -232,16 +240,9 @@ async fn notification_audit_versions_record_old_new_pairs_and_omit_unchanged_fie
         .unwrap();
     assert_eq!(created.status().as_u16(), 200);
     let created: Value = created.json().await.unwrap();
-    let creation = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT object,object_changes::jsonb AS changes FROM versions WHERE item_type='NotificationPreference' AND event='create'"
-    )).await.unwrap().unwrap();
-    assert!(
-        creation
-            .try_get::<Option<String>>("", "object")
-            .unwrap()
-            .is_none()
-    );
-    let changes = creation.try_get::<Value>("", "changes").unwrap();
+    let creation = preference_version(&app, "create").await;
+    assert!(creation.object.is_none());
+    let changes: Value = serde_json::from_str(creation.object_changes.as_deref().unwrap()).unwrap();
     assert_eq!(changes["enabled"], json!([null, false]));
     assert_eq!(changes["morning_time"], json!([null, "08:00:00"]));
     let patch = json!({"notification_preference":{"morning_time":"07:05","night_time":null}});
@@ -255,15 +256,13 @@ async fn notification_audit_versions_record_old_new_pairs_and_omit_unchanged_fie
         .unwrap();
     assert_eq!(updated.status().as_u16(), 200);
     let updated: Value = updated.json().await.unwrap();
-    let version = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT object::jsonb AS before,object_changes::jsonb AS changes FROM versions WHERE item_type='NotificationPreference' AND event='update'"
-    )).await.unwrap().unwrap();
+    let version = preference_version(&app, "update").await;
     assert_eq!(
-        version.try_get::<Value>("", "before").unwrap(),
+        serde_json::from_str::<Value>(version.object.as_deref().unwrap()).unwrap(),
         created["data"]
     );
     assert_eq!(
-        version.try_get::<Value>("", "changes").unwrap(),
+        serde_json::from_str::<Value>(version.object_changes.as_deref().unwrap()).unwrap(),
         json!({
             "morning_time":["08:00:00","07:05:00"],
             "night_time":["22:00:00",null],
@@ -279,17 +278,13 @@ async fn notification_audit_versions_record_old_new_pairs_and_omit_unchanged_fie
         .await
         .unwrap();
     assert_eq!(no_op.status().as_u16(), 200);
-    let count = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS versions FROM versions WHERE item_type='NotificationPreference'",
-        ))
+    let count = versions::Entity::find()
+        .filter(versions::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(versions::Column::ItemType.eq("NotificationPreference"))
+        .count(&app.fixture.admin)
         .await
-        .unwrap()
         .unwrap();
-    assert_eq!(count.try_get::<i64>("", "versions").unwrap(), 2);
+    assert_eq!(count, 2);
     app.close().await;
 }
 
@@ -298,8 +293,8 @@ async fn notification_preference_get_matches_documented_contract() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(
-        "{}/api/v1/households/72001/notification_preference",
-        app.origin
+        "{}/api/v1/households/{}/notification_preference",
+        app.origin, app.fixture.household.id
     );
     let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/notification_preference"]["get"];
@@ -393,14 +388,12 @@ async fn notification_preference_get_matches_documented_contract() {
         &body,
         "preference response",
     );
-    assert_eq!(body["data"]["person_id"], 73001);
+    assert_eq!(body["data"]["person_id"], app.fixture.adult.id);
     assert_eq!(body["data"]["evening_time"], "19:30:00");
 
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
-        .await
-        .unwrap();
+    let mut grant = app.fixture.grant.clone().into_active_model();
+    grant.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    grant.update(&app.fixture.admin).await.unwrap();
     let still_self = app
         .client
         .get(&endpoint)
@@ -410,12 +403,10 @@ async fn notification_preference_get_matches_documented_contract() {
         .unwrap();
     assert_eq!(still_self.status().as_u16(), 200);
     let still_self_body: Value = still_self.json().await.unwrap();
-    assert_eq!(still_self_body["data"]["person_id"], 73001);
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
-        .await
-        .unwrap();
+    assert_eq!(still_self_body["data"]["person_id"], app.fixture.adult.id);
+    let mut membership = app.fixture.membership.clone().into_active_model();
+    membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    membership.update(&app.fixture.admin).await.unwrap();
     let denied = app
         .client
         .get(&endpoint)
@@ -434,11 +425,12 @@ async fn notification_preference_get_matches_documented_contract() {
     assert_value(contract, forbidden_schema, &denied_body, "revoked member");
     assert_eq!(denied_body["error"]["code"], "forbidden");
 
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=NULL WHERE id=78001; UPDATE household_memberships SET revoked_at=NULL WHERE id=74001")
-        .await
-        .unwrap();
+    let mut grant = app.fixture.grant.clone().into_active_model();
+    grant.revoked_at = Set(None);
+    grant.update(&app.fixture.admin).await.unwrap();
+    let mut membership = app.fixture.membership.clone().into_active_model();
+    membership.revoked_at = Set(None);
+    membership.update(&app.fixture.admin).await.unwrap();
     let restored = app
         .client
         .get(&endpoint)

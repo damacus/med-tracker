@@ -1,5 +1,6 @@
 use super::*;
 use med_tracker::models::entities::{carer_relationship, grant, membership};
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 
 const AUTHORITY_READS: [&str; 3] = [
@@ -9,9 +10,13 @@ const AUTHORITY_READS: [&str; 3] = [
 ];
 
 async fn authority_payload(app: &Application, token: &str, path: &str) -> Value {
+    let fixture_household_id = app.fixture.household.id;
     let response = app
         .client
-        .get(format!("{}/api/v1/households/72001/{path}", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{fixture_household_id}/{path}",
+            app.origin
+        ))
         .bearer_auth(token)
         .header(
             "x-medtracker-portable-passphrase",
@@ -34,13 +39,15 @@ async fn authority_payload(app: &Application, token: &str, path: &str) -> Value 
 }
 
 async fn legacy_manage(app: &Application, person_id: i64) {
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
     let now = chrono::Utc::now().naive_utc();
     grant::ActiveModel {
-        household_id: Set(72001),
-        household_membership_id: Set(74001),
+        household_id: Set(fixture_household_id),
+        household_membership_id: Set(fixture_membership_id),
         person_id: Set(person_id),
-        access_level: Set("manage".into()),
-        relationship_type: Set("parent".into()),
+        access_level: Set("manage".to_owned()),
+        relationship_type: Set("parent".to_owned()),
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()
@@ -53,39 +60,44 @@ async fn legacy_manage(app: &Application, person_id: i64) {
 #[tokio::test]
 async fn mobile_snapshot_uses_self_and_live_guardian_authority_instead_of_manage_grants() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_grant_id = app.fixture.grant.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    let created = app.client.post(format!("{}/api/v1/households/72001/people", app.origin))
+    let created = app.client.post(format!("{}/api/v1/households/{fixture_household_id}/people", app.origin))
         .bearer_auth(&token)
         .json(&json!({"person":{"name":"Declared snapshot child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}}))
         .send().await.unwrap();
     assert_eq!(created.status().as_u16(), 201);
     let child: Value = created.json().await.unwrap();
     let child_id = child["data"]["id"].as_i64().unwrap();
-    let schedule = app.client.post(format!("{}/api/v1/households/72001/schedules", app.origin))
+    let schedule = app.client.post(format!("{}/api/v1/households/{fixture_household_id}/schedules", app.origin))
         .bearer_auth(&token)
-        .json(&json!({"schedule":{"person_id":child_id.to_string(),"medication_id":"80001","dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}}))
+        .json(&json!({"schedule":{"person_id":child_id.to_string(),"medication_id":fixture_medication_id.to_string(),"dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}}))
         .send().await.unwrap();
     assert_eq!(schedule.status().as_u16(), 201);
     let schedule: Value = schedule.json().await.unwrap();
     let schedule_pid = &schedule["data"]["portable_id"];
     assert!(schedule_pid.is_string());
     membership::ActiveModel {
-        id: Set(74001),
-        role: Set("member".into()),
+        id: Set(fixture_membership_id),
+        role: Set("member".to_owned()),
         ..Default::default()
     }
     .update(&app.fixture.admin)
     .await
     .unwrap();
     grant::ActiveModel {
-        id: Set(78001),
+        id: Set(fixture_grant_id),
         revoked_at: Set(Some(chrono::Utc::now().naive_utc())),
         ..Default::default()
     }
     .update(&app.fixture.admin)
     .await
     .unwrap();
-    legacy_manage(&app, 73002).await;
+    legacy_manage(&app, fixture_minor_id).await;
     for path in AUTHORITY_READS {
         let payload = authority_payload(&app, &token, path).await;
         let people = payload["records"]["people"].as_array().unwrap();
@@ -145,16 +157,18 @@ async fn mobile_snapshot_uses_self_and_live_guardian_authority_instead_of_manage
 }
 
 fn snapshot_url(app: &Application) -> String {
-    format!("{}/api/v1/households/72001/mobile_snapshot", app.origin)
+    let fixture_household_id = app.fixture.household.id;
+    format!(
+        "{}/api/v1/households/{fixture_household_id}/mobile_snapshot",
+        app.origin
+    )
 }
 
 async fn snapshot_events(app: &Application) -> i64 {
+    let fixture_household_id = app.fixture.household.id;
     app.fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM security_audit_events WHERE event_type='portable_data.mobile_snapshot_read' AND metadata->>'export_mode'='mobile_snapshot'",
-        ))
+        .query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk))), "count").from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("portable_data.mobile_snapshot_read"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("export_mode")).eq(QueryExpr::val("mobile_snapshot")))).to_owned(); app.fixture.admin.get_database_backend().build(&query) })
         .await
         .unwrap()
         .unwrap()
@@ -165,6 +179,7 @@ async fn snapshot_events(app: &Application) -> i64 {
 #[tokio::test]
 async fn mobile_snapshot_returns_a_v1_portable_payload() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
     let response = app
         .client
@@ -184,10 +199,7 @@ async fn mobile_snapshot_returns_a_v1_portable_payload() {
     let requests: i64 = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/mobile_snapshots' AND metadata->>'action'='show' AND metadata->>'status'='200'",
-        ))
+        .query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk))), "count").from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("controller")).eq(QueryExpr::val("api/v1/mobile_snapshots"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("action")).eq(QueryExpr::val("show"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("200")))).to_owned(); app.fixture.admin.get_database_backend().build(&query) })
         .await
         .unwrap()
         .unwrap()
@@ -258,7 +270,7 @@ async fn mobile_snapshot_returns_a_v1_portable_payload() {
 #[tokio::test]
 async fn mobile_snapshot_rejects_anonymous_and_foreign_households() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(99999).await;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
     let anonymous = app.client.get(snapshot_url(&app)).send().await.unwrap();
     let anonymous_status = anonymous.status().as_u16();
@@ -270,8 +282,9 @@ async fn mobile_snapshot_rejects_anonymous_and_foreign_households() {
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/99999/mobile_snapshot",
-            app.origin
+            "{}/api/v1/households/{fixture_99999}/mobile_snapshot",
+            app.origin,
+            fixture_99999 = foreign_household.id
         ))
         .bearer_auth(&token)
         .send()

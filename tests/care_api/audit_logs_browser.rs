@@ -1,45 +1,16 @@
 use super::*;
+use med_tracker::models::_entities::security_audit_events as audit_event;
+use sha2::{Digest, Sha256};
 use std::{error::Error, io};
 
 async fn browser_session(app: &Application) -> Result<String, Box<dyn Error>> {
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()",
-        )
-        .await?;
-    let response = app
-        .client
-        .post(format!("{}/api/auth/sign-in/email", app.origin))
-        .header("origin", app.context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
-        .send()
-        .await?;
-    if response.status() != reqwest::StatusCode::OK {
-        return Err(io::Error::other("browser sign-in failed").into());
-    }
-    let cookies = response
-        .headers()
-        .get_all("set-cookie")
-        .iter()
-        .map(|value| {
-            value
-                .to_str()
-                .ok()
-                .and_then(|value| value.split(';').next())
-                .map(str::to_owned)
-                .ok_or_else(|| io::Error::other("invalid browser cookie"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    if cookies.is_empty() {
-        return Err(io::Error::other("browser sign-in set no cookies").into());
-    }
-    Ok(cookies.join("; "))
+    Ok(crate::platform::fixture_session(app, app.fixture.account.id).await)
 }
 
-fn filter_url(origin: &str, fields: &[(&str, &str)]) -> Result<url::Url, url::ParseError> {
+fn filter_url(app: &Application, fields: &[(&str, &str)]) -> Result<url::Url, url::ParseError> {
     let mut url = url::Url::parse(&format!(
-        "{origin}/households/persistence-fixture/admin/audit_logs"
+        "{}/households/{}/admin/audit_logs",
+        app.origin, app.fixture.household.slug
     ))?;
     url.query_pairs_mut().extend_pairs(fields);
     Ok(url)
@@ -110,25 +81,30 @@ const AUDIT_LOCALES: [(&str, &str, &str, &str, &str); 5] = [
 async fn audit_browser_locales_show_safe_list_detail_recent_and_invalid_filter()
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_slug = app.fixture.household.slug.clone();
+    let mut audit_ids = std::collections::BTreeMap::new();
+    let audit_request = uuid::Uuid::new_v4().to_string();
+    let target_membership_id = app.fixture.dependent_membership.id;
     let result = async {
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) VALUES(956000,72001,71001,74001,'household_membership.role_updated','550e8400-e29b-41d4-a716-446655440000','{\"target_membership_id\":74002,\"previous_role\":\"member\",\"new_role\":\"administrator\",\"outcome\":\"success\",\"clinical_note\":\"audit-locale-private-clinical\",\"token\":\"audit-locale-private-token\"}'::jsonb,'{}'::jsonb,'2090-01-15 12:00:00','2090-01-15 12:00:00')"
-        ).await?;
+        let row = seed_event(&app, &app.fixture.scenario, "household_membership.role_updated", Some(audit_request.clone()), json!({"target_membership_id":app.fixture.dependent_membership.id,"previous_role":"member","new_role":"administrator","outcome":"success","clinical_note":"audit-locale-private-clinical","token":"audit-locale-private-token"}), json!({}), "2090-01-15T12:00:00").await;
+        audit_ids.insert("locale", row.id);
         let cookie = browser_session(&app).await?;
         let mut responses = Vec::new();
         for (language, title, field, recent, invalid) in AUDIT_LOCALES {
-            let list = app.client.get(filter_url(&app.origin, &[("lang", language)])?)
+            let list = app.client.get(filter_url(&app, &[("lang", language)])?)
                 .header("cookie", &cookie).header("accept-language", "cy").send().await?;
             let list_status = list.status();
             let list_body = list.text().await?;
-            let detail = app.client.get(format!("{}/households/persistence-fixture/admin/audit_logs/956000?lang={language}", app.origin))
+            let detail = app.client.get(format!("{}/households/{fixture_slug}/admin/audit_logs/{}?lang={language}", app.origin, audit_ids["locale"]))
                 .header("cookie", &cookie).header("accept-language", "cy").send().await?;
             let detail_status = detail.status();
             let detail_body = detail.text().await?;
-            let overview = app.client.get(format!("{}/households/persistence-fixture/admin?lang={language}", app.origin))
+            let overview = app.client.get(format!("{}/households/{fixture_slug}/admin?lang={language}", app.origin))
                 .header("cookie", &cookie).header("accept-language", "cy").send().await?;
             let overview_body = overview.text().await?;
-            let invalid_response = app.client.get(filter_url(&app.origin, &[("lang", language), ("from", "2030-02-30")])?)
+            let invalid_response = app.client.get(filter_url(&app, &[("lang", language), ("from", "2030-02-30")])?)
                 .header("cookie", &cookie).send().await?;
             let invalid_status = invalid_response.status();
             let invalid_body = invalid_response.text().await?;
@@ -168,10 +144,10 @@ async fn audit_browser_locales_show_safe_list_detail_recent_and_invalid_filter()
         assert!(detail_body.contains(field), "{language}: safe field label");
         for retained in [
             "household_membership.role_updated",
-            "71001",
-            "74001",
-            "74002",
-            "550e8400-e29b-41d4-a716-446655440000",
+            &fixture_account_id.to_string(),
+            &fixture_membership_id.to_string(),
+            &target_membership_id.to_string(),
+            audit_request.as_str(),
         ] {
             assert!(
                 detail_body.contains(retained),
@@ -186,7 +162,10 @@ async fn audit_browser_locales_show_safe_list_detail_recent_and_invalid_filter()
         }
         assert!(overview_body.contains(recent), "{language}: recent section");
         assert!(
-            overview_body.contains(&format!("/audit_logs/956000?lang={language}")),
+            overview_body.contains(&format!(
+                "/audit_logs/{}?lang={language}",
+                audit_ids["locale"]
+            )),
             "{language}: recent link lost locale"
         );
         assert_eq!(invalid_status, reqwest::StatusCode::UNPROCESSABLE_ENTITY);
@@ -214,30 +193,74 @@ async fn audit_browser_locales_preserve_filters_and_bounded_cursor_pages()
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let result = async {
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) SELECT event_id,72001,71001,74001,'api.request',NULL,'{}'::jsonb,'{}'::jsonb,'2030-01-15 12:00:00','2030-01-15 12:00:00' FROM generate_series(956100,956150) AS event_id"
-        ).await?;
+        for _ in 0..51 {
+            seed_event(
+                &app,
+                &app.fixture.scenario,
+                "api.request",
+                None,
+                json!({}),
+                json!({}),
+                "2030-01-15T12:00:00",
+            )
+            .await;
+        }
         let cookie = browser_session(&app).await?;
         let mut responses = Vec::new();
         for (language, title, _, _, _) in AUDIT_LOCALES {
-            let first = app.client.get(filter_url(&app.origin, &[("lang", language), ("event_type", "api.request"), ("from", "2030-01-15"), ("to", "2030-01-15")])?)
-                .header("cookie", &cookie).header("accept-language", "cy").send().await?;
+            let first = app
+                .client
+                .get(filter_url(
+                    &app,
+                    &[
+                        ("lang", language),
+                        ("event_type", "api.request"),
+                        ("from", "2030-01-15"),
+                        ("to", "2030-01-15"),
+                    ],
+                )?)
+                .header("cookie", &cookie)
+                .header("accept-language", "cy")
+                .send()
+                .await?;
             let first_status = first.status();
             let first_body = first.text().await?;
             let document = scraper::Html::parse_document(&first_body);
             let selector = scraper::Selector::parse("a[rel='next']")
                 .map_err(|_| io::Error::other("invalid audit next-page selector"))?;
-            let next_href = document.select(&selector).next().and_then(|link| link.value().attr("href"))
-                .ok_or_else(|| io::Error::other(format!("{language}: missing audit next-page link ({first_status})")))?;
+            let next_href = document
+                .select(&selector)
+                .next()
+                .and_then(|link| link.value().attr("href"))
+                .ok_or_else(|| {
+                    io::Error::other(format!(
+                        "{language}: missing audit next-page link ({first_status})"
+                    ))
+                })?;
             let next_url = url::Url::parse(&app.origin)?.join(next_href)?;
             let query = next_url.query_pairs().into_owned().collect::<Vec<_>>();
-            let next = app.client.get(next_url).header("cookie", &cookie).header("accept-language", "cy").send().await?;
+            let next = app
+                .client
+                .get(next_url)
+                .header("cookie", &cookie)
+                .header("accept-language", "cy")
+                .send()
+                .await?;
             let next_status = next.status();
             let next_body = next.text().await?;
-            responses.push((language, title, first_status, first_body, query, next_status, next_body));
+            responses.push((
+                language,
+                title,
+                first_status,
+                first_body,
+                query,
+                next_status,
+                next_body,
+            ));
         }
         Ok::<_, Box<dyn Error>>(responses)
-    }.await;
+    }
+    .await;
     app.close().await;
     for (language, title, first_status, first_body, query, next_status, next_body) in result? {
         assert_eq!(first_status, reqwest::StatusCode::OK);
@@ -293,7 +316,7 @@ async fn audit_browser_locales_show_empty_results_and_safe_malformed_query_recov
             let empty = app
                 .client
                 .get(filter_url(
-                    &app.origin,
+                    &app,
                     &[("lang", language), ("event_type", "unknown.empty")],
                 )?)
                 .header("cookie", &cookie)
@@ -312,7 +335,7 @@ async fn audit_browser_locales_show_empty_results_and_safe_malformed_query_recov
             ] {
                 let response = app
                     .client
-                    .get(filter_url(&app.origin, &fields)?)
+                    .get(filter_url(&app, &fields)?)
                     .header("cookie", &cookie)
                     .header("accept-language", language)
                     .send()
@@ -365,39 +388,57 @@ async fn audit_browser_locales_show_empty_results_and_safe_malformed_query_recov
 #[tokio::test]
 async fn audit_browser_shows_scoped_actor_and_safe_event_detail() -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_slug = app.fixture.household.slug.clone();
+    let mut audit_ids = std::collections::BTreeMap::new();
+    let audit_request = format!("audit-browser-request-{}", uuid::Uuid::new_v4());
+    let other = app.fixture.foreign_household().await;
+    let target_membership_id = other.membership.id;
     let result = async {
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) VALUES(950001,72001,71001,74001,'household_membership.role_updated','audit-browser-request', '{\"target_account_id\":71002,\"target_membership_id\":74002,\"previous_role\":\"member\",\"new_role\":\"administrator\",\"previous_state\":{\"role\":\"member\",\"status\":\"active\",\"person_id\":73004},\"new_state\":{\"role\":\"administrator\",\"status\":\"active\",\"person_id\":73004},\"outcome\":\"success\",\"secret\":\"synthetic-private-clinical-note\"}'::jsonb,'{\"session_reference\":\"synthetic-private-session\"}'::jsonb,'2030-01-01 12:00:00','2030-01-01 12:00:00')"
-        ).await?;
+        let row = seed_event(&app, &app.fixture.scenario, "household_membership.role_updated", Some(audit_request.clone()), json!({"target_account_id":other.account.id,"target_membership_id":other.membership.id,"previous_role":"member","new_role":"administrator","previous_state":{"role":"member","status":"active","person_id":other.account.person_id},"new_state":{"role":"administrator","status":"active","person_id":other.account.person_id},"outcome":"success","secret":"synthetic-private-clinical-note"}), json!({"session_reference":"synthetic-private-session"}), "2030-01-01T12:00:00").await;
+        audit_ids.insert("detail", row.id);
         let cookie = browser_session(&app).await?;
-        let list = app.client.get(format!("{}/households/persistence-fixture/admin/audit_logs", app.origin))
+        let password_bucket = hex::encode(Sha256::digest(format!(
+            "account:password:{}",
+            app.fixture.account.email.to_lowercase()
+        )));
+        assert!(
+            med_tracker::models::_entities::identity_rate_limits::Entity::find_by_id(password_bucket)
+                .one(&app.fixture.admin)
+                .await?
+                .is_none(),
+            "audit UI setup must not spend password sign-in quota"
+        );
+        let list = app.client.get(format!("{}/households/{fixture_slug}/admin/audit_logs", app.origin))
             .header("cookie", &cookie).send().await?;
         let list_status = list.status();
         let list_cache = list.headers().get("cache-control").and_then(|value| value.to_str().ok()).map(str::to_owned);
         let list_body = list.text().await?;
-        let detail = app.client.get(format!("{}/households/persistence-fixture/admin/audit_logs/950001", app.origin))
+        let detail = app.client.get(format!("{}/households/{fixture_slug}/admin/audit_logs/{}", app.origin, audit_ids["detail"]))
             .header("cookie", cookie).send().await?;
         let detail_status = detail.status();
         let detail_cache = detail.headers().get("cache-control").and_then(|value| value.to_str().ok()).map(str::to_owned);
         let detail_body = detail.text().await?;
         Ok::<_, Box<dyn Error>>((list_status, list_cache, list_body, detail_status, detail_cache, detail_body))
     }.await;
+    other.close().await;
     app.close().await;
     let (list_status, list_cache, list_body, detail_status, detail_cache, detail_body) = result?;
     assert_eq!(list_status, reqwest::StatusCode::OK);
     assert_eq!(list_cache.as_deref(), Some("no-store"));
     assert!(list_body.contains("household_membership.role_updated"));
-    assert!(list_body.contains("/admin/audit_logs/950001"));
+    assert!(list_body.contains(&format!("/admin/audit_logs/{}", audit_ids["detail"])));
     assert!(!list_body.contains("synthetic-private-clinical-note"));
     assert!(!list_body.contains("synthetic-private-session"));
     assert_eq!(detail_status, reqwest::StatusCode::OK);
     assert_eq!(detail_cache.as_deref(), Some("no-store"));
     assert!(detail_body.contains("household_membership.role_updated"));
-    assert!(detail_body.contains("71001"));
-    assert!(detail_body.contains("74001"));
-    assert!(detail_body.contains("74002"));
+    assert!(detail_body.contains(&fixture_account_id.to_string()));
+    assert!(detail_body.contains(&fixture_membership_id.to_string()));
+    assert!(detail_body.contains(&target_membership_id.to_string()));
     assert!(detail_body.contains("administrator"));
-    assert!(!detail_body.contains("audit-browser-request"));
+    assert!(!detail_body.contains(&audit_request));
     assert!(!detail_body.contains("synthetic-private-clinical-note"));
     assert!(!detail_body.contains("synthetic-private-session"));
     Ok(())
@@ -407,43 +448,90 @@ async fn audit_browser_shows_scoped_actor_and_safe_event_detail() -> Result<(), 
 async fn audit_browser_rejects_foreign_events_and_lost_manager_authority()
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
+    let fixture_slug = app.fixture.household.slug.clone();
+    let mut audit_ids = std::collections::BTreeMap::new();
     let result = async {
-        app.fixture.seed_foreign_household(99999).await;
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) VALUES(950002,99999,71999,74999,'api.request','foreign-audit-request','{\"secret\":\"synthetic-foreign-clinical-note\"}'::jsonb,'{}'::jsonb,'2030-01-01 12:00:00','2030-01-01 12:00:00')"
-        ).await?;
+        let other = app.fixture.foreign_household().await;
+        let row = seed_event(
+            &app,
+            &other,
+            "api.request",
+            Some(uuid::Uuid::new_v4().to_string()),
+            json!({"secret":"synthetic-foreign-clinical-note"}),
+            json!({}),
+            "2030-01-01T12:00:00",
+        )
+        .await;
+        audit_ids.insert("foreign", row.id);
+        other.close().await;
         let cookie = browser_session(&app).await?;
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()?;
         let foreign = client
-            .get(format!("{}/households/persistence-fixture/admin/audit_logs/950002", app.origin))
+            .get(format!(
+                "{}/households/{fixture_slug}/admin/audit_logs/{}",
+                app.origin, audit_ids["foreign"]
+            ))
             .header("cookie", &cookie)
             .send()
             .await?;
         let foreign_status = foreign.status();
-        let foreign_cache = foreign.headers().get("cache-control").and_then(|value| value.to_str().ok()).map(str::to_owned);
+        let foreign_cache = foreign
+            .headers()
+            .get("cache-control")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         let foreign_body = foreign.text().await?;
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001").await?;
+        app.fixture.member().await;
         let member = client
-            .get(format!("{}/households/persistence-fixture/admin/audit_logs", app.origin))
+            .get(format!(
+                "{}/households/{fixture_slug}/admin/audit_logs",
+                app.origin
+            ))
             .header("cookie", &cookie)
             .send()
             .await?;
         let member_status = member.status();
-        let member_cache = member.headers().get("cache-control").and_then(|value| value.to_str().ok()).map(str::to_owned);
+        let member_cache = member
+            .headers()
+            .get("cache-control")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         let member_body = member.text().await?;
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='owner',status='revoked',revoked_at=now() WHERE id=74001").await?;
+        let mut membership = app.fixture.membership.clone().into_active_model();
+        membership.role = Set("owner".into());
+        membership.status = Set("revoked".into());
+        membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+        membership.update(&app.fixture.admin).await?;
         let revoked = client
-            .get(format!("{}/households/persistence-fixture/admin/audit_logs", app.origin))
+            .get(format!(
+                "{}/households/{fixture_slug}/admin/audit_logs",
+                app.origin
+            ))
             .header("cookie", cookie)
             .send()
             .await?;
         let revoked_status = revoked.status();
-        let revoked_cache = revoked.headers().get("cache-control").and_then(|value| value.to_str().ok()).map(str::to_owned);
+        let revoked_cache = revoked
+            .headers()
+            .get("cache-control")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         let revoked_body = revoked.text().await?;
-        Ok::<_, Box<dyn Error>>((foreign_status, foreign_cache, foreign_body, member_status, member_cache, member_body, revoked_status, revoked_cache, revoked_body))
-    }.await;
+        Ok::<_, Box<dyn Error>>((
+            foreign_status,
+            foreign_cache,
+            foreign_body,
+            member_status,
+            member_cache,
+            member_body,
+            revoked_status,
+            revoked_cache,
+            revoked_body,
+        ))
+    }
+    .await;
     app.close().await;
     let (
         foreign_status,
@@ -461,32 +549,32 @@ async fn audit_browser_rejects_foreign_events_and_lost_manager_authority()
     assert!(!foreign_body.contains("synthetic-foreign-clinical-note"));
     assert_eq!(member_status, reqwest::StatusCode::FORBIDDEN);
     assert_eq!(member_cache.as_deref(), Some("no-store"));
-    assert!(!member_body.contains("950002"));
+    assert!(!member_body.contains(&audit_ids["foreign"].to_string()));
     assert_ne!(revoked_status, reqwest::StatusCode::OK);
     assert_eq!(revoked_cache.as_deref(), Some("no-store"));
-    assert!(!revoked_body.contains("950002"));
+    assert!(!revoked_body.contains(&audit_ids["foreign"].to_string()));
     Ok(())
 }
 
 #[tokio::test]
 async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
+    let fixture_slug = app.fixture.household.slug.clone();
+    let mut audit_ids = std::collections::BTreeMap::new();
     let result = async {
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) SELECT event_id,72001,71001,74001,'api.request','audit-browser-page-' || event_id,'{\"http_method\":\"GET\",\"controller\":\"api/audit\",\"action\":\"index\",\"outcome\":\"success\",\"status\":200}'::jsonb,'{}'::jsonb,'2030-01-15 12:00:00','2030-01-15 12:00:00' FROM generate_series(951000,951050) AS event_id"
-        ).await?;
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) SELECT event_id,72001,71001,74001,'api.request','audit-browser-edge-' || event_id,'{}'::jsonb,'{}'::jsonb,stamp::timestamp,stamp::timestamp FROM (VALUES (952000,'2030-01-15 00:00:00'),(952001,'2030-01-15 23:59:59'),(952002,'2030-01-14 23:59:59'),(952003,'2030-01-16 00:00:00')) AS edges(event_id,stamp)"
-        ).await?;
+        for index in 0..51 { let row = seed_event(&app, &app.fixture.scenario, "api.request", Some(uuid::Uuid::new_v4().to_string()), json!({"http_method":"GET","controller":"api/audit","action":"index","outcome":"success","status":200}), json!({}), "2030-01-15T12:00:00").await; audit_ids.insert(format!("page-{index}"),row.id); }
+        for (label,stamp) in [("start","2030-01-15T00:00:00"),("end","2030-01-15T23:59:59"),("before","2030-01-14T23:59:59"),("after","2030-01-16T00:00:00")] {
+            let row = seed_event(&app, &app.fixture.scenario, "api.request", Some(uuid::Uuid::new_v4().to_string()), json!({}), json!({}), stamp).await; audit_ids.insert(label.to_owned(),row.id);
+        }
         let cookie = browser_session(&app).await?;
-        let all_blank = app.client.get(filter_url(&app.origin, &[("event_type", ""), ("from", ""), ("to", "")])?)
+        let all_blank = app.client.get(filter_url(&app, &[("event_type", ""), ("from", ""), ("to", "")])?)
             .header("cookie", &cookie).send().await?;
         let all_blank_status = all_blank.status();
-        let date_only = app.client.get(filter_url(&app.origin, &[("event_type", ""), ("from", "2030-01-15"), ("to", "2030-01-15")])?)
+        let date_only = app.client.get(filter_url(&app, &[("event_type", ""), ("from", "2030-01-15"), ("to", "2030-01-15")])?)
             .header("cookie", &cookie).send().await?;
         let date_only_status = date_only.status();
         let date_only_body = date_only.text().await?;
-        let first = app.client.get(format!("{}/households/persistence-fixture/admin/audit_logs?event_type=api.request&from=2030-01-15&to=2030-01-15", app.origin))
+        let first = app.client.get(format!("{}/households/{fixture_slug}/admin/audit_logs?event_type=api.request&from=2030-01-15&to=2030-01-15", app.origin))
             .header("cookie", &cookie).send().await?;
         let first_status = first.status();
         let first_body = first.text().await?;
@@ -497,9 +585,7 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
             .and_then(|link| link.value().attr("href"))
             .ok_or_else(|| io::Error::other("missing next-page link"))?
             .to_owned();
-        app.fixture.admin.execute_unprepared(
-            "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) VALUES(951100,72001,71001,74001,'api.request','audit-browser-interleaved','{}'::jsonb,'{}'::jsonb,'2030-01-15 12:00:00','2030-01-15 12:00:00')"
-        ).await?;
+        let row = seed_event(&app, &app.fixture.scenario, "api.request", Some(uuid::Uuid::new_v4().to_string()), json!({}), json!({}), "2030-01-15T12:00:00").await; audit_ids.insert("interleaved".to_owned(),row.id);
         let next = app.client.get(format!("{}{}", app.origin, next_href))
             .header("cookie", &cookie).send().await?;
         let next_status = next.status();
@@ -509,11 +595,11 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
             .find(|(name, _)| name == "cursor")
             .map(|(_, value)| value.into_owned())
             .ok_or_else(|| io::Error::other("next-page link omitted cursor"))?;
-        let mismatch = app.client.get(filter_url(&app.origin, &[("event_type", "household_membership.role_updated"), ("from", "2030-01-15"), ("to", "2030-01-15"), ("cursor", cursor.as_str())])?)
+        let mismatch = app.client.get(filter_url(&app, &[("event_type", "household_membership.role_updated"), ("from", "2030-01-15"), ("to", "2030-01-15"), ("cursor", cursor.as_str())])?)
             .header("cookie", &cookie).send().await?;
         let mismatch_status = mismatch.status();
         let mismatch_cache = mismatch.headers().get("cache-control").and_then(|value| value.to_str().ok()).map(str::to_owned);
-        let invalid_date = app.client.get(format!("{}/households/persistence-fixture/admin/audit_logs?from=2030-02-30", app.origin))
+        let invalid_date = app.client.get(format!("{}/households/{fixture_slug}/admin/audit_logs?from=2030-02-30", app.origin))
             .header("cookie", cookie).send().await?;
         let invalid_date_status = invalid_date.status();
         let invalid_date_cache = invalid_date.headers().get("cache-control").and_then(|value| value.to_str().ok()).map(str::to_owned);
@@ -535,9 +621,9 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
     ) = result?;
     assert_eq!(all_blank_status, reqwest::StatusCode::OK);
     assert_eq!(date_only_status, reqwest::StatusCode::OK);
-    assert!(date_only_body.contains("/admin/audit_logs/952001"));
-    assert!(!date_only_body.contains("/admin/audit_logs/952002"));
-    assert!(!date_only_body.contains("/admin/audit_logs/952003"));
+    assert!(date_only_body.contains(&format!("/admin/audit_logs/{}", audit_ids["end"])));
+    assert!(!date_only_body.contains(&format!("/admin/audit_logs/{}", audit_ids["before"])));
+    assert!(!date_only_body.contains(&format!("/admin/audit_logs/{}", audit_ids["after"])));
     assert_eq!(first_status, reqwest::StatusCode::OK);
     let first_mobile =
         rendered_event_ids(&first_body, "ul[aria-label='Audit events'] > li.card a")?;
@@ -551,15 +637,18 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
             .len(),
         50
     );
-    assert_eq!(first_mobile.first(), Some(&952001));
-    assert_eq!(first_mobile.last(), Some(&951002));
-    assert!(first_body.contains("/admin/audit_logs/952001"));
-    assert!(first_body.contains("/admin/audit_logs/951050"));
-    assert!(!first_body.contains("/admin/audit_logs/951000"));
+    assert_eq!(first_mobile.first(), Some(&audit_ids["end"]));
+    assert_eq!(first_mobile.last(), Some(&audit_ids["page-2"]));
+    assert!(first_body.contains(&format!("/admin/audit_logs/{}", audit_ids["end"])));
+    assert!(first_body.contains(&format!("/admin/audit_logs/{}", audit_ids["page-50"])));
+    assert!(!first_body.contains(&format!("/admin/audit_logs/{}", audit_ids["page-0"])));
     assert_eq!(next_status, reqwest::StatusCode::OK);
     let next_mobile = rendered_event_ids(&next_body, "ul[aria-label='Audit events'] > li.card a")?;
     let next_desktop = rendered_event_ids(&next_body, "table tbody tr td a")?;
-    assert_eq!(next_mobile, vec![951001, 951000, 952000]);
+    assert_eq!(
+        next_mobile,
+        vec![audit_ids["page-1"], audit_ids["page-0"], audit_ids["start"]]
+    );
     assert_eq!(next_mobile, next_desktop);
     assert_eq!(
         next_mobile
@@ -568,12 +657,12 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
             .len(),
         3
     );
-    assert!(next_body.contains("/admin/audit_logs/952000"));
-    assert!(next_body.contains("/admin/audit_logs/951001"));
-    assert!(next_body.contains("/admin/audit_logs/951000"));
-    assert!(!next_body.contains("/admin/audit_logs/951100"));
-    assert!(!next_body.contains("/admin/audit_logs/952002"));
-    assert!(!next_body.contains("/admin/audit_logs/952003"));
+    assert!(next_body.contains(&format!("/admin/audit_logs/{}", audit_ids["start"])));
+    assert!(next_body.contains(&format!("/admin/audit_logs/{}", audit_ids["page-1"])));
+    assert!(next_body.contains(&format!("/admin/audit_logs/{}", audit_ids["page-0"])));
+    assert!(!next_body.contains(&format!("/admin/audit_logs/{}", audit_ids["interleaved"])));
+    assert!(!next_body.contains(&format!("/admin/audit_logs/{}", audit_ids["before"])));
+    assert!(!next_body.contains(&format!("/admin/audit_logs/{}", audit_ids["after"])));
     assert_eq!(mismatch_status, reqwest::StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(mismatch_cache.as_deref(), Some("no-store"));
     assert_eq!(
@@ -588,6 +677,7 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
 async fn audit_browser_retains_invalid_filter_drafts_after_authorization()
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
+    let fixture_slug = app.fixture.household.slug.clone();
     let result = async {
         let cookie = browser_session(&app).await?;
         let client = reqwest::Client::builder()
@@ -595,7 +685,7 @@ async fn audit_browser_retains_invalid_filter_drafts_after_authorization()
             .build()?;
         let invalid_event = client
             .get(filter_url(
-                &app.origin,
+                &app,
                 &[("event_type", "clinical<script>"), ("from", "2030-01-15")],
             )?)
             .header("cookie", &cookie)
@@ -610,7 +700,7 @@ async fn audit_browser_retains_invalid_filter_drafts_after_authorization()
         let event_body = invalid_event.text().await?;
         let invalid_date = client
             .get(filter_url(
-                &app.origin,
+                &app,
                 &[("event_type", "api.request"), ("from", "2030-02-30")],
             )?)
             .header("cookie", &cookie)
@@ -625,7 +715,7 @@ async fn audit_browser_retains_invalid_filter_drafts_after_authorization()
         let date_body = invalid_date.text().await?;
         let anonymous = client
             .get(format!(
-                "{}/households/persistence-fixture/admin/audit_logs?from=2030-02-30",
+                "{}/households/{fixture_slug}/admin/audit_logs?from=2030-02-30",
                 app.origin
             ))
             .send()
@@ -678,4 +768,31 @@ async fn audit_browser_retains_invalid_filter_drafts_after_authorization()
     assert_eq!(anonymous_cache.as_deref(), Some("no-store"));
     assert!(!anonymous_body.contains("2030-02-30"));
     Ok(())
+}
+
+async fn seed_event(
+    app: &Application,
+    scenario: &crate::scenario::Scenario,
+    kind: &str,
+    request_id: Option<String>,
+    metadata: Value,
+    context: Value,
+    stamp: &str,
+) -> audit_event::Model {
+    let stamp: chrono::NaiveDateTime = stamp.parse().unwrap();
+    audit_event::ActiveModel {
+        household_id: Set(scenario.household.id),
+        actor_account_id: Set(Some(scenario.account.id)),
+        actor_membership_id: Set(Some(scenario.membership.id)),
+        event_type: Set(kind.into()),
+        request_id: Set(request_id),
+        metadata: Set(metadata),
+        audit_context: Set(context),
+        created_at: Set(stamp),
+        updated_at: Set(stamp),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap()
 }

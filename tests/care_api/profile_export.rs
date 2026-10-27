@@ -1,6 +1,7 @@
 use super::*;
+
 use med_tracker::models::{
-    access::{self, Actor, HouseholdScope},
+    access::{self},
     care::profile_export,
 };
 use std::io::{Cursor, Read};
@@ -8,12 +9,11 @@ use std::io::{Cursor, Read};
 #[tokio::test]
 async fn profile_export_preserves_self_and_creates_a_zip_without_identity_secrets() {
     let app = Application::new().await;
-    let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
-        request_id: "synthetic-export".into(),
-    };
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='view' WHERE id=78001").await.unwrap();
+    let scope = app.fixture.scope();
+    app.fixture.member().await;
+    let mut grant = app.fixture.grant.clone().into_active_model();
+    grant.access_level = Set("view".into());
+    grant.update(&app.fixture.admin).await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let download = profile_export::build(&tenant, "health_data_json")
         .await
@@ -22,11 +22,9 @@ async fn profile_export_preserves_self_and_creates_a_zip_without_identity_secret
     let value: Value = serde_json::from_slice(&download.bytes).unwrap();
     assert_eq!(value["records"]["people"].as_array().unwrap().len(), 1);
     assert_eq!(value["records"]["people"][0]["name"], "Synthetic adult");
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET access_level='manage' WHERE id=78001")
-        .await
-        .unwrap();
+    let mut grant = app.fixture.grant.clone().into_active_model();
+    grant.access_level = Set("manage".into());
+    grant.update(&app.fixture.admin).await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let download = profile_export::build(&tenant, "backup_zip").await.unwrap();
     tenant.commit().await.unwrap();
@@ -43,15 +41,18 @@ async fn profile_export_preserves_self_and_creates_a_zip_without_identity_secret
     assert_eq!(value["records"]["medications"].as_array().unwrap().len(), 1);
     assert!(!json.contains("password_hash"));
     assert!(!json.contains("push_subscriptions"));
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT count(*) AS count FROM security_audit_events WHERE event_type='portable_data.exported' AND actor_account_id=71001 AND metadata->>'export_mode'='backup_zip' AND metadata->>'encrypted'='false'")).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE person_access_grants SET expires_at=now()-interval '1 minute' WHERE id=78001",
-        )
-        .await
-        .unwrap();
+    let count = super::portable_imports::audit_fields(
+        &app,
+        "portable_data.exported",
+        &[("export_mode", "backup_zip"), ("encrypted", "false")],
+    )
+    .await;
+    assert_eq!(count, 1);
+    let mut grant = app.fixture.grant.clone().into_active_model();
+    grant.expires_at = Set(Some(
+        chrono::Utc::now().naive_utc() - chrono::Duration::minutes(1),
+    ));
+    grant.update(&app.fixture.admin).await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let expired = profile_export::build(&tenant, "health_data_json")
         .await
@@ -59,11 +60,9 @@ async fn profile_export_preserves_self_and_creates_a_zip_without_identity_secret
     tenant.commit().await.unwrap();
     let expired: Value = serde_json::from_slice(&expired.bytes).unwrap();
     assert_eq!(expired["records"]["people"], value["records"]["people"]);
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001")
-        .await
-        .unwrap();
+    let mut member = app.fixture.membership.clone().into_active_model();
+    member.role = Set("owner".into());
+    member.update(&app.fixture.admin).await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let household = profile_export::build(&tenant, "health_data_json")
         .await
@@ -72,6 +71,7 @@ async fn profile_export_preserves_self_and_creates_a_zip_without_identity_secret
     let household: Value = serde_json::from_slice(&household.bytes).unwrap();
     assert_eq!(household["scope"], "household");
     assert!(household["records"]["people"].as_array().unwrap().len() > 1);
+    // SeaORM Schema cannot define PostgreSQL trigger functions; this exclusive fault injection is removed below.
     app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_profile_export_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='portable_data.exported' THEN RAISE EXCEPTION 'synthetic export audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_profile_export_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_profile_export_audit()").await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     assert!(
@@ -80,5 +80,6 @@ async fn profile_export_preserves_self_and_creates_a_zip_without_identity_secret
             .is_err()
     );
     tenant.rollback().await.unwrap();
+    app.fixture.admin.execute_unprepared("DROP TRIGGER reject_profile_export_audit ON security_audit_events; DROP FUNCTION reject_profile_export_audit()").await.unwrap();
     app.close().await;
 }

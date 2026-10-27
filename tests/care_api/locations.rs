@@ -4,29 +4,36 @@ use med_tracker::models::entities::{
     api_change_event, api_tombstone, dosage, location, location_membership, medication,
     medication_take, person_medication, schedule, version,
 };
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
+use sha2::{Digest as _, Sha256};
 
 async fn location_deletion_state(app: &Application) -> Value {
     let db = &app.fixture.admin;
     json!({
-        "medications": medication::Entity::find().all(db).await.unwrap(),
-        "dosages": dosage::Entity::find().all(db).await.unwrap(),
-        "assignments": person_medication::Entity::find().all(db).await.unwrap(),
-        "schedules": schedule::Entity::find().all(db).await.unwrap(),
-        "takes": medication_take::Entity::find().all(db).await.unwrap(),
-        "locations": location::Entity::find().all(db).await.unwrap(),
-        "memberships": location_membership::Entity::find().all(db).await.unwrap(),
-        "versions": version::Entity::find().all(db).await.unwrap(),
-        "tombstones": api_tombstone::Entity::find().all(db).await.unwrap(),
-        "changes": api_change_event::Entity::find().all(db).await.unwrap(),
+        "medications": medication::Entity::find().filter(medication::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "dosages": dosage::Entity::find().filter(dosage::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "assignments": person_medication::Entity::find().filter(person_medication::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "schedules": schedule::Entity::find().filter(schedule::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "takes": medication_take::Entity::find().filter(medication_take::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "locations": location::Entity::find().filter(location::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "memberships": location_membership::Entity::find().filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "versions": version::Entity::find().filter(version::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "tombstones": api_tombstone::Entity::find().filter(api_tombstone::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "changes": api_change_event::Entity::find().filter(api_change_event::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
     })
 }
 
 #[tokio::test]
 async fn location_deletion_preserves_referenced_stock_and_care_and_replays_rejection() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_location_id = app.fixture.location.id;
     let token = app.token().await;
-    let resource = format!("{}/api/v1/households/72001/locations/79001", app.origin);
+    let resource = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations/{fixture_location_id}",
+        app.origin
+    );
     let read = app
         .client
         .get(&resource)
@@ -60,9 +67,9 @@ async fn location_deletion_preserves_referenced_stock_and_care_and_replays_rejec
         ));
     }
     let after = location_deletion_state(&app).await;
-    let sync = app.client.post(format!("{}/api/v1/households/72001/sync/batches", app.origin))
+    let sync = app.client.post(format!("{}/api/v1/households/{fixture_household_id}/sync/batches", app.origin))
         .bearer_auth(&token)
-        .json(&json!({"batch":{"operations":[{"resource_type":"location", "action":"delete", "id":"79001", "if_match":etag}]}}))
+        .json(&json!({"batch":{"operations":[{"resource_type":"location", "action":"delete", "id":fixture_location_id.to_string(), "if_match":etag}]}}))
         .send().await.unwrap();
     let sync_status = sync.status().as_u16();
     let after_sync = location_deletion_state(&app).await;
@@ -88,13 +95,16 @@ async fn location_deletion_preserves_referenced_stock_and_care_and_replays_rejec
 #[tokio::test]
 async fn location_deletion_preserves_historical_location_after_stock_is_relabelled() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_location_id = app.fixture.location.id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let fixture_assignment_id = app.fixture.assignment.id;
     let token = app.token().await;
     let now = chrono::Utc::now().naive_utc();
-    location::ActiveModel {
-        id: Set(79002),
-        household_id: Set(72001),
-        name: Set("New stock label".into()),
-        portable_id: Set("new-stock-label".into()),
+    let replacement_location = location::ActiveModel {
+        household_id: Set(fixture_household_id),
+        name: Set("New stock label".to_owned()),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()
@@ -103,13 +113,13 @@ async fn location_deletion_preserves_historical_location_after_stock_is_relabell
     .await
     .unwrap();
     medication_take::ActiveModel {
-        household_id: Set(72001),
-        person_medication_id: Set(Some(81001)),
+        household_id: Set(fixture_household_id),
+        person_medication_id: Set(Some(fixture_assignment_id)),
         dose_amount: Set(Some("2".parse().unwrap())),
-        dose_unit: Set(Some("tablet".into())),
+        dose_unit: Set(Some("tablet".to_owned())),
         taken_at: Set(Some(now)),
-        taken_from_medication_id: Set(Some(80001)),
-        taken_from_location_id: Set(Some(79001)),
+        taken_from_medication_id: Set(Some(fixture_medication_id)),
+        taken_from_location_id: Set(Some(fixture_location_id)),
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()
@@ -120,13 +130,16 @@ async fn location_deletion_preserves_historical_location_after_stock_is_relabell
     medication::Entity::update_many()
         .col_expr(
             medication::Column::LocationId,
-            sea_orm::sea_query::Expr::value(79002),
+            sea_orm::sea_query::Expr::value(replacement_location.id),
         )
-        .filter(medication::Column::Id.eq(80001))
+        .filter(medication::Column::Id.eq(fixture_medication_id))
         .exec(&app.fixture.admin)
         .await
         .unwrap();
-    let resource = format!("{}/api/v1/households/72001/locations/79001", app.origin);
+    let resource = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations/{fixture_location_id}",
+        app.origin
+    );
     let read = app
         .client
         .get(&resource)
@@ -165,8 +178,12 @@ async fn location_deletion_preserves_historical_location_after_stock_is_relabell
 #[tokio::test]
 async fn location_api_concurrent_key_replays_one_effect() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations",
+        app.origin
+    );
     let body = json!({"location":{"name":"Concurrent synthetic cupboard"}});
     let first = app
         .client
@@ -190,7 +207,53 @@ async fn location_api_concurrent_key_replays_one_effect() {
         .count();
     let first: Value = first.json().await.unwrap();
     let second: Value = second.json().await.unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM locations WHERE name='Concurrent synthetic cupboard') AS locations,(SELECT count(*) FROM versions WHERE item_type='Location' AND event='create') AS audits")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("locations")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("name")
+                                            .eq(QueryExpr::val("Concurrent synthetic cupboard")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "locations",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Location")))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("create"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "audits",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let locations: i64 = row.try_get("", "locations").unwrap();
     let audits: i64 = row.try_get("", "audits").unwrap();
     app.close().await;
@@ -203,8 +266,9 @@ async fn location_api_concurrent_key_replays_one_effect() {
 #[tokio::test]
 async fn location_api_saved_nonobject_error_replays_without_panic() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    let path = "/api/v1/households/72001/locations";
+    let path = format!("/api/v1/households/{fixture_household_id}/locations");
     let body = json!({"location":{"name":" "}});
     let endpoint = format!("{}{path}", app.origin);
     let first = app
@@ -217,7 +281,25 @@ async fn location_api_saved_nonobject_error_replays_without_panic() {
         .await
         .unwrap();
     assert_eq!(first.status().as_u16(), 422);
-    app.fixture.admin.execute_unprepared("UPDATE api_idempotency_keys SET response_body='{\"error\":\"legacy malformed error\"}'::jsonb WHERE key='synthetic-malformed-saved'").await.unwrap();
+    med_tracker::models::_entities::api_idempotency_keys::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::api_idempotency_keys::Column::ResponseBody,
+            sea_orm::sea_query::Expr::value(
+                serde_json::from_str::<serde_json::Value>("{\"error\":\"legacy malformed error\"}")
+                    .unwrap(),
+            ),
+        )
+        .filter(
+            med_tracker::models::_entities::api_idempotency_keys::Column::Key
+                .eq("synthetic-malformed-saved".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::api_idempotency_keys::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let replay = app
         .client
         .post(&endpoint)
@@ -239,15 +321,20 @@ async fn location_api_saved_nonobject_error_replays_without_panic() {
         observed,
         Some((422, json!({"error":"legacy malformed error"})))
     );
-    assert_eq!(effect, (0, "10.00".into(), 0, 0));
+    assert_eq!(effect, (0, "10.00".to_owned(), 0, 0));
 }
 
 #[tokio::test]
 async fn location_api_retains_conditional_read_invalid_id_and_error_replay_contracts() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_location_id = app.fixture.location.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
-    let resource = format!("{endpoint}/79001");
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations",
+        app.origin
+    );
+    let resource = format!("{endpoint}/{fixture_location_id}");
     let read = app
         .client
         .get(&resource)
@@ -350,7 +437,7 @@ async fn location_api_retains_conditional_read_invalid_id_and_error_replay_contr
     assert!(conditional_body.is_empty());
     assert_eq!(replay_marker, "true");
     assert_eq!(replay["error"]["request_id"], request_id);
-    assert_eq!(effect, (0, "10.00".into(), 0, 0));
+    assert_eq!(effect, (0, "10.00".to_owned(), 0, 0));
 }
 
 #[test]
@@ -364,9 +451,9 @@ fn location_etag_retains_published_sorted_json_encoding() {
     let record = location::Model {
         id: 1,
         household_id: 2,
-        portable_id: "fixed".into(),
-        name: "Synthetic cabinet".into(),
-        description: Some("Upstairs".into()),
+        portable_id: "fixed".to_owned(),
+        name: "Synthetic cabinet".to_owned(),
+        description: Some("Upstairs".to_owned()),
         created_at: timestamp,
         updated_at: timestamp,
     };
@@ -380,10 +467,49 @@ fn location_etag_retains_published_sorted_json_encoding() {
 #[tokio::test]
 async fn location_collection_api_is_scoped_paginated_and_validates_query() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(99999).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_location_id = app.fixture.location.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
-    app.fixture.admin.execute_unprepared("UPDATE locations SET updated_at='2026-10-05 00:00:00' WHERE id=79001; INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79002,72001,'Synthetic newer cabinet','2026-10-06 00:00:00','2026-10-06 00:00:00')").await.unwrap();
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations",
+        app.origin
+    );
+    med_tracker::models::_entities::locations::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::locations::Column::UpdatedAt,
+            sea_orm::sea_query::Expr::value(
+                "2026-10-05T00:00:00"
+                    .parse::<chrono::NaiveDateTime>()
+                    .unwrap(),
+            ),
+        )
+        .filter(med_tracker::models::_entities::locations::Column::Id.eq(fixture_location_id))
+        .filter(
+            med_tracker::models::_entities::locations::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let _locations_79002 = med_tracker::models::_entities::locations::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        name: sea_orm::Set("Synthetic newer cabinet".to_owned()),
+        created_at: sea_orm::Set(
+            "2026-10-06T00:00:00"
+                .parse::<chrono::NaiveDateTime>()
+                .unwrap(),
+        ),
+        updated_at: sea_orm::Set(
+            "2026-10-06T00:00:00"
+                .parse::<chrono::NaiveDateTime>()
+                .unwrap(),
+        ),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let response = app
         .client
         .get(format!("{endpoint}?page=1&per_page=1"))
@@ -426,7 +552,11 @@ async fn location_collection_api_is_scoped_paginated_and_validates_query() {
     let invalid_time_status = invalid_time.status().as_u16();
     let foreign = app
         .client
-        .get(format!("{}/api/v1/households/99999/locations", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{fixture_99999}/locations",
+            app.origin,
+            fixture_99999 = foreign_household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
@@ -435,14 +565,14 @@ async fn location_collection_api_is_scoped_paginated_and_validates_query() {
     app.close().await;
     assert_eq!(status, 200);
     assert_eq!(body["data"].as_array().unwrap().len(), 1);
-    assert_eq!(body["data"][0]["id"], 79001);
+    assert_eq!(body["data"][0]["id"], fixture_location_id);
     assert_eq!(body["meta"]["page"], 1);
     assert_eq!(body["meta"]["per_page"], 1);
     assert_eq!(body["meta"]["total_count"], 2);
     assert_eq!(filtered_status, 200);
     assert_eq!(filtered["meta"]["total_count"], 1);
     assert_eq!(filtered["data"].as_array().unwrap().len(), 1);
-    assert_eq!(filtered["data"][0]["id"], 79002);
+    assert_eq!(filtered["data"][0]["id"], _locations_79002.id);
     assert_eq!(invalid_time_status, 422);
     assert_eq!(invalid_status, 422);
     assert_eq!(foreign_status, 403);
@@ -451,8 +581,10 @@ async fn location_collection_api_is_scoped_paginated_and_validates_query() {
 #[tokio::test]
 async fn location_saved_rails_retry_replays_without_new_effect() {
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    let path = "/api/v1/households/72001/locations";
+    let path = format!("/api/v1/households/{fixture_household_id}/locations");
     let endpoint = format!("{}{path}", app.origin);
     let request = r#"{"location":{"name":"Synthetic Rails cupboard","description":"Upstairs"}}"#;
     let created = app
@@ -473,7 +605,26 @@ async fn location_saved_rails_retry_replays_without_new_effect() {
         .unwrap()
         .to_owned();
     let body: Value = created.json().await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_idempotency_keys(household_id,account_id,key,request_method,request_path,request_digest,response_status,response_body,response_headers,expires_at,created_at,updated_at) VALUES(72001,71001,'synthetic-rails-retry','POST',$1,'76d4e5eb5274a529a0d8a1db4ad26120556721e801e092976c179b301e2e45be',201,$2,$3,now()+interval '24 hours',now(),now())",[path.into(),body.clone().into(),json!({"ETag":etag}).into()])).await.unwrap();
+    med_tracker::models::_entities::api_idempotency_keys::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        account_id: sea_orm::Set(fixture_account_id),
+        key: sea_orm::Set("synthetic-rails-retry".to_owned()),
+        request_method: sea_orm::Set("POST".to_owned()),
+        request_path: sea_orm::Set(path.to_owned()),
+        request_digest: sea_orm::Set(
+            { let params = json!({"location":{"name":"Synthetic Rails cupboard","description":"Upstairs"},"household_id":fixture_household_id.to_string()}); let fingerprint = json!({"method":"POST","path":path,"params":params}); hex::encode(Sha256::digest(serde_json::to_vec(&fingerprint).unwrap())) },
+        ),
+        response_status: sea_orm::Set(201),
+        response_body: sea_orm::Set(body.clone()),
+        response_headers: sea_orm::Set(json!({"ETag":etag}).clone()),
+        expires_at: sea_orm::Set((chrono::Utc::now() + chrono::Duration::hours(24)).naive_utc()),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let replay = app
         .client
         .post(&endpoint)
@@ -492,7 +643,53 @@ async fn location_saved_rails_retry_replays_without_new_effect() {
         .unwrap_or("")
         .to_owned();
     let replayed: Value = replay.json().await.unwrap_or(Value::Null);
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM locations WHERE name='Synthetic Rails cupboard') AS locations,(SELECT count(*) FROM versions WHERE item_type='Location' AND event='create') AS audits")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("locations")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("name")
+                                            .eq(QueryExpr::val("Synthetic Rails cupboard")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "locations",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Location")))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("create"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "audits",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let locations: i64 = row.try_get("", "locations").unwrap();
     let audits: i64 = row.try_get("", "audits").unwrap();
     app.close().await;
@@ -505,8 +702,12 @@ async fn location_saved_rails_retry_replays_without_new_effect() {
 #[tokio::test]
 async fn location_lifecycle_api_read_update_preconditions_and_guarded_delete() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations",
+        app.origin
+    );
     let created = app
         .client
         .post(&endpoint)
@@ -578,7 +779,55 @@ async fn location_lifecycle_api_read_update_preconditions_and_guarded_delete() {
         .await
         .unwrap();
     let deleted_status = deleted.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM locations WHERE id=$1) AS remaining,(SELECT count(*) FROM api_tombstones WHERE record_type='Location' AND record_portable_id=$2) AS tombstones",[id.into(),created["data"]["portable_id"].as_str().unwrap().into()])).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("locations")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("id").eq(QueryExpr::val(id))),
+                            )
+                            .to_owned(),
+                    ),
+                    "remaining",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_tombstones")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("Location")),
+                                    )
+                                    .and(QueryExpr::col("record_portable_id").eq(QueryExpr::val(
+                                        created["data"]["portable_id"].as_str().unwrap(),
+                                    ))),
+                            )
+                            .to_owned(),
+                    ),
+                    "tombstones",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let remaining: i64 = row.try_get("", "remaining").unwrap();
     let tombstones: i64 = row.try_get("", "tombstones").unwrap();
     app.close().await;
@@ -595,8 +844,14 @@ async fn location_lifecycle_api_read_update_preconditions_and_guarded_delete() {
 #[tokio::test]
 async fn location_lifecycle_api_history_prevents_cascade_and_names_are_case_insensitive() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_location_id = app.fixture.location.id;
+    let fixture_assignment_id = app.fixture.assignment.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations",
+        app.origin
+    );
     let created = app
         .client
         .post(&endpoint)
@@ -615,8 +870,20 @@ async fn location_lifecycle_api_history_prevents_cascade_and_names_are_case_inse
         .await
         .unwrap();
     let duplicate_status = duplicate.status().as_u16();
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(99001,72001,81001,2,'tablet',now(),now(),now())").await.unwrap();
-    let resource = format!("{endpoint}/79001");
+    let _medication_takes_99001 = med_tracker::models::_entities::medication_takes::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        person_medication_id: sea_orm::Set(Some(fixture_assignment_id)),
+        dose_amount: sea_orm::Set(Some("2".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+        taken_at: sea_orm::Set(Some((chrono::Utc::now()).naive_utc())),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let resource = format!("{endpoint}/{fixture_location_id}");
     let read = app
         .client
         .get(&resource)
@@ -650,8 +917,12 @@ async fn location_lifecycle_api_history_prevents_cascade_and_names_are_case_inse
 #[tokio::test]
 async fn location_create_api_replays_without_duplicate_audit_or_sync() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations",
+        app.origin
+    );
     let body = json!({"location":{"name":"Synthetic API cupboard","description":"Upstairs"}});
     let first = app
         .client
@@ -698,7 +969,73 @@ async fn location_create_api_replays_without_duplicate_audit_or_sync() {
         .unwrap();
     let conflict_status = conflict.status().as_u16();
     let conflict: Value = conflict.json().await.unwrap_or(Value::Null);
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT (SELECT count(*) FROM locations WHERE name='Synthetic API cupboard') AS locations,(SELECT count(*) FROM versions WHERE item_type='Location' AND event='create') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Location' AND action='create') AS changes")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("locations")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("name")
+                                            .eq(QueryExpr::val("Synthetic API cupboard")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "locations",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Location")))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("create"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("Location")),
+                                    )
+                                    .and(QueryExpr::col("action").eq(QueryExpr::val("create"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "changes",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let locations: i64 = row.try_get("", "locations").unwrap();
     let versions: i64 = row.try_get("", "versions").unwrap();
     let changes: i64 = row.try_get("", "changes").unwrap();
@@ -717,8 +1054,13 @@ async fn location_create_api_replays_without_duplicate_audit_or_sync() {
 #[tokio::test]
 async fn location_create_api_validates_fields_and_authorizes_before_payload() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations",
+        app.origin
+    );
     let invalid = app
         .client
         .post(&endpoint)
@@ -729,9 +1071,20 @@ async fn location_create_api_validates_fields_and_authorizes_before_payload() {
         .unwrap();
     let invalid_status = invalid.status().as_u16();
     let invalid: Value = invalid.json().await.unwrap_or(Value::Null);
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let denied = app
@@ -746,10 +1099,23 @@ async fn location_create_api_validates_fields_and_authorizes_before_payload() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM locations WHERE name=' '",
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(
+                        sea_orm::sea_query::Asterisk,
+                    ))),
+                    "count",
+                )
+                .from("locations")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("name").eq(QueryExpr::val(" "))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
@@ -768,6 +1134,9 @@ async fn location_create_api_validates_fields_and_authorizes_before_payload() {
 #[tokio::test]
 async fn location_get_matches_documented_contract() {
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_location_id = app.fixture.location.id;
     let token = app.token().await;
     let contract: Value =
         serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
@@ -797,7 +1166,7 @@ async fn location_get_matches_documented_contract() {
     let read = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/locations/79001",
+            "{}/api/v1/households/{fixture_household_id}/locations/{fixture_location_id}",
             app.origin
         ))
         .bearer_auth(&token)
@@ -822,13 +1191,13 @@ async fn location_get_matches_documented_contract() {
         &body,
         "location response",
     );
-    assert_eq!(body["data"]["id"], 79001);
-    assert_eq!(body["data"]["name"], "Synthetic cabinet");
+    assert_eq!(body["data"]["id"], fixture_location_id);
+    assert_eq!(body["data"]["name"], app.fixture.location.name);
 
     let missing = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/locations/99999",
+            "{}/api/v1/households/{fixture_household_id}/locations/99999",
             app.origin
         ))
         .bearer_auth(&token)
@@ -851,12 +1220,38 @@ async fn location_get_matches_documented_contract() {
     assert_eq!(missing_body["error"]["code"], "not_found");
     assert_eq!(missing_body["error"]["request_id"], missing_request_id);
 
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Foreign synthetic household','api-location-foreign','UTC',now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Foreign synthetic cabinet',now(),now())").await.unwrap();
+    let _households_92001 = med_tracker::models::_entities::households::ActiveModel {
+        created_by_account_id: sea_orm::Set(Some(fixture_account_id)),
+        name: sea_orm::Set("Foreign synthetic household".to_owned()),
+        slug: sea_orm::Set(format!(
+            "{}-{}",
+            "api-location-foreign",
+            uuid::Uuid::new_v4()
+        )),
+        timezone: sea_orm::Set("UTC".to_owned()),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _locations_92003 = med_tracker::models::_entities::locations::ActiveModel {
+        household_id: sea_orm::Set(_households_92001.id),
+        name: sea_orm::Set("Foreign synthetic cabinet".to_owned()),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/locations/92003",
-            app.origin
+            "{}/api/v1/households/{fixture_household_id}/locations/{fixture_92003}",
+            app.origin,
+            fixture_92003 = _locations_92003.id
         ))
         .bearer_auth(&token)
         .send()
@@ -883,9 +1278,14 @@ async fn location_get_matches_documented_contract() {
 #[tokio::test]
 async fn location_list_matches_documented_contract() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_location_id = app.fixture.location.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
-    let collection = format!("{}/api/v1/households/72001/locations", app.origin);
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/locations",
+        app.origin
+    );
     let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/locations"]["get"];
     assert_eq!(operation["operationId"], "listLocations");
@@ -928,8 +1328,8 @@ async fn location_list_matches_documented_contract() {
         &body,
         "location collection",
     );
-    assert_eq!(body["data"][0]["id"], 79001);
-    assert_eq!(body["data"][0]["name"], "Synthetic cabinet");
+    assert_eq!(body["data"][0]["id"], fixture_location_id);
+    assert_eq!(body["data"][0]["name"], app.fixture.location.name);
     assert_eq!(body["meta"]["total_count"], 1);
 
     for query in ["page=0", "per_page=101", "updated_since=invalid"] {
@@ -953,7 +1353,11 @@ async fn location_list_matches_documented_contract() {
 
     let foreign = app
         .client
-        .get(format!("{}/api/v1/households/72002/locations", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{fixture_72002}/locations",
+            app.origin,
+            fixture_72002 = foreign_household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await

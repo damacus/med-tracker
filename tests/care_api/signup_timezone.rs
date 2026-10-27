@@ -1,9 +1,10 @@
 use super::*;
+use med_tracker::models::_entities::accounts;
 
 #[tokio::test]
 async fn account_creation_initialises_timezone_for_password_and_passkey_signup() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(false,now(),now())").await.unwrap();
+    let registration = super::signup::open_registration(&app).await;
     for (email, name, credential) in [
         (
             "password-owner@example.test",
@@ -16,6 +17,7 @@ async fn account_creation_initialises_timezone_for_password_and_passkey_signup()
             "passkey",
         ),
     ] {
+        let email = format!("{}-{email}", uuid::Uuid::new_v4());
         let mut input =
             json!({"email":email,"name":name,"date_of_birth":"1990-01-01","credential":credential});
         if credential == "password" {
@@ -32,26 +34,17 @@ async fn account_creation_initialises_timezone_for_password_and_passkey_signup()
         let status = response.status();
         let body = response.text().await.unwrap();
         assert_eq!(status.as_u16(), 200, "{body}");
-        let row = app
-            .fixture
-            .admin
-            .query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "SELECT name,preferences->>'time_zone' AS zone FROM accounts WHERE email=$1",
-                [email.into()],
-            ))
+        let row = accounts::Entity::find()
+            .filter(accounts::Column::Email.eq(&email))
+            .one(&app.fixture.admin)
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(
-            row.try_get::<Option<String>>("", "name")
-                .unwrap()
-                .as_deref(),
-            Some(name)
-        );
-        let stored = row.try_get::<String>("", "zone").unwrap();
+        assert_eq!(row.name.as_deref(), Some(name));
+        let stored = row.preferences["time_zone"].as_str().unwrap();
         let expected = std::env::var("TZ").unwrap_or_else(|_| "UTC".into());
         assert_eq!(stored.trim_start_matches("Etc/"), expected, "{email}");
     }
+    super::signup::restore_registration(&app, registration).await;
     app.close().await;
 }

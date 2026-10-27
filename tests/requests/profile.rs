@@ -1,6 +1,9 @@
 use super::*;
 use axum::http::Method;
-use base64::Engine;
+use med_tracker::models::_entities::{
+    accounts, api_change_events, api_idempotency_keys, people, security_audit_events, versions,
+};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
 
 const PROFILE: &str = "/households/{household_id}/profile";
 
@@ -104,49 +107,70 @@ fn assert_wire(response: &Reply) {
     }
 }
 
-pub(super) async fn mobile_token(fixture: &Fixture) -> String {
-    let request = axum::http::Request::builder()
-        .method("POST")
-        .uri("/token")
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(axum::body::Body::from(
-            serde_urlencoded::to_string([
-                ("grant_type", "authorization_code"),
-                ("client_id", "native"),
-                ("code", "synthetic-legacy-code"),
-                ("redirect_uri", "io.damacus.medtracker:/oauth2redirect"),
-                (
-                    "code_verifier",
-                    "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-                ),
-            ])
-            .unwrap(),
-        ))
-        .unwrap();
-    med_tracker::models::identity::exchange(&fixture.runtime, request, None)
+pub(super) async fn mobile_token(fixture: &RequestFixture) -> String {
+    fixture.token().await
+}
+pub(super) async fn seed_credentials(fixture: &RequestFixture) {
+    fixture
+        .session(&fixture.credential("profile-session"))
+        .await;
+    fixture.app_token(&fixture.credential("profile-app")).await;
+}
+pub(super) async fn seed_disallowed_grants(fixture: &RequestFixture, smart: &str) {
+    fixture.integration(smart).await;
+    fixture.wrong_scope().await;
+}
+
+fn own_versions(fixture: &RequestFixture) -> sea_orm::Select<versions::Entity> {
+    versions::Entity::find().filter(
+        Condition::any()
+            .add(
+                Condition::all()
+                    .add(versions::Column::ItemType.eq("Account"))
+                    .add(versions::Column::ItemId.eq(fixture.account.id)),
+            )
+            .add(
+                Condition::all()
+                    .add(versions::Column::ItemType.eq("Person"))
+                    .add(versions::Column::ItemId.eq(fixture.account.person_id)),
+            ),
+    )
+}
+
+pub(super) async fn state(fixture: &RequestFixture) -> Value {
+    let versions = own_versions(fixture).count(&fixture.admin).await.unwrap();
+    let changes = api_change_events::Entity::find()
+        .filter(api_change_events::Column::HouseholdId.eq(fixture.household.id))
+        .filter(api_change_events::Column::RecordType.eq("Person"))
+        .count(&fixture.admin)
         .await
-        .unwrap()["access_token"]
-        .as_str()
+        .unwrap();
+    let keys = api_idempotency_keys::Entity::find()
+        .filter(api_idempotency_keys::Column::AccountId.eq(fixture.account.id))
+        .filter(api_idempotency_keys::Column::RequestPath.ends_with("/profile"))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let audits = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+        .all(&fixture.admin)
+        .await
         .unwrap()
-        .to_owned()
-}
-
-pub(super) async fn seed_credentials(fixture: &Fixture) {
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign profile member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73005,'foreign-profile@example.test',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign profile household','foreign-profile','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner','active',now(),now(),now())").await.unwrap();
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88031,71001,74001,$1,'profile-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())",[hex::encode(Sha256::digest(b"profile-session")).into()])).await.unwrap();
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES(88032,71001,74001,'Profile app',$1,1,now()+interval '1 month',now(),now(),now())",[hex::encode(Sha256::digest(b"profile-app")).into()])).await.unwrap();
-}
-
-pub(super) async fn seed_disallowed_grants(fixture: &Fixture, smart: &str) {
-    let digest = base64::engine::general_purpose::URL_SAFE.encode(Sha256::digest(smart.as_bytes()));
-    fixture.admin.execute_unprepared("INSERT INTO oauth_applications(id,account_id,client_id,client_kind,name,redirect_uri,scopes,token_endpoint_auth_method,client_secret_hash,created_at,updated_at) VALUES(75003,71001,'smart-profile','integration','Synthetic SMART profile','https://example.test/callback','launch/patient patient/*.rs offline_access','client_secret_post',crypt('password',gen_salt('bf',4)),now(),now())").await.unwrap();
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,household_membership_id,person_id,permissions_version,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76003,71001,75003,'integration',74001,73001,1,'https://example.test/callback','launch/patient patient/*.rs offline_access',$1,now()+interval '15 minutes',now(),now(),'SMART profile',now(),now())",[digest.into()])).await.unwrap();
-    fixture.admin.execute_unprepared("UPDATE oauth_grants SET access_token_scopes='patient/*.read',access_token_scope_hash=token_hash WHERE id=76001").await.unwrap();
-}
-
-async fn state(fixture: &Fixture) -> Value {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM versions WHERE item_type IN ('Account','Person')) AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes,(SELECT count(*) FROM api_idempotency_keys WHERE request_path LIKE '%/profile') AS keys,(SELECT count(*) FROM security_audit_events WHERE metadata->>'controller'='api/v1/profiles') AS audits,(SELECT date_of_birth::text FROM people WHERE id=73001) AS birth,(SELECT preferences::text FROM accounts WHERE id=71001) AS preferences")).await.unwrap().unwrap();
-    json!({"versions":row.try_get::<i64>("","versions").unwrap(),"changes":row.try_get::<i64>("","changes").unwrap(),"keys":row.try_get::<i64>("","keys").unwrap(),"audits":row.try_get::<i64>("","audits").unwrap(),"birth":row.try_get::<Option<String>>("","birth").unwrap(),"preferences":row.try_get::<String>("","preferences").unwrap()})
+        .into_iter()
+        .filter(|event| event.metadata["controller"] == "api/v1/profiles")
+        .count();
+    let person = people::Entity::find_by_id(fixture.account.person_id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let account = accounts::Entity::find_by_id(fixture.account.id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    json!({"versions":versions,"changes":changes,"keys":keys,"audits":audits,
+        "birth":person.date_of_birth.map(|date| date.to_string()),"preferences":account.preferences.to_string()})
 }
 
 #[test]
@@ -175,43 +199,41 @@ fn profile_write_methods_document_existing_keyed_conflict() {
 
 #[tokio::test]
 async fn profile_reads_scope_real_credentials_and_serialize_private_response() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+    let foreign_id = fixture.foreign.household.id;
+    let account_id = fixture.account.id;
+    let person_id = fixture.account.person_id;
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     seed_credentials(&fixture).await;
     let mobile = mobile_token(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth=NULL WHERE id=73001")
-        .await
-        .unwrap();
+    fixture.birth(None).await;
     let server = server(&boot);
     let missing_birth = send(
         &server,
         Method::GET,
-        72001,
-        Some("profile-session"),
+        household_id,
+        Some(session.as_str()),
         None,
         None,
     )
     .await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
-        .await
-        .unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     let mut replies = Vec::new();
     for (name, token) in [
-        ("api", "profile-session"),
-        ("app", "profile-app"),
+        ("api", session.as_str()),
+        ("app", app.as_str()),
         ("mobile", mobile.as_str()),
     ] {
-        for (household, expected) in [(72001, 200), (72004, 403), (99999, 404)] {
+        for (household, expected) in [(household_id, 200), (foreign_id, 403), (i64::MAX, 404)] {
             let response = send(&server, Method::GET, household, Some(token), None, None).await;
             replies.push((name, household, expected, response));
         }
     }
-    let anonymous = send(&server, Method::GET, 72001, None, None, None).await;
+    let anonymous = send(&server, Method::GET, household_id, None, None, None).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(missing_birth.status, 422);
     assert_eq!(missing_birth.body["error"]["code"], "unprocessable_content");
     assert_wire(&missing_birth);
@@ -228,8 +250,8 @@ async fn profile_reads_scope_real_credentials_and_serialize_private_response() {
         assert_wire(&response);
         assert_schema("get", &response);
         if expected == 200 {
-            assert_eq!(response.body["data"]["account_id"], "71001");
-            assert_eq!(response.body["data"]["person_id"], "73001");
+            assert_eq!(response.body["data"]["account_id"], account_id.to_string());
+            assert_eq!(response.body["data"]["person_id"], person_id.to_string());
         } else {
             assert!(response.body.get("data").is_none());
         }
@@ -238,21 +260,25 @@ async fn profile_reads_scope_real_credentials_and_serialize_private_response() {
 
 #[tokio::test]
 async fn profile_invalid_and_revoked_credentials_do_not_reveal_household() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     seed_credentials(&fixture).await;
     let mobile = mobile_token(&fixture).await;
-    fixture.admin.execute_unprepared("UPDATE api_sessions SET revoked_at=now() WHERE id=88031; UPDATE api_app_tokens SET revoked_at=now() WHERE id=88032; UPDATE oauth_grants SET revoked_at=now() WHERE id=76001").await.unwrap();
+    fixture.revoke_all().await;
     let server = server(&boot);
     let body = json!({"profile":{"time_zone":"Europe/London"}});
     let mut replies = Vec::new();
     for bearer in [
-        "profile-session",
-        "profile-app",
+        session.as_str(),
+        app.as_str(),
         mobile.as_str(),
         "invalid-profile-token",
     ] {
         for method in [Method::GET, Method::PATCH, Method::PUT] {
-            for household in [72001, 99999] {
+            for household in [household_id, i64::MAX] {
                 replies.push((
                     method.as_str().to_lowercase(),
                     send(
@@ -269,7 +295,7 @@ async fn profile_invalid_and_revoked_credentials_do_not_reveal_household() {
         }
     }
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     for (method, response) in replies {
         assert_eq!(response.status, 401, "{method}");
         assert_eq!(response.challenge.as_deref(), Some("Bearer"));
@@ -281,24 +307,27 @@ async fn profile_invalid_and_revoked_credentials_do_not_reveal_household() {
 
 #[tokio::test]
 async fn profile_rejects_smart_namespace_and_insufficient_mobile_scope() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+
+    let foreign_id = fixture.foreign.household.id;
+
     seed_credentials(&fixture).await;
     let mobile = mobile_token(&fixture).await;
-    let smart = "synthetic-profile-smart";
-    seed_disallowed_grants(&fixture, smart).await;
+    let smart = fixture.credential("synthetic-profile-smart");
+    seed_disallowed_grants(&fixture, &smart).await;
     let before = state(&fixture).await;
     let server = server(&boot);
     let body = json!({"profile":{"time_zone":"Europe/London"}});
     let mut replies = Vec::new();
     for method in [Method::GET, Method::PATCH, Method::PUT] {
         for (name, bearer, expected) in [
-            ("smart", smart, 401),
+            ("smart", smart.as_str(), 401),
             ("mobile_scope", mobile.as_str(), 403),
         ] {
             let response = send(
                 &server,
                 method.clone(),
-                72004,
+                foreign_id,
                 Some(bearer),
                 (method != Method::GET).then_some(&body),
                 None,
@@ -309,7 +338,7 @@ async fn profile_rejects_smart_namespace_and_insufficient_mobile_scope() {
     }
     let after = state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(before, after);
     for (method, name, expected, response) in replies {
         assert_eq!(response.status, expected, "{method} {name}");
@@ -329,26 +358,26 @@ async fn profile_rejects_smart_namespace_and_insufficient_mobile_scope() {
 
 #[tokio::test]
 async fn profile_writes_save_allowed_fields_and_reject_security_fields_atomically() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     seed_credentials(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
-        .await
-        .unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     let mobile = mobile_token(&fixture).await;
     let server = server(&boot);
     let mut results = Vec::new();
     for (method, bearer, zone) in [
-        (Method::PATCH, "profile-session", "Europe/London"),
-        (Method::PUT, "profile-app", "UTC"),
+        (Method::PATCH, session.as_str(), "Europe/London"),
+        (Method::PUT, app.as_str(), "UTC"),
         (Method::PATCH, mobile.as_str(), "America/New_York"),
     ] {
         let body = json!({"profile":{"time_zone":zone}});
         let response = send(
             &server,
             method.clone(),
-            72001,
+            household_id,
             Some(bearer),
             Some(&body),
             None,
@@ -362,12 +391,20 @@ async fn profile_writes_save_allowed_fields_and_reject_security_fields_atomicall
     for method in [Method::PATCH, Method::PUT] {
         rejected.push((
             method.as_str().to_lowercase(),
-            send(&server, method, 72001, Some(&mobile), Some(&invalid), None).await,
+            send(
+                &server,
+                method,
+                household_id,
+                Some(&mobile),
+                Some(&invalid),
+                None,
+            )
+            .await,
         ));
     }
     let after = state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     for (method, zone, response) in results {
         assert_eq!(response.status, 200, "{method}");
         assert_wire(&response);
@@ -386,13 +423,13 @@ async fn profile_writes_save_allowed_fields_and_reject_security_fields_atomicall
 }
 
 async fn keyed_profile_write(method: Method) {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     seed_credentials(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
-        .await
-        .unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     let server = server(&boot);
     let method_name = method.as_str().to_lowercase();
     let body = json!({"profile":{"time_zone":"Europe/London"}});
@@ -401,8 +438,8 @@ async fn keyed_profile_write(method: Method) {
     let first = send(
         &server,
         method.clone(),
-        72001,
-        Some("profile-session"),
+        household_id,
+        Some(session.as_str()),
         Some(&body),
         Some(&key),
     )
@@ -411,8 +448,8 @@ async fn keyed_profile_write(method: Method) {
     let replay = send(
         &server,
         method.clone(),
-        72001,
-        Some("profile-app"),
+        household_id,
+        Some(app.as_str()),
         Some(&body),
         Some(&key),
     )
@@ -421,15 +458,15 @@ async fn keyed_profile_write(method: Method) {
     let conflict = send(
         &server,
         method,
-        72001,
-        Some("profile-app"),
+        household_id,
+        Some(app.as_str()),
         Some(&changed),
         Some(&key),
     )
     .await;
     let after_conflict = state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(first.status, 200);
     assert_eq!(replay.status, 200);
     assert_eq!(conflict.status, 409);
@@ -458,22 +495,29 @@ async fn put_profile_replays_exact_key_and_rejects_changed_body() {
 
 #[tokio::test]
 async fn profile_permissions_and_membership_recheck_before_mutation() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let account_id = fixture.account.id;
+    let person_id = fixture.account.person_id;
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     seed_credentials(&fixture).await;
-    fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001; UPDATE person_access_grants SET access_level='view' WHERE id=78001").await.unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
+    fixture.view_grant().await;
     let mobile = mobile_token(&fixture).await;
     let server = server(&boot);
     let before = state(&fixture).await;
     let body = json!({"profile":{"time_zone":"Europe/London"}});
     let mut self_replies = Vec::new();
     for method in [Method::PATCH, Method::PUT] {
-        for bearer in ["profile-session", "profile-app", mobile.as_str()] {
+        for bearer in [session.as_str(), app.as_str(), mobile.as_str()] {
             self_replies.push((
                 method.as_str().to_lowercase(),
                 send(
                     &server,
                     method.clone(),
-                    72001,
+                    household_id,
                     Some(bearer),
                     Some(&body),
                     None,
@@ -483,22 +527,19 @@ async fn profile_permissions_and_membership_recheck_before_mutation() {
         }
     }
     let after_self = state(&fixture).await;
-    let saved_version = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT jsonb_build_object('item_type',item_type,'item_id',item_id,'event',event,'object',object::jsonb,'object_changes',object_changes::jsonb,'request_id',request_id) AS value FROM versions WHERE item_type IN ('Account','Person') ORDER BY id DESC LIMIT 1",
-        ))
+    let version = own_versions(&fixture)
+        .order_by_desc(versions::Column::Id)
+        .one(&fixture.admin)
         .await
         .unwrap()
-        .unwrap()
-        .try_get::<Value>("", "value")
         .unwrap();
+    let saved_version = json!({"item_type":version.item_type,"item_id":version.item_id,"event":version.event,
+        "object":version.object.map(|object| serde_json::from_str::<Value>(&object).unwrap()),
+        "object_changes":version.object_changes.map(|object| serde_json::from_str::<Value>(&object).unwrap()),
+        "request_id":version.request_id});
     fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
-        .await
-        .unwrap();
+        .membership_state(fixture.membership.permissions_version, true)
+        .await;
     let before_revoked = state(&fixture).await;
     let revoked_body = json!({"profile":{"time_zone":"UTC"}});
     let mut revoked_replies = Vec::new();
@@ -508,7 +549,7 @@ async fn profile_permissions_and_membership_recheck_before_mutation() {
             send(
                 &server,
                 method,
-                72001,
+                household_id,
                 Some(&mobile),
                 Some(&revoked_body),
                 None,
@@ -518,14 +559,14 @@ async fn profile_permissions_and_membership_recheck_before_mutation() {
     }
     let after_revoked = state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(self_replies.len(), 6);
     for (method, response) in &self_replies {
         assert_eq!(response.status, 200, "{method}: {}", response.body);
         assert_wire(response);
         assert_schema(method, response);
-        assert_eq!(response.body["data"]["account_id"], "71001");
-        assert_eq!(response.body["data"]["person_id"], "73001");
+        assert_eq!(response.body["data"]["account_id"], account_id.to_string());
+        assert_eq!(response.body["data"]["person_id"], person_id.to_string());
         assert_eq!(response.body["data"]["time_zone"], "Europe/London");
         assert_eq!(response.body["data"]["date_of_birth"], "1990-01-01");
     }
@@ -544,7 +585,7 @@ async fn profile_permissions_and_membership_recheck_before_mutation() {
         saved_version,
         json!({
             "item_type": "Account",
-            "item_id": 71001,
+            "item_id": account_id,
             "event": "update",
             "object": {"preferences": before_preferences.clone()},
             "object_changes": {"preferences": [before_preferences, expected_preferences]},
@@ -564,11 +605,15 @@ async fn profile_permissions_and_membership_recheck_before_mutation() {
 
 #[tokio::test]
 async fn profile_rate_limit_rejects_without_mutation() {
-    let (fixture, boot) = boot_fixture_with(|config| {
+    let (fixture, boot) = boot_request_fixture_with(|config| {
         config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] =
             json!({"fixed_now_unix_seconds":1000,"trusted_proxy_ips":""});
     })
     .await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+
     seed_credentials(&fixture).await;
     let server = server(&boot);
     for _ in 0..300 {
@@ -590,8 +635,8 @@ async fn profile_rate_limit_rejects_without_mutation() {
             send(
                 &server,
                 method.clone(),
-                72001,
-                Some("profile-session"),
+                household_id,
+                Some(session.as_str()),
                 (method != Method::GET).then_some(&body),
                 None,
             )
@@ -600,7 +645,7 @@ async fn profile_rate_limit_rejects_without_mutation() {
     }
     let after = state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(after, before);
     for (method, denied) in denials {
         assert_eq!(denied.status, 429, "{method}");
@@ -616,9 +661,14 @@ async fn profile_rate_limit_rejects_without_mutation() {
 
 #[tokio::test]
 async fn profile_audit_failure_hides_read_and_rolls_back_writes() {
-    let (fixture, boot) = boot_fixture().await;
+    let (fixture, boot) = boot_request_fixture().await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+
     seed_credentials(&fixture).await;
-    fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001; CREATE FUNCTION reject_profile_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='api.request' AND NEW.metadata->>'controller'='api/v1/profiles' THEN RAISE EXCEPTION 'Synthetic profile audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_profile_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_profile_audit()").await.unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
+    fixture.admin.execute_unprepared("CREATE FUNCTION reject_profile_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='api.request' AND NEW.metadata->>'controller'='api/v1/profiles' THEN RAISE EXCEPTION 'Synthetic profile audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_profile_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_profile_audit()").await.unwrap();
     let server = server(&boot);
     let before = state(&fixture).await;
     let body = json!({"profile":{"time_zone":"Europe/London"}});
@@ -629,8 +679,8 @@ async fn profile_audit_failure_hides_read_and_rolls_back_writes() {
             send(
                 &server,
                 method.clone(),
-                72001,
-                Some("profile-session"),
+                household_id,
+                Some(session.as_str()),
                 (method != Method::GET).then_some(&body),
                 None,
             )
@@ -638,8 +688,9 @@ async fn profile_audit_failure_hides_read_and_rolls_back_writes() {
         ));
     }
     let after = state(&fixture).await;
+    fixture.admin.execute_unprepared("DROP TRIGGER reject_profile_audit ON security_audit_events; DROP FUNCTION reject_profile_audit()").await.unwrap();
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(after, before);
     assert_eq!(
         replies

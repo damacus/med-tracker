@@ -5,6 +5,21 @@ use aws_sdk_s3::{
 };
 use std::time::Duration;
 
+pub(super) fn is_owned_endpoint(parsed: &reqwest::Url, owns_compose_storage: bool) -> bool {
+    let allowed_host = match parsed.host_str() {
+        Some("127.0.0.1") => parsed.port().is_some(),
+        Some("rustfs") => owns_compose_storage && parsed.port() == Some(9000),
+        _ => false,
+    };
+    allowed_host
+        && parsed.scheme() == "http"
+        && parsed.path() == "/"
+        && parsed.query().is_none()
+        && parsed.fragment().is_none()
+        && parsed.username().is_empty()
+        && parsed.password().is_none()
+}
+
 #[tokio::test]
 #[ignore]
 async fn prepare_owned_bucket() {
@@ -29,12 +44,10 @@ pub fn owned_client() -> Client {
     template::require_owned_database();
     let endpoint = std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").unwrap();
     let parsed = reqwest::Url::parse(&endpoint).unwrap();
-    assert_eq!(parsed.scheme(), "http");
-    assert_eq!(parsed.host_str(), Some("127.0.0.1"));
-    assert!(parsed.port().is_some());
-    assert_eq!(parsed.path(), "/");
-    assert!(parsed.query().is_none() && parsed.fragment().is_none());
-    assert!(parsed.username().is_empty() && parsed.password().is_none());
+    assert!(is_owned_endpoint(
+        &parsed,
+        std::env::var("MEDTRACKER_OWNED_STORAGE").as_deref() == Ok("1")
+    ));
     assert_eq!(
         std::env::var("ACTIVE_STORAGE_S3_ACCESS_KEY_ID").unwrap(),
         "storage-smoke-access"
@@ -76,12 +89,10 @@ async fn prepare() {
     template::require_owned_database();
     let endpoint = std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").unwrap();
     let parsed = reqwest::Url::parse(&endpoint).unwrap();
-    assert_eq!(parsed.scheme(), "http");
-    assert_eq!(parsed.host_str(), Some("127.0.0.1"));
-    assert!(parsed.port().is_some());
-    assert_eq!(parsed.path(), "/");
-    assert!(parsed.query().is_none() && parsed.fragment().is_none());
-    assert!(parsed.username().is_empty() && parsed.password().is_none());
+    assert!(is_owned_endpoint(
+        &parsed,
+        std::env::var("MEDTRACKER_OWNED_STORAGE").as_deref() == Ok("1")
+    ));
     assert_eq!(
         std::env::var("ACTIVE_STORAGE_S3_BUCKET").unwrap(),
         "medtracker-fixture"

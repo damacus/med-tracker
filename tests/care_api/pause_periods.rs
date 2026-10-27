@@ -1,22 +1,33 @@
 use super::*;
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
 async fn pause_source(app: &Application, schedule: bool) -> String {
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_medication_id = app.fixture.medication.id;
     if schedule {
-        app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2020-01-01','2099-12-31',2,'tablet',6,'{}',now(),now())").await.unwrap();
-    }
-    let sql = if schedule {
-        "SELECT portable_id FROM schedules WHERE id=83999"
-    } else {
-        "SELECT portable_id FROM person_medications WHERE id=81001"
-    };
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(DbBackend::Postgres, sql))
+        let _schedules_83999 = med_tracker::models::_entities::schedules::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            person_id: sea_orm::Set(fixture_person_id),
+            medication_id: sea_orm::Set(fixture_medication_id),
+            active: sea_orm::Set(true),
+            start_date: sea_orm::Set(Some("2020-01-01".parse::<chrono::NaiveDate>().unwrap())),
+            end_date: sea_orm::Set(Some("2099-12-31".parse::<chrono::NaiveDate>().unwrap())),
+            dose_amount: sea_orm::Set(Some("2".parse::<sea_orm::prelude::Decimal>().unwrap())),
+            dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+            schedule_type: sea_orm::Set(6),
+            schedule_config: sea_orm::Set(serde_json::from_str::<serde_json::Value>("{}").unwrap()),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
         .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "portable_id")
-        .unwrap()
+        .unwrap();
+        _schedules_83999.portable_id
+    } else {
+        app.fixture.assignment.portable_id.clone()
+    }
 }
 
 fn pause_body(kind: &str, id: &str) -> Value {
@@ -26,9 +37,11 @@ fn pause_body(kind: &str, id: &str) -> Value {
 #[tokio::test]
 async fn pause_periods_preserve_reason_history_and_exact_resume_identity() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_assignment_id = app.fixture.assignment.id;
     let token = app.token().await;
     let collection = format!(
-        "{}/api/v1/households/72001/medication_pause_periods",
+        "{}/api/v1/households/{fixture_household_id}/medication_pause_periods",
         app.origin
     );
     for (kind, schedule) in [("schedule", true), ("person_medication", false)] {
@@ -57,10 +70,13 @@ async fn pause_periods_preserve_reason_history_and_exact_resume_identity() {
         let period = first["data"]["portable_id"].as_str().unwrap_or("missing");
         let resume = format!("{collection}/{period}/resume");
         let item = if schedule {
-            format!("{}/api/v1/households/72001/schedules/83999", app.origin)
+            format!(
+                "{}/api/v1/households/{fixture_household_id}/schedules/{source}",
+                app.origin
+            )
         } else {
             format!(
-                "{}/api/v1/households/72001/person_medications/81001",
+                "{}/api/v1/households/{fixture_household_id}/person_medications/{fixture_assignment_id}",
                 app.origin
             )
         };
@@ -135,7 +151,7 @@ async fn pause_periods_preserve_reason_history_and_exact_resume_identity() {
         assert_eq!(completed, stale);
         assert_eq!(completed["data"]["reason"], "clinician_advice");
         assert_eq!(completed["data"]["note"], "Synthetic temporary pause");
-        assert!(!completed["data"]["ended_at"].is_null());
+        assert!(!Value::is_null(&completed["data"]["ended_at"]));
         assert_eq!(paused["data"]["active"], false);
         assert_eq!(paused["data"]["can_manage"], true);
         assert_eq!(
@@ -156,15 +172,20 @@ async fn pause_periods_preserve_reason_history_and_exact_resume_identity() {
 #[tokio::test]
 async fn pause_periods_require_current_manage_and_reject_foreign_household() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_grant_id = app.fixture.grant.id;
+    let fixture_assignment_id = app.fixture.assignment.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
     let source = pause_source(&app, false).await;
     let body = pause_body("person_medication", &source);
     let foreign = app
         .client
         .post(format!(
-            "{}/api/v1/households/72002/medication_pause_periods",
-            app.origin
+            "{}/api/v1/households/{fixture_72002}/medication_pause_periods",
+            app.origin,
+            fixture_72002 = foreign_household.id
         ))
         .bearer_auth(&token)
         .json(&body)
@@ -173,11 +194,41 @@ async fn pause_periods_require_current_manage_and_reject_foreign_household() {
         .unwrap()
         .status()
         .as_u16();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='record' WHERE id=78001").await.unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::person_access_grants::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::person_access_grants::Column::AccessLevel,
+            sea_orm::sea_query::Expr::value("record".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::Id.eq(fixture_grant_id),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let record = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/medication_pause_periods",
+            "{}/api/v1/households/{fixture_household_id}/medication_pause_periods",
             app.origin
         ))
         .bearer_auth(&token)
@@ -187,15 +238,41 @@ async fn pause_periods_require_current_manage_and_reject_foreign_household() {
         .unwrap()
         .status()
         .as_u16();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001; UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+    med_tracker::models::_entities::person_access_grants::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::person_access_grants::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::Id.eq(fixture_grant_id),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let withdrawn = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/medication_pause_periods",
+            "{}/api/v1/households/{fixture_household_id}/medication_pause_periods",
             app.origin
         ))
         .bearer_auth(&token)
@@ -205,7 +282,39 @@ async fn pause_periods_require_current_manage_and_reject_foreign_household() {
         .unwrap()
         .status()
         .as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT active,(SELECT count(*) FROM medication_pause_periods) AS periods FROM person_medications WHERE id=81001")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr(QueryExpr::col("active"))
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("medication_pause_periods")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    "periods",
+                )
+                .from("person_medications")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(fixture_assignment_id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let active: bool = row.try_get("", "active").unwrap();
     let periods: i64 = row.try_get("", "periods").unwrap();
     app.close().await;
@@ -215,15 +324,30 @@ async fn pause_periods_require_current_manage_and_reject_foreign_household() {
 }
 
 #[tokio::test]
+// Whole-run exclusive: PostgreSQL trigger functions, trigger installation and sequence privileges are unsupported by SeaORM Schema and SeaQuery Table/Query builders. The raw DDL is limited to this case and removed before closing.
 async fn pause_periods_audit_rejection_rolls_back_source_period_and_key() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
     let source = pause_source(&app, true).await;
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_pause_reached; GRANT USAGE,SELECT ON SEQUENCE synthetic_pause_reached TO med_tracker_app; CREATE FUNCTION reject_pause_version() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationPausePeriod' AND NEW.event='create' THEN IF EXISTS(SELECT 1 FROM medication_pause_periods WHERE id=NEW.item_id) THEN PERFORM nextval('synthetic_pause_reached'); END IF; RAISE EXCEPTION 'Synthetic pause version rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_pause_version BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_pause_version()").await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("CREATE SEQUENCE synthetic_pause_reached")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "GRANT USAGE,SELECT ON SEQUENCE synthetic_pause_reached TO med_tracker_app",
+        )
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_pause_version() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationPausePeriod' AND NEW.event='create' THEN IF EXISTS(SELECT 1 FROM medication_pause_periods WHERE id=NEW.item_id) THEN PERFORM nextval('synthetic_pause_reached'); END IF; RAISE EXCEPTION 'Synthetic pause version rejection'; END IF; RETURN NEW; END $$").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER reject_pause_version BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_pause_version()").await.unwrap();
     let status = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/medication_pause_periods",
+            "{}/api/v1/households/{fixture_household_id}/medication_pause_periods",
             app.origin
         ))
         .bearer_auth(&token)
@@ -234,13 +358,28 @@ async fn pause_periods_audit_rejection_rolls_back_source_period_and_key() {
         .unwrap()
         .status()
         .as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM synthetic_pause_reached) AS reached,(SELECT active FROM schedules WHERE id=83999) AS active,(SELECT count(*) FROM medication_pause_periods) AS periods,(SELECT count(*) FROM versions WHERE item_type IN ('Schedule','MedicationPausePeriod')) AS versions,(SELECT count(*) FROM api_change_events WHERE record_type IN ('Schedule','MedicationPausePeriod')) AS changes,(SELECT count(*) FROM api_idempotency_keys WHERE key='synthetic-pause-rollback') AS keys,(SELECT count(*) FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/medication_pause_periods' AND metadata->>'status'='500') AS attempts")).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("is_called")).from("synthetic_pause_reached").to_owned()), "reached").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("active")).from("schedules").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("portable_id").eq(QueryExpr::val(source)))).to_owned()), "active").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("medication_pause_periods").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id))).to_owned()), "periods").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("versions").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("item_type").is_in([QueryExpr::val("Schedule"), QueryExpr::val("MedicationPausePeriod")]))).to_owned()), "versions").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("api_change_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("record_type").is_in([QueryExpr::val("Schedule"), QueryExpr::val("MedicationPausePeriod")]))).to_owned()), "changes").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("api_idempotency_keys").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("key").eq(QueryExpr::val("synthetic-pause-rollback")))).to_owned()), "keys").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("controller")).eq(QueryExpr::val("api/v1/medication_pause_periods"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("500")))).to_owned()), "attempts").to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let active: bool = row.try_get("", "active").unwrap();
     let counts: Vec<i64> = ["periods", "versions", "changes", "keys", "attempts"]
         .iter()
         .map(|field| row.try_get("", field).unwrap())
         .collect();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER IF EXISTS reject_pause_version ON versions")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP FUNCTION IF EXISTS reject_pause_version()")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP SEQUENCE IF EXISTS synthetic_pause_reached")
+        .await
+        .unwrap();
     app.close().await;
     assert_eq!(status, 500);
     assert!(reached);
@@ -252,11 +391,12 @@ async fn pause_periods_audit_rejection_rolls_back_source_period_and_key() {
 async fn pause_period_list_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
     let source = pause_source(&app, false).await;
     let collection = format!(
-        "{}/api/v1/households/72001/medication_pause_periods",
+        "{}/api/v1/households/{fixture_household_id}/medication_pause_periods",
         app.origin
     );
     let contract = contract();
@@ -335,8 +475,9 @@ async fn pause_period_list_matches_documented_contract() {
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/medication_pause_periods",
-            app.origin
+            "{}/api/v1/households/{fixture_72002}/medication_pause_periods",
+            app.origin,
+            fixture_72002 = foreign_household.id
         ))
         .bearer_auth(&token)
         .send()

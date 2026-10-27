@@ -1,4 +1,19 @@
 use super::*;
+use med_tracker::models::_entities::{
+    location_memberships, notification_preferences, oauth_grants, users,
+};
+
+async fn me_audits(app: &Application, household_id: i64) -> Vec<security_audit_events::Model> {
+    security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::HouseholdId.eq(household_id))
+        .filter(security_audit_events::Column::EventType.eq("api.request"))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|event| event.metadata["controller"] == "api/v1/me")
+        .collect()
+}
 
 #[tokio::test]
 async fn me_returns_current_account_person_and_selected_membership() {
@@ -6,7 +21,10 @@ async fn me_returns_current_account_person_and_selected_membership() {
     let token = app.token().await;
     let response = app
         .client
-        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/me",
+            app.origin, app.fixture.household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
@@ -18,70 +36,115 @@ async fn me_returns_current_account_person_and_selected_membership() {
         .get("x-request-id")
         .map(|value| value.to_str().unwrap().to_owned());
     let body: Value = response.json().await.unwrap();
-    let audit = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/me' AND metadata->>'action'='show' AND metadata->>'status'='200'"
-    )).await.unwrap().unwrap();
-    let audits: i64 = audit.try_get("", "count").unwrap();
-    app.close().await;
+    let audits = me_audits(&app, app.fixture.household.id)
+        .await
+        .into_iter()
+        .filter(|event| {
+            event.metadata["action"] == "show"
+                && event.metadata["status"].to_string().trim_matches('"') == "200"
+        })
+        .count();
     assert_eq!(status, 200);
     assert_eq!(
         cache_control.as_ref().map(|value| value.as_bytes()),
         Some(b"no-store".as_slice())
     );
     assert!(request_id.is_some());
-    assert_eq!(body["data"]["id"], 77001);
-    assert_eq!(body["data"]["email_address"], "persistence@example.test");
+    assert_eq!(body["data"]["id"], app.fixture.user.id);
+    assert_eq!(body["data"]["email_address"], app.fixture.account.email);
     assert_eq!(body["data"]["membership_role"], "administrator");
     assert_eq!(body["data"]["active"], true);
-    assert_eq!(body["data"]["person"]["id"], 73001);
+    assert_eq!(body["data"]["person"]["id"], app.fixture.adult.id);
     assert_eq!(body["data"]["person"]["name"], "Synthetic adult");
-    assert_eq!(body["data"]["account"]["id"], 71001);
-    assert_eq!(body["data"]["account"]["email"], "persistence@example.test");
+    assert_eq!(body["data"]["account"]["id"], app.fixture.account.id);
+    assert_eq!(body["data"]["account"]["email"], app.fixture.account.email);
     assert_eq!(body["data"]["account"]["status"], "verified");
     assert_eq!(audits, 1);
+    app.close().await;
 }
 
 #[tokio::test]
 async fn me_reuses_own_person_without_disclosing_another_households_local_fields() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared(
-        "INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(92001,71001,'Second synthetic household','me-foreign-household','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(94001,92001,73001,'member','active',now(),now(),now()); INSERT INTO location_memberships(household_id,location_id,person_id,created_at,updated_at) VALUES(72001,79001,73001,now(),now()); INSERT INTO notification_preferences(id,household_id,person_id,portable_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(95001,72001,73001,'00000000-0000-4000-8000-000000009501',true,true,false,true,false,'08:30:00',NULL,NULL,NULL,now(),now())"
-    ).await.unwrap();
-    let portable = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT portable_id FROM people WHERE id=73001) AS person_pid,(SELECT portable_id FROM locations WHERE id=79001) AS location_pid"
-    )).await.unwrap().unwrap();
-    let person_pid: String = portable.try_get("", "person_pid").unwrap();
-    let location_pid: String = portable.try_get("", "location_pid").unwrap();
+    let other = app.fixture.foreign_household().await;
+    let now = chrono::Utc::now().naive_utc();
+    let membership = household_memberships::ActiveModel {
+        household_id: Set(other.household.id),
+        person_id: Set(app.fixture.adult.id),
+        role: Set("member".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    location_memberships::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        location_id: Set(app.fixture.location.id),
+        person_id: Set(app.fixture.adult.id),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let preference = notification_preferences::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(app.fixture.adult.id),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        enabled: Set(true),
+        dose_due_enabled: Set(true),
+        missed_dose_enabled: Set(false),
+        low_stock_enabled: Set(true),
+        private_text_enabled: Set(false),
+        morning_time: Set(Some("08:30:00".parse().unwrap())),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let person_pid = app.fixture.adult.portable_id.clone();
+    let location_pid = app.fixture.location.portable_id.clone();
     let token = app.token().await;
     let response = app
         .client
-        .get(format!("{}/api/v1/households/92001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/me",
+            app.origin, other.household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     let status = response.status().as_u16();
     let body: Value = response.json().await.unwrap();
-    let audit = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT household_id,actor_membership_id FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/me'"
-    )).await.unwrap().unwrap();
-    let audit_household: i64 = audit.try_get("", "household_id").unwrap();
-    let audit_membership: i64 = audit.try_get("", "actor_membership_id").unwrap();
+    let audits = me_audits(&app, other.household.id).await;
+    assert_eq!(audits.len(), 1);
+    let audit_household = audits[0].household_id;
+    let audit_membership = audits[0].actor_membership_id.unwrap();
     let original = app
         .client
-        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/me",
+            app.origin, app.fixture.household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     let original_status = original.status().as_u16();
     let original: Value = original.json().await.unwrap();
-    app.close().await;
     assert_eq!(status, 200);
-    assert_eq!(audit_household, 92001);
-    assert_eq!(audit_membership, 94001);
+    assert_eq!(audit_household, other.household.id);
+    assert_eq!(audit_membership, membership.id);
     assert_eq!(body["data"]["membership_role"], "member");
-    assert_eq!(body["data"]["person"]["id"], 73001);
+    assert_eq!(body["data"]["person"]["id"], app.fixture.adult.id);
     assert_eq!(body["data"]["person"]["portable_id"], person_pid);
     assert_eq!(body["data"]["person"]["name"], "Synthetic adult");
     assert_eq!(body["data"]["person"]["location_ids"], json!([]));
@@ -89,21 +152,26 @@ async fn me_reuses_own_person_without_disclosing_another_households_local_fields
     assert!(body["data"]["person"]["notification_preference_id"].is_null());
     assert!(body["data"]["person"]["notification_preference_portable_id"].is_null());
     assert_eq!(original_status, 200);
-    assert_eq!(original["data"]["person"]["id"], 73001);
-    assert_eq!(original["data"]["person"]["location_ids"], json!([79001]));
+    assert_eq!(original["data"]["person"]["id"], app.fixture.adult.id);
+    assert_eq!(
+        original["data"]["person"]["location_ids"],
+        json!([app.fixture.location.id])
+    );
     assert_eq!(
         original["data"]["person"]["location_portable_ids"],
         json!([location_pid])
     );
     assert_eq!(
         original["data"]["person"]["notification_preference_id"],
-        95001
+        preference.id
     );
     assert_eq!(
         original["data"]["person"]["notification_preference_portable_id"],
-        "00000000-0000-4000-8000-000000009501"
+        preference.portable_id
     );
     assert_eq!(body["data"]["account"]["status"], "verified");
+    other.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
@@ -111,7 +179,10 @@ async fn me_rejects_unauthenticated_and_missing_household_reads() {
     let app = Application::new().await;
     let anonymous = app
         .client
-        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/me",
+            app.origin, app.fixture.household.id
+        ))
         .send()
         .await
         .unwrap();
@@ -125,17 +196,14 @@ async fn me_rejects_unauthenticated_and_missing_household_reads() {
     let token = app.token().await;
     let missing = app
         .client
-        .get(format!("{}/api/v1/households/99999/me", app.origin))
+        .get(format!("{}/api/v1/households/-1/me", app.origin))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     let missing_status = missing.status().as_u16();
     let missing_cache = missing.headers().get("cache-control").cloned();
-    let audits = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/me'"
-    )).await.unwrap().unwrap();
-    let attempts: i64 = audits.try_get("", "count").unwrap();
+    let attempts = me_audits(&app, app.fixture.household.id).await.len();
     app.close().await;
     assert_eq!(anonymous_status, 401);
     assert_eq!(challenge.as_deref(), Some("Bearer"));
@@ -155,12 +223,18 @@ async fn me_rejects_unauthenticated_and_missing_household_reads() {
 async fn me_audit_failure_does_not_return_or_cache_personal_data() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared(
-        "ALTER TABLE security_audit_events ADD CONSTRAINT reject_me_audit CHECK (metadata->>'controller' IS DISTINCT FROM 'api/v1/me') NOT VALID"
-    ).await.unwrap();
+    let fault = format!("reject_me_audit_{}", uuid::Uuid::new_v4().simple());
+    // SeaORM's schema builders cannot express a NOT VALID CHECK on an existing
+    // table. Whole-run exclusivity isolates this fault, removed before assertions.
+    app.fixture.admin.execute_unprepared(&format!(
+        "ALTER TABLE security_audit_events ADD CONSTRAINT {fault} CHECK (metadata->>'controller' IS DISTINCT FROM 'api/v1/me') NOT VALID"
+    )).await.unwrap();
     let response = app
         .client
-        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/me",
+            app.origin, app.fixture.household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
@@ -168,6 +242,13 @@ async fn me_audit_failure_does_not_return_or_cache_personal_data() {
     let status = response.status().as_u16();
     let cache_control = response.headers().get("cache-control").cloned();
     let body: Value = response.json().await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(&format!(
+            "ALTER TABLE security_audit_events DROP CONSTRAINT {fault}"
+        ))
+        .await
+        .unwrap();
     app.close().await;
     assert_eq!(status, 500);
     assert!(body.get("data").is_none());
@@ -265,27 +346,14 @@ async fn me_rejects_revoked_membership_and_credentials() {
     let app = Application::new().await;
     let token = app.token().await;
     let mut results = Vec::new();
-    for (change, restore, expected_status) in [
-        (
-            "UPDATE household_memberships SET revoked_at=now() WHERE id=74001",
-            "UPDATE household_memberships SET revoked_at=NULL WHERE id=74001",
-            403,
-        ),
-        (
-            "UPDATE users SET active=false WHERE id=77001",
-            "UPDATE users SET active=true WHERE id=77001",
-            401,
-        ),
-        (
-            "UPDATE oauth_grants SET revoked_at=now() WHERE id=76001",
-            "UPDATE oauth_grants SET revoked_at=NULL WHERE id=76001",
-            401,
-        ),
-    ] {
-        app.fixture.admin.execute_unprepared(change).await.unwrap();
+    for (kind, expected_status) in [(0, 403), (1, 401), (2, 401)] {
+        set_credential_active(&app, kind, false).await;
         let response = app
             .client
-            .get(format!("{}/api/v1/households/72001/me", app.origin))
+            .get(format!(
+                "{}/api/v1/households/{}/me",
+                app.origin, app.fixture.household.id
+            ))
             .bearer_auth(&token)
             .send()
             .await
@@ -294,7 +362,7 @@ async fn me_rejects_revoked_membership_and_credentials() {
         let cache_control = response.headers().get("cache-control").cloned();
         let body: Value = response.json().await.unwrap();
         results.push((status, expected_status, cache_control, body));
-        app.fixture.admin.execute_unprepared(restore).await.unwrap();
+        set_credential_active(&app, kind, true).await;
     }
     app.close().await;
     for (status, expected_status, cache_control, body) in results {
@@ -304,5 +372,27 @@ async fn me_rejects_revoked_membership_and_credentials() {
             cache_control.as_ref().map(|value| value.as_bytes()),
             Some(b"no-store".as_slice())
         );
+    }
+}
+
+async fn set_credential_active(app: &Application, kind: u8, active: bool) {
+    let revoked = (!active).then(|| chrono::Utc::now().naive_utc());
+    match kind {
+        0 => {
+            let mut row = app.fixture.membership.clone().into_active_model();
+            row.revoked_at = Set(revoked);
+            row.update(&app.fixture.admin).await.unwrap();
+        }
+        1 => {
+            let mut row: users::ActiveModel = app.fixture.user.clone().into_active_model();
+            row.active = Set(active);
+            row.update(&app.fixture.admin).await.unwrap();
+        }
+        _ => {
+            let mut row: oauth_grants::ActiveModel =
+                app.fixture.authorization.clone().into_active_model();
+            row.revoked_at = Set(revoked);
+            row.update(&app.fixture.admin).await.unwrap();
+        }
     }
 }

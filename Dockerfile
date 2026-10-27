@@ -32,8 +32,9 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
     libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=frontend-dependencies /usr/local/ /usr/local/
-RUN cargo install --locked cargo-nextest --version 0.9.149 \
+RUN cargo install --locked cargo-nextest --version 0.9.150 \
     && cargo install --locked cargo-watch --version 8.5.3
+RUN rustup component add clippy rustfmt
 RUN apt-get update && apt-get install --yes --no-install-recommends \
     libcairo2 libpango-1.0-0 fonts-liberation \
     && rm -rf /var/lib/apt/lists/*

@@ -1,5 +1,7 @@
 use super::contract::{assert_value, contract, resolve};
 use super::*;
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
+use sha2::{Digest as _, Sha256};
 
 #[tokio::test]
 async fn age_validation_uses_application_date_at_birthday_boundaries() {
@@ -7,9 +9,78 @@ async fn age_validation_uses_application_date_at_birthday_boundaries() {
     use med_tracker::controllers::api::care::AgeValidationClock;
 
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"time_zone\":\"Pacific/Kiritimati\"}' WHERE id=71001; UPDATE people SET person_type=2,has_capacity=false,date_of_birth='2000-01-01' WHERE id=73001; UPDATE people SET person_type=0,has_capacity=true,date_of_birth='1980-01-01' WHERE id=73002; INSERT INTO carer_relationships(household_id,carer_id,patient_id,relationship_type,active,created_at,updated_at) VALUES(72001,73002,73001,'family_member',true,now(),now())").await.unwrap();
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_minor_id = app.fixture.minor.id;
+    med_tracker::models::_entities::accounts::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::accounts::Column::Preferences,
+            sea_orm::sea_query::Expr::value(
+                serde_json::from_str::<serde_json::Value>("{\"time_zone\":\"Pacific/Kiritimati\"}")
+                    .unwrap(),
+            ),
+        )
+        .filter(med_tracker::models::_entities::accounts::Column::Id.eq(fixture_account_id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::people::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::people::Column::PersonType,
+            sea_orm::sea_query::Expr::value(2),
+        )
+        .col_expr(
+            med_tracker::models::_entities::people::Column::HasCapacity,
+            sea_orm::sea_query::Expr::value(false),
+        )
+        .col_expr(
+            med_tracker::models::_entities::people::Column::DateOfBirth,
+            sea_orm::sea_query::Expr::value(Some(
+                "2000-01-01".parse::<chrono::NaiveDate>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::people::Column::Id.eq(fixture_person_id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::people::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::people::Column::PersonType,
+            sea_orm::sea_query::Expr::value(0),
+        )
+        .col_expr(
+            med_tracker::models::_entities::people::Column::HasCapacity,
+            sea_orm::sea_query::Expr::value(true),
+        )
+        .col_expr(
+            med_tracker::models::_entities::people::Column::DateOfBirth,
+            sea_orm::sea_query::Expr::value(Some(
+                "1980-01-01".parse::<chrono::NaiveDate>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::people::Column::Id.eq(fixture_minor_id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::carer_relationships::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        carer_id: sea_orm::Set(fixture_minor_id),
+        patient_id: sea_orm::Set(fixture_person_id),
+        relationship_type: sea_orm::Set(Some("family_member".to_owned())),
+        active: sea_orm::Set(true),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/people/73001", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/people/{fixture_person_id}",
+        app.origin
+    );
     for (instant, expected) in [("2026-06-30T23:59:59Z", 422), ("2026-07-01T00:00:00Z", 200)] {
         let instant = chrono::DateTime::parse_from_rfc3339(instant)
             .unwrap()
@@ -49,7 +120,22 @@ async fn age_validation_rejects_minor_creation_on_eighteenth_birthday() {
 
     for (instant, expected) in [("2026-06-30T23:59:59Z", 201), ("2026-07-01T00:00:00Z", 422)] {
         let app = Application::new().await;
-        app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"time_zone\":\"America/Los_Angeles\"}' WHERE id=71001").await.unwrap();
+        let fixture_account_id = app.fixture.account.id;
+        let fixture_household_id = app.fixture.household.id;
+        med_tracker::models::_entities::accounts::Entity::update_many()
+            .col_expr(
+                med_tracker::models::_entities::accounts::Column::Preferences,
+                sea_orm::sea_query::Expr::value(
+                    serde_json::from_str::<serde_json::Value>(
+                        "{\"time_zone\":\"America/Los_Angeles\"}",
+                    )
+                    .unwrap(),
+                ),
+            )
+            .filter(med_tracker::models::_entities::accounts::Column::Id.eq(fixture_account_id))
+            .exec(&app.fixture.admin)
+            .await
+            .unwrap();
         app.context.shared_store.insert(AgeValidationClock::fixed(
             chrono::DateTime::parse_from_rfc3339(instant)
                 .unwrap()
@@ -57,7 +143,7 @@ async fn age_validation_rejects_minor_creation_on_eighteenth_birthday() {
             chrono_tz::UTC,
         ));
         let token = app.token().await;
-        let response = app.client.post(format!("{}/api/v1/households/72001/people", app.origin))
+        let response = app.client.post(format!("{}/api/v1/households/{fixture_household_id}/people", app.origin))
             .bearer_auth(&token)
             .json(&json!({"person":{"name":"Birthday boundary","date_of_birth":"2008-07-01","person_type":"minor","initial_guardian_declaration":true}}))
             .send().await.unwrap();
@@ -76,14 +162,172 @@ async fn age_validation_rejects_minor_creation_on_eighteenth_birthday() {
 }
 
 #[tokio::test]
+// Whole-run exclusive: PostgreSQL trigger functions, trigger installation and sequence privileges are unsupported by SeaORM Schema and SeaQuery Table/Query builders. The raw DDL is limited to this case and removed before closing.
 async fn people_audit_failure_rolls_back_person_participation_declaration_carer_home_and_permissions()
  {
     let app = Application::new().await;
+    let candidate_name = format!("Synthetic rollback child {}", uuid::Uuid::new_v4());
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE person_audit_reached; GRANT USAGE,SELECT ON SEQUENCE person_audit_reached TO med_tracker_app; CREATE FUNCTION reject_person_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Person' THEN PERFORM nextval('person_audit_reached'); RAISE EXCEPTION 'Synthetic person audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_person_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_person_audit()").await.unwrap();
-    let response = app.client.post(format!("{}/api/v1/households/72001/people",app.origin)).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic rollback child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("CREATE SEQUENCE person_audit_reached")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "GRANT USAGE,SELECT ON SEQUENCE person_audit_reached TO med_tracker_app",
+        )
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_person_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Person' THEN PERFORM nextval('person_audit_reached'); RAISE EXCEPTION 'Synthetic person audit rejection'; END IF; RETURN NEW; END $$").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER reject_person_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_person_audit()").await.unwrap();
+    let response = app.client.post(format!("{}/api/v1/households/{fixture_household_id}/people",app.origin)).bearer_auth(&token).json(&json!({"person":{"name":candidate_name,"date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
     let status = response.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM person_audit_reached) AS reached,(SELECT count(*) FROM people WHERE name='Synthetic rollback child') AS people,(SELECT count(*) FROM carer_relationships) AS carers,(SELECT count(*) FROM location_memberships) AS links,(SELECT count(*) FROM locations WHERE name='Home') AS homes,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT permissions_version FROM household_memberships WHERE id=74001) AS permissions,(SELECT count(*) FROM guardian_declarations) AS declarations,(SELECT count(*) FROM household_memberships) AS memberships")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::col("is_called"))
+                            .from("person_audit_reached")
+                            .to_owned(),
+                    ),
+                    "reached",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("people")
+                            .and_where(
+                                QueryExpr::col("name").eq(QueryExpr::val(candidate_name.clone())),
+                            )
+                            .to_owned(),
+                    ),
+                    "people",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("carer_relationships")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    "carers",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("location_memberships")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    "links",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("locations")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("name").eq(QueryExpr::val("Home"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "homes",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("person_access_grants")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    "grants",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::col("permissions_version"))
+                            .from("household_memberships")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("id")
+                                            .eq(QueryExpr::val(fixture_membership_id)),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "permissions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("guardian_declarations")
+                            .and_where(
+                                QueryExpr::col("origin_household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    "declarations",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("household_memberships")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    "memberships",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let declarations: i64 = row.try_get("", "declarations").unwrap();
     let memberships: i64 = row.try_get("", "memberships").unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
@@ -92,6 +336,21 @@ async fn people_audit_failure_rolls_back_person_participation_declaration_carer_
         .map(|name| row.try_get("", name).unwrap())
         .collect();
     let permissions: i32 = row.try_get("", "permissions").unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER IF EXISTS reject_person_audit ON versions")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP FUNCTION IF EXISTS reject_person_audit()")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP SEQUENCE IF EXISTS person_audit_reached")
+        .await
+        .unwrap();
     app.close().await;
     assert_eq!(status, 500);
     assert!(reached);
@@ -103,9 +362,18 @@ async fn people_audit_failure_rolls_back_person_participation_declaration_carer_
 #[tokio::test]
 async fn people_fresh_key_replay_binds_raw_email_and_live_membership() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
-    let body = json!({"person":{"name":"Synthetic keyed dependent","date_of_birth":"2020-01-01","email":"first@example.test","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}});
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/people",
+        app.origin
+    );
+    let first_email = format!("first+{}@example.test", uuid::Uuid::new_v4());
+    let second_email = format!("second+{}@example.test", uuid::Uuid::new_v4());
+    let body = json!({"person":{"name":"Synthetic keyed dependent","date_of_birth":"2020-01-01","email":first_email,"person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}});
     let created = app
         .client
         .post(&endpoint)
@@ -130,7 +398,7 @@ async fn people_fresh_key_replay_binds_raw_email_and_live_membership() {
     let marker = replay.headers().get("idempotency-replayed").is_some();
     let replay: Value = replay.json().await.unwrap();
     let mut changed = body.clone();
-    changed["person"]["email"] = json!("second@example.test");
+    changed["person"]["email"] = json!(second_email);
     let conflict = app
         .client
         .post(&endpoint)
@@ -143,28 +411,63 @@ async fn people_fresh_key_replay_binds_raw_email_and_live_membership() {
     let conflict_status = conflict.status().as_u16();
     let hidden = app
         .client
-        .get(format!("{endpoint}/73002"))
+        .get(format!("{endpoint}/{fixture_minor_id}"))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     let hidden_status = hidden.status().as_u16();
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE person_access_grants SET revoked_at=now() WHERE person_id=73001",
+    med_tracker::models::_entities::person_access_grants::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::person_access_grants::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
         )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::PersonId
+                .eq(fixture_person_id),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let revoked = app
         .client
-        .get(format!("{endpoint}/73001"))
+        .get(format!("{endpoint}/{fixture_person_id}"))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     let revoked_status = revoked.status().as_u16();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::value("revoked".to_owned()),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            sea_orm::sea_query::Expr::col(
+                med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            )
+            .add(1),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let revoked_replay = app
         .client
         .post(&endpoint)
@@ -182,10 +485,34 @@ async fn people_fresh_key_replay_binds_raw_email_and_live_membership() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS n FROM people WHERE name='Synthetic keyed dependent'",
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(
+                        sea_orm::sea_query::Asterisk,
+                    ))),
+                    "n",
+                )
+                .from("people")
+                .and_where(
+                    QueryExpr::col("name")
+                        .eq(QueryExpr::val("Synthetic keyed dependent"))
+                        .and(
+                            QueryExpr::col("id").in_subquery(
+                                Query::select()
+                                    .expr(QueryExpr::col("person_id"))
+                                    .from("household_memberships")
+                                    .and_where(
+                                        QueryExpr::col("household_id")
+                                            .eq(QueryExpr::val(fixture_household_id)),
+                                    )
+                                    .to_owned(),
+                            ),
+                        ),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
@@ -211,15 +538,18 @@ async fn people_fresh_key_replay_binds_raw_email_and_live_membership() {
 #[tokio::test]
 async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
     let token = app.token().await;
-    let path = "/api/v1/households/72001/people";
-    let request = r#"{"person":{"name":"Synthetic declared replay person","date_of_birth":"2020-01-01","email":"synthetic-person@example.test","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}}"#;
+    let path = format!("/api/v1/households/{fixture_household_id}/people");
+    let request = json!({"person":{"name":"Synthetic declared replay person","date_of_birth":"2020-01-01","email":format!("synthetic-person+{}@example.test", uuid::Uuid::new_v4()),"person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}}).to_string();
     let created = app
         .client
         .post(format!("{}{path}", app.origin))
         .bearer_auth(&token)
         .header("content-type", "application/json")
-        .body(request)
+        .body(request.clone())
         .send()
         .await
         .unwrap();
@@ -232,26 +562,51 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
         .unwrap()
         .to_owned();
     let created: Value = created.json().await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_idempotency_keys(household_id,account_id,key,request_method,request_path,request_digest,response_status,response_body,response_headers,expires_at,created_at,updated_at) VALUES(72001,71001,'synthetic-rails-person-create','POST',$1,'b49599dee508d0f8589b339a91ba549b5bf3469bad4c9152b30514da2dee1515',201,$2,$3,now()+interval '24 hours',now(),now())",[path.into(),created.clone().into(),json!({"ETag":etag}).into()])).await.unwrap();
+    med_tracker::models::_entities::api_idempotency_keys::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        account_id: sea_orm::Set(fixture_account_id),
+        key: sea_orm::Set("synthetic-rails-person-create".to_owned()),
+        request_method: sea_orm::Set("POST".to_owned()),
+        request_path: sea_orm::Set(path.to_owned()),
+        request_digest: sea_orm::Set(
+            { let mut fingerprint = json!({"method":"POST","path":path,"body":serde_json::from_str::<Value>(&request).unwrap()}); fingerprint.sort_all_objects(); hex::encode(Sha256::digest(fingerprint.to_string().as_bytes())) },
+        ),
+        response_status: sea_orm::Set(201),
+        response_body: sea_orm::Set(created.clone()),
+        response_headers: sea_orm::Set(json!({"ETag":etag}).clone()),
+        expires_at: sea_orm::Set((chrono::Utc::now() + chrono::Duration::hours(24)).naive_utc()),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let replay = app
         .client
         .post(format!("{}{path}", app.origin))
         .bearer_auth(&token)
         .header("content-type", "application/json")
         .header("idempotency-key", "synthetic-rails-person-create")
-        .body(request)
+        .body(request.clone())
         .send()
         .await
         .unwrap();
     let create_status = replay.status().as_u16();
     let create_marker = replay.headers().get("idempotency-replayed").is_some();
     let replay: Value = replay.json().await.unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
+    med_tracker::models::_entities::people::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::people::Column::DateOfBirth,
+            sea_orm::sea_query::Expr::value(Some(
+                "1990-01-01".parse::<chrono::NaiveDate>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::people::Column::Id.eq(fixture_person_id))
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
-    let path = "/api/v1/households/72001/people/73001";
+    let path = format!("/api/v1/households/{fixture_household_id}/people/{fixture_person_id}");
     let request = r#"{"person":{"name":"Synthetic Rails renamed person"}}"#;
     let updated = app
         .client
@@ -271,7 +626,26 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
         .unwrap()
         .to_owned();
     let updated: Value = updated.json().await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_idempotency_keys(household_id,account_id,key,request_method,request_path,request_digest,response_status,response_body,response_headers,expires_at,created_at,updated_at) VALUES(72001,71001,'synthetic-rails-person-update','PATCH',$1,'1da8aa05007b357ef4d6804f0b9aa22b401e378322b6fd77b75f6f3b5b4e5b91',200,$2,$3,now()+interval '24 hours',now(),now())",[path.into(),updated.clone().into(),json!({"ETag":etag}).into()])).await.unwrap();
+    med_tracker::models::_entities::api_idempotency_keys::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        account_id: sea_orm::Set(fixture_account_id),
+        key: sea_orm::Set("synthetic-rails-person-update".to_owned()),
+        request_method: sea_orm::Set("PATCH".to_owned()),
+        request_path: sea_orm::Set(path.to_owned()),
+        request_digest: sea_orm::Set(
+            { let params = json!({"person":{"name":"Synthetic Rails renamed person"},"household_id":fixture_household_id.to_string(),"id":fixture_person_id.to_string()}); let fingerprint = json!({"method":"PATCH","path":path,"params":params}); hex::encode(Sha256::digest(serde_json::to_vec(&fingerprint).unwrap())) },
+        ),
+        response_status: sea_orm::Set(200),
+        response_body: sea_orm::Set(updated.clone()),
+        response_headers: sea_orm::Set(json!({"ETag":etag}).clone()),
+        expires_at: sea_orm::Set((chrono::Utc::now() + chrono::Duration::hours(24)).naive_utc()),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let replayed_update = app
         .client
         .patch(format!("{}{path}", app.origin))
@@ -288,7 +662,78 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
         .get("idempotency-replayed")
         .is_some();
     let replayed_update: Value = replayed_update.json().await.unwrap();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE name='Synthetic declared replay person') AS people,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='create') AS creates,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='update') AS updates")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("people")
+                            .and_where(
+                                QueryExpr::col("name")
+                                    .eq(QueryExpr::val("Synthetic declared replay person"))
+                                    .and(
+                                        QueryExpr::col("id").in_subquery(
+                                            Query::select()
+                                                .expr(QueryExpr::col("person_id"))
+                                                .from("household_memberships")
+                                                .and_where(
+                                                    QueryExpr::col("household_id")
+                                                        .eq(QueryExpr::val(fixture_household_id)),
+                                                )
+                                                .to_owned(),
+                                        ),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "people",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Person")))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("create"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "creates",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Person")))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "updates",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let counts: (i64, i64, i64) = (
         row.try_get("", "people").unwrap(),
         row.try_get("", "creates").unwrap(),
@@ -307,8 +752,15 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
 #[tokio::test]
 async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/people",
+        app.origin
+    );
     let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
     let status = created.status().as_u16();
     let body: Value = created.json().await.unwrap_or(Value::Null);
@@ -321,7 +773,184 @@ async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
         .await
         .unwrap();
     let read_status = read.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id=$1 AND person_type=1 AND NOT has_capacity) AS people,(SELECT count(*) FROM carer_relationships WHERE patient_id=$1 AND carer_id=73001 AND active) AS carers,(SELECT count(*) FROM person_access_grants WHERE person_id=$1 AND household_membership_id=74001 AND access_level='manage' AND revoked_at IS NULL) AS grants,(SELECT count(*) FROM location_memberships lm JOIN locations l ON l.id=lm.location_id WHERE lm.person_id=$1 AND l.name='Home') AS homes,(SELECT count(*) FROM versions WHERE item_type='Person' AND item_id=$1 AND event='create') AS audits,(SELECT count(*) FROM api_change_events WHERE record_type='Person' AND record_id=$1 AND action='create') AS changes,(SELECT count(*) FROM guardian_declarations WHERE subject_person_id=$1 AND guardian_person_id=73001 AND declared_by_account_id=71001 AND withdrawn_at IS NULL) AS declarations,(SELECT count(*) FROM household_memberships WHERE person_id=$1 AND household_id=72001 AND status='active' AND revoked_at IS NULL) AS participations",[id.into()])).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("people")
+                            .and_where(
+                                QueryExpr::col("id")
+                                    .eq(QueryExpr::val(id))
+                                    .and(QueryExpr::col("person_type").eq(QueryExpr::val(1)))
+                                    .and(QueryExpr::col("has_capacity").not()),
+                            )
+                            .to_owned(),
+                    ),
+                    "people",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("carer_relationships")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("patient_id").eq(QueryExpr::val(id)))
+                                    .and(
+                                        QueryExpr::col("carer_id")
+                                            .eq(QueryExpr::val(fixture_person_id)),
+                                    )
+                                    .and(QueryExpr::col("active")),
+                            )
+                            .to_owned(),
+                    ),
+                    "carers",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("person_access_grants")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("person_id").eq(QueryExpr::val(id)))
+                                    .and(
+                                        QueryExpr::col("household_membership_id")
+                                            .eq(QueryExpr::val(fixture_membership_id)),
+                                    )
+                                    .and(
+                                        QueryExpr::col("access_level").eq(QueryExpr::val("manage")),
+                                    )
+                                    .and(QueryExpr::col("revoked_at").is_null()),
+                            )
+                            .to_owned(),
+                    ),
+                    "grants",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from_as("location_memberships", "lm")
+                            .join_as(
+                                sea_orm::sea_query::JoinType::InnerJoin,
+                                "locations",
+                                "l",
+                                QueryExpr::col(("l", "id"))
+                                    .eq(QueryExpr::col(("lm", "location_id"))),
+                            )
+                            .and_where(
+                                QueryExpr::col(("lm", "person_id"))
+                                    .eq(QueryExpr::val(id))
+                                    .and(QueryExpr::col(("l", "name")).eq(QueryExpr::val("Home"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "homes",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Person")))
+                                    .and(QueryExpr::col("item_id").eq(QueryExpr::val(id)))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("create"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "audits",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("record_type").eq(QueryExpr::val("Person")))
+                                    .and(QueryExpr::col("record_id").eq(QueryExpr::val(id)))
+                                    .and(QueryExpr::col("action").eq(QueryExpr::val("create"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "changes",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("guardian_declarations")
+                            .and_where(
+                                QueryExpr::col("subject_person_id")
+                                    .eq(QueryExpr::val(id))
+                                    .and(
+                                        QueryExpr::col("guardian_person_id")
+                                            .eq(QueryExpr::val(fixture_person_id)),
+                                    )
+                                    .and(
+                                        QueryExpr::col("declared_by_account_id")
+                                            .eq(QueryExpr::val(fixture_account_id)),
+                                    )
+                                    .and(QueryExpr::col("withdrawn_at").is_null()),
+                            )
+                            .to_owned(),
+                    ),
+                    "declarations",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("household_memberships")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("person_id").eq(QueryExpr::val(id)))
+                                    .and(
+                                        QueryExpr::col("household_id")
+                                            .eq(QueryExpr::val(fixture_household_id)),
+                                    )
+                                    .and(QueryExpr::col("status").eq(QueryExpr::val("active")))
+                                    .and(QueryExpr::col("revoked_at").is_null()),
+                            )
+                            .to_owned(),
+                    ),
+                    "participations",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let counts: Vec<i64> = [
         "people",
         "carers",
@@ -345,13 +974,24 @@ async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
 #[tokio::test]
 async fn people_read_collection_and_partial_update_preserve_omitted_fields() {
     let app = Application::new().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    med_tracker::models::_entities::people::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::people::Column::DateOfBirth,
+            sea_orm::sea_query::Expr::value(Some(
+                "1990-01-01".parse::<chrono::NaiveDate>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::people::Column::Id.eq(fixture_person_id))
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/people",
+        app.origin
+    );
     let collection = app
         .client
         .get(format!("{endpoint}?page=1&per_page=1"))
@@ -363,7 +1003,7 @@ async fn people_read_collection_and_partial_update_preserve_omitted_fields() {
     let collection: Value = collection.json().await.unwrap_or(Value::Null);
     let updated = app
         .client
-        .patch(format!("{endpoint}/73001"))
+        .patch(format!("{endpoint}/{fixture_person_id}"))
         .bearer_auth(&token)
         .json(&json!({"person":{"name":"Synthetic renamed actor"}}))
         .send()
@@ -375,10 +1015,17 @@ async fn people_read_collection_and_partial_update_preserve_omitted_fields() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT name,date_of_birth,person_type,has_capacity FROM people WHERE id=73001",
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr(QueryExpr::col("name"))
+                .expr(QueryExpr::col("date_of_birth"))
+                .expr(QueryExpr::col("person_type"))
+                .expr(QueryExpr::col("has_capacity"))
+                .from("people")
+                .and_where(QueryExpr::col("id").eq(QueryExpr::val(fixture_person_id)))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
@@ -387,7 +1034,7 @@ async fn people_read_collection_and_partial_update_preserve_omitted_fields() {
     app.close().await;
     assert_eq!((collection_status, status), (200, 200));
     assert_eq!(collection["meta"]["total_count"], 3);
-    assert_eq!(collection["data"][0]["id"], 73001);
+    assert_eq!(collection["data"][0]["id"], fixture_person_id);
     assert_eq!(body["data"]["person_type"], "adult");
     assert!(etag);
     assert_eq!(name, "Synthetic renamed actor");
@@ -397,11 +1044,50 @@ async fn people_read_collection_and_partial_update_preserve_omitted_fields() {
 #[tokio::test]
 async fn people_validation_and_current_permissions_prevent_mutation() {
     let app = Application::new().await;
+    let invalid_name = format!("Synthetic invalid adult {}", uuid::Uuid::new_v4());
+    let denied_name = format!("Must not write {}", uuid::Uuid::new_v4());
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_grant_id = app.fixture.grant.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
-    let invalid = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic invalid adult","date_of_birth":"2020-01-01","person_type":"dependent_adult","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/people",
+        app.origin
+    );
+    let invalid = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":invalid_name,"date_of_birth":"2020-01-01","person_type":"dependent_adult","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
     let invalid_status = invalid.status().as_u16();
-    app.fixture.admin.execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
+    med_tracker::models::_entities::person_access_grants::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::person_access_grants::Column::AccessLevel,
+            sea_orm::sea_query::Expr::value("view".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::Id.eq(fixture_grant_id),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let denied_create = app
         .client
         .post(&endpoint)
@@ -413,9 +1099,9 @@ async fn people_validation_and_current_permissions_prevent_mutation() {
         .unwrap();
     let denied_update = app
         .client
-        .patch(format!("{endpoint}/73002"))
+        .patch(format!("{endpoint}/{fixture_minor_id}"))
         .bearer_auth(&token)
-        .json(&json!({"person":{"name":"Must not write"}}))
+        .json(&json!({"person":{"name":denied_name}}))
         .send()
         .await
         .unwrap();
@@ -424,7 +1110,28 @@ async fn people_validation_and_current_permissions_prevent_mutation() {
         denied_create.status().as_u16(),
         denied_update.status().as_u16(),
     );
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS n FROM people WHERE name IN ('Synthetic invalid adult','Must not write')")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(
+                        sea_orm::sea_query::Asterisk,
+                    ))),
+                    "n",
+                )
+                .from("people")
+                .and_where(QueryExpr::col("name").is_in([
+                    QueryExpr::val(invalid_name.clone()),
+                    QueryExpr::val(denied_name.clone()),
+                ]))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let n: i64 = row.try_get("", "n").unwrap();
     app.close().await;
     assert_eq!(statuses, (422, 403, 403));
@@ -432,38 +1139,142 @@ async fn people_validation_and_current_permissions_prevent_mutation() {
 }
 
 #[tokio::test]
+// Whole-run exclusive: PostgreSQL trigger functions, trigger installation and sequence privileges are unsupported by SeaORM Schema and SeaQuery Table/Query builders. The raw DDL is limited to this case and removed before closing.
 async fn people_creation_rechecks_mid_insert_actor_permissions_and_rolls_back() {
     let app = Application::new().await;
+    let candidate_name = format!("Synthetic concurrent permissions {}", uuid::Uuid::new_v4());
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE person_permissions_reached; GRANT USAGE,SELECT ON SEQUENCE person_permissions_reached TO med_tracker_app; CREATE FUNCTION increment_person_permissions() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.name='Synthetic concurrent permissions' THEN PERFORM nextval('person_permissions_reached'); UPDATE household_memberships SET permissions_version=permissions_version+1 WHERE id=74001; END IF; RETURN NEW; END $$; CREATE TRIGGER increment_person_permissions AFTER INSERT ON people FOR EACH ROW EXECUTE FUNCTION increment_person_permissions()").await.unwrap();
-    let response = app.client.post(format!("{}/api/v1/households/72001/people", app.origin)).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic concurrent permissions","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("CREATE SEQUENCE person_permissions_reached")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "GRANT USAGE,SELECT ON SEQUENCE person_permissions_reached TO med_tracker_app",
+        )
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION increment_person_permissions() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.name='{candidate_name}' THEN PERFORM nextval('person_permissions_reached'); UPDATE household_memberships SET permissions_version=permissions_version+1 WHERE id={fixture_membership_id}; END IF; RETURN NEW; END $$")).await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER increment_person_permissions AFTER INSERT ON people FOR EACH ROW EXECUTE FUNCTION increment_person_permissions()").await.unwrap();
+    let response = app.client.post(format!("{}/api/v1/households/{fixture_household_id}/people", app.origin)).bearer_auth(&token).json(&json!({"person":{"name":candidate_name,"date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
     let status = response.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT permissions_version,role,status,person_id,(SELECT is_called FROM person_permissions_reached) AS reached,(SELECT count(*) FROM people WHERE name='Synthetic concurrent permissions') AS created,(SELECT count(*) FROM guardian_declarations) AS declarations FROM household_memberships WHERE id=74001")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr(QueryExpr::col("permissions_version"))
+                .expr(QueryExpr::col("role"))
+                .expr(QueryExpr::col("status"))
+                .expr(QueryExpr::col("person_id"))
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::col("is_called"))
+                            .from("person_permissions_reached")
+                            .to_owned(),
+                    ),
+                    "reached",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("people")
+                            .and_where(
+                                QueryExpr::col("name").eq(QueryExpr::val(candidate_name.clone())),
+                            )
+                            .to_owned(),
+                    ),
+                    "created",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("guardian_declarations")
+                            .and_where(
+                                QueryExpr::col("origin_household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    "declarations",
+                )
+                .from("household_memberships")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(fixture_membership_id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let version: i32 = row.try_get("", "permissions_version").unwrap();
     let role: String = row.try_get("", "role").unwrap();
     let person_id: Option<i64> = row.try_get("", "person_id").unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let created: i64 = row.try_get("", "created").unwrap();
     let declarations: i64 = row.try_get("", "declarations").unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER IF EXISTS increment_person_permissions ON people")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP FUNCTION IF EXISTS increment_person_permissions()")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP SEQUENCE IF EXISTS person_permissions_reached")
+        .await
+        .unwrap();
     app.close().await;
     assert_eq!(status, 403);
     assert!(reached);
     assert_eq!((created, declarations), (0, 0));
     assert_eq!(version, 1);
     assert_eq!(role, "administrator");
-    assert_eq!(person_id, Some(73001));
+    assert_eq!(person_id, Some(fixture_person_id));
 }
 
 #[tokio::test]
 async fn people_strong_parameters_preserve_rails_envelope_behaviour() {
     let app = Application::new().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    med_tracker::models::_entities::people::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::people::Column::DateOfBirth,
+            sea_orm::sea_query::Expr::value(Some(
+                "1990-01-01".parse::<chrono::NaiveDate>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::people::Column::Id.eq(fixture_person_id))
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
+    let foreign = app.fixture.foreign_household().await;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/people/73001", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/people/{fixture_person_id}",
+        app.origin
+    );
     let extra = app
         .client
         .patch(&endpoint)
@@ -476,7 +1287,7 @@ async fn people_strong_parameters_preserve_rails_envelope_behaviour() {
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .json(&json!({"person":{"name":"Synthetic inner parity","account_id":71002}}))
+        .json(&json!({"person":{"name":"Synthetic inner parity","account_id":foreign.account.id}}))
         .send()
         .await
         .unwrap();
@@ -496,24 +1307,42 @@ async fn people_strong_parameters_preserve_rails_envelope_behaviour() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT p.name,a.id AS account_id FROM people p JOIN accounts a ON a.person_id=p.id WHERE p.id=73001",
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr(QueryExpr::col(("p", "name")))
+                .expr_as(QueryExpr::col(("a", "id")), "account_id")
+                .from_as("people", "p")
+                .join_as(
+                    sea_orm::sea_query::JoinType::InnerJoin,
+                    "accounts",
+                    "a",
+                    QueryExpr::col(("a", "person_id")).eq(QueryExpr::col(("p", "id"))),
+                )
+                .and_where(QueryExpr::col(("p", "id")).eq(QueryExpr::val(fixture_person_id)))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
     let name: String = row.try_get("", "name").unwrap();
     let account_id: Option<i64> = row.try_get("", "account_id").unwrap();
+    foreign.close().await;
     app.close().await;
     assert_eq!(statuses, (200, 200, 400));
     assert_eq!(name, "Synthetic inner parity");
-    assert_eq!(account_id, Some(71001));
+    assert_eq!(account_id, Some(fixture_account_id));
 }
 
 #[tokio::test]
 async fn person_get_matches_documented_contract() {
     let app = Application::new().await;
+    let unique_identifier_0 = uuid::Uuid::new_v4().to_string();
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_location_id = app.fixture.location.id;
+    let expected_email = format!("synthetic-adult+{}@example.test", uuid::Uuid::new_v4());
     let token = app.token().await;
     let contract: Value =
         serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
@@ -540,11 +1369,57 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(etag_schema["required"], true);
     assert_eq!(etag_schema["schema"]["type"], "string");
 
-    app.fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='1985-02-03',email='synthetic-adult@example.test' WHERE id=73001; INSERT INTO location_memberships(household_id,location_id,person_id,created_at,updated_at) VALUES(72001,79001,73001,now(),now()); INSERT INTO notification_preferences(id,household_id,person_id,portable_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(87997,72001,73001,'00000000-0000-4000-8000-000000008797',true,true,false,true,false,'08:30:00',NULL,NULL,NULL,now(),now())").await.unwrap();
+    med_tracker::models::_entities::people::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::people::Column::DateOfBirth,
+            sea_orm::sea_query::Expr::value(Some(
+                "1985-02-03".parse::<chrono::NaiveDate>().unwrap(),
+            )),
+        )
+        .col_expr(
+            med_tracker::models::_entities::people::Column::Email,
+            sea_orm::sea_query::Expr::value(Some(expected_email.clone())),
+        )
+        .filter(med_tracker::models::_entities::people::Column::Id.eq(fixture_person_id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::location_memberships::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        location_id: sea_orm::Set(fixture_location_id),
+        person_id: sea_orm::Set(fixture_person_id),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _notification_preferences_87997 =
+        med_tracker::models::_entities::notification_preferences::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            person_id: sea_orm::Set(fixture_person_id),
+            portable_id: sea_orm::Set(unique_identifier_0.clone()),
+            enabled: sea_orm::Set(true),
+            dose_due_enabled: sea_orm::Set(true),
+            missed_dose_enabled: sea_orm::Set(false),
+            low_stock_enabled: sea_orm::Set(true),
+            private_text_enabled: sea_orm::Set(false),
+            morning_time: sea_orm::Set(Some("08:30:00".parse::<chrono::NaiveTime>().unwrap())),
+            afternoon_time: sea_orm::Set(None::<chrono::NaiveTime>),
+            evening_time: sea_orm::Set(None::<chrono::NaiveTime>),
+            night_time: sea_orm::Set(None::<chrono::NaiveTime>),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
     let read = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/people/73001",
+            "{}/api/v1/households/{fixture_household_id}/people/{fixture_person_id}",
             app.origin
         ))
         .bearer_auth(&token)
@@ -569,22 +1444,25 @@ async fn person_get_matches_documented_contract() {
         &body,
         "person response",
     );
-    assert_eq!(body["data"]["id"], 73001);
+    assert_eq!(body["data"]["id"], fixture_person_id);
     assert_eq!(body["data"]["person_type"], "adult");
     assert_eq!(body["data"]["has_capacity"], true);
     assert_eq!(body["data"]["date_of_birth"], "1985-02-03");
-    assert_eq!(body["data"]["email"], "synthetic-adult@example.test");
-    assert_eq!(body["data"]["location_ids"], json!([79001]));
-    assert_eq!(body["data"]["notification_preference_id"], 87997);
+    assert_eq!(body["data"]["email"], expected_email);
+    assert_eq!(body["data"]["location_ids"], json!([fixture_location_id]));
+    assert_eq!(
+        body["data"]["notification_preference_id"],
+        _notification_preferences_87997.id
+    );
     assert_eq!(
         body["data"]["notification_preference_portable_id"],
-        "00000000-0000-4000-8000-000000008797"
+        unique_identifier_0.clone()
     );
 
     let missing = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/people/99999",
+            "{}/api/v1/households/{fixture_household_id}/people/99999",
             app.origin
         ))
         .bearer_auth(&token)
@@ -605,7 +1483,7 @@ async fn person_get_matches_documented_contract() {
     let participant = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/people/73002",
+            "{}/api/v1/households/{fixture_household_id}/people/{fixture_minor_id}",
             app.origin
         ))
         .bearer_auth(&token)
@@ -613,11 +1491,37 @@ async fn person_get_matches_documented_contract() {
         .await
         .unwrap();
     assert_eq!(participant.status().as_u16(), 200);
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::value("revoked".to_owned()),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            sea_orm::sea_query::Expr::col(
+                med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            )
+            .add(1),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(fixture_household_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::PersonId
+                .eq(fixture_minor_id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let outside_scope = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/people/73002",
+            "{}/api/v1/households/{fixture_household_id}/people/{fixture_minor_id}",
             app.origin
         ))
         .bearer_auth(&token)
@@ -645,9 +1549,16 @@ async fn person_get_matches_documented_contract() {
 #[tokio::test]
 async fn people_list_matches_documented_contract() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_dependent_id = app.fixture.dependent.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
-    let collection = format!("{}/api/v1/households/72001/people", app.origin);
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/people",
+        app.origin
+    );
     let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/people"]["get"];
     assert_eq!(operation["operationId"], "listPeople");
@@ -690,11 +1601,15 @@ async fn people_list_matches_documented_contract() {
         &body,
         "people collection",
     );
-    assert_eq!(body["data"][0]["id"], 73001);
+    assert_eq!(body["data"][0]["id"], fixture_person_id);
     assert_eq!(body["data"][0]["name"], "Synthetic adult");
     assert_eq!(body["meta"]["total_count"], 3);
 
-    for (page, expected_id) in [(1, 73001), (2, 73002), (3, 73003)] {
+    for (page, expected_id) in [
+        (1, fixture_person_id),
+        (2, fixture_minor_id),
+        (3, fixture_dependent_id),
+    ] {
         let paginated = app
             .client
             .get(format!("{collection}?page={page}&per_page=1"))
@@ -741,7 +1656,11 @@ async fn people_list_matches_documented_contract() {
 
     let foreign = app
         .client
-        .get(format!("{}/api/v1/households/72002/people", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{fixture_72002}/people",
+            app.origin,
+            fixture_72002 = foreign_household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
@@ -759,16 +1678,239 @@ async fn people_list_matches_documented_contract() {
     app.close().await;
 }
 
+fn dependent_creation_state_query(
+    fixture_household_id: i64,
+    unsupported_pattern: &str,
+) -> sea_orm::sea_query::SelectStatement {
+    Query::select()
+        .expr_as(
+            QueryExpr::expr(
+                QueryFunc::cust("jsonb_build_object").args([
+                    QueryExpr::val("people"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("people")
+                            .and_where(
+                                QueryExpr::col("id").in_subquery(
+                                    Query::select()
+                                        .expr(QueryExpr::col("id"))
+                                        .from("people")
+                                        .and_where(
+                                            QueryExpr::col("id")
+                                                .in_subquery(
+                                                    Query::select()
+                                                        .expr(QueryExpr::col("person_id"))
+                                                        .from("household_memberships")
+                                                        .and_where(
+                                                            QueryExpr::col("household_id").eq(
+                                                                QueryExpr::val(
+                                                                    fixture_household_id,
+                                                                ),
+                                                            ),
+                                                        )
+                                                        .to_owned(),
+                                                )
+                                                .or(QueryExpr::col("name")
+                                                    .like(unsupported_pattern)),
+                                        )
+                                        .to_owned(),
+                                ),
+                            )
+                            .to_owned(),
+                    ),
+                    QueryExpr::val("memberships"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::cust("jsonb_agg").args([
+                                QueryExpr::expr(QueryFunc::cust("jsonb_build_array").args([
+                                    QueryExpr::col("id"),
+                                    QueryExpr::col("person_id"),
+                                    QueryExpr::col("permissions_version"),
+                                ])),
+                            ])))
+                            .from_subquery(
+                                Query::select()
+                                    .expr(sea_orm::sea_query::Expr::col(
+                                        sea_orm::sea_query::Asterisk,
+                                    ))
+                                    .from("household_memberships")
+                                    .and_where(
+                                        QueryExpr::col("household_id")
+                                            .eq(QueryExpr::val(fixture_household_id)),
+                                    )
+                                    .order_by_expr(
+                                        QueryExpr::col("id"),
+                                        sea_orm::sea_query::Order::Asc,
+                                    )
+                                    .to_owned(),
+                                "ordered_memberships",
+                            )
+                            .to_owned(),
+                    ),
+                    QueryExpr::val("accounts"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("accounts")
+                            .and_where(
+                                QueryExpr::col("person_id").in_subquery(
+                                    Query::select()
+                                        .expr(QueryExpr::col("id"))
+                                        .from("people")
+                                        .and_where(
+                                            QueryExpr::col("id")
+                                                .in_subquery(
+                                                    Query::select()
+                                                        .expr(QueryExpr::col("person_id"))
+                                                        .from("household_memberships")
+                                                        .and_where(
+                                                            QueryExpr::col("household_id").eq(
+                                                                QueryExpr::val(
+                                                                    fixture_household_id,
+                                                                ),
+                                                            ),
+                                                        )
+                                                        .to_owned(),
+                                                )
+                                                .or(QueryExpr::col("name")
+                                                    .like(unsupported_pattern)),
+                                        )
+                                        .to_owned(),
+                                ),
+                            )
+                            .to_owned(),
+                    ),
+                    QueryExpr::val("users"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("users")
+                            .and_where(
+                                QueryExpr::col("person_id").in_subquery(
+                                    Query::select()
+                                        .expr(QueryExpr::col("id"))
+                                        .from("people")
+                                        .and_where(
+                                            QueryExpr::col("id")
+                                                .in_subquery(
+                                                    Query::select()
+                                                        .expr(QueryExpr::col("person_id"))
+                                                        .from("household_memberships")
+                                                        .and_where(
+                                                            QueryExpr::col("household_id").eq(
+                                                                QueryExpr::val(
+                                                                    fixture_household_id,
+                                                                ),
+                                                            ),
+                                                        )
+                                                        .to_owned(),
+                                                )
+                                                .or(QueryExpr::col("name")
+                                                    .like(unsupported_pattern)),
+                                        )
+                                        .to_owned(),
+                                ),
+                            )
+                            .to_owned(),
+                    ),
+                    QueryExpr::val("declarations"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("guardian_declarations")
+                            .and_where(
+                                QueryExpr::col("origin_household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    QueryExpr::val("carers"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("carer_relationships")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    QueryExpr::val("grants"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("person_access_grants")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    QueryExpr::val("versions"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    QueryExpr::val("changes"),
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                ]),
+            ),
+            "state",
+        )
+        .to_owned()
+}
+
 #[tokio::test]
 async fn people_new_dependents_require_declaration_without_fabricating_actor_identity() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
-    let state_sql = "SELECT jsonb_build_object('people',(SELECT count(*) FROM people),'memberships',(SELECT jsonb_agg(jsonb_build_array(id,person_id,permissions_version) ORDER BY id) FROM household_memberships),'accounts',(SELECT count(*) FROM accounts),'users',(SELECT count(*) FROM users),'declarations',(SELECT count(*) FROM guardian_declarations),'carers',(SELECT count(*) FROM carer_relationships),'grants',(SELECT count(*) FROM person_access_grants),'versions',(SELECT count(*) FROM versions),'changes',(SELECT count(*) FROM api_change_events)) AS state";
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/people",
+        app.origin
+    );
+    let unsupported_prefix = format!("Synthetic unsupported {}", uuid::Uuid::new_v4());
+    let unsupported_pattern = format!("{unsupported_prefix}%");
+
     let before: Value = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(DbBackend::Postgres, state_sql))
+        .query_one_raw({
+            let query = dependent_creation_state_query(fixture_household_id, &unsupported_pattern);
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap()
@@ -780,7 +1922,7 @@ async fn people_new_dependents_require_declaration_without_fabricating_actor_ide
         ("adult", "1990-01-01"),
     ] {
         for (capacity, attestation) in [(false, None), (true, Some(true))] {
-            let mut person = json!({"name":format!("Synthetic unsupported {kind}"),"date_of_birth":birth,"person_type":kind,"has_capacity":capacity});
+            let mut person = json!({"name":format!("{unsupported_prefix} {kind}"),"date_of_birth":birth,"person_type":kind,"has_capacity":capacity});
             if let Some(accepted) = attestation {
                 person["initial_guardian_declaration"] = json!(accepted);
             }
@@ -800,7 +1942,11 @@ async fn people_new_dependents_require_declaration_without_fabricating_actor_ide
             let after: Value = app
                 .fixture
                 .admin
-                .query_one_raw(Statement::from_string(DbBackend::Postgres, state_sql))
+                .query_one_raw({
+                    let query =
+                        dependent_creation_state_query(fixture_household_id, &unsupported_pattern);
+                    app.fixture.admin.get_database_backend().build(&query)
+                })
                 .await
                 .unwrap()
                 .unwrap()
@@ -815,14 +1961,131 @@ async fn people_new_dependents_require_declaration_without_fabricating_actor_ide
 #[tokio::test]
 async fn people_legacy_grants_without_declared_guardian_cannot_edit_dependents() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_dependent_id = app.fixture.dependent.id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='2020-01-01' WHERE id=73002; UPDATE people SET date_of_birth='1990-01-01' WHERE id=73003; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now(),now()),(78003,72001,74001,73003,'manage','family_member',now(),now())").await.unwrap();
+    med_tracker::models::_entities::people::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::people::Column::DateOfBirth,
+            sea_orm::sea_query::Expr::value(Some(
+                "2020-01-01".parse::<chrono::NaiveDate>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::people::Column::Id.eq(fixture_minor_id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::people::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::people::Column::DateOfBirth,
+            sea_orm::sea_query::Expr::value(Some(
+                "1990-01-01".parse::<chrono::NaiveDate>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::people::Column::Id.eq(fixture_dependent_id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let _person_access_grants_78002 =
+        med_tracker::models::_entities::person_access_grants::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            household_membership_id: sea_orm::Set(fixture_membership_id),
+            person_id: sea_orm::Set(fixture_minor_id),
+            access_level: sea_orm::Set("manage".to_owned()),
+            relationship_type: sea_orm::Set("parent".to_owned()),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let _person_access_grants_78003 =
+        med_tracker::models::_entities::person_access_grants::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            household_membership_id: sea_orm::Set(fixture_membership_id),
+            person_id: sea_orm::Set(fixture_dependent_id),
+            access_level: sea_orm::Set("manage".to_owned()),
+            relationship_type: sea_orm::Set("family_member".to_owned()),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
     let mut statuses = Vec::new();
-    for id in [73002, 73003] {
-        let response = app.client.patch(format!("{}/api/v1/households/72001/people/{id}",app.origin)).bearer_auth(&token).json(&json!({"person":{"name":format!("Synthetic independent edit {id}"),"has_capacity":true}})).send().await.unwrap();
+    for id in [fixture_minor_id, fixture_dependent_id] {
+        let response = app.client.patch(format!("{}/api/v1/households/{fixture_household_id}/people/{id}",app.origin)).bearer_auth(&token).json(&json!({"person":{"name":format!("Synthetic independent edit {id}"),"has_capacity":true}})).send().await.unwrap();
         statuses.push(response.status().as_u16());
     }
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (73002,73003) AND NOT has_capacity AND name LIKE 'Synthetic independent edit%') AS edited,(SELECT count(*) FROM carer_relationships) AS carers,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='update') AS audits")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("people")
+                            .and_where(
+                                QueryExpr::col("id")
+                                    .is_in([
+                                        QueryExpr::val(fixture_minor_id),
+                                        QueryExpr::val(fixture_dependent_id),
+                                    ])
+                                    .and(QueryExpr::col("has_capacity").not())
+                                    .and(
+                                        QueryExpr::col("name").like("Synthetic independent edit%"),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "edited",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("carer_relationships")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id)),
+                            )
+                            .to_owned(),
+                    ),
+                    "carers",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Person")))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "audits",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let counts: Vec<i64> = ["edited", "carers", "audits"]
         .iter()
         .map(|key| row.try_get("", key).unwrap())

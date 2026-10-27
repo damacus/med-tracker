@@ -3,13 +3,16 @@ use super::*;
 #[tokio::test]
 async fn treatment_timestamp_filters_require_offsets_and_compare_the_same_instant() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
     let created = app
         .client
-        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .post(format!("{}/api/v1/households/{fixture_household_id}/schedules", app.origin))
         .bearer_auth(&token)
         .json(&json!({"schedule": {
-            "person_id":"73001", "medication_id":"80001", "dose_amount":"2", "dose_unit":"tablet",
+            "person_id":fixture_person_id.to_string(), "medication_id":fixture_medication_id.to_string(), "dose_amount":"2", "dose_unit":"tablet",
             "start_date":"2026-10-06", "end_date":"2026-10-06", "schedule_type":"prn", "schedule_config":{}
         }}))
         .send()
@@ -30,7 +33,7 @@ async fn treatment_timestamp_filters_require_offsets_and_compare_the_same_instan
             let response = app
                 .client
                 .get(format!(
-                    "{}/api/v1/households/72001/{resource}?{query}",
+                    "{}/api/v1/households/{fixture_household_id}/{resource}?{query}",
                     app.origin
                 ))
                 .bearer_auth(&token)
