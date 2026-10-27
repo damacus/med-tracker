@@ -5,17 +5,11 @@ use playwright_rs::{
     protocol::{FilePayload, Viewport},
 };
 
+#[path = "../support/storage_endpoint.rs"]
+mod storage_endpoint;
+
 async fn prepare_avatar_storage() {
-    crate::template::require_owned_database();
-    let endpoint = std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").unwrap();
-    let url = reqwest::Url::parse(&endpoint).unwrap();
-    assert_eq!(url.scheme(), "http");
-    assert_eq!(url.host_str(), Some("127.0.0.1"));
-    assert!(url.port().is_some());
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_BUCKET").unwrap(),
-        "medtracker-fixture"
-    );
+    let endpoint = storage_endpoint::owned_storage_endpoint();
     let config = aws_sdk_s3::Config::builder()
         .region(aws_sdk_s3::config::Region::new("us-east-1"))
         .credentials_provider(aws_sdk_s3::config::Credentials::new(
