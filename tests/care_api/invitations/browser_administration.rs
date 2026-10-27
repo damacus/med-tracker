@@ -32,15 +32,9 @@ fn invitation_document(html: &str) -> Result<(Vec<String>, Option<String>), Box<
 #[tokio::test]
 async fn invitation_browser_pages_fifty_stably_and_preserves_locale() -> Result<(), Box<dyn Error>>
 {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
-        let cookie = super::super::platform::sign_in(
-            &app,
-            app.fixture.account.id,
-            app.fixture.account.email.as_str(),
-        )
-        .await;
+        let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
         for index in 1..=101 {
             let created = chrono::NaiveDate::from_ymd_opt(2026, 1, 1)
                 .unwrap()
@@ -602,15 +596,9 @@ async fn assert_forbidden_presentation(response: reqwest::Response) -> Result<()
 #[tokio::test]
 async fn invitation_browser_empty_and_terminal_states_expose_only_permitted_actions()
 -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
-        let cookie = super::super::platform::sign_in(
-            &app,
-            app.fixture.account.id,
-            app.fixture.account.email.as_str(),
-        )
-        .await;
+        let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
 
         let path = &format!(
             "/households/{generated_slug}/admin/invitations?lang=es",
@@ -676,15 +664,9 @@ async fn invitation_browser_empty_and_terminal_states_expose_only_permitted_acti
 #[tokio::test]
 async fn invitation_browser_locales_preserve_forms_feedback_and_recovery()
 -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
-        let cookie = super::super::platform::sign_in(
-            &app,
-            app.fixture.account.id,
-            app.fixture.account.email.as_str(),
-        )
-        .await;
+        let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
         let path = &format!(
             "/households/{generated_slug}/admin/invitations",
             generated_slug = app.fixture.household.slug
@@ -829,16 +811,10 @@ async fn invitation_browser_locales_preserve_forms_feedback_and_recovery()
 #[tokio::test]
 async fn invitation_browser_stale_actions_recheck_manager_and_invitation_state()
 -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let acceptance = super::seed_acceptance(&app).await;
-        let cookie = super::super::platform::sign_in(
-            &app,
-            app.fixture.account.id,
-            app.fixture.account.email.as_str(),
-        )
-        .await;
+        let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
         let path = &format!(
             "/households/{generated_slug}/admin/invitations",
             generated_slug = app.fixture.household.slug

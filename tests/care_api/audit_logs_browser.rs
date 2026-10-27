@@ -1,35 +1,10 @@
 use super::*;
 use med_tracker::models::_entities::security_audit_events as audit_event;
+use sha2::{Digest, Sha256};
 use std::{error::Error, io};
 
 async fn browser_session(app: &Application) -> Result<String, Box<dyn Error>> {
-    let response = app
-        .client
-        .post(format!("{}/api/auth/sign-in/email", app.origin))
-        .header("origin", app.context.config.server.full_url())
-        .json(&json!({"email":app.fixture.account.email,"password":"password"}))
-        .send()
-        .await?;
-    if response.status() != reqwest::StatusCode::OK {
-        return Err(io::Error::other("browser sign-in failed").into());
-    }
-    let cookies = response
-        .headers()
-        .get_all("set-cookie")
-        .iter()
-        .map(|value| {
-            value
-                .to_str()
-                .ok()
-                .and_then(|value| value.split(';').next())
-                .map(str::to_owned)
-                .ok_or_else(|| io::Error::other("invalid browser cookie"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    if cookies.is_empty() {
-        return Err(io::Error::other("browser sign-in set no cookies").into());
-    }
-    Ok(cookies.join("; "))
+    Ok(crate::platform::fixture_session(app, app.fixture.account.id).await)
 }
 
 fn filter_url(app: &Application, fields: &[(&str, &str)]) -> Result<url::Url, url::ParseError> {
@@ -105,7 +80,6 @@ const AUDIT_LOCALES: [(&str, &str, &str, &str, &str); 5] = [
 #[tokio::test]
 async fn audit_browser_locales_show_safe_list_detail_recent_and_invalid_filter()
 -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;
     let fixture_membership_id = app.fixture.membership.id;
@@ -217,7 +191,6 @@ async fn audit_browser_locales_show_safe_list_detail_recent_and_invalid_filter()
 #[tokio::test]
 async fn audit_browser_locales_preserve_filters_and_bounded_cursor_pages()
 -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         for _ in 0..51 {
@@ -329,7 +302,6 @@ async fn audit_browser_locales_preserve_filters_and_bounded_cursor_pages()
 #[tokio::test]
 async fn audit_browser_locales_show_empty_results_and_safe_malformed_query_recovery()
 -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let result = async {
         let cookie = browser_session(&app).await?;
@@ -415,7 +387,6 @@ async fn audit_browser_locales_show_empty_results_and_safe_malformed_query_recov
 
 #[tokio::test]
 async fn audit_browser_shows_scoped_actor_and_safe_event_detail() -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;
     let fixture_membership_id = app.fixture.membership.id;
@@ -428,6 +399,17 @@ async fn audit_browser_shows_scoped_actor_and_safe_event_detail() -> Result<(), 
         let row = seed_event(&app, &app.fixture.scenario, "household_membership.role_updated", Some(audit_request.clone()), json!({"target_account_id":other.account.id,"target_membership_id":other.membership.id,"previous_role":"member","new_role":"administrator","previous_state":{"role":"member","status":"active","person_id":other.account.person_id},"new_state":{"role":"administrator","status":"active","person_id":other.account.person_id},"outcome":"success","secret":"synthetic-private-clinical-note"}), json!({"session_reference":"synthetic-private-session"}), "2030-01-01T12:00:00").await;
         audit_ids.insert("detail", row.id);
         let cookie = browser_session(&app).await?;
+        let password_bucket = hex::encode(Sha256::digest(format!(
+            "account:password:{}",
+            app.fixture.account.email.to_lowercase()
+        )));
+        assert!(
+            med_tracker::models::_entities::identity_rate_limits::Entity::find_by_id(password_bucket)
+                .one(&app.fixture.admin)
+                .await?
+                .is_none(),
+            "audit UI setup must not spend password sign-in quota"
+        );
         let list = app.client.get(format!("{}/households/{fixture_slug}/admin/audit_logs", app.origin))
             .header("cookie", &cookie).send().await?;
         let list_status = list.status();
@@ -465,7 +447,6 @@ async fn audit_browser_shows_scoped_actor_and_safe_event_detail() -> Result<(), 
 #[tokio::test]
 async fn audit_browser_rejects_foreign_events_and_lost_manager_authority()
 -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let fixture_slug = app.fixture.household.slug.clone();
     let mut audit_ids = std::collections::BTreeMap::new();
@@ -577,7 +558,6 @@ async fn audit_browser_rejects_foreign_events_and_lost_manager_authority()
 
 #[tokio::test]
 async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let fixture_slug = app.fixture.household.slug.clone();
     let mut audit_ids = std::collections::BTreeMap::new();
@@ -696,7 +676,6 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
 #[tokio::test]
 async fn audit_browser_retains_invalid_filter_drafts_after_authorization()
 -> Result<(), Box<dyn Error>> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let fixture_slug = app.fixture.household.slug.clone();
     let result = async {

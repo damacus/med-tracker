@@ -1,5 +1,5 @@
 use super::{Application, require, withdrawal::declaration};
-use crate::platform::{form_page, hidden_field, post_form, sign_in};
+use crate::platform::{fixture_session, form_page, hidden_field, post_form};
 use med_tracker::models::_entities::{
     carer_relationships, household_memberships, people, security_audit_events,
 };
@@ -12,13 +12,12 @@ use sea_orm::{
 #[tokio::test]
 async fn guardian_recovery_browser_discloses_eligible_minor_and_requires_explicit_confirmation()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let app = Application::new().await;
     let slug = app.fixture.household.slug.clone();
     let result = async {
         owner(&app).await?;
         let subject = minor(&app, "Synthetic recovery child").await?;
-        let cookie = sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
+        let cookie = fixture_session(&app, app.fixture.account.id).await;
         let (_, list) = form_page(
             &app,
             &cookie,
@@ -63,7 +62,6 @@ async fn guardian_recovery_browser_discloses_eligible_minor_and_requires_explici
 #[tokio::test]
 async fn guardian_recovery_browser_appoints_with_audit_and_new_guardian_can_withdraw()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let mut app = Application::new().await;
     let slug = app.fixture.household.slug.clone();
     let result = async {
@@ -73,7 +71,7 @@ owner(&app).await?;
 let subject=minor(&app,"Synthetic browser orphan").await?;
 let guardian=guardian(&app,"Synthetic newly appointed adult").await?;
 let guardian_id=guardian.account.person_id.to_string();
-        let cookie=sign_in(&app,app.fixture.account.id,&app.fixture.account.email).await;
+        let cookie=fixture_session(&app, app.fixture.account.id).await;
         let path=&format!("/households/{slug}/admin/carer_relationships/recover/{subject}");
         let (cookies,page)=form_page(&app,&cookie,path).await;
         let csrf=hidden_field(&page,"authenticity_token");
@@ -133,7 +131,7 @@ let audit=security_audit_events::Entity::find()
     .filter(Expr::expr(Func::cust("jsonb_extract_path_text").args([Expr::col(security_audit_events::Column::Metadata),Expr::val("subject_person_id")])).eq(subject.to_string()))
     .count(&app.fixture.admin).await?;
 require(links==1 && audit==1,"Appointment must persist exact authority and attributable audit")?;
-        let guardian_cookie=sign_in(&app,guardian.account.id,&guardian.account.email).await;
+        let guardian_cookie=fixture_session(&app, guardian.account.id).await;
         let (guardian_cookies,history)=form_page(&app,&guardian_cookie,"/profile/guardian-declarations").await;
         require(history.contains("Household manager appointment") && history.contains(&format!("/{id}/withdraw")),
             "New guardian must see truthful manager provenance and own withdrawal")?;
@@ -156,7 +154,6 @@ require(links==1 && audit==1,"Appointment must persist exact authority and attri
 #[tokio::test]
 async fn guardian_recovery_browser_restores_exact_inactive_link_and_preserves_generic_denial()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let mut app = Application::new().await;
     let slug = app.fixture.household.slug.clone();
     let result=async {
@@ -175,7 +172,7 @@ people::Entity::update_many().col_expr(people::Column::Name,Expr::val("Linked gu
     .filter(people::Column::Id.eq(app.fixture.adult.id)).exec(&app.fixture.admin).await?;
 let guardian=guardian(&app,"Other eligible adult").await?;
 let original_guardian=app.fixture.adult.id.to_string();
-        let cookie=sign_in(&app,app.fixture.account.id,&app.fixture.account.email).await;
+        let cookie=fixture_session(&app, app.fixture.account.id).await;
         let path=format!("/households/{slug}/admin/carer_relationships/recover/{subject}");
         let (cookies,page)=form_page(&app,&cookie,&path).await;
         require(page.contains("Restore existing guardian") && hidden_field(&page,"relationship_id")==link_id.to_string(),
@@ -228,7 +225,6 @@ require(restored_link.active && declarations(&app,subject).await?==1
 #[tokio::test]
 async fn guardian_recovery_browser_shows_superseded_initial_history_without_withdrawal()
 -> Result<(), DbErr> {
-    crate::authentication_fixture::reset_source_quota().await;
     let mut app = Application::new().await;
     let slug = app.fixture.household.slug.clone();
     let result=async {
@@ -241,7 +237,7 @@ carer_relationships::Entity::update_many().col_expr(carer_relationships::Column:
     .filter(carer_relationships::Column::GuardianDeclarationId.eq(old_id)).exec(&app.fixture.admin).await?;
 let guardian=guardian(&app,"Synthetic replacement guardian").await?;
 let guardian_id=guardian.account.person_id.to_string();
-        let cookie=sign_in(&app,app.fixture.account.id,&app.fixture.account.email).await;
+        let cookie=fixture_session(&app, app.fixture.account.id).await;
         let path=format!("/households/{slug}/admin/carer_relationships/recover/{subject}");
         let (cookies,page)=form_page(&app,&cookie,&path).await;
         let csrf=hidden_field(&page,"authenticity_token");
