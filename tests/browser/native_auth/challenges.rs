@@ -1,6 +1,7 @@
-use med_tracker::models::entities::identity_session;
-use sea_orm::sea_query::{Expr, Query};
-use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, PaginatorTrait, QueryFilter};
+use med_tracker::models::entities::{identity_session, identity_verification};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, Set,
+};
 
 use super::*;
 
@@ -131,34 +132,13 @@ async fn hold_verification(page: &Page, replay: &Value) {
 }
 
 async fn expire_challenge(journey: &harness::Journey, challenge: &str) {
-    let query = Query::select()
-        .column("id")
-        .from("identity_verifications")
-        .and_where(Expr::col("value").like(format!("%{challenge}%")))
-        .to_owned();
-    let backend = journey.admin.get_database_backend();
-    let records = journey
-        .admin
-        .query_all_raw(backend.build(&query))
+    let records = identity_verification::Entity::find()
+        .filter(identity_verification::Column::Value.contains(challenge))
+        .all(&journey.admin)
         .await
         .unwrap();
     assert_eq!(records.len(), 1, "must identify only the held challenge");
-    let id: i64 = records.first().unwrap().try_get("", "id").unwrap();
-    let update = Query::update()
-        .table("identity_verifications")
-        .value(
-            "expires_at",
-            chrono::Utc::now() - chrono::Duration::seconds(1),
-        )
-        .and_where(Expr::col("id").eq(id))
-        .to_owned();
-    assert_eq!(
-        journey
-            .admin
-            .execute_raw(backend.build(&update))
-            .await
-            .unwrap()
-            .rows_affected(),
-        1
-    );
+    let mut record = records.into_iter().next().unwrap().into_active_model();
+    record.expires_at = Set(chrono::Utc::now() - chrono::Duration::seconds(1));
+    record.update(&journey.admin).await.unwrap();
 }
