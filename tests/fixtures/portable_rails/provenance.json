@@ -7,7 +7,7 @@
     "rails/app/services/portable_data/exporter.rb": "764ed9c0c09fb950503d5a859b1f503a26612a2e0d981a72f0b242a16ffc9657",
     "rails/app/services/portable_data/encryptor.rb": "047471cf4d99496895c5fff9e50dd3b438871f52c98465135f259f4a8f7548f6",
     "rails/config/application.rb": "8a361e8163224ca80e2e9f276b572642460ddc3e3200e1a7f3b783906ef250bf",
-    "rails/Gemfile.lock": "cb9fb993a051f05bb89e9c6d1b7285235d5388366e6ee53053428183dcb818f9"
+    "rails/Gemfile.lock": "3a20f714612ce1e0e8186f2ae600b5075fa47ead9ed1a4376a49f66254e42290"
   },
   "ruby_version": "4.0.7",
   "active_support_version": "8.1.4",

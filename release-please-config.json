@@ -1,10 +1,11 @@
 {
 	"packages": {
 		".": {
-			"release-type": "ruby",
+			"release-type": "rust",
 			"package-name": "med-tracker",
 			"changelog-path": "CHANGELOG.md",
-			"version-file": "rails/lib/med_tracker/version.rb",
+			"release-as": "0.6.0-rc.1",
+			"prerelease": true,
 			"include-component-in-tag": false,
 			"initial-version": "0.1.0"
 		}
