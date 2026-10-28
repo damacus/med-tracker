@@ -207,6 +207,15 @@ jobs:
         with:
           pattern: checked-loco-*
           path: checked
+      - name: Use the release builder's Docker image store
+        run: |
+          if sudo test -f /etc/docker/daemon.json; then
+            sudo cat /etc/docker/daemon.json
+          else
+            printf '{}\n'
+          fi | jq '.features["containerd-snapshotter"] = false' > "$RUNNER_TEMP/docker-daemon.json"
+          sudo install -m 0644 "$RUNNER_TEMP/docker-daemon.json" /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: Verify both transferred images without executing them
         run: |
           for arch in amd64 arm64; do
@@ -252,6 +261,15 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Use the release builder's Docker image store
+        run: |
+          if sudo test -f /etc/docker/daemon.json; then
+            sudo cat /etc/docker/daemon.json
+          else
+            printf '{}\n'
+          fi | jq '.features["containerd-snapshotter"] = false' > "$RUNNER_TEMP/docker-daemon.json"
+          sudo install -m 0644 "$RUNNER_TEMP/docker-daemon.json" /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: Publish tested images and assemble their manifest
         env:
           IMAGE: ghcr.io/${{ github.repository }}-loco

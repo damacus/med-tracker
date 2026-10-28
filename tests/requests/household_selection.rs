@@ -869,6 +869,424 @@ async fn signed_in_without_active_household_reaches_initial_selection() -> TestR
 }
 
 #[tokio::test]
+async fn household_free_profile_survives_last_membership_revocation() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    let mut request = server(&boot);
+    request.save_cookies();
+    browser_session(&fixture, &mut request, &boot).await;
+    let mut membership = fixture.membership.clone().into_active_model();
+    membership.status = Set("revoked".into());
+    membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    membership.update(&fixture.admin).await?;
+    let chooser = request.get("/households/choose").await;
+    assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
+    assert!(chooser.text().contains("href=\"/profile\""));
+    let page = request.get("/profile").await;
+    assert_eq!(page.status_code(), 200, "{}", page.text());
+    assert_eq!(page.header("cache-control"), "no-store");
+    let html = page.text();
+    assert!(html.contains(&fixture.account.email));
+    assert!(!html.contains("data-app-drawer-layout"));
+    assert!(!html.contains("action=\"/households/"));
+    let csrf = authenticity_token(&html).ok_or("profile form token missing")?;
+    let saved = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf),
+            ("setting", "time_zone"),
+            ("time_zone", "Europe/London"),
+        ])
+        .await;
+    assert_eq!(saved.status_code(), 303, "{}", saved.text());
+    let refreshed = request.get("/profile").await;
+    assert_eq!(refreshed.status_code(), 200, "{}", refreshed.text());
+    assert!(refreshed.text().contains("Europe/London"));
+    let invalid = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf),
+            ("setting", "time_zone"),
+            ("time_zone", "Invalid/Zone"),
+        ])
+        .await;
+    assert_eq!(invalid.status_code(), 422, "{}", invalid.text());
+    assert!(invalid.text().contains("Invalid/Zone"));
+    let denied = request
+        .get(&format!("/households/{}/dashboard", fixture.household.slug))
+        .await;
+    assert!(matches!(denied.status_code().as_u16(), 403 | 404));
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_history_contains_only_the_subjects_taken_doses() -> TestResult {
+    use med_tracker::models::_entities::{medication_takes, person_medications, schedules};
+    let (fixture, boot) = boot_browser_fixture().await;
+    let now = chrono::Utc::now().naive_utc();
+    let assignment = person_medications::Entity::find()
+        .filter(person_medications::Column::PersonId.eq(fixture.account.person_id))
+        .one(&fixture.admin)
+        .await?
+        .ok_or("assignment missing")?;
+    medication_takes::ActiveModel {
+        household_id: Set(fixture.household.id),
+        person_medication_id: Set(Some(assignment.id)),
+        taken_from_medication_id: Set(Some(fixture.medication.id)),
+        taken_from_location_id: Set(Some(fixture.medication.location_id)),
+        dose_amount: Set(Some(sea_orm::prelude::Decimal::new(2, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(now)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    let (other_home, other_membership) = home(
+        &fixture.scenario,
+        "Former home",
+        "personal-history",
+        "member",
+        true,
+    )
+    .await?;
+    let other = Scenario {
+        admin: fixture.admin.clone(),
+        runtime: fixture.runtime.clone(),
+        account: fixture.account.clone(),
+        household: other_home,
+        membership: other_membership,
+    };
+    let other_medicine = other
+        .medication(
+            "Personal medicine from another home",
+            sea_orm::prelude::Decimal::new(8, 0),
+        )
+        .await;
+    let schedule = schedules::ActiveModel {
+        household_id: Set(other.household.id),
+        person_id: Set(fixture.account.person_id),
+        medication_id: Set(other_medicine.id),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    medication_takes::ActiveModel {
+        household_id: Set(other.household.id),
+        schedule_id: Set(Some(schedule.id)),
+        taken_from_medication_id: Set(Some(other_medicine.id)),
+        dose_amount: Set(Some(sea_orm::prelude::Decimal::new(1, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(now)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    let foreign_medication = fixture
+        .foreign
+        .medication(
+            "Private foreign medicine",
+            sea_orm::prelude::Decimal::new(20, 0),
+        )
+        .await;
+    let foreign_assignment = fixture
+        .foreign
+        .personal_assignment(foreign_medication.id, 0)
+        .await;
+    medication_takes::ActiveModel {
+        household_id: Set(fixture.foreign.household.id),
+        person_medication_id: Set(Some(foreign_assignment.id)),
+        taken_from_medication_id: Set(Some(foreign_medication.id)),
+        dose_amount: Set(Some(sea_orm::prelude::Decimal::new(1, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(now)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    browser_session(&fixture, &mut request, &boot).await;
+    let mut membership = fixture.membership.clone().into_active_model();
+    membership.status = Set("revoked".into());
+    membership.revoked_at = Set(Some(now));
+    membership.update(&fixture.admin).await?;
+    let mut subject = people::Entity::find_by_id(fixture.account.person_id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("clinical person missing")?
+        .into_active_model();
+    subject.person_type = Set(2);
+    subject.has_capacity = Set(false);
+    subject.update(&fixture.admin).await?;
+    let history = request.get("/profile/history").await;
+    assert_eq!(history.status_code(), 200, "{}", history.text());
+    assert_eq!(history.header("cache-control"), "no-store");
+    assert!(history.text().contains("Synthetic tablets"));
+    assert!(
+        history
+            .text()
+            .contains("Personal medicine from another home")
+    );
+    assert!(!history.text().contains("Private foreign medicine"));
+    assert!(!history.text().contains("Synthetic cabinet"));
+    assert!(!history.text().contains("current_supply"));
+    let other = request
+        .get(&format!(
+            "/profile/history?person_id={}",
+            fixture.foreign.account.person_id
+        ))
+        .await;
+    assert!(!other.text().contains("Private foreign medicine"));
+    let anonymous = server(&boot).get("/profile/history").await;
+    assert!(matches!(anonymous.status_code().as_u16(), 303 | 401));
+    let audits = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("AccountClinicalAccess"))
+        .filter(versions::Column::ItemId.eq(fixture.account.id))
+        .filter(versions::Column::Event.eq("personal_history_read"))
+        .count(&fixture.admin)
+        .await?;
+    assert!(audits >= 1);
+    for (privilege, expected) in [
+        ("SELECT", true),
+        ("INSERT", false),
+        ("UPDATE", false),
+        ("DELETE", false),
+    ] {
+        let permissions = sea_orm::sea_query::Query::select()
+            .expr_as(
+                sea_orm::sea_query::Func::cust("pg_catalog.has_table_privilege").args([
+                    Expr::val("public.personal_taken_doses"),
+                    Expr::val(privilege),
+                ]),
+                "allowed",
+            )
+            .to_owned();
+        let row = fixture
+            .runtime
+            .query_one_raw(fixture.runtime.get_database_backend().build(&permissions))
+            .await?
+            .ok_or("view privileges missing")?;
+        assert_eq!(
+            row.try_get::<bool>("", "allowed")?,
+            expected,
+            "runtime {privilege} privilege"
+        );
+    }
+    let transaction = fixture.runtime.begin().await?;
+    let context = sea_orm::sea_query::Query::select()
+        .expr(
+            sea_orm::sea_query::Func::cust("pg_catalog.set_config").args([
+                Expr::val("med_tracker.current_account_id"),
+                Expr::val(fixture.account.id.to_string()),
+                Expr::val(true),
+            ]),
+        )
+        .expr(
+            sea_orm::sea_query::Func::cust("pg_catalog.set_config").args([
+                Expr::val("med_tracker.current_household_id"),
+                Expr::val(""),
+                Expr::val(true),
+            ]),
+        )
+        .expr(
+            sea_orm::sea_query::Func::cust("pg_catalog.set_config").args([
+                Expr::val("med_tracker.personal_history_access"),
+                Expr::val("true"),
+                Expr::val(true),
+            ]),
+        )
+        .to_owned();
+    transaction
+        .execute_raw(transaction.get_database_backend().build(&context))
+        .await?;
+    assert!(
+        med_tracker::models::_entities::medications::Entity::find()
+            .all(&transaction)
+            .await?
+            .is_empty()
+    );
+    assert!(
+        person_medications::Entity::find()
+            .all(&transaction)
+            .await?
+            .is_empty()
+    );
+    assert!(
+        medication_takes::Entity::find()
+            .all(&transaction)
+            .await?
+            .is_empty()
+    );
+    let own_history = sea_orm::sea_query::Query::select()
+        .column(sea_orm::sea_query::Asterisk)
+        .from("personal_taken_doses")
+        .to_owned();
+    let rows = transaction
+        .query_all_raw(transaction.get_database_backend().build(&own_history))
+        .await?;
+    assert_eq!(rows.len(), 2);
+    for row in rows {
+        assert_eq!(
+            row.try_get::<i64>("", "person_id")?,
+            fixture.account.person_id
+        );
+    }
+    transaction.rollback().await?;
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_profile_uses_account_identity_without_a_legacy_user() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    entrant(&fixture).await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    entrant_browser_session(&fixture, &mut request, &boot).await;
+    let page = request.get("/profile").await;
+    assert_eq!(page.status_code(), 200, "{}", page.text());
+    assert!(page.text().contains(&fixture.foreign.account.email));
+    assert!(!page.text().contains(&fixture.account.email));
+    let empty_history = request.get("/profile/history").await;
+    assert_eq!(empty_history.status_code(), 200, "{}", empty_history.text());
+    let html = page.text();
+    let csrf = authenticity_token(&html).ok_or("profile form token missing")?;
+    let saved = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf),
+            ("setting", "clinical"),
+            ("name", "Own clinical name"),
+            ("date_of_birth", "1990-02-03"),
+        ])
+        .await;
+    assert_eq!(saved.status_code(), 303, "{}", saved.text());
+    let person = people::Entity::find_by_id(fixture.foreign.account.person_id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("clinical person missing")?;
+    assert_eq!(person.name, "Own clinical name");
+    assert_eq!(person.date_of_birth.unwrap().to_string(), "1990-02-03");
+    let account = accounts::Entity::find_by_id(fixture.foreign.account.id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("account missing")?;
+    assert_eq!(account.name, fixture.foreign.account.name);
+    let csrf_denied = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[("setting", "time_zone"), ("time_zone", "UTC")])
+        .await;
+    assert_eq!(csrf_denied.status_code(), 403);
+    let injection = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf),
+            ("setting", "clinical"),
+            ("name", "Forbidden target"),
+            ("person_id", &fixture.account.person_id.to_string()),
+        ])
+        .await;
+    assert_eq!(injection.status_code(), 422, "{}", injection.text());
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_landing_keeps_the_opened_invitation_available() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    entrant(&fixture).await?;
+    let invitation_token = format!("personal-landing-{}", uuid::Uuid::new_v4());
+    invitation(&fixture, &invitation_token).await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    entrant_browser_session(&fixture, &mut request, &boot).await;
+    let preview = request
+        .get(&format!("/invitations/accept?token={invitation_token}"))
+        .await;
+    assert_eq!(preview.status_code(), 200, "{}", preview.text());
+    let landing = request.get("/households/choose").await;
+    assert_eq!(landing.status_code(), 200, "{}", landing.text());
+    assert!(
+        landing
+            .text()
+            .contains(&format!("/invitations/accept?token={invitation_token}"))
+    );
+    assert!(landing.text().contains("href=\"/profile\""));
+    assert!(landing.text().contains("action=\"/households\""));
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_clinical_birth_date_cannot_lock_out_the_account() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    let original = people::Entity::find_by_id(fixture.account.person_id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("clinical person missing")?;
+    let versions = || {
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("Person"))
+            .filter(versions::Column::ItemId.eq(original.id))
+    };
+    let before = versions().count(&fixture.admin).await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    browser_session(&fixture, &mut request, &boot).await;
+    for date in ["2015-01-01", "2099-01-01"] {
+        let page = request.get("/profile").await;
+        assert_eq!(page.status_code(), 200, "{}", page.text());
+        let html = page.text();
+        let csrf = authenticity_token(&html).ok_or("profile token missing")?;
+        let invalid = request
+            .post("/profile")
+            .add_header("sec-fetch-site", "same-origin")
+            .form(&[
+                ("authenticity_token", csrf),
+                ("setting", "clinical"),
+                ("name", "Must not persist"),
+                ("date_of_birth", date),
+            ])
+            .await;
+        assert_eq!(invalid.status_code(), 422, "{}", invalid.text());
+        assert!(invalid.text().contains(date));
+        let unchanged = people::Entity::find_by_id(original.id)
+            .one(&fixture.admin)
+            .await?
+            .ok_or("clinical person missing")?;
+        assert_eq!(unchanged, original);
+        assert_eq!(versions().count(&fixture.admin).await?, before);
+        let still_signed_in = request.get("/profile").await;
+        assert_eq!(
+            still_signed_in.status_code(),
+            200,
+            "{}",
+            still_signed_in.text()
+        );
+    }
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
 async fn household_selection_requires_csrf_and_does_not_change_session() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
     let household_id = fixture.household.id;
@@ -1336,3 +1754,6 @@ async fn household_revocation_serializes_with_selection() -> TestResult {
     close_request(fixture, boot).await;
     Ok(())
 }
+
+#[path = "household_selection/personal_review.rs"]
+mod personal_review;

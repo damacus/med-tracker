@@ -64,6 +64,13 @@ pub(super) async fn preview(
                 );
             }
         };
+    if signed_in {
+        crate::controllers::auth::store_invitation_continuation(
+            &session,
+            &invitation.token,
+            invitation.explicit_language.then_some(invitation.language),
+        );
+    }
     let Ok(authenticity_token) = token.authenticity_token() else {
         return super::super::administration::presentation_error(
             &view,
@@ -138,6 +145,7 @@ pub(super) async fn accept(
             return super::super::administration::presentation_error(&view, language, error);
         }
     };
+    session.remove("invitation_pending");
     let homes = match principal.households(&ctx.db).await {
         Ok(value) => value,
         Err(_) => {

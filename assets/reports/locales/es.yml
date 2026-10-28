@@ -1933,6 +1933,15 @@ es:
     paused: 'No se puede tomar el medicamento: está en pausa'
     overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
   profiles:
+    personal:
+      clinical_invalid: "Introduce un nombre y una fecha de nacimiento válida. Los titulares de cuentas deben tener al menos 18 años."
+      description: "Gestiona tu cuenta y tu información clínica."
+      account_name: "Nombre visible de la cuenta"
+      clinical: "Información clínica"
+      history: "Mi historial de dosis tomadas"
+      history_description: "Lo que has tomado, incluidos registros de hogares que has dejado."
+      history_empty: "No se han registrado dosis tomadas para ti."
+      history_next: "Registros anteriores"
     security_flow:
       incomplete_link: "Enlace incompleto"
       incomplete_reset_guidance: "Este enlace para restablecer la contraseña está incompleto. Solicita uno nuevo para restablecer tu contraseña."

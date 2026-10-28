@@ -1,0 +1,143 @@
+{
+  "removed": [],
+  "changed": {
+    "relation:public.personal_taken_doses": {
+      "acl": [
+        "med_tracker_app=r/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "rls": false,
+      "kind": "v",
+      "owner": "med_tracker_owner",
+      "options": [
+        "security_barrier=true"
+      ],
+      "force_rls": false,
+      "partition": false,
+      "tablespace": null,
+      "persistence": "p",
+      "access_method": null,
+      "partition_key": null,
+      "partition_bound": null,
+      "replica_identity": "n"
+    },
+    "column:public.personal_taken_doses.id": {
+      "acl": null,
+      "type": "bigint",
+      "default": null,
+      "options": null,
+      "storage": "p",
+      "identity": "",
+      "not_null": false,
+      "position": 1,
+      "collation": null,
+      "generated": "",
+      "compression": ""
+    },
+    "rule:public.personal_taken_doses._RETURN": {
+      "enabled": "O",
+      "definition": "CREATE RULE \"_RETURN\" AS\n    ON SELECT TO public.personal_taken_doses DO INSTEAD  SELECT medication_takes.id,\n    COALESCE(schedules.person_id, person_medications.person_id) AS person_id,\n    medication_takes.taken_at,\n    medication_takes.dose_amount,\n    medication_takes.dose_unit,\n    medications.name AS medicine\n   FROM ((((medication_takes\n     LEFT JOIN schedules ON ((schedules.id = medication_takes.schedule_id)))\n     LEFT JOIN person_medications ON ((person_medications.id = medication_takes.person_medication_id)))\n     JOIN accounts ON ((accounts.person_id = COALESCE(schedules.person_id, person_medications.person_id))))\n     JOIN medications ON ((medications.id = COALESCE(medication_takes.taken_from_medication_id, schedules.medication_id, person_medications.medication_id))))\n  WHERE ((accounts.id = med_tracker.current_account_id()) AND (accounts.status = 2) AND (medication_takes.taken_at IS NOT NULL));"
+    },
+    "column:public.personal_taken_doses.medicine": {
+      "acl": null,
+      "type": "character varying",
+      "default": null,
+      "options": null,
+      "storage": "x",
+      "identity": "",
+      "not_null": false,
+      "position": 6,
+      "collation": "pg_catalog.default",
+      "generated": "",
+      "compression": ""
+    },
+    "column:public.personal_taken_doses.taken_at": {
+      "acl": null,
+      "type": "timestamp(6) without time zone",
+      "default": null,
+      "options": null,
+      "storage": "p",
+      "identity": "",
+      "not_null": false,
+      "position": 3,
+      "collation": null,
+      "generated": "",
+      "compression": ""
+    },
+    "column:public.personal_taken_doses.dose_unit": {
+      "acl": null,
+      "type": "character varying",
+      "default": null,
+      "options": null,
+      "storage": "x",
+      "identity": "",
+      "not_null": false,
+      "position": 5,
+      "collation": "pg_catalog.default",
+      "generated": "",
+      "compression": ""
+    },
+    "column:public.personal_taken_doses.person_id": {
+      "acl": null,
+      "type": "bigint",
+      "default": null,
+      "options": null,
+      "storage": "p",
+      "identity": "",
+      "not_null": false,
+      "position": 2,
+      "collation": null,
+      "generated": "",
+      "compression": ""
+    },
+    "column:public.personal_taken_doses.dose_amount": {
+      "acl": null,
+      "type": "numeric(10,2)",
+      "default": null,
+      "options": null,
+      "storage": "m",
+      "identity": "",
+      "not_null": false,
+      "position": 4,
+      "collation": null,
+      "generated": "",
+      "compression": ""
+    },
+    "policy:public.schedules.personal_history_source": {
+      "check": null,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((current_setting('med_tracker.personal_history_access'::text, true) = 'true'::text) AND (person_id = ( SELECT accounts.person_id\n   FROM accounts\n  WHERE ((accounts.id = med_tracker.current_account_id()) AND (accounts.status = 2)))))",
+      "command": "r",
+      "permissive": true
+    },
+    "policy:public.medications.personal_history_medicine": {
+      "check": null,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((current_setting('med_tracker.personal_history_access'::text, true) = 'true'::text) AND ((id IN ( SELECT medication_takes.taken_from_medication_id\n   FROM medication_takes)) OR (id IN ( SELECT schedules.medication_id\n   FROM schedules)) OR (id IN ( SELECT person_medications.medication_id\n   FROM person_medications))))",
+      "command": "r",
+      "permissive": true
+    },
+    "policy:public.medication_takes.personal_history_take": {
+      "check": null,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((current_setting('med_tracker.personal_history_access'::text, true) = 'true'::text) AND ((schedule_id IN ( SELECT schedules.id\n   FROM schedules\n  WHERE (schedules.person_id = ( SELECT accounts.person_id\n           FROM accounts\n          WHERE ((accounts.id = med_tracker.current_account_id()) AND (accounts.status = 2)))))) OR (person_medication_id IN ( SELECT person_medications.id\n   FROM person_medications\n  WHERE (person_medications.person_id = ( SELECT accounts.person_id\n           FROM accounts\n          WHERE ((accounts.id = med_tracker.current_account_id()) AND (accounts.status = 2))))))))",
+      "command": "r",
+      "permissive": true
+    },
+    "policy:public.person_medications.personal_history_source": {
+      "check": null,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((current_setting('med_tracker.personal_history_access'::text, true) = 'true'::text) AND (person_id = ( SELECT accounts.person_id\n   FROM accounts\n  WHERE ((accounts.id = med_tracker.current_account_id()) AND (accounts.status = 2)))))",
+      "command": "r",
+      "permissive": true
+    }
+  }
+}

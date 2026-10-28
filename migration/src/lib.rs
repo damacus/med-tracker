@@ -18,6 +18,7 @@ pub mod m20261017_000013_guardian_declarations;
 pub mod m20261021_000014_member_directory_identity;
 pub mod m20261021_000016_invitation_mail_attempts;
 pub mod m20261022_000017_guardian_recovery;
+pub mod m20261027_000018_personal_history;
 mod native_authentication;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
@@ -44,6 +45,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261021_000014_member_directory_identity::Migration),
             Box::new(m20261021_000016_invitation_mail_attempts::Migration),
             Box::new(m20261022_000017_guardian_recovery::Migration),
+            Box::new(m20261027_000018_personal_history::Migration),
         ]
     }
 }

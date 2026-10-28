@@ -41,7 +41,7 @@ pub async fn index(
             Err(error) => return authentication_error(error),
         }
     }
-    render_home(view, false, Vec::new(), auth_notice, token.ok())
+    render_home(view, false, Vec::new(), auth_notice, None, token.ok())
 }
 
 #[derive(serde::Deserialize)]
@@ -78,7 +78,14 @@ pub async fn choose(
     };
     let auth_notice = session.get::<String>("auth_notice");
     session.remove("auth_notice");
-    render_home(view, true, households, auth_notice, Some(token))
+    render_home(
+        view,
+        true,
+        households,
+        auth_notice,
+        super::auth::pending_invitation_url(&session),
+        Some(token),
+    )
 }
 
 fn render_home(
@@ -86,6 +93,7 @@ fn render_home(
     signed_in: bool,
     households: Vec<browser::BrowserHousehold>,
     auth_notice: Option<String>,
+    pending_invitation: Option<String>,
     token: Option<CsrfToken>,
 ) -> Response {
     let authenticity_token = if signed_in {
@@ -107,6 +115,7 @@ fn render_home(
             "allow_palette": signed_in,
             "signed_in": signed_in,
             "auth_notice": auth_notice,
+            "pending_invitation": pending_invitation,
             "households": households,
             "authenticity_token": authenticity_token,
             "appearances": [
@@ -183,6 +192,7 @@ pub async fn create(
             true,
             households,
             Some("Enter a household name of up to 100 characters.".to_owned()),
+            super::auth::pending_invitation_url(&session),
             Some(token),
         );
         *response.status_mut() = StatusCode::UNPROCESSABLE_ENTITY;

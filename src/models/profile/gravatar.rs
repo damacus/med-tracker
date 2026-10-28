@@ -109,7 +109,7 @@ pub async fn for_visible_people(
         .collect())
 }
 
-fn image_url(email: &str) -> Option<String> {
+pub(crate) fn image_url(email: &str) -> Option<String> {
     let email = email.trim().to_lowercase();
     if email.is_empty() {
         return None;

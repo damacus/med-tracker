@@ -8,7 +8,7 @@ use playwright_rs::{
 #[path = "../support/storage_endpoint.rs"]
 mod storage_endpoint;
 
-async fn prepare_avatar_storage() {
+pub(crate) async fn prepare_avatar_storage() {
     let endpoint = storage_endpoint::owned_storage_endpoint();
     let config = aws_sdk_s3::Config::builder()
         .region(aws_sdk_s3::config::Region::new("us-east-1"))

@@ -2270,6 +2270,15 @@ pt:
         metric_label: Rever
         metric_value: Horário
   profiles:
+    personal:
+      clinical_invalid: "Introduza um nome e uma data de nascimento válida. Os titulares de contas devem ter pelo menos 18 anos."
+      description: "Gira a sua conta e a sua informação clínica."
+      account_name: "Nome de apresentação da conta"
+      clinical: "Informação clínica"
+      history: "O meu histórico de doses tomadas"
+      history_description: "O que tomou, incluindo registos de agregados familiares dos quais saiu."
+      history_empty: "Não foram registadas doses tomadas por si."
+      history_next: "Registos anteriores"
     security_flow:
       incomplete_link: "Ligação incompleta"
       incomplete_reset_guidance: "Esta ligação para repor a palavra-passe está incompleta. Peça uma nova ligação para repor a sua palavra-passe."
