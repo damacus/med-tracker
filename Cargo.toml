@@ -71,7 +71,7 @@ ulid = "=3.0.0"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 axum = { version = "0.8", features = ["multipart"] }
-axum_session = "=0.21.0"
+axum_session = "=0.22.0"
 axum_session_sqlx = { version = "=0.11.0", default-features = false, features = [
     "postgres",
     "tls-rustls",
