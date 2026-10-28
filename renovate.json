@@ -12,6 +12,11 @@
       "matchManagers": ["cargo"],
       "matchDepNames": ["better-auth", "better-auth-core", "better-auth-seaorm"],
       "groupName": "Better Auth Rust"
+    },
+    {
+      "matchManagers": ["cargo"],
+      "matchDepNames": ["axum_session", "axum_session_sqlx"],
+      "groupName": "Axum sessions"
     }
   ],
   "lockFileMaintenance": {
