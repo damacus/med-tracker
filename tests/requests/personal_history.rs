@@ -1,7 +1,7 @@
 use super::*;
 use med_tracker::models::_entities::{
-    household_memberships, medication_takes, oauth_grants, people, person_medications, schedules,
-    versions,
+    audit_ledger_entries, household_memberships, medication_takes, oauth_grants, people,
+    person_medications, schedules, security_audit_events, versions,
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
@@ -21,6 +21,68 @@ async fn audits(fixture: &RequestFixture, request_id: &str) -> Vec<versions::Mod
         .all(&fixture.admin)
         .await
         .unwrap()
+}
+
+async fn assert_ledger_outcome(
+    fixture: &RequestFixture,
+    audit: &versions::Model,
+    outcome: &str,
+) -> TestResult {
+    let entry = audit_ledger_entries::Entity::find()
+        .filter(audit_ledger_entries::Column::SourceTable.eq("versions"))
+        .filter(audit_ledger_entries::Column::SourceId.eq(audit.id))
+        .one(&fixture.admin)
+        .await?
+        .ok_or("missing history ledger entry")?;
+    assert_eq!(entry.envelope["outcome"], outcome);
+    assert_eq!(entry.envelope["event_type"], audit.event);
+    assert_eq!(entry.envelope["agent"]["account_id"], fixture.account.id);
+    assert_eq!(entry.source_payload["audit_context"]["outcome"], outcome);
+    assert_eq!(entry.chain_key, "global");
+    assert!(entry.household_id.is_none());
+    Ok(())
+}
+
+#[tokio::test]
+async fn personal_history_ledger_preserves_existing_source_outcomes() -> TestResult {
+    let (fixture, boot) = boot_request_fixture().await;
+    let now = chrono::Utc::now().naive_utc();
+    let event = security_audit_events::ActiveModel {
+        household_id: Set(fixture.household.id),
+        actor_account_id: Set(Some(fixture.account.id)),
+        event_type: Set("synthetic.history_outcome_control".into()),
+        metadata: Set(json!({"outcome":"success"})),
+        audit_context: Set(json!({"outcome":"denied"})),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    let version = versions::ActiveModel {
+        item_type: Set("Account".into()),
+        item_id: Set(fixture.account.id),
+        event: Set("synthetic.history_outcome_control".into()),
+        audit_context: Set(json!({"outcome":"denied"})),
+        created_at: Set(Some(now)),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    for (table, id, expected) in [
+        ("security_audit_events", event.id, json!("success")),
+        ("versions", version.id, Value::Null),
+    ] {
+        let entry = audit_ledger_entries::Entity::find()
+            .filter(audit_ledger_entries::Column::SourceTable.eq(table))
+            .filter(audit_ledger_entries::Column::SourceId.eq(id))
+            .one(&fixture.admin)
+            .await?
+            .ok_or("missing control ledger entry")?;
+        assert_eq!(entry.envelope["outcome"], expected);
+    }
+    close_request(fixture, boot).await;
+    Ok(())
 }
 
 #[tokio::test]
@@ -167,6 +229,7 @@ async fn personal_history_oauth_reads_all_own_taken_doses_after_departure() -> T
         assert!(!response.text().contains("PRIVATE FOREIGN"));
         let audit = audits(&fixture, response.header("x-request-id").to_str()?).await;
         assert_eq!(audit.len(), 1);
+        assert_ledger_outcome(&fixture, &audit[0], "success").await?;
         assert_eq!(audit[0].item_id, fixture.account.id);
         assert_eq!(
             audit[0].audit_context["actor_person_id"],
@@ -232,6 +295,7 @@ async fn personal_history_rejects_household_credentials_with_attributable_denial
         let audit = audits(&fixture, response.header("x-request-id").to_str()?).await;
         assert_eq!(audit.len(), 1);
         assert_eq!(audit[0].event, "personal_history_denied");
+        assert_ledger_outcome(&fixture, &audit[0], "denied").await?;
         assert_eq!(
             audit[0].audit_context["actor_account_id"],
             fixture.account.id

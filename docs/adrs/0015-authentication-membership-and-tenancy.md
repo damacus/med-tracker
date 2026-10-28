@@ -102,6 +102,10 @@ query values or client request IDs. Keep the limiter's rejection and retry
 behaviour; do not add database work after throttling. These refusal logs do not
 have the clinical ledger's transactional or tamper-evident guarantees. Successful
 reads and refusals by callers whose identity has been proved use that ledger.
+For `AccountClinicalAccess` version events, the ledger envelope takes its outcome
+from `audit_context.outcome`. Security events retain `metadata.outcome`, and
+other version events retain their existing capture behaviour. The forward
+migration changes future entries without rewriting retained ledger history.
 
 ## Consequences
 
