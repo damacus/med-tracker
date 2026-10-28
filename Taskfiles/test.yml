@@ -7,6 +7,32 @@ includes:
     dir: ..
     internal: true
 tasks:
+  invitation-mail:
+    desc: "Deliver a browser invitation to disposable local SMTP capture"
+    summary: |
+      Usage: rtk task test:invitation-mail
+
+      Requires the repository's native Rust, Node, Fish, Task and Docker tools.
+      Creates a private PostgreSQL/RustFS/Mailpit project with random loopback
+      ports and removes only that project's containers and volumes on exit.
+      Mailpit has no relay or forwarding configuration; published ports bind
+      only to 127.0.0.1.
+
+      A synthetic household manager submits the existing browser invitation form.
+      The normal PostgreSQL worker checks current permission and token validity,
+      then sends through Loco MailerWorker to local SMTP capture. The check
+      inspects sender, recipient, subject and body and opens the emailed token link
+      on the configured local origin. An SMTP 421 Service unavailable response proves
+      that job completion does not mean email delivery succeeded.
+      Synthetic message MIME, parsed fields and delivery results are retained in
+      target/invitation-mail/<run-id>/ after the disposable services are removed.
+
+      MEDTRACKER_CAPTURE_MAIL remains false by default. Local test/development
+      SMTP uses 127.0.0.1 and MEDTRACKER_SMTP_PORT. The synthetic sender comes from
+      MEDTRACKER_INVITATION_MAIL_FROM; links use MEDTRACKER_PUBLIC_ORIGIN.
+      This is local SMTP evidence, not provider acceptance or inbox delivery.
+    cmds:
+      - fish --no-config scripts/invitation_mail.fish
   up:
     desc: "Local test up"
     cmds: [{task: "internal:up"}]

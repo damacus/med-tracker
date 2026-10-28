@@ -85,7 +85,7 @@ pub struct Journey {
 }
 
 impl Journey {
-    async fn start(viewport: Viewport) -> Self {
+    async fn start(viewport: Viewport, smtp_port: Option<u16>) -> Self {
         let uri = template::owned_database_url();
         template::prepare(&uri, "browser_template", |admin| async move {
             fixtures::seed_core(&admin).await;
@@ -95,7 +95,7 @@ impl Journey {
         .await;
         let db =
             OwnedDatabase::clone(&uri, "browser_template", "browser_", "browser_runtime_").await;
-        let booted = AssertUnwindSafe(Self::boot(&db.runtime_uri, viewport))
+        let booted = AssertUnwindSafe(Self::boot(&db.runtime_uri, viewport, smtp_port))
             .catch_unwind()
             .await;
         let (server, log, playwright, context, page, origin) = match booted {
@@ -120,6 +120,7 @@ impl Journey {
     async fn boot(
         runtime_uri: &str,
         viewport: Viewport,
+        smtp_port: Option<u16>,
     ) -> (
         KillOnDrop,
         Arc<Mutex<String>>,
@@ -144,8 +145,11 @@ impl Journey {
             .env("DATABASE_URL", runtime_uri)
             .env("MEDTRACKER_SESSION_KEY", SESSION_KEY)
             .env("MEDTRACKER_COOKIE_SECURE", "false")
-            .env("MEDTRACKER_CAPTURE_MAIL", "false")
-            .env("MEDTRACKER_SMTP_PORT", "1025")
+            .env("MEDTRACKER_CAPTURE_MAIL", smtp_port.is_some().to_string())
+            .env(
+                "MEDTRACKER_SMTP_PORT",
+                smtp_port.unwrap_or(1025).to_string(),
+            )
             .env(
                 "RAILS_SECRET_KEY_BASE",
                 "synthetic-rails-secret-key-base-for-compatibility",
@@ -162,6 +166,16 @@ impl Journey {
             .env_remove("INVITE_ONLY")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        if smtp_port.is_some() {
+            command
+                .arg("--server-and-worker")
+                .env("MEDTRACKER_PUBLIC_ORIGIN", &origin)
+                .env(
+                    "MEDTRACKER_INVITATION_MAIL_FROM",
+                    "MedTracker <invitations@medtracker.test>",
+                )
+                .env("MEDTRACKER_INVITATION_MAIL_TIMEOUT_SECONDS", "3");
+        }
         for (key, _) in std::env::vars_os() {
             let key = key.to_string_lossy().into_owned();
             if key.starts_with("MEDTRACKER_ZITADEL_") || key.starts_with("MEDTRACKER_WEB_PUSH_") {
@@ -272,7 +286,21 @@ pub async fn journey<F>(viewport: Viewport, body: F)
 where
     F: FnOnce(&mut Journey) -> std::pin::Pin<Box<dyn Future<Output = ()> + '_>>,
 {
-    let mut journey = Journey::start(viewport).await;
+    run_journey(viewport, None, body).await;
+}
+
+pub async fn smtp_journey<F>(viewport: Viewport, smtp_port: u16, body: F)
+where
+    F: FnOnce(&mut Journey) -> std::pin::Pin<Box<dyn Future<Output = ()> + '_>>,
+{
+    run_journey(viewport, Some(smtp_port), body).await;
+}
+
+async fn run_journey<F>(viewport: Viewport, smtp_port: Option<u16>, body: F)
+where
+    F: FnOnce(&mut Journey) -> std::pin::Pin<Box<dyn Future<Output = ()> + '_>>,
+{
+    let mut journey = Journey::start(viewport, smtp_port).await;
     let result = tokio::time::timeout(
         Duration::from_secs(60),
         AssertUnwindSafe(body(&mut journey)).catch_unwind(),
