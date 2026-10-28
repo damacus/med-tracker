@@ -15,15 +15,13 @@
 
 package io.medtracker.client.models
 
-import io.medtracker.client.models.PersonalScheduleUpdateRequest
-import io.medtracker.client.models.PersonalScheduleUpdateRequestSchedule
-import io.medtracker.client.models.UpdatePersonalScheduleRequestOneOf
+import io.medtracker.client.models.PersonalScheduleAttributes
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
- * 
+ * Send exactly one property, either schedule or action.
  *
  * @param schedule 
  * @param action 
@@ -33,10 +31,10 @@ import com.squareup.moshi.JsonClass
 data class UpdatePersonalScheduleRequest (
 
     @Json(name = "schedule")
-    val schedule: PersonalScheduleUpdateRequestSchedule,
+    val schedule: PersonalScheduleAttributes? = null,
 
     @Json(name = "action")
-    val action: UpdatePersonalScheduleRequest.Action
+    val action: UpdatePersonalScheduleRequest.Action? = null
 
 ) {
 

@@ -38,7 +38,7 @@ import com.squareup.moshi.JsonClass
  */
 
 
-data class PersonalScheduleUpdateRequestSchedule (
+data class PersonalScheduleAttributes (
 
     @Json(name = "origin_time_zone")
     val originTimeZone: kotlin.String? = null,
@@ -68,10 +68,10 @@ data class PersonalScheduleUpdateRequestSchedule (
     val minHoursBetweenDoses: kotlin.String? = null,
 
     @Json(name = "dose_cycle")
-    val doseCycle: PersonalScheduleUpdateRequestSchedule.DoseCycle? = null,
+    val doseCycle: PersonalScheduleAttributes.DoseCycle? = null,
 
     @Json(name = "schedule_type")
-    val scheduleType: PersonalScheduleUpdateRequestSchedule.ScheduleType? = null,
+    val scheduleType: PersonalScheduleAttributes.ScheduleType? = null,
 
     @Json(name = "schedule_config")
     val scheduleConfig: ScheduleConfig? = null

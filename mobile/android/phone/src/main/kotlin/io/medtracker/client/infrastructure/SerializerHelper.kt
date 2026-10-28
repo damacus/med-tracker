@@ -240,10 +240,10 @@ object SerializerHelper {
                 .withUnknownFallback(io.medtracker.client.models.PersonalSchedule.DoseCycle.unknown_default_open_api))
             .add(io.medtracker.client.models.PersonalSchedule.ScheduleType::class.java, EnumJsonAdapter.create(io.medtracker.client.models.PersonalSchedule.ScheduleType::class.java)
                 .withUnknownFallback(io.medtracker.client.models.PersonalSchedule.ScheduleType.unknown_default_open_api))
-            .add(io.medtracker.client.models.PersonalScheduleUpdateRequestSchedule.DoseCycle::class.java, EnumJsonAdapter.create(io.medtracker.client.models.PersonalScheduleUpdateRequestSchedule.DoseCycle::class.java)
-                .withUnknownFallback(io.medtracker.client.models.PersonalScheduleUpdateRequestSchedule.DoseCycle.unknown_default_open_api))
-            .add(io.medtracker.client.models.PersonalScheduleUpdateRequestSchedule.ScheduleType::class.java, EnumJsonAdapter.create(io.medtracker.client.models.PersonalScheduleUpdateRequestSchedule.ScheduleType::class.java)
-                .withUnknownFallback(io.medtracker.client.models.PersonalScheduleUpdateRequestSchedule.ScheduleType.unknown_default_open_api))
+            .add(io.medtracker.client.models.PersonalScheduleAttributes.DoseCycle::class.java, EnumJsonAdapter.create(io.medtracker.client.models.PersonalScheduleAttributes.DoseCycle::class.java)
+                .withUnknownFallback(io.medtracker.client.models.PersonalScheduleAttributes.DoseCycle.unknown_default_open_api))
+            .add(io.medtracker.client.models.PersonalScheduleAttributes.ScheduleType::class.java, EnumJsonAdapter.create(io.medtracker.client.models.PersonalScheduleAttributes.ScheduleType::class.java)
+                .withUnknownFallback(io.medtracker.client.models.PersonalScheduleAttributes.ScheduleType.unknown_default_open_api))
             .add(io.medtracker.client.models.PortableDoseOccurrence.SourceType::class.java, EnumJsonAdapter.create(io.medtracker.client.models.PortableDoseOccurrence.SourceType::class.java)
                 .withUnknownFallback(io.medtracker.client.models.PortableDoseOccurrence.SourceType.unknown_default_open_api))
             .add(io.medtracker.client.models.PortableDoseOccurrence.Outcome::class.java, EnumJsonAdapter.create(io.medtracker.client.models.PortableDoseOccurrence.Outcome::class.java)
@@ -316,7 +316,5 @@ object SerializerHelper {
                 .withUnknownFallback(io.medtracker.client.models.UpdateAccountProfileRequestProfile.MobileShortcuts.unknown_default_open_api))
             .add(io.medtracker.client.models.UpdatePersonalScheduleRequest.Action::class.java, EnumJsonAdapter.create(io.medtracker.client.models.UpdatePersonalScheduleRequest.Action::class.java)
                 .withUnknownFallback(io.medtracker.client.models.UpdatePersonalScheduleRequest.Action.unknown_default_open_api))
-            .add(io.medtracker.client.models.UpdatePersonalScheduleRequestOneOf.Action::class.java, EnumJsonAdapter.create(io.medtracker.client.models.UpdatePersonalScheduleRequestOneOf.Action::class.java)
-                .withUnknownFallback(io.medtracker.client.models.UpdatePersonalScheduleRequestOneOf.Action.unknown_default_open_api))
     }
 }
