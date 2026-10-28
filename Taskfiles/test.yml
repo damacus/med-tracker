@@ -30,6 +30,11 @@ tasks:
       MEDTRACKER_CAPTURE_MAIL remains false by default. Local test/development
       SMTP uses 127.0.0.1 and MEDTRACKER_SMTP_PORT. The synthetic sender comes from
       MEDTRACKER_INVITATION_MAIL_FROM; links use MEDTRACKER_PUBLIC_ORIGIN.
+      For the Docker development stack, run:
+      env MEDTRACKER_CAPTURE_MAIL=true task dev:up
+      This starts Mailpit and connects dev-app through its container address.
+      MEDTRACKER_SMTP_PORT configures both container SMTP endpoints in that mode;
+      direct host runs keep the default 127.0.0.1 SMTP address.
       This is local SMTP evidence, not provider acceptance or inbox delivery.
     cmds:
       - fish --no-config scripts/invitation_mail.fish

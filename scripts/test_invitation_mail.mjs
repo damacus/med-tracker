@@ -55,3 +55,48 @@ if (args.includes("host:test:browser") && process.env.MAIL_TEST_FAILURE === "tes
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("Docker development passes local SMTP settings and uses Mailpit's container port", () => {
+  for (const capture of ["false", "true"]) {
+    const result = spawnSync("docker", ["compose", "--env-file", "/dev/null", "-p", "tooling-mail", "-f", "compose.yaml", "-f", "compose.local.yaml", "--profile", "dev", "--profile", "local-mail", "config", "--format", "json"], {
+      encoding: "utf8",
+      env: { ...process.env, MT_PROJECT: "tooling-mail", MT_TOOL_TARGET: "development", MT_TARGET_CACHE: "test-target", MT_CARGO_REGISTRY_CACHE: "test-registry", MT_CARGO_GIT_CACHE: "test-git", MT_BROWSER_CACHE: "test-browser", MEDTRACKER_CAPTURE_MAIL: capture, MEDTRACKER_SMTP_PORT: "31025", MEDTRACKER_INVITATION_MAIL_FROM: "Synthetic <invitation@example.test>" },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const config = JSON.parse(result.stdout);
+    const app = config.services["dev-app"].environment;
+    assert.equal(app.MEDTRACKER_CAPTURE_MAIL, capture);
+    assert.equal(app.MEDTRACKER_SMTP_HOST, "mailpit");
+    assert.equal(app.MEDTRACKER_SMTP_PORT, "31025");
+    assert.equal(app.MEDTRACKER_INVITATION_MAIL_FROM, "Synthetic <invitation@example.test>");
+    assert.equal(config.services.mailpit.environment.MP_SMTP_BIND_ADDR, "0.0.0.0:31025");
+    assert.ok(config.services.mailpit.ports.some(port => port.target === 31025 && port.host_ip === "127.0.0.1"));
+  }
+});
+
+test("Docker development starts capture before the app only when opted in", () => {
+  for (const capture of ["false", "true"]) {
+    const result = spawnSync("task", ["--dry", "--verbose", "dev:up"], {
+      encoding: "utf8",
+      env: { ...process.env, PORTLESS: "0", PORT: "15150", MEDTRACKER_CAPTURE_MAIL: capture },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const commands = result.stdout + result.stderr;
+    const mail = commands.indexOf("--profile local-mail up -d --wait mailpit");
+    if (capture === "true") {
+      assert.notEqual(mail, -1, "opt-in starts Mailpit");
+      assert.ok(mail < commands.indexOf("up -d dev-frontend dev-builder dev-app dev-scheduler"));
+    } else {
+      assert.equal(mail, -1, "default startup does not start Mailpit");
+    }
+  }
+});
+
+test("Docker development shutdown includes capture after the opt-in is removed", () => {
+  const result = spawnSync("task", ["--dry", "--verbose", "dev:down"], {
+    encoding: "utf8",
+    env: { ...process.env, PORTLESS: "0", MEDTRACKER_CAPTURE_MAIL: "false" },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout + result.stderr, /--profile local-mail down/);
+});

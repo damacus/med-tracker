@@ -97,7 +97,7 @@ scheduler:
 mailer:
   smtp:
     enable: <%= get_env(name="MEDTRACKER_CAPTURE_MAIL", default="false") %>
-    host: 127.0.0.1
+    host: <%= get_env(name="MEDTRACKER_SMTP_HOST", default="127.0.0.1") %>
     port: <%= get_env(name="MEDTRACKER_SMTP_PORT", default="1025") %>
     secure: false
 queue:

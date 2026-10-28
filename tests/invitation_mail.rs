@@ -153,6 +153,7 @@ async fn invitation_smtp_capture_and_delivery_failure() {
             assert_eq!(message.subject, "MedTracker household invitation");
             let link = message.text.split_whitespace().find(|word| word.starts_with("http://")).unwrap();
             let link = url::Url::parse(link).unwrap();
+            assert_eq!(message.text.trim(), format!("You have been invited to a MedTracker household. Accept your invitation: {link}"));
             assert_eq!(link.origin().ascii_serialization(), journey.origin);
             assert_eq!(link.path(), "/invitations/accept");
             assert!(link.query_pairs().any(|(key, value)| key == "token" && !value.is_empty()));
