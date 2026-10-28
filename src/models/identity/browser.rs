@@ -618,7 +618,9 @@ pub async fn layers(
         .with_database_key(key.clone())
         .with_mode(SessionMode::OptIn)
         .with_lifetime(time::Duration::seconds(policy.inactivity.num_seconds()))
-        .with_max_age(Some(time::Duration::seconds(policy.inactivity.num_seconds())))
+        .with_max_age(Some(time::Duration::seconds(
+            policy.inactivity.num_seconds(),
+        )))
         .with_db_update_interval(time::Duration::ZERO)
         .with_secure(secure)
         .with_http_only(true)
