@@ -67,4 +67,5 @@ pub mod active_session_key {
 
 pub use super::identity::better_auth::schema::{
     api_key as identity_api_key, passkey as identity_passkey, session as identity_session,
+    verification as identity_verification,
 };
