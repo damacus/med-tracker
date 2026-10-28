@@ -14,6 +14,10 @@
       "groupName": "Better Auth Rust"
     },
     {
+      "matchManagers": ["npm"],
+      "skipInstalls": false
+    },
+    {
       "matchManagers": ["cargo"],
       "matchDepNames": ["axum_session", "axum_session_sqlx"],
       "groupName": "Axum sessions"
