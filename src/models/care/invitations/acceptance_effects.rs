@@ -5,7 +5,7 @@ use crate::models::entities::{
 
 pub(super) enum PersonOrigin {
     Existing,
-    New { user_id: i64 },
+    New,
 }
 
 pub(crate) async fn apply(
@@ -113,7 +113,7 @@ pub(super) async fn apply_to_person(
     .await?;
     let action = match origin {
         PersonOrigin::Existing => "update",
-        PersonOrigin::New { user_id } => {
+        PersonOrigin::New => {
             version::ActiveModel {
                 item_type: Set("Person".to_owned()),
                 item_id: Set(subject.id),
@@ -130,7 +130,7 @@ pub(super) async fn apply_to_person(
                 request_id: Set(Some(request_id.to_owned())),
                 audit_context: Set(json!({
                     "actor_account_id":actor.account_id,
-                    "actor_user_id":user_id,
+                    "actor_person_id":actor.person_id,
                     "request_id":request_id
                 })),
                 created_at: Set(Some(now)),

@@ -172,7 +172,7 @@ async fn record(
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
-        whodunnit: Set(tenant.legacy_user_id().map(|id| id.to_string())),
+        whodunnit: Set(Some(tenant.scope().actor.account_id.to_string())),
         audit_context: Set(audit_context),
         created_at: Set(Some(Utc::now().naive_utc())),
         ..Default::default()

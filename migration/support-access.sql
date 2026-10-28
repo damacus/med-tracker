@@ -12,7 +12,6 @@ USING (
     FROM public.support_access_sessions s
     JOIN public.platform_admins pa ON pa.id = s.platform_admin_id
     JOIN public.accounts admin ON admin.id = pa.account_id
-    JOIN public.users admin_user ON admin_user.person_id = admin.person_id
     JOIN public.households h ON h.id = s.household_id
     JOIN public.household_memberships approval
       ON approval.id = s.approved_by_membership_id
@@ -20,9 +19,8 @@ USING (
     JOIN public.accounts approver
       ON approver.id = s.approved_by_account_id
      AND approver.person_id = approval.person_id
-    JOIN public.users approver_user ON approver_user.person_id = approver.person_id
     WHERE admin.id = med_tracker.current_account_id()
-      AND admin.status = 2 AND admin_user.active AND pa.status = 'active'
+      AND admin.status = 2 AND admin.active AND pa.status = 'active'
       AND s.household_id = med_tracker.current_household_id()
       AND h.status = 'active' AND h.lifecycle_state = 'active'
       AND s.approved_at IS NOT NULL
@@ -31,7 +29,7 @@ USING (
       AND approval.role = 'owner' AND approval.status = 'active'
       AND approval.revoked_at IS NULL
       AND approval.permissions_version = s.approved_permissions_version
-      AND approver.status = 2 AND approver_user.active
+      AND approver.status = 2 AND approver.active
       AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
                       WHERE l.account_id IN (admin.id,approver.id)
                         AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))

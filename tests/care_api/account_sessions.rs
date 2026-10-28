@@ -503,11 +503,11 @@ async fn revocation_audit_identifies_the_target_credential_and_actor_without_sec
         assert_eq!(metadata["credential_id"], expected_id);
         assert_eq!(
             row.whodunnit.as_deref(),
-            Some(app.fixture.user.id.to_string().as_str())
+            Some(app.fixture.account.id.to_string().as_str())
         );
         let context = row.audit_context;
         assert_eq!(context["actor_account_id"], app.fixture.account.id);
-        assert_eq!(context["actor_user_id"], app.fixture.user.id);
+        assert_eq!(context["actor_person_id"], app.fixture.adult.id);
         assert!(!object.contains(&credential_token(&app, "app")));
         assert!(!object.contains(&credentials.expired.refresh_token_digest));
     }

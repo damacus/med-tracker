@@ -153,7 +153,7 @@ fn usable_account() -> Condition {
         .to_owned();
     Condition::all()
         .add(Expr::col(("a", "status")).eq(2))
-        .add(Expr::col(("u", "active")).eq(true))
+        .add(Expr::col(("a", "active")).eq(true))
         .add(Expr::not_exists(active_lockout))
 }
 
@@ -183,12 +183,6 @@ fn guardian_options_query(household_id: i64) -> SelectStatement {
             (Alias::new("public"), Alias::new("accounts")),
             "a",
             Expr::col(("a", "person_id")).equals(("p", "id")),
-        )
-        .join_as(
-            JoinType::InnerJoin,
-            (Alias::new("public"), Alias::new("users")),
-            "u",
-            Expr::col(("u", "person_id")).equals(("p", "id")),
         )
         .and_where(Expr::col(("m", "household_id")).eq(household_id))
         .cond_where(active_member("m"))
@@ -239,12 +233,6 @@ fn restorable_query(household_id: i64, subject_ids: Vec<i64>) -> SelectStatement
             (Alias::new("public"), Alias::new("accounts")),
             "a",
             Expr::col(("a", "person_id")).equals(("guardian", "id")),
-        )
-        .join_as(
-            JoinType::InnerJoin,
-            (Alias::new("public"), Alias::new("users")),
-            "u",
-            Expr::col(("u", "person_id")).equals(("guardian", "id")),
         )
         .and_where(Expr::col(("d", "subject_person_id")).is_in(subject_ids))
         .and_where(Expr::col(("d", "withdrawn_at")).is_null())

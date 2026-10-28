@@ -79,26 +79,10 @@ impl MembershipId {
 #[derive(Clone, Copy)]
 pub enum MemberLocator {
     Membership(MembershipId),
-    LegacyUser(LegacyUserId),
 }
 impl MemberLocator {
     pub fn membership(value: i64) -> Result<Self, OperationError> {
         Ok(Self::Membership(MembershipId::new(value)?))
-    }
-    pub fn legacy_user(value: i64) -> Result<Self, OperationError> {
-        Ok(Self::LegacyUser(LegacyUserId::new(value)?))
-    }
-}
-#[derive(Clone, Copy)]
-pub struct LegacyUserId(i64);
-impl LegacyUserId {
-    fn new(value: i64) -> Result<Self, OperationError> {
-        (value > 0)
-            .then_some(Self(value))
-            .ok_or(OperationError::NotFound)
-    }
-    pub fn get(self) -> i64 {
-        self.0
     }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -402,28 +386,12 @@ pub async fn find(
     tenant: &TenantTransaction,
     locator: MemberLocator,
 ) -> Result<MemberRow, OperationError> {
-    super::authorize(tenant).await?;
-    let (identity_join, identity_filter, id) = match locator {
-        MemberLocator::Membership(id) => ("", "m.id=$2", id.get()),
-        MemberLocator::LegacyUser(id) => (
-            " JOIN users u ON u.person_id=m.person_id",
-            "u.id=$2",
-            id.get(),
-        ),
-    };
-    let sql = format!(
-        "SELECT m.id,identity.name AS name,identity.email AS email,m.role,m.status FROM household_memberships m JOIN med_tracker.member_directory_identity() identity ON identity.membership_id=m.id{identity_join} WHERE m.household_id=$1 AND {identity_filter} ORDER BY m.id LIMIT 1"
-    );
-    let row = tenant
-        .transaction()
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            sql,
-            [tenant.scope().household_id.into(), id.into()],
-        ))
+    let MemberLocator::Membership(id) = locator;
+    selected(tenant, &[id])
         .await?
-        .ok_or(OperationError::NotFound)?;
-    member_row(row)
+        .into_iter()
+        .next()
+        .ok_or(OperationError::NotFound)
 }
 
 pub async fn selected(

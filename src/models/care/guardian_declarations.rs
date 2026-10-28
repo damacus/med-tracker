@@ -110,24 +110,22 @@ pub(crate) async fn withdraw_own(
         [declaration_id.into()],
     )).await?.ok_or(OperationError::NotFound)?;
     let result = OwnDeclaration::decode(&updated)?;
-    let actor = transaction.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT a.person_id,u.id AS user_id FROM public.accounts a LEFT JOIN public.users u ON u.person_id=a.person_id WHERE a.id=$1",
-        [account_id.into()],
-    )).await?.ok_or(OperationError::Unauthenticated)?;
-    let user_id: Option<i64> = actor.try_get("", "user_id")?;
-    let person_id: i64 = actor.try_get("", "person_id")?;
+    let actor = crate::models::entities::account::Entity::find_by_id(account_id)
+        .one(transaction)
+        .await?
+        .ok_or(OperationError::Unauthenticated)?;
+    let person_id = actor.person_id;
     version::ActiveModel {
         item_type: Set("GuardianDeclaration".into()),
         item_id: Set(declaration_id),
         event: Set("withdraw".into()),
         object: Set(Some(serde_json::to_string(&current).map_err(|_| OperationError::Unavailable)?)),
         object_changes: Set(Some(serde_json::to_string(&result).map_err(|_| OperationError::Unavailable)?)),
-        whodunnit: Set(user_id.map(|id|id.to_string())),
+        whodunnit: Set(Some(account_id.to_string())),
         request_id: Set(Some(request_id.to_owned())),
         household_id: Set(None),
         actor_membership_id: Set(None),
-        audit_context: Set(json!({"actor_account_id":account_id,"actor_person_id":person_id,"actor_user_id":user_id,"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"GuardianDeclaration","policy_query":"withdraw_own"})),
+        audit_context: Set(json!({"actor_account_id":account_id,"actor_person_id":person_id,"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"GuardianDeclaration","policy_query":"withdraw_own"})),
         created_at: Set(Some(Utc::now().naive_utc())),
         ..Default::default()
     }.insert(transaction).await?;
@@ -322,7 +320,7 @@ pub(crate) async fn record_initial(
         event: Set("create".to_owned()),
         object: Set(None),
         object_changes: Set(Some(state.to_string())),
-        whodunnit: Set(tenant.legacy_user_id().map(|id| id.to_string())),
+        whodunnit: Set(Some(tenant.scope().actor.account_id.to_string())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),

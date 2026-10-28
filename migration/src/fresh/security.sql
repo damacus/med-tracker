@@ -559,9 +559,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_access_sessions TO med
 
 GRANT SELECT,USAGE ON SEQUENCE public.support_access_sessions_id_seq TO med_tracker_app;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.users TO med_tracker_app;
 
-GRANT SELECT,USAGE ON SEQUENCE public.users_id_seq TO med_tracker_app;
 
 GRANT SELECT,INSERT ON TABLE public.versions TO med_tracker_app;
 GRANT SELECT ON TABLE public.versions TO med_tracker_audit_verifier;

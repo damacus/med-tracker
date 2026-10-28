@@ -1,7 +1,7 @@
 use super::*;
 use med_tracker::models::_entities::{
     accounts, app_settings as app_setting_rows, households, locations, medications, people,
-    platform_admins, support_access_sessions, users,
+    platform_admins, support_access_sessions,
 };
 use sea_orm::TransactionTrait;
 use sea_orm::sea_query::{Alias, Expr, ExprTrait, Func, Query};
@@ -204,7 +204,6 @@ async fn membership_link(
 struct PlatformActor {
     account: accounts::Model,
     person: people::Model,
-    user: users::Model,
 }
 async fn synthetic_account(app: &Application, label: &str, status: i32) -> PlatformActor {
     let now = chrono::Utc::now();
@@ -233,23 +232,8 @@ async fn synthetic_account(app: &Application, label: &str, status: i32) -> Platf
     .insert(&app.fixture.admin)
     .await
     .unwrap();
-    let user = users::ActiveModel {
-        person_id: Set(person.id),
-        email_address: Set(account.email.clone()),
-        active: Set(true),
-        created_at: Set(now.naive_utc()),
-        updated_at: Set(now.naive_utc()),
-        ..Default::default()
-    }
-    .insert(&app.fixture.admin)
-    .await
-    .unwrap();
     crate::fixtures::seed_native_password(&app.fixture.admin, account.id).await;
-    PlatformActor {
-        account,
-        person,
-        user,
-    }
+    PlatformActor { account, person }
 }
 async fn actor(app: &Application, label: &str) -> PlatformActor {
     let account = accounts::Entity::find()
@@ -265,17 +249,7 @@ async fn actor(app: &Application, label: &str) -> PlatformActor {
         .await
         .unwrap()
         .unwrap();
-    let user = users::Entity::find()
-        .filter(users::Column::PersonId.eq(person.id))
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    PlatformActor {
-        account,
-        person,
-        user,
-    }
+    PlatformActor { account, person }
 }
 async fn household_named(app: &Application, label: &str) -> households::Model {
     households::Entity::find()
@@ -401,14 +375,14 @@ async fn account_status(app: &Application, account_id: i64) -> Option<i32> {
         .and_then(|row| row.try_get::<i32>("", "status").ok())
 }
 
-async fn user_active(app: &Application, user_id: i64) -> Option<bool> {
+async fn account_active(app: &Application, account_id: i64) -> Option<bool> {
     app.fixture
         .admin
         .query_one_raw({
             let query = Query::select()
                 .expr(Expr::col("active"))
-                .from("users")
-                .and_where(Expr::col("id").eq(Expr::val(user_id)))
+                .from("accounts")
+                .and_where(Expr::col("id").eq(Expr::val(account_id)))
                 .to_owned();
             app.fixture.admin.get_database_backend().build(&query)
         })
@@ -917,14 +891,14 @@ async fn platform_user_deactivate_and_reactivate_after_password_proof() {
     assert_eq!(status, reqwest::StatusCode::OK);
     let operation_id = body["operation_id"].as_str().unwrap().to_owned();
     assert_eq!(
-        user_active(&app, actor(&app, "platform-second").await.user.id).await,
+        account_active(&app, actor(&app, "platform-second").await.account.id).await,
         Some(true),
         "no mutation at proof start"
     );
     let confirm = operation_confirm(&app, &cookie, &operation_id).await;
     assert!(confirm.is_success());
     assert_eq!(
-        user_active(&app, actor(&app, "platform-second").await.user.id).await,
+        account_active(&app, actor(&app, "platform-second").await.account.id).await,
         Some(false)
     );
     assert_eq!(
@@ -941,7 +915,7 @@ async fn platform_user_deactivate_and_reactivate_after_password_proof() {
     assert_eq!(status, reqwest::StatusCode::OK);
     let operation_id = body["operation_id"].as_str().unwrap().to_owned();
     let confirm = operation_confirm(&app, &cookie, &operation_id).await;
-    let active = user_active(&app, actor(&app, "platform-second").await.user.id).await;
+    let active = account_active(&app, actor(&app, "platform-second").await.account.id).await;
 
     assert!(confirm.is_success());
     assert_eq!(active, Some(true));
@@ -1097,7 +1071,7 @@ async fn platform_proof_bound_to_action() {
     assert_eq!(status, reqwest::StatusCode::OK);
     let operation_id = body["operation_id"].as_str().unwrap().to_owned();
     let confirm = operation_confirm(&app, &cookie, &operation_id).await;
-    let active = user_active(&app, actor(&app, "platform-second").await.user.id).await;
+    let active = account_active(&app, actor(&app, "platform-second").await.account.id).await;
     let granted = admin_status(&app, actor(&app, "platform-second").await.account.id).await;
 
     assert!(confirm.is_success());
@@ -1214,7 +1188,7 @@ async fn platform_user_disable_refuses_last_active_administrator() {
     assert_eq!(status, reqwest::StatusCode::OK);
     let operation_id = body["operation_id"].as_str().unwrap().to_owned();
     let confirm = operation_confirm(&app, &cookie, &operation_id).await;
-    let active = user_active(&app, app.fixture.user.id).await;
+    let active = account_active(&app, app.fixture.account.id).await;
 
     assert!(!confirm.is_success());
     assert_eq!(active, Some(true));
@@ -1421,10 +1395,10 @@ async fn platform_inactive_user_administrator_is_not_viable_remaining_admin() {
         .admin
         .execute_raw({
             let query = Query::update()
-                .table("users")
+                .table("accounts")
                 .value("active", Expr::val(false))
                 .and_where(
-                    Expr::col("id").eq(Expr::val(actor(&app, "platform-second").await.user.id)),
+                    Expr::col("id").eq(Expr::val(actor(&app, "platform-second").await.account.id)),
                 )
                 .to_owned();
             app.fixture.admin.get_database_backend().build(&query)
@@ -1541,10 +1515,10 @@ async fn platform_administrator_grant_refuses_ineligible_accounts() {
                 .await
                 .unwrap();
             let query = Query::update()
-                .table("users")
+                .table("accounts")
                 .value("active", Expr::val(false))
                 .and_where(
-                    Expr::col("id").eq(Expr::val(actor(&app, "platform-mixed").await.user.id)),
+                    Expr::col("id").eq(Expr::val(actor(&app, "platform-mixed").await.account.id)),
                 )
                 .to_owned();
             app.fixture
@@ -1618,11 +1592,11 @@ async fn platform_user_enable_refuses_closed_and_unverified_accounts() {
         .admin
         .execute_raw({
             let query = Query::update()
-                .table("users")
+                .table("accounts")
                 .value("active", Expr::val(false))
                 .and_where(Expr::col("id").is_in([
-                    Expr::val(actor(&app, "platform-closed").await.user.id),
-                    Expr::val(actor(&app, "platform-unverified").await.user.id),
+                    Expr::val(actor(&app, "platform-closed").await.account.id),
+                    Expr::val(actor(&app, "platform-unverified").await.account.id),
                 ]))
                 .to_owned();
             app.fixture.admin.get_database_backend().build(&query)
@@ -1630,15 +1604,9 @@ async fn platform_user_enable_refuses_closed_and_unverified_accounts() {
         .await
         .unwrap();
     let cookie = admin_session(&app).await;
-    for (account_id, user_id) in [
-        (
-            actor(&app, "platform-closed").await.account.id,
-            actor(&app, "platform-closed").await.user.id,
-        ),
-        (
-            actor(&app, "platform-unverified").await.account.id,
-            actor(&app, "platform-unverified").await.user.id,
-        ),
+    for account_id in [
+        actor(&app, "platform-closed").await.account.id,
+        actor(&app, "platform-unverified").await.account.id,
     ] {
         let (status, body) = operation_start(
             &app,
@@ -1655,7 +1623,7 @@ async fn platform_user_enable_refuses_closed_and_unverified_accounts() {
             );
         }
         assert_eq!(
-            user_active(&app, user_id).await,
+            account_active(&app, account_id).await,
             Some(false),
             "account {account_id} user must stay disabled"
         );
@@ -1677,7 +1645,7 @@ async fn platform_last_administrator_cannot_close_own_account() {
         status
     };
     let account = account_status(&app, app.fixture.account.id).await;
-    let active = user_active(&app, app.fixture.user.id).await;
+    let active = account_active(&app, app.fixture.account.id).await;
 
     assert!(
         !confirmed.is_success(),
@@ -1767,10 +1735,10 @@ async fn platform_can_revoke_an_inactive_administrator_without_removing_the_last
                 .await
                 .unwrap();
             let query = Query::update()
-                .table("users")
+                .table("accounts")
                 .value("active", Expr::val(false))
                 .and_where(
-                    Expr::col("id").eq(Expr::val(actor(&app, "platform-second").await.user.id)),
+                    Expr::col("id").eq(Expr::val(actor(&app, "platform-second").await.account.id)),
                 )
                 .to_owned();
             app.fixture.admin.get_database_backend().build(&query)
@@ -1824,7 +1792,7 @@ async fn platform_confirmation_cannot_replace_the_bound_target_or_action() {
         None
     );
     assert_eq!(
-        user_active(&app, actor(&app, "platform-third").await.user.id).await,
+        account_active(&app, actor(&app, "platform-third").await.account.id).await,
         Some(true)
     );
     let accepted = operation_confirm(&app, &cookie, operation_id).await;
@@ -1912,10 +1880,10 @@ async fn platform_users_page_shows_user_state_and_action_forms() {
         .admin
         .execute_raw({
             let query = Query::update()
-                .table("users")
+                .table("accounts")
                 .value("active", Expr::val(false))
                 .and_where(
-                    Expr::col("id").eq(Expr::val(actor(&app, "platform-second").await.user.id)),
+                    Expr::col("id").eq(Expr::val(actor(&app, "platform-second").await.account.id)),
                 )
                 .to_owned();
             app.fixture.admin.get_database_backend().build(&query)
@@ -2298,7 +2266,7 @@ async fn platform_browser_user_disable_and_enable_roundtrip() {
             browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
         assert_eq!(confirmed, reqwest::StatusCode::OK, "{outcome}");
         assert_eq!(
-            user_active(&app, actor(&app, "platform-second").await.user.id).await,
+            account_active(&app, actor(&app, "platform-second").await.account.id).await,
             Some(expected)
         );
         assert_eq!(
@@ -3460,10 +3428,11 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
         .admin
         .execute_raw({
             let query = Query::update()
-                .table("users")
+                .table("accounts")
                 .value("active", Expr::val(false))
                 .and_where(
-                    Expr::col("id").eq(Expr::val(actor(&app, "recovery-inactive").await.user.id)),
+                    Expr::col("id")
+                        .eq(Expr::val(actor(&app, "recovery-inactive").await.account.id)),
                 )
                 .to_owned();
             app.fixture.admin.get_database_backend().build(&query)
@@ -4799,9 +4768,9 @@ async fn platform_support_read_denied_after_authority_changes() {
                 )
                 .to_owned(),
             2 => Query::update()
-                .table("users")
+                .table("accounts")
                 .value("active", false)
-                .and_where(Expr::col("id").eq(app.fixture.user.id))
+                .and_where(Expr::col("id").eq(app.fixture.account.id))
                 .to_owned(),
             _ => Query::update()
                 .table("households")

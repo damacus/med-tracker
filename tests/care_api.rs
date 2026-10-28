@@ -16,6 +16,8 @@ mod assignments;
 mod audit_logs;
 #[path = "care_api/audit_logs_browser.rs"]
 mod audit_logs_browser;
+#[path = "care_api/canonical_identity.rs"]
+mod canonical_identity;
 
 #[path = "care_api/avatar.rs"]
 mod avatar;

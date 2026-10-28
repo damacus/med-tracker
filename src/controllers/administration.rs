@@ -270,7 +270,7 @@ async fn role(
     role_page(
         page::Page::new(&ctx, &session, &token, &view, &slug, request),
         incoming,
-        administration::member_browser::MemberLocator::legacy_user(id),
+        administration::member_browser::MemberLocator::membership(id),
     )
     .await
 }
@@ -445,7 +445,7 @@ async fn save_role(
 ) -> Response {
     save_role_page(
         page::Page::new(&ctx, &session, &token, &view, &slug, request),
-        administration::member_browser::MemberLocator::legacy_user(id),
+        administration::member_browser::MemberLocator::membership(id),
         draft,
     )
     .await

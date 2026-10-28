@@ -15,26 +15,18 @@ pub(crate) fn for_request(
     request_id: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Value {
-    build(
-        tenant.scope(),
-        tenant.membership(),
-        tenant.legacy_user_id(),
-        request_id,
-        provenance,
-    )
+    build(tenant.scope(), tenant.membership(), request_id, provenance)
 }
 
 fn build(
     scope: &HouseholdScope,
     membership: &membership::Model,
-    user_id: Option<i64>,
     request_id: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Value {
     let mut context = json!({
         "actor_account_id": scope.actor.account_id,
         "actor_person_id": membership.person_id,
-        "actor_user_id": user_id,
         "actor_membership_id": membership.id,
         "household_id": scope.household_id,
         "request_id": request_id,
@@ -88,10 +80,10 @@ mod tests {
     #[test]
     fn household_audit_preserves_actor_and_explicit_request_without_credentials() {
         let (scope, membership) = fixture();
-        let context = build(&scope, &membership, Some(77), "operation-request", None);
+        let context = build(&scope, &membership, "operation-request", None);
         assert_eq!(
             context,
-            json!({"actor_account_id":71,"actor_person_id":73,"actor_user_id":77,"actor_membership_id":74,"household_id":72,"request_id":"operation-request","active_role":"administrator","permissions_version":5})
+            json!({"actor_account_id":71,"actor_person_id":73,"actor_membership_id":74,"household_id":72,"request_id":"operation-request","active_role":"administrator","permissions_version":5})
         );
     }
 
@@ -121,13 +113,7 @@ mod tests {
                 method,
                 reference: "synthetic-reference".into(),
             };
-            let context = build(
-                &scope,
-                &membership,
-                Some(77),
-                &scope.request_id,
-                Some(&provenance),
-            );
+            let context = build(&scope, &membership, &scope.request_id, Some(&provenance));
             assert_eq!(context["authentication_method"], label);
             assert_eq!(
                 context["session_reference"],

@@ -336,8 +336,6 @@ impl<'a> Page<'a> {
                 data["member_role_path"] = json!(match locator {
                     administration::member_browser::MemberLocator::Membership(_) =>
                         format!("memberships/{}", member.id.get()),
-                    administration::member_browser::MemberLocator::LegacyUser(id) =>
-                        format!("users/{}", id.get()),
                 });
                 data["member_query"] = json!({"q":self.member_query.search,"role":self.member_query.role_value(),"status":self.member_query.status_value(),"sort":self.member_query.sort_value(),"direction":self.member_query.direction_value(),"page":self.member_query.page});
                 "administration/role.html"

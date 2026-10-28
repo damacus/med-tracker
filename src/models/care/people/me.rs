@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::entities::{account, user};
+use crate::models::entities::account;
 
 pub(crate) async fn me_read(tenant: &TenantTransaction, zone: Tz) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
@@ -7,14 +7,7 @@ pub(crate) async fn me_read(tenant: &TenantTransaction, zone: Tz) -> Result<Valu
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Unauthenticated)?;
-    let user_id = tenant
-        .legacy_user_id()
-        .ok_or(OperationError::Unauthenticated)?;
-    let user = user::Entity::find_by_id(user_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::Unauthenticated)?;
-    let record = person::Entity::find_by_id(user.person_id)
+    let record = person::Entity::find_by_id(account.person_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Unauthenticated)?;
@@ -26,10 +19,10 @@ pub(crate) async fn me_read(tenant: &TenantTransaction, zone: Tz) -> Result<Valu
         _ => return Err(OperationError::Unavailable),
     };
     Ok(json!({"data": {
-        "id": user.id,
-        "email_address": user.email_address,
+        "id": account.id,
+        "email_address": account.email,
         "membership_role": tenant.membership().role,
-        "active": user.active,
+        "active": account.active,
         "person": own,
         "account": {"id": account.id, "email": account.email, "status": status},
     }}))

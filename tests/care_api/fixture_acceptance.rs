@@ -14,7 +14,7 @@ async fn scenario_seed_rolls_back_identity_if_membership_insert_fails() {
 
     async fn identity_counts(admin: &DatabaseConnection) -> Vec<i64> {
         let mut counts = Vec::new();
-        for table in ["people", "accounts", "users", "households"] {
+        for table in ["people", "accounts", "households"] {
             let query = Query::select()
                 .expr_as(Func::count(Expr::col("id")), "rows")
                 .from(Alias::new(table))

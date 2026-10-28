@@ -6,7 +6,7 @@ use super::{Acceptance, Application, seed_acceptance};
 use med_tracker::models::_entities::{
     accounts, api_change_events, carer_relationships, household_invitation_grants,
     household_invitations, household_memberships, people, person_access_grants, person_medications,
-    schedules, users, versions,
+    schedules, versions,
 };
 use med_tracker::models::access::{self, Actor, HouseholdScope};
 use sea_orm::{
@@ -14,7 +14,7 @@ use sea_orm::{
     ActiveValue::Set,
     ColumnTrait, ConnectionTrait, DbBackend, DbErr, EntityTrait, IntoActiveModel, Order,
     PaginatorTrait, QueryFilter, SqlErr, Statement, TransactionTrait,
-    sea_query::{Alias, Asterisk, Condition, Expr, ExprTrait, Func, Query, SelectStatement},
+    sea_query::{Alias, Asterisk, Condition, Expr, ExprTrait, Func, Query},
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -337,23 +337,16 @@ async fn seed_member_care(app: &Application) -> Result<MemberCare, DbErr> {
     }
     .insert(&app.fixture.admin)
     .await?;
-    let inviter_user = users::Entity::find()
-        .filter(users::Column::PersonId.eq(acceptance.inviter_account.person_id))
-        .one(&app.fixture.admin)
-        .await?
-        .ok_or_else(|| DbErr::Custom("Generated inviter User missing".into()))?;
     Ok(MemberCare {
         acceptance,
         assignment,
         schedule,
-        inviter_user,
     })
 }
 struct MemberCare {
     acceptance: Acceptance,
     assignment: person_medications::Model,
     schedule: schedules::Model,
-    inviter_user: users::Model,
 }
 #[tokio::test]
 async fn canonical_invitation_browser_offers_membership_without_care_authority() -> Result<(), DbErr>
@@ -928,12 +921,12 @@ async fn member_membership_contract_covers_accountless_and_inactive_people() -> 
         let accountless = rows.iter().find(|row| row["person_id"]==app.fixture.dependent.id)
             .ok_or_else(|| DbErr::Custom("Accountless participation must be represented".to_owned()))?;
         require(serde_json::Value::is_null(&accountless["account_id"]) && serde_json::Value::is_null(&accountless["email"])
-            && serde_json::Value::is_null(&accountless["user_id"]) && accountless["person_name"].is_string(),
+            && accountless.get("user_id").is_none() && accountless["person_name"].is_string(),
             "Accountless participant must retain clinical identity without fabricated Account/User fields")?;
         let linked_row = rows.iter().find(|row| row["id"]==linked.id)
             .ok_or_else(|| DbErr::Custom("Expected real account-linked participation".to_owned()))?;
-        require(linked_row["account_id"]==acceptance.inviter_account.id && linked_row["email"].is_string() && linked_row["user_id"]==care.inviter_user.id,
-            "Active linked participation must preserve actual Account and User IDs")?;
+        require(linked_row["account_id"]==acceptance.inviter_account.id && linked_row["email"].is_string() && linked_row["person_id"]==acceptance.inviter_account.person_id && linked_row.get("user_id").is_none(),
+            "Active linked participation must preserve actual Account and Person IDs")?;
         let identity = identity_state(&app,acceptance).await?;
         for (person_id,expected) in [(Value::Null,422),(json!(app.fixture.dependent.id),422),(json!(acceptance.inviter_account.person_id),200)] {
             let response = app.client.patch(format!("{}/api/v1/households/{generated_72001}/admin/memberships/{generated_74505}",app.origin,generated_72001=app.fixture.household.id,generated_74505=linked.id))
@@ -952,7 +945,7 @@ let result=app.fixture.admin.execute_raw(app.fixture.admin.get_database_backend(
         let inactive = after["data"].as_array().and_then(|rows| rows.iter().find(|row| row["id"]==linked.id))
             .ok_or_else(|| DbErr::Custom("Inactive participation must not be omitted".to_owned()))?;
         require(inactive["person_id"]==acceptance.inviter_account.person_id && serde_json::Value::is_null(&inactive["account_id"])
-            && serde_json::Value::is_null(&inactive["email"]) && inactive["user_id"]==care.inviter_user.id
+            && serde_json::Value::is_null(&inactive["email"]) && inactive.get("user_id").is_none()
             && serde_json::Value::is_null(&inactive["person_name"])
             && !after.to_string().contains("synthetic-future-account-marker")
             && !after.to_string().contains("synthetic-future-person-marker"),
@@ -1025,7 +1018,6 @@ async fn member_membership_relationship_labels_preserve_retained_ids() -> Result
 struct IdentityState {
     people: i64,
     accounts: i64,
-    users: i64,
     api_sessions: i64,
     api_keys: i64,
     oauth_grants: i64,
@@ -1067,12 +1059,6 @@ async fn identity_state(
         app,
         "accounts",
         Condition::all().add(Expr::col("id").in_subquery(account_query.clone())),
-    )
-    .await?;
-    let users = count_rows(
-        app,
-        "users",
-        Condition::all().add(Expr::col("person_id").in_subquery(people_query(app, acceptance))),
     )
     .await?;
     let api_sessions = count_rows(
@@ -1131,7 +1117,6 @@ async fn identity_state(
     Ok(IdentityState {
         people,
         accounts,
-        users,
         api_sessions,
         api_keys,
         oauth_grants,
@@ -1563,9 +1548,8 @@ let result=app.fixture.admin.execute_raw(app.fixture.admin.get_database_backend(
         require(original_account_state(&app).await? == original_account,
             "Injected Account ID must not change the original Account")?;
         let after = identity_state(&app,&acceptance).await?;
-        require(after.accounts == before.accounts + 1 && after.people == before.people + 1
-            && after.users == before.users + 1,
-            "Legitimate signup must create exactly one distinct Account, Person and real User")?;
+        require(after.accounts == before.accounts + 1 && after.people == before.people + 1,
+            "Legitimate signup must create exactly one distinct Account and Person")?;
         require(after.api_sessions == before.api_sessions && after.api_keys == before.api_keys
             && after.oauth_grants == before.oauth_grants && after.passkeys == before.passkeys
             && after.providers == before.providers,
@@ -1680,27 +1664,24 @@ async fn signup_control(target_email: &str, expected_status: u16) -> Result<(), 
             "Signup control must never attach or alter the existing target or Account")?;
         let after = identity_state(&app,&acceptance).await?;
         if status == 200 {
-            require(after.accounts == before.accounts + 1 && after.people == before.people + 1
-                && after.users == before.users + 1,
-                "Valid distinct-email signup must create one new Account/Person/real User")?;
+            require(after.accounts == before.accounts + 1 && after.people == before.people + 1,
+                "Valid distinct-email signup must create one new Account and Person")?;
             let body: Value = response.json().await
                 .map_err(|_| DbErr::Custom("Signup control success was not JSON".to_owned()))?;
             require(body["status"] == true, "Signup control must return normal success")?;
             let account=accounts::Entity::find().filter(accounts::Column::Email.eq(case_email(&app,"synthetic-signup-control@example.test")))
                 .filter(accounts::Column::Status.eq(1)).one(&app.fixture.admin).await?
                 .ok_or_else(||DbErr::Custom("Expected genuine signup provenance".into()))?;
-            let user=users::Entity::find().filter(users::Column::PersonId.eq(account.person_id)).one(&app.fixture.admin).await?
-                .ok_or_else(||DbErr::Custom("Expected real signup User".into()))?;
             let provenance=versions::Entity::find().filter(versions::Column::ItemType.eq("Person"))
                 .filter(versions::Column::ItemId.eq(account.person_id)).filter(versions::Column::Event.eq("create"))
                 .all(&app.fixture.admin).await?;
             let attributed=provenance.iter().all(|version|version.audit_context["actor_account_id"].to_string().trim_matches('"')==account.id.to_string()
-                && version.audit_context["actor_user_id"].to_string().trim_matches('"')==user.id.to_string());
+                && version.audit_context["actor_person_id"].to_string().trim_matches('"')==account.person_id.to_string());
             let changes=api_change_events::Entity::find().filter(api_change_events::Column::HouseholdId.eq(acceptance.target_household.id))
                 .filter(api_change_events::Column::RecordType.eq("Person")).filter(api_change_events::Column::RecordId.eq(account.person_id))
                 .filter(api_change_events::Column::Action.eq("create")).count(&app.fixture.admin).await?;
             require(provenance.len()==1 && attributed && changes==1,
-                "Genuine invited signup must preserve one actual User-attributed Person creation version and create notification")?;
+                "Genuine invited signup must preserve one actual Account-attributed Person creation version and create notification")?;
         } else {
             require(after == before, "Rejected signup must roll back all identity and credential state")?;
             require(acceptance_effects(&app,&acceptance).await? == effects,
@@ -1774,30 +1755,6 @@ async fn invited_signup_person_audit_failure_rolls_back_identity_and_acceptance(
     result
 }
 
-fn people_query(app: &Application, acceptance: &Acceptance) -> SelectStatement {
-    let participants = Query::select()
-        .column("person_id")
-        .from("household_memberships")
-        .and_where(
-            Expr::col("household_id")
-                .is_in([app.fixture.household.id, acceptance.target_household.id]),
-        )
-        .to_owned();
-    let accounts = Query::select()
-        .column("person_id")
-        .from("accounts")
-        .and_where(Expr::col("email").like(format!("%{}@example.test", app.fixture.client_uuid)))
-        .to_owned();
-    Query::select()
-        .column("id")
-        .from("people")
-        .cond_where(
-            Condition::any()
-                .add(Expr::col("id").in_subquery(participants))
-                .add(Expr::col("id").in_subquery(accounts)),
-        )
-        .to_owned()
-}
 async fn scoped_rows(
     app: &Application,
     table: &str,

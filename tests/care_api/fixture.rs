@@ -1,8 +1,7 @@
 use crate::scenario::Scenario;
 use med_tracker::models::_entities::{
     api_change_events, household_memberships, households, locations, medication_takes, medications,
-    oauth_applications, oauth_grants, people, person_access_grants, person_medications, users,
-    versions,
+    oauth_applications, oauth_grants, people, person_access_grants, person_medications, versions,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, Condition, EntityTrait, IntoActiveModel,
@@ -13,7 +12,6 @@ pub struct Fixture {
     pub scenario: Scenario,
     pub runtime_uri: String,
     pub adult: people::Model,
-    pub user: users::Model,
     pub minor: people::Model,
     pub dependent: people::Model,
     pub minor_membership: household_memberships::Model,
@@ -42,12 +40,6 @@ impl Fixture {
         let transaction = scenario.admin.begin().await.unwrap();
         let now = chrono::Utc::now().naive_utc();
         let adult = people::Entity::find_by_id(scenario.account.person_id)
-            .one(&transaction)
-            .await
-            .unwrap()
-            .unwrap();
-        let user = users::Entity::find()
-            .filter(users::Column::PersonId.eq(adult.id))
             .one(&transaction)
             .await
             .unwrap()
@@ -150,7 +142,6 @@ impl Fixture {
             scenario,
             runtime_uri,
             adult,
-            user,
             minor,
             dependent,
             minor_membership,

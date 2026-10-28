@@ -68,11 +68,10 @@ WITH CHECK (
     JOIN public.people guardian ON guardian.id = a.person_id
     JOIN public.household_memberships actor ON actor.person_id = guardian.id
     JOIN public.households h ON h.id = actor.household_id
-    JOIN public.users u ON u.person_id = guardian.id
     WHERE a.id = med_tracker.current_account_id()
       AND a.id = guardian_declarations.declared_by_account_id
       AND a.person_id = guardian_declarations.guardian_person_id
-      AND a.status = 2 AND u.active
+      AND a.status = 2 AND a.active
       AND guardian.person_type = 0 AND guardian.has_capacity
       AND actor.id = med_tracker.current_membership_id()
       AND actor.household_id = guardian_declarations.origin_household_id
@@ -295,11 +294,10 @@ BEGIN
      AND current_user <> 'med_tracker_owner' THEN
     -- Match withdrawal and recovery's account-before-declaration lock order.
     PERFORM a.id FROM public.accounts a
-    JOIN public.users u ON u.person_id = a.person_id
     JOIN public.household_memberships actor ON actor.person_id = a.person_id
     JOIN public.households h ON h.id = actor.household_id
     WHERE a.id = med_tracker.current_account_id() AND a.person_id = NEW.carer_id
-      AND a.status = 2 AND u.active
+      AND a.status = 2 AND a.active
       AND actor.id = med_tracker.current_membership_id()
       AND actor.household_id = NEW.household_id
       AND actor.household_id = med_tracker.current_household_id()
@@ -354,7 +352,6 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.household_memberships actor
     JOIN public.accounts a ON a.person_id = actor.person_id
-    JOIN public.users u ON u.person_id = actor.person_id
     JOIN public.households h ON h.id = actor.household_id
     JOIN public.household_memberships subject_member
       ON subject_member.household_id = h.id AND subject_member.person_id = p_subject
@@ -364,7 +361,7 @@ BEGIN
       AND actor.role IN ('owner','administrator')
       AND actor.status = 'active' AND actor.revoked_at IS NULL
       AND a.id = med_tracker.current_account_id() AND a.status = 2
-      AND u.active AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND a.active AND h.status = 'active' AND h.lifecycle_state = 'active'
       AND subject_member.status = 'active' AND subject_member.revoked_at IS NULL
       AND subject.person_type = 1 AND NOT subject.has_capacity
       AND subject.date_of_birth IS NOT NULL
@@ -410,7 +407,6 @@ BEGIN
       AND guardian_member.person_id = d.guardian_person_id
     JOIN public.people guardian ON guardian.id = d.guardian_person_id
     JOIN public.accounts a ON a.person_id = guardian.id
-    JOIN public.users u ON u.person_id = guardian.id
     WHERE d.subject_person_id = p_subject
       AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL
       AND c.active AND h.status = 'active' AND h.lifecycle_state = 'active'
@@ -419,7 +415,7 @@ BEGIN
       AND guardian.person_type = 0 AND guardian.has_capacity
       AND (guardian.date_of_birth IS NULL OR guardian.date_of_birth <=
         (med_tracker.guardian_recovery_latest_date() - interval '18 years')::date)
-      AND a.status = 2 AND u.active
+      AND a.status = 2 AND a.active
   ) INTO has_effective_guardian;
   RETURN NEXT;
 END;
@@ -445,7 +441,7 @@ DECLARE
   old_declaration bigint;
   old_guardian bigint;
   guardian_membership bigint;
-  actor_user bigint;
+  actor_account bigint;
   subject_name text;
   event_metadata jsonb;
   event_context jsonb;
@@ -468,7 +464,6 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.household_memberships actor
     JOIN public.accounts a ON a.person_id = actor.person_id
-    JOIN public.users u ON u.person_id = actor.person_id
     JOIN public.households h ON h.id = actor.household_id
     JOIN public.household_memberships subject_member
       ON subject_member.household_id = h.id AND subject_member.person_id = p_subject
@@ -478,7 +473,7 @@ BEGIN
       AND actor.role IN ('owner','administrator')
       AND actor.status = 'active' AND actor.revoked_at IS NULL
       AND a.id = med_tracker.current_account_id() AND a.status = 2
-      AND u.active AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND a.active AND h.status = 'active' AND h.lifecycle_state = 'active'
       AND subject_member.status = 'active' AND subject_member.revoked_at IS NULL
       AND subject.person_type = 1 AND NOT subject.has_capacity
       AND subject.date_of_birth IS NOT NULL
@@ -502,10 +497,9 @@ BEGIN
   PERFORM d.id FROM public.guardian_declarations d
     WHERE d.subject_person_id = p_subject
     ORDER BY d.declared_at DESC,d.id DESC LIMIT 1 FOR UPDATE OF d;
-  SELECT u.id,subject.name INTO actor_user,subject_name
+  SELECT a.id,subject.name INTO actor_account,subject_name
     FROM public.household_memberships actor
     JOIN public.accounts a ON a.person_id = actor.person_id
-    JOIN public.users u ON u.person_id = actor.person_id
     JOIN public.households h ON h.id = actor.household_id
     JOIN public.household_memberships subject_member
       ON subject_member.household_id = h.id AND subject_member.person_id = p_subject
@@ -515,7 +509,7 @@ BEGIN
       AND actor.role IN ('owner','administrator')
       AND actor.status = 'active' AND actor.revoked_at IS NULL
       AND a.id = med_tracker.current_account_id() AND a.status = 2
-      AND u.active AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND a.active AND h.status = 'active' AND h.lifecycle_state = 'active'
       AND subject_member.status = 'active' AND subject_member.revoked_at IS NULL
       AND subject.person_type = 1 AND NOT subject.has_capacity
       AND subject.date_of_birth IS NOT NULL
@@ -525,7 +519,7 @@ BEGIN
       AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
         WHERE l.account_id = a.id
           AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
-    FOR SHARE OF actor,a,u,subject_member,subject;
+    FOR SHARE OF actor,a,subject_member,subject;
   IF NOT FOUND THEN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Guardian recovery unavailable';
   END IF;
@@ -533,18 +527,17 @@ BEGIN
     FROM public.household_memberships m
     JOIN public.people p ON p.id = m.person_id
     JOIN public.accounts a ON a.person_id = p.id
-    JOIN public.users u ON u.person_id = p.id
     WHERE m.person_id = p_guardian
       AND m.household_id = med_tracker.current_household_id()
       AND m.status = 'active' AND m.revoked_at IS NULL
       AND p.person_type = 0 AND p.has_capacity
       AND (p.date_of_birth IS NULL OR p.date_of_birth <=
         (med_tracker.guardian_recovery_earliest_date() - interval '18 years')::date)
-      AND a.status = 2 AND u.active
+      AND a.status = 2 AND a.active
       AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
         WHERE l.account_id = a.id
           AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
-    FOR SHARE OF m,p,a,u;
+    FOR SHARE OF m,p,a;
   IF NOT FOUND THEN
     RETURN QUERY SELECT 'invalid_guardian'::text,NULL::bigint,NULL::bigint;
     RETURN;
@@ -559,14 +552,13 @@ BEGIN
         SELECT 1 FROM public.household_memberships m
         JOIN public.people p ON p.id = m.person_id
         JOIN public.accounts a ON a.person_id = p.id
-        JOIN public.users u ON u.person_id = p.id
         WHERE m.person_id = p_guardian
           AND m.household_id = med_tracker.current_household_id()
           AND m.status = 'active' AND m.revoked_at IS NULL
           AND p.person_type = 0 AND p.has_capacity
           AND (p.date_of_birth IS NULL OR p.date_of_birth <=
             (med_tracker.guardian_recovery_earliest_date() - interval '18 years')::date)
-          AND a.status = 2 AND u.active
+          AND a.status = 2 AND a.active
           AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
             WHERE l.account_id = a.id
               AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
@@ -612,13 +604,12 @@ BEGIN
         ON m.person_id = d.guardian_person_id AND m.household_id = c.household_id
       JOIN public.people p ON p.id = d.guardian_person_id
       JOIN public.accounts a ON a.person_id = p.id
-      JOIN public.users u ON u.person_id = p.id
       WHERE d.subject_person_id = p_subject
         AND d.guardian_person_id = p_guardian
         AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL
         AND c.household_id = med_tracker.current_household_id() AND NOT c.active
         AND m.status = 'active' AND m.revoked_at IS NULL
-        AND p.person_type = 0 AND p.has_capacity AND a.status = 2 AND u.active
+        AND p.person_type = 0 AND p.has_capacity AND a.status = 2 AND a.active
         AND (p.date_of_birth IS NULL OR p.date_of_birth <=
           (med_tracker.guardian_recovery_earliest_date() - interval '18 years')::date)
     ) THEN
@@ -663,6 +654,7 @@ BEGIN
     'action',outcome,'reason',pg_catalog.btrim(p_reason));
   event_context := pg_catalog.jsonb_build_object(
     'actor_account_id',med_tracker.current_account_id(),
+    'actor_person_id',(SELECT a.person_id FROM public.accounts a WHERE a.id=actor_account),
     'actor_membership_id',med_tracker.current_membership_id(),
     'household_id',med_tracker.current_household_id(),
     'request_id',p_request_id,'policy_class','GuardianRecovery',
@@ -671,14 +663,14 @@ BEGIN
     (item_type,item_id,event,object,object_changes,whodunnit,request_id,
      household_id,actor_membership_id,audit_context,created_at)
     VALUES ('GuardianDeclaration',declaration_id,outcome,NULL,
-      event_metadata::text,actor_user::text,p_request_id,
+      event_metadata::text,actor_account::text,p_request_id,
       med_tracker.current_household_id(),med_tracker.current_membership_id(),
       event_context,timestamp_utc);
   INSERT INTO public.versions
     (item_type,item_id,event,object,object_changes,whodunnit,request_id,
      household_id,actor_membership_id,audit_context,created_at)
     VALUES ('CarerRelationship',relationship_id,outcome,NULL,
-      event_metadata::text,actor_user::text,p_request_id,
+      event_metadata::text,actor_account::text,p_request_id,
       med_tracker.current_household_id(),med_tracker.current_membership_id(),
       event_context,timestamp_utc);
   INSERT INTO public.security_audit_events

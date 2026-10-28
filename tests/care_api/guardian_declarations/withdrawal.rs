@@ -227,7 +227,7 @@ async fn guardian_withdrawal_survives_last_departure_without_current_foreign_pro
         require(
             audit.len() == 1
                 && audit[0].household_id.is_none()
-                && audit[0].whodunnit.as_deref() == Some(app.fixture.user.id.to_string().as_str())
+                && audit[0].whodunnit.as_deref() == Some(app.fixture.account.id.to_string().as_str())
                 && (audit[0].audit_context["actor_account_id"].as_i64()
                     == Some(app.fixture.account.id)
                     || audit[0].audit_context["actor_account_id"].as_str()

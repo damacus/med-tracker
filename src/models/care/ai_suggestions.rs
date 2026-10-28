@@ -679,11 +679,11 @@ pub(crate) async fn record_suggestion(
         event: Set("ai_medication/suggestion".to_owned()),
         object: Set(Some(object.to_string())),
         object_changes: Set(None),
-        whodunnit: Set(tenant.legacy_user_id().map(|id| id.to_string())),
+        whodunnit: Set(Some(tenant.scope().actor.account_id.to_string())),
         request_id: Set(Some(request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
-        audit_context: Set(json!({"request_id": request_id, "actor_user_id": tenant.legacy_user_id(), "household_id": tenant.scope().household_id})),
+        audit_context: Set(json!({"request_id": request_id, "actor_account_id": tenant.scope().actor.account_id, "actor_person_id": tenant.membership().person_id, "household_id": tenant.scope().household_id})),
         created_at: Set(Some(Utc::now().naive_utc())),
         ..Default::default()
     }

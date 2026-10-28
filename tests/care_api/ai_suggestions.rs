@@ -81,7 +81,6 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
     let fixture_account_id = app.fixture.account.id;
     let fixture_household_id = app.fixture.household.id;
     let fixture_membership_id = app.fixture.membership.id;
-    let fixture_user_id = app.fixture.user.id;
     upgrade_plan(&app).await;
     assert_eq!(
         app.context.config.settings.as_ref().unwrap()["ai_medication_help"],
@@ -131,7 +130,7 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
     let suggestions = accepted["suggestions"].as_array().unwrap();
     assert_eq!(suggestions.len(), 1);
     assert_eq!(suggestions[0]["event"], "ai_medication/suggestion");
-    assert_eq!(suggestions[0]["whodunnit"], fixture_user_id.to_string());
+    assert_eq!(suggestions[0]["whodunnit"], fixture_account_id.to_string());
     assert_eq!(suggestions[0]["actor_membership_id"], fixture_membership_id);
     assert_eq!(suggestions[0]["household_id"], fixture_household_id);
     let audit = suggestion_audit(&app).await.unwrap();
