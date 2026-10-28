@@ -3,6 +3,8 @@ glob_matcher: doublestar
 
 pre-commit:
   jobs:
+    - name: whitespace
+      run: task whitespace
     - name: rust-format
       glob:
         - "{src,tests,migration}/**/*.rs"
