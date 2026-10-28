@@ -7,6 +7,90 @@ fn dosage_body(app: &Application) -> Value {
 }
 
 #[tokio::test]
+async fn dosage_response_preserves_exact_fields_nulls_decimals_and_etag() {
+    use sha2::{Digest, Sha256};
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let collection = format!(
+        "{}/api/v1/households/{}/dosage_options",
+        app.origin, app.fixture.household.id
+    );
+    let mut input = dosage_body(&app);
+    input["dosage_option"]["amount"] = json!("2.50");
+    input["dosage_option"]["default_min_hours_between_doses"] = json!("4.5");
+    input["dosage_option"]["current_supply"] = Value::Null;
+    input["dosage_option"]["reorder_threshold"] = Value::Null;
+    input["dosage_option"]["default_dose_cycle"] = json!("weekly");
+    let created = app
+        .client
+        .post(&collection)
+        .bearer_auth(&token)
+        .json(&input)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let created_etag = created.headers()["etag"].to_str().unwrap().to_owned();
+    let created: Value = created.json().await.unwrap();
+    let record = &created["data"];
+    let expected = json!({
+        "id": record["id"], "portable_id": record["portable_id"],
+        "medication_id": app.fixture.medication.id,
+        "medication_portable_id": app.fixture.medication.portable_id,
+        "amount": "2.5", "unit": "tablet", "frequency": "daily", "description": null,
+        "default_for_adults": false, "default_for_children": false,
+        "default_max_daily_doses": 3, "default_min_hours_between_doses": "4.5",
+        "default_dose_cycle": "weekly", "current_supply": null, "reorder_threshold": null,
+        "updated_at": record["updated_at"]
+    });
+    assert_eq!(created, json!({"data": expected}));
+    let mut canonical = created.clone();
+    canonical.sort_all_objects();
+    let expected_etag = format!(
+        "\"{}\"",
+        hex::encode(Sha256::digest(serde_json::to_vec(&canonical).unwrap()))
+    );
+    assert_eq!(created_etag, expected_etag);
+
+    let endpoint = format!("{collection}/{}", record["portable_id"].as_str().unwrap());
+    let read = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(read.status().as_u16(), 200);
+    assert_eq!(read.headers()["etag"], created_etag);
+    assert_eq!(read.json::<Value>().await.unwrap(), created);
+    let list = app
+        .client
+        .get(format!("{collection}?per_page=1"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(list.status().as_u16(), 200);
+    assert_eq!(
+        list.json::<Value>().await.unwrap(),
+        json!({"data": [expected], "meta": {"page": 1, "per_page": 1, "total_count": 1}})
+    );
+    let cached = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .header("if-none-match", &created_etag)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(cached.status().as_u16(), 304);
+    assert_eq!(cached.headers()["etag"], created_etag);
+    assert!(cached.bytes().await.unwrap().is_empty());
+    app.close().await;
+}
+
+#[tokio::test]
 async fn dosage_conformance_tracked_description_update_retains_parent_inventory_callback() {
     let app = Application::new().await;
     let fixture_household_id = app.fixture.household.id;

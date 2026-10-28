@@ -43,6 +43,19 @@ and gate result in the job summaries.
 
 ## Local checks
 
+Lefthook runs `task whitespace` before every commit. It checks staged, unstaged
+and new untracked files for trailing spaces, extra blank lines at EOF and other
+Git whitespace errors. Ignored files stay excluded unless already tracked.
+The check uses a temporary index and object directory and leaves your staging
+unchanged. Both temporary copies are removed when it exits. Fix any
+reported files, including staged copies, before committing.
+
+Run `rtk task whitespace` manually, or `rtk task whitespace BASE=origin/my-branch`
+to include changes since the merge base with another branch. The default is
+`HEAD`, so the commit hook needs no remote or main branch. Git whitespace
+attributes and configuration apply. GitHub workflows do not run this check.
+Run `rtk task test:whitespace` for its focused command-behaviour tests.
+
 Run `task ci:check` with actionlint 1.7.12 installed to validate workflows and
 CI scripts. Run `task ci:classify` or `task ci:markdown` with `CI_BASE` set to the
 base commit; `CI_HEAD` defaults to `HEAD` and `CI_EVENT` defaults to PR comparison.
