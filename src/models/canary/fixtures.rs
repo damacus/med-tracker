@@ -306,6 +306,7 @@ pub(super) async fn seed(ctx: &AppContext) -> Result<(), DbErr> {
         schedule_type: Set(1),
         schedule_config: Set(serde_json::json!({"times":["08:00"]})),
         start_date: Set(Some(epoch.date_naive())),
+        end_date: Set(Some(epoch.date_naive() + chrono::Duration::days(14))),
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()

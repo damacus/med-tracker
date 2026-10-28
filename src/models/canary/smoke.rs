@@ -25,7 +25,11 @@ fn cookie_header(jar: &BTreeMap<String, String>) -> String {
 }
 
 pub(super) async fn run(ctx: &AppContext) -> Result<(), DbErr> {
-    super::work(ctx).await.map_err(|_| invalid())?;
+    let state = ctx
+        .shared_store
+        .get::<std::sync::Arc<super::Canary>>()
+        .ok_or_else(invalid)?;
+    state.status().await?;
     let url = url::Url::parse(text(ctx, "smoke_url")?).map_err(|_| invalid())?;
     if url.scheme() != "http"
         || url.host_str() != Some("medtracker-canary.medtracker-canary.svc.cluster.local")
@@ -120,15 +124,8 @@ pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbEr
     }
     cookies(&detail, &mut jar)?;
     let html = detail.text().await.map_err(|_| invalid())?;
-    let (mut form, before) = dose_form(&html)?;
-    form.insert(
-        "taken_at".into(),
-        chrono::Utc::now()
-            .with_timezone(&chrono_tz::Europe::London)
-            .format("%Y-%m-%dT%H:%M")
-            .to_string(),
-    );
-    let encoded = serde_urlencoded::to_string(&form).map_err(|_| invalid())?;
+    dose_form(&html, "82001")?;
+    let (encoded, before) = dose_submission(&html)?;
     let take_url = url
         .join("households/persistence-fixture/medications/80001/doses")
         .map_err(|_| invalid())?;
@@ -176,6 +173,12 @@ pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbEr
     Ok(())
 }
 
+fn dose_submission(html: &str) -> Result<(String, sea_orm::prelude::Decimal), DbErr> {
+    let (form, before) = dose_form(html, "81001")?;
+    let encoded = serde_urlencoded::to_string(&form).map_err(|_| invalid())?;
+    Ok((encoded, before))
+}
+
 fn stock(html: &str) -> Result<sea_orm::prelude::Decimal, DbErr> {
     let document = scraper::Html::parse_document(html);
     let selector =
@@ -192,7 +195,10 @@ fn stock(html: &str) -> Result<sea_orm::prelude::Decimal, DbErr> {
         .parse()
         .map_err(|_| invalid())
 }
-fn dose_form(html: &str) -> Result<(BTreeMap<String, String>, sea_orm::prelude::Decimal), DbErr> {
+fn dose_form(
+    html: &str,
+    source_id: &str,
+) -> Result<(BTreeMap<String, String>, sea_orm::prelude::Decimal), DbErr> {
     let document = scraper::Html::parse_document(html);
     let forms = scraper::Selector::parse("form[data-dose-form]").map_err(|_| invalid())?;
     let inputs = scraper::Selector::parse("input[name]").map_err(|_| invalid())?;
@@ -206,9 +212,26 @@ fn dose_form(html: &str) -> Result<(BTreeMap<String, String>, sea_orm::prelude::
                 ))
             })
             .collect();
-        if values.get("source_id").is_some_and(|v| v == "81001") {
+        if values.get("source_id").is_some_and(|v| v == source_id) {
             return Ok((values, stock(html)?));
         }
     }
     Err(invalid())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn smoke_submission_keeps_server_rendered_summer_time() {
+        for wall_time in ["2026-07-15T12:30", "2026-07-15T13:30"] {
+            let html = format!(
+                r#"<span data-testid="current-supply">10 tablets</span><form data-dose-form><input name="source_id" value="81001"><input name="taken_at" value="{wall_time}"></form>"#
+            );
+            let (body, _) = dose_submission(&html).unwrap();
+            let values: BTreeMap<String, String> = serde_urlencoded::from_str(&body).unwrap();
+            assert_eq!(values["taken_at"], wall_time);
+        }
+    }
 }

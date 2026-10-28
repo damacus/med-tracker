@@ -133,7 +133,11 @@ workflow, and coding standards.
 
 The release binary includes `task canary-capabilities`, `task canary-seed` and
 `task canary-smoke`. Use `--environment production` with the dedicated canary
-configuration. Ordinary production `db seed` remains disabled.
+configuration. Ordinary production `db seed` remains disabled. Mount the dedicated
+production YAML supplied by [HomeOps #4578](https://github.com/damacus/home-ops/pull/4578)
+at `/app/config/production.yaml`; it enables stubbed mail and omits `queue.reaper`.
+Enabling canary mode against the stock production configuration deliberately
+fails closed. The ordinary production queue reaper stays unchanged.
 
 Canary settings must explicitly enable the scope `medtracker-canary`, use the
 `medtracker_canary` database and a separate `medtracker_canary_control` database
@@ -155,8 +159,8 @@ requests carrying the internal smoke key pass the gate; ordinary authentication
 and household permissions still apply. Read-only `/health` probes also pass
 during fresh verification so Kubernetes can mark the server ready for the smoke
 journey. Health remains unavailable when the control phase or heartbeat is unsafe.
-Workers and scheduled tasks wait while
-the gate is closed. Canary configuration must omit the optional queue reaper so
+Workers and scheduled tasks remain paused until verification succeeds and the
+control phase is `ready`. Canary configuration must omit the optional queue reaper so
 it cannot reclaim a live waiting handler. After a worker dies, recover its
 Processing jobs with Loco's native requeue command only after confirming the old
 worker has stopped, or allow the next weekly reset to replace the queue.

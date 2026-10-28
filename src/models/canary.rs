@@ -161,7 +161,11 @@ pub(crate) async fn work(ctx: &AppContext) -> Result<(), DbErr> {
     }
     let state = ctx.shared_store.get::<Arc<Canary>>().ok_or_else(invalid)?;
     loop {
-        if state.status().await.is_ok() {
+        if state
+            .status()
+            .await
+            .is_ok_and(|status| status.phase == "ready")
+        {
             return Ok(());
         }
         tokio::time::sleep(Duration::from_secs(1)).await;

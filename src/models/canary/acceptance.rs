@@ -66,10 +66,8 @@ async fn seeded_care_full_boot_gate_and_replay() {
     control.execute(&insert).await.unwrap();
     let mut preflight_config = Config::new(&Environment::Production).unwrap();
     preflight_config.database.uri = uri.clone();
-    if let Some(loco_rs::config::QueueConfig::Postgres(queue)) = preflight_config.queue.as_mut() {
-        queue.uri = uri.clone();
-        queue.reaper = None;
-    }
+    preflight_config.queue =
+        Some(serde_yaml_ng::from_str(&format!("kind: Postgres\nuri: {uri}\n")).unwrap());
     let mut preflight = create_context::<App>(&Environment::Production, preflight_config)
         .await
         .unwrap();
@@ -307,7 +305,12 @@ async fn seeded_care_full_boot_gate_and_replay() {
         .unwrap();
     });
     smoke::journey(&ctx, &url).await.unwrap();
-    work(&ctx).await.unwrap();
+    assert!(
+        tokio::time::timeout(Duration::from_millis(50), work(&ctx))
+            .await
+            .is_err(),
+        "background work must wait until verification succeeds"
+    );
     update_control(&control, None, Utc::now() - chrono::Duration::seconds(31)).await;
     assert_eq!(
         server.get("/health").await.status_code(),
