@@ -175,7 +175,7 @@ impl Hooks for App {
                 rate_limit,
                 crate::controllers::api::rate_limit::boundary,
             ));
-        if ctx
+        let router = if ctx
             .config
             .server
             .middlewares
@@ -183,12 +183,13 @@ impl Hooks for App {
             .as_ref()
             .is_none_or(|request_id| request_id.enable)
         {
-            Ok(router.layer(axum::middleware::from_fn(
+            router.layer(axum::middleware::from_fn(
                 middleware::request_id::request_id_middleware,
-            )))
+            ))
         } else {
-            Ok(router)
-        }
+            router
+        };
+        Ok(router.layer(axum::middleware::from_fn(crate::request_trace::boundary)))
     }
 
     fn register_tasks(tasks: &mut Tasks) {
