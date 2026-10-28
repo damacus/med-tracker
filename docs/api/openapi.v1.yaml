@@ -261,6 +261,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/profile/history:
+    get:
+      operationId: listPersonalTakenDoses
+      tags: [Account, Account profiles]
+      summary: Read the authenticated person's own taken-dose history.
+      description: |
+        Requires an account-bound first-party mobile OAuth credential with medtracker
+        scope. Household sessions, app tokens, personal keys and integration grants
+        cannot use this route. The subject comes from the authenticated account;
+        person and household selectors are rejected. No household membership is required.
+        Returns taken administrations across origin households, without stock details,
+        locations or private narratives. Existing administration attribution is preserved.
+        Results contain at most 25 records in descending taken_at, then ID order.
+        Supply both cursor fields from next_cursor to read the next page. Timestamps
+        are UTC. Each page rechecks current credentials and commits its access audit
+        before releasing records. Refusals are audited, naming the actor only when
+        the server has proved their identity. Successful reads and refusals by
+        verified callers use the clinical ledger. Refusals without a proved identity
+        use structured security logs without a claimed actor or database audit write.
+        Rate-limit and unavailable-source refusals occur before authentication,
+        keeping database work behind the rate limit. Every response is no-store.
+      parameters:
+        - name: before_id
+          in: query
+          schema: {type: integer, format: int64, minimum: 1}
+        - name: before_taken_at
+          in: query
+          schema: {type: string, format: date-time}
+      responses:
+        "200":
+          description: Own taken-dose records and the next exclusive cursor, or null at the end.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PersonalTakenDoseCollectionResponse"}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: History or its access audit could not be committed; no records are released.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
   /auth/guardian-declarations:
     get:
       operationId: listOwnGuardianDeclarations
@@ -5251,6 +5298,39 @@ components:
           schema:
             $ref: "#/components/schemas/RateLimitErrorEnvelope"
   schemas:
+    PersonalTakenDose:
+      type: object
+      additionalProperties: false
+      required: [id, taken_at, dose_amount, dose_unit, medicine]
+      properties:
+        id: {type: integer, format: int64}
+        taken_at: {type: string, format: date-time}
+        dose_amount: {type: string, nullable: true, description: Exact decimal amount.}
+        dose_unit: {type: string, nullable: true}
+        medicine: {type: string, nullable: true}
+    PersonalHistoryCursor:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required: [id, taken_at]
+      properties:
+        id: {type: integer, format: int64, minimum: 1}
+        taken_at: {type: string, format: date-time}
+    PersonalTakenDoseCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 25
+          items: {$ref: "#/components/schemas/PersonalTakenDose"}
+        meta:
+          type: object
+          additionalProperties: false
+          required: [next_cursor]
+          properties:
+            next_cursor: {$ref: "#/components/schemas/PersonalHistoryCursor"}
     GuardianDeclarationIdentifier:
       type: string
       pattern: '^[1-9][0-9]*$'

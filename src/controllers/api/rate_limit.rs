@@ -17,6 +17,7 @@ pub async fn boundary(
         return next.run(request).await;
     }
     let Some(peer) = request.extensions().get::<ConnectInfo<SocketAddr>>() else {
+        history_refusal(&request, HistoryRefusal::SourceUnavailable);
         return json_error(
             StatusCode::SERVICE_UNAVAILABLE,
             RateLimitResponse::source_unavailable(),
@@ -30,7 +31,33 @@ pub async fn boundary(
     ) else {
         return next.run(request).await;
     };
+    history_refusal(&request, HistoryRefusal::RateLimited);
     rejected(rejection)
+}
+
+enum HistoryRefusal {
+    RateLimited,
+    SourceUnavailable,
+}
+
+fn history_refusal(request: &Request, refusal: HistoryRefusal) {
+    if request.uri().path() != "/api/v1/auth/profile/history"
+        || !matches!(
+            *request.method(),
+            axum::http::Method::GET | axum::http::Method::HEAD
+        )
+    {
+        return;
+    }
+    let (reason, status) = match refusal {
+        HistoryRefusal::RateLimited => ("rate_limited", 429_u16),
+        HistoryRefusal::SourceUnavailable => ("source_unavailable", 503_u16),
+    };
+    tracing::info!(
+        event_type = "personal_history_denied", outcome = "denied", reason, status,
+        method = %request.method(), route = "/api/v1/auth/profile/history",
+        "Personal history read denied before authentication"
+    );
 }
 
 fn rejected(rejection: Rejection) -> Response {
