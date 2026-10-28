@@ -1,6 +1,6 @@
 use super::*;
 use crate::models::{
-    entities::{account, household, membership, person, user},
+    entities::{account, household, membership, person},
     identity::signup::SignupInvitationContext,
 };
 use loco_rs::model::TenantQueryExt;
@@ -113,12 +113,7 @@ pub(crate) async fn accept_signup(
         .one(transaction)
         .await?
         .ok_or(SignupInvitationError::InvitationUnavailable)?;
-    let user = user::Entity::find_by_id(context.user_id())
-        .filter(user::Column::PersonId.eq(person.id))
-        .filter(user::Column::Active.eq(true))
-        .one(transaction)
-        .await?;
-    if owner.status != 1 || owner.email != context.email() || user.is_none() {
+    if owner.status != 1 || owner.email != context.email() || !owner.active {
         return Err(SignupInvitationError::InvitationUnavailable);
     }
     if membership::Entity::find()
@@ -152,9 +147,7 @@ pub(crate) async fn accept_signup(
         &inviter,
         invitation,
         request_id,
-        super::acceptance_effects::PersonOrigin::New {
-            user_id: context.user_id(),
-        },
+        super::acceptance_effects::PersonOrigin::New,
     )
     .await
     .map_err(SignupInvitationError::from)

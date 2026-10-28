@@ -10,7 +10,6 @@ pub struct AccountProfile {
 pub struct ProvisionedAccount {
     pub account_id: i64,
     pub person_id: i64,
-    pub user_id: i64,
     pub household_id: i64,
     pub email: String,
 }

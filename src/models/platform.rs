@@ -5,7 +5,8 @@ use super::{
 };
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, QueryResult, Statement, TransactionTrait,
+    PaginatorTrait, QueryFilter, QueryOrder, QueryResult, Statement, TransactionTrait,
+    sea_query::Expr,
 };
 use serde_json::json;
 
@@ -24,7 +25,7 @@ pub struct RequestMeta {
 
 pub(super) struct AuditContext {
     pub account_id: i64,
-    pub user_id: i64,
+    pub person_id: i64,
     pub role: &'static str,
     pub household_id: Option<i64>,
     pub session_reference: Option<String>,
@@ -35,14 +36,14 @@ pub(super) struct AuditContext {
 impl AuditContext {
     pub fn administrator(
         account_id: i64,
-        user_id: i64,
+        person_id: i64,
         session_reference: Option<&str>,
         request_id: Option<&str>,
         ip: Option<&str>,
     ) -> Self {
         Self {
             account_id,
-            user_id,
+            person_id,
             role: "platform_admin",
             household_id: None,
             session_reference: session_reference.map(ToOwned::to_owned),
@@ -53,7 +54,7 @@ impl AuditContext {
 
     pub fn owner(
         account_id: i64,
-        user_id: i64,
+        person_id: i64,
         household_id: i64,
         session_reference: Option<&str>,
         request_id: Option<&str>,
@@ -62,7 +63,7 @@ impl AuditContext {
         Self {
             role: "household_owner",
             household_id: Some(household_id),
-            ..Self::administrator(account_id, user_id, session_reference, request_id, ip)
+            ..Self::administrator(account_id, person_id, session_reference, request_id, ip)
         }
     }
 
@@ -73,20 +74,20 @@ impl AuditContext {
 }
 
 impl RequestMeta {
-    pub(super) fn administrator(&self, account_id: i64, user_id: i64) -> AuditContext {
+    pub(super) fn administrator(&self, account_id: i64, person_id: i64) -> AuditContext {
         AuditContext::administrator(
             account_id,
-            user_id,
+            person_id,
             self.session_reference.as_deref(),
             self.request_id.as_deref(),
             self.ip.as_deref(),
         )
     }
 
-    pub(super) fn owner(&self, account_id: i64, user_id: i64, household_id: i64) -> AuditContext {
+    pub(super) fn owner(&self, account_id: i64, person_id: i64, household_id: i64) -> AuditContext {
         AuditContext::owner(
             account_id,
-            user_id,
+            person_id,
             household_id,
             self.session_reference.as_deref(),
             self.request_id.as_deref(),
@@ -97,7 +98,7 @@ impl RequestMeta {
 
 pub struct Administrator {
     pub admin: platform_admin::Model,
-    pub user_id: i64,
+    pub person_id: i64,
 }
 
 pub struct UserEntry {
@@ -105,37 +106,8 @@ pub struct UserEntry {
     pub name: String,
     pub email: String,
     pub status: i32,
-    pub user_active: bool,
-    pub user_linked: bool,
+    pub sign_in_enabled: bool,
     pub administrator: Option<String>,
-}
-
-impl UserEntry {
-    fn from_row(row: &QueryResult) -> Result<Self, OperationError> {
-        Ok(Self {
-            id: row
-                .try_get("", "id")
-                .map_err(|_| OperationError::Unavailable)?,
-            name: row
-                .try_get("", "name")
-                .map_err(|_| OperationError::Unavailable)?,
-            email: row
-                .try_get("", "email")
-                .map_err(|_| OperationError::Unavailable)?,
-            status: row
-                .try_get("", "status")
-                .map_err(|_| OperationError::Unavailable)?,
-            user_linked: row
-                .try_get("", "user_linked")
-                .map_err(|_| OperationError::Unavailable)?,
-            user_active: row
-                .try_get("", "user_active")
-                .map_err(|_| OperationError::Unavailable)?,
-            administrator: row
-                .try_get("", "administrator")
-                .map_err(|_| OperationError::Unavailable)?,
-        })
-    }
 }
 
 pub struct UsersPage {
@@ -166,7 +138,7 @@ async fn authorize(
     action: &str,
 ) -> Result<Administrator, OperationError> {
     account_scope(transaction, account_id).await?;
-    let user_id = access::verify_account_actor(transaction, account_id).await?;
+    let person_id = access::verify_account_actor(transaction, account_id).await?;
     let record = account::Entity::find_by_id(account_id)
         .one(transaction)
         .await
@@ -184,7 +156,7 @@ async fn authorize(
     if !allowed {
         return Err(OperationError::Forbidden);
     }
-    Ok(Administrator { admin, user_id })
+    Ok(Administrator { admin, person_id })
 }
 
 pub async fn administrator(
@@ -206,36 +178,28 @@ pub async fn users(
         .replace('_', "\\_");
     let pattern = format!("%{escaped}%");
     let page = page.max(1);
-    let count = transaction
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM accounts WHERE email ILIKE $1 ESCAPE '\\'",
-            [pattern.clone().into()],
-        ))
-        .await
-        .map_err(|_| OperationError::Unavailable)?
-        .ok_or(OperationError::Unavailable)?;
-    let total: i64 = count
-        .try_get("", "count")
+    let query = account::Entity::find().filter(account::Column::Email.ilike(pattern));
+    let total = i64::try_from(query.clone().count(transaction).await?)
         .map_err(|_| OperationError::Unavailable)?;
     let pages = (total / PER_PAGE + i64::from(total % PER_PAGE > 0)).max(1);
     let page = page.min(pages);
-    let rows = transaction
-        .query_all_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT a.id,COALESCE(a.name,'') AS name,a.email,a.status,EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=a.person_id) AS user_linked,EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=a.person_id AND u.active) AS user_active,pa.status AS administrator FROM accounts a LEFT JOIN platform_admins pa ON pa.account_id=a.id WHERE a.email ILIKE $1 ESCAPE '\\' ORDER BY a.id LIMIT $2 OFFSET $3",
-            [
-                pattern.into(),
-                PER_PAGE.into(),
-                ((page - 1) * PER_PAGE).into(),
-            ],
-        ))
-        .await
-        .map_err(|_| OperationError::Unavailable)?;
+    let rows = query
+        .find_also_related(platform_admin::Entity)
+        .order_by_asc(account::Column::Id)
+        .paginate(transaction, PER_PAGE.unsigned_abs())
+        .fetch_page((page - 1).unsigned_abs())
+        .await?;
     let users = rows
-        .iter()
-        .map(UserEntry::from_row)
-        .collect::<Result<Vec<_>, OperationError>>()?;
+        .into_iter()
+        .map(|(account, administrator)| UserEntry {
+            id: account.id,
+            name: account.name.unwrap_or_default(),
+            email: account.email,
+            status: account.status,
+            sign_in_enabled: account.active,
+            administrator: administrator.map(|administrator| administrator.status),
+        })
+        .collect();
     Ok(UsersPage {
         users,
         page,
@@ -282,72 +246,28 @@ async fn target_account(
         .ok_or(OperationError::NotFound)
 }
 
-async fn exists(
-    transaction: &DatabaseTransaction,
-    sql: &str,
-    account_id: i64,
-) -> Result<bool, OperationError> {
-    transaction
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            sql,
-            [account_id.into()],
-        ))
-        .await
-        .map_err(|_| OperationError::Unavailable)?
-        .ok_or(OperationError::Unavailable)?
-        .try_get::<bool>("", "present")
-        .map_err(|_| OperationError::Unavailable)
-}
-
-async fn has_active_user(
-    transaction: &DatabaseTransaction,
-    account_id: i64,
-) -> Result<bool, OperationError> {
-    exists(
-        transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND u.active) AS present",
-        account_id,
-    )
-    .await
-}
-
-async fn has_user(
-    transaction: &DatabaseTransaction,
-    account_id: i64,
-) -> Result<bool, OperationError> {
-    exists(
-        transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT person_id FROM public.accounts WHERE id=$1)) AS present",
-        account_id,
-    )
-    .await
-}
-
 async fn viable_administrator(
     transaction: &DatabaseTransaction,
     account_id: i64,
 ) -> Result<bool, OperationError> {
-    exists(
-        transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.account_id=$1 AND pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=a.person_id AND u.active)) AS present",
-        account_id,
-    )
-    .await
+    Ok(viable_administrator_query()
+        .filter(platform_admin::Column::AccountId.eq(account_id))
+        .one(transaction)
+        .await?
+        .is_some())
 }
 
 async fn viable_administrators(transaction: &DatabaseTransaction) -> Result<i64, OperationError> {
-    transaction
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=a.person_id AND u.active)",
-            [],
-        ))
-        .await
-        .map_err(|_| OperationError::Unavailable)?
-        .ok_or(OperationError::Unavailable)?
-        .try_get::<i64>("", "count")
+    i64::try_from(viable_administrator_query().count(transaction).await?)
         .map_err(|_| OperationError::Unavailable)
+}
+
+fn viable_administrator_query() -> sea_orm::Select<platform_admin::Entity> {
+    platform_admin::Entity::find()
+        .inner_join(account::Entity)
+        .filter(platform_admin::Column::Status.eq("active"))
+        .filter(account::Column::Status.eq(2))
+        .filter(account::Column::Active.eq(true))
 }
 
 async fn require_remaining_administrator(
@@ -422,7 +342,7 @@ pub(super) async fn record(
         .map_err(|_| OperationError::Unavailable)?;
     let context = json!({
         "actor_account_id": audit.account_id,
-        "actor_user_id": audit.user_id,
+        "actor_person_id": audit.person_id,
         "active_role": audit.role,
         "authentication_method": "browser_session",
         "session_reference": audit.session_reference,
@@ -438,7 +358,7 @@ pub(super) async fn record(
                 item_id.into(),
                 event.into(),
                 metadata.to_string().into(),
-                Some(audit.user_id.to_string()).into(),
+                Some(audit.account_id.to_string()).into(),
                 audit.request_id.clone().into(),
                 context.into(),
                 audit.household_id.into(),
@@ -449,11 +369,8 @@ pub(super) async fn record(
     Ok(())
 }
 
-async fn grantable(
-    transaction: &DatabaseTransaction,
-    target: &account::Model,
-) -> Result<bool, OperationError> {
-    Ok(target.status == 2 && has_active_user(transaction, target.id).await?)
+fn grantable(target: &account::Model) -> bool {
+    target.status == 2 && target.active
 }
 
 pub async fn check_rights(
@@ -464,7 +381,7 @@ pub async fn check_rights(
 ) -> Result<(), OperationError> {
     authorize(transaction, actor_account_id, "write_platform_users").await?;
     let target = target_account(transaction, target_account_id).await?;
-    if grant && !grantable(transaction, &target).await? {
+    if grant && !grantable(&target) {
         return Err(OperationError::Validation {
             details: json!({"error":"The account is not eligible for platform rights."}),
         });
@@ -480,9 +397,9 @@ pub async fn check_user(
 ) -> Result<(), OperationError> {
     authorize(transaction, actor_account_id, "write_platform_users").await?;
     let target = target_account(transaction, target_account_id).await?;
-    if active && (target.status != 2 || !has_user(transaction, target_account_id).await?) {
+    if active && target.status != 2 {
         return Err(OperationError::Validation {
-            details: json!({"error":"Only an open verified account with a linked user can be enabled."}),
+            details: json!({"error":"Only an open verified account can be enabled."}),
         });
     }
     Ok(())
@@ -501,7 +418,7 @@ pub async fn change_rights(
     let actor = authorize(transaction, actor_account_id, "write_platform_users").await?;
     let target = target_account(transaction, target_account_id).await?;
     if grant {
-        if !grantable(transaction, &target).await? {
+        if !grantable(&target) {
             return Err(OperationError::Validation {
                 details: json!({"error":"The account is not eligible for platform rights."}),
             });
@@ -522,7 +439,7 @@ pub async fn change_rights(
             json!({"account_id":target_account_id,"grant":true}),
             &AuditContext::administrator(
                 actor_account_id,
-                actor.user_id,
+                actor.person_id,
                 session_reference,
                 request_id,
                 ip,
@@ -557,7 +474,7 @@ pub async fn change_rights(
         json!({"account_id":target_account_id,"grant":false}),
         &AuditContext::administrator(
             actor_account_id,
-            actor.user_id,
+            actor.person_id,
             session_reference,
             request_id,
             ip,
@@ -579,19 +496,12 @@ pub async fn change_user(
     let actor = authorize(transaction, actor_account_id, "write_platform_users").await?;
     let target = target_account(transaction, target_account_id).await?;
     if active {
-        if target.status != 2 || !has_user(transaction, target_account_id).await? {
+        if target.status != 2 {
             return Err(OperationError::Validation {
-                details: json!({"error":"Only an open verified account with a linked user can be enabled."}),
+                details: json!({"error":"Only an open verified account can be enabled."}),
             });
         }
-        transaction
-            .execute_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "UPDATE public.users SET active=true,updated_at=timezone('UTC',clock_timestamp()) WHERE person_id IN (SELECT person_id FROM public.accounts WHERE id=$1)",
-                [target_account_id.into()],
-            ))
-            .await
-            .map_err(|_| OperationError::Unavailable)?;
+        set_sign_in_enabled(transaction, target_account_id, true).await?;
         return record(
             transaction,
             "Account",
@@ -600,7 +510,7 @@ pub async fn change_user(
             json!({"account_id":target_account_id,"active":true}),
             &AuditContext::administrator(
                 actor_account_id,
-                actor.user_id,
+                actor.person_id,
                 session_reference,
                 request_id,
                 ip,
@@ -609,14 +519,7 @@ pub async fn change_user(
         .await;
     }
     require_remaining_administrator(transaction, target_account_id).await?;
-    transaction
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE public.users SET active=false,updated_at=timezone('UTC',clock_timestamp()) WHERE person_id IN (SELECT person_id FROM public.accounts WHERE id=$1)",
-            [target_account_id.into()],
-        ))
-        .await
-        .map_err(|_| OperationError::Unavailable)?;
+    set_sign_in_enabled(transaction, target_account_id, false).await?;
     transaction
         .execute_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
@@ -641,7 +544,7 @@ pub async fn change_user(
         json!({"account_id":target_account_id,"active":false}),
         &AuditContext::administrator(
             actor_account_id,
-            actor.user_id,
+            actor.person_id,
             session_reference,
             request_id,
             ip,
@@ -656,6 +559,20 @@ pub async fn guard_closure(
 ) -> Result<(), OperationError> {
     serialize(transaction).await?;
     require_remaining_administrator(transaction, account_id).await
+}
+
+async fn set_sign_in_enabled(
+    transaction: &DatabaseTransaction,
+    account_id: i64,
+    active: bool,
+) -> Result<(), OperationError> {
+    account::Entity::update_many()
+        .col_expr(account::Column::Active, Expr::value(active))
+        .col_expr(account::Column::UpdatedAt, Expr::value(chrono::Utc::now()))
+        .filter(account::Column::Id.eq(account_id))
+        .exec(transaction)
+        .await?;
+    Ok(())
 }
 
 const SETTINGS_LOCK: i32 = 1;
@@ -931,7 +848,7 @@ pub async fn change_settings(
             "medicine_lookup_token_url": medicine_lookup_token_url,
             "medicine_lookup_source_priority": medicine_lookup_source_priority,
         }),
-        &meta.administrator(actor_account_id, actor.user_id),
+        &meta.administrator(actor_account_id, actor.person_id),
     )
     .await
 }

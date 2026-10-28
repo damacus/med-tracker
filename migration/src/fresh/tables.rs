@@ -237,6 +237,12 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         manager,
         Table::create()
             .table(Alias::new("accounts"))
+            .col(
+                ColumnDef::new(Alias::new("active"))
+                    .boolean()
+                    .not_null()
+                    .default(Expr::val(true)),
+            )
             .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
             .col(
                 ColumnDef::new(Alias::new("person_id"))
@@ -3269,41 +3275,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .name("support_access_sessions_pkey")
                     .col(Alias::new("id")),
             )
-            .to_owned(),
-    )
-    .await?;
-    create_table(
-        manager,
-        Table::create()
-            .table(Alias::new("users"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(
-                ColumnDef::new(Alias::new("active"))
-                    .boolean()
-                    .default(Expr::cust("true"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("email_address"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("person_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .primary_key(Index::create().name("users_pkey").col(Alias::new("id")))
             .to_owned(),
     )
     .await?;

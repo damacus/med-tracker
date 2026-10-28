@@ -19,7 +19,6 @@ pub struct ApiSessionPrincipal(StoredPrincipal);
 
 pub struct UserSessionActor {
     pub account_id: i64,
-    pub user_id: i64,
     pub person_id: i64,
     pub session_id: i64,
     pub email: String,
@@ -41,7 +40,6 @@ pub(super) struct StoredPrincipal {
 pub(super) struct StoredAuthority {
     pub account_id: i64,
     pub household_id: i64,
-    pub user_id: i64,
     pub person_id: i64,
     pub email: String,
     pub preferences: serde_json::Value,
@@ -125,7 +123,6 @@ impl ApiSessionPrincipal {
         let actor = self.0.revalidate(transaction, settings).await?;
         Ok(UserSessionActor {
             account_id: actor.account_id,
-            user_id: actor.user_id,
             person_id: actor.person_id,
             session_id: self.0.id,
             email: actor.email,
@@ -315,9 +312,6 @@ async fn authority(
     if current.id != membership_id || current.permissions_version != permissions_version {
         return Err(AuthenticationError::Unauthenticated);
     }
-    let user_id = access::verify_account_actor(transaction, account_id)
-        .await
-        .map_err(resource::operation_error)?;
     let person = person::Entity::find_by_id(account.person_id)
         .one(transaction)
         .await
@@ -326,7 +320,6 @@ async fn authority(
     Ok(StoredAuthority {
         account_id,
         household_id: current.household_id,
-        user_id,
         person_id: person.id,
         email: account.email,
         preferences: account.preferences,

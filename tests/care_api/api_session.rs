@@ -81,7 +81,7 @@ async fn api_session_retained_principal_preserves_target_context_and_canonical_a
         (actor.account_id, actor.person_id, actor.session_id),
         (fixture.account.id, fixture.adult.id, session.id)
     );
-    assert_eq!(actor.user_id, fixture.user.id);
+    assert_eq!(actor.person_id, fixture.adult.id);
     assert_eq!(actor.email, fixture.account.email);
     let settings = Query::select()
         .expr_as(
@@ -174,7 +174,7 @@ enum AuthorityChange {
     Unbound,
     AccountClosed,
     Lockout,
-    UserInactive,
+    AccountInactive,
     HouseholdArchived,
 }
 
@@ -273,8 +273,8 @@ async fn change_authority(
                 .unwrap();
             }
         }
-        AuthorityChange::UserInactive => {
-            let mut row = fixture.user.clone().into_active_model();
+        AuthorityChange::AccountInactive => {
+            let mut row = fixture.account.clone().into_active_model();
             row.active = Set(restore);
             row.update(&fixture.admin).await.unwrap();
         }
@@ -303,7 +303,7 @@ async fn api_session_revalidation_rejects_changed_live_authority() {
         AuthorityChange::Unbound,
         AuthorityChange::AccountClosed,
         AuthorityChange::Lockout,
-        AuthorityChange::UserInactive,
+        AuthorityChange::AccountInactive,
         AuthorityChange::HouseholdArchived,
     ] {
         change_authority(&fixture, &session, change, false).await;

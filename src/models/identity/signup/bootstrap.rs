@@ -39,7 +39,7 @@ pub(super) async fn owner(
         "INSERT INTO household_memberships(household_id,person_id,role,status,permissions_version,joined_at,created_at,updated_at) VALUES($1,$2,'owner','active',1,now(),now(),now()) RETURNING id",
         [household_id.into(),actor.person_id.into()])).await.map_err(unavailable)?.ok_or(SignupError::Unavailable)?;
     let membership_id: i64 = row.try_get("", "id").map_err(unavailable)?;
-    let context = json!({"actor_account_id":actor.account_id,"actor_user_id":actor.user_id,"request_id":request_id});
+    let context = json!({"actor_account_id":actor.account_id,"actor_person_id":actor.person_id,"request_id":request_id});
     let membership = json!({"target_account_id":actor.account_id,"target_membership_id":membership_id,"previous_state":null,"new_state":{"role":"owner","status":"active","person_id":actor.person_id,"permissions_version":1},"outcome":"success"});
     transaction.execute_raw(sql("INSERT INTO security_audit_events(household_id,actor_account_id,event_type,metadata,audit_context,request_id,created_at,updated_at) VALUES($1,$2,'household_access.membership_created',$3,$4,$5,now(),now())",
         [household_id.into(),actor.account_id.into(),membership.into(),context.clone().into(),request_id.map(str::to_owned).into()])).await.map_err(unavailable)?;

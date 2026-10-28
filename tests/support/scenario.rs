@@ -1,5 +1,5 @@
 use med_tracker::models::{
-    _entities::{accounts, household_memberships, households, identity_onboarding, people, users},
+    _entities::{accounts, household_memberships, households, identity_onboarding, people},
     access::{Actor, HouseholdScope},
 };
 use sea_orm::sea_query::{Expr, ExprTrait, Func, Query};
@@ -134,17 +134,6 @@ impl Scenario {
         identity_onboarding::ActiveModel {
             account_id: Set(account.id),
             completed_at: Set(Some(now.fixed_offset())),
-        }
-        .insert(&transaction)
-        .await
-        .unwrap();
-        users::ActiveModel {
-            person_id: Set(person.id),
-            email_address: Set(email),
-            active: Set(true),
-            created_at: Set(now.naive_utc()),
-            updated_at: Set(now.naive_utc()),
-            ..Default::default()
         }
         .insert(&transaction)
         .await

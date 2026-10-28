@@ -1,5 +1,5 @@
 use super::*;
-use med_tracker::models::_entities::{accounts, app_settings, people, person_access_grants, users};
+use med_tracker::models::_entities::{accounts, app_settings, people, person_access_grants};
 use sea_orm::sea_query::{Expr, ExprTrait, Query};
 
 pub(super) async fn open_registration(app: &Application) -> Vec<app_settings::Model> {
@@ -108,7 +108,6 @@ async fn rollback_state(app: &Application) -> Value {
     for table in [
         "accounts",
         "people",
-        "users",
         "households",
         "household_memberships",
         "auth_credentials",
@@ -175,12 +174,6 @@ async fn signup_create_saves_canonical_account_and_queued_verification_together(
             .await
             .unwrap()
             .unwrap();
-        let user = users::Entity::find()
-            .filter(users::Column::PersonId.eq(person.id))
-            .one(&app.fixture.admin)
-            .await
-            .unwrap()
-            .unwrap();
         let membership = household_memberships::Entity::find()
             .filter(household_memberships::Column::PersonId.eq(person.id))
             .one(&app.fixture.admin)
@@ -198,7 +191,7 @@ async fn signup_create_saves_canonical_account_and_queued_verification_together(
         );
         assert_eq!(person.person_type, 0);
         assert!(person.has_capacity);
-        assert_eq!(user.person_id, person.id);
+        assert_eq!(account.person_id, person.id);
         assert_eq!(membership.role, "owner");
         assert_eq!(
             credential_count(&app, account.id).await,

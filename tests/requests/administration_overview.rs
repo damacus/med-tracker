@@ -2,7 +2,7 @@ use super::*;
 use base64::Engine as _;
 use med_tracker::models::_entities::{
     account_lockouts, accounts, household_invitations, household_memberships, households, people,
-    platform_admins, schedules, security_audit_events, users, versions,
+    platform_admins, schedules, security_audit_events, versions,
 };
 use sea_orm::sea_query::{Expr, Func, Query};
 use sea_orm::{
@@ -472,7 +472,7 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     let slug = fixture.household.slug.clone();
     let actor_member_id = fixture.membership.id;
 
-    let user_id = fixture.user.id;
+    let user_id = fixture.membership.id;
     let minor_membership_id = household_memberships::Entity::find()
         .filter(household_memberships::Column::HouseholdId.eq(fixture.household.id))
         .filter(household_memberships::Column::PersonId.eq(fixture.minor.id))
@@ -517,28 +517,14 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     assert!(html.contains(inactive.email.as_str()), "{html}");
     assert!(html.contains(fallback.email.as_str()), "{html}");
     assert!(!html.contains("Hidden person name"), "{html}");
-    let legacy_user = users::ActiveModel {
-        id: Set(inactive.membership.id),
-        person_id: Set(fallback.person.id),
-        email_address: Set(fixture.credential("legacy-collision")),
-        active: Set(true),
-        created_at: Set(chrono::Utc::now().naive_utc()),
-        updated_at: Set(chrono::Utc::now().naive_utc()),
-    }
-    .insert(&fixture.admin)
-    .await?;
-    let legacy_collision = request
+    let canonical_editor = request
         .get(format!("/households/{slug}/admin/users/{inactive_member_id}/edit").as_str())
         .await;
-    users::Entity::delete_by_id(legacy_user.id)
-        .exec(&fixture.admin)
-        .await?;
+    assert_eq!(canonical_editor.status_code(), 200);
     assert!(
-        legacy_collision
+        canonical_editor
             .text()
-            .contains(format!("Edit household role for {}", fallback.email).as_str()),
-        "{}",
-        legacy_collision.text()
+            .contains("Edit household role for Inactive member")
     );
     let member_editor = request.get(format!("/households/{slug}/admin/memberships/{inactive_member_id}/edit?status=suspended&sort=email&direction=desc&page=1&lang=es").as_str()).await;
     assert_eq!(member_editor.status_code(), 200, "{}", member_editor.text());
@@ -1470,7 +1456,7 @@ async fn administration_locale_selection_survives_shared_links_and_forms() -> Te
     })
     .await;
     let slug = fixture.household.slug.clone();
-    let user_id = fixture.user.id;
+    let user_id = fixture.membership.id;
     let mut request = server(&boot);
     request.save_cookies();
     select_household(&mut request, &fixture, &boot).await?;

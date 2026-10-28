@@ -2,7 +2,7 @@ use super::*;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use med_tracker::models::_entities::{
     accounts, active_storage_attachments, active_storage_blobs, household_memberships,
-    person_access_grants, users, versions,
+    person_access_grants, versions,
 };
 use sea_orm::sea_query::{Expr, ExprTrait, Func, Query, extension::postgres::PgExpr};
 use sea_orm::{
@@ -404,30 +404,6 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
     assert!(str::contains(
         &fallback,
         &hex::encode(sha2::Sha256::digest(subject.email.as_bytes()))
-    ));
-    tenant.commit().await.unwrap();
-    let legacy_email = format!("legacy-{}@example.test", uuid::Uuid::new_v4());
-    let now = chrono::Utc::now().naive_utc();
-    users::ActiveModel {
-        person_id: Set(app.fixture.minor.id),
-        email_address: Set(legacy_email.clone()),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    }
-    .insert(&app.fixture.admin)
-    .await
-    .unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope, None)
-        .await
-        .unwrap();
-    let legacy = gravatar::for_person(&tenant, app.fixture.minor.id, false)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(str::contains(
-        &legacy,
-        &hex::encode(sha2::Sha256::digest(legacy_email.as_bytes()))
     ));
     tenant.commit().await.unwrap();
     let mut target = subject.clone().into_active_model();

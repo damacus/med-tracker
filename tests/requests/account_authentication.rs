@@ -2,7 +2,7 @@ use super::*;
 use base64::Engine as _;
 use chrono::{Duration, Utc};
 use med_tracker::models::_entities::{
-    account_lockouts, household_memberships, households, oauth_grants, users, versions,
+    account_lockouts, household_memberships, households, oauth_grants, versions,
 };
 use med_tracker::models::_entities::{accounts, app_settings, identity_onboarding, people};
 use med_tracker::models::entities::{
@@ -150,11 +150,6 @@ async fn account_status(fixture: &RequestFixture, id: i64, status: i32, verified
 
 async fn authentication_only_account(fixture: &RequestFixture, name: Option<&str>, status: i32) {
     household_memberships::Entity::delete_by_id(fixture.foreign.membership.id)
-        .exec(&fixture.admin)
-        .await
-        .unwrap();
-    users::Entity::delete_many()
-        .filter(users::Column::PersonId.eq(fixture.foreign.account.person_id))
         .exec(&fixture.admin)
         .await
         .unwrap();
@@ -812,7 +807,7 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
     assert!(!audit.is_empty());
     assert!(audit.iter().all(|row| row.whodunnit.is_none()
         && row.audit_context["actor_account_id"].is_null()
-        && row.audit_context["actor_user_id"].is_null()));
+        && row.audit_context["actor_person_id"].is_null()));
     let token = fixture.token().await;
     oauth_grants::Entity::update_many()
         .col_expr(
@@ -847,13 +842,6 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
 #[tokio::test]
 async fn account_authentication_locked_session_cannot_authenticate_or_change_credentials() {
     let (fixture, boot) = boot_request_fixture().await;
-
-    users::Entity::update_many()
-        .col_expr(users::Column::Active, Expr::value(false))
-        .filter(users::Column::PersonId.eq(fixture.account.person_id))
-        .exec(&fixture.admin)
-        .await
-        .unwrap();
     enable_completed_onboarding(&fixture, fixture.account.id).await;
     let request = server(&boot);
     let signed_in = request
@@ -1318,14 +1306,6 @@ async fn account_authentication_native_signup_uses_canonical_account_and_native_
         .try_get("", "total")
         .unwrap();
     assert_eq!(credentials, 1);
-    assert_eq!(
-        users::Entity::find()
-            .filter(users::Column::PersonId.eq(account.person_id))
-            .count(&fixture.admin)
-            .await
-            .unwrap(),
-        1
-    );
     let metadata = native_account_fields(&fixture, account.id)
         .await
         .try_get::<Value>("", "metadata")

@@ -281,7 +281,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * GET /households/{household_id}/me
      * Read the current account and person profile for a household session.
-     * The person is the authenticated user&#39;s own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
+     * The response id is the canonical Account ID and matches account.id. person.id identifies that account&#39;s own Person. active is the account&#39;s sign-in activation state. membership_role is the role of the selected household membership, including when the Person participates in other households. 
      * @param householdId 
      * @return MeResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -313,7 +313,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * GET /households/{household_id}/me
      * Read the current account and person profile for a household session.
-     * The person is the authenticated user&#39;s own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
+     * The response id is the canonical Account ID and matches account.id. person.id identifies that account&#39;s own Person. active is the account&#39;s sign-in activation state. membership_role is the role of the selected household membership, including when the Person participates in other households. 
      * @param householdId 
      * @return ApiResponse<MeResponse?>
      * @throws IllegalStateException If the request is not correctly configured

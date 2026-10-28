@@ -8,7 +8,7 @@ use axum::{
 use base64::Engine as _;
 use josekit::{jwk::Jwk, jws::JwsHeader};
 use med_tracker::models::_entities::{
-    accounts, app_settings, households, people, platform_admins, support_access_sessions, users,
+    accounts, app_settings, households, people, platform_admins, support_access_sessions,
 };
 use sea_orm::sea_query::{Expr, ExprTrait, Query};
 use sha2::{Digest, Sha256};
@@ -297,7 +297,6 @@ async fn graph(app: &Application) -> Value {
     for (name, table) in [
         ("accounts", "accounts"),
         ("people", "people"),
-        ("users", "users"),
         ("households", "households"),
         ("memberships", "household_memberships"),
         ("credentials", "auth_credentials"),
@@ -422,12 +421,6 @@ async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounte
         .await
         .unwrap()
         .unwrap();
-    let user = users::Entity::find()
-        .filter(users::Column::PersonId.eq(person.id))
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
     let membership = household_memberships::Entity::find()
         .filter(household_memberships::Column::PersonId.eq(person.id))
         .one(&app.fixture.admin)
@@ -452,7 +445,7 @@ async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounte
         .unwrap()
         .unwrap();
     assert_eq!(account.status, 2);
-    assert_eq!(user.person_id, person.id);
+    assert_eq!(account.person_id, person.id);
     assert!(native.try_get::<bool>("", "email_verified").unwrap());
     assert_eq!(
         super::signup::legacy_column_count(&app, "users", "password_digest").await,
@@ -597,7 +590,6 @@ async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounte
     for name in [
         "accounts",
         "people",
-        "users",
         "households",
         "memberships",
         "credentials",

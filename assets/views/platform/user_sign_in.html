@@ -1,1 +1,1 @@
-<span class="platform-status {% if user.user_active %}platform-status-success{% else %}platform-status-warning{% endif %}">{% if not user.user_linked %}No sign-in profile{% elif user.user_active %}Sign-in enabled{% else %}Sign-in disabled{% endif %}</span>
+<span class="platform-status {% if user.sign_in_enabled %}platform-status-success{% else %}platform-status-warning{% endif %}">{% if user.sign_in_enabled %}Sign-in enabled{% else %}Sign-in disabled{% endif %}</span>

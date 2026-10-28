@@ -182,11 +182,6 @@ async fn state(app: &Application, prepared: &Prepared) -> Value {
         .await
         .unwrap()
         .unwrap();
-    let user = med_tracker::models::_entities::users::Entity::find_by_id(app.fixture.user.id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
     let memberships = household_memberships::Entity::find()
         .filter(household_memberships::Column::PersonId.eq(app.fixture.adult.id))
         .order_by_asc(household_memberships::Column::Id)
@@ -260,7 +255,7 @@ async fn state(app: &Application, prepared: &Prepared) -> Value {
         .await
         .unwrap();
     json!({
-        "account":account.status, "user":user.active, "operations":verification_state(app, &prepared.operation).await,
+        "account":account.status, "active":account.active, "operations":verification_state(app, &prepared.operation).await,
         "memberships":memberships, "grants":grants, "api_sessions":sessions, "app_tokens":tokens,
         "oauth":oauth.iter().map(|row| json!([row.id,row.revoked_at])).collect::<Vec<_>>(),
         "keys":keys,
@@ -460,7 +455,7 @@ async fn account_closure_mail_success_and_replay() {
     let after = state(&app, &prepared).await;
     assert_bearers(&app, reqwest::StatusCode::UNAUTHORIZED).await;
     assert_eq!(after["account"], 3);
-    assert_eq!(after["user"], false);
+    assert_eq!(after["active"], false);
     for membership in after["memberships"].as_array().unwrap() {
         assert_eq!(membership["status"], "revoked");
         assert!(!Value::is_null(&membership["revoked_at"]));

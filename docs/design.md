@@ -9,7 +9,7 @@ sections below describe the reference, not requirements to reproduce its interna
 
 - [Accounts, people and households](adrs/0013-accounts-people-and-households.md)
 - [Household inventory and personal care](adrs/0014-household-inventory-and-personal-care.md)
-- [Authentication, membership and tenancy](adrs/0015-authentication-membership-and-tenancy.md): organisation-plugin replacement remains Proposed
+- [Authentication, membership and tenancy](adrs/0015-authentication-membership-and-tenancy.md): native authentication maps directly to Account–Person, without a separate `users` table
 - [Fresh Rust without legacy compatibility](adrs/0016-fresh-rust-without-legacy-compatibility.md)
 - [Personal-history download authorisation and audit](adrs/0017-personal-history-download-authorisation-and-audit.md): design accepted; implementation and verification pending
 - [SMART deferral and future interoperability uses](adrs/0018-defer-smart-and-record-interoperability-uses.md): SMART implementation deferred until after migration; candidate uses are exploratory

@@ -4,7 +4,6 @@
 use super::{Application, require, storage_boundary::foreign_token, withdrawal::declaration};
 use med_tracker::models::_entities::{
     account_lockouts, accounts, carer_relationships, household_memberships, households, people,
-    users,
 };
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope, PersonAccess},
@@ -245,9 +244,9 @@ async fn guardian_recovery_account_then_household_closure_order_rejects_without_
                 .execute_raw(
                     backend.build(
                         &Query::update()
-                            .table("users")
+                            .table("accounts")
                             .value("active", Expr::val(false))
-                            .and_where(Expr::col("id").eq(Expr::val(candidate.user.id)))
+                            .and_where(Expr::col("id").eq(Expr::val(candidate.account.id)))
                             .to_owned(),
                     ),
                 )
@@ -2030,7 +2029,6 @@ struct SubjectRows {
 struct ActorRows {
     person: people::Model,
     account: accounts::Model,
-    user: users::Model,
     membership: household_memberships::Model,
 }
 
@@ -2102,16 +2100,6 @@ async fn actor(app: &Application, name: &str, role: &str) -> Result<ActorRows, D
     }
     .insert(&app.fixture.admin)
     .await?;
-    let user = users::ActiveModel {
-        person_id: Set(person.id),
-        email_address: Set(email),
-        active: Set(true),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    }
-    .insert(&app.fixture.admin)
-    .await?;
     let membership = participate(
         &app.fixture.admin,
         app.fixture.household.id,
@@ -2122,7 +2110,6 @@ async fn actor(app: &Application, name: &str, role: &str) -> Result<ActorRows, D
     Ok(ActorRows {
         person,
         account,
-        user,
         membership,
     })
 }

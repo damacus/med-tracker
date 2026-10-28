@@ -1,8 +1,10 @@
-use sea_orm::{ActiveModelTrait, ConnectionTrait, DatabaseTransaction, DbBackend, Set, Statement};
+use sea_orm::{
+    ActiveModelTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait, Set, Statement,
+};
 use serde_json::json;
 
 use super::ExchangeError;
-use crate::models::entities::{oauth_grant, security_audit_event, version};
+use crate::models::entities::{account, oauth_grant, security_audit_event, version};
 
 pub(super) async fn record(
     transaction: &DatabaseTransaction,
@@ -12,16 +14,13 @@ pub(super) async fn record(
 ) -> Result<(), ExchangeError> {
     transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "SELECT set_config('med_tracker.current_account_id',$1,true),set_config('med_tracker.current_household_id','',true),set_config('med_tracker.current_membership_id','',true)", [grant.account_id.to_string().into()])).await.map_err(|_| ExchangeError::Unavailable)?;
-    let actor = transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT u.id FROM accounts a JOIN people p ON p.id=a.person_id LEFT JOIN users u ON u.person_id=p.id WHERE a.id=$1", [grant.account_id.into()])).await.map_err(|_| ExchangeError::Unavailable)?;
-    let user_id = match actor {
-        Some(row) => row
-            .try_get::<Option<i64>>("", "id")
-            .map_err(|_| ExchangeError::Unavailable)?,
-        None => None,
-    };
+    let actor = account::Entity::find_by_id(grant.account_id)
+        .one(transaction)
+        .await
+        .map_err(|_| ExchangeError::Unavailable)?
+        .ok_or(ExchangeError::Unavailable)?;
     let now = chrono::Utc::now().naive_utc();
-    let mut context = json!({"actor_account_id":grant.account_id,"actor_user_id":user_id,"request_id":request_id});
+    let mut context = json!({"actor_account_id":grant.account_id,"actor_person_id":actor.person_id,"request_id":request_id});
     if grant.client_kind == "mobile" {
         version::ActiveModel {
             item_type: Set("Account".into()),
@@ -30,7 +29,7 @@ pub(super) async fn record(
             object: Set(Some(
                 json!({"oauth_application_id":grant.oauth_application_id,"oauth_grant_id":grant.id}).to_string(),
             )),
-            whodunnit: Set(user_id.map(|id| id.to_string())),
+            whodunnit: Set(Some(grant.account_id.to_string())),
             request_id: Set(request_id.map(str::to_owned)),
             audit_context: Set(context),
             created_at: Set(Some(now)),

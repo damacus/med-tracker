@@ -9,7 +9,7 @@ use migration::MigratorTrait;
 #[tokio::test]
 async fn fixture_slices_preserve_baseline_and_care_memberships() {
     schema_case(async {
-        use med_tracker::models::_entities::{accounts, household_memberships, medications, users};
+        use med_tracker::models::_entities::{accounts, household_memberships, medications};
         use sea_orm::{EntityTrait, PaginatorTrait};
 
         let db = restored_database().await;
@@ -28,7 +28,7 @@ async fn fixture_slices_preserve_baseline_and_care_memberships() {
                 .unwrap(),
             1
         );
-        assert_eq!(users::Entity::find().count(&db).await.unwrap(), 0);
+        assert!(account.active);
         fixtures::seed_care_doses(&db).await;
         assert_eq!(
             accounts::Entity::find_by_id(71001)
@@ -46,7 +46,7 @@ async fn fixture_slices_preserve_baseline_and_care_memberships() {
                 .unwrap(),
             3
         );
-        assert_eq!(users::Entity::find().count(&db).await.unwrap(), 1);
+        assert_eq!(accounts::Entity::find().count(&db).await.unwrap(), 1);
         assert_eq!(medications::Entity::find().count(&db).await.unwrap(), 1);
         db.close().await.unwrap();
     })
@@ -90,40 +90,53 @@ fn apply_guardian_recovery_catalogue(
 }
 
 #[tokio::test]
-async fn capture_guardian_recovery_catalog_when_requested() {
-    let Some(output) = std::env::var_os("GUARDIAN_RECOVERY_CATALOG_CAPTURE") else {
+async fn capture_canonical_identity_catalogues_when_requested() {
+    let Some(output) = std::env::var_os("CANONICAL_IDENTITY_CATALOG_CAPTURE") else {
         return;
     };
     schema_case(async {
         let output = std::path::PathBuf::from(output);
         assert!(output.is_absolute() && output.is_dir());
         let db = restored_database().await;
-        migration::Migrator::up(&db, None).await.unwrap();
-        let actual = catalog(&db).await;
-        let baseline: serde_json::Map<String, serde_json::Value> =
-            serde_json::from_str(include_str!("../migration/catalog.json")).unwrap();
-        let actual = actual.as_object().unwrap();
-        let removed = baseline
-            .keys()
-            .filter(|key| !actual.contains_key(*key))
-            .cloned()
-            .collect::<Vec<_>>();
-        let changed = actual
-            .iter()
-            .filter(|(key, value)| baseline.get(*key) != Some(*value))
-            .map(|(key, value)| (key.clone(), value.clone()))
-            .collect::<serde_json::Map<_, _>>();
-        assert!(
-            changed
-                .keys()
-                .any(|key| key.starts_with("function:med_tracker.guardian_recovery_command("))
-        );
-        let delta = serde_json::json!({"removed":removed,"changed":changed});
+        migration::Migrator::up(&db, Some(15)).await.unwrap();
+        let mut previous = catalog(&db).await;
+        previous.sort_all_objects();
+        assert!(previous.get("relation:public.users").is_none());
         std::fs::write(
-            output.join("guardian-recovery-catalog.json"),
-            serde_json::to_string_pretty(&delta).unwrap(),
+            output.join("catalog.json"),
+            serde_json::to_string_pretty(&previous).unwrap(),
         )
         .unwrap();
+        for file in [
+            "guardian-recovery-catalog.json",
+            "personal-history-catalog.json",
+        ] {
+            migration::Migrator::up(&db, Some(1)).await.unwrap();
+            let mut current = catalog(&db).await;
+            current.sort_all_objects();
+            let baseline = previous.as_object().unwrap();
+            let actual = current.as_object().unwrap();
+            let removed = baseline
+                .keys()
+                .filter(|key| !actual.contains_key(*key))
+                .cloned()
+                .collect::<Vec<_>>();
+            let changed = actual
+                .iter()
+                .filter(|(key, value)| baseline.get(*key) != Some(*value))
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect::<serde_json::Map<_, _>>();
+            assert!(!changed.is_empty());
+            std::fs::write(
+                output.join(file),
+                serde_json::to_string_pretty(
+                    &serde_json::json!({"removed":removed,"changed":changed}),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            previous = current;
+        }
         db.close().await.unwrap();
     })
     .await
@@ -670,6 +683,7 @@ async fn fresh_authentication_schema_never_creates_legacy_credentials() {
         migration::Migrator::up(&db, Some(1)).await.unwrap();
         let initial = catalog(&db).await;
         for table in [
+            "users",
             "account_identities",
             "account_otp_keys",
             "account_recovery_codes",

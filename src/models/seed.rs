@@ -6,7 +6,7 @@ use sea_orm::{ConnectionTrait, EntityTrait};
 
 use super::_entities::{
     accounts, household_memberships, households, locations, medications, people,
-    person_access_grants, person_medications, users,
+    person_access_grants, person_medications,
 };
 
 #[allow(
@@ -50,7 +50,6 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         .execute_unprepared("UPDATE public.accounts SET email_verified=(status=2)")
         .await?;
     load!(households);
-    load!(users);
     load!(household_memberships);
     load!(person_access_grants);
     load!(locations);
@@ -63,7 +62,7 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
 mod tests {
     use crate::models::_entities::{
         accounts, household_memberships, households, locations, medications, people,
-        person_access_grants, person_medications, users,
+        person_access_grants, person_medications,
     };
 
     #[test]
@@ -82,7 +81,6 @@ mod tests {
         check!(people);
         check!(accounts);
         check!(households);
-        check!(users);
         check!(household_memberships);
         check!(person_access_grants);
         check!(locations);

@@ -54,7 +54,6 @@ async fn parent_assignment_fixture(
     med_tracker::models::_entities::person_access_grants::Model,
     med_tracker::models::_entities::people::Model,
     med_tracker::models::_entities::accounts::Model,
-    med_tracker::models::_entities::users::Model,
     med_tracker::models::_entities::household_memberships::Model,
 ) {
     let candidate_email = format!("parent-candidate+{}@example.test", uuid::Uuid::new_v4());
@@ -114,16 +113,6 @@ async fn parent_assignment_fixture(
     .insert(&app.fixture.admin)
     .await
     .unwrap();
-    let _users_77002 = med_tracker::models::_entities::users::ActiveModel {
-        person_id: sea_orm::Set(_people_73004.id),
-        email_address: sea_orm::Set(candidate_email.clone()),
-        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
-        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
-        ..Default::default()
-    }
-    .insert(&app.fixture.admin)
-    .await
-    .unwrap();
     let _household_memberships_74002 =
         med_tracker::models::_entities::household_memberships::ActiveModel {
             household_id: sea_orm::Set(fixture_household_id),
@@ -143,7 +132,6 @@ async fn parent_assignment_fixture(
         _person_access_grants_78005,
         _people_73004,
         _accounts_71003,
-        _users_77002,
         _household_memberships_74002,
     )
 }
@@ -162,13 +150,8 @@ async fn person_carer_nonmanager_cannot_restore_or_assign_ineligible_existing_ac
     let fixture_account_id = app.fixture.account.id;
     let fixture_household_id = app.fixture.household.id;
     let fixture_minor_id = app.fixture.minor.id;
-    let (
-        _person_access_grants_78005,
-        _people_73004,
-        _accounts_71003,
-        _users_77002,
-        _household_memberships_74002,
-    ) = parent_assignment_fixture(&app).await;
+    let (_person_access_grants_78005, _people_73004, _accounts_71003, _household_memberships_74002) =
+        parent_assignment_fixture(&app).await;
     let scope = HouseholdScope {
         actor: Actor {
             account_id: fixture_account_id,
@@ -231,14 +214,14 @@ async fn person_carer_nonmanager_cannot_restore_or_assign_ineligible_existing_ac
                     model.update(&app.fixture.admin).await.unwrap();
                 }
                 {
-                    let mut model = _users_77002.clone().into_active_model();
+                    let mut model = _accounts_71003.clone().into_active_model();
                     model.active = sea_orm::Set(false);
                     model.update(&app.fixture.admin).await.unwrap();
                 }
             }
             5 => {
                 {
-                    let mut model = _users_77002.clone().into_active_model();
+                    let mut model = _accounts_71003.clone().into_active_model();
                     model.active = sea_orm::Set(true);
                     model.update(&app.fixture.admin).await.unwrap();
                 }
@@ -392,13 +375,8 @@ async fn person_carer_nonmanager_ignores_forged_role_and_rejects_unmanaged_or_ad
     let fixture_person_id = app.fixture.account.person_id;
     let fixture_minor_id = app.fixture.minor.id;
     let fixture_dependent_id = app.fixture.dependent.id;
-    let (
-        _person_access_grants_78005,
-        _people_73004,
-        _accounts_71003,
-        _users_77002,
-        _household_memberships_74002,
-    ) = parent_assignment_fixture(&app).await;
+    let (_person_access_grants_78005, _people_73004, _accounts_71003, _household_memberships_74002) =
+        parent_assignment_fixture(&app).await;
     let scope = HouseholdScope {
         actor: Actor {
             account_id: fixture_account_id,
@@ -527,13 +505,8 @@ async fn person_carer_removal_withdraws_linked_manage_but_preserves_member_recor
     let fixture_household_id = app.fixture.household.id;
     let fixture_minor_id = app.fixture.minor.id;
     let fixture_membership_id = app.fixture.membership.id;
-    let (
-        _person_access_grants_78005,
-        _people_73004,
-        _accounts_71003,
-        _users_77002,
-        _household_memberships_74002,
-    ) = parent_assignment_fixture(&app).await;
+    let (_person_access_grants_78005, _people_73004, _accounts_71003, _household_memberships_74002) =
+        parent_assignment_fixture(&app).await;
     med_tracker::models::_entities::household_memberships::Entity::update_many()
         .col_expr(
             med_tracker::models::_entities::household_memberships::Column::Role,
@@ -770,13 +743,8 @@ async fn person_carer_pending_invitation_cannot_attach_a_dependent_its_original_
     let fixture_account_id = app.fixture.account.id;
     let fixture_household_id = app.fixture.household.id;
     let fixture_minor_id = app.fixture.minor.id;
-    let (
-        _person_access_grants_78005,
-        _people_73004,
-        _accounts_71003,
-        _users_77002,
-        _household_memberships_74002,
-    ) = parent_assignment_fixture(&app).await;
+    let (_person_access_grants_78005, _people_73004, _accounts_71003, _household_memberships_74002) =
+        parent_assignment_fixture(&app).await;
     let household_invitations_87001 =
         med_tracker::models::_entities::household_invitations::ActiveModel {
             household_id: sea_orm::Set(fixture_household_id),

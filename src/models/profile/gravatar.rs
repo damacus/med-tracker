@@ -1,9 +1,9 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    entities::{account, person, user},
+    entities::{account, person},
     errors::OperationError,
 };
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -47,16 +47,7 @@ pub async fn for_person(
     {
         return Ok(image_url(email));
     }
-    let user = user::Entity::find()
-        .filter(user::Column::PersonId.eq(person.id))
-        .one(tenant.transaction())
-        .await?;
-    let email = user
-        .as_ref()
-        .map(|user| user.email_address.as_str())
-        .filter(|email| !email.trim().is_empty())
-        .unwrap_or(&account.email);
-    Ok(image_url(email))
+    Ok(image_url(&account.email))
 }
 
 pub async fn for_visible_people(
@@ -79,16 +70,6 @@ pub async fn for_visible_people(
         .filter(|account| enabled(&account.preferences))
         .map(|account| (account.person_id, account))
         .collect();
-    let users: HashMap<_, _> = user::Entity::find()
-        .filter(user::Column::PersonId.is_in(eligible.iter().map(|person| person.id)))
-        .order_by_asc(user::Column::Id)
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .fold(HashMap::new(), |mut users, user| {
-            users.entry(user.person_id).or_insert(user);
-            users
-        });
     Ok(eligible
         .into_iter()
         .filter_map(|person| {
@@ -96,12 +77,6 @@ pub async fn for_visible_people(
             let email = person
                 .email
                 .as_deref()
-                .filter(|email| !email.trim().is_empty())
-                .or_else(|| {
-                    users
-                        .get(&person.id)
-                        .map(|user| user.email_address.as_str())
-                })
                 .filter(|email| !email.trim().is_empty())
                 .unwrap_or(&account.email);
             image_url(email).map(|url| (person.id, url))

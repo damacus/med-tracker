@@ -62,12 +62,18 @@ async fn usable_owner(
     transaction: &DatabaseTransaction,
     household_id: i64,
 ) -> Result<bool, OperationError> {
-    exists(
-        transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.household_memberships m WHERE m.household_id=$1 AND m.role='owner' AND med_tracker.recovery_member_eligible(m.id)) AS present",
-        household_id,
-    )
-    .await
+    use crate::models::entities::membership;
+    use sea_orm::sea_query::Func;
+    Ok(membership::Entity::find()
+        .filter(membership::Column::HouseholdId.eq(household_id))
+        .filter(membership::Column::Role.eq("owner"))
+        .filter(Expr::expr(
+            Func::cust("med_tracker.recovery_member_eligible")
+                .arg(Expr::col(membership::Column::Id)),
+        ))
+        .one(transaction)
+        .await?
+        .is_some())
 }
 
 async fn eligible_members(
@@ -283,7 +289,7 @@ pub async fn promote(
             "reason": reason,
         }),
         &meta
-            .administrator(actor_account_id, actor.user_id)
+            .administrator(actor_account_id, actor.person_id)
             .for_household(household_id),
     )
     .await
