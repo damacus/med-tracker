@@ -2,7 +2,7 @@ use super::*;
 use tracing::instrument::WithSubscriber;
 
 #[path = "../support/request_trace_capture.rs"]
-mod capture;
+pub(super) mod capture;
 
 #[tokio::test(flavor = "current_thread")]
 async fn request_trace_correlates_booted_completion_without_private_input()

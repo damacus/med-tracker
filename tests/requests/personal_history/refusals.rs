@@ -1,8 +1,6 @@
+use super::super::request_trace::capture;
 use super::*;
 use tracing::instrument::WithSubscriber;
-
-#[path = "../../support/request_trace_capture.rs"]
-mod capture;
 
 fn captured_router(boot: &BootResult, captured: &capture::Captured) -> axum::Router {
     let captured = captured.clone();
