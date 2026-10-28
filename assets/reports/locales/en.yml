@@ -2283,6 +2283,7 @@ en:
       plans_description: "Your plans stay with you when you leave a household. Changes update only a current household connection."
       plans_empty: "No personal treatment plans have been recorded."
       origin_zone: "Plan time zone"
+      adoption_zone: "This plan has no recorded time zone. Saving adopts the application's time zone shown above. Change it only to correct the plan's timing."
       adopted_zone: "This existing plan uses the application time zone from when it was adopted. Check it before changing the timing."
       plan_times: "Dose times (HH:MM, separated by commas)"
       save_plan: "Save plan"

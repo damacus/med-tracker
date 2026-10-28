@@ -1,10 +1,62 @@
 use crate::harness::{self, named};
-use med_tracker::models::_entities::{accounts, household_memberships, person_schedules};
+use med_tracker::models::_entities::{
+    accounts, household_memberships, person_schedules, schedules,
+};
 use playwright_rs::expect;
 use playwright_rs::protocol::{AriaRole, ScreenshotOptions, Viewport};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set, sea_query::Expr,
 };
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn person_owned_schedule_browser_adoption_retains_application_zone() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        let actor = accounts::Entity::find().filter(accounts::Column::Email.eq("persistence@example.test"))
+            .one(&journey.admin).await.unwrap().unwrap();
+        let mut account = actor.clone().into_active_model();
+        account.preferences = Set(serde_json::json!({"time_zone":"Asia/Tokyo"}));
+        account.update(&journey.admin).await.unwrap();
+        let now = chrono::Utc::now().naive_utc();
+        let source = schedules::ActiveModel {
+            household_id: Set(72001), person_id: Set(actor.person_id), medication_id: Set(80001),
+            active: Set(true), dose_amount: Set(Some("2".parse().unwrap())), dose_unit: Set(Some("tablet".into())),
+            dose_cycle: Set(Some(0)), max_daily_doses: Set(Some(4)),
+            start_date: Set(Some("2026-01-01".parse().unwrap())), end_date: Set(Some("2027-12-31".parse().unwrap())),
+            schedule_type: Set(0), schedule_config: Set(serde_json::json!({"times":["08:00"]})),
+            created_at: Set(now), updated_at: Set(now), ..Default::default()
+        }.insert(&journey.admin).await.unwrap();
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/people/73001/treatments/schedules/{}/edit", journey.origin, source.id), None).await.unwrap();
+        expect(page.locator("#adoption-zone-help")).to_contain_text("Saving adopts the application's time zone").await.unwrap();
+        page.get_by_label("Notes", true).fill("Unrelated note edit", None).await.unwrap();
+        let artifacts = std::path::Path::new("target/2684-task2-fix1-screenshots");
+        std::fs::create_dir_all(artifacts).unwrap();
+        for (name, width, height) in [("desktop", 1440, 1000), ("mobile", 390, 844)] {
+            page.set_viewport_size(Viewport {width, height}).await.unwrap();
+            assert!(!page.evaluate::<(), bool>("() => document.documentElement.scrollWidth > innerWidth", None).await.unwrap());
+            page.locator("#origin-time-zone").focus().await.unwrap();
+            let scroll = if name == "mobile" {
+                "() => { const field = document.querySelector('#origin-time-zone'); window.scrollTo(0, field.getBoundingClientRect().top + window.scrollY - 150); }"
+            } else {
+                "() => { window.scrollTo(0, 0); }"
+            };
+            page.evaluate::<(), ()>(scroll, None).await.unwrap();
+            page.screenshot_to_file(&artifacts.join(format!("browser-adoption-{name}.png")), ScreenshotOptions::builder().full_page(name == "desktop").build()).await.unwrap();
+        }
+        page.get_by_role(AriaRole::Button, named("Edit schedule")).click(None).await.unwrap();
+        expect(page.locator("main")).to_contain_text("Unrelated note edit").await.unwrap();
+        let stored = schedules::Entity::find_by_id(source.id).one(&journey.admin).await.unwrap().unwrap();
+        assert_eq!(stored.origin_time_zone.as_deref(), Some("UTC"));
+        assert_eq!(stored.portable_id, source.portable_id);
+        let plan = person_schedules::Entity::find_by_id(stored.person_schedule_id.unwrap()).one(&journey.admin).await.unwrap().unwrap();
+        assert_eq!(plan.origin_time_zone, "UTC");
+        assert_eq!(plan.timezone_provenance, "adopted_application_zone");
+        page.goto(&format!("{}/households/persistence-fixture/people/73001/treatments/schedules/new", journey.origin), None).await.unwrap();
+        assert_eq!(page.evaluate::<(), String>("() => document.querySelector('#origin-time-zone').value", None).await.unwrap(), "Asia/Tokyo");
+    })).await;
+}
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]

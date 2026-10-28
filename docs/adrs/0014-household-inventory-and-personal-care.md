@@ -88,6 +88,9 @@ The originating household keeps its original schedule ID, portable ID and histor
 foreign keys as a local execution link. Revocation terminally closes that link
 before participation visibility is removed; restoration never reopens it.
 Suspension denies household access and retains the link for restoration.
+Canonical household RLS requires that originating execution to remain unended;
+rejoining cannot expose later personal revisions to a different household actor.
+The account-self policy retains personal continuity independently of that cutoff.
 Account-bound personal browser/mobile access retains self read/edit/pause/resume/
 retire continuity after the final departure, without exposing household inventory.
 Personal edits cannot select household inventory; medicine selection uses an
@@ -99,6 +102,8 @@ occurrence and dose-safety calculations use that stored zone; viewer zones only
 affect display. Existing schedules did not store timezone provenance and their
 readers mixed application and viewer zones. At first authorised adoption, preserve
 the configured application zone with `adopted_application_zone` provenance.
+An existing browser form defaults to that application zone, even when the
+viewer's preference differs; an unrelated edit does not become a correction.
 This is deterministic preservation, not recovery of historical origin. Store the
 zone once and allow an explicit authorised correction. Users who relied on the
 old viewer-dependent interpretation may need to correct an adopted zone.

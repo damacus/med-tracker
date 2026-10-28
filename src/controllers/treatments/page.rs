@@ -124,9 +124,17 @@ impl<'a> Page<'a> {
         };
         let mut draft = forms::defaults(record.as_ref().map(|value| &value.0["data"]));
         if matches!(kind, Kind::Schedule) {
+            let default_zone = if id.is_some() {
+                if !draft.contains_key("origin_time_zone") {
+                    draft.insert("adopting_application_zone".into(), "true".into());
+                }
+                crate::models::care::doses::app_zone(tenant.settings())
+            } else {
+                principal.time_zone()
+            };
             draft
                 .entry("origin_time_zone".into())
-                .or_insert_with(|| principal.time_zone().name().into());
+                .or_insert_with(|| default_zone.name().into());
         }
         if id.is_none()
             && let Some(medication_id) = medication_id.filter(|id| {

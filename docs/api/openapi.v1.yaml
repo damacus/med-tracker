@@ -325,13 +325,15 @@ paths:
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: "#/components/schemas/PersonalScheduleUpdateRequest"
-                - type: object
-                  additionalProperties: false
-                  required: [action]
-                  properties:
-                    action: {type: string, enum: [pause, resume, retire]}
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              maxProperties: 1
+              description: Send exactly one property, either schedule or action.
+              properties:
+                schedule:
+                  $ref: "#/components/schemas/PersonalScheduleAttributes"
+                action: {type: string, enum: [pause, resume, retire]}
       responses:
         "200":
           description: Current personal plan and revision ETag.
@@ -8302,33 +8304,28 @@ components:
         pause_started_at: {type: string, format: date-time, nullable: true}
         pause_reason: {type: string, nullable: true}
         pause_note: {type: string, nullable: true}
-    PersonalScheduleUpdateRequest:
+    PersonalScheduleAttributes:
       type: object
       additionalProperties: false
-      required: [schedule]
+      minProperties: 1
       properties:
-        schedule:
-          type: object
-          additionalProperties: false
-          minProperties: 1
-          properties:
-            origin_time_zone: {type: string}
-            dose_amount:
-              $ref: "#/components/schemas/DecimalValue"
-            dose_unit: {type: string}
-            frequency: {type: string}
-            start_date:
-              $ref: "#/components/schemas/Date"
-            end_date:
-              $ref: "#/components/schemas/Date"
-            notes: {type: string}
-            max_daily_doses: {type: integer, minimum: 1}
-            min_hours_between_doses:
-              $ref: "#/components/schemas/NullableDecimalValue"
-            dose_cycle: {type: string, enum: [daily, weekly, monthly]}
-            schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
-            schedule_config:
-              $ref: "#/components/schemas/ScheduleConfig"
+        origin_time_zone: {type: string}
+        dose_amount:
+          $ref: "#/components/schemas/DecimalValue"
+        dose_unit: {type: string}
+        frequency: {type: string}
+        start_date:
+          $ref: "#/components/schemas/Date"
+        end_date:
+          $ref: "#/components/schemas/Date"
+        notes: {type: string}
+        max_daily_doses: {type: integer, minimum: 1}
+        min_hours_between_doses:
+          $ref: "#/components/schemas/NullableDecimalValue"
+        dose_cycle: {type: string, enum: [daily, weekly, monthly]}
+        schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+        schedule_config:
+          $ref: "#/components/schemas/ScheduleConfig"
     Schedule:
       type: object
       additionalProperties: false

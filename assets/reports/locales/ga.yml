@@ -1939,6 +1939,7 @@ ga:
       plans_description: "Fanann do phleananna leat nuair a fhágann tú teaghlach. Ní nuashonraíonn athruithe ach nasc reatha le teaghlach."
       plans_empty: "Níl aon phleananna cóireála pearsanta taifeadta."
       origin_zone: "Crios ama an phlean"
+      adoption_zone: "Níl crios ama taifeadta don phlean seo. Úsáidfear crios ama an fheidhmchláir a thaispeántar thuas nuair a shábhálfar é. Ná hathraigh é ach chun amanna an phlean a cheartú."
       adopted_zone: "Úsáideann an plean seo crios ama na haipe nuair a glacadh leis. Seiceáil é sula n-athraíonn tú na hamanna."
       plan_times: "Amanna dáileoige (HH:MM, scartha le camóga)"
       save_plan: "Sábháil an plean"

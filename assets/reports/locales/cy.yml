@@ -1966,6 +1966,7 @@ cy:
       plans_description: "Mae eich cynlluniau'n aros gyda chi pan fyddwch yn gadael cartref. Dim ond cysylltiad cartref cyfredol sy'n cael ei ddiweddaru gan newidiadau."
       plans_empty: "Nid oes cynlluniau triniaeth personol wedi'u cofnodi."
       origin_zone: "Cylchfa amser y cynllun"
+      adoption_zone: "Nid oes cylchfa amser wedi'i chofnodi ar gyfer y cynllun hwn. Bydd cadw yn defnyddio cylchfa amser y rhaglen a ddangosir uchod. Newidiwch hi dim ond i gywiro amseriad y cynllun."
       adopted_zone: "Mae'r cynllun presennol hwn yn defnyddio cylchfa amser y rhaglen pan gafodd ei fabwysiadu. Gwiriwch hi cyn newid yr amseroedd."
       plan_times: "Amseroedd dos (HH:MM, wedi'u gwahanu gan atalnodau)"
       save_plan: "Cadw'r cynllun"

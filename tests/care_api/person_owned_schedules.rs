@@ -65,6 +65,21 @@ async fn person_owned_schedule_personal_edits_pause_resume_stale_and_immutable_d
     let first = plans(&app, &token).await["data"][0].clone();
     assert!(first.get("origin_household_id").is_none());
     assert!(first.get("origin_stock_id").is_none());
+    for action in ["pause", "resume", "retire"] {
+        assert_eq!(
+            personal_change(
+                &app,
+                &token,
+                &first,
+                json!({"action":action,"schedule":{"dose_amount":"9"}})
+            )
+            .await
+            .status()
+            .as_u16(),
+            422
+        );
+    }
+    assert_eq!(plans(&app, &token).await["data"][0], first);
     let changed = Application::assert_status(
         personal_change(
             &app,
@@ -463,6 +478,144 @@ async fn person_owned_schedule_last_departure_freezes_execution_and_restore_cann
         assert_eq!(local.status().as_u16(), 404);
         app.close().await;
     }
+}
+
+#[tokio::test]
+async fn person_owned_schedule_terminal_household_rls_stays_closed_after_rejoin() {
+    use med_tracker::models::access;
+    let app = Application::new().await;
+    let token = app.token().await;
+    let id = super::schedule_lifecycle::create_schedule(&app, &token).await;
+    let first = plans(&app, &token).await["data"][0].clone();
+    let plan_id = first["id"].as_str().unwrap();
+    let (manager, manager_token) = manager_token(&app).await;
+    let scope = access::HouseholdScope {
+        actor: access::Actor {
+            account_id: manager.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = access::begin(
+        &app.context.db,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        person_schedules::Entity::find_by_id(plan_id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    tenant.commit().await.unwrap();
+    let endpoint = format!(
+        "{}/api/v1/households/{}/admin/memberships/{}",
+        app.origin, app.fixture.household.id, app.fixture.membership.id
+    );
+    let departed = app
+        .client
+        .delete(&endpoint)
+        .bearer_auth(&manager_token)
+        .send()
+        .await
+        .unwrap();
+    assert!(
+        departed.status().is_success(),
+        "{}",
+        departed.text().await.unwrap()
+    );
+    let frozen = schedules::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(frozen.execution_ended_at.is_some());
+    let edited = Application::assert_status(
+        personal_change(
+            &app,
+            &token,
+            &first,
+            json!({"schedule":{"notes":"Private after departure","dose_amount":"7"}}),
+        )
+        .await,
+        200,
+    )
+    .await["data"]
+        .clone();
+    let restored = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&manager_token)
+        .json(&json!({"household_membership":{"status":"active"}}))
+        .send()
+        .await
+        .unwrap();
+    assert!(
+        restored.status().is_success(),
+        "{}",
+        restored.text().await.unwrap()
+    );
+    let tenant = access::begin(
+        &app.context.db,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let visible = person_schedules::Entity::find_by_id(plan_id)
+        .one(tenant.transaction())
+        .await
+        .unwrap();
+    let update = person_schedules::Entity::update_many()
+        .col_expr(
+            person_schedules::Column::Notes,
+            sea_orm::sea_query::Expr::value("Unshared overwrite"),
+        )
+        .filter(person_schedules::Column::Id.eq(plan_id))
+        .exec(tenant.transaction())
+        .await
+        .unwrap();
+    let retained = schedules::Entity::find_by_id(id)
+        .one(tenant.transaction())
+        .await
+        .unwrap()
+        .unwrap();
+    tenant.rollback().await.unwrap();
+    assert!(
+        visible.is_none(),
+        "Former household actor can read future canonical state"
+    );
+    assert_eq!(
+        update.rows_affected, 0,
+        "Former household actor can update future canonical state"
+    );
+    assert_eq!(retained, frozen);
+    assert_eq!(plans(&app, &token).await["data"][0], edited);
+    let next = Application::assert_status(
+        personal_change(
+            &app,
+            &token,
+            &edited,
+            json!({"schedule":{"notes":"Self continuity after rejoin"}}),
+        )
+        .await,
+        200,
+    )
+    .await;
+    assert_eq!(next["data"]["notes"], "Self continuity after rejoin");
+    assert_eq!(
+        schedules::Entity::find_by_id(id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        frozen
+    );
+    manager.close().await;
+    app.close().await;
 }
 
 #[tokio::test]

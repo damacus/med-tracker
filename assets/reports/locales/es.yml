@@ -1938,6 +1938,7 @@ es:
       plans_description: "Tus planes permanecen contigo cuando dejas un hogar. Los cambios solo actualizan una conexión actual con un hogar."
       plans_empty: "No se han registrado planes de tratamiento personales."
       origin_zone: "Zona horaria del plan"
+      adoption_zone: "Este plan no tiene una zona horaria registrada. Al guardar se adopta la zona horaria de la aplicación que se muestra arriba. Cámbiala solo para corregir los horarios del plan."
       adopted_zone: "Este plan existente usa la zona horaria de la aplicación en el momento de su adopción. Revísala antes de cambiar los horarios."
       plan_times: "Horas de las dosis (HH:MM, separadas por comas)"
       save_plan: "Guardar plan"
