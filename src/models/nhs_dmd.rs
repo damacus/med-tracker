@@ -203,6 +203,7 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
     };
     if let Err(error) = result {
         import::fail_run(&ctx.db, id, &error).await?;
+        import::refine_stale_failure(&ctx.db, &row, &error).await?;
     }
     cleanup(ctx, &store, &row).await?;
     lease.commit().await?;
