@@ -1,0 +1,17 @@
+{
+  "source_files_sha256": {
+    "rails/app/services/api/record_etag.rb": "5fbd0af46b235c24c16dd78963adebec4a9cb8ba680c37ae6672214543461e2b",
+    "rails/app/services/portable_data/export_record_serializer.rb": "ebca931d13f5b8e9aa20d5f718fdb9cd38f62be373f49edd4ea7d81cbf7d8805",
+    "rails/app/services/portable_data/export_event_record_serializer.rb": "91391b0496009f51077629e2b7de01153d39935c4d1ed139f7a60c03249dba97",
+    "rails/app/services/portable_data/dose_occurrence_serializer.rb": "238078f8e3180d01d51b2cfc3b8b42385eb022371b6d6f49fb3a8cfd393d5b97",
+    "rails/app/services/portable_data/exporter.rb": "764ed9c0c09fb950503d5a859b1f503a26612a2e0d981a72f0b242a16ffc9657",
+    "rails/app/services/portable_data/encryptor.rb": "047471cf4d99496895c5fff9e50dd3b438871f52c98465135f259f4a8f7548f6",
+    "rails/config/application.rb": "8a361e8163224ca80e2e9f276b572642460ddc3e3200e1a7f3b783906ef250bf",
+    "rails/Gemfile.lock": "cb9fb993a051f05bb89e9c6d1b7285235d5388366e6ee53053428183dcb818f9"
+  },
+  "ruby_version": "4.0.7",
+  "active_support_version": "8.1.4",
+  "rails_framework_defaults": "8.0",
+  "message_serializer": "json_allow_marshal",
+  "use_message_serializer_for_metadata": true
+}
