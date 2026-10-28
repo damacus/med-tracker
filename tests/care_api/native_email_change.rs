@@ -1,5 +1,5 @@
 use super::*;
-use med_tracker::models::_entities::{accounts, users};
+use med_tracker::models::_entities::accounts;
 use sea_orm::sea_query::{Expr, ExprTrait, Query};
 
 fn verify_url(app: &Application, token: &str) -> url::Url {
@@ -9,11 +9,6 @@ fn verify_url(app: &Application, token: &str) -> url::Url {
 }
 async fn state(app: &Application) -> Value {
     let account = accounts::Entity::find_by_id(app.fixture.account.id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    let user = users::Entity::find_by_id(app.fixture.user.id)
         .one(&app.fixture.admin)
         .await
         .unwrap()
@@ -45,7 +40,7 @@ async fn state(app: &Application) -> Value {
     )
     .await
     .len();
-    json!({"email":account.email,"profile":user.email_address,"sessions":sessions,"audit":audit,"notices":notices})
+    json!({"email":account.email,"sessions":sessions,"audit":audit,"notices":notices})
 }
 async fn issued_change(app: &Application, cookie: &str, email: &str) -> String {
     let response = app
@@ -116,7 +111,6 @@ async fn native_email_change_uses_stock_confirmation_and_rejects_a_different_sig
     );
     let after = state(&app).await;
     assert_eq!(after["email"], email);
-    assert_eq!(after["profile"], email);
     assert_eq!(
         after["sessions"].as_i64().unwrap(),
         before["sessions"].as_i64().unwrap() + 1
@@ -178,7 +172,6 @@ async fn native_email_change_notice_failure_rolls_back_account_profile_and_subje
     assert_eq!(status.as_u16(), 200, "{text}");
     let after = state(&app).await;
     assert_eq!(after["email"], email);
-    assert_eq!(after["profile"], email);
     assert_eq!(after["notices"], 1);
     app.close().await;
 }

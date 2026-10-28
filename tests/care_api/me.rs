@@ -1,6 +1,6 @@
 use super::*;
 use med_tracker::models::_entities::{
-    location_memberships, notification_preferences, oauth_grants, users,
+    accounts, location_memberships, notification_preferences, oauth_grants,
 };
 
 async fn me_audits(app: &Application, household_id: i64) -> Vec<security_audit_events::Model> {
@@ -50,7 +50,7 @@ async fn me_returns_current_account_person_and_selected_membership() {
         Some(b"no-store".as_slice())
     );
     assert!(request_id.is_some());
-    assert_eq!(body["data"]["id"], app.fixture.user.id);
+    assert_eq!(body["data"]["id"], app.fixture.account.id);
     assert_eq!(body["data"]["email_address"], app.fixture.account.email);
     assert_eq!(body["data"]["membership_role"], "administrator");
     assert_eq!(body["data"]["active"], true);
@@ -384,7 +384,7 @@ async fn set_credential_active(app: &Application, kind: u8, active: bool) {
             row.update(&app.fixture.admin).await.unwrap();
         }
         1 => {
-            let mut row: users::ActiveModel = app.fixture.user.clone().into_active_model();
+            let mut row: accounts::ActiveModel = app.fixture.account.clone().into_active_model();
             row.active = Set(active);
             row.update(&app.fixture.admin).await.unwrap();
         }

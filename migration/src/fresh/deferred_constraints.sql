@@ -88,9 +88,6 @@ ALTER TABLE ONLY public.medication_review_prompts
 ALTER TABLE ONLY public.location_memberships
     ADD CONSTRAINT fk_rails_e70491d63b FOREIGN KEY (location_id) REFERENCES public.locations(id) DEFERRABLE INITIALLY DEFERRED;
 
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT fk_rails_fa67535741 FOREIGN KEY (person_id) REFERENCES public.people(id) DEFERRABLE INITIALLY DEFERRED;
-
 ALTER TABLE ONLY public.medication_review_prompts
     ADD CONSTRAINT fk_review_prompts_interacting_medication_household FOREIGN KEY (interacting_medication_id, household_id) REFERENCES public.medications(id, household_id) NOT VALID;
 

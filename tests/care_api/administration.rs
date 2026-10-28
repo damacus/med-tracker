@@ -1135,7 +1135,8 @@ async fn household_membership_list_matches_documented_contract() {
     assert_eq!(members[0]["person_id"], app.fixture.adult.id);
     assert_eq!(members[0]["person_name"], "Synthetic adult");
     assert_eq!(members[0]["role"], "administrator");
-    assert_eq!(members[0]["user_id"], app.fixture.user.id);
+    assert_eq!(members[0]["person_id"], app.fixture.adult.id);
+    assert!(members[0].get("user_id").is_none());
 
     let other = app.fixture.foreign_household().await;
     let other_id = other.household.id;

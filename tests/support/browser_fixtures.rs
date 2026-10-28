@@ -3,15 +3,14 @@ use chrono::{Duration, NaiveDate};
 use med_tracker::models::{
     _entities::{
         accounts, app_settings, carer_relationships, household_invitations, household_memberships,
-        identity_onboarding, people, users,
+        identity_onboarding, people,
     },
     access,
 };
 use sea_orm::{
     ActiveModelTrait,
     ActiveValue::Set,
-    ColumnTrait, ConnectionTrait, DatabaseConnection, DeriveIden, EntityTrait, ExprTrait,
-    QueryFilter,
+    ConnectionTrait, DatabaseConnection, DeriveIden, EntityTrait, ExprTrait,
     sea_query::{Expr, Func, Query},
 };
 
@@ -146,17 +145,6 @@ pub async fn seed_guardian_recovery(db: &DatabaseConnection, restore: bool) {
         .insert(db)
         .await
         .unwrap();
-        users::ActiveModel {
-            person_id: Set(73999),
-            email_address: Set("screenshot-other@example.test".into()),
-            active: Set(true),
-            created_at: Set(now()),
-            updated_at: Set(now()),
-            ..Default::default()
-        }
-        .insert(db)
-        .await
-        .unwrap();
         let declaration = Query::insert()
             .into_table(GuardianDeclarations::Table)
             .columns([
@@ -200,13 +188,6 @@ pub async fn seed_guardian_recovery(db: &DatabaseConnection, restore: bool) {
 }
 
 pub async fn seed_household_entrant(db: &DatabaseConnection, invitation: bool) {
-    if invitation {
-        users::Entity::delete_many()
-            .filter(users::Column::PersonId.eq(73001))
-            .exec(db)
-            .await
-            .unwrap();
-    }
     let person_id = person(
         db,
         None,

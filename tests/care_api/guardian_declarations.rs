@@ -199,7 +199,6 @@ async fn identity(app: &Application) -> Result<Value, DbErr> {
     let mut state = serde_json::Map::new();
     for (name, table, column, principals) in [
         ("accounts", "accounts", "id", accounts(app)),
-        ("users", "users", "person_id", participants(app)),
         ("sessions", "api_sessions", "account_id", accounts(app)),
         ("keys", "identity_api_keys", "reference_id", accounts(app)),
         ("grants", "oauth_grants", "account_id", accounts(app)),

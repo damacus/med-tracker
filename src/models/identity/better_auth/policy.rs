@@ -67,6 +67,9 @@ impl IdentityPolicy {
             &account.to_string(),
         )
         .await?;
+        crate::models::access::verify_account(&transaction, account)
+            .await
+            .map_err(operation_error)?;
         let lifetime = super::super::store::Lifetime::from_settings(self.settings())
             .map_err(|_| AuthError::internal("Session policy unavailable"))?;
         let maximum = lifetime.maximum_age_days();

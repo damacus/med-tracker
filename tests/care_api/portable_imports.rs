@@ -732,7 +732,7 @@ async fn portable_import_apply_writes_records_and_audits_the_import() {
     let mut version_counts = std::collections::BTreeMap::<String, u64>::new();
     let attributed = evidence.iter().all(|row| {
         row.event == "create"
-            && row.whodunnit.as_deref() == Some(app.fixture.user.id.to_string().as_str())
+            && row.whodunnit.as_deref() == Some(app.fixture.account.id.to_string().as_str())
             && row.actor_membership_id == Some(app.fixture.membership.id)
             && row.audit_context["actor_account_id"].as_i64() == Some(app.fixture.account.id)
             && row.request_id.is_some()

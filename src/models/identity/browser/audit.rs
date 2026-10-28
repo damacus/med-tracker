@@ -1,4 +1,5 @@
 use super::*;
+use sea_orm::sea_query::{ExprTrait, Func};
 
 pub(in crate::models::identity) async fn record(
     transaction: &DatabaseTransaction,
@@ -14,14 +15,26 @@ pub(in crate::models::identity) async fn record(
         ))
         .await
         .map_err(unavailable)?;
-    let actor = transaction.query_one_raw(sql("SELECT (SELECT m.household_id FROM household_memberships m WHERE m.id=med_tracker.current_membership_id() AND m.household_id=med_tracker.current_household_id() AND m.person_id=a.person_id AND m.status='active' AND m.revoked_at IS NULL) AS household_id,u.id AS user_id FROM accounts a JOIN people p ON p.id=a.person_id LEFT JOIN users u ON u.person_id=p.id WHERE a.id=$1", [account_id.into()])).await.map_err(unavailable)?;
-    let (user_id, household_id): (Option<i64>, Option<i64>) = match actor {
-        Some(actor) => (
-            actor.try_get("", "user_id").map_err(unavailable)?,
-            actor.try_get("", "household_id").map_err(unavailable)?,
-        ),
-        None => (None, None),
-    };
+    let actor = account::Entity::find_by_id(account_id)
+        .one(transaction)
+        .await
+        .map_err(unavailable)?
+        .ok_or(AuthenticationError::Unauthenticated)?;
+    let household_id = membership::Entity::find()
+        .filter(
+            Expr::col(membership::Column::Id).eq(Func::cust("med_tracker.current_membership_id")),
+        )
+        .filter(
+            Expr::col(membership::Column::HouseholdId)
+                .eq(Func::cust("med_tracker.current_household_id")),
+        )
+        .filter(membership::Column::PersonId.eq(actor.person_id))
+        .filter(membership::Column::Status.eq("active"))
+        .filter(membership::Column::RevokedAt.is_null())
+        .one(transaction)
+        .await
+        .map_err(unavailable)?
+        .map(|member| member.household_id);
     let event = format!("auth_token/{token_type}/{action}");
     let mut metadata =
         serde_json::json!({"account_id":account_id,"token_type":token_type,"action":action});
@@ -33,8 +46,8 @@ pub(in crate::models::identity) async fn record(
         }
         .into();
     }
-    let context = serde_json::json!({"actor_account_id":account_id,"actor_user_id":user_id,"request_id":request_id});
-    transaction.execute_raw(sql("INSERT INTO versions (item_type,item_id,event,object,whodunnit,request_id,audit_context,created_at) VALUES ('AuthenticationToken',$1,$2,$3,$4,$5,$6,timezone('UTC',clock_timestamp()))", [account_id.into(),event.clone().into(),metadata.to_string().into(),user_id.map(|id|id.to_string()).into(),request_id.map(str::to_owned).into(),context.clone().into()])).await.map_err(unavailable)?;
+    let context = serde_json::json!({"actor_account_id":account_id,"actor_person_id":actor.person_id,"request_id":request_id});
+    transaction.execute_raw(sql("INSERT INTO versions (item_type,item_id,event,object,whodunnit,request_id,audit_context,created_at) VALUES ('AuthenticationToken',$1,$2,$3,$4,$5,$6,timezone('UTC',clock_timestamp()))", [account_id.into(),event.clone().into(),metadata.to_string().into(),Some(account_id.to_string()).into(),request_id.map(str::to_owned).into(),context.clone().into()])).await.map_err(unavailable)?;
     if let Some(household_id) = household_id {
         transaction
             .execute_raw(sql(

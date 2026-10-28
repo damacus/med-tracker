@@ -2278,26 +2278,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
-                .name("index_users_on_email_address")
-                .table(Alias::new("users"))
-                .unique()
-                .col(Alias::new("email_address"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_users_on_person_id")
-                .table(Alias::new("users"))
-                .unique()
-                .col(Alias::new("person_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
                 .name("index_versions_on_actor_membership_id")
                 .table(Alias::new("versions"))
                 .col(Alias::new("actor_membership_id"))

@@ -3,7 +3,7 @@ use super::*;
 mod guardian_declarations;
 use med_tracker::models::_entities::{
     accounts, api_change_events, carer_relationships, household_memberships, location_memberships,
-    people, person_access_grants, security_audit_events, users, versions,
+    people, person_access_grants, security_audit_events, versions,
 };
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect};
 
@@ -209,7 +209,7 @@ async fn people_state(fixture: &RequestFixture) -> Value {
     json!({"people":people,"versions":versions,"changes":changes,"grants":grants,"links":links,"audits":audits,
         "permissions":membership.permissions_version,"name":person.name})
 }
-async fn dependent_effect(fixture: &RequestFixture) -> (i64, i64, i64, i64, i64, i64) {
+async fn dependent_effect(fixture: &RequestFixture) -> (i64, i64, i64, i64, i64) {
     let ids = participants(fixture).await;
     let memberships = household_memberships::Entity::find()
         .filter(household_memberships::Column::HouseholdId.eq(fixture.household.id))
@@ -241,18 +241,12 @@ async fn dependent_effect(fixture: &RequestFixture) -> (i64, i64, i64, i64, i64,
         .count(&fixture.admin)
         .await
         .unwrap();
-    let users = users::Entity::find()
-        .filter(users::Column::PersonId.is_in(ids))
-        .count(&fixture.admin)
-        .await
-        .unwrap();
     (
         i64::try_from(memberships).unwrap(),
         i64::try_from(declarations).unwrap(),
         i64::try_from(carers).unwrap(),
         i64::try_from(grants).unwrap(),
         i64::try_from(accounts).unwrap(),
-        i64::try_from(users).unwrap(),
     )
 }
 async fn assert_created_dependent(fixture: &RequestFixture, body: &Value) {
@@ -305,20 +299,10 @@ async fn assert_created_dependent(fixture: &RequestFixture, body: &Value) {
     );
 }
 
-fn assert_dependent_effect(
-    before: (i64, i64, i64, i64, i64, i64),
-    after: (i64, i64, i64, i64, i64, i64),
-) {
+fn assert_dependent_effect(before: (i64, i64, i64, i64, i64), after: (i64, i64, i64, i64, i64)) {
     assert_eq!(
         after,
-        (
-            before.0 + 1,
-            before.1 + 1,
-            before.2 + 1,
-            before.3,
-            before.4,
-            before.5
-        )
+        (before.0 + 1, before.1 + 1, before.2 + 1, before.3, before.4)
     );
 }
 
