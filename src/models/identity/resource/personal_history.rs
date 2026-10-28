@@ -48,6 +48,15 @@ pub(crate) async fn deny_personal_history(
     actor: Option<&HistoryActor>,
     request_id: &str,
 ) -> Result<(), OperationError> {
+    let Some(actor) = actor else {
+        tracing::info!(
+            event_type = "personal_history_denied",
+            outcome = "denied",
+            reason = "unproved_identity",
+            "Personal history read denied without authenticated identity"
+        );
+        return Ok(());
+    };
     let transaction = browser::transaction(db)
         .await
         .map_err(|_| OperationError::Unavailable)?;

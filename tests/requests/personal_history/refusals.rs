@@ -16,6 +16,64 @@ fn captured_router(boot: &BootResult, captured: &capture::Captured) -> axum::Rou
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn personal_history_unproved_identity_refusals_do_not_write_audit_rows() -> TestResult {
+    let (fixture, boot) = boot_request_fixture().await;
+    let captured = capture::Captured::default();
+    let request = TestServer::new(
+        captured_router(&boot, &captured)
+            .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )?;
+    let mut traces = Vec::new();
+    for (path, status) in [(ENDPOINT, 401), ("/profile/history", 303)] {
+        for method in [axum::http::Method::GET, axum::http::Method::HEAD] {
+            let response = request
+                .method(method, path)
+                .add_header("authorization", "Bearer ClinicalCredentialSentinel")
+                .add_header(
+                    "x-request-id",
+                    format!("ClinicalHeaderSentinel-{}", uuid::Uuid::new_v4()),
+                )
+                .await;
+            assert_eq!(response.status_code(), status, "{}", response.text());
+            assert_eq!(response.header("cache-control"), "no-store");
+            assert!(
+                audits(&fixture, response.header("x-request-id").to_str()?)
+                    .await
+                    .is_empty()
+            );
+            traces.push(
+                response
+                    .header("x-medtracker-trace-id")
+                    .to_str()?
+                    .to_owned(),
+            );
+        }
+    }
+    let events = captured.events();
+    let refusals: Vec<_> = events
+        .iter()
+        .filter(|event| {
+            event.contains("Personal history read denied without authenticated identity")
+        })
+        .collect();
+    assert_eq!(refusals.len(), 4);
+    for trace in traces {
+        assert!(uuid::Uuid::parse_str(&trace).is_ok());
+        let event = refusals
+            .iter()
+            .find(|event| event.contains(&trace))
+            .ok_or("missing correlated refusal")?;
+        assert!(event.contains("outcome=\"denied\""));
+        assert!(!event.contains("Clinical"));
+        assert!(!event.contains("actor"));
+        assert!(!event.contains("household"));
+    }
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn personal_history_throttled_reads_record_anonymous_refusals_without_database_work()
 -> TestResult {
     let (fixture, boot) = boot_request_rate_fixture(&[]).await;

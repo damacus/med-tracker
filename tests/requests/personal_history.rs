@@ -345,11 +345,10 @@ async fn personal_history_validates_cursors_and_keeps_oauth_challenges() -> Test
             .to_str()?
             .contains("insufficient_scope")
     );
-    assert_eq!(
+    assert!(
         audits(&fixture, scoped.header("x-request-id").to_str()?)
             .await
-            .len(),
-        1
+            .is_empty()
     );
     drop(request);
     close_request(fixture, boot).await;
@@ -413,10 +412,7 @@ async fn personal_history_rejects_native_keys_integrations_and_unknown_credentia
         assert_eq!(response.status_code(), 401, "{}", response.text());
         assert_eq!(response.header("cache-control"), "no-store");
         let audit = audits(&fixture, response.header("x-request-id").to_str()?).await;
-        assert_eq!(audit.len(), 1);
-        assert_eq!(audit[0].event, "personal_history_denied");
-        assert!(audit[0].audit_context["actor_account_id"].is_null());
-        assert!(audit[0].household_id.is_none());
+        assert!(audit.is_empty());
     }
     drop(request);
     close_request(fixture, boot).await;
