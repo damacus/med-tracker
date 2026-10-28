@@ -852,6 +852,117 @@ async fn nhs_dmd_queue_failure_marks_import_failed_and_cleans_archive() {
 }
 
 #[tokio::test]
+async fn nhs_dmd_archive_failure_refines_a_reconciled_run() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let (reached, waiting) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    let gate = Arc::new(tokio::sync::Mutex::new(Some((reached, resumed))));
+    let routes = axum::Router::new().fallback(move |method: axum::http::Method| {
+        let gate = gate.clone();
+        async move {
+            if matches!(method, axum::http::Method::GET | axum::http::Method::HEAD) {
+                let (reached, resumed) = gate.lock().await.take().unwrap();
+                reached.send(()).unwrap();
+                resumed.await.unwrap();
+                (
+                    axum::http::StatusCode::NOT_FOUND,
+                    "<Error><Code>NoSuchKey</Code></Error>",
+                )
+            } else if method == axum::http::Method::DELETE {
+                (axum::http::StatusCode::NO_CONTENT, "")
+            } else {
+                (axum::http::StatusCode::OK, "")
+            }
+        }
+    });
+    let storage_server = tokio::spawn(async move { axum::serve(listener, routes).await.unwrap() });
+    let upload_app = Application::new().await;
+    let id = med_tracker::models::nhs_dmd::upload(&upload_app.context, "unreadable.zip", release())
+        .await
+        .unwrap();
+    let archive = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&upload_app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let original_store =
+        med_tracker::models::nhs_dmd::storage::ArchiveStore::configured(&upload_app.context)
+            .unwrap();
+    let app =
+        Application::new_configured(Some("synthetic-dose-occurrence-signing-key"), |settings| {
+            settings["dmd_storage"] = json!({
+                "endpoint": endpoint,
+                "bucket": "synthetic-archive-failure",
+                "region": "us-east-1",
+                "access_key_id": "synthetic-access",
+                "secret_access_key": "synthetic-secret"
+            });
+        })
+        .await;
+    let ctx = app.context.clone();
+    let worker = tokio::spawn(async move { med_tracker::models::nhs_dmd::run(&ctx, id).await });
+    tokio::time::timeout(std::time::Duration::from_secs(30), waiting)
+        .await
+        .unwrap()
+        .unwrap();
+    rows::nhs_dmd_imports::Entity::update_many()
+        .col_expr(
+            rows::nhs_dmd_imports::Column::UpdatedAt,
+            Expr::value(chrono::Utc::now().naive_utc() - chrono::Duration::minutes(31)),
+        )
+        .filter(rows::nhs_dmd_imports::Column::Id.eq(id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::nhs_dmd::reconcile(&app.context)
+        .await
+        .unwrap();
+    let stale = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(stale.status, 5);
+    resume.send(()).unwrap();
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_secs(30), worker)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_err()
+    );
+    let failed = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    original_store
+        .delete(archive.archive_key.as_deref().unwrap())
+        .await
+        .unwrap();
+    app.close().await;
+    upload_app.close().await;
+    storage_server.abort();
+    let _ = storage_server.await;
+    assert_eq!(failed.status, 5);
+    assert_eq!(failed.completed_at, stale.completed_at);
+    assert_eq!(
+        failed.error_message.as_deref(),
+        Some("The release archive could not be read. Upload the release again.")
+    );
+    assert!(
+        failed
+            .log
+            .as_ref()
+            .unwrap()
+            .contains("stopped making progress")
+    );
+    assert!(failed.archive_key.is_none());
+}
+
+#[tokio::test]
 async fn nhs_dmd_missing_stored_object_marks_import_failed() {
     crate::reference_fixture::clean_nhs_catalogue().await;
     assert_eq!(std::env::var("MEDTRACKER_OWNED_STORAGE").unwrap(), "1");

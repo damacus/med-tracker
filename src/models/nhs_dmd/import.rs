@@ -1266,12 +1266,16 @@ pub(crate) async fn fail_run(
     Ok(())
 }
 
-pub(crate) async fn refine_stale_failure(
+pub(crate) async fn fail_owned_run(
     db: &DatabaseConnection,
     owned_run: &nhs_dmd_import::Model,
     message: &str,
 ) -> Result<(), sea_orm::DbErr> {
     const STALE_MESSAGE: &str = "The import stopped making progress. Upload the release again.";
+    if owned_run.status >= 4 {
+        return Ok(());
+    }
+    fail_run(db, owned_run.id, message).await?;
     if matches!(
         message,
         "Import is no longer active" | "Import activity could not be reported"
@@ -1282,8 +1286,14 @@ pub(crate) async fn refine_stale_failure(
     let stale = nhs_dmd_import::Entity::find_by_id(owned_run.id)
         .filter(nhs_dmd_import::Column::Status.eq(5))
         .filter(nhs_dmd_import::Column::ErrorMessage.eq(STALE_MESSAGE))
-        .filter(nhs_dmd_import::Column::ArchiveKey.eq(owned_run.archive_key.clone()))
-        .filter(nhs_dmd_import::Column::ArchiveChecksum.eq(owned_run.archive_checksum.clone()))
+        .filter(match &owned_run.archive_key {
+            Some(key) => nhs_dmd_import::Column::ArchiveKey.eq(key.as_str()),
+            None => nhs_dmd_import::Column::ArchiveKey.is_null(),
+        })
+        .filter(match &owned_run.archive_checksum {
+            Some(checksum) => nhs_dmd_import::Column::ArchiveChecksum.eq(checksum.as_str()),
+            None => nhs_dmd_import::Column::ArchiveChecksum.is_null(),
+        })
         .lock_exclusive()
         .one(&transaction)
         .await?;
