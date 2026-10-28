@@ -35,9 +35,10 @@ jobs:
   docker:
     needs: release-please
     if: ${{ needs.release-please.outputs.releases_created == 'true' }}
-    uses: ./.github/workflows/docker-publish.yml
+    uses: ./.github/workflows/loco-images.yml
     with:
       tag_name: ${{ needs.release-please.outputs.tag_name }}
+      publish: true
     secrets: inherit
 
   client-tools:

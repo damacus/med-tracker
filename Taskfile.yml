@@ -63,6 +63,9 @@ tasks:
       - node --test scripts/test_loco_image_tooling.mjs
       - node --test scripts/test_loco_image_publication.mjs
       - node scripts/check_loco_image_tooling.mjs
+  image:release:check:
+    desc: Check release versions, exact source selection and publication wiring
+    cmds: [node --test scripts/test_loco_image_release.mjs]
   image:build:
     desc: Build the root Loco release image for the local architecture
     cmds:
