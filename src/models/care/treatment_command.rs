@@ -31,7 +31,8 @@ selector!(PersonId);
 selector!(MedicationId);
 selector!(DosageOptionId);
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum DoseCycle {
     Daily,
     Weekly,
@@ -39,6 +40,14 @@ pub(crate) enum DoseCycle {
 }
 
 impl DoseCycle {
+    pub(crate) fn from_database(value: i32) -> Option<Self> {
+        match value {
+            0 => Some(Self::Daily),
+            1 => Some(Self::Weekly),
+            2 => Some(Self::Monthly),
+            _ => None,
+        }
+    }
     pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "daily" => Some(Self::Daily),
@@ -80,18 +89,32 @@ impl AdministrationKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum ScheduleType {
     Daily,
     MultipleDaily,
     Weekly,
     SpecificDates,
+    #[serde(rename = "prn")]
     AsNeeded,
     Tapering,
     EveryOtherDay,
 }
 
 impl ScheduleType {
+    pub(crate) fn from_database(value: i32) -> Option<Self> {
+        match value {
+            0 => Some(Self::Daily),
+            1 => Some(Self::MultipleDaily),
+            2 => Some(Self::Weekly),
+            3 => Some(Self::SpecificDates),
+            4 => Some(Self::AsNeeded),
+            5 => Some(Self::Tapering),
+            6 => Some(Self::EveryOtherDay),
+            _ => None,
+        }
+    }
     pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "daily" => Some(Self::Daily),

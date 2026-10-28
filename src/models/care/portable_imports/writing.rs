@@ -126,6 +126,16 @@ pub(crate) async fn write_records(
     request_id: &str,
     declarations: &mut PreparedDeclarations,
 ) -> Result<(), String> {
+    let conflicts = super::person_schedules::conflicts(db, tenant, plan, index)
+        .await
+        .map_err(|_| "Person-owned restore state could not be checked".to_owned())?;
+    if !conflicts.is_empty() {
+        return Err(conflicts
+            .into_iter()
+            .map(|conflict| conflict.to_string())
+            .collect::<Vec<_>>()
+            .join("; "));
+    }
     for kind in [
         "locations",
         "people",

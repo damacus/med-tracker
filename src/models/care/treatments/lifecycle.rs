@@ -183,12 +183,24 @@ async fn update_fields(
     fields.assign(&mut active);
     active.updated_at = Set(Utc::now().naive_utc());
     let row = active.update(tenant.transaction()).await?;
+    let row = super::super::person_schedules::save_execution(
+        tenant,
+        row,
+        None,
+        super::super::doses::app_zone(tenant.settings()),
+        provenance,
+    )
+    .await?;
     persist(tenant, &row, Some(snapshot), "update", provenance).await?;
     project(tenant, row).await
 }
 
 fn fields_from_record(row: &schedule::Model) -> ScheduleFields {
     ScheduleFields {
+        origin_time_zone: row
+            .origin_time_zone
+            .as_deref()
+            .and_then(|zone| zone.parse().ok()),
         person_id: Some(row.person_id),
         medication_id: Some(row.medication_id),
         source_dosage_option_id: row.source_dosage_option_id,

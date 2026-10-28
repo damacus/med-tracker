@@ -49,7 +49,8 @@ pub(super) async fn prepare(
             cause: Some(TakeFailureCause::Paused),
         });
     }
-    let effective_date = local_date_in_zone(taken_at, context.zone);
+    let zone = source.zone.unwrap_or(context.zone);
+    let effective_date = local_date_in_zone(taken_at, zone);
     if !applies_on(&source, effective_date) {
         return Err(error(
             ErrorKind::Validation,
@@ -86,6 +87,26 @@ pub(super) async fn prepare(
         .await
         .map_err(database_error)?
         .ok_or(OperationError::NotFound)?;
+    let prescription = if let Some(id) = source.person_schedule_id.as_ref() {
+        Some(
+            crate::models::entities::person_schedule::Entity::find_by_id(id)
+                .one(db)
+                .await
+                .map_err(OperationError::from)?
+                .ok_or(OperationError::NotFound)?,
+        )
+    } else {
+        None
+    };
+    if let Some(plan) = prescription.as_ref() {
+        if !crate::models::care::person_schedules::stock_matches(&plan, &original) {
+            return Err(error(
+                ErrorKind::Validation,
+                "Stock no longer matches the prescribed medicine",
+            )
+            .into());
+        }
+    }
     let candidates = access::medication_scope(context.tenant)
         .filter(stock_candidate_condition(&original))
         .all(db)
@@ -120,6 +141,9 @@ pub(super) async fn prepare(
         .filter(|value| {
             candidate_ids.contains(&value.id)
                 && same_stock_signature(value, &original)
+                && prescription.as_ref().is_none_or(|plan| {
+                    crate::models::care::person_schedules::stock_matches(plan, value)
+                })
                 && value
                     .current_supply
                     .is_none_or(|supply| supply > Decimal::ZERO)
@@ -166,7 +190,7 @@ pub(super) async fn prepare(
     Ok(ProposedTake {
         source,
         taken_at,
-        zone: context.zone,
+        zone,
         amount,
         unit,
         selected,

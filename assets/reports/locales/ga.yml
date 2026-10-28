@@ -1935,6 +1935,18 @@ ga:
     overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
   profiles:
     personal:
+      plans: "Mo phleananna cóireála"
+      plans_description: "Fanann do phleananna leat nuair a fhágann tú teaghlach. Ní nuashonraíonn athruithe ach nasc reatha le teaghlach."
+      plans_empty: "Níl aon phleananna cóireála pearsanta taifeadta."
+      origin_zone: "Crios ama an phlean"
+      adopted_zone: "Úsáideann an plean seo crios ama na haipe nuair a glacadh leis. Seiceáil é sula n-athraíonn tú na hamanna."
+      plan_times: "Amanna dáileoige (HH:MM, scartha le camóga)"
+      save_plan: "Sábháil an plean"
+      retire_plan: "Cuir deireadh leis an bplean"
+      retire_confirmation: "Cuireann sé seo deireadh leis an bplean. Beidh na dáileoga taifeadta ar fáil fós."
+      retired: "Tá deireadh curtha leis an bplean seo."
+      invalid: "Seiceáil an dáileog, na dátaí, na hamanna agus ainm an chreasa ama agus bain triail eile as."
+      stale: "Athraíodh an plean seo agus an fhoirm ar oscailt. Seiceáil an plean reatha sula sábhálann tú é."
       clinical_invalid: "Cuir isteach ainm agus dáta breithe bailí. Caithfidh sealbhóirí cuntais a bheith 18 mbliana d'aois ar a laghad."
       description: "Bainistigh do chuntas agus d'eolas cliniciúil."
       account_name: "Ainm taispeána an chuntais"

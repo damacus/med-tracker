@@ -208,6 +208,10 @@ mod tests {
 
     fn schedule_model(config: Value) -> schedule::Model {
         schedule::Model {
+            person_schedule_id: None,
+            clinical_revision: None,
+            origin_time_zone: None,
+            execution_ended_at: None,
             id: 1,
             household_id: 1,
             portable_id: "s1".to_string(),

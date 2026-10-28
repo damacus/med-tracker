@@ -95,6 +95,8 @@ mod people;
 mod person_carers;
 #[path = "care_api/person_medication_reorder.rs"]
 mod person_medication_reorder;
+#[path = "care_api/person_owned_schedules.rs"]
+mod person_owned_schedules;
 #[path = "care_api/platform.rs"]
 mod platform;
 #[path = "care_api/portable_export.rs"]

@@ -17,6 +17,7 @@
     </fieldset>
     <fieldset class="grid gap-4 border-b border-base-300 pb-6">
       <legend class="text-lg font-semibold mb-3">Timing</legend>
+      {% if is_schedule %}<label class="grid gap-2" for="origin-time-zone">{{ labels.profiles.personal.origin_zone }}<input class="input w-full" id="origin-time-zone" name="origin_time_zone" value="{{ draft.origin_time_zone | default(value='') }}" placeholder="Europe/London"></label>{% endif %}
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {% for field in timing_fields %}{% if field.name == "dates" %}<div class="sm:col-span-2">{% include "treatments/field.html" %}</div>{% else %}{% include "treatments/field.html" %}{% endif %}{% endfor %}
       </div>

@@ -62,6 +62,7 @@ pub mod oauth_grants;
 pub mod people;
 pub mod person_access_grants;
 pub mod person_medications;
+pub mod person_schedules;
 pub mod platform_admins;
 pub mod push_subscriptions;
 pub mod schedules;

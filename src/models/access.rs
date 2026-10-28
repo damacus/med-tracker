@@ -297,6 +297,7 @@ pub(crate) fn schedule_scope(transaction: &TenantTransaction) -> sea_orm::Select
     let query = schedule::Entity::find()
         .in_tenant(household_id)
         .filter(schedule::Column::RetiredAt.is_null());
+    let query = query.filter(schedule::Column::ExecutionEndedAt.is_null());
     if !authorization::ready() {
         return query.filter(Expr::cust("FALSE"));
     }

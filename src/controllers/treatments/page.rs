@@ -59,6 +59,10 @@ impl<'a> Page<'a> {
         data["authenticity_token"] = json!(authenticity);
         data["slug"] = json!(self.slug);
         data["person_id"] = json!(self.person);
+        match crate::models::care::report_pdf::translations("en") {
+            Ok(labels) => data["labels"] = labels,
+            Err(_) => return browser::unavailable(),
+        }
         match format::render().view(self.view, template, data) {
             Ok(response) => (
                 status,
@@ -106,7 +110,7 @@ impl<'a> Page<'a> {
             Ok(kind) => kind,
             Err(error) => return browser::operation_error(error),
         };
-        let (_, tenant) = match self.begin().await {
+        let (principal, tenant) = match self.begin().await {
             Ok(value) => value,
             Err(error) => return browser::authentication_error(error),
         };
@@ -119,6 +123,11 @@ impl<'a> Page<'a> {
             Err(error) => return browser::operation_error(error),
         };
         let mut draft = forms::defaults(record.as_ref().map(|value| &value.0["data"]));
+        if matches!(kind, Kind::Schedule) {
+            draft
+                .entry("origin_time_zone".into())
+                .or_insert_with(|| principal.time_zone().name().into());
+        }
         if id.is_none()
             && let Some(medication_id) = medication_id.filter(|id| {
                 options["medications"]

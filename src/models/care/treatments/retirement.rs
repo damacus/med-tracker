@@ -41,6 +41,14 @@ pub async fn retire(
     active.retired_at = Set(Some(now));
     active.updated_at = Set(now);
     let row = active.update(tenant.transaction()).await?;
+    let row = super::super::person_schedules::save_execution(
+        tenant,
+        row,
+        None,
+        super::super::doses::app_zone(tenant.settings()),
+        provenance,
+    )
+    .await?;
     let mut after = representation(&row).0["data"].clone();
     after["retired_at"] = json!(row.retired_at);
     administration::persistence::record_version_as(

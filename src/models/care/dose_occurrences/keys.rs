@@ -8,12 +8,18 @@ pub(super) fn key(
     window_start: NaiveDate,
     position: i32,
 ) -> String {
-    let payload = json!([
-        source.kind().name(),
-        source.portable_id(),
-        window_start.to_string(),
-        position
-    ]);
+    let mut payload = vec![
+        json!(source.kind().name()),
+        json!(source.portable_id()),
+        json!(window_start.to_string()),
+        json!(position),
+    ];
+    if let Source::Schedule(row) = source
+        && let Some(revision) = row.clinical_revision
+    {
+        payload.push(json!(revision));
+    }
+    let payload = Value::Array(payload);
     let encoded = URL_SAFE_NO_PAD.encode(payload.to_string());
     let mut mac = HmacSha256::new_from_slice(secret).expect("validated HMAC secret");
     mac.update(b"medtracker-dose-occurrence-v1\0");
@@ -38,7 +44,15 @@ pub(super) fn decode_key(
     mac.verify_slice(&signature).ok()?;
     let payload: Value = serde_json::from_slice(&URL_SAFE_NO_PAD.decode(encoded).ok()?).ok()?;
     let values = payload.as_array()?;
-    if values.len() != 4 || values[0] != source.kind().name() || values[1] != source.portable_id() {
+    let revision = match source {
+        Source::Schedule(row) => row.clinical_revision,
+        Source::Assignment(_) => None,
+    };
+    if values.len() != if revision.is_some() { 5 } else { 4 }
+        || values[0] != source.kind().name()
+        || values[1] != source.portable_id()
+        || revision.is_some_and(|revision| values.get(4).and_then(Value::as_i64) != Some(revision))
+    {
         return None;
     }
     let date = date(values[2].as_str()?)?;

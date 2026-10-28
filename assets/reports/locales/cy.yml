@@ -1962,6 +1962,18 @@ cy:
     overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
     personal:
+      plans: "Fy nghynlluniau triniaeth"
+      plans_description: "Mae eich cynlluniau'n aros gyda chi pan fyddwch yn gadael cartref. Dim ond cysylltiad cartref cyfredol sy'n cael ei ddiweddaru gan newidiadau."
+      plans_empty: "Nid oes cynlluniau triniaeth personol wedi'u cofnodi."
+      origin_zone: "Cylchfa amser y cynllun"
+      adopted_zone: "Mae'r cynllun presennol hwn yn defnyddio cylchfa amser y rhaglen pan gafodd ei fabwysiadu. Gwiriwch hi cyn newid yr amseroedd."
+      plan_times: "Amseroedd dos (HH:MM, wedi'u gwahanu gan atalnodau)"
+      save_plan: "Cadw'r cynllun"
+      retire_plan: "Dod â'r cynllun i ben"
+      retire_confirmation: "Mae hyn yn dod â'r cynllun i ben. Mae dosau a gofnodwyd yn parhau i fod ar gael."
+      retired: "Mae'r cynllun hwn wedi dod i ben."
+      invalid: "Gwiriwch y dos, dyddiadau, amseroedd ac enw'r gylchfa amser, yna ceisiwch eto."
+      stale: "Newidiodd y cynllun hwn tra oedd y ffurflen ar agor. Adolygwch y cynllun cyfredol cyn cadw."
       clinical_invalid: "Rhowch enw a dyddiad geni dilys. Rhaid i ddeiliaid cyfrif fod yn 18 oed neu'n hŷn."
       description: "Rheolwch eich cyfrif a'ch gwybodaeth glinigol."
       account_name: "Enw arddangos y cyfrif"

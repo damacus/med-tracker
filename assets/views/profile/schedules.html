@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="grid gap-6 max-w-3xl">
+  <a class="link" href="/profile">{{ labels.profiles.sections.profile.title }}</a>
+  <h1 class="text-3xl font-semibold">{{ labels.profiles.personal.plans }}</h1>
+  <p>{{ labels.profiles.personal.plans_description }}</p>
+  {% if error %}<p id="personal-plan-error" class="alert alert-error" role="alert" tabindex="-1" autofocus>{{ labels.profiles.personal[error] }}</p>{% endif %}
+  {% for item in plans %}{% set plan = item.plan %}
+  <article class="card shell-card"><div class="card-body gap-5">
+    <h2 class="card-title break-words">{{ plan.medicine_name | default(value=labels.profiles.show.not_set) }}</h2>
+    <p>{{ plan.dose_amount | default(value='') }} {{ plan.dose_unit | default(value='') }} · {{ plan.start_date | default(value='') }} — {{ plan.end_date | default(value='') }}</p>
+    <p>{{ labels.profiles.personal.origin_zone }}: <strong>{{ plan.origin_time_zone }}</strong></p>
+    <dl class="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+      <dt class="font-semibold">{{ labels.treatments.form.schedule_type }}</dt><dd>{{ labels.treatments.types[plan.schedule_type] }}</dd>
+      {% if plan.frequency %}<dt class="font-semibold">{{ labels.schedules.form.frequency }}</dt><dd>{{ plan.frequency }}</dd>{% endif %}
+      {% if plan.max_daily_doses %}<dt class="font-semibold">{{ labels.schedules.form.max_doses_per_cycle }}</dt><dd>{{ plan.max_daily_doses }}{% if plan.dose_cycle %} ({{ labels.dosages.management[plan.dose_cycle] }}){% endif %}</dd>{% endif %}
+      {% if plan.min_hours_between_doses %}<dt class="font-semibold">{{ labels.schedules.form.min_hours_between_doses }}</dt><dd>{{ plan.min_hours_between_doses }}</dd>{% endif %}
+      {% if plan.schedule_config.weekdays is defined %}<dt class="font-semibold">{{ labels.treatments.types.weekly }}</dt><dd>{{ plan.schedule_config.weekdays | join(sep=", ") }}</dd>{% endif %}
+      {% if plan.schedule_config.dates is defined %}<dt class="font-semibold">{{ labels.treatments.types.specific_dates }}</dt><dd>{{ plan.schedule_config.dates | join(sep=", ") }}</dd>{% endif %}
+      {% if plan.schedule_config.tapering_plan is defined %}<dt class="font-semibold">{{ labels.treatments.types.tapering }}</dt><dd>{{ plan.schedule_config.tapering_plan }}</dd>{% endif %}
+    </dl>
+    {% if plan.timezone_provenance == "adopted_application_zone" %}<p class="shell-muted">{{ labels.profiles.personal.adopted_zone }}</p>{% endif %}
+    {% if plan.retired_at %}<p>{{ labels.profiles.personal.retired }}</p>{% else %}
+    <form method="post" action="/profile/schedules/{{ plan.id }}" class="grid gap-4" data-person-schedule-form {% if error %}aria-describedby="personal-plan-error"{% endif %}>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="clinical_revision" value="{{ plan.clinical_revision }}">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="grid gap-2" for="amount-{{ plan.id }}">{{ labels.dose_outcomes.dose }}<input class="input w-full" id="amount-{{ plan.id }}" name="dose_amount" value="{{ plan.dose_amount | default(value='') }}" inputmode="decimal" required></label>
+        <label class="grid gap-2" for="unit-{{ plan.id }}">{{ labels.dose_records.dose_unit }}<select class="select w-full" id="unit-{{ plan.id }}" name="dose_unit">{% for unit in ["tablet","capsule","gummy","mg","ml","g","mcg","IU","spray","drop","sachet","pad"] %}<option {% if plan.dose_unit == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select></label>
+        <label class="grid gap-2" for="start-{{ plan.id }}">{{ labels.schedules.form.start_date }}<input class="input w-full" id="start-{{ plan.id }}" name="start_date" type="date" value="{{ plan.start_date }}" required></label>
+        <label class="grid gap-2" for="end-{{ plan.id }}">{{ labels.schedules.form.end_date }}<input class="input w-full" id="end-{{ plan.id }}" name="end_date" type="date" value="{{ plan.end_date }}" required></label>
+        <label class="grid gap-2 sm:col-span-2" for="zone-{{ plan.id }}">{{ labels.profiles.personal.origin_zone }}<input class="input w-full" id="zone-{{ plan.id }}" name="origin_time_zone" value="{{ plan.origin_time_zone }}" required></label>
+        {% if plan.schedule_type != "tapering" %}<label class="grid gap-2 sm:col-span-2" for="times-{{ plan.id }}">{{ labels.profiles.personal.plan_times }}<input class="input w-full" id="times-{{ plan.id }}" name="times" value="{{ item.times }}" placeholder="08:00, 20:00"></label>{% endif %}
+        <label class="grid gap-2 sm:col-span-2" for="notes-{{ plan.id }}">{{ labels.schedules.form.notes }}<textarea class="textarea w-full" id="notes-{{ plan.id }}" name="notes">{{ plan.notes | default(value='') }}</textarea></label>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button class="btn btn-neutral" type="submit" name="action" value="edit">{{ labels.profiles.personal.save_plan }}</button>
+        <button class="btn btn-outline" type="submit" name="action" value="{% if plan.active %}pause{% else %}resume{% endif %}" formnovalidate>{% if plan.active %}{{ labels.schedules.card.pause }}{% else %}{{ labels.schedules.card.resume }}{% endif %}</button>
+        <button class="btn btn-outline" type="button" data-dialog-open="retire-{{ plan.id }}">{{ labels.profiles.personal.retire_plan }}</button>
+      </div>
+    </form>
+    <dialog id="retire-{{ plan.id }}" class="modal" aria-labelledby="retire-title-{{ plan.id }}"><div class="modal-box grid gap-4">
+      <h3 id="retire-title-{{ plan.id }}" class="text-xl font-semibold">{{ labels.profiles.personal.retire_plan }}</h3>
+      <p>{{ labels.profiles.personal.retire_confirmation }}</p>
+      <form method="post" action="/profile/schedules/{{ plan.id }}" class="flex flex-wrap gap-3">
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="clinical_revision" value="{{ plan.clinical_revision }}">
+        <button class="btn btn-neutral" type="button" data-dialog-close autofocus>{{ labels.schedules.form.cancel }}</button>
+        <button class="btn btn-error" type="submit" name="action" value="retire">{{ labels.profiles.personal.retire_plan }}</button>
+      </form>
+    </div><form method="dialog" class="modal-backdrop"><button>{{ labels.schedules.form.cancel }}</button></form></dialog>
+    {% endif %}
+  </div></article>
+  {% else %}<p>{{ labels.profiles.personal.plans_empty }}</p>{% endfor %}
+</section>
+{% endblock content %}

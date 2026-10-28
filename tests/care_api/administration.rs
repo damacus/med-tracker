@@ -12,7 +12,7 @@ async fn administration_app() -> Application {
     app
 }
 
-async fn additional_member(app: &Application) -> household_memberships::Model {
+pub(super) async fn additional_member(app: &Application) -> household_memberships::Model {
     let actor = app.fixture.foreign_household().await;
     let now = chrono::Utc::now().naive_utc();
     let membership = household_memberships::ActiveModel {

@@ -64,6 +64,8 @@ pub(super) fn actionable(
     row: &Occurrence,
     settings: Option<&serde_json::Value>,
 ) -> bool {
+    let source_settings = source.calendar_settings(settings);
+    let settings = source_settings.as_ref();
     let due_time = row
         .scheduled_at
         .unwrap_or_else(|| local_midnight(row.window_start, settings));

@@ -2271,6 +2271,18 @@ pt:
         metric_value: Horário
   profiles:
     personal:
+      plans: "Os meus planos de tratamento"
+      plans_description: "Os seus planos permanecem consigo quando sai de um agregado. As alterações só atualizam uma ligação atual a um agregado."
+      plans_empty: "Não foram registados planos de tratamento pessoais."
+      origin_zone: "Fuso horário do plano"
+      adopted_zone: "Este plano existente usa o fuso horário da aplicação no momento da sua adoção. Verifique-o antes de alterar os horários."
+      plan_times: "Horas das doses (HH:MM, separadas por vírgulas)"
+      save_plan: "Guardar plano"
+      retire_plan: "Terminar plano"
+      retire_confirmation: "Isto termina o plano. As doses registadas continuam disponíveis."
+      retired: "Este plano foi terminado."
+      invalid: "Verifique a dose, as datas, as horas e o nome do fuso horário e tente novamente."
+      stale: "Este plano foi alterado enquanto o formulário estava aberto. Reveja o plano atual antes de guardar."
       clinical_invalid: "Introduza um nome e uma data de nascimento válida. Os titulares de contas devem ter pelo menos 18 anos."
       description: "Gira a sua conta e a sua informação clínica."
       account_name: "Nome de apresentação da conta"

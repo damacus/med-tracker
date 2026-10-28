@@ -23,12 +23,15 @@ use crate::models::{
 
 mod avatar;
 mod guardian_declarations;
+mod person_schedules;
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/auth")
         .add("/households", get(households))
         .add("/profile", get(profile).patch(update_profile))
+        .add("/schedules", get(person_schedules::index))
+        .add("/schedules/{id}", patch(person_schedules::update))
         .add("/guardian-declarations", get(guardian_declarations::index))
         .add(
             "/guardian-declarations/{id}",

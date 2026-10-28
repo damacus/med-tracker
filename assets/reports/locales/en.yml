@@ -2279,6 +2279,18 @@ en:
         metric_value: Schedule
   profiles:
     personal:
+      plans: "My treatment plans"
+      plans_description: "Your plans stay with you when you leave a household. Changes update only a current household connection."
+      plans_empty: "No personal treatment plans have been recorded."
+      origin_zone: "Plan time zone"
+      adopted_zone: "This existing plan uses the application time zone from when it was adopted. Check it before changing the timing."
+      plan_times: "Dose times (HH:MM, separated by commas)"
+      save_plan: "Save plan"
+      retire_plan: "Retire plan"
+      retire_confirmation: "This ends the plan. Recorded doses remain available."
+      retired: "This plan is retired."
+      invalid: "Check the dose, dates, times and named time zone, then try again."
+      stale: "This plan changed while the form was open. Review the current plan before saving."
       clinical_invalid: "Enter a name and a valid date of birth. Account holders must be at least 18."
       description: "Manage your account and your clinical information."
       account_name: "Account display name"

@@ -9,12 +9,15 @@ use sea_orm::DatabaseTransaction;
 
 mod avatar;
 mod history;
+mod person_schedules;
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/profile")
         .add("/", get(show).post(save))
         .add("/history", get(history::index))
+        .add("/schedules", get(person_schedules::index))
+        .add("/schedules/{id}", post(person_schedules::save))
         .add(
             "/avatar",
             get(avatar::show)

@@ -27,6 +27,13 @@ pub(crate) async fn with_dashboard_timezone<F: std::future::Future>(
 }
 
 fn zone(settings: Option<&serde_json::Value>) -> chrono_tz::Tz {
+    if let Some(zone) = settings
+        .and_then(|settings| settings.get("schedule_origin_time_zone"))
+        .and_then(Value::as_str)
+        .and_then(|zone| zone.parse().ok())
+    {
+        return zone;
+    }
     if let Ok(timezone) = DASHBOARD_TIMEZONE.try_with(|timezone| *timezone) {
         return timezone;
     }

@@ -379,7 +379,10 @@ pub async fn browser_preview(
         return Err(OperationError::NotFound);
     }
     access::require_person_access(tenant, source.person_id, PersonAccess::Record).await?;
-    let mut preview = preview_source(source, taken_at.date_naive());
+    let source_date = taken_at
+        .with_timezone(&source.zone.unwrap_or(zone))
+        .date_naive();
+    let mut preview = preview_source(source, source_date);
     preview.available &= taken_at.with_timezone(&Utc) <= Utc::now() + Duration::hours(1);
     Ok(preview)
 }

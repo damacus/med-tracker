@@ -17,6 +17,7 @@ pub(super) struct SourceRef {
     pub(super) id: i64,
     pub(super) person_id: i64,
     pub(super) medication_id: i64,
+    pub(super) person_schedule_id: Option<String>,
     portable_id: String,
 }
 
@@ -237,6 +238,7 @@ pub(crate) async fn serialize_schedules(
         .iter()
         .map(|record| SourceRef {
             id: record.id,
+            person_schedule_id: record.person_schedule_id.clone(),
             person_id: record.person_id,
             medication_id: record.medication_id,
             portable_id: record.portable_id.clone(),
@@ -254,6 +256,13 @@ fn schedule_row(
     associations: &SourceContext,
     reference_date: NaiveDate,
 ) -> Value {
+    let reference_date = record
+        .origin_time_zone
+        .as_deref()
+        .and_then(|zone| zone.parse::<chrono_tz::Tz>().ok())
+        .map_or(reference_date, |zone| {
+            Utc::now().with_timezone(&zone).date_naive()
+        });
     let active = record.active
         && record
             .start_date
@@ -262,6 +271,9 @@ fn schedule_row(
     json!({
         "id": record.id,
         "portable_id": record.portable_id,
+        "person_schedule_id": record.person_schedule_id,
+        "clinical_revision": record.clinical_revision,
+        "origin_time_zone": record.origin_time_zone,
         "person_id": record.person_id,
         "person_portable_id": associations.people.get(&record.person_id),
         "medication_id": record.medication_id,
@@ -296,6 +308,7 @@ pub(crate) async fn serialize_assignments(
         .iter()
         .map(|record| SourceRef {
             id: record.id,
+            person_schedule_id: None,
             person_id: record.person_id,
             medication_id: record.medication_id,
             portable_id: record.portable_id.clone(),
@@ -359,6 +372,7 @@ pub(crate) async fn dashboard_stock(
             .filter_map(|card| {
                 Some(SourceRef {
                     id: card["id"].as_i64()?,
+                    person_schedule_id: card["person_schedule_id"].as_str().map(str::to_owned),
                     person_id: card["person_id"].as_i64()?,
                     medication_id: card["medication_id"].as_i64()?,
                     portable_id: String::new(),

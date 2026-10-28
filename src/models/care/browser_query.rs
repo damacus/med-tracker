@@ -383,12 +383,10 @@ pub async fn detail(
         .order_by_asc(person_medication::Column::Id)
         .all(tenant.transaction())
         .await?;
-    let today = chrono::Utc::now().with_timezone(&zone).date_naive();
     let schedules = access::schedule_scope(tenant)
         .filter(schedule::Column::MedicationId.eq(stock.medication.id))
         .filter(schedule::Column::Active.eq(true))
-        .filter(schedule::Column::StartDate.lte(today))
-        .filter(schedule::Column::EndDate.gte(today))
+        .filter(crate::models::care::person_schedules::current_date_condition(zone))
         .order_by_asc(schedule::Column::Id)
         .all(tenant.transaction())
         .await?;
@@ -459,7 +457,12 @@ pub async fn detail(
         if !permission.0 {
             continue;
         }
-        let preview = doses::browser_schedule_preview(record.clone(), today);
+        let source_date = chrono::Utc::now()
+            .with_timezone(&crate::models::care::person_schedules::execution_zone(
+                &record, zone,
+            ))
+            .date_naive();
+        let preview = doses::browser_schedule_preview(record.clone(), source_date);
         let (Some(subject), Some(amount), Some(unit)) =
             (people.get(&record.person_id), preview.amount, preview.unit)
         else {

@@ -24,6 +24,10 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub notes: Option<String>,
     pub person_id: i64,
+    pub person_schedule_id: Option<String>,
+    pub clinical_revision: Option<i64>,
+    pub origin_time_zone: Option<String>,
+    pub execution_ended_at: Option<DateTime>,
     #[sea_orm(unique_key = "index_schedules_on_household_id_and_portable_id")]
     pub portable_id: String,
     pub retired_at: Option<DateTime>,

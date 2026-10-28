@@ -1934,6 +1934,18 @@ es:
     overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
   profiles:
     personal:
+      plans: "Mis planes de tratamiento"
+      plans_description: "Tus planes permanecen contigo cuando dejas un hogar. Los cambios solo actualizan una conexión actual con un hogar."
+      plans_empty: "No se han registrado planes de tratamiento personales."
+      origin_zone: "Zona horaria del plan"
+      adopted_zone: "Este plan existente usa la zona horaria de la aplicación en el momento de su adopción. Revísala antes de cambiar los horarios."
+      plan_times: "Horas de las dosis (HH:MM, separadas por comas)"
+      save_plan: "Guardar plan"
+      retire_plan: "Finalizar plan"
+      retire_confirmation: "Esto finaliza el plan. Las dosis registradas siguen disponibles."
+      retired: "Este plan ha finalizado."
+      invalid: "Revisa la dosis, las fechas, las horas y el nombre de la zona horaria e inténtalo de nuevo."
+      stale: "Este plan cambió mientras el formulario estaba abierto. Revisa el plan actual antes de guardar."
       clinical_invalid: "Introduce un nombre y una fecha de nacimiento válida. Los titulares de cuentas deben tener al menos 18 años."
       description: "Gestiona tu cuenta y tu información clínica."
       account_name: "Nombre visible de la cuenta"

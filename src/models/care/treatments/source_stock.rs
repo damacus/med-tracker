@@ -19,6 +19,19 @@ pub(super) async fn source_stock(
         return Ok(HashMap::new());
     }
     let household_id = context.scope().household_id;
+    let plans: HashMap<_, _> = crate::models::entities::person_schedule::Entity::find()
+        .filter(
+            crate::models::entities::person_schedule::Column::Id.is_in(
+                recordable_sources
+                    .iter()
+                    .filter_map(|source| source.person_schedule_id.clone()),
+            ),
+        )
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|plan| (plan.id.clone(), plan))
+        .collect();
     let all_stock = access::can_manage_household(context);
     let mut linked_stock: HashMap<i64, HashSet<i64>> = HashMap::new();
     if !all_stock {
@@ -98,6 +111,23 @@ pub(super) async fn source_stock(
                 &candidates,
                 linked_stock.get(&source.person_id),
             );
+            let ids = if let Some(id) = source.person_schedule_id.as_ref() {
+                let plan = plans.get(id)?;
+                ids.into_iter()
+                    .filter(|id| {
+                        candidates
+                            .iter()
+                            .find(|candidate| candidate.id == *id)
+                            .is_some_and(|candidate| {
+                                crate::models::care::person_schedules::stock_matches(
+                                    plan, candidate,
+                                )
+                            })
+                    })
+                    .collect()
+            } else {
+                ids
+            };
             Some((source.id, ids))
         })
         .collect())

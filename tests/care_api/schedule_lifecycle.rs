@@ -2,7 +2,7 @@ use super::contract::{assert_value, contract, resolve};
 use super::*;
 use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
-async fn create_schedule(app: &Application, token: &str) -> i64 {
+pub(super) async fn create_schedule(app: &Application, token: &str) -> i64 {
     let fixture_household_id = app.fixture.household.id;
     let fixture_person_id = app.fixture.account.person_id;
     let fixture_medication_id = app.fixture.medication.id;
@@ -11,6 +11,39 @@ async fn create_schedule(app: &Application, token: &str) -> i64 {
     response.json::<Value>().await.unwrap()["data"]["id"]
         .as_i64()
         .unwrap()
+}
+
+#[tokio::test]
+async fn person_owned_schedule_captures_canonical_identity_and_origin_zone() {
+    let app = Application::new().await;
+    let mut actor = app.fixture.account.clone().into_active_model();
+    actor.preferences = Set(json!({"time_zone":"Europe/London"}));
+    actor.update(&app.fixture.admin).await.unwrap();
+    let token = app.token().await;
+    let id = create_schedule(&app, &token).await;
+    let mut viewer = app.fixture.account.clone().into_active_model();
+    viewer.preferences = Set(json!({"time_zone":"Asia/Tokyo"}));
+    viewer.update(&app.fixture.admin).await.unwrap();
+    let response = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{}/schedules/{id}",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let body = response.json::<Value>().await.unwrap();
+    app.close().await;
+    assert!(
+        body["data"]["person_schedule_id"]
+            .as_str()
+            .is_some_and(|id| uuid::Uuid::parse_str(id).is_ok())
+    );
+    assert_eq!(body["data"]["origin_time_zone"], "Europe/London");
+    assert_eq!(body["data"]["clinical_revision"], 1);
 }
 
 #[tokio::test]

@@ -318,6 +318,18 @@ pub(super) fn parse_input(attributes: &Map<String, Value>) -> Result<ScheduleInp
         })
         .transpose()?;
     Ok(ScheduleInput {
+        origin_time_zone: attributes
+            .get("origin_time_zone")
+            .map(|value| {
+                value
+                    .as_str()
+                    .and_then(|value| value.parse().ok())
+                    .ok_or(InputFailure::Invalid(
+                        "origin_time_zone",
+                        "must be a named timezone",
+                    ))
+            })
+            .transpose()?,
         person_id,
         medication_id,
         source_dosage_option_id,

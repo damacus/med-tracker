@@ -119,7 +119,13 @@ pub async fn read(
         .map(|record| {
             (
                 record.id,
-                doses::browser_schedule_preview(record.clone(), today),
+                doses::browser_schedule_preview(
+                    record.clone(),
+                    now.with_timezone(&crate::models::care::person_schedules::execution_zone(
+                        record, zone,
+                    ))
+                    .date_naive(),
+                ),
             )
         })
         .collect();
