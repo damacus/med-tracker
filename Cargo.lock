@@ -1071,37 +1071,6 @@ dependencies = [
 
 [[package]]
 name = "axum_session"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "337130e61b1166b57510a481c76f585f08d9b78449c754c4d1d4155f56823ecc"
-dependencies = [
- "aes-gcm 0.11.1",
- "async-trait",
- "axum",
- "base64 0.23.1",
- "bytes",
- "chrono",
- "cookie",
- "dashmap",
- "forwarded-header-value",
- "futures",
- "hmac 0.13.0",
- "http 1.5.0",
- "http-body 1.1.0",
- "rand 0.10.3",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "thiserror 2.0.21",
- "tokio",
- "tower-layer",
- "tower-service",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "axum_session"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f407ea025dd02197de6c16cadebb44cf9e0f91f59eeb128be9ae2198d040f49"
@@ -1133,14 +1102,14 @@ dependencies = [
 
 [[package]]
 name = "axum_session_sqlx"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1fd24bba6aa5c7119ceed69142e121a62db038af1bd946795f358a8229f7516"
+checksum = "9c0f76db496495c800d345955c66bfddfcd32def10d3f83ae27b483980838061"
 dependencies = [
  "async-trait",
- "axum_session 0.21.0",
- "chrono",
+ "axum_session",
  "sqlx",
+ "time",
 ]
 
 [[package]]
@@ -4861,7 +4830,7 @@ dependencies = [
  "aws-sdk-s3",
  "axum",
  "axum_csrf",
- "axum_session 0.22.0",
+ "axum_session",
  "axum_session_sqlx",
  "base32",
  "base64 0.23.1",
@@ -4904,6 +4873,7 @@ dependencies = [
  "sha2 0.11.1",
  "slug",
  "tempfile",
+ "time",
  "tokio",
  "tower-http 0.7.1",
  "tracing",
