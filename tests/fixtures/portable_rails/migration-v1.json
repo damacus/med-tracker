@@ -1,0 +1,153 @@
+{
+  "format": "medtracker.portable.v1",
+  "scope": "single_person",
+  "exported_at": "2026-10-12T12:00:00Z",
+  "source_instance_id": "synthetic:rails-serializer",
+  "records": {
+    "people": [
+      {
+        "portable_id": "synthetic-rails-person-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "name": "Synthetic Dependent",
+        "email": "portable-fixture-migration-v1@example.test",
+        "date_of_birth": "1990-01-15",
+        "person_type": "dependent_adult",
+        "has_capacity": false,
+        "location_portable_ids": [],
+        "notification_preference_portable_id": "synthetic-rails-preference-migration-v1"
+      }
+    ],
+    "locations": [
+      {
+        "portable_id": "synthetic-rails-location-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "name": "Synthetic current cupboard",
+        "description": "Fixture storage label"
+      },
+      {
+        "portable_id": "synthetic-rails-old-location-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "name": "Synthetic former cupboard",
+        "description": "Historical dose location"
+      }
+    ],
+    "medications": [
+      {
+        "portable_id": "synthetic-rails-medication-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "location_portable_id": "synthetic-rails-location-migration-v1",
+        "name": "Synthetic medicine",
+        "friendly_name": "Fixture tablet",
+        "category": "Vitamin",
+        "description": "No real medicine or patient data",
+        "dose_amount": "1.0",
+        "dose_unit": "tablet",
+        "default_schedule_type": "daily",
+        "current_supply": "37.5",
+        "reorder_threshold": "5.5",
+        "barcode": "2000000000015",
+        "dmd_code": "synthetic-dmd",
+        "dmd_system": "synthetic",
+        "dmd_concept_class": "VMP"
+      }
+    ],
+    "dosage_options": [
+      {
+        "portable_id": "synthetic-rails-dosage-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "medication_portable_id": "synthetic-rails-medication-migration-v1",
+        "amount": "0.5",
+        "unit": "tablet",
+        "frequency": "daily",
+        "description": "Synthetic half tablet",
+        "default_for_adults": true,
+        "default_for_children": false,
+        "default_max_daily_doses": 2,
+        "default_min_hours_between_doses": "4.0",
+        "default_dose_cycle": "daily",
+        "current_supply": "8.5",
+        "reorder_threshold": "2.5"
+      }
+    ],
+    "schedules": [
+      {
+        "portable_id": "synthetic-rails-schedule-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "source_dosage_option_portable_id": "synthetic-rails-dosage-migration-v1",
+        "retired_at": null,
+        "person_portable_id": "synthetic-rails-person-migration-v1",
+        "medication_portable_id": "synthetic-rails-medication-migration-v1",
+        "dose_amount": "0.5",
+        "dose_unit": "tablet",
+        "frequency": "daily",
+        "dose_cycle": "daily",
+        "max_daily_doses": 2,
+        "min_hours_between_doses": 4,
+        "schedule_type": "daily",
+        "schedule_config": {},
+        "start_date": "2026-10-01",
+        "end_date": null,
+        "active": true,
+        "notes": "Synthetic care instructions"
+      }
+    ],
+    "person_medications": [
+      {
+        "portable_id": "synthetic-rails-assignment-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "source_dosage_option_portable_id": "synthetic-rails-dosage-migration-v1",
+        "retired_at": null,
+        "person_portable_id": "synthetic-rails-person-migration-v1",
+        "medication_portable_id": "synthetic-rails-medication-migration-v1",
+        "dose_amount": "0.5",
+        "dose_unit": "tablet",
+        "dose_cycle": "daily",
+        "max_daily_doses": 2,
+        "min_hours_between_doses": 4,
+        "administration_kind": "routine",
+        "active": true,
+        "notes": "Synthetic care instructions",
+        "position": 1
+      }
+    ],
+    "medication_takes": [
+      {
+        "portable_id": "synthetic-rails-take-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "client_uuid": "550e8400-e29b-41d4-a716-000000000001",
+        "source_type": "schedule",
+        "source_portable_id": "synthetic-rails-schedule-migration-v1",
+        "taken_at": "2026-10-10T08:15:00.123456Z",
+        "dose_amount": "0.5",
+        "dose_unit": "tablet",
+        "taken_from_medication_portable_id": "synthetic-rails-medication-migration-v1",
+        "taken_from_location_portable_id": "synthetic-rails-location-migration-v1"
+      }
+    ],
+    "notification_preferences": [
+      {
+        "portable_id": "synthetic-rails-preference-migration-v1",
+        "updated_at": "2026-10-12T12:00:00Z",
+        "etag": "\"c92931ad3bc867d1c97c7c0bf4eb5e66e42d72b04697a9e533d8783b58cf62da\"",
+        "person_portable_id": "synthetic-rails-person-migration-v1",
+        "enabled": true,
+        "dose_due_enabled": false,
+        "missed_dose_enabled": true,
+        "low_stock_enabled": false,
+        "private_text_enabled": true,
+        "morning_time": "08:15:00",
+        "afternoon_time": null,
+        "evening_time": "19:30:00",
+        "night_time": null
+      }
+    ]
+  }
+}

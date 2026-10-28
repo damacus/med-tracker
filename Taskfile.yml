@@ -50,6 +50,9 @@ includes:
     flatten: true
 
 tasks:
+  test:portable-rails-fixtures:
+    desc: Check synthetic portable fixtures against the read-only Rails serializers
+    cmds: [node --test scripts/test_portable_rails_fixture.mjs]
   whitespace:
     desc: Check staged, unstaged and untracked files without changing staging
     cmds:
