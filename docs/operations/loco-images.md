@@ -61,9 +61,11 @@ Native `run` values support quoted arguments but do not expand shell syntax.
 image. Keep production schedules as native tasks.
 
 The **Loco Linux images** workflow builds and checks amd64 and arm64 on native
-runners. Dispatch it **from main** with **publish** enabled to publish a
-multi-platform `ghcr.io/damacus/med-tracker-loco:sha-<commit>` image after both
-checks pass. Publication verifies checksums, image IDs and architectures of the
+runners. Every push to **main** publishes a multi-platform
+`ghcr.io/damacus/med-tracker-loco:sha-<full commit>` image and can update `beta`
+after the native image checks, scheduler acceptance and image-transfer checks pass.
+Dispatching **from main** with **publish** enabled also publishes; other
+dispatches only check the images. Publication verifies checksums, image IDs and architectures of the
 saved tested images, pushes those images, and joins their registry digests into
 the multi-platform manifest. The publication job has no source checkout, build
 or application execution. Pull requests and dispatches from other branches have
@@ -80,7 +82,20 @@ the deployment controller to use. A version tag alone does not prove the image
 has finished building; wait for the publication job to succeed.
 
 The existing Rails image publisher remains separate. Publishing an image does
-not deploy it.
+not deploy it. Builds run independently for each main push, so a queued push is
+not displaced by the next commit. Publication uses a separate concurrency group
+per full source SHA, with cancellation disabled. Main and release-please builds
+of the same commit cannot overwrite the SHA tags while the other publisher is
+recovering their digests. Different commits can publish independently. A separate Actions
+concurrency group serializes mutable `beta` promotion; only its latest pending
+promotion needs to run. Each promotion checks the current main tip through the
+GitHub API and skips older revisions. A failed or malformed ref lookup fails
+without changing `beta`. Rerunning an older commit can publish its SHA image but
+cannot move `beta` backwards. Promotion copies the published immutable manifest
+and verifies the resulting digest. The run summary records the source commit,
+immutable digest and whether beta was promoted or skipped. Pin that digest in GitOps. A build
+after merging a pipeline change uses that subsequent main commit, rather than
+the main commit observed before the change.
 
 ## Creating the 0.6 release candidate
 
@@ -116,10 +131,10 @@ build does not establish Rails-export compatibility or authorise a traffic switc
 selected by the application's stable CI policy, its Node version with `mise.toml`
 and the exact Node patch selected by app CI, and its Task version with app CI.
 The local check compares Node majors; CI additionally compares the resolved patch.
-The image uses Rust 1.99.1 and Node 24.22.1;
+The image uses Rust 1.99.1 and Node 26.12.1;
 `Cargo.toml`'s `rust-version` remains the minimum supported compiler. A new stable
 release makes the alignment check fail until the Rust image version and verified
-digest are updated. Node 24 and Task 3.52.0 match the application's selections.
+digest are updated. Node 26 and Task 3.52.0 match the application's selections.
 The build frontend, base images, BuildKit daemon and workflow actions are pinned
 by digest or commit. CI verifies Task 3.52.0 and Buildx 0.38.1 binaries against
 committed checksums before running them. BuildKit 0.34.1 runs without the default

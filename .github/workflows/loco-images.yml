@@ -1,6 +1,8 @@
 name: Loco Linux images
 
 on:
+  push:
+    branches: [main]
   pull_request:
     paths:
       - Dockerfile
@@ -43,7 +45,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: loco-images-${{ github.ref }}
+  group: loco-images-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -253,10 +255,15 @@ jobs:
           done
 
   publish:
-    if: github.repository == 'damacus/med-tracker' && github.ref == 'refs/heads/main' && inputs.publish && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && inputs.tag_name != ''))
+    if: github.repository == 'damacus/med-tracker' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
     needs: [checked_images, tooling]
     runs-on: ubuntu-26.04
     timeout-minutes: 20
+    concurrency:
+      group: loco-image-publish-${{ github.sha }}
+      cancel-in-progress: false
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
     permissions:
       contents: read
       packages: write
@@ -296,6 +303,7 @@ jobs:
           sudo install -m 0644 "$RUNNER_TEMP/docker-daemon.json" /etc/docker/daemon.json
           sudo systemctl restart docker
       - name: Publish tested images and assemble their manifest
+        id: publish
         env:
           IMAGE: ghcr.io/${{ github.repository }}-loco
           REVISION: ${{ github.sha }}
@@ -323,8 +331,51 @@ jobs:
           docker buildx imagetools create "${tags[@]}" "${sources[@]}"
           digest=$(docker buildx imagetools inspect "$IMAGE:sha-$REVISION" --format '{{.Manifest.Digest}}')
           [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-          printf 'Deployable image: %s@%s\n' "$IMAGE" "$digest" >> "$GITHUB_STEP_SUMMARY"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          printf 'Source commit: %s\n\nImmutable image: %s@%s\n\nTag: sha-%s\n' "$REVISION" "$IMAGE" "$digest" "$REVISION" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$RELEASE_VERSION" ]; then
             test "$(docker buildx imagetools inspect "$IMAGE:$RELEASE_VERSION" --format '{{.Manifest.Digest}}')" = "$digest"
             printf 'Release tag: %s:%s\n' "$IMAGE" "$RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  beta:
+    name: Promote current main beta
+    needs: publish
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    concurrency:
+      group: loco-image-beta
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Install verified Buildx release
+        run: |
+          curl --fail --silent --show-error --location --proto =https --tlsv1.2 https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-amd64 --output "$RUNNER_TEMP/docker-buildx"
+          echo "e25d5cd675092bb5d1d03632fdc46cdf3fede7b514dc5f023a105e00d3ce5ad4  $RUNNER_TEMP/docker-buildx" | sha256sum --check --strict
+          directory="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
+          mkdir -p "$directory"
+          install -m 0755 "$RUNNER_TEMP/docker-buildx" "$directory/docker-buildx"
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Promote current main beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ghcr.io/${{ github.repository }}-loco
+          REVISION: ${{ github.sha }}
+          DIGEST: ${{ needs.publish.outputs.digest }}
+        run: |
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          [[ "$current" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid main revision' >&2; exit 1; }
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo 'Invalid image digest' >&2; exit 1; }
+          if [[ "$current" != "$REVISION" ]]; then
+            printf 'Beta unchanged: source %s is no longer current main (%s).\n' "$REVISION" "$current" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          docker buildx imagetools create --tag "$IMAGE:beta" "$IMAGE@$DIGEST"
+          test "$(docker buildx imagetools inspect "$IMAGE:beta" --format '{{.Manifest.Digest}}')" = "$DIGEST"
+          printf 'Beta updated: %s@%s (source %s).\n' "$IMAGE" "$DIGEST" "$REVISION" >> "$GITHUB_STEP_SUMMARY"

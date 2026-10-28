@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { runInNewContext } from "node:vm";
 import test from "node:test";
 import { releaseVersion } from "./loco_image_release.mjs";
 
@@ -67,7 +68,7 @@ if (args[0] === "image" && args[1] === "load") {
   const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", script], {
     cwd: directory,
     encoding: "utf8",
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, IMAGE: "ghcr.io/damacus/med-tracker-loco", REVISION: revision, RELEASE_VERSION: release, GITHUB_STEP_SUMMARY: join(directory, "summary"), CALLS: join(directory, "calls"), ARCH_FILE: join(directory, "arch"), WRONG_ARCH: wrongArchitecture ? "1" : "" },
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, IMAGE: "ghcr.io/damacus/med-tracker-loco", REVISION: revision, RELEASE_VERSION: release, GITHUB_STEP_SUMMARY: join(directory, "summary"), GITHUB_OUTPUT: join(directory, "outputs"), CALLS: join(directory, "calls"), ARCH_FILE: join(directory, "arch"), WRONG_ARCH: wrongArchitecture ? "1" : "" },
   });
   const calls = existsSync(join(directory, "calls")) ? readFileSync(join(directory, "calls"), "utf8").trim().split("\n").map((line) => JSON.parse(line)) : [];
   return { result, calls, directory };
@@ -83,6 +84,7 @@ test("RC publication loads checked images and tags their shared manifest without
   assert.equal(manifest.filter((arg) => arg.includes("@sha256:")).length, 2);
   assert.doesNotMatch(JSON.stringify(calls), /:latest|"build"/);
   assert.match(readFileSync(join(directory, "summary"), "utf8"), /med-tracker-loco@sha256:d{64}/);
+  assert.equal(readFileSync(join(directory, "outputs"), "utf8"), `digest=sha256:${"d".repeat(64)}\n`);
 });
 
 test("manual publication creates only the SHA manifest", (t) => {
@@ -123,6 +125,9 @@ test("publishing retains architecture and scheduler checks and exact source chec
   assert.deepEqual(image.jobs.checked_images.needs, ["image", "scheduler_acceptance"]);
   assert.ok(image.jobs.publish.needs.includes("checked_images"));
   assert.ok(image.jobs.publish.needs.includes("tooling"));
+  assert.equal(image.jobs.publish.outputs.digest, "${{ steps.publish.outputs.digest }}");
+  assert.equal(image.jobs.beta.needs, "publish");
+  assert.equal(image.jobs.beta.steps.find((step) => step.name === "Promote current main beta").env.DIGEST, "${{ needs.publish.outputs.digest }}");
   for (const job of Object.values(image.jobs)) {
     for (const step of job.steps ?? []) {
       if (step.uses?.startsWith("actions/checkout@")) {
@@ -134,4 +139,15 @@ test("publishing retains architecture and scheduler checks and exact source chec
   assert.match(publish.run, /RELEASE_VERSION/);
   assert.doesNotMatch(publish.run, /:latest|docker build(?: |$)/);
   assert.equal(image.jobs.publish.steps.some((step) => step.uses?.startsWith("actions/checkout@")), false);
+});
+
+test("main and RC publishers for one commit share a serial publication group", () => {
+  const concurrency = workflow("loco-images").jobs.publish.concurrency;
+  assert.ok(concurrency, "same-commit publication must be serialized");
+  assert.equal(concurrency["cancel-in-progress"], false);
+  const evaluate = (sha, runId, tag) => concurrency.group.replace(/\$\{\{ (.+?) \}\}/g, (_, expression) => runInNewContext(expression, {
+    github: { sha, run_id: runId, event_name: "push", ref: "refs/heads/main" }, inputs: { tag_name: tag },
+  }));
+  assert.equal(evaluate(revision, 1, ""), evaluate(revision, 2, "v0.6.0-rc.1"));
+  assert.notEqual(evaluate(revision, 1, ""), evaluate("b".repeat(40), 2, ""));
 });
