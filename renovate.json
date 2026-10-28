@@ -12,6 +12,10 @@
       "matchManagers": ["cargo"],
       "matchDepNames": ["better-auth", "better-auth-core", "better-auth-seaorm"],
       "groupName": "Better Auth Rust"
+    },
+    {
+      "matchManagers": ["npm"],
+      "skipInstalls": false
     }
   ],
   "lockFileMaintenance": {
