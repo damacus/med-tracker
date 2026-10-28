@@ -69,8 +69,48 @@ the multi-platform manifest. The publication job has no source checkout, build
 or application execution. Pull requests and dispatches from other branches have
 no package write permission and cannot publish. Transferred image archives
 expire after one day.
+The release-please workflow also calls this workflow after creating a release.
+It checks out the exact release tag and verifies that the tag's commit matches
+the workflow commit and its version matches the root Cargo package. It builds
+and checks fresh images from that source, then publishes the tested images with
+both their SHA tag and the full release version, for example
+`ghcr.io/damacus/med-tracker-loco:0.6.0-rc.1`. No `latest`, minor or major alias is
+published. The workflow summary records the verified multi-platform digest for
+the deployment controller to use. A version tag alone does not prove the image
+has finished building; wait for the publication job to succeed.
+
 The existing Rails image publisher remains separate. Publishing an image does
 not deploy it.
+
+## Creating the 0.6 release candidate
+
+Release-please uses the root Rust package, not `rails/lib/med_tracker/version.rb`.
+The one-time `release-as: 0.6.0-rc.1` setting selects the first candidate and
+`prerelease: true` marks the GitHub release as a prerelease. The manifest records
+the last released version; do not advance it manually to request a release.
+
+1. Merge the release configuration and workflow change through the normal review
+   process. Release-please updates its pending release PR to `0.6.0-rc.1`, including
+   the Cargo files, changelog and manifest. Check that it leaves Rails untouched.
+2. Review and merge that generated release PR. Release-please creates
+   `v0.6.0-rc.1`, then calls the checked Rust image publisher. Both architectures,
+   the production boot checks and native scheduler acceptance must pass before
+   publication can run.
+3. Record the image digest from the successful publication summary. Use that
+   digest for server, worker, scheduler and schema setup through the deployment's
+   existing GitOps controller. Follow the [fresh rollout notes](loco-cutover-runbook.md)
+   for the separate database, credentials and runtime identity.
+4. Remove or advance the one-time `release-as` override before the next release.
+   For another candidate, set the explicit version, such as `0.6.0-rc.2`, while
+   retaining `prerelease: true`. For the stable release, select `0.6.0` and set
+   `prerelease: false`. Do not reuse a candidate tag for changed source.
+
+For the first RC transfer, provision a separate Rust installation with a fresh
+database and new accounts, retaining Rails until the transferred household has
+been checked. Clinical transfer uses the export, dry-run and import APIs and
+remains subject to [the compatibility work in #2702](https://github.com/damacus/med-tracker/issues/2702).
+The release workflow does not export or import live data. A successful image
+build does not establish Rails-export compatibility or authorise a traffic switch.
 
 `task image:check` compares the image's pinned Rust compiler with the compiler
 selected by the application's stable CI policy, its Node version with `mise.toml`

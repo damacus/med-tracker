@@ -62,6 +62,9 @@ tasks:
     cmds:
       - node --test scripts/test_loco_image_tooling.mjs
       - node scripts/check_loco_image_tooling.mjs
+  image:release:check:
+    desc: Check release versions, exact source selection and publication wiring
+    cmds: [node --test scripts/test_loco_image_release.mjs scripts/test_loco_image_smoke.mjs]
   image:build:
     desc: Build the root Loco release image for the local architecture
     cmds:
@@ -72,7 +75,7 @@ tasks:
     env:
       LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
       LOCO_IMAGE_SUBNET: '{{.LOCO_IMAGE_SUBNET | default ""}}'
-    cmds: [python3 scripts/test_loco_image.py]
+    cmds: [node --test scripts/test_loco_image.mjs]
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]
