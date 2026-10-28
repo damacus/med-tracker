@@ -2,6 +2,175 @@ use super::*;
 use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
 #[tokio::test]
+async fn exact_stock_choices_and_take_reject_different_product_without_mutation() {
+    use med_tracker::models::_entities::{api_change_events, medications};
+    use sea_orm::prelude::Decimal;
+
+    let app = Application::new().await;
+    let household_id = app.fixture.household.id;
+    let token = app.token().await;
+    let mut original = app.fixture.medication.clone().into_active_model();
+    original.dmd_system = Set(Some("https://dmd.nhs.uk".into()));
+    original.dmd_concept_class = Set(Some("VMP".into()));
+    original.dmd_code = Set(Some("123456".into()));
+    let original = original.update(&app.fixture.admin).await.unwrap();
+    let mut incompatible = app
+        .fixture
+        .medication(original.name.as_deref().unwrap(), Decimal::TEN)
+        .await
+        .into_active_model();
+    incompatible.dmd_system = Set(original.dmd_system.clone());
+    incompatible.dmd_concept_class = Set(original.dmd_concept_class.clone());
+    incompatible.dmd_code = Set(Some("654321".into()));
+    let incompatible = incompatible.update(&app.fixture.admin).await.unwrap();
+    let mut compatible = app
+        .fixture
+        .medication("Different display name", Decimal::TEN)
+        .await
+        .into_active_model();
+    compatible.dmd_system = Set(original.dmd_system.clone());
+    compatible.dmd_concept_class = Set(original.dmd_concept_class.clone());
+    compatible.dmd_code = Set(original.dmd_code.clone());
+    let compatible = compatible.update(&app.fixture.admin).await.unwrap();
+    let schedule_id = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/{household_id}/schedules",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .json(&schedule_body(&app))
+        .send()
+        .await
+        .unwrap()
+        .json::<Value>()
+        .await
+        .unwrap()["data"]["id"]
+        .as_i64()
+        .unwrap();
+    let before = app.fixture.effect().await;
+    let versions_before = versions::Entity::find()
+        .filter(versions::Column::HouseholdId.eq(household_id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let changes_before = api_change_events::Entity::find()
+        .filter(api_change_events::Column::HouseholdId.eq(household_id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let endpoint = format!(
+        "{}/api/v1/households/{household_id}/medication_takes",
+        app.origin
+    );
+    let mut body = shared_take_body(&app.fixture);
+    body["medication_take"]["source_type"] = json!("schedule");
+    body["medication_take"]["source_id"] = json!(schedule_id.to_string());
+    body["medication_take"]["taken_from_medication_id"] = json!(incompatible.id);
+    let rejected = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    let rejected_status = rejected.status().as_u16();
+    let rejected_body = rejected.json::<Value>().await.unwrap();
+    let after = app.fixture.effect().await;
+    let versions_after = versions::Entity::find()
+        .filter(versions::Column::HouseholdId.eq(household_id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let changes_after = api_change_events::Entity::find()
+        .filter(api_change_events::Column::HouseholdId.eq(household_id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let incompatible_after = medications::Entity::find_by_id(incompatible.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(rejected_status, 422, "{rejected_body}");
+    assert_eq!(before, after);
+    assert_eq!(
+        (versions_before, changes_before),
+        (versions_after, changes_after)
+    );
+    assert_eq!(
+        incompatible.current_supply,
+        incompatible_after.current_supply
+    );
+    let rejected_requests = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::HouseholdId.eq(household_id))
+        .filter(security_audit_events::Column::EventType.eq("api.request"))
+        .filter(
+            QueryExpr::col((
+                security_audit_events::Entity,
+                security_audit_events::Column::Metadata,
+            ))
+            .binary(
+                sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField,
+                QueryExpr::val("status"),
+            )
+            .eq(QueryExpr::val("422")),
+        )
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(rejected_requests, 1);
+
+    let detail = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{household_id}/schedules/{schedule_id}",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json::<Value>()
+        .await
+        .unwrap();
+    let eligible = detail["data"]["eligible_stock_medication_ids"]
+        .as_array()
+        .unwrap();
+    assert_eq!(eligible.len(), 2, "{detail}");
+    assert!(eligible.contains(&json!(original.id)));
+    assert!(eligible.contains(&json!(compatible.id)));
+    body["medication_take"]["taken_from_medication_id"] = json!(compatible.id);
+    let accepted = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(accepted.status().as_u16(), 201);
+    let replayed = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replayed.status().as_u16(), 200);
+    let compatible_after = medications::Entity::find_by_id(compatible.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(compatible_after.current_supply, Some(Decimal::new(8, 0)));
+    assert_eq!(app.fixture.effect().await, (1, "10.00".into(), 1, 1));
+    app.close().await;
+}
+
+#[tokio::test]
 // Whole-run exclusive: PostgreSQL trigger functions, trigger installation and sequence privileges are unsupported by SeaORM Schema and SeaQuery Table/Query builders. The raw DDL is limited to this case and removed before closing.
 async fn treatment_retirement_audit_rejection_rolls_back_soft_update() {
     use med_tracker::models::{

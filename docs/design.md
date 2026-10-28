@@ -89,6 +89,17 @@ inventory tracking is enabled and retains the selected source on the historical
 record. A valid take may use untracked inventory without changing a quantity.
 It is the sole normal creator of dose history.
 
+Stock choices and dose submission use the same exact identity rule. The concrete
+inventory row remains usable without catalogue metadata. A different row requires
+equal, complete NHS dm+d system, product class (`VMP`, `AMP`, `VMPP` or `AMPP`)
+and code, plus equal default dose amounts and an explicit, equal stock unit.
+Those product concepts identify medicine, formulation and strength; broader
+`VTM`, trade-family and unknown catalogue concepts cannot establish a match.
+The inventory `portable_id` identifies a stock row, not a medicinal product.
+The medication `dose_amount` is an administration default, not chemical strength.
+Names, descriptive dose text and unit conversions never establish a match.
+Catalogue class semantics follow the [NHS dm+d model](https://digital.nhs.uk/services/terminology-and-classifications/dm-d).
+
 `MedicationAdministration::RestoreHistory` restores immutable portable history
 without replaying stock changes. `MedicationAdministration::HistoricalDataMigration`
 repairs only legacy household and location metadata. These explicit exceptions

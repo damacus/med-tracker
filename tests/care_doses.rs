@@ -172,9 +172,14 @@ impl Fixture {
 }
 
 async fn medication(scenario: &Scenario, supply: i64) -> medications::Model {
-    scenario
+    let mut medication = scenario
         .medication("Synthetic tablets", Decimal::new(supply, 0))
         .await
+        .into_active_model();
+    medication.dmd_system = Set(Some("https://dmd.nhs.uk".into()));
+    medication.dmd_concept_class = Set(Some("VMP".into()));
+    medication.dmd_code = Set(Some("123456".into()));
+    medication.update(&scenario.admin).await.unwrap()
 }
 
 async fn assignment(
