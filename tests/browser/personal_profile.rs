@@ -158,12 +158,14 @@ async fn household_free_profile_preserves_editing_and_personal_history() {
                     .await
                     .unwrap();
                 expect(page.get_by_role(AriaRole::Heading, named("Synthetic tablets"))).to_be_visible().await.unwrap();
-                page.screenshot_to_file(
-                    &directory.join("history-mobile.png"),
-                    ScreenshotOptions::builder().full_page(true).build(),
-                )
-                .await
-                .unwrap();
+                for (size, width, height) in [("desktop", 1440, 1000), ("mobile", 390, 844)] {
+                    page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                    assert!(!page.evaluate::<(), bool>("() => document.documentElement.scrollWidth > innerWidth", None).await.unwrap());
+                    page.screenshot_to_file(
+                        &directory.join(format!("history-{size}.png")),
+                        ScreenshotOptions::builder().full_page(true).build(),
+                    ).await.unwrap();
+                }
             })
         },
     )

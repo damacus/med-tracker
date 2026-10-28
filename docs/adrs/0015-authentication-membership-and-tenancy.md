@@ -85,6 +85,15 @@ self identity. Historical reads preserve original attribution and require a
 separate account-owned clinical-access audit, without inventing a household.
 These are implementation constraints, not evidence that the reader is complete.
 
+The browser reader uses `/profile/history`; account-bound first-party mobile
+OAuth uses `/api/v1/auth/profile/history` with the same narrow taken-dose reader.
+Both use bounded taken-time and ID pagination. Successful reads commit their
+account-owned audit before releasing records. Refused reads identify the actor
+only when the server has proved their identity; otherwise the refusal has no
+claimed actor. Do not retain additional session records solely to identify
+requests made after sign-out. This decision does not introduce the deferred
+download product described in ADR 0017.
+
 ## Consequences
 
 Native authentication tables use restricted runtime grants and the native store's

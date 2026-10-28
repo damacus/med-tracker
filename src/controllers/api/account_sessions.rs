@@ -23,12 +23,14 @@ use crate::models::{
 
 mod avatar;
 mod guardian_declarations;
+mod personal_history;
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/auth")
         .add("/households", get(households))
         .add("/profile", get(profile).patch(update_profile))
+        .add("/profile/history", get(personal_history::index))
         .add("/guardian-declarations", get(guardian_declarations::index))
         .add(
             "/guardian-declarations/{id}",
@@ -338,17 +340,21 @@ fn failure(status: StatusCode, code: &str, message: &str, request_id: &str) -> R
 }
 
 fn reply(status: StatusCode, body: Option<Value>, request_id: &str) -> Response {
-    let mut response = match body {
+    let response = match body {
         Some(body) => (status, Json(body)).into_response(),
         None => status.into_response(),
     };
+    response_headers(response, request_id)
+}
+
+fn response_headers(mut response: Response, request_id: &str) -> Response {
     response
         .headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     if let Ok(value) = HeaderValue::from_str(request_id) {
         response.headers_mut().insert("x-request-id", value);
     }
-    if status == StatusCode::UNAUTHORIZED {
+    if response.status() == StatusCode::UNAUTHORIZED {
         response
             .headers_mut()
             .insert(header::WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));
