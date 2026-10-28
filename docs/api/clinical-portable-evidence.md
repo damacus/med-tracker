@@ -41,6 +41,13 @@ Encryption uses random salts/nonces, so regeneration changes ciphertext;
 The passphrase is the deliberately public synthetic test value
 `synthetic portable secret`. Never use it for actual records.
 
+The Rust acceptance module checks every recorded source hash during the existing
+API CI job, without requiring Ruby or Rails in CI. A source/configuration/lockfile
+change fails that check until the synthetic fixtures are reviewed and regenerated.
+The Docker build context explicitly allowlists those eight read-only inputs so
+the same check also runs through the container test tasks. The Ruby task above
+additionally reproduces the serializer output and decrypts the committed envelopes.
+
 | Fixture | Actual retained Rails path | Contents / expected Rust handling |
 |---|---|---|
 | `migration-v1` | `Exporter#payload` and `Encryptor.encrypt` | Eight base collections; empty person-location links. |
