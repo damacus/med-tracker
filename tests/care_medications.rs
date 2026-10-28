@@ -8,7 +8,7 @@ use med_tracker::models::{
     care::medications::{self, AdjustStock, Command, Restock, ScalarPrecondition},
     entities::{
         api_change_event, api_tombstone, dosage, grant, medication, medication_take, membership,
-        person_medication, user, version,
+        person_medication, version,
     },
     errors::OperationError,
 };
@@ -25,7 +25,6 @@ struct Fixture {
     scope: HouseholdScope,
     location_id: i64,
     medication_id: i64,
-    user_id: i64,
     submission_id: String,
 }
 
@@ -47,13 +46,6 @@ impl Fixture {
         let scenario = Scenario::new().await;
         let scope = scenario.scope();
         let (location_id, medication_id) = seed_medication(&scenario, Decimal::new(10, 0)).await;
-        let user_id = user::Entity::find()
-            .filter(user::Column::PersonId.eq(scenario.account.person_id))
-            .one(&scenario.admin)
-            .await
-            .unwrap()
-            .unwrap()
-            .id;
         let now = chrono::Utc::now().naive_utc();
         grant::ActiveModel {
             household_id: Set(scenario.household.id),
@@ -73,7 +65,6 @@ impl Fixture {
             scope,
             location_id,
             medication_id,
-            user_id,
             submission_id: uuid::Uuid::new_v4().to_string(),
         }
     }
@@ -293,7 +284,7 @@ async fn stock_adjustment_atomically_records_quantity_audit_and_change() {
     assert_eq!(previous_supply(&row), "10.00");
     assert_eq!(
         row.whodunnit.as_deref().unwrap(),
-        fixture.user_id.to_string()
+        fixture.account.id.to_string()
     );
     assert_eq!(row.request_id.as_deref().unwrap(), fixture.scope.request_id);
     let context = row.audit_context;
@@ -550,7 +541,7 @@ async fn stock_adjustment_portable_id_and_trusted_provenance_preserve_audit() {
     let row = fixture.audits().one(&fixture.admin).await.unwrap().unwrap();
     let audit = row.audit_context;
     assert_eq!(audit["actor_account_id"], fixture.account.id);
-    assert_eq!(audit["actor_user_id"], fixture.user_id);
+    assert_eq!(audit["actor_person_id"], fixture.account.person_id);
     assert_eq!(audit["actor_membership_id"], fixture.membership.id);
     assert_eq!(audit["household_id"], fixture.household.id);
     assert_eq!(audit["request_id"], fixture.scope.request_id);

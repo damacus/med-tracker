@@ -34,10 +34,14 @@ endpoints to existing pages; it must retain CSRF, origin and authentication chec
 checks and all response cookies.
 
 Map the native User to the canonical `accounts` table and native provider Account
-to `auth_credentials`. Retain the existing `users` row only as the clinical profile
-required by current care foreign keys and access queries, without credentials or
-authentication authority. This change does not complete the wider clinical
-identity refactor.
+to `auth_credentials`. Each account identifies exactly one Person directly.
+The fresh Rust schema has no separate `users` or clinical-profile table.
+Account activation belongs to `accounts.active`; sign-in, retained sessions,
+API access, guardian eligibility and support approvals check that state.
+Clinical and household audit attributes the Account and Person, with the Account
+ID in `whodunnit`. Member administration identifies a Membership directly.
+This fresh-schema cleanup is required before 0.6 and requires no data migration
+or compatibility layer. Existing populated databases must not be reset or adopted.
 
 Preserve required passkey user verification through the public native
 after-verification hooks, using the library's verified metadata. Request required

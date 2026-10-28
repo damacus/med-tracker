@@ -1,6 +1,7 @@
 use super::*;
 use crate::models::care::medications::decimal_string;
-use crate::models::entities::platform_admin;
+use crate::models::entities::{membership, person, platform_admin};
+use sea_orm::{QuerySelect, QueryTrait};
 
 pub struct SupportEntry {
     pub id: i64,
@@ -250,7 +251,27 @@ async fn admin_record(
         .map_err(|_| OperationError::Unavailable)
 }
 
-const OWNER_MEMBER: &str = "SELECT m.id,m.permissions_version FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id JOIN public.people p ON p.id=m.person_id JOIN public.users u ON u.person_id=p.id WHERE a.id=$1 AND m.household_id=$2 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active ORDER BY m.id LIMIT 1";
+fn owner_memberships(account_id: i64) -> sea_orm::Select<membership::Entity> {
+    let accounts = account::Entity::find()
+        .select_only()
+        .column(account::Column::PersonId)
+        .filter(account::Column::Id.eq(account_id))
+        .filter(account::Column::Status.eq(2))
+        .filter(account::Column::Active.eq(true))
+        .into_query();
+    let adults = person::Entity::find()
+        .select_only()
+        .column(person::Column::Id)
+        .filter(person::Column::PersonType.eq(0))
+        .filter(person::Column::HasCapacity.eq(true))
+        .into_query();
+    membership::Entity::find()
+        .filter(membership::Column::PersonId.in_subquery(accounts))
+        .filter(membership::Column::PersonId.in_subquery(adults))
+        .filter(membership::Column::Role.eq("owner"))
+        .filter(membership::Column::Status.eq("active"))
+        .filter(membership::Column::RevokedAt.is_null())
+}
 
 async fn owner_membership(
     transaction: &DatabaseTransaction,
@@ -259,25 +280,16 @@ async fn owner_membership(
     locked: bool,
 ) -> Result<Option<(i64, i32)>, OperationError> {
     account_scope(transaction, account_id).await?;
-    let sql = if locked {
-        format!("{OWNER_MEMBER} FOR UPDATE OF m")
-    } else {
-        OWNER_MEMBER.to_owned()
-    };
-    transaction
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            &sql,
-            [account_id.into(), household_id.into()],
-        ))
+    let mut query = owner_memberships(account_id)
+        .filter(membership::Column::HouseholdId.eq(household_id))
+        .order_by_asc(membership::Column::Id);
+    if locked {
+        query = query.lock_exclusive();
+    }
+    Ok(query
+        .one(transaction)
         .await?
-        .map(|row| {
-            Ok((
-                get::<i64>(&row, "id")?,
-                get::<i32>(&row, "permissions_version")?,
-            ))
-        })
-        .transpose()
+        .map(|row| (row.id, row.permissions_version)))
 }
 
 async fn approval_current(
@@ -291,20 +303,16 @@ async fn approval_current(
         return Ok(false);
     };
     household_scope(transaction, session.household_id).await?;
-    transaction
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT EXISTS(SELECT 1 FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id JOIN public.people p ON p.id=m.person_id JOIN public.users u ON u.person_id=p.id WHERE m.id=$1 AND m.household_id=$2 AND a.id=$3 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND m.permissions_version=$4 AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active) AS present",
-            [
-                membership_id.into(),
-                session.household_id.into(),
-                session.approved_by_account_id.into(),
-                version.into(),
-            ],
-        ))
+    let Some(account_id) = session.approved_by_account_id else {
+        return Ok(false);
+    };
+    Ok(owner_memberships(account_id)
+        .filter(membership::Column::Id.eq(membership_id))
+        .filter(membership::Column::HouseholdId.eq(session.household_id))
+        .filter(membership::Column::PermissionsVersion.eq(version))
+        .one(transaction)
         .await?
-        .ok_or(OperationError::Unavailable)
-        .and_then(|row| get::<bool>(&row, "present"))
+        .is_some())
 }
 
 pub async fn page(
@@ -366,16 +374,13 @@ async fn owned_households(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
 ) -> Result<Vec<i64>, OperationError> {
-    transaction
-        .query_all_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT m.household_id FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id JOIN public.people p ON p.id=m.person_id JOIN public.users u ON u.person_id=p.id WHERE a.id=$1 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active ORDER BY m.household_id",
-            [actor_account_id.into()],
-        ))
+    Ok(owner_memberships(actor_account_id)
+        .order_by_asc(membership::Column::HouseholdId)
+        .all(transaction)
         .await?
-        .iter()
-        .map(|row| get::<i64>(row, "household_id"))
-        .collect()
+        .into_iter()
+        .map(|row| row.household_id)
+        .collect())
 }
 
 pub async fn support_link(
@@ -463,7 +468,7 @@ pub async fn request(
         "platform/support/requested",
         json!({"household_id":household_id,"platform_admin_id":actor.admin.id,"reason":reason}),
         &meta
-            .administrator(actor_account_id, actor.user_id)
+            .administrator(actor_account_id, actor.person_id)
             .for_household(household_id),
     )
     .await
@@ -525,7 +530,7 @@ pub async fn approve(
     else {
         return Err(OperationError::Forbidden);
     };
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    let person_id = access::verify_account_actor(transaction, actor_account_id).await?;
     if !household_open(transaction, session.household_id).await? {
         return Err(invalid("The household is not open."));
     }
@@ -552,7 +557,7 @@ pub async fn approve(
         support_id,
         "platform/support/approved",
         json!({"household_id":session.household_id,"approved_by_membership_id":membership_id}),
-        &meta.owner(actor_account_id, user_id, session.household_id),
+        &meta.owner(actor_account_id, person_id, session.household_id),
     )
     .await?;
     Ok(SupportDecision::Applied)
@@ -617,7 +622,7 @@ pub async fn activate(
         "platform/support/activated",
         json!({"household_id":session.household_id,"platform_admin_id":actor.admin.id}),
         &meta
-            .administrator(actor_account_id, actor.user_id)
+            .administrator(actor_account_id, actor.person_id)
             .for_household(session.household_id),
     )
     .await?;
@@ -633,7 +638,7 @@ pub async fn end(
     account_scope(transaction, actor_account_id).await?;
     access::verify_account_actor(transaction, actor_account_id).await?;
     let session = session_row(transaction, support_id, true).await?;
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    let person_id = access::verify_account_actor(transaction, actor_account_id).await?;
     let account = target_account(transaction, actor_account_id).await?;
     let admin = admin_record(transaction, actor_account_id).await?;
     let administrator = admin
@@ -654,9 +659,9 @@ pub async fn end(
         return Err(OperationError::Forbidden);
     }
     let audit = if administrator {
-        meta.administrator(actor_account_id, user_id)
+        meta.administrator(actor_account_id, person_id)
     } else {
-        meta.owner(actor_account_id, user_id, session.household_id)
+        meta.owner(actor_account_id, person_id, session.household_id)
     }
     .for_household(session.household_id);
     if session.ended_at.is_none() {

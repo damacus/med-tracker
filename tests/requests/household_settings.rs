@@ -166,7 +166,7 @@ async fn settings_reads_scope_three_credential_kinds_and_validate_responses() {
     let foreign_id = fixture.foreign.household.id;
     let account_id = fixture.account.id;
     let membership_id = fixture.membership.id;
-    let user_id = fixture.user.id;
+    let person_id = fixture.account.person_id;
     let slug = fixture.household.slug.clone();
     let session = fixture.credential("profile-session");
     let app = fixture.credential("profile-app");
@@ -242,7 +242,7 @@ async fn settings_reads_scope_three_credential_kinds_and_validate_responses() {
             );
             assert_eq!(audit["metadata"]["http_method"], "GET");
             assert_eq!(audit["metadata"]["outcome"], "success");
-            assert_eq!(audit["context"]["actor_user_id"], user_id);
+            assert_eq!(audit["context"]["actor_person_id"], person_id);
             assert_eq!(
                 audit["context"]["request_id"],
                 reply.request_id.as_deref().unwrap()
@@ -461,7 +461,7 @@ async fn settings_patch_and_put_save_allowed_fields_without_replacing_slug_or_om
 
     let account_id = fixture.account.id;
     let membership_id = fixture.membership.id;
-    let user_id = fixture.user.id;
+    let person_id = fixture.account.person_id;
 
     let session = fixture.credential("profile-session");
     let app = fixture.credential("profile-app");
@@ -583,7 +583,7 @@ async fn settings_patch_and_put_save_allowed_fields_without_replacing_slug_or_om
             for request in events.iter().filter(|event| {
                 event.request_id == row.request_id && event.event_type == "api.request"
             }) {
-                proofs.push(json!({"request_id":row.request_id,"membership":row.actor_membership_id,"user":row.whodunnit,
+                proofs.push(json!({"request_id":row.request_id,"membership":row.actor_membership_id,"whodunnit":row.whodunnit,
                     "before":serde_json::from_str::<Value>(row.object.as_deref().unwrap()).unwrap(),
                     "changes":serde_json::from_str::<Value>(row.object_changes.as_deref().unwrap()).unwrap(),
                     "version_context":row.audit_context,"account":audit.actor_account_id,"audit_membership":audit.actor_membership_id,
@@ -611,7 +611,7 @@ async fn settings_patch_and_put_save_allowed_fields_without_replacing_slug_or_om
         assert_eq!(proof["membership"], membership_id);
         assert_eq!(proof["audit_membership"], membership_id);
         assert_eq!(proof["account"], account_id);
-        assert_eq!(proof["user"], user_id.to_string());
+        assert_eq!(proof["whodunnit"], account_id.to_string());
         assert_eq!(
             proof["update_metadata"],
             json!({"target_type":"Household","target_id":household_id,"outcome":"success"})
@@ -629,7 +629,7 @@ async fn settings_patch_and_put_save_allowed_fields_without_replacing_slug_or_om
             assert_eq!(context["request_id"], request_id);
             assert_eq!(context["actor_account_id"], account_id);
             assert_eq!(context["actor_membership_id"], membership_id);
-            assert_eq!(context["actor_user_id"], user_id);
+            assert_eq!(context["actor_person_id"], person_id);
             assert_eq!(context["authentication_method"], auth);
             assert_eq!(context["session_reference"], reference);
         }

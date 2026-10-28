@@ -1,6 +1,6 @@
 use crate::models::{
     care::doses::CredentialProvenance,
-    entities::{account, user, version},
+    entities::{account, version},
     errors::OperationError,
     ids::AccountId,
 };
@@ -77,15 +77,11 @@ pub(crate) async fn page(
         .limit(26)
         .all(transaction)
         .await?;
-    let actor_user = user::Entity::find()
-        .filter(user::Column::PersonId.eq(actor.person_id))
-        .one(transaction)
-        .await?;
     version::ActiveModel {
         item_type: Set("AccountClinicalAccess".into()), item_id: Set(account_id.get()), event: Set("personal_history_read".into()),
-        whodunnit: Set(actor_user.as_ref().map(|user|user.id.to_string())),
+        whodunnit: Set(Some(account_id.get().to_string())),
         request_id: Set(Some(request_id.into())),
-        audit_context: Set(json!({"actor_account_id":account_id.get(),"actor_person_id":actor.person_id,"actor_user_id":actor_user.map(|user|user.id),"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"PersonalClinicalAccess","policy_query":"read_self_taken_doses"})),
+        audit_context: Set(json!({"actor_account_id":account_id.get(),"actor_person_id":actor.person_id,"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"PersonalClinicalAccess","policy_query":"read_self_taken_doses"})),
         created_at: Set(Some(chrono::Utc::now().naive_utc())), ..Default::default()
     }.insert(transaction).await?;
     Ok(records)

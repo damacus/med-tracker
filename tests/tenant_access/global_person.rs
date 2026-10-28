@@ -78,8 +78,8 @@ async fn accountless_person_participates_in_two_households_without_credentials()
         2
     );
     assert_eq!(
-        users::Entity::find()
-            .filter(users::Column::PersonId.eq(fixture.accountless.id))
+        accounts::Entity::find()
+            .filter(accounts::Column::PersonId.eq(fixture.accountless.id))
             .count(&fixture.admin)
             .await
             .unwrap(),

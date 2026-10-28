@@ -5153,28 +5153,6 @@ async fn browser_missed_reminder_skips_decided_dependent_doses_and_undeclared_ma
             .execute_raw(app.fixture.admin.get_database_backend().build(&query))
             .await?;
         let query = Query::insert()
-            .into_table("users")
-            .columns(["person_id", "email_address", "created_at", "updated_at"])
-            .values_panic([
-                Expr::val(
-                    participant_named(&app, "Synthetic unrelated manager")
-                        .await
-                        .id,
-                ),
-                Expr::val(format!(
-                    "{}-unrelated-manager@example.test",
-                    app.fixture.client_uuid
-                )),
-                Func::cust("now").into(),
-                Func::cust("now").into(),
-            ])
-            .to_owned();
-        let _ = app
-            .fixture
-            .admin
-            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
-            .await?;
-        let query = Query::insert()
             .into_table("household_memberships")
             .columns([
                 "household_id",

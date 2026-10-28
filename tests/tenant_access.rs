@@ -1,9 +1,7 @@
 #[path = "support/scenario.rs"]
 pub mod scenario;
 use loco_rs::model::{TenantActiveModelExt, TenantQueryExt};
-use med_tracker::models::_entities::{
-    account_lockouts, accounts, household_memberships, people, users,
-};
+use med_tracker::models::_entities::{account_lockouts, accounts, household_memberships, people};
 use med_tracker::models::access::{self, Actor, HouseholdScope, PersonAccess};
 use med_tracker::models::entities::{grant, location};
 use med_tracker::models::errors::OperationError;
@@ -436,14 +434,6 @@ async fn seed_accountless_manage_grant(fixture: &Fixture) {
     assert_eq!(
         accounts::Entity::find()
             .filter(accounts::Column::PersonId.eq(fixture.accountless.id))
-            .count(&fixture.admin)
-            .await
-            .unwrap(),
-        0
-    );
-    assert_eq!(
-        users::Entity::find()
-            .filter(users::Column::PersonId.eq(fixture.accountless.id))
             .count(&fixture.admin)
             .await
             .unwrap(),

@@ -79,15 +79,9 @@ pub(crate) async fn complete_native_profile(
         "INSERT INTO people(id,name,email,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES($1,$2,$3,$4,0,true,now(),now())",
         [person_id.into(), profile.name.trim().to_owned().into(), profile.email.clone().into(), profile.date_of_birth.into()],
     )).await.map_err(unavailable)?;
-    let user = transaction.query_one_raw(sql(
-        "INSERT INTO users(person_id,email_address,active,created_at,updated_at) VALUES($1,$2,true,now(),now()) RETURNING id",
-        [person_id.into(), profile.email.clone().into()],
-    )).await.map_err(unavailable)?.ok_or(SignupError::Unavailable)?;
-    let user_id: i64 = user.try_get("", "id").map_err(unavailable)?;
     let actor = SignupInvitationContext {
         account_id,
         person_id,
-        user_id,
         email: profile.email.clone(),
     };
     if let Some(token) = profile
@@ -111,7 +105,6 @@ pub(crate) async fn complete_native_profile(
     Ok(ProvisionedAccount {
         account_id,
         person_id,
-        user_id,
         household_id,
         email: profile.email.clone(),
     })

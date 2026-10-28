@@ -2,7 +2,7 @@ use super::*;
 use base64::Engine as _;
 use med_tracker::models::_entities::{
     accounts, app_settings, household_invitations, household_memberships, households, people,
-    security_audit_events, users, versions,
+    security_audit_events, versions,
 };
 use med_tracker::models::entities::identity_session;
 use sea_orm::sea_query::Expr;
@@ -40,10 +40,6 @@ async fn entrant(fixture: &RequestFixture) -> TestResult {
         .exec(&fixture.admin)
         .await?;
     households::Entity::delete_by_id(fixture.foreign.household.id)
-        .exec(&fixture.admin)
-        .await?;
-    users::Entity::delete_many()
-        .filter(users::Column::PersonId.eq(fixture.foreign.account.person_id))
         .exec(&fixture.admin)
         .await?;
     Ok(())
@@ -142,11 +138,6 @@ async fn entry_state(fixture: &RequestFixture) -> Value {
         .count(&fixture.admin)
         .await
         .unwrap();
-    let users = users::Entity::find()
-        .filter(users::Column::PersonId.eq(person_id))
-        .count(&fixture.admin)
-        .await
-        .unwrap();
     let person_events = versions::Entity::find()
         .filter(versions::Column::ItemType.eq("Person"))
         .filter(versions::Column::ItemId.eq(person_id))
@@ -157,7 +148,7 @@ async fn entry_state(fixture: &RequestFixture) -> Value {
     json!({"households":households,"memberships":members.len(),"audits":audits,"selected":selected,"accepted":accepted,
         "active":members.iter().filter(|row|row.status=="active").count(),
         "revoked":members.iter().filter(|row|row.status=="revoked").count(),
-        "accounts":accounts,"people":people,"users":users,"person_events":person_events})
+        "accounts":accounts,"people":people,"person_events":person_events})
 }
 
 async fn selected_count(fixture: &RequestFixture) -> Result<u64, sea_orm::DbErr> {
@@ -169,7 +160,7 @@ async fn selected_count(fixture: &RequestFixture) -> Result<u64, sea_orm::DbErr>
 }
 
 #[tokio::test]
-async fn verified_account_without_user_or_membership_creates_first_household() -> TestResult {
+async fn verified_account_without_membership_creates_first_household() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
     let household_id = fixture.household.id;
     let _household_text = household_id.to_string();
@@ -237,7 +228,6 @@ async fn verified_account_without_user_or_membership_creates_first_household() -
     let identity = entry_state(&fixture).await;
     assert_eq!(identity["accounts"].as_u64().unwrap(), 1);
     assert_eq!(identity["people"].as_u64().unwrap(), 1);
-    assert_eq!(identity["users"].as_u64().unwrap(), 0);
     assert_eq!(identity["person_events"].as_u64().unwrap(), 0);
     super::account_authentication::restore_registration(&fixture, previous_settings).await;
     drop(request);
@@ -375,17 +365,13 @@ async fn supplementary_plane_name_above_browser_utf16_limit_is_accepted() -> Tes
 }
 
 #[tokio::test]
-async fn verified_account_without_user_or_membership_accepts_invitation() -> TestResult {
+async fn verified_account_without_membership_accepts_invitation() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
     let household_id = fixture.household.id;
     let _household_text = household_id.to_string();
     let slug = fixture.household.slug.clone();
 
     entrant(&fixture).await?;
-    users::Entity::delete_many()
-        .filter(users::Column::PersonId.eq(fixture.account.person_id))
-        .exec(&fixture.admin)
-        .await?;
     let (departed, _) = home(
         &fixture.foreign,
         "Departed household",
@@ -447,16 +433,7 @@ async fn verified_account_without_user_or_membership_accepts_invitation() -> Tes
         .filter(household_memberships::Column::Status.eq("active"))
         .count(&fixture.admin)
         .await?;
-    let users = users::Entity::find()
-        .filter(
-            users::Column::PersonId
-                .is_in([fixture.account.person_id, fixture.foreign.account.person_id]),
-        )
-        .count(&fixture.admin)
-        .await?;
     row["memberships"] = json!(members);
-    row["users"] = json!(users);
-    assert_eq!(row["users"].as_u64().unwrap(), 0);
     assert_eq!(row["memberships"].as_u64().unwrap(), 1);
     assert_eq!(row["person_events"].as_u64().unwrap(), 0);
     drop(request);
@@ -719,10 +696,6 @@ async fn account_only_invitation_rechecks_csrf_expiry_and_inviter_authority() ->
     let _household_text = household_id.to_string();
 
     entrant(&fixture).await?;
-    users::Entity::delete_many()
-        .filter(users::Column::PersonId.eq(fixture.account.person_id))
-        .exec(&fixture.admin)
-        .await?;
     let invitation_token = fixture.credential("account-only-household-invitation");
     invitation(&fixture, &invitation_token).await?;
     let mut request = server(&boot);
@@ -1149,7 +1122,7 @@ async fn household_free_history_contains_only_the_subjects_taken_doses() -> Test
 }
 
 #[tokio::test]
-async fn household_free_profile_uses_account_identity_without_a_legacy_user() -> TestResult {
+async fn household_free_profile_uses_account_identity_without_a_household() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
     entrant(&fixture).await?;
     let mut request = server(&boot);

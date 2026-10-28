@@ -212,7 +212,7 @@ BEGIN
     'household_id', p_household_id,
     'agent', jsonb_build_object(
       'account_id', v_context->'actor_account_id',
-      'user_id', v_context->'actor_user_id',
+      'person_id', v_context->'actor_person_id',
       'membership_id', v_context->'actor_membership_id',
       'role', v_context->'active_role',
       'permissions_version', v_context->'permissions_version',

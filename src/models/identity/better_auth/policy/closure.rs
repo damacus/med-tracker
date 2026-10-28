@@ -1,7 +1,8 @@
 use super::super::request;
 use super::{IdentityPolicy, clinical_id, context, database_error, statement};
+use crate::models::entities::account;
 use better_auth_core::{AuthError, AuthResult};
-use sea_orm::ConnectionTrait;
+use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, sea_query::Expr};
 
 impl IdentityPolicy {
     pub(crate) async fn close_account_in(
@@ -51,7 +52,12 @@ impl IdentityPolicy {
             transaction.execute_raw(statement("UPDATE public.person_access_grants SET revoked_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND household_membership_id IN(SELECT id FROM public.household_memberships WHERE household_id=$1 AND person_id=(SELECT person_id FROM public.accounts WHERE id=$2)) AND revoked_at IS NULL", [household_id.into(), account_id.into()])).await.map_err(database_error)?;
             transaction.execute_raw(statement("UPDATE public.household_memberships SET status='revoked',revoked_at=timezone('UTC',clock_timestamp()),permissions_version=permissions_version+1,updated_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND person_id=(SELECT person_id FROM public.accounts WHERE id=$2) AND revoked_at IS NULL", [household_id.into(), account_id.into()])).await.map_err(database_error)?;
         }
-        transaction.execute_raw(statement("UPDATE public.users SET active=false,updated_at=timezone('UTC',clock_timestamp()) WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1)", [account_id.into()])).await.map_err(database_error)?;
+        account::Entity::update_many()
+            .col_expr(account::Column::Active, Expr::value(false))
+            .filter(account::Column::Id.eq(account_id))
+            .exec(transaction)
+            .await
+            .map_err(database_error)?;
         transaction
             .execute_raw(statement(
                 "DELETE FROM public.push_subscriptions WHERE account_id=$1",

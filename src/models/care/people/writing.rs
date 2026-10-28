@@ -59,17 +59,13 @@ pub(crate) async fn update_self(
     active.has_capacity = Set(proposed.has_capacity);
     active.updated_at = Set(Utc::now().naive_utc());
     let saved = active.update(transaction).await.map_err(write_error)?;
-    let user = crate::models::entities::user::Entity::find()
-        .filter(crate::models::entities::user::Column::PersonId.eq(person_id))
-        .one(transaction)
-        .await?;
     version::ActiveModel {
         item_type: Set("Person".into()), item_id: Set(person_id), event: Set("update".into()),
         object: Set(Some(before.to_string())),
         object_changes: Set(Some(json!({"name":[before["name"],saved.name],"date_of_birth":[before["date_of_birth"],saved.date_of_birth]}).to_string())),
-        whodunnit: Set(user.as_ref().map(|user| user.id.to_string())),
+        whodunnit: Set(Some(account_id.get().to_string())),
         request_id: Set(Some(request_id.into())),
-        audit_context: Set(json!({"actor_account_id":account_id.get(),"actor_person_id":person_id,"actor_user_id":user.map(|user|user.id),"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"PersonalClinicalAccess","policy_query":"update_self"})),
+        audit_context: Set(json!({"actor_account_id":account_id.get(),"actor_person_id":person_id,"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"PersonalClinicalAccess","policy_query":"update_self"})),
         created_at: Set(Some(Utc::now().naive_utc())), ..Default::default()
     }.insert(transaction).await?;
     persistence::self_changes(transaction, account_id, &saved, request_id).await?;

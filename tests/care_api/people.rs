@@ -1785,41 +1785,6 @@ fn dependent_creation_state_query(
                             )
                             .to_owned(),
                     ),
-                    QueryExpr::val("users"),
-                    QueryExpr::expr(
-                        Query::select()
-                            .expr(QueryExpr::expr(QueryFunc::count(
-                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
-                            )))
-                            .from("users")
-                            .and_where(
-                                QueryExpr::col("person_id").in_subquery(
-                                    Query::select()
-                                        .expr(QueryExpr::col("id"))
-                                        .from("people")
-                                        .and_where(
-                                            QueryExpr::col("id")
-                                                .in_subquery(
-                                                    Query::select()
-                                                        .expr(QueryExpr::col("person_id"))
-                                                        .from("household_memberships")
-                                                        .and_where(
-                                                            QueryExpr::col("household_id").eq(
-                                                                QueryExpr::val(
-                                                                    fixture_household_id,
-                                                                ),
-                                                            ),
-                                                        )
-                                                        .to_owned(),
-                                                )
-                                                .or(QueryExpr::col("name")
-                                                    .like(unsupported_pattern)),
-                                        )
-                                        .to_owned(),
-                                ),
-                            )
-                            .to_owned(),
-                    ),
                     QueryExpr::val("declarations"),
                     QueryExpr::expr(
                         Query::select()

@@ -16,7 +16,6 @@ pub enum CredentialKind {
 
 pub struct RequestFixture {
     pub foreign: Scenario,
-    pub user: med_tracker::models::_entities::users::Model,
     pub runtime_uri: String,
     pub scenario: Scenario,
     pub medication: medications::Model,
@@ -123,17 +122,7 @@ impl RequestFixture {
         .unwrap();
         let dependent = dependants.pop().unwrap();
         let minor = dependants.pop().unwrap();
-        let user = med_tracker::models::_entities::users::Entity::find()
-            .filter(
-                med_tracker::models::_entities::users::Column::PersonId
-                    .eq(scenario.account.person_id),
-            )
-            .one(&scenario.admin)
-            .await
-            .unwrap()
-            .unwrap();
         Self {
-            user,
             runtime_uri: std::env::var("DATABASE_URL").unwrap(),
             foreign,
             scenario,

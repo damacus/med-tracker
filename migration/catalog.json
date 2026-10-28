@@ -740,6 +740,19 @@
     "storage": "p",
     "type": "bigint"
   },
+  "column:public.accounts.active": {
+    "acl": null,
+    "collation": null,
+    "compression": "",
+    "default": "true",
+    "generated": "",
+    "identity": "",
+    "not_null": true,
+    "options": null,
+    "position": 1,
+    "storage": "p",
+    "type": "boolean"
+  },
   "column:public.accounts.created_at": {
     "acl": null,
     "collation": null,
@@ -749,7 +762,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 3,
+    "position": 4,
     "storage": "p",
     "type": "timestamp with time zone"
   },
@@ -762,7 +775,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 4,
+    "position": 5,
     "storage": "x",
     "type": "text"
   },
@@ -775,7 +788,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 9,
+    "position": 10,
     "storage": "p",
     "type": "boolean"
   },
@@ -788,7 +801,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 1,
+    "position": 2,
     "storage": "p",
     "type": "bigint"
   },
@@ -801,7 +814,7 @@
     "identity": "",
     "not_null": false,
     "options": null,
-    "position": 10,
+    "position": 11,
     "storage": "x",
     "type": "text"
   },
@@ -814,7 +827,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 12,
+    "position": 13,
     "storage": "x",
     "type": "jsonb"
   },
@@ -827,7 +840,7 @@
     "identity": "",
     "not_null": false,
     "options": null,
-    "position": 5,
+    "position": 6,
     "storage": "x",
     "type": "character varying"
   },
@@ -840,7 +853,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 2,
+    "position": 3,
     "storage": "p",
     "type": "bigint"
   },
@@ -853,7 +866,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 6,
+    "position": 7,
     "storage": "x",
     "type": "jsonb"
   },
@@ -866,7 +879,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 7,
+    "position": 8,
     "storage": "p",
     "type": "integer"
   },
@@ -879,7 +892,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 11,
+    "position": 12,
     "storage": "p",
     "type": "boolean"
   },
@@ -892,7 +905,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 8,
+    "position": 9,
     "storage": "p",
     "type": "timestamp with time zone"
   },
@@ -14948,123 +14961,6 @@
     "storage": "p",
     "type": "bigint"
   },
-  "column:public.users.active": {
-    "acl": null,
-    "collation": null,
-    "compression": "",
-    "default": "true",
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 2,
-    "storage": "p",
-    "type": "boolean"
-  },
-  "column:public.users.created_at": {
-    "acl": null,
-    "collation": null,
-    "compression": "",
-    "default": null,
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 3,
-    "storage": "p",
-    "type": "timestamp(6) without time zone"
-  },
-  "column:public.users.email_address": {
-    "acl": null,
-    "collation": "pg_catalog.default",
-    "compression": "",
-    "default": null,
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 4,
-    "storage": "x",
-    "type": "character varying"
-  },
-  "column:public.users.id": {
-    "acl": null,
-    "collation": null,
-    "compression": "",
-    "default": "nextval('users_id_seq'::regclass)",
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 1,
-    "storage": "p",
-    "type": "bigint"
-  },
-  "column:public.users.person_id": {
-    "acl": null,
-    "collation": null,
-    "compression": "",
-    "default": null,
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 5,
-    "storage": "p",
-    "type": "bigint"
-  },
-  "column:public.users.updated_at": {
-    "acl": null,
-    "collation": null,
-    "compression": "",
-    "default": null,
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 6,
-    "storage": "p",
-    "type": "timestamp(6) without time zone"
-  },
-  "column:public.users_id_seq.is_called": {
-    "acl": null,
-    "collation": null,
-    "compression": "",
-    "default": null,
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 3,
-    "storage": "p",
-    "type": "boolean"
-  },
-  "column:public.users_id_seq.last_value": {
-    "acl": null,
-    "collation": null,
-    "compression": "",
-    "default": null,
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 1,
-    "storage": "p",
-    "type": "bigint"
-  },
-  "column:public.users_id_seq.log_cnt": {
-    "acl": null,
-    "collation": null,
-    "compression": "",
-    "default": null,
-    "generated": "",
-    "identity": "",
-    "not_null": true,
-    "options": null,
-    "position": 2,
-    "storage": "p",
-    "type": "bigint"
-  },
   "column:public.versions.actor_membership_id": {
     "acl": null,
     "collation": null,
@@ -15761,6 +15657,16 @@
     "inherit_count": 0,
     "local": true,
     "no_inherit": true,
+    "validated": true
+  },
+  "constraint:public.accounts.accounts_active_not_null": {
+    "deferrable": false,
+    "deferred": false,
+    "definition": "NOT NULL active",
+    "enforced": true,
+    "inherit_count": 0,
+    "local": true,
+    "no_inherit": false,
     "validated": true
   },
   "constraint:public.accounts.accounts_created_at_not_null": {
@@ -24763,86 +24669,6 @@
     "no_inherit": false,
     "validated": true
   },
-  "constraint:public.users.fk_rails_fa67535741": {
-    "deferrable": true,
-    "deferred": true,
-    "definition": "FOREIGN KEY (person_id) REFERENCES people(id) DEFERRABLE INITIALLY DEFERRED",
-    "enforced": true,
-    "inherit_count": 0,
-    "local": true,
-    "no_inherit": true,
-    "validated": true
-  },
-  "constraint:public.users.users_active_not_null": {
-    "deferrable": false,
-    "deferred": false,
-    "definition": "NOT NULL active",
-    "enforced": true,
-    "inherit_count": 0,
-    "local": true,
-    "no_inherit": false,
-    "validated": true
-  },
-  "constraint:public.users.users_created_at_not_null": {
-    "deferrable": false,
-    "deferred": false,
-    "definition": "NOT NULL created_at",
-    "enforced": true,
-    "inherit_count": 0,
-    "local": true,
-    "no_inherit": false,
-    "validated": true
-  },
-  "constraint:public.users.users_email_address_not_null": {
-    "deferrable": false,
-    "deferred": false,
-    "definition": "NOT NULL email_address",
-    "enforced": true,
-    "inherit_count": 0,
-    "local": true,
-    "no_inherit": false,
-    "validated": true
-  },
-  "constraint:public.users.users_id_not_null": {
-    "deferrable": false,
-    "deferred": false,
-    "definition": "NOT NULL id",
-    "enforced": true,
-    "inherit_count": 0,
-    "local": true,
-    "no_inherit": false,
-    "validated": true
-  },
-  "constraint:public.users.users_person_id_not_null": {
-    "deferrable": false,
-    "deferred": false,
-    "definition": "NOT NULL person_id",
-    "enforced": true,
-    "inherit_count": 0,
-    "local": true,
-    "no_inherit": false,
-    "validated": true
-  },
-  "constraint:public.users.users_pkey": {
-    "deferrable": false,
-    "deferred": false,
-    "definition": "PRIMARY KEY (id)",
-    "enforced": true,
-    "inherit_count": 0,
-    "local": true,
-    "no_inherit": true,
-    "validated": true
-  },
-  "constraint:public.users.users_updated_at_not_null": {
-    "deferrable": false,
-    "deferred": false,
-    "definition": "NOT NULL updated_at",
-    "enforced": true,
-    "inherit_count": 0,
-    "local": true,
-    "no_inherit": false,
-    "validated": true
-  },
   "constraint:public.versions.fk_rails_15b046bfbe": {
     "deferrable": false,
     "deferred": false,
@@ -25008,7 +24834,7 @@
       "med_tracker_app=X/med_tracker_owner",
       "med_tracker_owner=X/med_tracker_owner"
     ],
-    "definition": "CREATE OR REPLACE FUNCTION med_tracker.expire_support_access_session(p_id bigint)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\n SET \"TimeZone\" TO 'UTC'\nAS $function$\nDECLARE\n  v_session public.support_access_sessions%ROWTYPE;\n  v_actor bigint;\n  v_context jsonb;\nBEGIN\n  PERFORM s.id FROM public.support_access_sessions AS s\n    WHERE s.id=p_id AND s.ended_at IS NULL AND s.expired_at IS NULL\n      AND s.expires_at <= pg_catalog.clock_timestamp()\n    FOR UPDATE SKIP LOCKED;\n  IF NOT FOUND THEN RETURN false; END IF;\n  UPDATE public.support_access_sessions AS s\n    SET expired_at=pg_catalog.clock_timestamp(), updated_at=pg_catalog.clock_timestamp()\n    WHERE s.id=p_id AND s.ended_at IS NULL AND s.expired_at IS NULL\n      AND s.expires_at <= pg_catalog.clock_timestamp()\n    RETURNING s.* INTO v_session;\n  IF NOT FOUND THEN RETURN false; END IF;\n  SELECT a.account_id INTO STRICT v_actor FROM public.platform_admins AS a\n    WHERE a.id=v_session.platform_admin_id;\n  v_context := pg_catalog.jsonb_build_object(\n    'actor_account_id', v_actor, 'actor_user_id', NULL,\n    'active_role', 'support_expiry_task', 'authentication_method', 'system');\n  INSERT INTO public.versions(item_type,item_id,event,object,whodunnit,request_id,\n    audit_context,household_id,created_at)\n  VALUES('SupportAccessSession',p_id,'platform/support/expired',\n    pg_catalog.jsonb_build_object('household_id',v_session.household_id)::text,\n    NULL,NULL,v_context,v_session.household_id,pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()));\n  INSERT INTO public.security_audit_events(household_id,actor_account_id,actor_membership_id,\n    event_type,metadata,audit_context,request_id,ip,created_at,updated_at)\n  VALUES(v_session.household_id,v_actor,NULL,'support_access_session.expired',\n    pg_catalog.jsonb_build_object('support_access_session_id',p_id,\n      'expired_at',pg_catalog.to_char(v_session.expires_at,'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),\n      'outcome','expired'),\n    v_context,NULL,NULL,pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()),\n    pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()));\n  RETURN true;\nEND;\n$function$\n",
+    "definition": "CREATE OR REPLACE FUNCTION med_tracker.expire_support_access_session(p_id bigint)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\n SET \"TimeZone\" TO 'UTC'\nAS $function$\nDECLARE\n  v_session public.support_access_sessions%ROWTYPE;\n  v_actor bigint;\n  v_context jsonb;\nBEGIN\n  PERFORM s.id FROM public.support_access_sessions AS s\n    WHERE s.id=p_id AND s.ended_at IS NULL AND s.expired_at IS NULL\n      AND s.expires_at <= pg_catalog.clock_timestamp()\n    FOR UPDATE SKIP LOCKED;\n  IF NOT FOUND THEN RETURN false; END IF;\n  UPDATE public.support_access_sessions AS s\n    SET expired_at=pg_catalog.clock_timestamp(), updated_at=pg_catalog.clock_timestamp()\n    WHERE s.id=p_id AND s.ended_at IS NULL AND s.expired_at IS NULL\n      AND s.expires_at <= pg_catalog.clock_timestamp()\n    RETURNING s.* INTO v_session;\n  IF NOT FOUND THEN RETURN false; END IF;\n  SELECT a.account_id INTO STRICT v_actor FROM public.platform_admins AS a\n    WHERE a.id=v_session.platform_admin_id;\n  v_context := pg_catalog.jsonb_build_object(\n    'actor_account_id', v_actor, 'actor_person_id', NULL,\n    'active_role', 'support_expiry_task', 'authentication_method', 'system');\n  INSERT INTO public.versions(item_type,item_id,event,object,whodunnit,request_id,\n    audit_context,household_id,created_at)\n  VALUES('SupportAccessSession',p_id,'platform/support/expired',\n    pg_catalog.jsonb_build_object('household_id',v_session.household_id)::text,\n    NULL,NULL,v_context,v_session.household_id,pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()));\n  INSERT INTO public.security_audit_events(household_id,actor_account_id,actor_membership_id,\n    event_type,metadata,audit_context,request_id,ip,created_at,updated_at)\n  VALUES(v_session.household_id,v_actor,NULL,'support_access_session.expired',\n    pg_catalog.jsonb_build_object('support_access_session_id',p_id,\n      'expired_at',pg_catalog.to_char(v_session.expires_at,'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),\n      'outcome','expired'),\n    v_context,NULL,NULL,pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()),\n    pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()));\n  RETURN true;\nEND;\n$function$\n",
     "owner": "med_tracker_owner"
   },
   "function:med_tracker.guardian_declaration_one_way()": {
@@ -25039,7 +24865,7 @@
       "med_tracker_app=X/med_tracker_owner",
       "med_tracker_owner=X/med_tracker_owner"
     ],
-    "definition": "CREATE OR REPLACE FUNCTION med_tracker.recovery_member_eligible(p_membership_id bigint)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n  IF NOT EXISTS (\n    SELECT 1 FROM public.accounts actor\n    JOIN public.platform_admins administrator ON administrator.account_id = actor.id\n    JOIN public.users actor_user ON actor_user.person_id = actor.person_id\n    JOIN public.households household ON household.id = med_tracker.current_household_id()\n    WHERE actor.id = med_tracker.current_account_id()\n      AND actor.status = 2 AND actor_user.active AND administrator.status = 'active'\n      AND household.status = 'active' AND household.lifecycle_state = 'active'\n      AND NOT EXISTS (\n        SELECT 1 FROM public.account_lockouts lockout\n        WHERE lockout.account_id = actor.id\n          AND lockout.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp())\n      )\n  ) THEN\n    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery eligibility unavailable';\n  END IF;\n  RETURN EXISTS (\n    SELECT 1 FROM public.household_memberships membership\n    JOIN public.accounts account ON account.person_id = membership.person_id\n    JOIN public.people person ON person.id = membership.person_id\n    JOIN public.users actor_user ON actor_user.person_id = person.id\n    WHERE membership.id = p_membership_id\n      AND membership.household_id = med_tracker.current_household_id()\n      AND membership.status = 'active' AND membership.revoked_at IS NULL\n      AND account.status = 2 AND actor_user.active\n      AND person.person_type = 0 AND person.has_capacity\n  );\nEND;\n$function$\n",
+    "definition": "CREATE OR REPLACE FUNCTION med_tracker.recovery_member_eligible(p_membership_id bigint)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n  IF NOT EXISTS (\n    SELECT 1 FROM public.accounts actor\n    JOIN public.platform_admins administrator ON administrator.account_id = actor.id\n    JOIN public.households household ON household.id = med_tracker.current_household_id()\n    WHERE actor.id = med_tracker.current_account_id()\n      AND actor.status = 2 AND actor.active AND administrator.status = 'active'\n      AND household.status = 'active' AND household.lifecycle_state = 'active'\n      AND NOT EXISTS (\n        SELECT 1 FROM public.account_lockouts lockout\n        WHERE lockout.account_id = actor.id\n          AND lockout.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp())\n      )\n  ) THEN\n    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Recovery eligibility unavailable';\n  END IF;\n  RETURN EXISTS (\n    SELECT 1 FROM public.household_memberships membership\n    JOIN public.accounts account ON account.person_id = membership.person_id\n    JOIN public.people person ON person.id = membership.person_id\n    WHERE membership.id = p_membership_id\n      AND membership.household_id = med_tracker.current_household_id()\n      AND membership.status = 'active' AND membership.revoked_at IS NULL\n      AND account.status = 2 AND account.active\n      AND person.person_type = 0 AND person.has_capacity\n  );\nEND;\n$function$\n",
     "owner": "med_tracker_owner"
   },
   "function:public.armor(bytea)": {
@@ -25056,7 +24882,7 @@
     "acl": [
       "med_tracker_owner=X/med_tracker_owner"
     ],
-    "definition": "CREATE OR REPLACE FUNCTION public.audit_append_ledger_entry(p_source_table text, p_source_id bigint, p_household_id bigint, p_source_payload jsonb, p_occurred_at timestamp with time zone)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE\n  v_chain_key text := COALESCE('household:' || p_household_id::text, 'global');\n  v_head audit_chain_heads%ROWTYPE;\n  v_sequence bigint;\n  v_context jsonb := COALESCE(p_source_payload->'audit_context', '{}'::jsonb);\n  v_metadata jsonb := COALESCE(p_source_payload->'metadata', '{}'::jsonb);\n  v_occurred_at timestamptz := COALESCE(p_occurred_at, clock_timestamp());\n  v_retain_until timestamptz := v_occurred_at + interval '10 years';\n  v_policy_version text := COALESCE(v_context->>'retention_policy_version', 'clinical-security-v1');\n  v_envelope jsonb;\n  v_canonical_payload bytea;\n  v_entry_hash bytea;\nBEGIN\n  INSERT INTO audit_chain_heads (chain_key, household_id, created_at, updated_at)\n  VALUES (v_chain_key, p_household_id, clock_timestamp(), clock_timestamp())\n  ON CONFLICT (chain_key) DO NOTHING;\n\n  SELECT * INTO STRICT v_head\n  FROM audit_chain_heads\n  WHERE chain_key = v_chain_key\n  FOR UPDATE;\n\n  v_sequence := v_head.last_sequence + 1;\n  v_envelope := jsonb_strip_nulls(jsonb_build_object(\n    'schema_version', 1,\n    'event_id', gen_random_uuid(),\n    'event_type', COALESCE(p_source_payload->>'event_type', p_source_payload->>'event'),\n    'outcome', v_metadata->>'outcome',\n    'occurred_at', v_occurred_at,\n    'household_id', p_household_id,\n    'agent', jsonb_build_object(\n      'account_id', v_context->'actor_account_id',\n      'user_id', v_context->'actor_user_id',\n      'membership_id', v_context->'actor_membership_id',\n      'role', v_context->'active_role',\n      'permissions_version', v_context->'permissions_version',\n      'authentication_method', v_context->'authentication_method',\n      'session_reference', v_context->'session_reference'\n    ),\n    'policy', jsonb_build_object('class', v_context->'policy_class', 'query', v_context->'policy_query'),\n    'request', jsonb_build_object(\n      'request_id', v_context->'request_id',\n      'ip', v_context->'ip',\n      'support_access_session_id', v_context->'support_access_session_id'\n    ),\n    'source', jsonb_build_object('table', p_source_table, 'id', p_source_id),\n    'entity', CASE WHEN p_source_table = 'versions' THEN\n      jsonb_build_object('type', p_source_payload->'item_type', 'id', p_source_payload->'item_id')\n    ELSE v_metadata - 'outcome' END,\n    'retention', jsonb_build_object('policy_version', v_policy_version, 'retain_until', v_retain_until)\n  ));\n  v_canonical_payload := convert_to(v_envelope::text, 'UTF8');\n  v_entry_hash := digest(\n    convert_to(\n      'medtracker.audit.ledger.v1' || chr(31) || v_chain_key || chr(31) ||\n      v_head.chain_epoch::text || chr(31) || v_sequence::text || chr(31),\n      'UTF8'\n    ) || COALESCE(v_head.last_hash, '\\x'::bytea) || v_canonical_payload,\n    'sha256'\n  );\n\n  INSERT INTO audit_ledger_entries (\n    household_id, chain_key, chain_epoch, epoch_kind, sequence, previous_hash, entry_hash,\n    source_table, source_id, source_payload, envelope, canonical_payload, occurred_at,\n    retention_policy_version, retain_until, created_at, updated_at\n  ) VALUES (\n    p_household_id, v_chain_key, v_head.chain_epoch, v_head.epoch_kind, v_sequence, v_head.last_hash,\n    v_entry_hash, p_source_table, p_source_id, p_source_payload - 'updated_at', v_envelope,\n    v_canonical_payload, v_occurred_at, v_policy_version, v_retain_until, clock_timestamp(), clock_timestamp()\n  );\n\n  INSERT INTO audit_export_deliveries (audit_ledger_entry_id, status, attempts, created_at, updated_at)\n  VALUES (currval(pg_get_serial_sequence('audit_ledger_entries', 'id')), 'pending', 0,\n          clock_timestamp(), clock_timestamp());\n\n  UPDATE audit_chain_heads\n  SET last_sequence = v_sequence, last_hash = v_entry_hash, updated_at = clock_timestamp()\n  WHERE id = v_head.id;\nEND;\n$function$\n",
+    "definition": "CREATE OR REPLACE FUNCTION public.audit_append_ledger_entry(p_source_table text, p_source_id bigint, p_household_id bigint, p_source_payload jsonb, p_occurred_at timestamp with time zone)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nDECLARE\n  v_chain_key text := COALESCE('household:' || p_household_id::text, 'global');\n  v_head audit_chain_heads%ROWTYPE;\n  v_sequence bigint;\n  v_context jsonb := COALESCE(p_source_payload->'audit_context', '{}'::jsonb);\n  v_metadata jsonb := COALESCE(p_source_payload->'metadata', '{}'::jsonb);\n  v_occurred_at timestamptz := COALESCE(p_occurred_at, clock_timestamp());\n  v_retain_until timestamptz := v_occurred_at + interval '10 years';\n  v_policy_version text := COALESCE(v_context->>'retention_policy_version', 'clinical-security-v1');\n  v_envelope jsonb;\n  v_canonical_payload bytea;\n  v_entry_hash bytea;\nBEGIN\n  INSERT INTO audit_chain_heads (chain_key, household_id, created_at, updated_at)\n  VALUES (v_chain_key, p_household_id, clock_timestamp(), clock_timestamp())\n  ON CONFLICT (chain_key) DO NOTHING;\n\n  SELECT * INTO STRICT v_head\n  FROM audit_chain_heads\n  WHERE chain_key = v_chain_key\n  FOR UPDATE;\n\n  v_sequence := v_head.last_sequence + 1;\n  v_envelope := jsonb_strip_nulls(jsonb_build_object(\n    'schema_version', 1,\n    'event_id', gen_random_uuid(),\n    'event_type', COALESCE(p_source_payload->>'event_type', p_source_payload->>'event'),\n    'outcome', v_metadata->>'outcome',\n    'occurred_at', v_occurred_at,\n    'household_id', p_household_id,\n    'agent', jsonb_build_object(\n      'account_id', v_context->'actor_account_id',\n      'person_id', v_context->'actor_person_id',\n      'membership_id', v_context->'actor_membership_id',\n      'role', v_context->'active_role',\n      'permissions_version', v_context->'permissions_version',\n      'authentication_method', v_context->'authentication_method',\n      'session_reference', v_context->'session_reference'\n    ),\n    'policy', jsonb_build_object('class', v_context->'policy_class', 'query', v_context->'policy_query'),\n    'request', jsonb_build_object(\n      'request_id', v_context->'request_id',\n      'ip', v_context->'ip',\n      'support_access_session_id', v_context->'support_access_session_id'\n    ),\n    'source', jsonb_build_object('table', p_source_table, 'id', p_source_id),\n    'entity', CASE WHEN p_source_table = 'versions' THEN\n      jsonb_build_object('type', p_source_payload->'item_type', 'id', p_source_payload->'item_id')\n    ELSE v_metadata - 'outcome' END,\n    'retention', jsonb_build_object('policy_version', v_policy_version, 'retain_until', v_retain_until)\n  ));\n  v_canonical_payload := convert_to(v_envelope::text, 'UTF8');\n  v_entry_hash := digest(\n    convert_to(\n      'medtracker.audit.ledger.v1' || chr(31) || v_chain_key || chr(31) ||\n      v_head.chain_epoch::text || chr(31) || v_sequence::text || chr(31),\n      'UTF8'\n    ) || COALESCE(v_head.last_hash, '\\x'::bytea) || v_canonical_payload,\n    'sha256'\n  );\n\n  INSERT INTO audit_ledger_entries (\n    household_id, chain_key, chain_epoch, epoch_kind, sequence, previous_hash, entry_hash,\n    source_table, source_id, source_payload, envelope, canonical_payload, occurred_at,\n    retention_policy_version, retain_until, created_at, updated_at\n  ) VALUES (\n    p_household_id, v_chain_key, v_head.chain_epoch, v_head.epoch_kind, v_sequence, v_head.last_hash,\n    v_entry_hash, p_source_table, p_source_id, p_source_payload - 'updated_at', v_envelope,\n    v_canonical_payload, v_occurred_at, v_policy_version, v_retain_until, clock_timestamp(), clock_timestamp()\n  );\n\n  INSERT INTO audit_export_deliveries (audit_ledger_entry_id, status, attempts, created_at, updated_at)\n  VALUES (currval(pg_get_serial_sequence('audit_ledger_entries', 'id')), 'pending', 0,\n          clock_timestamp(), clock_timestamp());\n\n  UPDATE audit_chain_heads\n  SET last_sequence = v_sequence, last_hash = v_entry_hash, updated_at = clock_timestamp()\n  WHERE id = v_head.id;\nEND;\n$function$\n",
     "owner": "med_tracker_owner"
   },
   "function:public.audit_capture_source_row()": {
@@ -25369,7 +25195,7 @@
     "acl": [
       "med_tracker_owner=X/med_tracker_owner"
     ],
-    "definition": "CREATE OR REPLACE FUNCTION public.native_account_email_changed()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$ BEGIN\n  UPDATE public.users SET email_address=NEW.email,updated_at=clock_timestamp() WHERE person_id=NEW.person_id;\n  INSERT INTO public.pg_loco_queue(id,task_data,name,run_at,priority)\n  VALUES(public.gen_random_uuid()::text,\n    jsonb_build_object('from',NULL,'to',OLD.email,'reply_to',NULL,'subject','Email address changed',\n      'text','Your MedTracker email address was changed. If this was not you, secure your account immediately.',\n      'html','','bcc',NULL,'cc',NULL,'headers',NULL),\n    'MailerWorker',clock_timestamp(),100);\n  RETURN NEW;\nEND $function$\n",
+    "definition": "CREATE OR REPLACE FUNCTION public.native_account_email_changed()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$ BEGIN\n  INSERT INTO public.pg_loco_queue(id,task_data,name,run_at,priority)\n  VALUES(public.gen_random_uuid()::text,\n    jsonb_build_object('from',NULL,'to',OLD.email,'reply_to',NULL,'subject','Email address changed',\n      'text','Your MedTracker email address was changed. If this was not you, secure your account immediately.',\n      'html','','bcc',NULL,'cc',NULL,'headers',NULL),\n    'MailerWorker',clock_timestamp(),100);\n  RETURN NEW;\nEND $function$\n",
     "owner": "med_tracker_owner"
   },
   "function:public.native_account_verification_status()": {
@@ -25383,7 +25209,7 @@
     "acl": [
       "med_tracker_owner=X/med_tracker_owner"
     ],
-    "definition": "CREATE OR REPLACE FUNCTION public.native_authentication_audit()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE\n  subject_id bigint;\n  record_id text;\n  resource text;\n  mutation text;\nBEGIN\n  resource := CASE TG_TABLE_NAME WHEN 'accounts' THEN 'account' WHEN 'identity_sessions' THEN 'session' WHEN 'auth_credentials' THEN 'credential' WHEN 'identity_api_keys' THEN 'api_key' ELSE 'passkey' END;\n  mutation := CASE TG_OP WHEN 'INSERT' THEN 'created' WHEN 'DELETE' THEN 'deleted' ELSE 'updated' END;\n  IF TG_OP = 'DELETE' THEN\n    IF TG_TABLE_NAME='auth_credentials' THEN subject_id := OLD.user_id; ELSIF TG_TABLE_NAME='identity_api_keys' THEN subject_id := OLD.reference_id; ELSE subject_id := OLD.account_id; END IF;\n    record_id := OLD.id::text;\n  ELSE\n    record_id := NEW.id::text;\n    IF TG_TABLE_NAME='accounts' THEN subject_id:=NEW.id; ELSIF TG_TABLE_NAME='auth_credentials' THEN subject_id:=NEW.user_id; ELSIF TG_TABLE_NAME='identity_api_keys' THEN subject_id:=NEW.reference_id; ELSE subject_id:=NEW.account_id; END IF;\n  END IF;\n  INSERT INTO public.versions(item_type,item_id,event,object,audit_context,created_at)\n  VALUES('NativeAuthentication',subject_id,'native_auth/' || resource || '/' || mutation,\n    jsonb_build_object('account_id',subject_id,'resource',resource,'record_id',record_id,'mutation',mutation)::text,\n    jsonb_build_object('actor_account_id',NULL,'actor_user_id',NULL,'request_id',NULL),\n    timezone('UTC',clock_timestamp()));\n  IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\nEND $function$\n",
+    "definition": "CREATE OR REPLACE FUNCTION public.native_authentication_audit()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE\n  subject_id bigint;\n  record_id text;\n  resource text;\n  mutation text;\nBEGIN\n  resource := CASE TG_TABLE_NAME WHEN 'accounts' THEN 'account' WHEN 'identity_sessions' THEN 'session' WHEN 'auth_credentials' THEN 'credential' WHEN 'identity_api_keys' THEN 'api_key' ELSE 'passkey' END;\n  mutation := CASE TG_OP WHEN 'INSERT' THEN 'created' WHEN 'DELETE' THEN 'deleted' ELSE 'updated' END;\n  IF TG_OP = 'DELETE' THEN\n    IF TG_TABLE_NAME='auth_credentials' THEN subject_id := OLD.user_id; ELSIF TG_TABLE_NAME='identity_api_keys' THEN subject_id := OLD.reference_id; ELSE subject_id := OLD.account_id; END IF;\n    record_id := OLD.id::text;\n  ELSE\n    record_id := NEW.id::text;\n    IF TG_TABLE_NAME='accounts' THEN subject_id:=NEW.id; ELSIF TG_TABLE_NAME='auth_credentials' THEN subject_id:=NEW.user_id; ELSIF TG_TABLE_NAME='identity_api_keys' THEN subject_id:=NEW.reference_id; ELSE subject_id:=NEW.account_id; END IF;\n  END IF;\n  INSERT INTO public.versions(item_type,item_id,event,object,audit_context,created_at)\n  VALUES('NativeAuthentication',subject_id,'native_auth/' || resource || '/' || mutation,\n    jsonb_build_object('account_id',subject_id,'resource',resource,'record_id',record_id,'mutation',mutation)::text,\n    jsonb_build_object('actor_account_id',NULL,'actor_person_id',NULL,'request_id',NULL),\n    timezone('UTC',clock_timestamp()));\n  IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\nEND $function$\n",
     "owner": "med_tracker_owner"
   },
   "function:public.native_authentication_notice()": {
@@ -29332,28 +29158,6 @@
     "tablespace": null,
     "valid": true
   },
-  "index:public.index_users_on_email_address": {
-    "clustered": false,
-    "definition": "CREATE UNIQUE INDEX index_users_on_email_address ON public.users USING btree (email_address)",
-    "live": true,
-    "options": null,
-    "owner": "med_tracker_owner",
-    "ready": true,
-    "replica_identity": false,
-    "tablespace": null,
-    "valid": true
-  },
-  "index:public.index_users_on_person_id": {
-    "clustered": false,
-    "definition": "CREATE UNIQUE INDEX index_users_on_person_id ON public.users USING btree (person_id)",
-    "live": true,
-    "options": null,
-    "owner": "med_tracker_owner",
-    "ready": true,
-    "replica_identity": false,
-    "tablespace": null,
-    "valid": true
-  },
   "index:public.index_versions_on_actor_membership_id": {
     "clustered": false,
     "definition": "CREATE INDEX index_versions_on_actor_membership_id ON public.versions USING btree (actor_membership_id)",
@@ -29896,17 +29700,6 @@
   "index:public.support_access_sessions_pkey": {
     "clustered": false,
     "definition": "CREATE UNIQUE INDEX support_access_sessions_pkey ON public.support_access_sessions USING btree (id)",
-    "live": true,
-    "options": null,
-    "owner": "med_tracker_owner",
-    "ready": true,
-    "replica_identity": false,
-    "tablespace": null,
-    "valid": true
-  },
-  "index:public.users_pkey": {
-    "clustered": false,
-    "definition": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)",
     "live": true,
     "options": null,
     "owner": "med_tracker_owner",
@@ -34448,20 +34241,6 @@
     "function": "\"RI_FKey_noaction_del\"()",
     "type": 9
   },
-  "internal_trigger:public.people:public.users.fk_rails_fa67535741:17": {
-    "deferrable": true,
-    "deferred": true,
-    "enabled": "O",
-    "function": "\"RI_FKey_noaction_upd\"()",
-    "type": 17
-  },
-  "internal_trigger:public.people:public.users.fk_rails_fa67535741:9": {
-    "deferrable": true,
-    "deferred": true,
-    "enabled": "O",
-    "function": "\"RI_FKey_noaction_del\"()",
-    "type": 9
-  },
   "internal_trigger:public.person_access_grants:public.person_access_grants.fk_person_access_grants_carer_relationship_household:17": {
     "deferrable": false,
     "deferred": false,
@@ -35050,20 +34829,6 @@
     "function": "\"RI_FKey_check_ins\"()",
     "type": 5
   },
-  "internal_trigger:public.users:public.users.fk_rails_fa67535741:17": {
-    "deferrable": true,
-    "deferred": true,
-    "enabled": "O",
-    "function": "\"RI_FKey_check_upd\"()",
-    "type": 17
-  },
-  "internal_trigger:public.users:public.users.fk_rails_fa67535741:5": {
-    "deferrable": true,
-    "deferred": true,
-    "enabled": "O",
-    "function": "\"RI_FKey_check_ins\"()",
-    "type": 5
-  },
   "internal_trigger:public.versions:public.versions.fk_rails_15b046bfbe:17": {
     "deferrable": false,
     "deferred": false,
@@ -35491,7 +35256,7 @@
     "roles": [
       "med_tracker_owner"
     ],
-    "using": "((EXISTS ( SELECT 1\n   FROM household_memberships subject\n  WHERE ((subject.person_id = people.id) AND (subject.household_id = med_tracker.current_household_id()) AND ((subject.status)::text = 'active'::text) AND (subject.revoked_at IS NULL)))) AND (EXISTS ( SELECT 1\n   FROM (((accounts actor\n     JOIN platform_admins administrator ON ((administrator.account_id = actor.id)))\n     JOIN users actor_user ON ((actor_user.person_id = actor.person_id)))\n     JOIN households household ON ((household.id = med_tracker.current_household_id())))\n  WHERE ((actor.id = med_tracker.current_account_id()) AND (actor.status = 2) AND actor_user.active AND ((administrator.status)::text = 'active'::text) AND ((household.status)::text = 'active'::text) AND ((household.lifecycle_state)::text = 'active'::text) AND (NOT (EXISTS ( SELECT 1\n           FROM account_lockouts lockout\n          WHERE ((lockout.account_id = actor.id) AND (lockout.deadline > timezone('UTC'::text, clock_timestamp()))))))))))"
+    "using": "((EXISTS ( SELECT 1\n   FROM household_memberships subject\n  WHERE ((subject.person_id = people.id) AND (subject.household_id = med_tracker.current_household_id()) AND ((subject.status)::text = 'active'::text) AND (subject.revoked_at IS NULL)))) AND (EXISTS ( SELECT 1\n   FROM ((accounts actor\n     JOIN platform_admins administrator ON ((administrator.account_id = actor.id)))\n     JOIN households household ON ((household.id = med_tracker.current_household_id())))\n  WHERE ((actor.id = med_tracker.current_account_id()) AND (actor.status = 2) AND actor.active AND ((administrator.status)::text = 'active'::text) AND ((household.status)::text = 'active'::text) AND ((household.lifecycle_state)::text = 'active'::text) AND (NOT (EXISTS ( SELECT 1\n           FROM account_lockouts lockout\n          WHERE ((lockout.account_id = actor.id) AND (lockout.deadline > timezone('UTC'::text, clock_timestamp()))))))))))"
   },
   "policy:public.people.people_support_read": {
     "check": null,
@@ -35500,7 +35265,7 @@
     "roles": [
       "med_tracker_app"
     ],
-    "using": "(EXISTS ( SELECT 1\n   FROM (((((((support_access_sessions s\n     JOIN platform_admins pa ON ((pa.id = s.platform_admin_id)))\n     JOIN accounts admin ON ((admin.id = pa.account_id)))\n     JOIN users admin_user ON ((admin_user.person_id = admin.person_id)))\n     JOIN households h ON ((h.id = s.household_id)))\n     JOIN household_memberships approval ON (((approval.id = s.approved_by_membership_id) AND (approval.household_id = s.household_id))))\n     JOIN accounts approver ON (((approver.id = s.approved_by_account_id) AND (approver.person_id = approval.person_id))))\n     JOIN users approver_user ON ((approver_user.person_id = approver.person_id)))\n  WHERE ((admin.id = med_tracker.current_account_id()) AND (admin.status = 2) AND admin_user.active AND ((pa.status)::text = 'active'::text) AND (s.household_id = med_tracker.current_household_id()) AND ((h.status)::text = 'active'::text) AND ((h.lifecycle_state)::text = 'active'::text) AND (s.approved_at IS NOT NULL) AND (s.ended_at IS NULL) AND (s.expired_at IS NULL) AND (s.expires_at > timezone('UTC'::text, clock_timestamp())) AND ((approval.role)::text = 'owner'::text) AND ((approval.status)::text = 'active'::text) AND (approval.revoked_at IS NULL) AND (approval.permissions_version = s.approved_permissions_version) AND (approver.status = 2) AND approver_user.active AND (NOT (EXISTS ( SELECT 1\n           FROM account_lockouts l\n          WHERE ((l.account_id = ANY (ARRAY[admin.id, approver.id])) AND (l.deadline > timezone('UTC'::text, clock_timestamp())))))) AND (((people.id = approver.person_id) AND (people.person_type = 0) AND people.has_capacity) OR ((s.activated_at IS NOT NULL) AND (EXISTS ( SELECT 1\n           FROM household_memberships subject\n          WHERE ((subject.person_id = people.id) AND (subject.household_id = s.household_id) AND ((subject.status)::text = 'active'::text) AND (subject.revoked_at IS NULL)))))))))"
+    "using": "(EXISTS ( SELECT 1\n   FROM (((((support_access_sessions s\n     JOIN platform_admins pa ON ((pa.id = s.platform_admin_id)))\n     JOIN accounts admin ON ((admin.id = pa.account_id)))\n     JOIN households h ON ((h.id = s.household_id)))\n     JOIN household_memberships approval ON (((approval.id = s.approved_by_membership_id) AND (approval.household_id = s.household_id))))\n     JOIN accounts approver ON (((approver.id = s.approved_by_account_id) AND (approver.person_id = approval.person_id))))\n  WHERE ((admin.id = med_tracker.current_account_id()) AND (admin.status = 2) AND admin.active AND ((pa.status)::text = 'active'::text) AND (s.household_id = med_tracker.current_household_id()) AND ((h.status)::text = 'active'::text) AND ((h.lifecycle_state)::text = 'active'::text) AND (s.approved_at IS NOT NULL) AND (s.ended_at IS NULL) AND (s.expired_at IS NULL) AND (s.expires_at > timezone('UTC'::text, clock_timestamp())) AND ((approval.role)::text = 'owner'::text) AND ((approval.status)::text = 'active'::text) AND (approval.revoked_at IS NULL) AND (approval.permissions_version = s.approved_permissions_version) AND (approver.status = 2) AND approver.active AND (NOT (EXISTS ( SELECT 1\n           FROM account_lockouts l\n          WHERE ((l.account_id = ANY (ARRAY[admin.id, approver.id])) AND (l.deadline > timezone('UTC'::text, clock_timestamp())))))) AND (((people.id = approver.person_id) AND (people.person_type = 0) AND people.has_capacity) OR ((s.activated_at IS NOT NULL) AND (EXISTS ( SELECT 1\n           FROM household_memberships subject\n          WHERE ((subject.person_id = people.id) AND (subject.household_id = s.household_id) AND ((subject.status)::text = 'active'::text) AND (subject.revoked_at IS NULL)))))))))"
   },
   "policy:public.person_access_grants.household_tenant_isolation": {
     "check": "(household_id = med_tracker.current_household_id())",
@@ -38368,42 +38133,6 @@
     "rls": false,
     "tablespace": null
   },
-  "relation:public.users": {
-    "access_method": "heap",
-    "acl": [
-      "med_tracker_app=arwd/med_tracker_owner",
-      "med_tracker_owner=arwdDxtm/med_tracker_owner"
-    ],
-    "force_rls": false,
-    "kind": "r",
-    "options": null,
-    "owner": "med_tracker_owner",
-    "partition": false,
-    "partition_bound": null,
-    "partition_key": null,
-    "persistence": "p",
-    "replica_identity": "d",
-    "rls": false,
-    "tablespace": null
-  },
-  "relation:public.users_id_seq": {
-    "access_method": null,
-    "acl": [
-      "med_tracker_app=rU/med_tracker_owner",
-      "med_tracker_owner=rwU/med_tracker_owner"
-    ],
-    "force_rls": false,
-    "kind": "S",
-    "options": null,
-    "owner": "med_tracker_owner",
-    "partition": false,
-    "partition_bound": null,
-    "partition_key": null,
-    "persistence": "p",
-    "replica_identity": "n",
-    "rls": false,
-    "tablespace": null
-  },
   "relation:public.versions": {
     "access_method": "heap",
     "acl": [
@@ -39161,16 +38890,6 @@
     "maximum": 9223372036854775807,
     "minimum": 1,
     "owned_by": "public.support_access_sessions.id",
-    "start": 1,
-    "type": "bigint"
-  },
-  "sequence:public.users_id_seq": {
-    "cache": 1,
-    "cycle": false,
-    "increment": 1,
-    "maximum": 9223372036854775807,
-    "minimum": 1,
-    "owned_by": "public.users.id",
     "start": 1,
     "type": "bigint"
   },

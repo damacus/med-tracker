@@ -11,7 +11,7 @@ use super::{
     authorization,
     entities::{
         account, account_lockout, household, medication, membership, person, person_medication,
-        schedule, user,
+        schedule,
     },
     errors::OperationError,
 };
@@ -39,7 +39,6 @@ pub struct TenantTransaction {
     transaction: DatabaseTransaction,
     scope: HouseholdScope,
     membership: membership::Model,
-    legacy_user_id: Option<i64>,
     settings: Option<serde_json::Value>,
 }
 
@@ -54,10 +53,6 @@ impl TenantTransaction {
 
     pub fn membership(&self) -> &membership::Model {
         &self.membership
-    }
-
-    pub fn legacy_user_id(&self) -> Option<i64> {
-        self.legacy_user_id
     }
 
     pub fn settings(&self) -> Option<&serde_json::Value> {
@@ -97,7 +92,6 @@ pub async fn begin(
             ))
             .await?;
         let membership = verify_membership(&transaction, scope).await?;
-        let legacy_user_id = account_user(&transaction, scope.actor.account_id).await?;
         transaction
             .query_one_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
@@ -109,15 +103,14 @@ pub async fn begin(
                 ],
             ))
             .await?;
-        Ok::<_, OperationError>((membership, legacy_user_id))
+        Ok::<_, OperationError>(membership)
     }
     .await;
     match result {
-        Ok((membership, legacy_user_id)) => Ok(TenantTransaction {
+        Ok(membership) => Ok(TenantTransaction {
             transaction,
             scope: scope.clone(),
             membership,
-            legacy_user_id,
             settings: settings.cloned(),
         }),
         Err(error) => {
@@ -350,7 +343,21 @@ pub(crate) async fn verify_account_actor(
     account_id: i64,
 ) -> Result<i64, OperationError> {
     verify_account(transaction, account_id).await?;
-    account_user(transaction, account_id)
+    let person = person_queries::account_person(Actor { account_id })
+        .one(transaction)
+        .await?
+        .ok_or(OperationError::Unauthenticated)?;
+    Ok(person.id)
+}
+
+pub(crate) async fn verify_account_enabled(
+    transaction: &impl ConnectionTrait,
+    account_id: i64,
+) -> Result<account::Model, OperationError> {
+    account::Entity::find_by_id(account_id)
+        .filter(account::Column::Active.eq(true))
+        .filter(account::Column::Status.is_in([1, 2]))
+        .one(transaction)
         .await?
         .ok_or(OperationError::Unauthenticated)
 }
@@ -359,11 +366,10 @@ pub(crate) async fn verify_account(
     transaction: &impl ConnectionTrait,
     account_id: i64,
 ) -> Result<(), OperationError> {
-    let account = account::Entity::find_by_id(account_id)
-        .one(transaction)
-        .await?
-        .filter(|record| record.status == 2)
-        .ok_or(OperationError::Unauthenticated)?;
+    let account = verify_account_enabled(transaction, account_id).await?;
+    if account.status != 2 {
+        return Err(OperationError::Unauthenticated);
+    }
     if account_lockout::Entity::find_by_id(account.id)
         .filter(account_lockout::Column::Deadline.gt(chrono::Utc::now().naive_utc()))
         .one(transaction)
@@ -373,20 +379,4 @@ pub(crate) async fn verify_account(
         return Err(OperationError::Unauthenticated);
     }
     Ok(())
-}
-
-async fn account_user(
-    transaction: &DatabaseTransaction,
-    account_id: i64,
-) -> Result<Option<i64>, OperationError> {
-    let person = person_queries::account_person(Actor { account_id })
-        .one(transaction)
-        .await?
-        .ok_or(OperationError::Unauthenticated)?;
-    let user = user::Entity::find()
-        .filter(user::Column::PersonId.eq(person.id))
-        .filter(user::Column::Active.eq(true))
-        .one(transaction)
-        .await?;
-    Ok(user.map(|user| user.id))
 }

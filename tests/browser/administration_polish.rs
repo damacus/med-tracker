@@ -65,7 +65,7 @@ async fn administration_polish_overview_and_forms() {
         page.get_by_label("Email",true).fill("synthetic-invite@example.test",None).await.unwrap();
         page.get_by_role(AriaRole::Button,named("Send invitation")).click(None).await.unwrap();
         expect(page.locator("main")).to_contain_text("Invitation email queued for delivery.").await.unwrap();
-        for (path,label) in [("","overview"),("/users","members"),("/invitations","invitations"),("/household/edit","settings"),("/users/77001/edit","role"),("/carer_relationships","care"),("/carer_relationships/new","care-form"),("/audit_logs","audit")] {
+        for (path,label) in [("","overview"),("/users","members"),("/invitations","invitations"),("/household/edit","settings"),("/users/74001/edit","role"),("/carer_relationships","care"),("/carer_relationships/new","care-form"),("/audit_logs","audit")] {
             page.goto(&format!("{}/households/persistence-fixture/admin{path}",journey.origin),None).await.unwrap();
             expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
             if label == "overview" { expect(page.locator(".admin-activity")).to_contain_text("Invitation created").await.unwrap(); }
