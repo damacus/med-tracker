@@ -11,7 +11,7 @@ RUN ./node_modules/.bin/tailwindcss -i assets/static/css/app.css -o assets/stati
     && cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js
 
 FROM rust:1.99.1-slim-trixie@sha256:b8e062b1c3a80183df83d9ba187cadd2b5ab84bc78d453dbfeb2fccd5f982247 AS toolchain
-FROM ubuntu:26.04@sha256:19fcd1bf268f02b60aca3bd30bd8a6d9a11759a430e32921833e65f16d87348a AS dependencies
+FROM ubuntu:26.04@sha256:0e73b71479e7bc5f006bca872e25c3cd680dc052a0116f90d63ae363537db0dd AS dependencies
 ARG CARGO_BUILD_JOBS=2
 ARG TARGETARCH
 RUN apt-get update && apt-get install --yes --no-install-recommends \
