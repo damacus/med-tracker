@@ -151,9 +151,9 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
     };
     let Some(key) = row.archive_key.as_deref() else {
         if row.status < 4 {
-            import::fail_run(
+            import::fail_owned_run(
                 &ctx.db,
-                id,
+                &row,
                 "The release archive is missing. Upload the release again.",
             )
             .await?;
@@ -163,9 +163,9 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
     let store = match storage::ArchiveStore::configured(ctx) {
         Ok(store) => store,
         Err(error) => {
-            import::fail_run(
+            import::fail_owned_run(
                 &ctx.db,
-                id,
+                &row,
                 "Archive storage is unavailable. Upload the release again.",
             )
             .await?;
@@ -180,9 +180,9 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
     let bytes = match store.get(key).await {
         Ok(bytes) => bytes,
         Err(error) => {
-            import::fail_run(
+            import::fail_owned_run(
                 &ctx.db,
-                id,
+                &row,
                 "The release archive could not be read. Upload the release again.",
             )
             .await?;
@@ -202,7 +202,7 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
         Err("Archive integrity verification failed".into())
     };
     if let Err(error) = result {
-        import::fail_run(&ctx.db, id, &error).await?;
+        import::fail_owned_run(&ctx.db, &row, &error).await?;
     }
     cleanup(ctx, &store, &row).await?;
     lease.commit().await?;
