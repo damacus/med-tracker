@@ -96,10 +96,13 @@ impl Page<'_> {
             let (record, etag) = match id {
                 Some(id) => {
                     let (body, etag) = dosages::read(tenant, id).await?;
-                    if body["data"]["medication_id"].as_i64() != Some(parent.medication.id) {
+                    if body.data.medication_id != parent.medication.id {
                         return Err(OperationError::NotFound);
                     }
-                    (body["data"].clone(), etag)
+                    (
+                        serde_json::to_value(body.data).map_err(|_| OperationError::Unavailable)?,
+                        etag,
+                    )
                 }
                 None => (form::defaults(), String::new()),
             };
@@ -178,7 +181,7 @@ impl Page<'_> {
             let parent = medications::read_stock_snapshot(&tenant, self.medication).await?;
             if let Some(id) = id {
                 let (body, current_etag) = dosages::read(&tenant, id).await?;
-                if body["data"]["medication_id"].as_i64() != Some(parent.medication.id) {
+                if body.data.medication_id != parent.medication.id {
                     return Err(OperationError::NotFound);
                 }
                 if deleting {
@@ -190,7 +193,7 @@ impl Page<'_> {
                         details: json!({}),
                     });
                 }
-                if !form::browser_hours_valid(&draft, body["data"].get("default_min_hours_between_doses")) {
+                if !form::browser_hours_valid(&draft, Some(&body.data.default_min_hours_between_doses)) {
                     return Err(OperationError::Validation {
                         details: json!({"error":"Minimum hours between doses must be a whole number.","errors":{"default_min_hours_between_doses":["must be a whole number"]}}),
                     });

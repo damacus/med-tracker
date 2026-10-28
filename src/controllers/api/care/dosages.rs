@@ -3,6 +3,10 @@ use super::*;
 use crate::models::care::dosages;
 use headers::HeaderMapExt;
 
+fn response_body(body: impl serde::Serialize) -> std::result::Result<Value, response::Failure> {
+    serde_json::to_value(body).map_err(|_| response::unavailable())
+}
+
 pub(super) async fn index(
     State(ctx): State<AppContext>,
     ApiPath(household_id): ApiPath<i64>,
@@ -21,8 +25,8 @@ pub(super) async fn index(
     let result = match pagination {
         Ok(axum::extract::Query(page)) => dosages::list(&tenant, page)
             .await
-            .map(|body| (StatusCode::OK, body, None))
-            .map_err(response::operation),
+            .map_err(response::operation)
+            .and_then(|body| Ok((StatusCode::OK, response_body(body)?, None))),
         Err(_) => Err(response::Failure::validation("Invalid pagination")),
     };
     finish(
@@ -48,22 +52,26 @@ pub(super) async fn show(
     };
     let result = dosages::read(&tenant, &id)
         .await
-        .map(|(body, etag)| {
+        .map_err(response::operation)
+        .and_then(|(body, etag)| {
             let unchanged = headers
                 .typed_get::<headers::IfNoneMatch>()
                 .zip(etag.parse::<headers::ETag>().ok())
                 .is_some_and(|(condition, etag)| !condition.precondition_passes(&etag));
-            (
+            Ok((
                 if unchanged {
                     StatusCode::NOT_MODIFIED
                 } else {
                     StatusCode::OK
                 },
-                if unchanged { Value::Null } else { body },
+                if unchanged {
+                    Value::Null
+                } else {
+                    response_body(body)?
+                },
                 Some(etag),
-            )
-        })
-        .map_err(response::operation);
+            ))
+        });
     finish(
         tenant,
         principal.provenance(),
@@ -112,7 +120,7 @@ pub(super) async fn create(
             let (body, etag) = dosages::represent(&tenant, &row)
                 .await
                 .map_err(response::operation)?;
-            Ok((StatusCode::CREATED, body, Some(etag)))
+            Ok((StatusCode::CREATED, response_body(body)?, Some(etag)))
         }
         .await;
         if result.is_ok() {
@@ -206,7 +214,7 @@ async fn update(
             let (body, etag) = dosages::represent(&tenant, &row)
                 .await
                 .map_err(response::operation)?;
-            Ok((StatusCode::OK, body, Some(etag)))
+            Ok((StatusCode::OK, response_body(body)?, Some(etag)))
         }
         .await;
         if result.is_ok() {
