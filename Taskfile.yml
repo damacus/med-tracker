@@ -53,8 +53,8 @@ tasks:
   image:check:
     desc: Detect release-image tool drift from application CI
     cmds:
-      - python3 scripts/test_loco_image_tooling.py
-      - python3 scripts/check_loco_image_tooling.py
+      - node --test scripts/test_loco_image_tooling.mjs
+      - node scripts/check_loco_image_tooling.mjs
   image:build:
     desc: Build the root Loco release image for the local architecture
     cmds:
@@ -119,4 +119,4 @@ tasks:
   test:
     cmds: [{task: "test:unit"}, {task: "test:integration"}, {task: "test:browser"}]
   test:tooling:
-    cmds: [node --test scripts/test_compose_tasks.mjs]
+    cmds: [node --test scripts/test_compose_tasks.mjs scripts/test_invitation_mail.mjs]

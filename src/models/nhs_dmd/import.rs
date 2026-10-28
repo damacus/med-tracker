@@ -1,6 +1,6 @@
 use super::extract;
 use crate::models::entities::{
-    nhs_dmd_amp_trade_family, nhs_dmd_ampp_relationship, nhs_dmd_barcode,
+    nhs_dmd_amp_trade_family, nhs_dmd_ampp_relationship, nhs_dmd_barcode, nhs_dmd_import,
     nhs_dmd_supplementary_release, nhs_dmd_trade_family, nhs_dmd_trade_family_group,
 };
 use chrono::{NaiveDate, Utc};
@@ -10,7 +10,7 @@ use regex::Regex;
 use sea_orm::prelude::Date;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction,
-    DbBackend, EntityTrait, QueryFilter, Set, Statement, TransactionTrait,
+    DbBackend, EntityTrait, QueryFilter, QuerySelect, Set, Statement, TransactionTrait,
 };
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -737,9 +737,34 @@ where
     let (sender, receiver) = mpsc::unbounded_channel();
     let work = tokio::task::spawn_blocking(move || operation(sender));
     let activity = drain_activity(db, run_id, receiver);
+    finish_work(run_id, "activity", work, activity).await
+}
+
+async fn finish_work<T>(
+    run_id: i64,
+    phase: &'static str,
+    work: tokio::task::JoinHandle<Result<T, String>>,
+    activity: impl std::future::Future<Output = Result<(), String>>,
+) -> Result<T, String> {
     let (result, liveness) = tokio::join!(work, activity);
+    let result = result.unwrap_or_else(|error| {
+        Err(if error.is_panic() {
+            "Import worker panicked".to_owned()
+        } else {
+            "Import worker was cancelled".to_owned()
+        })
+    });
+    if result.is_err() && liveness.is_err() {
+        tracing::warn!(
+            run_id,
+            phase,
+            secondary_failure = "activity_reporting",
+            "NHS import activity reporting also failed"
+        );
+    }
+    let value = result?;
     liveness?;
-    result.map_err(|error| error.to_string())?
+    Ok(value)
 }
 
 pub(crate) async fn run_import(
@@ -899,9 +924,7 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
         Ok::<_, String>((names, counts))
     });
     let drain = drain_progress(db, run_id, progress_rx);
-    let (names_result, drain_result) = tokio::join!(names_task, drain);
-    drain_result?;
-    let (names, counts) = names_result.map_err(|error| error.to_string())??;
+    let (names, counts) = finish_work(run_id, "parse_ampp", names_task, drain).await?;
     let names = Arc::new(names);
     apply_progress(db, run_id, &counts, 3).await?;
     parsing_ampp.complete();
@@ -926,9 +949,7 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
         Ok::<_, String>((records, counts))
     });
     let drain = drain_progress(db, run_id, gtin_rx);
-    let (gtin_result, drain_result) = tokio::join!(gtin_task, drain);
-    drain_result?;
-    let (records, mut counts) = gtin_result.map_err(|error| error.to_string())??;
+    let (records, mut counts) = finish_work(run_id, "parse_gtin", gtin_task, drain).await?;
     parsing_gtin.complete();
     let persisting = ImportPhaseTimer::new(run_id, "persist");
     let transaction = db.begin().await.map_err(|error| error.to_string())?;
@@ -1245,9 +1266,143 @@ pub(crate) async fn fail_run(
     Ok(())
 }
 
+pub(crate) async fn fail_owned_run(
+    db: &DatabaseConnection,
+    owned_run: &nhs_dmd_import::Model,
+    message: &str,
+) -> Result<(), sea_orm::DbErr> {
+    const STALE_MESSAGE: &str = "The import stopped making progress. Upload the release again.";
+    if owned_run.status >= 4 {
+        return Ok(());
+    }
+    fail_run(db, owned_run.id, message).await?;
+    if matches!(
+        message,
+        "Import is no longer active" | "Import activity could not be reported"
+    ) {
+        return Ok(());
+    }
+    let transaction = db.begin().await?;
+    let stale = nhs_dmd_import::Entity::find_by_id(owned_run.id)
+        .filter(nhs_dmd_import::Column::Status.eq(5))
+        .filter(nhs_dmd_import::Column::ErrorMessage.eq(STALE_MESSAGE))
+        .filter(match &owned_run.archive_key {
+            Some(key) => nhs_dmd_import::Column::ArchiveKey.eq(key.as_str()),
+            None => nhs_dmd_import::Column::ArchiveKey.is_null(),
+        })
+        .filter(match &owned_run.archive_checksum {
+            Some(checksum) => nhs_dmd_import::Column::ArchiveChecksum.eq(checksum.as_str()),
+            None => nhs_dmd_import::Column::ArchiveChecksum.is_null(),
+        })
+        .lock_exclusive()
+        .one(&transaction)
+        .await?;
+    if let Some(stale) = stale {
+        let log = format!(
+            "{}{STALE_MESSAGE}\n{message}\n",
+            stale.log.as_deref().unwrap_or_default()
+        );
+        let mut active: nhs_dmd_import::ActiveModel = stale.into();
+        active.error_message = Set(Some(message.to_owned()));
+        active.log = Set(Some(log));
+        active.updated_at = Set(Utc::now().naive_utc());
+        active.update(&transaction).await?;
+    }
+    transaction.commit().await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn blocking_work_failure_survives_activity_failure() {
+        let error = blocking_with_activity(&DatabaseConnection::default(), 1, |activity| {
+            let _ = activity.send(());
+            Err::<(), _>("Specific release parsing failure".to_owned())
+        })
+        .await
+        .unwrap_err();
+        assert_eq!(error, "Specific release parsing failure");
+    }
+
+    #[tokio::test]
+    async fn successful_work_does_not_hide_activity_failure() {
+        let error = blocking_with_activity(&DatabaseConnection::default(), 1, |activity| {
+            let _ = activity.send(());
+            Ok(())
+        })
+        .await
+        .unwrap_err();
+        assert!(error.contains("Disconnected"));
+    }
+
+    #[tokio::test]
+    async fn ampp_and_gtin_failures_survive_progress_failure() {
+        for (phase, xml, expected) in [
+            (
+                "parse_ampp",
+                format!(
+                    "<AMPPS>{}<AMPP><AMPP></AMPP></AMPP></AMPPS>",
+                    "<AMPP/>".repeat(250)
+                ),
+                "Nested AMPP record in release XML",
+            ),
+            (
+                "parse_gtin",
+                format!(
+                    "<AMPPS><AMPP>{}<GTINDATA><GTINDATA></GTINDATA></GTINDATA></AMPP></AMPPS>",
+                    "<GTINDATA/>".repeat(250)
+                ),
+                "Nested GTINDATA record in GTIN XML",
+            ),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("release.xml");
+            std::fs::write(&path, xml).unwrap();
+            let (sender, receiver) = mpsc::unbounded_channel();
+            let work = tokio::task::spawn_blocking(move || {
+                let mut counts = Counts::default();
+                if phase == "parse_ampp" {
+                    parse_ampp_names(&path, &mut counts, &sender).map(|_| ())
+                } else {
+                    parse_gtins(
+                        &path,
+                        &HashMap::new(),
+                        NaiveDate::from_ymd_opt(2026, 10, 13).unwrap(),
+                        &mut counts,
+                        &sender,
+                    )
+                    .map(|_| ())
+                }
+            });
+            let drain = async {
+                let result = drain_progress(&DatabaseConnection::default(), 1, receiver).await;
+                assert!(result.is_err());
+                result
+            };
+            assert_eq!(
+                finish_work(1, phase, work, drain).await.unwrap_err(),
+                expected
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn blocking_panic_is_not_replaced_by_activity_failure_or_exposed() {
+        let error = blocking_with_activity(
+            &DatabaseConnection::default(),
+            1,
+            |activity| -> Result<(), String> {
+                let _ = activity.send(());
+                panic!("synthetic private panic payload");
+            },
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error, "Import worker panicked");
+    }
 
     #[test]
     fn self_nested_release_records_fail_without_publishing_partial_names_or_gtins() {

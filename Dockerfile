@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
-FROM node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS frontend-dependencies
+FROM node:26.12.1-trixie-slim@sha256:94816674c62774da0d099a947bf4613b9e1972a2733abd0d0cd80e795f8411d0 AS frontend-dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,id=loco-npm,target=/root/.npm,sharing=locked \
@@ -10,8 +10,8 @@ COPY assets/ assets/
 RUN ./node_modules/.bin/tailwindcss -i assets/static/css/app.css -o assets/static/css/compiled.css --minify \
     && cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js
 
-FROM rust:1.99.1-slim-trixie@sha256:1a939748a7cbab172de91a014e3804a97af1394a8c844faa67fce9401c4e40fb AS toolchain
-FROM ubuntu:26.04@sha256:19fcd1bf268f02b60aca3bd30bd8a6d9a11759a430e32921833e65f16d87348a AS dependencies
+FROM rust:1.99.1-slim-trixie@sha256:b8e062b1c3a80183df83d9ba187cadd2b5ab84bc78d453dbfeb2fccd5f982247 AS toolchain
+FROM ubuntu:26.04@sha256:0e73b71479e7bc5f006bca872e25c3cd680dc052a0116f90d63ae363537db0dd AS dependencies
 ARG CARGO_BUILD_JOBS=2
 ARG TARGETARCH
 RUN apt-get update && apt-get install --yes --no-install-recommends \

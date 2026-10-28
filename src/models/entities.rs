@@ -68,4 +68,5 @@ pub mod active_session_key {
 pub use super::_entities::person_schedules as person_schedule;
 pub use super::identity::better_auth::schema::{
     api_key as identity_api_key, passkey as identity_passkey, session as identity_session,
+    verification as identity_verification,
 };

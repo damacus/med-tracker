@@ -90,6 +90,7 @@ tasks:
       - task: services
       - '{{.COMPOSE}} run --rm --no-deps -e DATABASE_URL=postgres://medtracker:medtracker_password@postgres/medtracker_loco {{if eq .ENV "prod"}}app{{else}}{{.TOOL}} {{.EXECUTABLE}}{{end}} db migrate --environment {{.LOCO_ENV}}'
       - task: provision
+      - '{{if and (eq .ENV "dev") (eq (.MEDTRACKER_CAPTURE_MAIL | default "false") "true")}}{{.COMPOSE}} --profile local-mail up -d --wait mailpit{{else}}true{{end}}'
       - 'env MT_HTTP_PORT={{.HTTP_PORT | default "0"}} MT_PUBLIC_ORIGIN={{.ORIGIN | shellQuote}} MT_COOKIE_SECURE={{if eq (.PORTLESS | default "1") "0"}}false{{else}}true{{end}} {{.COMPOSE}} up -d {{if eq .ENV "dev"}}dev-frontend dev-builder dev-app dev-scheduler{{else if eq .ENV "test"}}test-app test-scheduler{{else}}app scheduler{{end}}'
       - |
         set -eu
@@ -99,7 +100,7 @@ tasks:
   down:
     cmds:
       - 'fish scripts/portless.fish remove {{.PROJECT}} "" "$({{.COMPOSE}} port {{.APP}} 5150 2>/dev/null | cut -d: -f2)"'
-      - '{{.COMPOSE}} down'
+      - '{{.COMPOSE}}{{if eq .ENV "dev"}} --profile local-mail{{end}} down'
   restart:
     cmds: ['{{.COMPOSE}} restart']
   logs:

@@ -26,6 +26,8 @@ mod me_ui;
 mod people;
 #[path = "profile.rs"]
 mod profile;
+#[path = "request_trace.rs"]
+mod request_trace;
 
 use crate::scenario::Scenario;
 use loco_rs::{
