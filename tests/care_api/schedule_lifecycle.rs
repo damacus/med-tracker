@@ -315,9 +315,27 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
         .json(&json!({"schedule":{"notes":"Must roll back"}}))
         .send()
         .await
+        .unwrap();
+    let failed_status = failed.status().as_u16();
+    let failed_request_id = failed.headers()["x-request-id"]
+        .to_str()
         .unwrap()
-        .status()
-        .as_u16();
+        .to_owned();
+    let failed_body: Value = failed.json().await.unwrap();
+    let failed_put = app
+        .client
+        .put(&endpoint)
+        .bearer_auth(&token)
+        .json(&json!({"schedule":{"notes":"PUT must roll back"}}))
+        .send()
+        .await
+        .unwrap();
+    let failed_put_status = failed_put.status().as_u16();
+    let failed_put_request_id = failed_put.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let failed_put_body: Value = failed_put.json().await.unwrap();
     med_tracker::models::_entities::household_memberships::Entity::update_many()
         .col_expr(
             med_tracker::models::_entities::household_memberships::Column::Role,
@@ -498,13 +516,25 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
         (
             first,
             replay_status,
-            failed,
+            failed_status,
+            failed_put_status,
             self_replay_status,
             denied,
             malformed_denied
         ),
-        (200, 200, 500, 200, 403, 403)
+        (200, 200, 500, 500, 200, 403, 403)
     );
+    for (method, request_id, body) in [
+        ("patch", &failed_request_id, &failed_body),
+        ("put", &failed_put_request_id, &failed_put_body),
+    ] {
+        super::schedule_contracts::assert_internal_error(
+            "/households/{household_id}/schedules/{id}",
+            method,
+            request_id,
+            body,
+        );
+    }
     assert!(replayed && reached);
     assert_eq!(notes.as_deref(), Some("Synthetic lifecycle"));
     assert_eq!((versions, changes), (1, 1));

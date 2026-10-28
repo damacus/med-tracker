@@ -3266,6 +3266,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/schedules/{id}:
     get:
       operationId: getSchedule
@@ -3276,6 +3278,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/resource_id"
+        - $ref: "#/components/parameters/if_none_match"
       responses:
         "200":
           description: Schedule resource.
@@ -3286,6 +3289,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleResponse"
+        "304":
+          description: Schedule has not changed since the supplied ETag.
+          headers:
+            ETag:
+              $ref: "#/components/headers/etag"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3336,6 +3344,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     put:
       operationId: replaceSchedule
       tags:
@@ -3376,6 +3386,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/schedules/{id}/pause:
     patch:
       operationId: pauseSchedule
