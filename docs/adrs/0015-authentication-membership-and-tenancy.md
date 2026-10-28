@@ -94,6 +94,13 @@ claimed actor. Do not retain additional session records solely to identify
 requests made after sign-out. This decision does not introduce the deferred
 download product described in ADR 0017.
 
+Rate-limit and missing-socket-peer refusals occur before authentication. Record
+them without a claimed actor in the existing structured security logs, under the
+server-generated request trace. Keep the limiter's rejection and retry behaviour;
+do not add database work after throttling. These transport refusal logs do not
+have the clinical ledger's transactional or tamper-evident guarantees. Successful
+reads and handler-level refusals continue to use that ledger.
+
 ## Consequences
 
 Native authentication tables use restricted runtime grants and the native store's

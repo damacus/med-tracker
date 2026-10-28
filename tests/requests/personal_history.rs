@@ -11,6 +11,9 @@ use sea_orm::{
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 const ENDPOINT: &str = "/api/v1/auth/profile/history";
 
+#[path = "personal_history/refusals.rs"]
+mod refusals;
+
 async fn audits(fixture: &RequestFixture, request_id: &str) -> Vec<versions::Model> {
     versions::Entity::find()
         .filter(versions::Column::RequestId.eq(request_id))
@@ -441,29 +444,27 @@ async fn blocked_by(
     blocker: i32,
 ) -> Result<i32, Box<dyn std::error::Error>> {
     use sea_orm::sea_query::{Expr, ExprTrait, Func, Query};
-    Ok(
-        tokio::time::timeout(std::time::Duration::from_secs(3), async {
-            loop {
-                let query = Query::select()
-                    .column("pid")
-                    .from(("pg_catalog", "pg_stat_activity"))
-                    .and_where(
-                        Expr::val(blocker).eq(Func::cust("ANY")
-                            .arg(Func::cust("pg_catalog.pg_blocking_pids").arg(Expr::col("pid")))),
-                    )
-                    .to_owned();
-                if let Some(row) = fixture
-                    .admin
-                    .query_one_raw(fixture.admin.get_database_backend().build(&query))
-                    .await?
-                {
-                    return Ok::<_, Box<dyn std::error::Error>>(row.try_get::<i32>("", "pid")?);
-                }
-                tokio::task::yield_now().await;
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            let query = Query::select()
+                .column("pid")
+                .from(("pg_catalog", "pg_stat_activity"))
+                .and_where(
+                    Expr::val(blocker).eq(Func::cust("ANY")
+                        .arg(Func::cust("pg_catalog.pg_blocking_pids").arg(Expr::col("pid")))),
+                )
+                .to_owned();
+            if let Some(row) = fixture
+                .admin
+                .query_one_raw(fixture.admin.get_database_backend().build(&query))
+                .await?
+            {
+                return Ok::<_, Box<dyn std::error::Error>>(row.try_get::<i32>("", "pid")?);
             }
-        })
-        .await??,
-    )
+            tokio::task::yield_now().await;
+        }
+    })
+    .await?
 }
 
 #[tokio::test]

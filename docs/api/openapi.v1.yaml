@@ -277,7 +277,10 @@ paths:
         Supply both cursor fields from next_cursor to read the next page. Timestamps
         are UTC. Each page rechecks current credentials and commits its access audit
         before releasing records. Refusals are audited, naming the actor only when
-        the server has proved their identity. Every response is no-store.
+        the server has proved their identity. Handler-level access audits use the
+        clinical ledger. Rate-limit and unavailable-source refusals occur before
+        authentication and use structured security logs without a claimed actor,
+        keeping database work behind the rate limit. Every response is no-store.
       parameters:
         - name: before_id
           in: query
