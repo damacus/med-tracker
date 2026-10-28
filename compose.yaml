@@ -1,4 +1,19 @@
 services:
+  mailpit:
+    image: axllent/mailpit:v1.32.0@sha256:0790692be935ea4420d085694f7985b1f692ca6a8771ab0e0bd8ba75ac180498
+    profiles: [local-mail]
+    environment:
+      MP_ENABLE_CHAOS: "true"
+    ports:
+      - target: 1025
+        host_ip: 127.0.0.1
+      - target: 8025
+        host_ip: 127.0.0.1
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
   storage-permissions:
     image: rustfs/rustfs:1.0.0-alpha.90
     profiles: [fixture-storage]

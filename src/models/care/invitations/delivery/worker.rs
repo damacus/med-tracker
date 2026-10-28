@@ -5,7 +5,7 @@ use crate::models::{
     care::browser_push::scheduler::household_transaction,
     entities::{household, membership},
 };
-use loco_rs::app::AppContext;
+use loco_rs::{app::AppContext, mailer::MailerWorker};
 use sea_orm::{DatabaseTransaction, QuerySelect};
 
 pub struct InvitationMailWorker {
@@ -145,9 +145,12 @@ async fn finish(
 #[serde(deny_unknown_fields)]
 struct DeliverySettings {
     send_timeout_seconds: Option<u64>,
+    from: Option<String>,
 }
 
-fn send_timeout(value: Option<&serde_json::Value>) -> Result<std::time::Duration, OperationError> {
+fn send_settings(
+    value: Option<&serde_json::Value>,
+) -> Result<(std::time::Duration, Option<String>), OperationError> {
     let settings: DeliverySettings = match value {
         Some(value) if !value.is_null() => {
             serde_json::from_value(value.clone()).map_err(|_| OperationError::Unavailable)?
@@ -158,7 +161,13 @@ fn send_timeout(value: Option<&serde_json::Value>) -> Result<std::time::Duration
     if !(1..=300).contains(&seconds) {
         return Err(OperationError::Unavailable);
     }
-    Ok(std::time::Duration::from_secs(seconds))
+    Ok((
+        std::time::Duration::from_secs(seconds),
+        settings
+            .from
+            .map(|sender| sender.trim().to_owned())
+            .filter(|sender| !sender.is_empty()),
+    ))
 }
 
 impl InvitationMailWorker {
@@ -192,7 +201,7 @@ impl InvitationMailWorker {
             first.db.commit().await?;
             return Ok(());
         }
-        let deadline = match send_timeout(
+        let (deadline, sender) = match send_settings(
             self.ctx
                 .config
                 .settings
@@ -223,15 +232,14 @@ impl InvitationMailWorker {
         let category = if !allowed(&first, &mail).await? {
             Some(FailureCategory::Unavailable)
         } else {
-            match &self.ctx.mailer {
-                Some(mailer) => {
-                    match tokio::time::timeout(deadline, mailer.mail(&mail.email)).await {
-                        Ok(Ok(())) => None,
-                        Ok(Err(_)) => Some(FailureCategory::ProviderUnavailable),
-                        Err(_) => Some(FailureCategory::Uncertain),
-                    }
-                }
-                None => Some(FailureCategory::ProviderUnavailable),
+            let mut email = mail.email.clone();
+            email.from = email.from.or(sender);
+            match tokio::time::timeout(deadline, MailerWorker::build(&self.ctx).perform(email))
+                .await
+            {
+                Ok(Ok(())) => None,
+                Ok(Err(_)) => Some(FailureCategory::ProviderUnavailable),
+                Err(_) => Some(FailureCategory::Uncertain),
             }
         };
         finish(&first.db, &mail, category).await?;
@@ -255,20 +263,23 @@ impl BackgroundWorker<InvitationMail> for InvitationMailWorker {
 
 #[cfg(test)]
 mod tests {
-    use super::send_timeout;
+    use super::send_settings;
     use serde_json::json;
     use std::time::Duration;
 
     #[test]
     fn invitation_mail_deadline_validates_settings_and_null_fallback() {
-        assert_eq!(send_timeout(None), Ok(Duration::from_secs(30)));
+        assert_eq!(send_settings(None), Ok((Duration::from_secs(30), None)));
         for value in [json!(null), json!({}), json!({"send_timeout_seconds":null})] {
-            assert_eq!(send_timeout(Some(&value)), Ok(Duration::from_secs(30)));
+            assert_eq!(
+                send_settings(Some(&value)),
+                Ok((Duration::from_secs(30), None))
+            );
         }
         for seconds in [1, 30, 300] {
             assert_eq!(
-                send_timeout(Some(&json!({"send_timeout_seconds":seconds}))),
-                Ok(Duration::from_secs(seconds))
+                send_settings(Some(&json!({"send_timeout_seconds":seconds}))),
+                Ok((Duration::from_secs(seconds), None))
             );
         }
         for value in [
@@ -278,7 +289,31 @@ mod tests {
             json!({"send_timeout_seconds":"30"}),
             json!({"unrecognised":30}),
         ] {
-            assert!(send_timeout(Some(&value)).is_err());
+            assert!(send_settings(Some(&value)).is_err());
         }
+    }
+
+    #[test]
+    fn invitation_mail_sender_preserves_null_and_empty_fallback() {
+        for value in [
+            json!({"from":null}),
+            json!({"from":""}),
+            json!({"from":"  "}),
+        ] {
+            assert_eq!(
+                send_settings(Some(&value)),
+                Ok((Duration::from_secs(30), None))
+            );
+        }
+        assert_eq!(
+            send_settings(Some(
+                &json!({"from":" MedTracker <invitations@medtracker.test> "})
+            )),
+            Ok((
+                Duration::from_secs(30),
+                Some("MedTracker <invitations@medtracker.test>".into())
+            ))
+        );
+        assert!(send_settings(Some(&json!({"from":false}))).is_err());
     }
 }

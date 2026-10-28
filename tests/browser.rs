@@ -3,7 +3,7 @@ mod db;
 #[path = "support/fixtures.rs"]
 pub mod fixtures;
 #[path = "support/harness.rs"]
-mod harness;
+pub mod harness;
 #[path = "browser/journeys.rs"]
 mod journeys;
 #[path = "browser/malformed_auth_entry.rs"]

@@ -119,4 +119,4 @@ tasks:
   test:
     cmds: [{task: "test:unit"}, {task: "test:integration"}, {task: "test:browser"}]
   test:tooling:
-    cmds: [node --test scripts/test_compose_tasks.mjs]
+    cmds: [node --test scripts/test_compose_tasks.mjs scripts/test_invitation_mail.mjs]
