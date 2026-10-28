@@ -87,6 +87,7 @@ pub(super) async fn prepare(
         .map_err(database_error)?
         .ok_or(OperationError::NotFound)?;
     let candidates = access::medication_scope(context.tenant)
+        .filter(stock_candidate_condition(&original))
         .all(db)
         .await
         .map_err(database_error)?;
