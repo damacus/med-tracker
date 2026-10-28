@@ -61,16 +61,21 @@ Native `run` values support quoted arguments but do not expand shell syntax.
 image. Keep production schedules as native tasks.
 
 The **Loco Linux images** workflow builds and checks amd64 and arm64 on native
-runners. Dispatch it **from main** with **publish** enabled to publish a
-multi-platform `ghcr.io/damacus/med-tracker-loco:sha-<commit>` image after both
-checks pass. Publication verifies checksums, image IDs and architectures of the
+runners. Every push to **main** publishes a multi-platform
+`ghcr.io/damacus/med-tracker-loco:sha-<full commit>` image and updates `beta`
+after the native image checks, scheduler acceptance and image-transfer checks pass.
+Dispatching **from main** with **publish** enabled also publishes; other
+dispatches only check the images. Publication verifies checksums, image IDs and architectures of the
 saved tested images, pushes those images, and joins their registry digests into
 the multi-platform manifest. The publication job has no source checkout, build
 or application execution. Pull requests and dispatches from other branches have
 no package write permission and cannot publish. Transferred image archives
 expire after one day.
 The existing Rails image publisher remains separate. Publishing an image does
-not deploy it.
+not deploy it. Both tags refer to the same manifest; the run summary records its
+immutable digest and exact source commit. Pin that digest in GitOps. A build
+after merging a pipeline change uses that subsequent main commit, rather than
+the main commit observed before the change.
 
 `task image:check` compares the image's pinned Rust compiler with the compiler
 selected by the application's stable CI policy, its Node version with `mise.toml`

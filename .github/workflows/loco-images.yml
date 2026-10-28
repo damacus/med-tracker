@@ -1,6 +1,8 @@
 name: Loco Linux images
 
 on:
+  push:
+    branches: [main]
   pull_request:
     paths:
       - Dockerfile
@@ -229,7 +231,7 @@ jobs:
           done
 
   publish:
-    if: github.repository == 'damacus/med-tracker' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish
+    if: github.repository == 'damacus/med-tracker' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
     needs: checked_images
     runs-on: ubuntu-26.04
     timeout-minutes: 20
@@ -291,4 +293,8 @@ jobs:
             [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
             sources+=("$IMAGE@$digest")
           done
-          docker buildx imagetools create --tag "$IMAGE:sha-$REVISION" "${sources[@]}"
+          docker buildx imagetools create --tag "$IMAGE:sha-$REVISION" --tag "$IMAGE:beta" "${sources[@]}"
+          digest=$(docker buildx imagetools inspect "$IMAGE:sha-$REVISION" --format '{{.Manifest.Digest}}')
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          test "$(docker buildx imagetools inspect "$IMAGE:beta" --format '{{.Manifest.Digest}}')" = "$digest"
+          printf 'Source commit: %s\n\nImmutable image: %s@%s\n\nTags: sha-%s, beta\n' "$REVISION" "$IMAGE" "$digest" "$REVISION" >> "$GITHUB_STEP_SUMMARY"
