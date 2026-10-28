@@ -167,8 +167,8 @@ pub(crate) async fn lock_row(
     Ok(())
 }
 
-fn database_error(_: sea_orm::DbErr) -> OperationError {
-    OperationError::Unavailable
+fn database_error(error: sea_orm::DbErr) -> OperationError {
+    error.into()
 }
 
 fn validation(message: &str) -> OperationError {
