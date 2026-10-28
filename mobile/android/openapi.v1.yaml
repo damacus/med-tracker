@@ -261,6 +261,106 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/schedules:
+    get:
+      operationId: listPersonalSchedules
+      tags: [Account]
+      summary: Read the authenticated person's treatment plans.
+      description: |
+        Requires account-bound first-party mobile OAuth with medtracker scope.
+        Household sessions, app tokens, personal keys and integration grants are
+        denied. No household participation is required. Returns prescribed clinical
+        state and opaque revision ETags without household stock or other people's
+        information. Existing sources are adopted at an authorised household write
+        or departure using the configured application timezone, with explicit
+        adopted_application_zone provenance. This is not historical zone recovery.
+      responses:
+        "200":
+          description: Personal treatment plans, including retired plans.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PersonalSchedule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /auth/schedules/{id}:
+    patch:
+      operationId: updatePersonalSchedule
+      tags: [Account]
+      summary: Edit, pause, resume or retire the authenticated person's plan.
+      description: |
+        Uses the same account-bound OAuth restriction as the personal collection.
+        Send the plan's opaque etag in If-Match. A stale revision returns 409.
+        Clinical edits retain recorded dose facts. Only a current originating
+        execution receives updates; departure is terminal even after membership
+        restoration. Suspension retains the attachment but denies household access.
+        Personal edits cannot select household inventory. Medicine selection remains
+        an authorised household operation. Explicit origin_time_zone corrections
+        change future recurrence and safety calculations; viewer zones are display-only.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/PersonalScheduleUpdateRequest"
+                - type: object
+                  additionalProperties: false
+                  required: [action]
+                  properties:
+                    action: {type: string, enum: [pause, resume, retire]}
+      responses:
+        "200":
+          description: Current personal plan and revision ETag.
+          headers:
+            ETag:
+              $ref: "#/components/headers/etag"
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PersonalSchedule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /auth/guardian-declarations:
     get:
       operationId: listOwnGuardianDeclarations
@@ -8168,6 +8268,67 @@ components:
         effective_time:
           type: string
           enum: [server_acceptance]
+    PersonalSchedule:
+      type: object
+      additionalProperties: false
+      required: [id, clinical_revision, etag, origin_time_zone, timezone_provenance, medicine_name, dmd_system, dmd_code, dmd_concept_class, stock_unit, active, retired_at, dose_amount, dose_unit, frequency, start_date, end_date, notes, max_daily_doses, min_hours_between_doses, dose_cycle, schedule_type, schedule_config, pause_started_at, pause_reason, pause_note]
+      properties:
+        id: {type: string, format: uuid}
+        clinical_revision: {type: integer, format: int64, minimum: 1}
+        etag: {type: string, description: Opaque revision token for If-Match.}
+        origin_time_zone: {type: string}
+        timezone_provenance:
+          type: string
+          enum: [captured_sharer_zone, adopted_application_zone, authorised_correction]
+        medicine_name: {type: string, nullable: true}
+        dmd_system: {type: string, nullable: true}
+        dmd_code: {type: string, nullable: true}
+        dmd_concept_class: {type: string, nullable: true}
+        stock_unit: {type: string, nullable: true}
+        active: {type: boolean}
+        retired_at: {type: string, format: date-time, nullable: true}
+        dose_amount: {type: string, nullable: true}
+        dose_unit: {type: string, nullable: true}
+        frequency: {type: string, nullable: true}
+        start_date: {type: string, format: date, nullable: true}
+        end_date: {type: string, format: date, nullable: true}
+        notes: {type: string, nullable: true}
+        max_daily_doses: {type: integer, nullable: true, minimum: 1}
+        min_hours_between_doses: {type: string, nullable: true}
+        dose_cycle: {type: string, nullable: true, enum: [daily, weekly, monthly]}
+        schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+        schedule_config:
+          $ref: "#/components/schemas/ScheduleConfig"
+        pause_started_at: {type: string, format: date-time, nullable: true}
+        pause_reason: {type: string, nullable: true}
+        pause_note: {type: string, nullable: true}
+    PersonalScheduleUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [schedule]
+      properties:
+        schedule:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            origin_time_zone: {type: string}
+            dose_amount:
+              $ref: "#/components/schemas/DecimalValue"
+            dose_unit: {type: string}
+            frequency: {type: string}
+            start_date:
+              $ref: "#/components/schemas/Date"
+            end_date:
+              $ref: "#/components/schemas/Date"
+            notes: {type: string}
+            max_daily_doses: {type: integer, minimum: 1}
+            min_hours_between_doses:
+              $ref: "#/components/schemas/NullableDecimalValue"
+            dose_cycle: {type: string, enum: [daily, weekly, monthly]}
+            schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+            schedule_config:
+              $ref: "#/components/schemas/ScheduleConfig"
     Schedule:
       type: object
       additionalProperties: false
@@ -8194,6 +8355,20 @@ components:
         - max_daily_doses
         - min_hours_between_doses
       properties:
+        person_schedule_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Canonical person-owned plan identity; distinct from this household source ID. Null until an existing source is adopted.
+        clinical_revision:
+          type: integer
+          format: int64
+          nullable: true
+          minimum: 1
+        origin_time_zone:
+          type: string
+          nullable: true
+          description: Stored named calendar and safety zone. New plans capture the creating sharer's zone; existing sources adopt the configured application zone once. Viewer zones do not redefine it.
         current_pause_period:
           $ref: "#/components/schemas/NullableMedicationPausePeriod"
         id:
@@ -8463,6 +8638,9 @@ components:
             - start_date
             - end_date
           properties:
+            origin_time_zone:
+              type: string
+              description: Optional explicit named timezone correction; otherwise capture the creating sharer's validated preference.
             person_id:
               $ref: "#/components/schemas/ResourceIdentifier"
             medication_id:
@@ -8519,6 +8697,9 @@ components:
       additionalProperties: false
       minProperties: 1
       properties:
+        origin_time_zone:
+          type: string
+          description: Explicit authorised correction to the stored named calendar and safety zone.
         person_id:
           $ref: "#/components/schemas/ResourceIdentifier"
         medication_id:

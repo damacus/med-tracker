@@ -28,8 +28,11 @@ import io.medtracker.client.models.GuardianDeclarationResponse
 import io.medtracker.client.models.GuardianDeclarationWithdrawalRequest
 import io.medtracker.client.models.InvitationAcceptanceRequest
 import io.medtracker.client.models.InvitationAcceptanceResponse
+import io.medtracker.client.models.ListPersonalSchedules200Response
 import io.medtracker.client.models.RateLimitErrorEnvelope
 import io.medtracker.client.models.UpdateAccountProfileRequest
+import io.medtracker.client.models.UpdatePersonalSchedule200Response
+import io.medtracker.client.models.UpdatePersonalScheduleRequest
 
 import com.squareup.moshi.Json
 
@@ -563,6 +566,76 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     }
 
     /**
+     * GET /auth/schedules
+     * Read the authenticated person&#39;s treatment plans.
+     * Requires account-bound first-party mobile OAuth with medtracker scope. Household sessions, app tokens, personal keys and integration grants are denied. No household participation is required. Returns prescribed clinical state and opaque revision ETags without household stock or other people&#39;s information. Existing sources are adopted at an authorised household write or departure using the configured application timezone, with explicit adopted_application_zone provenance. This is not historical zone recovery. 
+     * @return ListPersonalSchedules200Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listPersonalSchedules() : ListPersonalSchedules200Response {
+        val localVarResponse = listPersonalSchedulesWithHttpInfo()
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ListPersonalSchedules200Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /auth/schedules
+     * Read the authenticated person&#39;s treatment plans.
+     * Requires account-bound first-party mobile OAuth with medtracker scope. Household sessions, app tokens, personal keys and integration grants are denied. No household participation is required. Returns prescribed clinical state and opaque revision ETags without household stock or other people&#39;s information. Existing sources are adopted at an authorised household write or departure using the configured application timezone, with explicit adopted_application_zone provenance. This is not historical zone recovery. 
+     * @return ApiResponse<ListPersonalSchedules200Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listPersonalSchedulesWithHttpInfo() : ApiResponse<ListPersonalSchedules200Response?> {
+        val localVariableConfig = listPersonalSchedulesRequestConfig()
+
+        return request<Unit, ListPersonalSchedules200Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listPersonalSchedules
+     *
+     * @return RequestConfig
+     */
+    fun listPersonalSchedulesRequestConfig() : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/auth/schedules",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /auth/sessions
      * List active API sessions for the current account.
      * Return only the caller&#39;s nonrevoked sessions in descending creation order. API-session and app-token credentials list API sessions, including devices whose access or refresh token has expired; mobile OAuth credentials list mobile grants within the configured login lifetime. Never expose access or refresh tokens or their digests. 
@@ -841,6 +914,87 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/auth/profile",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /auth/schedules/{id}
+     * Edit, pause, resume or retire the authenticated person&#39;s plan.
+     * Uses the same account-bound OAuth restriction as the personal collection. Send the plan&#39;s opaque etag in If-Match. A stale revision returns 409. Clinical edits retain recorded dose facts. Only a current originating execution receives updates; departure is terminal even after membership restoration. Suspension retains the attachment but denies household access. Personal edits cannot select household inventory. Medicine selection remains an authorised household operation. Explicit origin_time_zone corrections change future recurrence and safety calculations; viewer zones are display-only. 
+     * @param id 
+     * @param ifMatch 
+     * @param updatePersonalScheduleRequest 
+     * @return UpdatePersonalSchedule200Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updatePersonalSchedule(id: java.util.UUID, ifMatch: kotlin.String, updatePersonalScheduleRequest: UpdatePersonalScheduleRequest) : UpdatePersonalSchedule200Response {
+        val localVarResponse = updatePersonalScheduleWithHttpInfo(id = id, ifMatch = ifMatch, updatePersonalScheduleRequest = updatePersonalScheduleRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as UpdatePersonalSchedule200Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /auth/schedules/{id}
+     * Edit, pause, resume or retire the authenticated person&#39;s plan.
+     * Uses the same account-bound OAuth restriction as the personal collection. Send the plan&#39;s opaque etag in If-Match. A stale revision returns 409. Clinical edits retain recorded dose facts. Only a current originating execution receives updates; departure is terminal even after membership restoration. Suspension retains the attachment but denies household access. Personal edits cannot select household inventory. Medicine selection remains an authorised household operation. Explicit origin_time_zone corrections change future recurrence and safety calculations; viewer zones are display-only. 
+     * @param id 
+     * @param ifMatch 
+     * @param updatePersonalScheduleRequest 
+     * @return ApiResponse<UpdatePersonalSchedule200Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updatePersonalScheduleWithHttpInfo(id: java.util.UUID, ifMatch: kotlin.String, updatePersonalScheduleRequest: UpdatePersonalScheduleRequest) : ApiResponse<UpdatePersonalSchedule200Response?> {
+        val localVariableConfig = updatePersonalScheduleRequestConfig(id = id, ifMatch = ifMatch, updatePersonalScheduleRequest = updatePersonalScheduleRequest)
+
+        return request<UpdatePersonalScheduleRequest, UpdatePersonalSchedule200Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updatePersonalSchedule
+     *
+     * @param id 
+     * @param ifMatch 
+     * @param updatePersonalScheduleRequest 
+     * @return RequestConfig
+     */
+    fun updatePersonalScheduleRequestConfig(id: java.util.UUID, ifMatch: kotlin.String, updatePersonalScheduleRequest: UpdatePersonalScheduleRequest) : RequestConfig<UpdatePersonalScheduleRequest> {
+        val localVariableBody = updatePersonalScheduleRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/auth/schedules/{id}".replace("{"+"id"+"}", encodeURIComponent(id.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
