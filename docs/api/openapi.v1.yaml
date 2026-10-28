@@ -10435,18 +10435,9 @@ components:
         data:
           $ref: "#/components/schemas/PortableImportResult"
     PortableImportUnprocessableResponse:
-      type: object
-      additionalProperties: false
-      minProperties: 1
-      properties:
-        data:
-          $ref: "#/components/schemas/PortableImportResult"
-        error:
-          $ref: "#/components/schemas/Error"
-      not:
-        required:
-          - data
-          - error
+      oneOf:
+        - $ref: "#/components/schemas/PortableImportResultResponse"
+        - $ref: "#/components/schemas/ErrorEnvelope"
     PortableImportResult:
       type: object
       additionalProperties: false
