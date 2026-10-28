@@ -1,8 +1,9 @@
 # Deployment
 
 The Loco Linux images workflow builds, checks and publishes the Rust image on
-every push to main as `ghcr.io/damacus/med-tracker-loco:beta` and
-`sha-<full commit>`. Its run summary records the source commit and immutable digest
+every push to main as `ghcr.io/damacus/med-tracker-loco:sha-<full commit>`.
+Only the current main revision can update `beta`; reruns of older commits retain
+their own image without changing beta. Its run summary records the source commit and immutable digest
 to deploy. Manual publication from main remains available. The existing Rails
 publisher remains separate.
 Root Loco is the fresh Rust application; use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md)
