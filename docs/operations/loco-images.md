@@ -61,16 +61,28 @@ Native `run` values support quoted arguments but do not expand shell syntax.
 image. Keep production schedules as native tasks.
 
 The **Loco Linux images** workflow builds and checks amd64 and arm64 on native
-runners. Dispatch it **from main** with **publish** enabled to publish a
-multi-platform `ghcr.io/damacus/med-tracker-loco:sha-<commit>` image after both
-checks pass. Publication verifies checksums, image IDs and architectures of the
+runners. Every push to **main** publishes a multi-platform
+`ghcr.io/damacus/med-tracker-loco:sha-<full commit>` image and can update `beta`
+after the native image checks, scheduler acceptance and image-transfer checks pass.
+Dispatching **from main** with **publish** enabled also publishes; other
+dispatches only check the images. Publication verifies checksums, image IDs and architectures of the
 saved tested images, pushes those images, and joins their registry digests into
 the multi-platform manifest. The publication job has no source checkout, build
 or application execution. Pull requests and dispatches from other branches have
 no package write permission and cannot publish. Transferred image archives
 expire after one day.
 The existing Rails image publisher remains separate. Publishing an image does
-not deploy it.
+not deploy it. Builds and immutable publication run independently for each main
+push, so a queued push is not displaced by the next commit. A separate Actions
+concurrency group serializes mutable `beta` promotion; only its latest pending
+promotion needs to run. Each promotion checks the current main tip through the
+GitHub API and skips older revisions. A failed or malformed ref lookup fails
+without changing `beta`. Rerunning an older commit can publish its SHA image but
+cannot move `beta` backwards. Promotion copies the published immutable manifest
+and verifies the resulting digest. The run summary records the source commit,
+immutable digest and whether beta was promoted or skipped. Pin that digest in GitOps. A build
+after merging a pipeline change uses that subsequent main commit, rather than
+the main commit observed before the change.
 
 `task image:check` compares the image's pinned Rust compiler with the compiler
 selected by the application's stable CI policy, its Node version with `mise.toml`

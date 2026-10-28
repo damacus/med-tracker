@@ -61,6 +61,7 @@ tasks:
     desc: Detect release-image tool drift from application CI
     cmds:
       - node --test scripts/test_loco_image_tooling.mjs
+      - node --test scripts/test_loco_image_publication.mjs
       - node scripts/check_loco_image_tooling.mjs
   image:build:
     desc: Build the root Loco release image for the local architecture
@@ -72,7 +73,7 @@ tasks:
     env:
       LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
       LOCO_IMAGE_SUBNET: '{{.LOCO_IMAGE_SUBNET | default ""}}'
-    cmds: [python3 scripts/test_loco_image.py]
+    cmds: [node --test scripts/test_loco_image.mjs]
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]

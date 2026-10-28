@@ -19,7 +19,7 @@ This document does not authorise a rollout, shutdown, data change or deployment.
 - Root-Loco server, worker and scheduler images now have native `linux/amd64`
   and `linux/arm64` build and smoke-check coverage. Follow
   [Loco Linux images](loco-images.md) to publish the tested images through the
-  main-branch manual workflow. The separate Rails publisher does not produce
+  main-branch automatic or manual workflow. The separate Rails publisher does not produce
   the Loco image. Publication is not deployment.
 - Use the selected version or immutable image reference in the existing deployment
   configuration. Keep server and worker versions compatible with the schema.
