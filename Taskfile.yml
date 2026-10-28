@@ -50,6 +50,13 @@ includes:
     flatten: true
 
 tasks:
+  whitespace:
+    desc: Check staged, unstaged and untracked files without changing staging
+    cmds:
+      - 'fish --no-config scripts/check_whitespace.fish {{.BASE | default "HEAD" | shellQuote}}'
+  test:whitespace:
+    desc: Test the local whitespace check with disposable Git repositories
+    cmds: [node --test scripts/test_whitespace.mjs]
   image:check:
     desc: Detect release-image tool drift from application CI
     cmds:
