@@ -2,7 +2,6 @@ use super::{Canary, SCOPE, invalid, target, text};
 use crate::models::_entities::{
     carer_relationships, household_memberships, households, identity_onboarding, locations,
     medication_takes, medications, notification_events, people, person_medications, schedules,
-    users,
 };
 use chrono::{DateTime, Utc};
 use loco_rs::app::AppContext;
@@ -40,9 +39,13 @@ pub(super) async fn seed(ctx: &AppContext) -> Result<(), DbErr> {
         return Err(invalid());
     }
     let transaction = ctx.db.begin().await?;
-    transaction
-        .execute_unprepared("SELECT pg_advisory_xact_lock(5567948073909809715)")
-        .await?;
+    let lock = Query::select()
+        .expr(
+            Func::cust(Alias::new("pg_advisory_xact_lock"))
+                .arg(Expr::val(5_567_948_073_909_809_715_i64)),
+        )
+        .to_owned();
+    transaction.query_one(&lock).await?;
     let marker = Table::create()
         .table(Alias::new("canary_seed"))
         .if_not_exists()
@@ -172,13 +175,6 @@ pub(super) async fn seed(ctx: &AppContext) -> Result<(), DbErr> {
         }
         .insert(&transaction)
         .await?;
-        let mut user = model!(users).into_active_model();
-        user.id = Set(id + 6000);
-        user.person_id = Set(person_id);
-        user.email_address = Set(email.into());
-        user.created_at = Set(now);
-        user.updated_at = Set(now);
-        users::Entity::insert(user).exec(&transaction).await?;
         identity_onboarding::ActiveModel {
             account_id: Set(id),
             completed_at: Set(Some(epoch.fixed_offset())),

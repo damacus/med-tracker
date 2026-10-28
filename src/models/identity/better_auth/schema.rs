@@ -7,7 +7,7 @@ pub(crate) mod rate_limit;
 pub mod session;
 pub(crate) mod two_factor;
 pub(crate) mod user;
-pub(crate) mod verification;
+pub mod verification;
 
 pub struct AccountSchema;
 

@@ -1,8 +1,55 @@
 use super::*;
+use med_tracker::models::_entities::{medication_takes, schedules};
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
     care::dashboard,
 };
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, Set,
+    prelude::Decimal,
+};
+
+fn schedule(app: &Application, kind: i32, config: Value) -> schedules::ActiveModel {
+    let now = chrono::Utc::now().naive_utc();
+    schedules::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(app.fixture.adult.id),
+        medication_id: Set(app.fixture.medication.id),
+        active: Set(true),
+        start_date: Set(Some(chrono::NaiveDate::from_ymd_opt(2020, 1, 1).unwrap())),
+        end_date: Set(Some(chrono::NaiveDate::from_ymd_opt(2099, 12, 31).unwrap())),
+        dose_amount: Set(Some(Decimal::new(2, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        schedule_type: Set(kind),
+        schedule_config: Set(config),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+}
+
+fn take(
+    app: &Application,
+    assignment: Option<i64>,
+    schedule: Option<i64>,
+    amount: i64,
+    taken_at: chrono::NaiveDateTime,
+) -> medication_takes::ActiveModel {
+    let now = chrono::Utc::now().naive_utc();
+    medication_takes::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_medication_id: Set(assignment),
+        schedule_id: Set(schedule),
+        dose_amount: Set(Some(Decimal::new(amount, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(taken_at)),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+}
 
 #[tokio::test]
 async fn dashboard_reads_timing_history_only_when_effective_rules_need_it() {
@@ -15,12 +62,11 @@ async fn dashboard_reads_timing_history_only_when_effective_rules_need_it() {
 
     let mut app = Application::new().await;
     let now = chrono::Utc::now().naive_utc();
-    for (id, days_ago) in [(84995, 60), (84996, 0)] {
+    for days_ago in [60, 0] {
         let taken_at = now - chrono::Duration::days(days_ago);
         medication_take::ActiveModel {
-            id: Set(id),
-            household_id: Set(72001),
-            person_medication_id: Set(Some(81001)),
+            household_id: Set(app.fixture.household.id),
+            person_medication_id: Set(Some(app.fixture.assignment.id)),
             dose_amount: Set(Some(Decimal::ONE)),
             dose_unit: Set(Some("tablet".into())),
             taken_at: Set(Some(taken_at)),
@@ -52,7 +98,7 @@ async fn dashboard_reads_timing_history_only_when_effective_rules_need_it() {
     assert_eq!(history_reads.load(Ordering::Relaxed), 0);
 
     person_medication::ActiveModel {
-        id: Set(81001),
+        id: Set(app.fixture.assignment.id),
         max_daily_doses: Set(Some(0)),
         ..Default::default()
     }
@@ -63,35 +109,35 @@ async fn dashboard_reads_timing_history_only_when_effective_rules_need_it() {
     assert_eq!(history_reads.load(Ordering::Relaxed), 1);
     assert!(after["rows"].as_array().unwrap().iter().any(|row| {
         row["source_type"] == "person_medication"
-            && row["source_id"] == 81001
+            && row["source_id"] == app.fixture.assignment.id
             && row["status"] == "max_reached"
             && row["can_record"] == false
     }));
     assert_eq!(before["completed"], after["completed"]);
-    app.fixture.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
 async fn dashboard_respects_shared_dose_limits_and_person_access() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let foreign = app.fixture.foreign_household().await;
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-dashboard".into(),
     };
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_medications SET max_daily_doses=0 WHERE id=81001")
-        .await
-        .unwrap();
+    let mut assignment = app.fixture.assignment.clone().into_active_model();
+    assignment.max_daily_doses = Set(Some(0));
+    assignment.update(&app.fixture.admin).await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let labels = json!({"dashboard":{"statuses":{"max_reached":"Daily max reached"}}});
     let data = dashboard::read(
         &tenant,
         chrono_tz::UTC,
         None,
-        "persistence-fixture",
+        &app.fixture.household.slug,
         &labels,
     )
     .await
@@ -100,7 +146,10 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|row| row["source_type"] == "person_medication" && row["source_id"] == 81001)
+        .find(|row| {
+            row["source_type"] == "person_medication"
+                && row["source_id"] == app.fixture.assignment.id
+        })
         .unwrap();
     assert_eq!(row["can_record"], false);
     assert_eq!(row["status"], "max_reached");
@@ -108,20 +157,20 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     let participant = dashboard::read(
         &tenant,
         chrono_tz::UTC,
-        Some(73002),
-        "persistence-fixture",
+        Some(app.fixture.minor.id),
+        &app.fixture.household.slug,
         &labels,
     )
     .await
     .unwrap();
-    assert_eq!(participant["selected"], 73002);
+    assert_eq!(participant["selected"], app.fixture.minor.id);
     assert!(participant["rows"].as_array().unwrap().is_empty());
     assert!(
         dashboard::read(
             &tenant,
             chrono_tz::UTC,
-            Some(99999),
-            "persistence-fixture",
+            Some(i64::MAX),
+            &app.fixture.household.slug,
             &labels
         )
         .await
@@ -131,35 +180,52 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
         dashboard::read(
             &tenant,
             chrono_tz::UTC,
-            Some(73999),
-            "persistence-fixture",
+            Some(foreign.account.person_id),
+            &app.fixture.household.slug,
             &labels
         )
         .await
         .is_err()
     );
     tenant.commit().await.unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    let mut membership = app.fixture.minor_membership.clone().into_active_model();
+    membership.status = Set("revoked".into());
+    membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    membership.permissions_version = Set(app.fixture.minor_membership.permissions_version + 1);
+    membership.update(&app.fixture.admin).await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     assert!(
         dashboard::read(
             &tenant,
             chrono_tz::UTC,
-            Some(73002),
-            "persistence-fixture",
+            Some(app.fixture.minor.id),
+            &app.fixture.household.slug,
             &labels
         )
         .await
         .is_err()
     );
     tenant.rollback().await.unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE person_medications SET max_daily_doses=NULL,min_hours_between_doses=4 WHERE id=81001; INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84997,72001,81001,1,'tablet',now(),now(),now())").await.unwrap();
+    let mut assignment = app.fixture.assignment.clone().into_active_model();
+    assignment.max_daily_doses = Set(None);
+    assignment.min_hours_between_doses = Set(Some(4));
+    assignment.update(&app.fixture.admin).await.unwrap();
+    take(
+        &app,
+        Some(app.fixture.assignment.id),
+        None,
+        1,
+        chrono::Utc::now().naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let data = dashboard::read(
         &tenant,
         chrono_tz::UTC,
         None,
-        "persistence-fixture",
+        &app.fixture.household.slug,
         &labels,
     )
     .await
@@ -174,7 +240,8 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     assert_eq!(data["completed"].as_array().unwrap().len(), 1);
     assert_eq!(data["completed"][0]["dose"], "1 tablet");
     tenant.commit().await.unwrap();
-    app.fixture.close().await;
+    foreign.close().await;
+    app.close().await;
 }
 
 async fn snapshot(app: &Application) -> serde_json::Value {
@@ -185,8 +252,10 @@ async fn snapshot_in_zone(app: &Application, zone: chrono_tz::Tz) -> serde_json:
     let tenant = access::begin(
         &app.context.db,
         &HouseholdScope {
-            actor: Actor { account_id: 71001 },
-            household_id: 72001,
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
             request_id: "dashboard-regression".into(),
         },
         None,
@@ -196,8 +265,8 @@ async fn snapshot_in_zone(app: &Application, zone: chrono_tz::Tz) -> serde_json:
     let data = dashboard::read(
         &tenant,
         zone,
-        Some(73001),
-        "persistence-fixture",
+        Some(app.fixture.adult.id),
+        &app.fixture.household.slug,
         &json!({}),
     )
     .await
@@ -214,11 +283,21 @@ async fn dashboard_uses_local_date_for_routine_and_as_needed_schedules() {
         "Etc/GMT+12".parse().unwrap(),
     ] {
         let today = chrono::Utc::now().with_timezone(&zone).date_naive();
-        app.fixture.admin.execute_unprepared(&format!(
-            "DELETE FROM schedules WHERE id IN (83993,83994); INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,frequency,created_at,updated_at) VALUES(83993,72001,73001,80001,true,'{today}','{today}',2,'tablet',4,'{{}}','As needed',now(),now()),(83994,72001,73001,80001,true,'{today}','{today}',2,'tablet',0,'{{\"times\":[\"00:00\"]}}','daily',now(),now())"
-        )).await.unwrap();
+        let mut local_schedules = Vec::new();
+        for (kind, config, frequency) in [
+            (4, json!({}), "As needed"),
+            (0, json!({"times":["00:00"]}), "daily"),
+        ] {
+            let mut local = schedule(&app, kind, config);
+            local.start_date = Set(Some(today));
+            local.end_date = Set(Some(today));
+            local.frequency = Set(Some(frequency.into()));
+            local_schedules.push(local.insert(&app.fixture.admin).await.unwrap());
+        }
+
         let data = snapshot_in_zone(&app, zone).await;
-        for id in [83993, 83994] {
+        for scheduled in &local_schedules {
+            let id = scheduled.id;
             let row = data["rows"]
                 .as_array()
                 .unwrap()
@@ -228,8 +307,14 @@ async fn dashboard_uses_local_date_for_routine_and_as_needed_schedules() {
             assert_eq!(row["status"], "available", "{zone}: {row}");
             assert_eq!(row["can_record"], true);
         }
+        for scheduled in local_schedules {
+            schedules::Entity::delete_by_id(scheduled.id)
+                .exec(&app.fixture.admin)
+                .await
+                .unwrap();
+        }
     }
-    app.fixture.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
@@ -237,9 +322,11 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
     let app = Application::new().await;
     let today = chrono::Utc::now().date_naive();
     let config = json!({"taper_steps":[{"start_date":today.to_string(),"end_date":today.to_string(),"amount":"1.5","unit":"ml","times":["00:00","23:59"]}]});
-    app.fixture.admin.execute_unprepared(&format!(
-        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83992,72001,73001,80001,true,'{today}','{today}',2,'tablet',5,'{config}',now(),now())"
-    )).await.unwrap();
+    let mut taper = schedule(&app, 5, config);
+    taper.start_date = Set(Some(today));
+    taper.end_date = Set(Some(today));
+    let taper = taper.insert(&app.fixture.admin).await.unwrap();
+
     let data = snapshot(&app).await;
     let row = data["rows"]
         .as_array()
@@ -247,7 +334,7 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
         .iter()
         .find(|row| {
             row["source_type"] == "schedule"
-                && row["source_id"] == 83992
+                && row["source_id"] == taper.id
                 && row["outcome"] == "open"
         })
         .unwrap();
@@ -255,8 +342,10 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
     let tenant = access::begin(
         &app.context.db,
         &HouseholdScope {
-            actor: Actor { account_id: 71001 },
-            household_id: 72001,
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
             request_id: "dashboard-taper-preview".into(),
         },
         None,
@@ -265,9 +354,9 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
     .unwrap();
     let preview = med_tracker::models::care::doses::browser_preview(
         &tenant,
-        80001,
+        app.fixture.medication.id,
         "schedule",
-        "83992",
+        &taper.id.to_string(),
         &format!("{today}T00:00"),
         chrono_tz::UTC,
     )
@@ -281,7 +370,7 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
     assert!(matches!(
         med_tracker::models::care::doses::browser_preview(
             &tenant,
-            80001,
+            app.fixture.medication.id,
             "schedule",
             "../invalid",
             &format!("{today}T00:00"),
@@ -291,94 +380,111 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
         Err(med_tracker::models::errors::OperationError::NotFound)
     ));
     tenant.commit().await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84992,72001,83992,3,'tablet',timezone('UTC',now()),now(),now())").await.unwrap();
+    take(
+        &app,
+        None,
+        Some(taper.id),
+        3,
+        chrono::Utc::now().naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let data = snapshot(&app).await;
     let taken = data["completed"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|row| row["source_type"] == "schedule" && row["source_id"] == 83992)
+        .find(|row| row["source_type"] == "schedule" && row["source_id"] == taper.id)
         .unwrap();
     assert_eq!(taken["dose"], "3 tablets");
-    app.fixture.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
 async fn dashboard_preserves_legacy_as_needed_sources_and_excludes_them_from_metrics() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,frequency,created_at,updated_at) VALUES(83997,72001,73001,80001,true,'2020-01-01','2099-12-31',2,'tablet',0,'{}','As needed',now(),now())").await.unwrap();
+    let mut legacy = schedule(&app, 0, json!({}));
+    legacy.frequency = Set(Some("As needed".into()));
+    let legacy = legacy.insert(&app.fixture.admin).await.unwrap();
     let data = snapshot(&app).await;
     assert!(
         data["rows"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|row| row["source_id"] == 83997 && row["as_needed"] == true)
+            .any(|row| row["source_id"] == legacy.id && row["as_needed"] == true)
     );
     assert_eq!(data["due_now"], 0);
     assert_eq!(data["tasks_left"], 0);
-    app.fixture.admin.execute_unprepared("UPDATE schedules SET frequency='daily',schedule_config='{\"as_needed\":true}' WHERE id=83997").await.unwrap();
+    let mut updated = legacy.clone().into_active_model();
+    updated.frequency = Set(Some("daily".into()));
+    updated.schedule_config = Set(json!({"as_needed": true}));
+    updated.update(&app.fixture.admin).await.unwrap();
     let data = snapshot(&app).await;
     assert!(
         data["rows"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|row| row["source_id"] == 83997 && row["as_needed"] == true)
+            .any(|row| row["source_id"] == legacy.id && row["as_needed"] == true)
     );
-    app.fixture.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
 async fn dashboard_participant_recordability_does_not_mean_stock_availability() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='view' WHERE id=78001").await.unwrap();
+    let mut membership = app.fixture.membership.clone().into_active_model();
+    membership.role = Set("member".into());
+    membership.update(&app.fixture.admin).await.unwrap();
+    let mut grant = app.fixture.grant.clone().into_active_model();
+    grant.access_level = Set("view".into());
+    grant.update(&app.fixture.admin).await.unwrap();
     let data = snapshot(&app).await;
     let row = data["rows"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|row| row["source_id"] == 81001)
+        .find(|row| row["source_id"] == app.fixture.assignment.id)
         .unwrap();
     assert_eq!(row["status"], "available");
     assert_eq!(row["can_record"], true);
-    assert_eq!(row["stock_ids"], json!([80001]));
+    assert_eq!(row["stock_ids"], json!([app.fixture.medication.id]));
     assert_eq!(data["people"].as_array().unwrap().len(), 3);
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE medications SET current_supply=0 WHERE id=80001")
-        .await
-        .unwrap();
+    let mut medication = app.fixture.medication.clone().into_active_model();
+    medication.current_supply = Set(Some(Decimal::ZERO));
+    medication.update(&app.fixture.admin).await.unwrap();
     let data = snapshot(&app).await;
     let row = data["rows"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|row| row["source_id"] == 81001)
+        .find(|row| row["source_id"] == app.fixture.assignment.id)
         .unwrap();
     assert_eq!(row["status"], "out_of_stock");
     assert_eq!(row["can_record"], false);
     assert_eq!(row["stock_ids"], json!([]));
-    let takes: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS total FROM medication_takes",
-        ))
+    let takes = medication_takes::Entity::find()
+        .filter(medication_takes::Column::HouseholdId.eq(app.fixture.household.id))
+        .count(&app.fixture.admin)
         .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "total")
         .unwrap();
     assert_eq!(takes, 0);
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+
+    let mut membership = app.fixture.membership.clone().into_active_model();
+    membership.status = Set("revoked".into());
+    membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    membership.permissions_version = Set(app.fixture.membership.permissions_version + 1);
+    membership.update(&app.fixture.admin).await.unwrap();
     assert!(
         access::begin(
             &app.context.db,
             &HouseholdScope {
-                actor: Actor { account_id: 71001 },
-                household_id: 72001,
+                actor: Actor {
+                    account_id: app.fixture.account.id
+                },
+                household_id: app.fixture.household.id,
                 request_id: "synthetic-dashboard-departed".into()
             },
             None
@@ -386,18 +492,60 @@ async fn dashboard_participant_recordability_does_not_mean_stock_availability() 
         .await
         .is_err()
     );
-    app.fixture.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
 async fn dashboard_history_is_actual_today_takes_and_interval_work_remains() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE person_medications SET administration_kind=0,max_daily_doses=1,dose_cycle=2,created_at=now()-interval '2 months' WHERE id=81001; INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84997,72001,81001,1,'tablet',timezone('UTC',now())-interval '1 day',now(),now())").await.unwrap();
+    let now = chrono::Utc::now().naive_utc();
+    let mut assignment = app.fixture.assignment.clone().into_active_model();
+    assignment.administration_kind = Set(0);
+    assignment.max_daily_doses = Set(Some(1));
+    assignment.dose_cycle = Set(Some(2));
+    assignment.created_at = Set(now.checked_sub_months(chrono::Months::new(2)).unwrap());
+    let assignment = assignment.update(&app.fixture.admin).await.unwrap();
+    take(
+        &app,
+        Some(assignment.id),
+        None,
+        1,
+        now - chrono::Duration::days(1),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     assert_eq!(
         snapshot(&app).await["completed"].as_array().unwrap().len(),
         0
     );
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84998,72001,81001,3,'tablet',timezone('UTC',now()),now(),now()); UPDATE person_medications SET max_daily_doses=NULL WHERE id=81001; INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,frequency,min_hours_between_doses,created_at,updated_at) VALUES(83998,72001,73001,80001,true,'2020-01-01','2099-12-31',2,'tablet',0,'{}','Every 2 hours',2,now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83998,1,'tablet',timezone('UTC',now()),now(),now())").await.unwrap();
+    take(
+        &app,
+        Some(assignment.id),
+        None,
+        3,
+        chrono::Utc::now().naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let mut assignment = assignment.into_active_model();
+    assignment.max_daily_doses = Set(None);
+    assignment.update(&app.fixture.admin).await.unwrap();
+    let mut interval = schedule(&app, 0, json!({}));
+    interval.frequency = Set(Some("Every 2 hours".into()));
+    interval.min_hours_between_doses = Set(Some(2));
+    let interval = interval.insert(&app.fixture.admin).await.unwrap();
+    take(
+        &app,
+        None,
+        Some(interval.id),
+        1,
+        chrono::Utc::now().naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let data = snapshot(&app).await;
     assert_eq!(data["completed"].as_array().unwrap().len(), 2);
     assert!(
@@ -412,21 +560,39 @@ async fn dashboard_history_is_actual_today_takes_and_interval_work_remains() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|row| row["source_id"] == 83998
+            .any(|row| row["source_id"] == interval.id
                 && row["outcome"] == "open"
                 && row["status"] == "cooldown")
     );
     assert_eq!(data["tasks_left"], 1);
-    app.fixture.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
 async fn dashboard_focus_prioritises_available_work_over_future_routine_doses() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83996,72001,73001,80001,true,'2020-01-01','2099-12-31',2,'tablet',0,'{\"times\":[\"23:59\"]}',now(),now())").await.unwrap();
-    let data = snapshot(&app).await;
-    assert_eq!(data["next"]["source_id"], 81001);
-    app.fixture.close().await;
+    // Keep the routine dose in the future even when this runs at 23:59 UTC.
+    let zone = if chrono::Utc::now().time() < chrono::NaiveTime::from_hms_opt(12, 0, 0).unwrap() {
+        chrono_tz::UTC
+    } else {
+        "Etc/GMT+12".parse().unwrap()
+    };
+    let routine = schedule(&app, 0, json!({"times":["23:59"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+
+    let data = snapshot_in_zone(&app, zone).await;
+    assert!(
+        data["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| { row["source_type"] == "schedule" && row["source_id"] == routine.id })
+    );
+    assert_eq!(data["next"]["source_type"], "person_medication");
+    assert_eq!(data["next"]["source_id"], app.fixture.assignment.id);
+    app.close().await;
 }
 
 #[tokio::test]
@@ -435,22 +601,26 @@ async fn dashboard_weekday_strings_agree_with_preview_and_recording() {
     let now = chrono::Utc::now();
     let weekday = now.format("%w").to_string();
     let config = json!({"weekdays":[format!(" {weekday} ")],"times":["00:00"]});
-    app.fixture.admin.execute_unprepared(&format!(
-        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83995,72001,73001,80001,true,'2020-01-01','2099-12-31',2,'tablet',2,'{config}',now(),now())"
-    )).await.unwrap();
+    let weekday_schedule = schedule(&app, 2, config)
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+
     let data = snapshot(&app).await;
     assert!(
         data["rows"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|row| row["source_id"] == 83995 && row["status"] == "available")
+            .any(|row| row["source_id"] == weekday_schedule.id && row["status"] == "available")
     );
     let tenant = access::begin(
         &app.context.db,
         &HouseholdScope {
-            actor: Actor { account_id: 71001 },
-            household_id: 72001,
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
             request_id: "dashboard-weekday-preview".into(),
         },
         None,
@@ -459,9 +629,9 @@ async fn dashboard_weekday_strings_agree_with_preview_and_recording() {
     .unwrap();
     let preview = med_tracker::models::care::doses::browser_preview(
         &tenant,
-        80001,
+        app.fixture.medication.id,
         "schedule",
-        "83995",
+        &weekday_schedule.id.to_string(),
         &now.format("%Y-%m-%dT%H:%M").to_string(),
         chrono_tz::UTC,
     )
@@ -469,15 +639,15 @@ async fn dashboard_weekday_strings_agree_with_preview_and_recording() {
     .unwrap();
     assert!(preview.available);
     tenant.commit().await.unwrap();
-    let mut body = take_body();
+    let mut body = shared_take_body(&app.fixture);
     body["medication_take"]["source_type"] = json!("schedule");
-    body["medication_take"]["source_id"] = json!("83995");
+    body["medication_take"]["source_id"] = json!(weekday_schedule.id.to_string());
     body["medication_take"]["taken_at"] = json!(now.to_rfc3339());
     let response = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/medication_takes",
-            app.origin
+            "{}/api/v1/households/{}/medication_takes",
+            app.origin, app.fixture.household.id
         ))
         .bearer_auth(app.token().await)
         .json(&body)

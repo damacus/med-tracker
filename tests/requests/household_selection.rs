@@ -1,11 +1,21 @@
 use super::*;
 use base64::Engine as _;
+use med_tracker::models::_entities::{
+    accounts, app_settings, household_invitations, household_memberships, households, people,
+    security_audit_events, versions,
+};
+use med_tracker::models::entities::identity_session;
+use sea_orm::sea_query::Expr;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
+    QuerySelect, Set,
+};
 use sha2::Digest as _;
 
 type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
-async fn boot_browser_fixture() -> (Fixture, BootResult) {
-    boot_fixture_with(|config| {
+async fn boot_browser_fixture() -> (RequestFixture, BootResult) {
+    boot_request_fixture_with(|config| {
         let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
             json!({"key":key,"secure":false});
@@ -13,33 +23,163 @@ async fn boot_browser_fixture() -> (Fixture, BootResult) {
     .await
 }
 
-async fn sign_in(request: &TestServer, boot: &BootResult) {
-    let signed_in = request
-        .post("/api/auth/sign-in/email")
-        .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
-        .await;
-    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+async fn browser_session(fixture: &RequestFixture, request: &mut TestServer, boot: &BootResult) {
+    install_browser_session(request, boot, fixture.account.id).await;
 }
 
-async fn sign_in_account_only(request: &TestServer, boot: &BootResult) {
-    let signed_in = request
-        .post("/api/auth/sign-in/email")
-        .add_header("origin", boot.app_context.config.server.full_url())
-        .json(&json!({"email":"household-entry@example.test","password":"password"}))
-        .await;
-    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+async fn entrant_browser_session(
+    fixture: &RequestFixture,
+    request: &mut TestServer,
+    boot: &BootResult,
+) {
+    install_browser_session(request, boot, fixture.foreign.account.id).await;
+}
+
+async fn entrant(fixture: &RequestFixture) -> TestResult {
+    household_memberships::Entity::delete_by_id(fixture.foreign.membership.id)
+        .exec(&fixture.admin)
+        .await?;
+    households::Entity::delete_by_id(fixture.foreign.household.id)
+        .exec(&fixture.admin)
+        .await?;
+    Ok(())
+}
+
+pub(super) async fn home(
+    scenario: &Scenario,
+    name: &str,
+    slug_label: &str,
+    role: &str,
+    revoked: bool,
+) -> Result<(households::Model, household_memberships::Model), sea_orm::DbErr> {
+    let now = chrono::Utc::now().naive_utc();
+    let household = households::ActiveModel {
+        created_by_account_id: Set(Some(scenario.account.id)),
+        name: Set(name.into()),
+        slug: Set(format!("{slug_label}-{}", uuid::Uuid::new_v4())),
+        timezone: Set("UTC".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&scenario.admin)
+    .await?;
+    let membership = household_memberships::ActiveModel {
+        household_id: Set(household.id),
+        person_id: Set(scenario.account.person_id),
+        role: Set(role.into()),
+        status: Set(if revoked { "revoked" } else { "active" }.into()),
+        revoked_at: Set(revoked.then_some(now)),
+        joined_at: Set(now - chrono::Duration::days(i64::from(revoked))),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&scenario.admin)
+    .await?;
+    Ok((household, membership))
+}
+
+async fn invitation(fixture: &RequestFixture, token: &str) -> TestResult {
+    let now = chrono::Utc::now().naive_utc();
+    household_invitations::ActiveModel {
+        household_id: Set(fixture.household.id),
+        email: Set(fixture.foreign.account.email.clone()),
+        membership_role: Set("member".into()),
+        token_digest: Set(hex::encode(Sha256::digest(token.as_bytes()))),
+        invited_by_membership_id: Set(fixture.membership.id),
+        expires_at: Set(now + chrono::Duration::days(7)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    Ok(())
+}
+
+async fn entry_state(fixture: &RequestFixture) -> Value {
+    let person_id = fixture.foreign.account.person_id;
+    let account_id = fixture.foreign.account.id;
+    let households = households::Entity::find()
+        .filter(households::Column::CreatedByAccountId.eq(account_id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let members = household_memberships::Entity::find()
+        .filter(household_memberships::Column::PersonId.eq(person_id))
+        .all(&fixture.admin)
+        .await
+        .unwrap();
+    let audits = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::ActorAccountId.eq(account_id))
+        .filter(security_audit_events::Column::EventType.eq("household_access.membership_created"))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let selected = identity_session::Entity::find()
+        .filter(identity_session::Column::UserId.eq(account_id))
+        .filter(identity_session::Column::ActiveHouseholdId.is_not_null())
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let accepted = household_invitations::Entity::find()
+        .filter(household_invitations::Column::Email.eq(&fixture.foreign.account.email))
+        .filter(household_invitations::Column::AcceptedAt.is_not_null())
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let accounts = accounts::Entity::find()
+        .filter(accounts::Column::PersonId.eq(person_id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let people = people::Entity::find_by_id(person_id)
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let person_events = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("Person"))
+        .filter(versions::Column::ItemId.eq(person_id))
+        .filter(versions::Column::Event.eq("create"))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    json!({"households":households,"memberships":members.len(),"audits":audits,"selected":selected,"accepted":accepted,
+        "active":members.iter().filter(|row|row.status=="active").count(),
+        "revoked":members.iter().filter(|row|row.status=="revoked").count(),
+        "accounts":accounts,"people":people,"person_events":person_events})
+}
+
+async fn selected_count(fixture: &RequestFixture) -> Result<u64, sea_orm::DbErr> {
+    identity_session::Entity::find()
+        .filter(identity_session::Column::UserId.eq(fixture.account.id))
+        .filter(identity_session::Column::ActiveHouseholdId.is_not_null())
+        .count(&fixture.admin)
+        .await
 }
 
 #[tokio::test]
-async fn verified_account_without_user_or_membership_creates_first_household() -> TestResult {
+async fn verified_account_without_membership_creates_first_household() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(true,now(),now())").await?;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,preferences,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,'{\"time_zone\":\"Europe/London\"}',now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
+    let previous_settings = super::account_authentication::registration_setting(&fixture).await;
+    let mut settings = app_settings::Entity::find()
+        .one(&fixture.admin)
+        .await?
+        .unwrap()
+        .into_active_model();
+    settings.invite_only = Set(true);
+    settings.update(&fixture.admin).await?;
+    entrant(&fixture).await?;
+    let mut account = fixture.foreign.account.clone().into_active_model();
+    account.preferences = Set(json!({"time_zone":"Europe/London"}));
+    account.update(&fixture.admin).await?;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_account_only(&request, &boot).await;
+    entrant_browser_session(&fixture, &mut request, &boot).await;
     let chooser = request.get("/households/choose").await;
     assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
     let html = chooser.text();
@@ -52,31 +192,46 @@ async fn verified_account_without_user_or_membership_creates_first_household() -
         .await;
     assert_eq!(created.status_code(), 303, "{}", created.text());
     let response_request_id = created.header("x-request-id").to_str()?.to_owned();
-    let audit = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT request_id, audit_context->>'request_id' AS context_request_id FROM security_audit_events WHERE actor_account_id=71050 AND event_type='household_access.membership_created'")).await?.ok_or("creation audit missing")?;
+    let audit = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::ActorAccountId.eq(fixture.foreign.account.id))
+        .filter(security_audit_events::Column::EventType.eq("household_access.membership_created"))
+        .one(&fixture.admin)
+        .await?
+        .ok_or("creation audit missing")?;
     assert_eq!(
-        audit.try_get::<String>("", "request_id")?,
-        response_request_id
+        audit.request_id.as_deref(),
+        Some(response_request_id.as_str())
     );
-    assert_eq!(
-        audit.try_get::<String>("", "context_request_id")?,
-        response_request_id
-    );
+    assert_eq!(audit.audit_context["request_id"], response_request_id);
     let location_header = created.header("location");
     let location = location_header.to_str()?;
     let dashboard = request.get(location).await;
     assert_eq!(dashboard.status_code(), 200, "{}", dashboard.text());
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS memberships FROM household_memberships m JOIN households h ON h.id=m.household_id WHERE m.person_id=73050 AND m.role='owner' AND m.status='active' AND h.name='New care home' AND h.timezone='Europe/London'")).await?.ok_or("membership count missing")?;
-    assert_eq!(row.try_get::<i64>("", "memberships")?, 1);
-    let identity = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM accounts WHERE person_id=73050) AS accounts, (SELECT count(*) FROM people WHERE id=73050) AS people, (SELECT count(*) FROM users WHERE person_id=73050) AS users, (SELECT count(*) FROM versions WHERE item_type='Person' AND item_id=73050 AND event='create') AS person_events")).await?.ok_or("identity count missing")?;
-    assert_eq!(identity.try_get::<i64>("", "accounts")?, 1);
-    assert_eq!(identity.try_get::<i64>("", "people")?, 1);
-    assert_eq!(identity.try_get::<i64>("", "users")?, 0);
-    assert_eq!(identity.try_get::<i64>("", "person_events")?, 0);
+    let homes = households::Entity::find()
+        .filter(households::Column::CreatedByAccountId.eq(fixture.foreign.account.id))
+        .filter(households::Column::Name.eq("New care home"))
+        .filter(households::Column::Timezone.eq("Europe/London"))
+        .all(&fixture.admin)
+        .await?;
+    let count = household_memberships::Entity::find()
+        .filter(household_memberships::Column::PersonId.eq(fixture.foreign.account.person_id))
+        .filter(household_memberships::Column::Role.eq("owner"))
+        .filter(household_memberships::Column::Status.eq("active"))
+        .filter(
+            household_memberships::Column::HouseholdId.is_in(homes.into_iter().map(|home| home.id)),
+        )
+        .count(&fixture.admin)
+        .await?;
+    assert_eq!(count, 1);
+    let row = entry_state(&fixture).await;
+    assert_eq!(row["memberships"].as_u64().unwrap(), 1);
+    let identity = entry_state(&fixture).await;
+    assert_eq!(identity["accounts"].as_u64().unwrap(), 1);
+    assert_eq!(identity["people"].as_u64().unwrap(), 1);
+    assert_eq!(identity["person_events"].as_u64().unwrap(), 0);
+    super::account_authentication::restore_registration(&fixture, previous_settings).await;
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
@@ -84,17 +239,32 @@ async fn verified_account_without_user_or_membership_creates_first_household() -
 async fn held_or_archived_household_membership_allows_new_selectable_household() -> TestResult {
     for inactive_state in ["held", "archived"] {
         let (fixture, boot) = boot_browser_fixture().await;
-        fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72050,71050,'Previous household','previous-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74050,72050,73050,'owner','active',now(),now(),now())").await?;
-        crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
-        let inactive_sql = if inactive_state == "held" {
-            "UPDATE households SET lifecycle_state='held' WHERE id=72050"
+        let household_id = fixture.household.id;
+        let _household_text = household_id.to_string();
+
+        entrant(&fixture).await?;
+        let (previous, _) = home(
+            &fixture.foreign,
+            "Previous household",
+            "previous-household",
+            "owner",
+            false,
+        )
+        .await?;
+        let previous_slug = previous.slug.clone();
+        let update = households::Entity::update_many();
+        let update = if inactive_state == "held" {
+            update.col_expr(households::Column::LifecycleState, Expr::value("held"))
         } else {
-            "UPDATE households SET status='archived' WHERE id=72050"
+            update.col_expr(households::Column::Status, Expr::value("archived"))
         };
-        fixture.admin.execute_unprepared(inactive_sql).await?;
+        update
+            .filter(households::Column::Id.eq(previous.id))
+            .exec(&fixture.admin)
+            .await?;
         let mut request = server(&boot);
         request.save_cookies();
-        sign_in_account_only(&request, &boot).await;
+        entrant_browser_session(&fixture, &mut request, &boot).await;
         let chooser = request.get("/households/choose").await;
         assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
         let html = chooser.text();
@@ -122,7 +292,7 @@ async fn held_or_archived_household_membership_allows_new_selectable_household()
             dashboard.text()
         );
         let old = request
-            .get("/households/previous-household/dashboard")
+            .get(format!("/households/{previous_slug}/dashboard").as_str())
             .await;
         assert!(
             old.status_code().is_client_error(),
@@ -130,7 +300,7 @@ async fn held_or_archived_household_membership_allows_new_selectable_household()
             old.text()
         );
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
     Ok(())
 }
@@ -138,10 +308,12 @@ async fn held_or_archived_household_membership_allows_new_selectable_household()
 #[tokio::test]
 async fn existing_member_invalid_creation_post_does_not_render_empty_chooser() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
+    browser_session(&fixture, &mut request, &boot).await;
     let chooser = request.get("/households/choose?switch=1").await;
     assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
     let chooser_html = chooser.text();
@@ -156,18 +328,20 @@ async fn existing_member_invalid_creation_post_does_not_render_empty_chooser() -
     assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
     assert!(chooser.text().contains("action=\"/households/select\""));
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn supplementary_plane_name_above_browser_utf16_limit_is_accepted() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
+    entrant(&fixture).await?;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_account_only(&request, &boot).await;
+    entrant_browser_session(&fixture, &mut request, &boot).await;
     let html = request.get("/households/choose").await.text();
     let csrf = authenticity_token(&html).ok_or("creation token missing")?;
     let name = format!("Care {}", "😀".repeat(51));
@@ -179,35 +353,41 @@ async fn supplementary_plane_name_above_browser_utf16_limit_is_accepted() -> Tes
         .form(&[("name", name.as_str()), ("authenticity_token", csrf)])
         .await;
     assert_eq!(created.status_code(), 303, "{}", created.text());
-    let row = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT name FROM households WHERE created_by_account_id=71050",
-        ))
+    let row = households::Entity::find()
+        .filter(households::Column::CreatedByAccountId.eq(fixture.foreign.account.id))
+        .one(&fixture.admin)
         .await?
         .ok_or("household missing")?;
-    assert_eq!(row.try_get::<String>("", "name")?, name);
+    assert_eq!(row.name, name);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
-async fn verified_account_without_user_or_membership_accepts_invitation() -> TestResult {
+async fn verified_account_without_membership_accepts_invitation() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72050,71050,'Departed household','departed-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,revoked_at,joined_at,created_at,updated_at) VALUES(74050,72050,73050,'member','revoked',now(),now()-interval '1 day',now(),now())").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
-    let invitation = "account-only-household-invitation";
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO household_invitations(household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(72001,'household-entry@example.test','member',$1,74001,now()+interval '7 days',now(),now())",
-        [hex::encode(sha2::Sha256::digest(invitation.as_bytes())).into()],
-    )).await?;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+    let slug = fixture.household.slug.clone();
+
+    entrant(&fixture).await?;
+    let (departed, _) = home(
+        &fixture.foreign,
+        "Departed household",
+        "departed-household",
+        "member",
+        true,
+    )
+    .await?;
+    let departed_slug = departed.slug.clone();
+    let invitation_token = fixture.credential("account-only-household-invitation");
+    invitation(&fixture, &invitation_token).await?;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_account_only(&request, &boot).await;
+    entrant_browser_session(&fixture, &mut request, &boot).await;
     let preview = request
-        .get(&format!("/invitations/accept?token={invitation}"))
+        .get(&format!("/invitations/accept?token={invitation_token}"))
         .await;
     assert_eq!(preview.status_code(), 200, "{}", preview.text());
     let html = preview.text();
@@ -215,19 +395,22 @@ async fn verified_account_without_user_or_membership_accepts_invitation() -> Tes
     let accepted = request
         .post("/invitations/accept")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("token", invitation), ("authenticity_token", csrf)])
+        .form(&[
+            ("token", invitation_token.as_str()),
+            ("authenticity_token", csrf),
+        ])
         .await;
     assert_eq!(accepted.status_code(), 303, "{}", accepted.text());
     assert_eq!(
         accepted.header("location"),
-        "/households/persistence-fixture/dashboard"
+        format!("/households/{slug}/dashboard").as_str()
     );
     let dashboard = request
-        .get("/households/persistence-fixture/dashboard")
+        .get(format!("/households/{slug}/dashboard").as_str())
         .await;
     assert_eq!(dashboard.status_code(), 200, "{}", dashboard.text());
     let departed = request
-        .get("/households/departed-household/dashboard")
+        .get(format!("/households/{departed_slug}/dashboard").as_str())
         .await;
     assert!(
         departed.status_code().is_client_error(),
@@ -237,27 +420,37 @@ async fn verified_account_without_user_or_membership_accepts_invitation() -> Tes
     let replay = request
         .post("/invitations/accept")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("token", invitation), ("authenticity_token", csrf)])
+        .form(&[
+            ("token", invitation_token.as_str()),
+            ("authenticity_token", csrf),
+        ])
         .await;
     assert_eq!(replay.status_code(), 303, "{}", replay.text());
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM users WHERE person_id IN (73001,73050)) AS users, (SELECT count(*) FROM household_memberships WHERE household_id=72001 AND person_id=73050 AND status='active') AS memberships, (SELECT count(*) FROM versions WHERE item_type='Person' AND item_id=73050 AND event='create') AS person_events")).await?.ok_or("invitation state missing")?;
-    assert_eq!(row.try_get::<i64>("", "users")?, 0);
-    assert_eq!(row.try_get::<i64>("", "memberships")?, 1);
-    assert_eq!(row.try_get::<i64>("", "person_events")?, 0);
+    let mut row = entry_state(&fixture).await;
+    let members = household_memberships::Entity::find()
+        .filter(household_memberships::Column::HouseholdId.eq(fixture.household.id))
+        .filter(household_memberships::Column::PersonId.eq(fixture.foreign.account.person_id))
+        .filter(household_memberships::Column::Status.eq("active"))
+        .count(&fixture.admin)
+        .await?;
+    row["memberships"] = json!(members);
+    assert_eq!(row["memberships"].as_u64().unwrap(), 1);
+    assert_eq!(row["person_events"].as_u64().unwrap(), 0);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn first_household_creation_rejects_invalid_input_csrf_and_expired_session() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
+    entrant(&fixture).await?;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_account_only(&request, &boot).await;
+    entrant_browser_session(&fixture, &mut request, &boot).await;
     let chooser = request.get("/households/choose").await;
     let html = chooser.text();
     let csrf = authenticity_token(&html).ok_or("creation token missing")?;
@@ -280,7 +473,14 @@ async fn first_household_creation_rejects_invalid_input_csrf_and_expired_session
         assert_eq!(invalid.status_code(), 422, "{}", invalid.text());
         assert!(invalid.text().contains("Enter a household name"));
     }
-    fixture.admin.execute_unprepared("UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE account_id=71050").await?;
+    identity_session::Entity::update_many()
+        .col_expr(
+            identity_session::Column::ExpiresAt,
+            Expr::value(chrono::Utc::now() - chrono::Duration::seconds(1)),
+        )
+        .filter(identity_session::Column::UserId.eq(fixture.foreign.account.id))
+        .exec(&fixture.admin)
+        .await?;
     let expired = request
         .post("/households")
         .add_header("sec-fetch-site", "same-origin")
@@ -291,31 +491,26 @@ async fn first_household_creation_rejects_invalid_input_csrf_and_expired_session
         "{}",
         expired.text()
     );
-    let row = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS households FROM households WHERE created_by_account_id=71050",
-        ))
-        .await?
-        .ok_or("household count missing")?;
-    assert_eq!(row.try_get::<i64>("", "households")?, 0);
+    let row = entry_state(&fixture).await;
+    assert_eq!(row["households"].as_u64().unwrap(), 0);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn concurrent_first_household_submissions_create_only_one_membership() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
+    entrant(&fixture).await?;
     let mut first = server(&boot);
     first.save_cookies();
     let mut second = server(&boot);
     second.save_cookies();
-    sign_in_account_only(&first, &boot).await;
-    sign_in_account_only(&second, &boot).await;
+    entrant_browser_session(&fixture, &mut first, &boot).await;
+    entrant_browser_session(&fixture, &mut second, &boot).await;
     let first_html = first.get("/households/choose").await.text();
     let second_html = second.get("/households/choose").await.text();
     let first_csrf = authenticity_token(&first_html).ok_or("first creation token missing")?;
@@ -343,25 +538,26 @@ async fn concurrent_first_household_submissions_create_only_one_membership() -> 
         one.text(),
         two.text()
     );
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM households WHERE created_by_account_id=71050) AS households, (SELECT count(*) FROM household_memberships WHERE person_id=73050 AND status='active') AS memberships, (SELECT count(*) FROM security_audit_events WHERE actor_account_id=71050 AND event_type='household_access.membership_created') AS audits")).await?.ok_or("creation count missing")?;
-    assert_eq!(row.try_get::<i64>("", "households")?, 1);
-    assert_eq!(row.try_get::<i64>("", "memberships")?, 1);
-    assert_eq!(row.try_get::<i64>("", "audits")?, 1);
+    let row = entry_state(&fixture).await;
+    assert_eq!(row["households"].as_u64().unwrap(), 1);
+    assert_eq!(row["memberships"].as_u64().unwrap(), 1);
+    assert_eq!(row["audits"].as_u64().unwrap(), 1);
     drop(first);
     drop(second);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn revoked_last_membership_allows_new_household_without_restoring_access() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
+    entrant(&fixture).await?;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_account_only(&request, &boot).await;
+    entrant_browser_session(&fixture, &mut request, &boot).await;
     let chooser = request.get("/households/choose").await.text();
     let csrf = authenticity_token(&chooser).ok_or("creation token missing")?;
     let first = request
@@ -378,7 +574,18 @@ async fn revoked_last_membership_allows_new_household_without_restoring_access()
         .form(&[("name", "Duplicate home"), ("authenticity_token", csrf)])
         .await;
     assert_eq!(duplicate.status_code(), 403, "{}", duplicate.text());
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE person_id=73050").await?;
+    household_memberships::Entity::update_many()
+        .col_expr(
+            household_memberships::Column::Status,
+            Expr::value("revoked"),
+        )
+        .col_expr(
+            household_memberships::Column::RevokedAt,
+            Expr::value(chrono::Utc::now().naive_utc()),
+        )
+        .filter(household_memberships::Column::PersonId.eq(fixture.foreign.account.person_id))
+        .exec(&fixture.admin)
+        .await?;
     let denied = request.get(first_path).await;
     assert!(denied.status_code().is_client_error(), "{}", denied.text());
     let empty = request.get("/households/choose").await;
@@ -405,23 +612,26 @@ async fn revoked_last_membership_allows_new_household_without_restoring_access()
         "{}",
         still_denied.text()
     );
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) FILTER(WHERE status='active') AS active, count(*) FILTER(WHERE status='revoked') AS revoked FROM household_memberships WHERE person_id=73050")).await?.ok_or("membership count missing")?;
-    assert_eq!(row.try_get::<i64>("", "active")?, 1);
-    assert_eq!(row.try_get::<i64>("", "revoked")?, 1);
+    let row = entry_state(&fixture).await;
+    assert_eq!(row["active"].as_u64().unwrap(), 1);
+    assert_eq!(row["revoked"].as_u64().unwrap(), 1);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn first_household_creation_rolls_back_when_audit_fails() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); CREATE FUNCTION reject_first_household_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.actor_account_id=71050 AND NEW.event_type='household_access.membership_created' THEN RAISE EXCEPTION 'synthetic audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_first_household_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_first_household_audit()").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
+    let entrant_account_id = fixture.foreign.account.id;
+    entrant(&fixture).await?;
+    fixture.admin.execute_unprepared(&format!("CREATE FUNCTION reject_first_household_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.actor_account_id={entrant_account_id} AND NEW.event_type='household_access.membership_created' THEN RAISE EXCEPTION 'synthetic audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_first_household_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_first_household_audit()")).await?;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_account_only(&request, &boot).await;
+    entrant_browser_session(&fixture, &mut request, &boot).await;
     let chooser = request.get("/households/choose").await.text();
     let csrf = authenticity_token(&chooser).ok_or("creation token missing")?;
     let failed = request
@@ -430,24 +640,28 @@ async fn first_household_creation_rolls_back_when_audit_fails() -> TestResult {
         .form(&[("name", "Should roll back"), ("authenticity_token", csrf)])
         .await;
     assert_eq!(failed.status_code(), 503, "{}", failed.text());
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM households WHERE created_by_account_id=71050) AS households, (SELECT count(*) FROM household_memberships WHERE person_id=73050) AS memberships, (SELECT count(*) FROM security_audit_events WHERE actor_account_id=71050 AND event_type='household_access.membership_created') AS audits")).await?.ok_or("rollback state missing")?;
-    assert_eq!(row.try_get::<i64>("", "households")?, 0);
-    assert_eq!(row.try_get::<i64>("", "memberships")?, 0);
-    assert_eq!(row.try_get::<i64>("", "audits")?, 0);
+    let row = entry_state(&fixture).await;
+    assert_eq!(row["households"].as_u64().unwrap(), 0);
+    assert_eq!(row["memberships"].as_u64().unwrap(), 0);
+    assert_eq!(row["audits"].as_u64().unwrap(), 0);
+    fixture.admin.execute_unprepared("DROP TRIGGER reject_first_household_audit ON security_audit_events; DROP FUNCTION reject_first_household_audit()").await?;
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn committed_household_survives_current_session_selection_failure() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now()); CREATE FUNCTION reject_first_household_selection() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.account_id=71050 AND NEW.active_household_id IS DISTINCT FROM OLD.active_household_id THEN RAISE EXCEPTION 'synthetic selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_first_household_selection BEFORE UPDATE ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_first_household_selection()").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
+    let entrant_account_id = fixture.foreign.account.id;
+    entrant(&fixture).await?;
+    fixture.admin.execute_unprepared(&format!("CREATE FUNCTION reject_first_household_selection() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.account_id={entrant_account_id} AND NEW.active_household_id IS DISTINCT FROM OLD.active_household_id THEN RAISE EXCEPTION 'synthetic selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_first_household_selection BEFORE UPDATE ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_first_household_selection()")).await?;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_account_only(&request, &boot).await;
+    entrant_browser_session(&fixture, &mut request, &boot).await;
     let chooser = request.get("/households/choose").await.text();
     let csrf = authenticity_token(&chooser).ok_or("creation token missing")?;
     let created = request
@@ -465,31 +679,30 @@ async fn committed_household_survives_current_session_selection_failure() -> Tes
             .contains("Your household was created. Select it below")
     );
     assert!(recovery.text().contains("Recoverable home"));
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM households WHERE created_by_account_id=71050) AS households, (SELECT count(*) FROM household_memberships WHERE person_id=73050 AND status='active') AS memberships, (SELECT count(*) FROM identity_sessions WHERE account_id=71050 AND active_household_id IS NOT NULL) AS selected")).await?.ok_or("selection state missing")?;
-    assert_eq!(row.try_get::<i64>("", "households")?, 1);
-    assert_eq!(row.try_get::<i64>("", "memberships")?, 1);
-    assert_eq!(row.try_get::<i64>("", "selected")?, 0);
+    let row = entry_state(&fixture).await;
+    assert_eq!(row["households"].as_u64().unwrap(), 1);
+    assert_eq!(row["memberships"].as_u64().unwrap(), 1);
+    assert_eq!(row["selected"].as_u64().unwrap(), 0);
+    fixture.admin.execute_unprepared("DROP TRIGGER reject_first_household_selection ON identity_sessions; DROP FUNCTION reject_first_household_selection()").await?;
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn account_only_invitation_rechecks_csrf_expiry_and_inviter_authority() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',2,now(),now()); INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71050,now())").await?;
-    crate::fixtures::seed_native_password(&fixture.admin, 71050).await;
-    let invitation = "account-only-household-invitation";
-    fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO household_invitations(household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(72001,'household-entry@example.test','member',$1,74001,now()+interval '7 days',now(),now())",
-        [hex::encode(sha2::Sha256::digest(invitation.as_bytes())).into()],
-    )).await?;
+    let household_id = fixture.household.id;
+    let _household_text = household_id.to_string();
+
+    entrant(&fixture).await?;
+    let invitation_token = fixture.credential("account-only-household-invitation");
+    invitation(&fixture, &invitation_token).await?;
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in_account_only(&request, &boot).await;
+    entrant_browser_session(&fixture, &mut request, &boot).await;
     let preview = request
-        .get(&format!("/invitations/accept?token={invitation}"))
+        .get(&format!("/invitations/accept?token={invitation_token}"))
         .await;
     assert_eq!(preview.status_code(), 200, "{}", preview.text());
     let html = preview.text();
@@ -497,21 +710,50 @@ async fn account_only_invitation_rechecks_csrf_expiry_and_inviter_authority() ->
     let rejected = request
         .post("/invitations/accept")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("token", invitation), ("authenticity_token", "invalid")])
+        .form(&[
+            ("token", invitation_token.as_str()),
+            ("authenticity_token", "invalid"),
+        ])
         .await;
     assert_eq!(rejected.status_code(), 403, "{}", rejected.text());
-    fixture.admin.execute_unprepared("UPDATE household_invitations SET expires_at=now()-interval '1 second' WHERE email='household-entry@example.test'").await?;
+    household_invitations::Entity::update_many()
+        .col_expr(
+            household_invitations::Column::ExpiresAt,
+            Expr::value(chrono::Utc::now().naive_utc() - chrono::Duration::seconds(1)),
+        )
+        .filter(household_invitations::Column::Email.eq(&fixture.foreign.account.email))
+        .exec(&fixture.admin)
+        .await?;
     let expired = request
         .post("/invitations/accept")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("token", invitation), ("authenticity_token", csrf)])
+        .form(&[
+            ("token", invitation_token.as_str()),
+            ("authenticity_token", csrf),
+        ])
         .await;
     assert_eq!(expired.status_code(), 404, "{}", expired.text());
-    fixture.admin.execute_unprepared("UPDATE household_invitations SET expires_at=now()+interval '7 days' WHERE email='household-entry@example.test'; UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74001").await?;
+    household_invitations::Entity::update_many()
+        .col_expr(
+            household_invitations::Column::ExpiresAt,
+            Expr::value(chrono::Utc::now().naive_utc() + chrono::Duration::days(7)),
+        )
+        .filter(household_invitations::Column::Email.eq(&fixture.foreign.account.email))
+        .exec(&fixture.admin)
+        .await?;
+    fixture
+        .membership_state(fixture.membership.permissions_version, true)
+        .await;
+    let mut row = fixture.membership.clone().into_active_model();
+    row.status = Set("revoked".into());
+    row.update(&fixture.admin).await?;
     let revoked_inviter = request
         .post("/invitations/accept")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("token", invitation), ("authenticity_token", csrf)])
+        .form(&[
+            ("token", invitation_token.as_str()),
+            ("authenticity_token", csrf),
+        ])
         .await;
     assert_eq!(
         revoked_inviter.status_code(),
@@ -519,12 +761,11 @@ async fn account_only_invitation_rechecks_csrf_expiry_and_inviter_authority() ->
         "{}",
         revoked_inviter.text()
     );
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM household_memberships WHERE person_id=73050) AS memberships, (SELECT count(*) FROM household_invitations WHERE email='household-entry@example.test' AND accepted_at IS NOT NULL) AS accepted")).await?.ok_or("invitation denial state missing")?;
-    assert_eq!(row.try_get::<i64>("", "memberships")?, 0);
-    assert_eq!(row.try_get::<i64>("", "accepted")?, 0);
+    let row = entry_state(&fixture).await;
+    assert_eq!(row["memberships"].as_u64().unwrap(), 0);
+    assert_eq!(row["accepted"].as_u64().unwrap(), 0);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
@@ -538,10 +779,13 @@ fn authenticity_token(html: &str) -> Option<&str> {
 #[tokio::test]
 async fn signed_in_without_active_household_reaches_initial_selection() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
+    let household_id = fixture.household.id;
+    let household_text = household_id.to_string();
+    let slug = fixture.household.slug.clone();
+
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
+    browser_session(&fixture, &mut request, &boot).await;
     let home = request.get("/").await;
     assert_eq!(home.status_code(), 303, "{}", home.text());
     assert_eq!(home.header("location"), "/households/choose");
@@ -557,21 +801,30 @@ async fn signed_in_without_active_household_reaches_initial_selection() -> TestR
     let selected = request
         .post("/households/select")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("household_id", "72001"), ("authenticity_token", token)])
+        .form(&[
+            ("household_id", household_text.as_str()),
+            ("authenticity_token", token),
+        ])
         .await;
     assert_eq!(selected.status_code(), 303, "{}", selected.text());
     assert_eq!(
         selected.header("location"),
-        "/households/persistence-fixture/dashboard"
+        format!("/households/{slug}/dashboard").as_str()
     );
     let chosen_again = request.get("/households/choose").await;
     assert_eq!(chosen_again.status_code(), 303, "{}", chosen_again.text());
     assert_eq!(
         chosen_again.header("location"),
-        "/households/persistence-fixture/dashboard"
+        format!("/households/{slug}/dashboard").as_str()
     );
     assert_eq!(chosen_again.header("cache-control"), "no-store");
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE household_id=72001 AND person_id=(SELECT person_id FROM accounts WHERE id=71001)").await?;
+    fixture
+        .membership_state(fixture.membership.permissions_version, true)
+        .await;
+    let mut row = fixture.membership.clone().into_active_model();
+    row.status = Set("revoked".into());
+    row.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    row.update(&fixture.admin).await?;
     let revoked_home = request.get("/").await;
     assert_eq!(revoked_home.status_code(), 303, "{}", revoked_home.text());
     assert_eq!(revoked_home.header("location"), "/households/choose");
@@ -584,28 +837,451 @@ async fn signed_in_without_active_household_reaches_initial_selection() -> TestR
             .contains("You do not have an active household membership.")
     );
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_profile_survives_last_membership_revocation() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    let mut request = server(&boot);
+    request.save_cookies();
+    browser_session(&fixture, &mut request, &boot).await;
+    let mut membership = fixture.membership.clone().into_active_model();
+    membership.status = Set("revoked".into());
+    membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    membership.update(&fixture.admin).await?;
+    let chooser = request.get("/households/choose").await;
+    assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
+    assert!(chooser.text().contains("href=\"/profile\""));
+    let page = request.get("/profile").await;
+    assert_eq!(page.status_code(), 200, "{}", page.text());
+    assert_eq!(page.header("cache-control"), "no-store");
+    let html = page.text();
+    assert!(html.contains(&fixture.account.email));
+    assert!(!html.contains("data-app-drawer-layout"));
+    assert!(!html.contains("action=\"/households/"));
+    let csrf = authenticity_token(&html).ok_or("profile form token missing")?;
+    let saved = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf),
+            ("setting", "time_zone"),
+            ("time_zone", "Europe/London"),
+        ])
+        .await;
+    assert_eq!(saved.status_code(), 303, "{}", saved.text());
+    let refreshed = request.get("/profile").await;
+    assert_eq!(refreshed.status_code(), 200, "{}", refreshed.text());
+    assert!(refreshed.text().contains("Europe/London"));
+    let invalid = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf),
+            ("setting", "time_zone"),
+            ("time_zone", "Invalid/Zone"),
+        ])
+        .await;
+    assert_eq!(invalid.status_code(), 422, "{}", invalid.text());
+    assert!(invalid.text().contains("Invalid/Zone"));
+    let denied = request
+        .get(&format!("/households/{}/dashboard", fixture.household.slug))
+        .await;
+    assert!(matches!(denied.status_code().as_u16(), 403 | 404));
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_history_contains_only_the_subjects_taken_doses() -> TestResult {
+    use med_tracker::models::_entities::{medication_takes, person_medications, schedules};
+    let (fixture, boot) = boot_browser_fixture().await;
+    let now = chrono::Utc::now().naive_utc();
+    let assignment = person_medications::Entity::find()
+        .filter(person_medications::Column::PersonId.eq(fixture.account.person_id))
+        .one(&fixture.admin)
+        .await?
+        .ok_or("assignment missing")?;
+    medication_takes::ActiveModel {
+        household_id: Set(fixture.household.id),
+        person_medication_id: Set(Some(assignment.id)),
+        taken_from_medication_id: Set(Some(fixture.medication.id)),
+        taken_from_location_id: Set(Some(fixture.medication.location_id)),
+        dose_amount: Set(Some(sea_orm::prelude::Decimal::new(2, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(now)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    let (other_home, other_membership) = home(
+        &fixture.scenario,
+        "Former home",
+        "personal-history",
+        "member",
+        true,
+    )
+    .await?;
+    let other = Scenario {
+        admin: fixture.admin.clone(),
+        runtime: fixture.runtime.clone(),
+        account: fixture.account.clone(),
+        household: other_home,
+        membership: other_membership,
+    };
+    let other_medicine = other
+        .medication(
+            "Personal medicine from another home",
+            sea_orm::prelude::Decimal::new(8, 0),
+        )
+        .await;
+    let schedule = schedules::ActiveModel {
+        household_id: Set(other.household.id),
+        person_id: Set(fixture.account.person_id),
+        medication_id: Set(other_medicine.id),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    medication_takes::ActiveModel {
+        household_id: Set(other.household.id),
+        schedule_id: Set(Some(schedule.id)),
+        taken_from_medication_id: Set(Some(other_medicine.id)),
+        dose_amount: Set(Some(sea_orm::prelude::Decimal::new(1, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(now)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    let foreign_medication = fixture
+        .foreign
+        .medication(
+            "Private foreign medicine",
+            sea_orm::prelude::Decimal::new(20, 0),
+        )
+        .await;
+    let foreign_assignment = fixture
+        .foreign
+        .personal_assignment(foreign_medication.id, 0)
+        .await;
+    medication_takes::ActiveModel {
+        household_id: Set(fixture.foreign.household.id),
+        person_medication_id: Set(Some(foreign_assignment.id)),
+        taken_from_medication_id: Set(Some(foreign_medication.id)),
+        dose_amount: Set(Some(sea_orm::prelude::Decimal::new(1, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(now)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    browser_session(&fixture, &mut request, &boot).await;
+    let mut membership = fixture.membership.clone().into_active_model();
+    membership.status = Set("revoked".into());
+    membership.revoked_at = Set(Some(now));
+    membership.update(&fixture.admin).await?;
+    let mut subject = people::Entity::find_by_id(fixture.account.person_id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("clinical person missing")?
+        .into_active_model();
+    subject.person_type = Set(2);
+    subject.has_capacity = Set(false);
+    subject.update(&fixture.admin).await?;
+    let history = request.get("/profile/history").await;
+    assert_eq!(history.status_code(), 200, "{}", history.text());
+    assert_eq!(history.header("cache-control"), "no-store");
+    assert!(history.text().contains("Synthetic tablets"));
+    assert!(
+        history
+            .text()
+            .contains("Personal medicine from another home")
+    );
+    assert!(!history.text().contains("Private foreign medicine"));
+    assert!(!history.text().contains("Synthetic cabinet"));
+    assert!(!history.text().contains("current_supply"));
+    let other = request
+        .get(&format!(
+            "/profile/history?person_id={}",
+            fixture.foreign.account.person_id
+        ))
+        .await;
+    assert!(!other.text().contains("Private foreign medicine"));
+    let anonymous = server(&boot).get("/profile/history").await;
+    assert!(matches!(anonymous.status_code().as_u16(), 303 | 401));
+    let audits = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("AccountClinicalAccess"))
+        .filter(versions::Column::ItemId.eq(fixture.account.id))
+        .filter(versions::Column::Event.eq("personal_history_read"))
+        .count(&fixture.admin)
+        .await?;
+    assert!(audits >= 1);
+    for (privilege, expected) in [
+        ("SELECT", true),
+        ("INSERT", false),
+        ("UPDATE", false),
+        ("DELETE", false),
+    ] {
+        let permissions = sea_orm::sea_query::Query::select()
+            .expr_as(
+                sea_orm::sea_query::Func::cust("pg_catalog.has_table_privilege").args([
+                    Expr::val("public.personal_taken_doses"),
+                    Expr::val(privilege),
+                ]),
+                "allowed",
+            )
+            .to_owned();
+        let row = fixture
+            .runtime
+            .query_one_raw(fixture.runtime.get_database_backend().build(&permissions))
+            .await?
+            .ok_or("view privileges missing")?;
+        assert_eq!(
+            row.try_get::<bool>("", "allowed")?,
+            expected,
+            "runtime {privilege} privilege"
+        );
+    }
+    let transaction = fixture.runtime.begin().await?;
+    let context = sea_orm::sea_query::Query::select()
+        .expr(
+            sea_orm::sea_query::Func::cust("pg_catalog.set_config").args([
+                Expr::val("med_tracker.current_account_id"),
+                Expr::val(fixture.account.id.to_string()),
+                Expr::val(true),
+            ]),
+        )
+        .expr(
+            sea_orm::sea_query::Func::cust("pg_catalog.set_config").args([
+                Expr::val("med_tracker.current_household_id"),
+                Expr::val(""),
+                Expr::val(true),
+            ]),
+        )
+        .expr(
+            sea_orm::sea_query::Func::cust("pg_catalog.set_config").args([
+                Expr::val("med_tracker.personal_history_access"),
+                Expr::val("true"),
+                Expr::val(true),
+            ]),
+        )
+        .to_owned();
+    transaction
+        .execute_raw(transaction.get_database_backend().build(&context))
+        .await?;
+    assert!(
+        med_tracker::models::_entities::medications::Entity::find()
+            .all(&transaction)
+            .await?
+            .is_empty()
+    );
+    assert!(
+        person_medications::Entity::find()
+            .all(&transaction)
+            .await?
+            .is_empty()
+    );
+    assert!(
+        medication_takes::Entity::find()
+            .all(&transaction)
+            .await?
+            .is_empty()
+    );
+    let own_history = sea_orm::sea_query::Query::select()
+        .column(sea_orm::sea_query::Asterisk)
+        .from("personal_taken_doses")
+        .to_owned();
+    let rows = transaction
+        .query_all_raw(transaction.get_database_backend().build(&own_history))
+        .await?;
+    assert_eq!(rows.len(), 2);
+    for row in rows {
+        assert_eq!(
+            row.try_get::<i64>("", "person_id")?,
+            fixture.account.person_id
+        );
+    }
+    transaction.rollback().await?;
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_profile_uses_account_identity_without_a_household() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    entrant(&fixture).await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    entrant_browser_session(&fixture, &mut request, &boot).await;
+    let page = request.get("/profile").await;
+    assert_eq!(page.status_code(), 200, "{}", page.text());
+    assert!(page.text().contains(&fixture.foreign.account.email));
+    assert!(!page.text().contains(&fixture.account.email));
+    let empty_history = request.get("/profile/history").await;
+    assert_eq!(empty_history.status_code(), 200, "{}", empty_history.text());
+    let html = page.text();
+    let csrf = authenticity_token(&html).ok_or("profile form token missing")?;
+    let saved = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf),
+            ("setting", "clinical"),
+            ("name", "Own clinical name"),
+            ("date_of_birth", "1990-02-03"),
+        ])
+        .await;
+    assert_eq!(saved.status_code(), 303, "{}", saved.text());
+    let person = people::Entity::find_by_id(fixture.foreign.account.person_id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("clinical person missing")?;
+    assert_eq!(person.name, "Own clinical name");
+    assert_eq!(person.date_of_birth.unwrap().to_string(), "1990-02-03");
+    let account = accounts::Entity::find_by_id(fixture.foreign.account.id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("account missing")?;
+    assert_eq!(account.name, fixture.foreign.account.name);
+    let csrf_denied = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[("setting", "time_zone"), ("time_zone", "UTC")])
+        .await;
+    assert_eq!(csrf_denied.status_code(), 403);
+    let injection = request
+        .post("/profile")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf),
+            ("setting", "clinical"),
+            ("name", "Forbidden target"),
+            ("person_id", &fixture.account.person_id.to_string()),
+        ])
+        .await;
+    assert_eq!(injection.status_code(), 422, "{}", injection.text());
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_landing_keeps_the_opened_invitation_available() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    entrant(&fixture).await?;
+    let invitation_token = format!("personal-landing-{}", uuid::Uuid::new_v4());
+    invitation(&fixture, &invitation_token).await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    entrant_browser_session(&fixture, &mut request, &boot).await;
+    let preview = request
+        .get(&format!("/invitations/accept?token={invitation_token}"))
+        .await;
+    assert_eq!(preview.status_code(), 200, "{}", preview.text());
+    let landing = request.get("/households/choose").await;
+    assert_eq!(landing.status_code(), 200, "{}", landing.text());
+    assert!(
+        landing
+            .text()
+            .contains(&format!("/invitations/accept?token={invitation_token}"))
+    );
+    assert!(landing.text().contains("href=\"/profile\""));
+    assert!(landing.text().contains("action=\"/households\""));
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn household_free_clinical_birth_date_cannot_lock_out_the_account() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    let original = people::Entity::find_by_id(fixture.account.person_id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("clinical person missing")?;
+    let versions = || {
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("Person"))
+            .filter(versions::Column::ItemId.eq(original.id))
+    };
+    let before = versions().count(&fixture.admin).await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    browser_session(&fixture, &mut request, &boot).await;
+    for date in ["2015-01-01", "2099-01-01"] {
+        let page = request.get("/profile").await;
+        assert_eq!(page.status_code(), 200, "{}", page.text());
+        let html = page.text();
+        let csrf = authenticity_token(&html).ok_or("profile token missing")?;
+        let invalid = request
+            .post("/profile")
+            .add_header("sec-fetch-site", "same-origin")
+            .form(&[
+                ("authenticity_token", csrf),
+                ("setting", "clinical"),
+                ("name", "Must not persist"),
+                ("date_of_birth", date),
+            ])
+            .await;
+        assert_eq!(invalid.status_code(), 422, "{}", invalid.text());
+        assert!(invalid.text().contains(date));
+        let unchanged = people::Entity::find_by_id(original.id)
+            .one(&fixture.admin)
+            .await?
+            .ok_or("clinical person missing")?;
+        assert_eq!(unchanged, original);
+        assert_eq!(versions().count(&fixture.admin).await?, before);
+        let still_signed_in = request.get("/profile").await;
+        assert_eq!(
+            still_signed_in.status_code(),
+            200,
+            "{}",
+            still_signed_in.text()
+        );
+    }
+    drop(request);
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn household_selection_requires_csrf_and_does_not_change_session() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
+    let household_id = fixture.household.id;
+    let household_text = household_id.to_string();
+
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
+    browser_session(&fixture, &mut request, &boot).await;
     let rejected = request
         .post("/households/select")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("household_id", "72001"), ("authenticity_token", "invalid")])
+        .form(&[
+            ("household_id", household_text.as_str()),
+            ("authenticity_token", "invalid"),
+        ])
         .await;
     assert_eq!(rejected.status_code(), 403, "{}", rejected.text());
     assert_eq!(rejected.header("cache-control"), "no-store");
     let missing = request
         .post("/households/select")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("household_id", "72001")])
+        .form(&[("household_id", household_text.as_str())])
         .await;
     assert!(
         missing.status_code().is_client_error(),
@@ -620,14 +1296,20 @@ async fn household_selection_requires_csrf_and_does_not_change_session() -> Test
         .post("/households/select")
         .add_header("origin", "https://foreign.example.test")
         .add_header("sec-fetch-site", "cross-site")
-        .form(&[("household_id", "72001"), ("authenticity_token", token)])
+        .form(&[
+            ("household_id", household_text.as_str()),
+            ("authenticity_token", token),
+        ])
         .await;
     assert_eq!(foreign.status_code(), 403, "{}", foreign.text());
     assert_eq!(foreign.header("cache-control"), "no-store");
     let missing_origin = request
         .post("/households/select")
         .add_header("sec-fetch-site", "cross-site")
-        .form(&[("household_id", "72001"), ("authenticity_token", token)])
+        .form(&[
+            ("household_id", household_text.as_str()),
+            ("authenticity_token", token),
+        ])
         .await;
     assert_eq!(
         missing_origin.status_code(),
@@ -636,60 +1318,83 @@ async fn household_selection_requires_csrf_and_does_not_change_session() -> Test
         missing_origin.text()
     );
     assert_eq!(missing_origin.header("cache-control"), "no-store");
-    let state = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS selected FROM identity_sessions WHERE account_id=71001 AND active_household_id IS NOT NULL")).await?.ok_or("identity session must be present")?;
-    assert_eq!(state.try_get::<i64>("", "selected")?, 0);
+    assert_eq!(selected_count(&fixture).await?, 0);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn household_selection_requires_current_account_and_session() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
+    let household_id = fixture.household.id;
+    let household_text = household_id.to_string();
+
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
+    browser_session(&fixture, &mut request, &boot).await;
     let home = request.get("/households/choose").await;
     let token = authenticity_token(&home.text())
         .ok_or("household form token missing")?
         .to_owned();
-    for mutation in [
-        "UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE account_id=71001",
-        "UPDATE identity_sessions SET expires_at=now()+interval '1 hour' WHERE account_id=71001; UPDATE accounts SET status=1 WHERE id=71001",
-    ] {
-        fixture.admin.execute_unprepared(mutation).await?;
+    for expired in [true, false] {
+        identity_session::Entity::update_many()
+            .col_expr(
+                identity_session::Column::ExpiresAt,
+                Expr::value(
+                    chrono::Utc::now() + chrono::Duration::seconds(if expired { -1 } else { 3600 }),
+                ),
+            )
+            .filter(identity_session::Column::UserId.eq(fixture.account.id))
+            .exec(&fixture.admin)
+            .await?;
+        if !expired {
+            accounts::Entity::update_many()
+                .col_expr(accounts::Column::Status, Expr::value(1))
+                .filter(accounts::Column::Id.eq(fixture.account.id))
+                .exec(&fixture.admin)
+                .await?;
+        }
         let denied = request
             .post("/households/select")
             .add_header("sec-fetch-site", "same-origin")
             .form(&[
-                ("household_id", "72001"),
+                ("household_id", household_text.as_str()),
                 ("authenticity_token", token.as_str()),
             ])
             .await;
         assert!(denied.status_code().is_client_error(), "{}", denied.text());
         assert_eq!(denied.header("cache-control"), "no-store");
     }
-    let state = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS selected FROM identity_sessions WHERE account_id=71001 AND active_household_id IS NOT NULL"
-    )).await?.ok_or("identity session must be present")?;
-    assert_eq!(state.try_get::<i64>("", "selected")?, 0);
+    assert_eq!(selected_count(&fixture).await?, 0);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn household_selection_is_independent_for_two_browser_sessions() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,(SELECT person_id FROM accounts WHERE id=71001),'member',now(),now(),now())").await?;
+    let household_id = fixture.household.id;
+    let household_text = household_id.to_string();
+    let slug = fixture.household.slug.clone();
+
+    let (additional, _additional_member) = home(
+        &fixture.scenario,
+        "Second household",
+        "second-household",
+        "member",
+        false,
+    )
+    .await?;
+    let additional_slug = additional.slug.clone();
+    let additional_text = additional.id.to_string();
     let mut first = server(&boot);
     first.save_cookies();
     let mut second = server(&boot);
     second.save_cookies();
-    sign_in(&first, &boot).await;
-    sign_in(&second, &boot).await;
+    browser_session(&fixture, &mut first, &boot).await;
+    browser_session(&fixture, &mut second, &boot).await;
 
     let first_home = first.get("/households/choose").await;
     let first_html = first_home.text();
@@ -699,7 +1404,7 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
         .post("/households/select")
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
-            ("household_id", "72001"),
+            ("household_id", household_text.as_str()),
             ("authenticity_token", first_token),
         ])
         .await;
@@ -711,7 +1416,7 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
     );
     assert_eq!(
         first_selected.header("location"),
-        "/households/persistence-fixture/dashboard"
+        format!("/households/{slug}/dashboard").as_str()
     );
     let first_home_after_selection = first.get("/").await;
     assert_eq!(
@@ -722,9 +1427,11 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
     );
     assert_eq!(
         first_home_after_selection.header("location"),
-        "/households/persistence-fixture/dashboard"
+        format!("/households/{slug}/dashboard").as_str()
     );
-    let first_dashboard = first.get("/households/persistence-fixture/dashboard").await;
+    let first_dashboard = first
+        .get(format!("/households/{slug}/dashboard").as_str())
+        .await;
     assert_eq!(
         first_dashboard.status_code(),
         200,
@@ -732,17 +1439,17 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
         first_dashboard.text()
     );
     let navigation = first
-        .get("/households/persistence-fixture/profile/navigation")
+        .get(format!("/households/{slug}/profile/navigation").as_str())
         .await;
     assert_eq!(navigation.status_code(), 200, "{}", navigation.text());
     assert_eq!(navigation.header("cache-control"), "no-store");
     let shell = &navigation.json::<Value>()["shell"];
-    assert_eq!(shell["active_household_id"], "72001");
+    assert_eq!(shell["active_household_id"], household_text.as_str());
     assert_eq!(shell["households"].as_array().map(Vec::len), Some(2));
     assert!(shell["households"].as_array().is_some_and(|households| {
-        households
-            .iter()
-            .any(|household| household["id"] == 72002 && household["name"] == "Second household")
+        households.iter().any(|household| {
+            household["id"] == additional.id && household["name"] == "Second household"
+        })
     }));
 
     let second_home = second.get("/households/choose").await;
@@ -753,7 +1460,7 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
         .post("/households/select")
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
-            ("household_id", "72002"),
+            ("household_id", additional_text.as_str()),
             ("authenticity_token", second_token),
         ])
         .await;
@@ -765,7 +1472,7 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
     );
     assert_eq!(
         second_selected.header("location"),
-        "/households/second-household/dashboard"
+        format!("/households/{additional_slug}/dashboard").as_str()
     );
     let second_home_after_selection = second.get("/").await;
     assert_eq!(
@@ -776,9 +1483,11 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
     );
     assert_eq!(
         second_home_after_selection.header("location"),
-        "/households/second-household/dashboard"
+        format!("/households/{additional_slug}/dashboard").as_str()
     );
-    let second_inventory = second.get("/households/second-household/medications").await;
+    let second_inventory = second
+        .get(format!("/households/{additional_slug}/medications").as_str())
+        .await;
     assert_eq!(
         second_inventory.status_code(),
         200,
@@ -795,24 +1504,50 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
         "{}",
         second_session.text()
     );
-    let selections = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) FILTER (WHERE active_household_id=72001) AS first, count(*) FILTER (WHERE active_household_id=72002) AS second FROM identity_sessions WHERE account_id=71001 AND active"
-    )).await?.ok_or("selected sessions must be present")?;
-    assert_eq!(selections.try_get::<i64>("", "first")?, 1);
-    assert_eq!(selections.try_get::<i64>("", "second")?, 1);
+    let selections = identity_session::Entity::find()
+        .filter(identity_session::Column::UserId.eq(fixture.account.id))
+        .filter(identity_session::Column::Active.eq(true))
+        .all(&fixture.admin)
+        .await?;
+    assert_eq!(
+        selections
+            .iter()
+            .filter(|row| row.active_household_id == Some(fixture.household.id))
+            .count(),
+        1
+    );
+    assert_eq!(
+        selections
+            .iter()
+            .filter(|row| row.active_household_id == Some(additional.id))
+            .count(),
+        1
+    );
     drop(first);
     drop(second);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn household_selection_rechecks_membership_and_household_state() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Another household','another-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,(SELECT person_id FROM accounts WHERE id=71001),'member',now(),now(),now()); INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Foreign household selector','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71002,73992,'foreign-selector@example.test',2,now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72003,71002,'Foreign household','foreign-selector-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,(SELECT person_id FROM accounts WHERE id=71002),'owner',now(),now(),now())").await?;
+    let household_id = fixture.household.id;
+    let household_text = household_id.to_string();
+
+    let (additional, additional_member) = home(
+        &fixture.scenario,
+        "Another household",
+        "another-household",
+        "member",
+        false,
+    )
+    .await?;
+    let _additional_slug = additional.slug.clone();
+    let _additional_text = additional.id.to_string();
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
+    browser_session(&fixture, &mut request, &boot).await;
     let home = request.get("/households/choose").await;
     let html = home.text();
     let token = authenticity_token(&html)
@@ -821,34 +1556,64 @@ async fn household_selection_rechecks_membership_and_household_state() -> TestRe
     let selected = request
         .post("/households/select")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("household_id", "72001"), ("authenticity_token", &token)])
+        .form(&[
+            ("household_id", household_text.as_str()),
+            ("authenticity_token", &token),
+        ])
         .await;
     assert_eq!(selected.status_code(), 303, "{}", selected.text());
 
-    for (id, setup) in [
-        ("99999", "SELECT 1"),
-        ("invalid", "SELECT 1"),
-        ("0", "SELECT 1"),
-        ("-1", "SELECT 1"),
-        ("72003", "SELECT 1"),
-        (
-            "72002",
-            "UPDATE households SET lifecycle_state='held' WHERE id=72002",
-        ),
-        (
-            "72002",
-            "UPDATE households SET lifecycle_state='active' WHERE id=72002; UPDATE household_memberships SET status='suspended' WHERE id=74002",
-        ),
-        (
-            "72002",
-            "UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74002",
-        ),
+    for (id, state) in [
+        (i64::MAX.to_string(), 0),
+        ("not-a-number".into(), 0),
+        ("0".into(), 0),
+        ("-1".into(), 0),
+        (fixture.foreign.household.id.to_string(), 0),
+        (additional.id.to_string(), 1),
+        (additional.id.to_string(), 2),
+        (additional.id.to_string(), 3),
     ] {
-        fixture.admin.execute_unprepared(setup).await?;
+        if state == 1 {
+            households::Entity::update_many()
+                .col_expr(households::Column::LifecycleState, Expr::value("held"))
+                .filter(households::Column::Id.eq(additional.id))
+                .exec(&fixture.admin)
+                .await?;
+        } else if state == 2 {
+            households::Entity::update_many()
+                .col_expr(households::Column::LifecycleState, Expr::value("active"))
+                .filter(households::Column::Id.eq(additional.id))
+                .exec(&fixture.admin)
+                .await?;
+            household_memberships::Entity::update_many()
+                .col_expr(
+                    household_memberships::Column::Status,
+                    Expr::value("suspended"),
+                )
+                .filter(household_memberships::Column::Id.eq(additional_member.id))
+                .exec(&fixture.admin)
+                .await?;
+        } else if state == 3 {
+            household_memberships::Entity::update_many()
+                .col_expr(
+                    household_memberships::Column::Status,
+                    Expr::value("revoked"),
+                )
+                .col_expr(
+                    household_memberships::Column::RevokedAt,
+                    Expr::value(chrono::Utc::now().naive_utc()),
+                )
+                .filter(household_memberships::Column::Id.eq(additional_member.id))
+                .exec(&fixture.admin)
+                .await?;
+        }
         let rejected = request
             .post("/households/select")
             .add_header("sec-fetch-site", "same-origin")
-            .form(&[("household_id", id), ("authenticity_token", &token)])
+            .form(&[
+                ("household_id", id.as_str()),
+                ("authenticity_token", &token),
+            ])
             .await;
         assert!(
             rejected.status_code().is_client_error(),
@@ -858,23 +1623,41 @@ async fn household_selection_rechecks_membership_and_household_state() -> TestRe
         );
         assert_eq!(rejected.header("cache-control"), "no-store");
     }
-    let state = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) FILTER (WHERE active_household_id=72001) AS retained, count(*) FILTER (WHERE active_household_id<>72001) AS changed FROM identity_sessions WHERE account_id=71001 AND active"
-    )).await?.ok_or("identity session must be present")?;
-    assert_eq!(state.try_get::<i64>("", "retained")?, 1);
-    assert_eq!(state.try_get::<i64>("", "changed")?, 0);
+    let selections = identity_session::Entity::find()
+        .filter(identity_session::Column::UserId.eq(fixture.account.id))
+        .filter(identity_session::Column::Active.eq(true))
+        .all(&fixture.admin)
+        .await?;
+    assert_eq!(
+        selections
+            .iter()
+            .filter(|row| row.active_household_id == Some(fixture.household.id))
+            .count(),
+        1
+    );
+    assert_eq!(
+        selections
+            .iter()
+            .filter(|row| row
+                .active_household_id
+                .is_some_and(|id| id != fixture.household.id))
+            .count(),
+        0
+    );
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
 
 #[tokio::test]
 async fn household_revocation_serializes_with_selection() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,completed_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET completed_at=now()").await?;
+    let household_id = fixture.household.id;
+    let household_text = household_id.to_string();
+
     let mut request = server(&boot);
     request.save_cookies();
-    sign_in(&request, &boot).await;
+    browser_session(&fixture, &mut request, &boot).await;
     let home = request.get("/households/choose").await;
     let token = authenticity_token(&home.text())
         .ok_or("household form token missing")?
@@ -889,15 +1672,16 @@ async fn household_revocation_serializes_with_selection() -> TestResult {
         .await?
         .ok_or("blocker backend must exist")?
         .try_get("", "pid")?;
-    blocker
-        .execute_unprepared("SELECT id FROM household_memberships WHERE id=74001 FOR UPDATE")
+    household_memberships::Entity::find_by_id(fixture.membership.id)
+        .lock_exclusive()
+        .one(&blocker)
         .await?;
     let selection = async {
         request
             .post("/households/select")
             .add_header("sec-fetch-site", "same-origin")
             .form(&[
-                ("household_id", "72001"),
+                ("household_id", household_text.as_str()),
                 ("authenticity_token", token.as_str()),
             ])
             .await
@@ -915,10 +1699,17 @@ async fn household_revocation_serializes_with_selection() -> TestResult {
                 tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         }).await.unwrap_or(Ok(false))?;
-        blocker
-            .execute_unprepared(
-                "UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74001",
+        household_memberships::Entity::update_many()
+            .col_expr(
+                household_memberships::Column::Status,
+                Expr::value("revoked"),
             )
+            .col_expr(
+                household_memberships::Column::RevokedAt,
+                Expr::value(chrono::Utc::now().naive_utc()),
+            )
+            .filter(household_memberships::Column::Id.eq(fixture.membership.id))
+            .exec(&blocker)
             .await?;
         blocker.commit().await?;
         Ok::<_, Box<dyn std::error::Error>>(observed)
@@ -931,11 +1722,11 @@ async fn household_revocation_serializes_with_selection() -> TestResult {
     );
     assert!(denied.status_code().is_client_error(), "{}", denied.text());
     assert_eq!(denied.header("cache-control"), "no-store");
-    let state = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS selected FROM identity_sessions WHERE account_id=71001 AND active_household_id IS NOT NULL"
-    )).await?.ok_or("identity session must be present")?;
-    assert_eq!(state.try_get::<i64>("", "selected")?, 0);
+    assert_eq!(selected_count(&fixture).await?, 0);
     drop(request);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     Ok(())
 }
+
+#[path = "household_selection/personal_review.rs"]
+mod personal_review;

@@ -17,15 +17,14 @@ body { margin: 0; font-family: var(--font-family); background: var(--background)
 .app-brand { margin-right: auto; }
 .app-avatar { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; overflow: hidden; background: var(--color-neutral); color: var(--color-neutral-content); }
 .app-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.app-navigation-panel { position: fixed; color: var(--foreground); background: var(--surface-container-low); border: 1px solid var(--border-color); padding: 1rem; max-height: 100dvh; overflow-y: auto; box-shadow: var(--elevation-1); }
-.app-navigation-panel::backdrop { background: rgb(0 0 0 / .45); }
-.app-drawer { inset: 0 auto 0 0; margin: 0; width: min(85vw, 320px); height: 100dvh; }
-.app-account { inset: 5rem max(1rem, calc((100vw - 72rem) / 2)) auto auto; margin: 0; width: min(90vw, 320px); border-radius: 1rem; }
-body:has(.app-navigation-panel[open]) { overflow: hidden; }
+.app-navigation-panel { color: var(--foreground); background: var(--surface-container-low); border: 1px solid var(--border-color); padding: 1rem; overflow-y: auto; box-shadow: var(--elevation-1); }
+.app-drawer-side { z-index: 40; }
+.app-drawer { width: min(85vw, 320px); min-height: 100%; }
+.app-account { width: min(90vw, 20rem); max-height: calc(100dvh - 2rem); margin: .5rem 0; border-radius: 1rem; position-try-fallbacks: flip-block; }
+.app-account::backdrop { background: transparent; }
+@supports not (position-area: bottom) { .app-account[popover] { position: fixed; margin: 0; inset: auto; } }
+html:has(.app-household) { scrollbar-gutter: stable; }
 .app-navigation-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-weight: 700; margin-bottom: 1rem; }
-.app-navigation-link { display: flex; align-items: center; gap: 1rem; width: 100%; min-height: 3rem; padding: .75rem 1rem; border-radius: 2rem; text-align: left; }
-.app-navigation-link:hover, .app-navigation-link[aria-current] { background: var(--secondary-container); color: var(--on-secondary-container); }
-.app-navigation-panel form { border-top: 1px solid var(--border-color); margin-top: 1rem; padding-top: 1rem; }
 @media (max-width: 640px) { [data-account-name] { display: none; } }
 .shell-main { padding-block: 3rem; }
 .shell-card { background: var(--card); border: 1px solid var(--border-color); box-shadow: var(--elevation-1); }
@@ -42,9 +41,6 @@ body:has(.app-navigation-panel[open]) { overflow: hidden; }
 .skip-link:focus { top: 1rem; }
 [hidden] { display: none !important; }
 .modal-box { background: var(--card); color: var(--foreground); max-height: min(90vh, 50rem); }
-dialog.modal:not([open]) { display: none; }
-.tabs { flex-wrap: wrap; }
-.tab { color: var(--foreground); }
 .btn { max-width: 100%; }
 @media (max-width: 480px) { .shell-main { padding-block: 1.5rem; } .shell-header-inner { gap: 0.5rem; flex-wrap: wrap; } .shell-header-inner.app-header { flex-wrap: nowrap; } }
 @media (max-width: 350px) { .shell-header-inner.app-header { flex-wrap: wrap; } }

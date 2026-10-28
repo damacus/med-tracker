@@ -1,145 +1,246 @@
-use crate::{db::OwnedDatabase, fixtures, template};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+use crate::scenario::Scenario;
+use med_tracker::models::_entities::{
+    api_change_events, household_memberships, households, locations, medication_takes, medications,
+    oauth_applications, oauth_grants, people, person_access_grants, person_medications, versions,
+};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, Condition, EntityTrait, IntoActiveModel,
+    PaginatorTrait, QueryFilter, TransactionTrait, prelude::Decimal,
+};
 
-#[tokio::test]
-async fn prepared_template_is_frozen_and_clones_are_isolated() {
-    let first = Fixture::new().await;
-    first
-        .admin
-        .execute_unprepared("UPDATE medications SET current_supply=123 WHERE id=80001")
-        .await
-        .unwrap();
-    let second = Fixture::new().await;
-    assert_ne!(first.effect().await.1, second.effect().await.1);
-    let row = second
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT datallowconn FROM pg_database WHERE datname='care_api_template'",
-        ))
-        .await
-        .unwrap()
-        .expect("prepared template must exist");
-    assert!(!row.try_get::<bool>("", "datallowconn").unwrap());
-    first.close().await;
-    second.close().await;
-}
-
-#[tokio::test]
-async fn closing_fixture_removes_its_database_and_role() {
-    let fixture = Fixture::new().await;
-    let uri = url::Url::parse(&fixture.runtime_uri).unwrap();
-    let name = uri.path().trim_start_matches('/');
-    let role = uri.username();
-    fixture.close().await;
-    let control = Database::connect(template::owned_database_url())
-        .await
-        .unwrap();
-    let row = control.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname=$1) AS database_exists, EXISTS(SELECT 1 FROM pg_roles WHERE rolname=$2) AS role_exists", [name.into(), role.into()])).await.unwrap().unwrap();
-    assert!(!row.try_get::<bool>("", "database_exists").unwrap());
-    assert!(!row.try_get::<bool>("", "role_exists").unwrap());
-    control.close().await.unwrap();
-}
 pub struct Fixture {
-    pub admin: DatabaseConnection,
-    pub runtime: DatabaseConnection,
+    pub scenario: Scenario,
     pub runtime_uri: String,
-    inner: OwnedDatabase,
+    pub adult: people::Model,
+    pub minor: people::Model,
+    pub dependent: people::Model,
+    pub minor_membership: household_memberships::Model,
+    pub dependent_membership: household_memberships::Model,
+    pub location: locations::Model,
+    pub medication: medications::Model,
+    pub assignment: person_medications::Model,
+    pub grant: person_access_grants::Model,
+    pub application: oauth_applications::Model,
+    pub authorization: oauth_grants::Model,
+    pub client_id: String,
+    pub code: String,
+    pub client_uuid: uuid::Uuid,
 }
 
-#[tokio::test]
-async fn cloning_an_aged_template_renews_short_lived_credentials() {
-    Fixture::new().await.close().await;
-    let uri = template::owned_database_url();
-    let parsed = url::Url::parse(&uri).unwrap();
-    let name = format!("aged_template_{}", uuid::Uuid::new_v4().simple());
-    let control = Database::connect(&uri).await.unwrap();
-    control
-        .execute_unprepared(&format!(
-            "CREATE DATABASE {name} TEMPLATE care_api_template"
-        ))
-        .await
-        .unwrap();
-    let mut source_uri = parsed;
-    source_uri.set_path(&name);
-    let source = Database::connect(source_uri.to_string()).await.unwrap();
-    source
-        .execute_unprepared("UPDATE oauth_grants SET expires_in=timezone('UTC',clock_timestamp())-interval '1 hour'")
-        .await
-        .unwrap();
-    source.close().await.unwrap();
-    let cloned = Fixture::from_template(&uri, &name).await;
-    let row = cloned.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT expires_in > timezone('UTC',clock_timestamp()) + interval '4 minutes' AS fresh FROM oauth_grants WHERE id=76001"
-    )).await.unwrap().unwrap();
-    let fresh: bool = row.try_get("", "fresh").unwrap();
-    cloned.close().await;
-    control
-        .execute_unprepared(&format!("DROP DATABASE {name}"))
-        .await
-        .unwrap();
-    control.close().await.unwrap();
-    assert!(
-        fresh,
-        "Each clone must receive a fresh short-lived OAuth code"
-    );
+impl std::ops::Deref for Fixture {
+    type Target = Scenario;
+    fn deref(&self) -> &Self::Target {
+        &self.scenario
+    }
 }
 
 impl Fixture {
     pub async fn new() -> Self {
-        let uri = template::owned_database_url();
-        template::prepare(&uri, "care_api_template", |admin| async move {
-            fixtures::seed_core(&admin).await;
-            fixtures::set_native_client_id(&admin).await;
-        })
-        .await;
-        Self::from_template(&uri, "care_api_template").await
-    }
-
-    async fn from_template(uri: &str, template_name: &str) -> Self {
-        let owned = OwnedDatabase::clone(uri, template_name, "care_api_", "care_runtime_").await;
-        fixtures::seed_mobile_grant(&owned.admin).await;
+        let scenario = Scenario::new().await;
+        let transaction = scenario.admin.begin().await.unwrap();
+        let now = chrono::Utc::now().naive_utc();
+        let adult = people::Entity::find_by_id(scenario.account.person_id)
+            .one(&transaction)
+            .await
+            .unwrap()
+            .unwrap();
+        let mut participants = Vec::new();
+        for (name, person_type) in [("Synthetic minor", 1), ("Synthetic dependent adult", 2)] {
+            let person = people::ActiveModel {
+                name: Set(name.into()),
+                person_type: Set(person_type),
+                has_capacity: Set(false),
+                created_at: Set(now),
+                updated_at: Set(now),
+                ..Default::default()
+            }
+            .insert(&transaction)
+            .await
+            .unwrap();
+            let membership = household_memberships::ActiveModel {
+                household_id: Set(scenario.household.id),
+                person_id: Set(person.id),
+                role: Set("member".into()),
+                status: Set("active".into()),
+                joined_at: Set(now),
+                created_at: Set(now),
+                updated_at: Set(now),
+                ..Default::default()
+            }
+            .insert(&transaction)
+            .await
+            .unwrap();
+            participants.push((person, membership));
+        }
+        let [(minor, minor_membership), (dependent, dependent_membership)]: [(
+            people::Model,
+            household_memberships::Model,
+        ); 2] = participants.try_into().unwrap();
+        let grant = person_access_grants::ActiveModel {
+            household_id: Set(scenario.household.id),
+            household_membership_id: Set(scenario.membership.id),
+            person_id: Set(adult.id),
+            access_level: Set("manage".into()),
+            relationship_type: Set("self".into()),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&transaction)
+        .await
+        .unwrap();
+        transaction.commit().await.unwrap();
+        let medication = scenario
+            .medication("Synthetic tablets", Decimal::new(10, 0))
+            .await;
+        let location = locations::Entity::find_by_id(medication.location_id)
+            .one(&scenario.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let assignment = scenario.personal_assignment(medication.id, 0).await;
+        let client_id = format!("native-{}", uuid::Uuid::new_v4());
+        let code = uuid::Uuid::new_v4().to_string();
+        let authorization_transaction = scenario.admin.begin().await.unwrap();
+        let application = oauth_applications::ActiveModel {
+            account_id: Set(Some(scenario.account.id)),
+            client_id: Set(client_id.clone()),
+            client_kind: Set("mobile".into()),
+            name: Set("Synthetic native client".into()),
+            redirect_uri: Set("io.damacus.medtracker:/oauth2redirect".into()),
+            scopes: Set("medtracker offline_access".into()),
+            token_endpoint_auth_method: Set("none".into()),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&authorization_transaction)
+        .await
+        .unwrap();
+        let authorization = oauth_grants::ActiveModel {
+            account_id: Set(scenario.account.id),
+            oauth_application_id: Set(application.id),
+            client_kind: Set("mobile".into()),
+            code: Set(Some(code.clone())),
+            code_challenge: Set(Some("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".into())),
+            code_challenge_method: Set(Some("S256".into())),
+            redirect_uri: Set(Some(application.redirect_uri.clone())),
+            scopes: Set(application.scopes.clone()),
+            expires_in: Set(now + chrono::Duration::minutes(5)),
+            authenticated_at: Set(Some(now - chrono::Duration::days(2))),
+            last_used_at: Set(Some(now - chrono::Duration::days(2))),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&authorization_transaction)
+        .await
+        .unwrap();
+        authorization_transaction.commit().await.unwrap();
+        let runtime_uri = std::env::var("DATABASE_URL").unwrap();
         Self {
-            admin: owned.admin.clone(),
-            runtime: owned.runtime.clone(),
-            runtime_uri: owned.runtime_uri.clone(),
-            inner: owned,
+            scenario,
+            runtime_uri,
+            adult,
+            minor,
+            dependent,
+            minor_membership,
+            dependent_membership,
+            location,
+            medication,
+            assignment,
+            grant,
+            application,
+            authorization,
+            client_id,
+            code,
+            client_uuid: uuid::Uuid::new_v4(),
         }
     }
 
     pub async fn close(self) {
-        self.inner.close().await;
+        self.scenario.close().await;
+    }
+
+    pub async fn foreign_household(&self) -> Scenario {
+        Scenario::new().await
+    }
+
+    pub async fn seed_foreign_household(&self, _legacy_id: i64) -> households::Model {
+        // Unmigrated callers must use the returned generated ID, not the legacy argument.
+        let foreign = self.foreign_household().await;
+        let household = foreign.household.clone();
+        foreign.close().await;
+        household
     }
 
     pub async fn effect(&self) -> (i64, String, i64, i64) {
-        let row = self.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-            "SELECT (SELECT count(*) FROM medication_takes) AS takes,
-                    (SELECT current_supply::text FROM medications WHERE id = 80001) AS supply,
-                    (SELECT count(*) FROM versions WHERE item_type = 'MedicationTake' AND event = 'create') AS audits,
-                    (SELECT count(*) FROM api_change_events WHERE record_type = 'MedicationTake' AND action = 'create') AS changes"
-        )).await.unwrap().unwrap();
+        let household_id = self.scenario.household.id;
+        let takes = medication_takes::Entity::find()
+            .filter(medication_takes::Column::HouseholdId.eq(household_id))
+            .count(&self.scenario.admin)
+            .await
+            .unwrap();
+        let medication = medications::Entity::find_by_id(self.medication.id)
+            .one(&self.scenario.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let audits = versions::Entity::find()
+            .filter(versions::Column::HouseholdId.eq(household_id))
+            .filter(versions::Column::ItemType.eq("MedicationTake"))
+            .filter(versions::Column::Event.eq("create"))
+            .count(&self.scenario.admin)
+            .await
+            .unwrap();
+        let changes = api_change_events::Entity::find()
+            .filter(api_change_events::Column::HouseholdId.eq(household_id))
+            .filter(api_change_events::Column::RecordType.eq("MedicationTake"))
+            .filter(api_change_events::Column::Action.eq("create"))
+            .count(&self.scenario.admin)
+            .await
+            .unwrap();
         (
-            row.try_get("", "takes").unwrap(),
-            row.try_get("", "supply").unwrap(),
-            row.try_get("", "audits").unwrap(),
-            row.try_get("", "changes").unwrap(),
+            i64::try_from(takes).unwrap(),
+            format!("{:.2}", medication.current_supply.unwrap()),
+            i64::try_from(audits).unwrap(),
+            i64::try_from(changes).unwrap(),
         )
     }
-}
 
-#[tokio::test]
-async fn cloned_fixture_issues_a_fresh_authorization_code() {
-    let first = Fixture::new().await;
-    let cloned_at = chrono::Utc::now().naive_utc();
-    let second = Fixture::new().await;
-    let row = second.admin.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT created_at >= $1 AS fresh, expires_in > $1 + interval '4 minutes' AS usable FROM oauth_grants WHERE id=76001",
-        [cloned_at.into()],
-    )).await.unwrap().unwrap();
-    assert!(row.try_get::<bool>("", "fresh").unwrap());
-    assert!(row.try_get::<bool>("", "usable").unwrap());
-    first.close().await;
-    second.close().await;
+    pub async fn versions(&self) -> Vec<versions::Model> {
+        versions::Entity::find()
+            .filter(
+                Condition::any()
+                    .add(versions::Column::HouseholdId.eq(self.scenario.household.id))
+                    .add(
+                        Condition::all()
+                            .add(versions::Column::ItemType.is_in([
+                                "NativeAuthentication",
+                                "Account",
+                                "AuthenticationToken",
+                            ]))
+                            .add(versions::Column::ItemId.eq(self.scenario.account.id)),
+                    ),
+            )
+            .all(&self.scenario.admin)
+            .await
+            .unwrap()
+    }
+
+    pub async fn revoke(&self) {
+        let now = chrono::Utc::now().naive_utc();
+        let mut grant = self.grant.clone().into_active_model();
+        grant.revoked_at = Set(Some(now));
+        grant.update(&self.scenario.admin).await.unwrap();
+        let mut membership = self.scenario.membership.clone().into_active_model();
+        membership.revoked_at = Set(Some(now));
+        membership.update(&self.scenario.admin).await.unwrap();
+    }
+
+    pub async fn member(&self) {
+        let mut membership = self.scenario.membership.clone().into_active_model();
+        membership.role = Set("member".into());
+        membership.update(&self.scenario.admin).await.unwrap();
+    }
 }

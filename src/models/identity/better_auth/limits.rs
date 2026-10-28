@@ -6,6 +6,47 @@ use better_auth_core::{AuthError, AuthRequest, AuthResponse, AuthResult};
 use sea_orm::ConnectionTrait;
 use sha2::{Digest, Sha256};
 
+#[derive(Clone, Copy)]
+struct Limit {
+    maximum: i32,
+    seconds: i32,
+}
+
+const SOURCE_LIMIT: Limit = Limit {
+    maximum: 40,
+    seconds: 60,
+};
+const SECURITY_LIMIT: Limit = Limit {
+    maximum: 30,
+    seconds: 60,
+};
+const PASSWORD_LIMIT: Limit = Limit {
+    maximum: 10,
+    seconds: 900,
+};
+const RESEND_LIMIT: Limit = Limit {
+    maximum: 1,
+    seconds: 60,
+};
+
+fn configured(settings: Option<&serde_json::Value>, category: &str, default: Limit) -> Limit {
+    let Some(section) = settings.and_then(|settings| settings.get("identity_rate_limits")) else {
+        return default;
+    };
+    let resolve = |key: &str, fallback: i32| {
+        section
+            .get(format!("{category}_{key}"))
+            .and_then(serde_json::Value::as_i64)
+            .and_then(|value| i32::try_from(value).ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(fallback)
+    };
+    Limit {
+        maximum: resolve("maximum", default.maximum),
+        seconds: resolve("window_seconds", default.seconds),
+    }
+}
+
 async fn consume(
     service: &IdentityService,
     key: &str,
@@ -68,7 +109,15 @@ pub(super) async fn check(
         .headers
         .get("x-forwarded-for")
         .map_or("unknown", String::as_str);
-    if let Some(response) = consume(service, &format!("source:{source}"), 40, 60).await? {
+    let source_limit = configured(service.policy.settings(), "source", SOURCE_LIMIT);
+    if let Some(response) = consume(
+        service,
+        &format!("source:{source}"),
+        source_limit.maximum,
+        source_limit.seconds,
+    )
+    .await?
+    {
         return Ok(Some(response));
     }
     let body: serde_json::Value = request
@@ -76,7 +125,7 @@ pub(super) async fn check(
         .as_deref()
         .and_then(|body| serde_json::from_slice(body).ok())
         .unwrap_or_default();
-    let (identity, category, maximum, seconds) = if security {
+    let (identity, category, limit) = if security {
         let Some(token) = service
             .context()
             .session_manager()
@@ -87,14 +136,21 @@ pub(super) async fn check(
         let Some(session) = service.context().database.get_session(&token).await? else {
             return Ok(None);
         };
-        (session.user_id.display_string()?, "security", 30, 60)
+        (
+            session.user_id.display_string()?,
+            "security",
+            configured(service.policy.settings(), "security", SECURITY_LIMIT),
+        )
     } else if let Some(email) = body.get("email").and_then(serde_json::Value::as_str) {
         let resend = path == "/send-verification-email";
         (
             email.trim().to_lowercase(),
             if resend { "email" } else { "password" },
-            if resend { 1 } else { 10 },
-            if resend { 60 } else { 900 },
+            configured(
+                service.policy.settings(),
+                if resend { "email" } else { "password" },
+                if resend { RESEND_LIMIT } else { PASSWORD_LIMIT },
+            ),
         )
     } else {
         return Ok(None);
@@ -102,8 +158,35 @@ pub(super) async fn check(
     consume(
         service,
         &format!("account:{category}:{identity}"),
-        maximum,
-        seconds,
+        limit.maximum,
+        limit.seconds,
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn configured_limits_fall_back_to_defaults() {
+        assert_eq!(configured(None, "source", SOURCE_LIMIT).maximum, 40);
+        let settings = serde_json::json!({"other": {}});
+        assert_eq!(
+            configured(Some(&settings), "source", SOURCE_LIMIT).maximum,
+            40
+        );
+        let settings = serde_json::json!({"identity_rate_limits": {"source_maximum": "invalid", "source_window_seconds": -5}});
+        let limit = configured(Some(&settings), "source", SOURCE_LIMIT);
+        assert_eq!(limit.maximum, 40);
+        assert_eq!(limit.seconds, 60);
+        let settings = serde_json::json!({"identity_rate_limits": {"source_maximum": 500, "source_window_seconds": 30}});
+        let limit = configured(Some(&settings), "source", SOURCE_LIMIT);
+        assert_eq!(limit.maximum, 500);
+        assert_eq!(limit.seconds, 30);
+        assert_eq!(
+            configured(Some(&settings), "password", PASSWORD_LIMIT).maximum,
+            10
+        );
+    }
 }

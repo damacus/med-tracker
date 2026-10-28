@@ -1,7 +1,138 @@
 use super::*;
+use med_tracker::models::_entities::{accounts, app_settings, people, person_access_grants};
+use sea_orm::sea_query::{Expr, ExprTrait, Query};
 
-async fn open_registration(app: &Application) {
-    app.fixture.admin.execute_unprepared("DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(false,now(),now())").await.unwrap();
+pub(super) async fn open_registration(app: &Application) -> Vec<app_settings::Model> {
+    let saved = app_settings::Entity::find()
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    if saved.is_empty() {
+        let now = chrono::Utc::now().naive_utc();
+        app_settings::ActiveModel {
+            invite_only: Set(false),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    } else {
+        for row in &saved {
+            let mut row = row.clone().into_active_model();
+            row.invite_only = Set(false);
+            row.update(&app.fixture.admin).await.unwrap();
+        }
+    }
+    saved
+}
+
+pub(super) async fn restore_registration(app: &Application, saved: Vec<app_settings::Model>) {
+    app_settings::Entity::delete_many()
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    for row in saved {
+        row.into_active_model()
+            .insert(&app.fixture.admin)
+            .await
+            .unwrap();
+    }
+}
+
+async fn credential_count(app: &Application, account: i64) -> i64 {
+    let query = Query::select()
+        .expr_as(Expr::col("id").count(), "count")
+        .from("auth_credentials")
+        .and_where(Expr::col("user_id").eq(account))
+        .to_owned();
+    app.fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "count")
+        .unwrap()
+}
+
+async fn session_count(app: &Application, account: i64) -> i64 {
+    let query = Query::select()
+        .expr_as(Expr::col("id").count(), "count")
+        .from("identity_sessions")
+        .and_where(Expr::col("account_id").eq(account))
+        .to_owned();
+    app.fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "count")
+        .unwrap()
+}
+
+pub(super) async fn legacy_column_count(app: &Application, table: &str, column: &str) -> i64 {
+    let query = Query::select()
+        .expr_as(Expr::col("column_name").count(), "count")
+        .from(("information_schema", "columns"))
+        .and_where(Expr::col("table_schema").eq("public"))
+        .and_where(Expr::col("table_name").eq(table))
+        .and_where(Expr::col("column_name").eq(column))
+        .to_owned();
+    app.fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "count")
+        .unwrap()
+}
+
+async fn signup_counts(app: &Application, email: &str) -> (u64, usize) {
+    let accounts = accounts::Entity::find()
+        .filter(accounts::Column::Email.eq(email))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let messages = super::native_password_reset::queued_mail(app, email, "Verify your account")
+        .await
+        .len();
+    (accounts, messages)
+}
+
+async fn rollback_state(app: &Application) -> Value {
+    let mut state = serde_json::Map::new();
+    for table in [
+        "accounts",
+        "people",
+        "households",
+        "household_memberships",
+        "auth_credentials",
+        "identity_verifications",
+        "versions",
+        "security_audit_events",
+        "api_change_events",
+        "pg_loco_queue",
+    ] {
+        let query = Query::select()
+            .expr_as(Expr::col("id").count(), "count")
+            .from(table)
+            .to_owned();
+        let count: i64 = app
+            .fixture
+            .admin
+            .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get("", "count")
+            .unwrap();
+        state.insert(table.into(), json!(count));
+    }
+    Value::Object(state)
 }
 
 async fn signup(app: &Application, email: &str, credential: &str) -> reqwest::Response {
@@ -21,85 +152,114 @@ async fn signup(app: &Application, email: &str, credential: &str) -> reqwest::Re
 #[tokio::test]
 async fn signup_create_saves_canonical_account_and_queued_verification_together() {
     let app = Application::new().await;
-    open_registration(&app).await;
+    let registration = open_registration(&app).await;
     for (email, credential) in [
         ("signup-owner@example.test", "password"),
         ("signup-passkey@example.test", "passkey"),
     ] {
+        let email = format!("{}-{email}", uuid::Uuid::new_v4());
+        let email = email.as_str();
         let response = signup(&app, email, credential).await;
         let status = response.status();
         let body = response.text().await.unwrap();
         assert_eq!(status.as_u16(), 200, "{body}");
-        let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT a.status,NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='accounts' AND column_name='password_hash') AS no_password,NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='password_digest') AS no_digest,p.person_type,p.has_capacity,m.role,(SELECT count(*) FROM auth_credentials c WHERE c.user_id=a.id) AS credentials,(SELECT count(*) FROM person_access_grants g WHERE g.household_membership_id=m.id AND g.person_id=p.id) AS grants,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=a.email AND q.task_data->>'subject'='Verify your account') AS messages,(SELECT count(*) FROM identity_sessions s WHERE s.account_id=a.id) AS sessions FROM accounts a JOIN people p ON p.id=a.person_id JOIN users u ON u.person_id=p.id JOIN household_memberships m ON m.person_id=a.person_id WHERE a.email=$1",[email.into()])).await.unwrap().unwrap();
-        assert_eq!(row.try_get::<i32>("", "status").unwrap(), 1);
-        assert!(row.try_get::<bool>("", "no_password").unwrap());
-        assert!(row.try_get::<bool>("", "no_digest").unwrap());
-        assert_eq!(row.try_get::<i32>("", "person_type").unwrap(), 0);
-        assert!(row.try_get::<bool>("", "has_capacity").unwrap());
-        assert_eq!(row.try_get::<String>("", "role").unwrap(), "owner");
+        let account = accounts::Entity::find()
+            .filter(accounts::Column::Email.eq(email))
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let person = people::Entity::find_by_id(account.person_id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let membership = household_memberships::Entity::find()
+            .filter(household_memberships::Column::PersonId.eq(person.id))
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(account.status, 1);
         assert_eq!(
-            row.try_get::<i64>("", "credentials").unwrap(),
+            legacy_column_count(&app, "accounts", "password_hash").await,
+            0
+        );
+        assert_eq!(
+            legacy_column_count(&app, "users", "password_digest").await,
+            0
+        );
+        assert_eq!(person.person_type, 0);
+        assert!(person.has_capacity);
+        assert_eq!(account.person_id, person.id);
+        assert_eq!(membership.role, "owner");
+        assert_eq!(
+            credential_count(&app, account.id).await,
             i64::from(credential == "password")
         );
-        assert_eq!(row.try_get::<i64>("", "grants").unwrap(), 0);
-        assert_eq!(row.try_get::<i64>("", "messages").unwrap(), 1);
-        assert_eq!(row.try_get::<i64>("", "sessions").unwrap(), 0);
+        let grants = person_access_grants::Entity::find()
+            .filter(person_access_grants::Column::HouseholdMembershipId.eq(membership.id))
+            .filter(person_access_grants::Column::PersonId.eq(person.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap();
+        assert_eq!(grants, 0);
+        assert_eq!(
+            super::native_password_reset::queued_mail(&app, email, "Verify your account")
+                .await
+                .len(),
+            1
+        );
+        assert_eq!(session_count(&app, account.id).await, 0);
         if credential == "password" {
             let duplicate = signup(&app, email, credential).await;
             let status = duplicate.status();
             let body = duplicate.text().await.unwrap();
             assert_eq!(status.as_u16(), 200, "{body}");
-            let unchanged=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM accounts WHERE email=$1) AS accounts,(SELECT count(*) FROM pg_loco_queue WHERE task_data->>'to'=$1) AS messages",[email.into()])).await.unwrap().unwrap();
-            assert_eq!(unchanged.try_get::<i64>("", "accounts").unwrap(), 1);
-            assert_eq!(unchanged.try_get::<i64>("", "messages").unwrap(), 1);
+            assert_eq!(signup_counts(&app, email).await, (1, 1));
         }
     }
+    restore_registration(&app, registration).await;
     app.close().await;
 }
 
 #[tokio::test]
 async fn signup_create_queue_failure_rolls_back_account_household_and_verification() {
     let app = Application::new().await;
-    open_registration(&app).await;
-    let state_sql = "SELECT jsonb_build_object('accounts',(SELECT count(*) FROM accounts),'people',(SELECT count(*) FROM people),'users',(SELECT count(*) FROM users),'households',(SELECT count(*) FROM households),'memberships',(SELECT count(*) FROM household_memberships),'credentials',(SELECT count(*) FROM auth_credentials),'verifications',(SELECT count(*) FROM identity_verifications),'versions',(SELECT count(*) FROM versions),'audits',(SELECT count(*) FROM security_audit_events),'changes',(SELECT count(*) FROM api_change_events),'queue',(SELECT count(*) FROM pg_loco_queue)) AS state";
-    let before: Value = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(DbBackend::Postgres, state_sql))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "state")
-        .unwrap();
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE signup_queue_attempt; GRANT USAGE ON SEQUENCE signup_queue_attempt TO med_tracker_app; CREATE FUNCTION reject_signup_queue() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('signup_queue_attempt'); RAISE EXCEPTION 'synthetic mail queue failure'; END $$; CREATE TRIGGER reject_signup_queue BEFORE INSERT ON pg_loco_queue FOR EACH ROW EXECUTE FUNCTION reject_signup_queue()").await.unwrap();
+    let registration = open_registration(&app).await;
+    let before = rollback_state(&app).await;
+    let fault = format!("signup_queue_{}", uuid::Uuid::new_v4().simple());
+    let marker = format!("{fault}_attempt");
+    // SeaORM has no trigger, PL/pgSQL function or GRANT builder. This schema
+    // fault and the global registration policy require whole-run exclusivity.
+    app.fixture.admin.execute_unprepared(&format!("CREATE SEQUENCE {marker}; GRANT USAGE ON SEQUENCE {marker} TO med_tracker_app; CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('{marker}'); RAISE EXCEPTION 'synthetic mail queue failure'; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON pg_loco_queue FOR EACH ROW EXECUTE FUNCTION {fault}()")).await.unwrap();
     let mut outcomes = Vec::new();
-    for (email, credential) in [
-        ("rolled-back-password@example.test", "password"),
-        ("rolled-back-passkey@example.test", "passkey"),
-    ] {
+    let attempts = [
+        (
+            format!("rolled-back-password-{}@example.test", uuid::Uuid::new_v4()),
+            "password",
+        ),
+        (
+            format!("rolled-back-passkey-{}@example.test", uuid::Uuid::new_v4()),
+            "passkey",
+        ),
+    ];
+    for (email, credential) in &attempts {
         let response = signup(&app, email, credential).await;
         let status = response.status();
         let body = response.text().await.unwrap();
         outcomes.push((credential, status, body));
-        let after: Value = app
-            .fixture
-            .admin
-            .query_one_raw(Statement::from_string(DbBackend::Postgres, state_sql))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get("", "state")
-            .unwrap();
+        let after = rollback_state(&app).await;
         assert_eq!(before, after);
     }
+    let query = Query::select()
+        .column("last_value")
+        .from(sea_orm::sea_query::Alias::new(marker.clone()))
+        .to_owned();
     let reached = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT last_value FROM signup_queue_attempt",
-        ))
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
         .await
         .unwrap()
         .unwrap()
@@ -108,21 +268,19 @@ async fn signup_create_queue_failure_rolls_back_account_household_and_verificati
     assert_eq!(reached, 2);
     app.fixture
         .admin
-        .execute_unprepared("DROP TRIGGER reject_signup_queue ON pg_loco_queue")
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON pg_loco_queue; DROP FUNCTION {fault}(); DROP SEQUENCE {marker}"
+        ))
         .await
         .unwrap();
-    for (email, credential) in [
-        ("rolled-back-password@example.test", "password"),
-        ("rolled-back-passkey@example.test", "passkey"),
-    ] {
+    for (email, credential) in &attempts {
         let retry = signup(&app, email, credential).await;
         let status = retry.status();
         let body = retry.text().await.unwrap();
         assert_eq!(status.as_u16(), 200, "{body}");
-        let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM accounts WHERE email=$1) AS accounts,(SELECT count(*) FROM pg_loco_queue WHERE task_data->>'to'=$1) AS messages",[email.into()])).await.unwrap().unwrap();
-        assert_eq!(row.try_get::<i64>("", "accounts").unwrap(), 1);
-        assert_eq!(row.try_get::<i64>("", "messages").unwrap(), 1);
+        assert_eq!(signup_counts(&app, email).await, (1, 1));
     }
+    restore_registration(&app, registration).await;
     app.close().await;
     assert!(
         outcomes

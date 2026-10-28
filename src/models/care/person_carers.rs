@@ -2,7 +2,7 @@ use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     authorization,
     care::{administration, doses::CredentialProvenance, invitations, sync},
-    entities::{account, carer_relationship, membership, person, user},
+    entities::{account, carer_relationship, membership, person},
     errors::OperationError,
 };
 use loco_rs::model::TenantQueryExt;
@@ -36,16 +36,11 @@ pub async fn selected(
 }
 
 fn eligible(tenant: &TenantTransaction, visible: bool) -> sea_orm::Select<person::Entity> {
-    let active_users = user::Entity::find()
-        .select_only()
-        .column(user::Column::PersonId)
-        .filter(user::Column::Active.eq(true))
-        .into_query();
     let active_accounts = account::Entity::find()
         .select_only()
         .column(account::Column::PersonId)
         .filter(account::Column::Status.eq(2))
-        .filter(account::Column::PersonId.in_subquery(active_users))
+        .filter(account::Column::Active.eq(true))
         .into_query();
     let mut query =
         crate::models::access::person_queries::household_participants(tenant.scope().household_id)
@@ -185,17 +180,6 @@ pub async fn assign(
         administration::delegation::assign(tenant, carer.id, id, "parent", Some(provenance))
             .await?;
     } else {
-        if user::Entity::find()
-            .filter(Expr::cust_with_values(
-                "LOWER(email_address) = $1",
-                [email.clone()],
-            ))
-            .one(tenant.transaction())
-            .await?
-            .is_some()
-        {
-            return Err(invalid());
-        }
         invitations::create_for_parent(tenant, id, &email, target, Some(provenance)).await?;
         return Ok(AssignmentOutcome::Invited);
     }

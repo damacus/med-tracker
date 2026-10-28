@@ -10,10 +10,9 @@ USING (
   AND EXISTS (
     SELECT 1 FROM public.accounts actor
     JOIN public.platform_admins administrator ON administrator.account_id = actor.id
-    JOIN public.users actor_user ON actor_user.person_id = actor.person_id
     JOIN public.households household ON household.id = med_tracker.current_household_id()
     WHERE actor.id = med_tracker.current_account_id()
-      AND actor.status = 2 AND actor_user.active AND administrator.status = 'active'
+      AND actor.status = 2 AND actor.active AND administrator.status = 'active'
       AND household.status = 'active' AND household.lifecycle_state = 'active'
       AND NOT EXISTS (
         SELECT 1 FROM public.account_lockouts lockout
@@ -32,10 +31,9 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.accounts actor
     JOIN public.platform_admins administrator ON administrator.account_id = actor.id
-    JOIN public.users actor_user ON actor_user.person_id = actor.person_id
     JOIN public.households household ON household.id = med_tracker.current_household_id()
     WHERE actor.id = med_tracker.current_account_id()
-      AND actor.status = 2 AND actor_user.active AND administrator.status = 'active'
+      AND actor.status = 2 AND actor.active AND administrator.status = 'active'
       AND household.status = 'active' AND household.lifecycle_state = 'active'
       AND NOT EXISTS (
         SELECT 1 FROM public.account_lockouts lockout
@@ -49,11 +47,10 @@ BEGIN
     SELECT 1 FROM public.household_memberships membership
     JOIN public.accounts account ON account.person_id = membership.person_id
     JOIN public.people person ON person.id = membership.person_id
-    JOIN public.users actor_user ON actor_user.person_id = person.id
     WHERE membership.id = p_membership_id
       AND membership.household_id = med_tracker.current_household_id()
       AND membership.status = 'active' AND membership.revoked_at IS NULL
-      AND account.status = 2 AND actor_user.active
+      AND account.status = 2 AND account.active
       AND person.person_type = 0 AND person.has_capacity
   );
 END;

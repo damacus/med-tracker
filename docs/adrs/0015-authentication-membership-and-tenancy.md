@@ -34,10 +34,14 @@ endpoints to existing pages; it must retain CSRF, origin and authentication chec
 checks and all response cookies.
 
 Map the native User to the canonical `accounts` table and native provider Account
-to `auth_credentials`. Retain the existing `users` row only as the clinical profile
-required by current care foreign keys and access queries, without credentials or
-authentication authority. This change does not complete the wider clinical
-identity refactor.
+to `auth_credentials`. Each account identifies exactly one Person directly.
+The fresh Rust schema has no separate `users` or clinical-profile table.
+Account activation belongs to `accounts.active`; sign-in, retained sessions,
+API access, guardian eligibility and support approvals check that state.
+Clinical and household audit attributes the Account and Person, with the Account
+ID in `whodunnit`. Member administration identifies a Membership directly.
+This fresh-schema cleanup is required before 0.6 and requires no data migration
+or compatibility layer. Existing populated databases must not be reset or adopted.
 
 Preserve required passkey user verification through the public native
 after-verification hooks, using the library's verified metadata. Request required
@@ -80,6 +84,28 @@ capacity rules for sharing or editing another person's care do not replace
 self identity. Historical reads preserve original attribution and require a
 separate account-owned clinical-access audit, without inventing a household.
 These are implementation constraints, not evidence that the reader is complete.
+
+The browser reader uses `/profile/history`; account-bound first-party mobile
+OAuth uses `/api/v1/auth/profile/history` with the same narrow taken-dose reader.
+Both use bounded taken-time and ID pagination. Successful reads commit their
+account-owned audit before releasing records. Refused reads identify the actor
+only when the server has proved their identity; otherwise the refusal has no
+claimed actor. Do not retain additional session records solely to identify
+requests made after sign-out. This decision does not introduce the deferred
+download product described in ADR 0017.
+
+Refusals without a proved identity use the existing structured security logs,
+under the server-generated request trace. This includes anonymous browser
+requests, invalid credentials, rate limits and missing socket peers. Do not write
+anonymous refusals to the database audit ledger or log supplied credentials,
+query values or client request IDs. Keep the limiter's rejection and retry
+behaviour; do not add database work after throttling. These refusal logs do not
+have the clinical ledger's transactional or tamper-evident guarantees. Successful
+reads and refusals by callers whose identity has been proved use that ledger.
+For `AccountClinicalAccess` version events, the ledger envelope takes its outcome
+from `audit_context.outcome`. Security events retain `metadata.outcome`, and
+other version events retain their existing capture behaviour. The forward
+migration changes future entries without rewriting retained ledger history.
 
 ## Consequences
 

@@ -1,17 +1,93 @@
-#[path = "support/template.rs"]
-mod template;
+#[path = "support/scenario.rs"]
+pub mod scenario;
 use loco_rs::{
     bgworker::{Queue, pg},
     config::{Config, PostgresQueueConfig, QueueConfig},
     environment::Environment,
 };
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use scenario::Scenario;
+use sea_orm::ConnectionTrait;
+use sea_orm::sea_query::{
+    Alias, ColumnDef, Expr, ExprTrait, Order, Query, Table, extension::postgres::PgExpr,
+};
 use serde_json::json;
 
 struct Fixture {
-    admin: DatabaseConnection,
-    runtime: DatabaseConnection,
+    scenario: Scenario,
     config: PostgresQueueConfig,
+}
+
+impl std::ops::Deref for Fixture {
+    type Target = Scenario;
+    fn deref(&self) -> &Self::Target {
+        &self.scenario
+    }
+}
+
+impl Fixture {
+    async fn new() -> Self {
+        let scenario = Scenario::new().await;
+        let config = serde_json::from_value(json!({
+            "uri": std::env::var("DATABASE_URL").unwrap(),
+            "min_connections": 1,
+            "max_connections": 2,
+            "connect_timeout": 5000,
+            "num_workers": 1,
+            "poll_interval_sec": 1
+        }))
+        .unwrap();
+        Self { scenario, config }
+    }
+
+    async fn queue(&self) -> Queue {
+        let queue = pg::create_provider(&self.config).await.unwrap();
+        queue.setup().await.unwrap();
+        queue
+    }
+
+    async fn status(&self, id: &str) -> String {
+        let query = Query::select()
+            .column("status")
+            .from(("public", "pg_loco_queue"))
+            .and_where(Expr::col("id").eq(id))
+            .to_owned();
+        self.runtime
+            .query_one_raw(self.runtime.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get("", "status")
+            .unwrap()
+    }
+
+    async fn mark(&self, id: &str, status: &str, updated_at: chrono::DateTime<chrono::Utc>) {
+        let query = Query::update()
+            .table(("public", "pg_loco_queue"))
+            .value("status", status)
+            .value("updated_at", updated_at)
+            .and_where(Expr::col("id").eq(id))
+            .to_owned();
+        let result = self
+            .runtime
+            .execute_raw(self.runtime.get_database_backend().build(&query))
+            .await
+            .unwrap();
+        assert_eq!(result.rows_affected(), 1);
+    }
+
+    async fn close(self, ids: &[String]) {
+        if !ids.is_empty() {
+            let query = Query::delete()
+                .from_table(("public", "pg_loco_queue"))
+                .and_where(Expr::col("id").is_in(ids.iter().cloned()))
+                .to_owned();
+            self.admin
+                .execute_raw(self.admin.get_database_backend().build(&query))
+                .await
+                .unwrap();
+        }
+        self.scenario.close().await;
+    }
 }
 
 #[tokio::test]
@@ -22,15 +98,19 @@ async fn test_queue_starts_when_database_handshake_takes_over_half_a_second() {
         panic!("PostgreSQL queue required")
     };
     let mut uri = url::Url::parse(&fixture.config.uri).unwrap();
-    let upstream = format!("127.0.0.1:{}", uri.port().unwrap());
+    let upstream_host = uri.host_str().expect("database URI host").to_owned();
+    let upstream_port = uri.port().unwrap_or(5432);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    uri.set_host(Some("127.0.0.1")).unwrap();
     uri.set_port(Some(listener.local_addr().unwrap().port()))
         .unwrap();
     queue_config.uri = uri.to_string();
     let relay = tokio::spawn(async move {
         let (mut incoming, _) = listener.accept().await.unwrap();
         tokio::time::sleep(std::time::Duration::from_millis(750)).await;
-        let mut outgoing = tokio::net::TcpStream::connect(upstream).await.unwrap();
+        let mut outgoing = tokio::net::TcpStream::connect((upstream_host.as_str(), upstream_port))
+            .await
+            .unwrap();
         let _ = tokio::io::copy_bidirectional(&mut incoming, &mut outgoing).await;
     });
     let result = pg::create_provider(queue_config).await;
@@ -39,95 +119,38 @@ async fn test_queue_starts_when_database_handshake_takes_over_half_a_second() {
     let queue = result.expect("test queue must tolerate a bounded slow database handshake");
     queue.shutdown().unwrap();
     drop(queue);
-    fixture.close().await;
-}
-
-impl Fixture {
-    async fn new() -> Self {
-        let uri = template::owned_database_url();
-        let endpoint = uri
-            .strip_prefix("postgres://medtracker:medtracker_password@127.0.0.1:")
-            .unwrap();
-        let (port, _) = endpoint.split_once('/').unwrap();
-        assert!(port.parse::<u16>().unwrap() > 0);
-        template::prepare(&uri, "queue_runtime_template", |_admin| async move {}).await;
-        let suffix = uuid::Uuid::new_v4().simple();
-        let name = format!("queue_{suffix}");
-        let role = format!("queue_runtime_{suffix}");
-        let control = Database::connect(&uri).await.unwrap();
-        control
-            .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE queue_runtime_template"
-            ))
-            .await
-            .unwrap();
-        control.execute_unprepared(&format!("CREATE ROLE {role} LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app")).await.unwrap();
-        control.close().await.unwrap();
-        let admin = Database::connect(format!(
-            "postgres://medtracker:medtracker_password@127.0.0.1:{port}/{name}"
-        ))
-        .await
-        .unwrap();
-        let runtime_uri = format!("postgres://{role}:password@127.0.0.1:{port}/{name}");
-        let runtime = Database::connect(&runtime_uri).await.unwrap();
-        let config = serde_json::from_value(json!({
-            "uri": runtime_uri,
-            "min_connections": 1,
-            "max_connections": 2,
-            "connect_timeout": 5000,
-            "num_workers": 1,
-            "poll_interval_sec": 1
-        }))
-        .unwrap();
-        Self {
-            admin,
-            runtime,
-            config,
-        }
-    }
-
-    async fn queue(&self) -> Queue {
-        let queue = pg::create_provider(&self.config).await.unwrap();
-        queue.setup().await.unwrap();
-        queue
-    }
-
-    async fn status(&self, id: &str) -> String {
-        self.runtime
-            .query_one_raw(sea_orm::Statement::from_sql_and_values(
-                sea_orm::DbBackend::Postgres,
-                "SELECT status FROM public.pg_loco_queue WHERE id = $1",
-                [id.into()],
-            ))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get("", "status")
-            .unwrap()
-    }
-
-    async fn close(self) {
-        self.runtime.close().await.unwrap();
-        self.admin.close().await.unwrap();
-    }
+    fixture.close(&[]).await;
 }
 
 #[tokio::test]
 async fn queue_setup_and_reconnection_preserve_jobs_without_runtime_ddl() {
     let fixture = Fixture::new().await;
-    assert!(
+    let table = Alias::new(format!("forbidden_queue_{}", uuid::Uuid::new_v4().simple()));
+    let create = Table::create()
+        .table((Alias::new("public"), table.clone()))
+        .col(ColumnDef::new("id").big_integer())
+        .to_owned();
+    let result = fixture
+        .runtime
+        .execute_raw(fixture.runtime.get_database_backend().build(&create))
+        .await;
+    if result.is_ok() {
+        let drop_table = Table::drop()
+            .table((Alias::new("public"), table))
+            .to_owned();
         fixture
-            .runtime
-            .execute_unprepared("CREATE TABLE public.forbidden_queue_table(id bigint)")
+            .admin
+            .execute_raw(fixture.admin.get_database_backend().build(&drop_table))
             .await
-            .is_err()
-    );
+            .unwrap();
+    }
+    assert!(result.is_err());
     let queue = fixture.queue().await;
     let id = queue
         .enqueue(
             "PersistedJob".into(),
             None,
-            json!({"operation_key": "synthetic-persistence"}),
+            json!({"operation_key": uuid::Uuid::new_v4().to_string()}),
             None,
             None,
         )
@@ -141,7 +164,7 @@ async fn queue_setup_and_reconnection_preserve_jobs_without_runtime_ddl() {
     assert_eq!(fixture.status(&id).await, "queued");
     restarted.shutdown().unwrap();
     drop(restarted);
-    fixture.close().await;
+    fixture.close(&[id]).await;
 }
 
 #[tokio::test]
@@ -149,7 +172,9 @@ async fn maintained_retry_and_requeue_preserve_payload_and_recover_only_eligible
     let fixture = Fixture::new().await;
     let queue = fixture.queue().await;
     let mut ids = Vec::new();
-    for key in ["failed", "abandoned", "active"] {
+    let keys =
+        ["failed", "abandoned", "active"].map(|key| format!("{key}-{}", uuid::Uuid::new_v4()));
+    for key in &keys {
         ids.push(
             queue
                 .enqueue(
@@ -164,24 +189,50 @@ async fn maintained_retry_and_requeue_preserve_payload_and_recover_only_eligible
                 .unwrap(),
         );
     }
-    fixture.runtime.execute_unprepared("UPDATE public.pg_loco_queue SET status = CASE WHEN task_data->>'operation_key' = 'failed' THEN 'failed' ELSE 'processing' END, updated_at = CASE WHEN task_data->>'operation_key' = 'abandoned' THEN now()-interval '20 minutes' ELSE now() END").await.unwrap();
+    let now = chrono::Utc::now();
+    for (id, kind) in ids.iter().zip(["failed", "abandoned", "active"]) {
+        let status = if kind == "failed" {
+            "failed"
+        } else {
+            "processing"
+        };
+        let updated = if kind == "abandoned" {
+            now - chrono::Duration::minutes(20)
+        } else {
+            now
+        };
+        fixture.mark(id, status, updated).await;
+    }
     assert_eq!(queue.retry_failed(Some(&ids[0])).await.unwrap(), 1);
     assert_eq!(queue.retry_failed(Some(&ids[0])).await.unwrap(), 0);
     queue.requeue(&10).await.unwrap();
     assert_eq!(fixture.status(&ids[0]).await, "queued");
     assert_eq!(fixture.status(&ids[1]).await, "queued");
     assert_eq!(fixture.status(&ids[2]).await, "processing");
-    let payloads = fixture.runtime.query_all_raw(sea_orm::Statement::from_string(sea_orm::DbBackend::Postgres, "SELECT task_data->>'operation_key' AS operation_key FROM public.pg_loco_queue ORDER BY operation_key")).await.unwrap();
+    let query = Query::select()
+        .expr_as(
+            Expr::col("task_data").cast_json_field("operation_key"),
+            "operation_key",
+        )
+        .from(("public", "pg_loco_queue"))
+        .and_where(Expr::col("id").is_in(ids.iter().cloned()))
+        .order_by("operation_key", Order::Asc)
+        .to_owned();
+    let payloads = fixture
+        .runtime
+        .query_all_raw(fixture.runtime.get_database_backend().build(&query))
+        .await
+        .unwrap();
     assert_eq!(
         payloads
             .iter()
             .map(|row| row.try_get::<String>("", "operation_key").unwrap())
             .collect::<Vec<_>>(),
-        ["abandoned", "active", "failed"]
+        [keys[1].clone(), keys[2].clone(), keys[0].clone()]
     );
     queue.shutdown().unwrap();
     drop(queue);
-    fixture.close().await;
+    fixture.close(&ids).await;
 }
 
 #[tokio::test]
@@ -213,7 +264,7 @@ async fn configured_postgres_workers_recover_abandoned_jobs_automatically() {
         .enqueue(
             "InterruptedJob".into(),
             None,
-            json!({"operation_key": "synthetic-abandoned"}),
+            json!({"operation_key": uuid::Uuid::new_v4().to_string()}),
             Some(vec!["unassigned".into()]),
             None,
         )
@@ -221,12 +272,12 @@ async fn configured_postgres_workers_recover_abandoned_jobs_automatically() {
         .unwrap()
         .unwrap();
     fixture
-        .runtime
-        .execute_unprepared(
-            "UPDATE public.pg_loco_queue SET status='processing', updated_at=now()-interval '20 minutes'",
+        .mark(
+            &id,
+            "processing",
+            chrono::Utc::now() - chrono::Duration::minutes(20),
         )
-        .await
-        .unwrap();
+        .await;
     let running_queue = std::sync::Arc::clone(&queue);
     let worker = tokio::spawn(async move { running_queue.run(vec![]).await });
     let recovered = tokio::time::timeout(std::time::Duration::from_secs(5), async {
@@ -246,5 +297,5 @@ async fn configured_postgres_workers_recover_abandoned_jobs_automatically() {
     );
     stopped.unwrap().unwrap().unwrap();
     drop(queue);
-    fixture.close().await;
+    fixture.close(&[id]).await;
 }

@@ -1,39 +1,140 @@
 use super::*;
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
 #[tokio::test]
+// Whole-run exclusive: PostgreSQL trigger functions, trigger installation and sequence privileges are unsupported by SeaORM Schema and SeaQuery Table/Query builders. The raw DDL is limited to this case and removed before closing.
 async fn treatment_retirement_audit_rejection_rolls_back_soft_update() {
     use med_tracker::models::{
         access::{Actor, HouseholdScope, begin},
         care::treatments,
     };
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
     let created = app
         .client
-        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .post(format!(
+            "{}/api/v1/households/{fixture_household_id}/schedules",
+            app.origin
+        ))
         .bearer_auth(&token)
-        .json(&schedule_body())
+        .json(&schedule_body(&app))
         .send()
         .await
         .unwrap();
     assert_eq!(created.status().as_u16(), 201);
     let body = created.json::<Value>().await.unwrap();
     let id = body["data"]["id"].as_i64().unwrap();
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_retirement_reached; GRANT USAGE,SELECT ON SEQUENCE synthetic_retirement_reached TO med_tracker_app; CREATE FUNCTION reject_retirement_version() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Schedule' AND NEW.event='update' THEN IF EXISTS(SELECT 1 FROM schedules WHERE id=NEW.item_id AND retired_at IS NOT NULL AND NOT active) THEN PERFORM nextval('synthetic_retirement_reached'); END IF; RAISE EXCEPTION 'Synthetic retirement version rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_retirement_version BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_retirement_version()").await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("CREATE SEQUENCE synthetic_retirement_reached")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "GRANT USAGE,SELECT ON SEQUENCE synthetic_retirement_reached TO med_tracker_app",
+        )
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_retirement_version() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Schedule' AND NEW.event='update' THEN IF EXISTS(SELECT 1 FROM schedules WHERE id=NEW.item_id AND retired_at IS NOT NULL AND NOT active) THEN PERFORM nextval('synthetic_retirement_reached'); END IF; RAISE EXCEPTION 'Synthetic retirement version rejection'; END IF; RETURN NEW; END $$").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER reject_retirement_version BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_retirement_version()").await.unwrap();
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
-        request_id: "synthetic-retirement-rollback".into(),
+        actor: Actor {
+            account_id: fixture_account_id,
+        },
+        household_id: fixture_household_id,
+        request_id: "synthetic-retirement-rollback".to_owned(),
     };
     let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let failed = treatments::retire(&tenant, &id.to_string(), None).await;
     tenant.rollback().await.unwrap();
-    let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT active,retired_at IS NULL AS current,(SELECT is_called FROM synthetic_retirement_reached) AS reached,(SELECT count(*) FROM versions WHERE item_type='Schedule' AND event='update') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Schedule' AND action='update') AS changes FROM schedules WHERE id=$1",[id.into()])).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr(QueryExpr::col("active"))
+                .expr_as(QueryExpr::col("retired_at").is_null(), "current")
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::col("is_called"))
+                            .from("synthetic_retirement_reached")
+                            .to_owned(),
+                    ),
+                    "reached",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Schedule")))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("Schedule")),
+                                    )
+                                    .and(QueryExpr::col("action").eq(QueryExpr::val("update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "changes",
+                )
+                .from("schedules")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let active: bool = row.try_get("", "active").unwrap();
     let current: bool = row.try_get("", "current").unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let versions: i64 = row.try_get("", "versions").unwrap();
     let changes: i64 = row.try_get("", "changes").unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER IF EXISTS reject_retirement_version ON versions")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP FUNCTION IF EXISTS reject_retirement_version()")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP SEQUENCE IF EXISTS synthetic_retirement_reached")
+        .await
+        .unwrap();
     app.close().await;
     assert!(failed.is_err());
     assert!(reached && active && current);
@@ -43,13 +144,17 @@ async fn treatment_retirement_audit_rejection_rolls_back_soft_update() {
 #[tokio::test]
 async fn treatment_schedule_creation_representation_matches_read_and_update_precondition() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    let collection = format!("{}/api/v1/households/72001/schedules", app.origin);
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules",
+        app.origin
+    );
     let created = app
         .client
         .post(&collection)
         .bearer_auth(&token)
-        .json(&schedule_body())
+        .json(&schedule_body(&app))
         .send()
         .await
         .unwrap();
@@ -89,7 +194,26 @@ async fn treatment_schedule_creation_representation_matches_read_and_update_prec
         .unwrap()
         .status()
         .as_u16();
-    let version=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT object_changes::jsonb AS changes FROM versions WHERE item_type='Schedule' AND event='update' ORDER BY id DESC LIMIT 1")).await.unwrap();
+    let version = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(QueryExpr::col("object_changes").cast_as("jsonb"), "changes")
+                .from("versions")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("item_type").eq(QueryExpr::val("Schedule")))
+                        .and(QueryExpr::col("event").eq(QueryExpr::val("update"))),
+                )
+                .order_by_expr(QueryExpr::col("id"), sea_orm::sea_query::Order::Desc)
+                .limit(1)
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let changes: Value = version
         .map(|row| row.try_get("", "changes").unwrap())
         .unwrap_or(Value::Null);
@@ -114,52 +238,98 @@ async fn treatment_schedule_creation_representation_matches_read_and_update_prec
 }
 
 #[tokio::test]
+// Whole-run exclusive: PostgreSQL trigger functions, trigger installation and sequence privileges are unsupported by SeaORM Schema and SeaQuery Table/Query builders. The raw DDL is limited to this case and removed before closing.
 async fn treatment_schedule_create_audit_failure_rolls_back_and_records_request() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_schedule_create_audit_reached; GRANT USAGE,SELECT ON SEQUENCE synthetic_schedule_create_audit_reached TO med_tracker_app; CREATE FUNCTION reject_schedule_create_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Schedule' AND NEW.event='create' THEN IF EXISTS(SELECT 1 FROM schedules WHERE id=NEW.item_id) THEN PERFORM nextval('synthetic_schedule_create_audit_reached'); END IF; RAISE EXCEPTION 'Synthetic schedule create audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_schedule_create_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_schedule_create_audit()").await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("CREATE SEQUENCE synthetic_schedule_create_audit_reached")
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared("GRANT USAGE,SELECT ON SEQUENCE synthetic_schedule_create_audit_reached TO med_tracker_app").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_schedule_create_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Schedule' AND NEW.event='create' THEN IF EXISTS(SELECT 1 FROM schedules WHERE id=NEW.item_id) THEN PERFORM nextval('synthetic_schedule_create_audit_reached'); END IF; RAISE EXCEPTION 'Synthetic schedule create audit rejection'; END IF; RETURN NEW; END $$").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER reject_schedule_create_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_schedule_create_audit()").await.unwrap();
     let response = app
         .client
-        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .post(format!(
+            "{}/api/v1/households/{fixture_household_id}/schedules",
+            app.origin
+        ))
         .bearer_auth(&token)
         .header("idempotency-key", "synthetic-create-audit-rollback")
-        .json(&schedule_body())
+        .json(&schedule_body(&app))
         .send()
         .await
         .unwrap();
     let status = response.status().as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM synthetic_schedule_create_audit_reached) AS reached,(SELECT count(*) FROM schedules) AS schedules,(SELECT count(*) FROM versions WHERE item_type='Schedule') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Schedule') AS changes,(SELECT count(*) FROM api_idempotency_keys WHERE key='synthetic-create-audit-rollback') AS keys,(SELECT count(*) FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/schedules' AND metadata->>'action'='create' AND metadata->>'status'='500' AND metadata->>'outcome'='failure') AS attempts")).await.unwrap().unwrap();
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let failure_body: Value = response.json().await.unwrap();
+    let row=app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("is_called")).from("synthetic_schedule_create_audit_reached").to_owned()), "reached").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("schedules").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id))).to_owned()), "schedules").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("versions").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("item_type").eq(QueryExpr::val("Schedule")))).to_owned()), "versions").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("api_change_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("record_type").eq(QueryExpr::val("Schedule")))).to_owned()), "changes").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("api_idempotency_keys").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("key").eq(QueryExpr::val("synthetic-create-audit-rollback")))).to_owned()), "keys").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("controller")).eq(QueryExpr::val("api/v1/schedules"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("action")).eq(QueryExpr::val("create"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("500"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("outcome")).eq(QueryExpr::val("failure")))).to_owned()), "attempts").to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let counts: Vec<i64> = ["schedules", "versions", "changes", "keys", "attempts"]
         .iter()
         .map(|field| row.try_get("", field).unwrap())
         .collect();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER IF EXISTS reject_schedule_create_audit ON versions")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP FUNCTION IF EXISTS reject_schedule_create_audit()")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP SEQUENCE IF EXISTS synthetic_schedule_create_audit_reached")
+        .await
+        .unwrap();
     app.close().await;
     assert_eq!(status, 500);
+    super::schedule_contracts::assert_internal_error(
+        "/households/{household_id}/schedules",
+        "post",
+        &request_id,
+        &failure_body,
+    );
     assert!(reached);
     assert_eq!(counts, vec![0, 0, 0, 0, 1]);
 }
 
-fn schedule_body() -> Value {
-    json!({"schedule":{"person_id":"73001","medication_id":"80001","dose_amount":"2","dose_unit":"tablet","frequency":"daily","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily","max_daily_doses":3}})
+fn schedule_body(app: &Application) -> Value {
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_medication_id = app.fixture.medication.id;
+    json!({"schedule":{"person_id":fixture_person_id.to_string(),"medication_id":fixture_medication_id.to_string(),"dose_amount":"2","dose_unit":"tablet","frequency":"daily","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily","max_daily_doses":3}})
 }
 
 #[tokio::test]
 async fn treatment_schedule_create_returns_retained_decimal_representation() {
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/schedules", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules",
+        app.origin
+    );
     let response = app
         .client
         .post(&endpoint)
         .bearer_auth(&token)
-        .json(&schedule_body())
+        .json(&schedule_body(&app))
         .send()
         .await
         .unwrap();
     let created = response.status().as_u16();
     let body: Value = response.json().await.unwrap_or(Value::Null);
-    let audits: i64 = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS n FROM security_audit_events WHERE event_type='api.request' AND actor_account_id=71001 AND actor_membership_id=74001 AND metadata->>'controller'='api/v1/schedules' AND metadata->>'action'='create' AND metadata->>'outcome'='success' AND metadata->>'status'='201' AND audit_context->>'policy_class'='SchedulePolicy' AND audit_context->>'policy_query'='create?' AND request_id=audit_context->>'request_id'")).await.unwrap().unwrap().try_get("","n").unwrap();
+    let audits: i64 = app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk))), "n").from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("actor_account_id").eq(QueryExpr::val(fixture_account_id))).and(QueryExpr::col("actor_membership_id").eq(QueryExpr::val(fixture_membership_id))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("controller")).eq(QueryExpr::val("api/v1/schedules"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("action")).eq(QueryExpr::val("create"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("outcome")).eq(QueryExpr::val("success"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("201"))).and(QueryExpr::col("audit_context").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("policy_class")).eq(QueryExpr::val("SchedulePolicy"))).and(QueryExpr::col("audit_context").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("policy_query")).eq(QueryExpr::val("create?"))).and(QueryExpr::col("request_id").eq(QueryExpr::col("audit_context").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("request_id"))))).to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap().try_get("","n").unwrap();
     app.close().await;
     assert_eq!(created, 201);
     assert_eq!(body["data"]["dose_amount"], "2.0");
@@ -169,21 +339,41 @@ async fn treatment_schedule_create_returns_retained_decimal_representation() {
 #[tokio::test]
 async fn treatment_schedule_invalid_date_and_dose_have_no_effect() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/schedules", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules",
+        app.origin
+    );
     let before = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM schedules WHERE household_id=72001",
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(
+                        sea_orm::sea_query::Asterisk,
+                    ))),
+                    "count",
+                )
+                .from("schedules")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(
+                            QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)),
+                        ),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap()
         .try_get::<i64>("", "count")
         .unwrap();
-    let mut body = schedule_body();
+    let mut body = schedule_body(&app);
     body["schedule"]["end_date"] = json!("2025-01-01");
     let dates = app
         .client
@@ -195,7 +385,7 @@ async fn treatment_schedule_invalid_date_and_dose_have_no_effect() {
         .unwrap()
         .status()
         .as_u16();
-    body = schedule_body();
+    body = schedule_body(&app);
     body["schedule"]["dose_amount"] = json!("0");
     let dose = app
         .client
@@ -210,16 +400,95 @@ async fn treatment_schedule_invalid_date_and_dose_have_no_effect() {
     let after = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM schedules WHERE household_id=72001",
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(
+                        sea_orm::sea_query::Asterisk,
+                    ))),
+                    "count",
+                )
+                .from("schedules")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(
+                            QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)),
+                        ),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap()
         .try_get::<i64>("", "count")
         .unwrap();
-    let effects = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT (SELECT count(*) FROM versions WHERE item_type='Schedule') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Schedule') AS changes,(SELECT current_supply::text FROM medications WHERE id=80001) AS supply")).await.unwrap().unwrap();
+    let effects = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("item_type").eq(QueryExpr::val("Schedule")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("Schedule")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "changes",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::col("current_supply").cast_as("text"))
+                            .from("medications")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("id")
+                                            .eq(QueryExpr::val(fixture_medication_id)),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "supply",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let versions: i64 = effects.try_get("", "versions").unwrap();
     let changes: i64 = effects.try_get("", "changes").unwrap();
     let supply: String = effects.try_get("", "supply").unwrap();
@@ -233,22 +502,50 @@ async fn treatment_schedule_invalid_date_and_dose_have_no_effect() {
 #[tokio::test]
 async fn treatment_schedule_requires_other_person_manage_authority() {
     let app = Application::new().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_grant_id = app.fixture.grant.id;
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let token = app.token().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET access_level='record' WHERE id=78001")
+    med_tracker::models::_entities::person_access_grants::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::person_access_grants::Column::AccessLevel,
+            sea_orm::sea_query::Expr::value("record".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::Id.eq(fixture_grant_id),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
-    let mut body = schedule_body();
-    body["schedule"]["person_id"] = json!("73002");
+    let mut body = schedule_body(&app);
+    body["schedule"]["person_id"] = json!(fixture_minor_id.to_string());
     let status = app
         .client
-        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .post(format!(
+            "{}/api/v1/households/{fixture_household_id}/schedules",
+            app.origin
+        ))
         .bearer_auth(&token)
         .json(&body)
         .send()
@@ -259,10 +556,25 @@ async fn treatment_schedule_requires_other_person_manage_authority() {
     let schedules: i64 = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM schedules WHERE household_id=72001",
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(
+                        sea_orm::sea_query::Asterisk,
+                    ))),
+                    "count",
+                )
+                .from("schedules")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(
+                            QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)),
+                        ),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap()

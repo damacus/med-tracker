@@ -7,13 +7,15 @@ use loco_rs::{
     config::Config,
     environment::Environment,
 };
-use sea_orm::{ConnectionTrait, EntityTrait, sea_query::ExprTrait};
+use sea_orm::{
+    ConnectionTrait, EntityTrait,
+    sea_query::{Alias, ColumnDef, Expr, ExprTrait, Query, Table},
+};
 use serde_json::json;
 
 #[path = "../../../tests/support/db.rs"]
 mod db;
-#[path = "../../../tests/support/template.rs"]
-mod template;
+use crate::template;
 
 #[tokio::test]
 #[ignore = "requires the disposable PostgreSQL provided by task test:canary"]
@@ -23,16 +25,45 @@ async fn seeded_care_full_boot_gate_and_replay() {
     let database =
         db::OwnedDatabase::clone(&uri, "loco_canary_empty", "canary_db_", "canary_role_").await;
     let control = sea_orm::Database::connect(&uri).await.unwrap();
-    control.execute_unprepared("CREATE TABLE canary_control(scope text PRIMARY KEY,run_id text,phase text,image text,updated_at timestamptz,last_success timestamptz,next_reset timestamptz)").await.unwrap();
+    let mut table = Table::create()
+        .table(Alias::new("canary_control"))
+        .to_owned();
+    table.col(ColumnDef::new(Alias::new("scope")).text().primary_key());
+    for column in ["run_id", "phase", "image"] {
+        table.col(ColumnDef::new(Alias::new(column)).text());
+    }
+    for column in ["updated_at", "last_success", "next_reset"] {
+        table.col(ColumnDef::new(Alias::new(column)).timestamp_with_time_zone());
+    }
+    control.execute(&table).await.unwrap();
     let image = format!("ghcr.io/damacus/medtracker@sha256:{}", "a".repeat(64));
-    control
-        .execute_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "INSERT INTO canary_control VALUES($1,'test-run','seeding',$2,now(),now()-interval '1 hour',now()+interval '6 days')",
-            [SCOPE.into(), image.clone().into()],
-        ))
-        .await
-        .unwrap();
+    let now = Utc::now();
+    let insert = Query::insert()
+        .into_table(Alias::new("canary_control"))
+        .columns(
+            [
+                "scope",
+                "run_id",
+                "phase",
+                "image",
+                "updated_at",
+                "last_success",
+                "next_reset",
+            ]
+            .map(Alias::new),
+        )
+        .values([
+            SCOPE.into(),
+            "test-run".into(),
+            "seeding".into(),
+            image.clone().into(),
+            now.into(),
+            (now - chrono::Duration::hours(1)).into(),
+            (now + chrono::Duration::days(6)).into(),
+        ])
+        .unwrap()
+        .to_owned();
+    control.execute(&insert).await.unwrap();
     let mut preflight_config = Config::new(&Environment::Production).unwrap();
     preflight_config.database.uri = uri.clone();
     if let Some(loco_rs::config::QueueConfig::Postgres(queue)) = preflight_config.queue.as_mut() {
@@ -178,6 +209,8 @@ async fn seeded_care_full_boot_gate_and_replay() {
     );
     let mut config = Config::new(&Environment::Test).unwrap();
     config.database.uri = database.runtime_uri.clone();
+    config.settings.as_mut().unwrap()["public_origin"] =
+        json!("https://med-tracker-loco.damacus.io");
     if let Some(loco_rs::config::QueueConfig::Postgres(queue)) = config.queue.as_mut() {
         queue.uri = database.runtime_uri.clone();
         queue.reaper = None;
@@ -234,10 +267,12 @@ async fn seeded_care_full_boot_gate_and_replay() {
         server.get("/login").await.status_code(),
         StatusCode::SERVICE_UNAVAILABLE
     );
-    control
-        .execute_unprepared("UPDATE canary_control SET phase='verifying',updated_at=now()")
-        .await
-        .unwrap();
+    assert_eq!(
+        server.get("/health").await.status_code(),
+        StatusCode::SERVICE_UNAVAILABLE
+    );
+    update_control(&control, Some("verifying"), Utc::now()).await;
+    assert_eq!(server.get("/health").await.status_code(), StatusCode::OK);
     assert_eq!(
         server.get("/login").await.status_code(),
         StatusCode::SERVICE_UNAVAILABLE
@@ -273,10 +308,11 @@ async fn seeded_care_full_boot_gate_and_replay() {
     });
     smoke::journey(&ctx, &url).await.unwrap();
     work(&ctx).await.unwrap();
-    control
-        .execute_unprepared("UPDATE canary_control SET updated_at=now()-interval '31 seconds'")
-        .await
-        .unwrap();
+    update_control(&control, None, Utc::now() - chrono::Duration::seconds(31)).await;
+    assert_eq!(
+        server.get("/health").await.status_code(),
+        StatusCode::SERVICE_UNAVAILABLE
+    );
     assert!(
         tokio::time::timeout(Duration::from_millis(50), work(&ctx))
             .await
@@ -284,10 +320,7 @@ async fn seeded_care_full_boot_gate_and_replay() {
     );
     let waiting_ctx = ctx.clone();
     let waiting = tokio::spawn(async move { work(&waiting_ctx).await });
-    control
-        .execute_unprepared("UPDATE canary_control SET phase='ready',updated_at=now()")
-        .await
-        .unwrap();
+    update_control(&control, Some("ready"), Utc::now()).await;
     tokio::time::timeout(Duration::from_secs(3), waiting)
         .await
         .unwrap()
@@ -353,11 +386,27 @@ async fn seeded_care_full_boot_gate_and_replay() {
     serving.abort();
 
     control
-        .execute_unprepared("DROP TABLE canary_control")
+        .execute(&Table::drop().table(Alias::new("canary_control")).to_owned())
         .await
         .unwrap();
     seed_ctx.db.close().await.unwrap();
     ctx.db.close().await.unwrap();
     control.close().await.unwrap();
     database.close().await;
+}
+
+async fn update_control(
+    control: &sea_orm::DatabaseConnection,
+    phase: Option<&str>,
+    updated_at: DateTime<Utc>,
+) {
+    let mut query = Query::update()
+        .table(Alias::new("canary_control"))
+        .value(Alias::new("updated_at"), updated_at)
+        .and_where(Expr::col(Alias::new("scope")).eq(SCOPE))
+        .to_owned();
+    if let Some(phase) = phase {
+        query.value(Alias::new("phase"), phase);
+    }
+    control.execute(&query).await.unwrap();
 }

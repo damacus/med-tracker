@@ -1,8 +1,77 @@
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, mkdtempSync, writeFileSync, chmodSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+test("Docker and host tests use the same pinned nextest release", () => {
+  const release = read("mise.toml").match(/"cargo:cargo-nextest" = "([0-9.]+)"/)?.[1];
+  assert.ok(release, "mise must pin nextest");
+  assert.match(read("Dockerfile"), new RegExp(`cargo install --locked cargo-nextest --version ${release.replaceAll(".", "\\.")}\\s`));
+});
+test("public test runs every lane and propagates integration failures", () => {
+  const directory = mkdtempSync(join(tmpdir(), "medtracker-test-lanes-"));
+  const executable = join(directory, "docker");
+  writeFileSync(executable, `#!/usr/bin/env node
+const fs = require("node:fs");
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.COMPOSE_CALL_LOG, JSON.stringify(args)+"\\n");
+if (args[0] === "info") console.log("arm64");
+if (args.includes("port")) console.log("127.0.0.1:19000");
+if (args.includes("psql")) console.log("1");
+if (process.env.FAIL_INTEGRATION === "1" && args.includes("nextest") && args.includes("*")) process.exit(42);
+`);
+  chmodSync(executable, 0o755);
+  const curl = join(directory, "curl");
+  writeFileSync(curl, "#!/usr/bin/env node\nprocess.exit(0);\n");
+  chmodSync(curl, 0o755);
+  try {
+    for (const fail of [false, true]) {
+      const log = join(directory, `calls-${fail}.jsonl`);
+      const result = spawnSync("task", ["test"], {encoding:"utf8", env:{...process.env, TARGET:"", FILTER:"", PATH:`${directory}:${process.env.PATH}`, COMPOSE_CALL_LOG:log, FAIL_INTEGRATION:fail ? "1" : "0"}});
+      const calls = readFileSync(log, "utf8").trim().split("\n").map(JSON.parse);
+      const allCommands = calls.filter(args => args.includes("--no-deps")).map(args => args.slice(args.indexOf("--no-deps")+2).join(" "));
+      const cleanup = allCommands.filter(command => command.includes("api-fixtures -- cleanup"));
+      assert.equal(cleanup.length, 1, "run cleanup after successful or failed integration");
+      const integration = allCommands.find(command => command.includes("nextest") && command.includes("--profile api"));
+      assert.equal(cleanup[0].match(/MEDTRACKER_TEST_RUN_ID=([^ ]+)/)?.[1], integration.match(/MEDTRACKER_TEST_RUN_ID=([^ ]+)/)?.[1]);
+      const commands = allCommands.filter(command => !command.includes("api-fixtures -- cleanup"));
+      if (fail) {
+        assert.notEqual(result.status, 0, "integration failure must fail task test");
+        assert.equal(commands.some(command => command.includes("--test browser")), false);
+      } else {
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(commands.length, 6, JSON.stringify(commands));
+        assert.match(commands[0], /nextest.*--lib/);
+        assert.match(commands[1], /^node --test/);
+        assert.match(commands[2], /cargo test.*--doc/);
+        assert.match(commands[3], /nextest.*--test \*/);
+        assert.match(commands[4], /template_concurrency.*--ignored --exact/);
+        assert.match(commands[5], /nextest.*--test browser.*--run-ignored only/);
+      }
+    }
+  } finally { rmSync(directory, {recursive:true, force:true}); }
+});
+test("public Compose tasks run from the repository root", () => {
+  const directory = mkdtempSync(join(tmpdir(), "medtracker-task-cwd-"));
+  const executable = join(directory, "docker");
+  const log = join(directory, "calls.jsonl");
+  writeFileSync(executable, '#!/usr/bin/env node\nconst fs = require("node:fs"); fs.appendFileSync(process.env.COMPOSE_CALL_LOG, JSON.stringify({cwd:process.cwd(),args:process.argv.slice(2)})+"\\n"); if(process.argv[2]==="info")console.log("arm64");\n');
+  chmodSync(executable, 0o755);
+  try {
+    for (const environment of ["dev", "test", "prod"]) {
+      const result = spawnSync("task", [`${environment}:build`], {encoding:"utf8", env:{...process.env, PATH:`${directory}:${process.env.PATH}`, COMPOSE_CALL_LOG:log}});
+      assert.equal(result.status, 0, result.stderr);
+    }
+    const calls = readFileSync(log, "utf8").trim().split("\n").map(JSON.parse);
+    assert.equal(calls.filter(call => call.args[0] === "compose").length, 3);
+    for (const call of calls.filter(call => call.args[0] === "compose")) assert.equal(call.cwd, resolve(fileURLToPath(new URL("..", import.meta.url))), JSON.stringify(call));
+  } finally {
+    rmSync(directory, {recursive:true, force:true});
+  }
+});
 test("containers use native tools without a Task installation or wrapper", () => {
   assert.doesNotMatch(read("Dockerfile"), /task_linux|COPY Taskfiles/);
   assert.doesNotMatch(read("compose.local.yaml"), /task --dir|container.yml/);
@@ -38,15 +107,20 @@ test("native integration and browser commands preserve focused arguments", () =>
     const result = spawnSync("task", ["--dry", "--verbose", `test:${kind}`, "TARGET=requests", "FILTER=two words"], {encoding:"utf8"});
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout + result.stderr;
-    assert.match(output, /run --rm --no-deps tool cargo nextest.*--test requests.*'two words'/);
+    assert.match(output, /run --rm --no-deps tool (?:env MEDTRACKER_TEST_RUN_ID=[\da-f-]+ )?cargo nextest.*--test requests.*'two words'/i);
+    if (kind === "integration") assert.match(output, /nextest run.*--profile api/);
+    else assert.doesNotMatch(output, /--profile api/);
     assert.match(output, /up -d --wait postgres rustfs/);
     assert.doesNotMatch(output, /\] task test:run/);
   }
+  const combined = spawnSync("task", ["--dry", "--verbose", "test:integration", "TARGET=care_doses", "--", "--test", "care_medications"], {encoding:"utf8"});
+  assert.equal(combined.status, 0, combined.stderr);
+  assert.match(combined.stdout + combined.stderr, /nextest.*--test care_doses.*--test care_medications/);
 });
 test("resolved Compose retains cache sharing, isolated data and native builder", () => {
-  const configs = ["dev", "test"].map(environment => {
+  const configs = [["dev", "3"], ["test", "3"], ["test", undefined]].map(([environment, threads]) => {
     const result = spawnSync("docker", ["compose", "--env-file", "/dev/null", "-p", `tooling-${environment}`, "-f", "compose.yaml", "-f", "compose.local.yaml", "--profile", environment, "config", "--format", "json"], {
-      encoding:"utf8", env:{...process.env, MT_PROJECT:`tooling-${environment}`, MT_TOOL_TARGET:environment === "dev" ? "development" : "test", MT_TARGET_CACHE:"checkout-target-linux-arm64", MT_CARGO_REGISTRY_CACHE:"mt-cargo-registry-v1", MT_CARGO_GIT_CACHE:"mt-cargo-git-v1", MT_BROWSER_CACHE:"mt-browser-linux-arm64-ubuntu26-v1"}
+      encoding:"utf8", env:{...process.env, NEXTEST_TEST_THREADS:threads, MT_PROJECT:`tooling-${environment}`, MT_TOOL_TARGET:environment === "dev" ? "development" : "test", MT_TARGET_CACHE:"checkout-target-linux-arm64", MT_CARGO_REGISTRY_CACHE:"mt-cargo-registry-v1", MT_CARGO_GIT_CACHE:"mt-cargo-git-v1", MT_BROWSER_CACHE:"mt-browser-linux-arm64-ubuntu26-v1"}
     });
     assert.equal(result.status, 0, result.stderr);
     return JSON.parse(result.stdout);
@@ -56,6 +130,8 @@ test("resolved Compose retains cache sharing, isolated data and native builder",
     assert.equal(configs[0].volumes[cache].name, configs[1].volumes[cache].name);
   }
   assert.notEqual(configs[0].volumes.database.name, configs[1].volumes.database.name);
+  for (const config of configs.slice(0, 2)) assert.equal(config.services.tool.environment.NEXTEST_TEST_THREADS, "3");
+  assert.equal(configs[2].services.tool.environment.NEXTEST_TEST_THREADS ?? null, null);
   assert.match(configs[0].services["dev-builder"].command.join(" "), /cargo install/);
   assert.doesNotMatch(configs[0].services["dev-builder"].command.join(" "), /task /);
   assert.equal(configs[1].services.tool.volumes.some(volume => volume.type === "bind"), false);

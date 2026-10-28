@@ -55,7 +55,7 @@ BEGIN
   SELECT a.account_id INTO STRICT v_actor FROM public.platform_admins AS a
     WHERE a.id=v_session.platform_admin_id;
   v_context := pg_catalog.jsonb_build_object(
-    'actor_account_id', v_actor, 'actor_user_id', NULL,
+    'actor_account_id', v_actor, 'actor_person_id', NULL,
     'active_role', 'support_expiry_task', 'authentication_method', 'system');
   INSERT INTO public.versions(item_type,item_id,event,object,whodunnit,request_id,
     audit_context,household_id,created_at)

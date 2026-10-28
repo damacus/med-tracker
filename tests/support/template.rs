@@ -36,6 +36,7 @@ where
     Fut: Future<Output = ()>,
 {
     require_owned_database();
+    assert!(is_owned_database_endpoint(&url::Url::parse(uri).unwrap()));
     assert!(
         name.len() <= 63
             && name
@@ -92,7 +93,54 @@ pub fn require_owned_database() {
 
 pub fn owned_database_url() -> String {
     require_owned_database();
-    std::env::var("DATABASE_URL").expect("the suite must provide its owned database")
+    let uri = std::env::var("DATABASE_URL").expect("the suite must provide its owned database");
+    assert!(is_owned_database_endpoint(&url::Url::parse(&uri).unwrap()));
+    uri
+}
+
+pub fn is_owned_database_endpoint(uri: &url::Url) -> bool {
+    let host = match uri.host_str() {
+        Some("127.0.0.1") => uri.port().is_some_and(|port| port != 0),
+        Some("postgres") => uri.port().is_none_or(|port| port == 5432),
+        _ => false,
+    };
+    host && uri.scheme() == "postgres"
+        && uri.username() == "medtracker"
+        && uri.password() == Some("medtracker_password")
+        && uri.path() == "/medtracker_loco"
+        && uri.query().is_none()
+        && uri.fragment().is_none()
+}
+
+#[test]
+fn database_fixture_endpoints_require_exact_synthetic_control_identity() {
+    for uri in [
+        "postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco",
+        "postgres://medtracker:medtracker_password@127.0.0.1:8123/medtracker_loco",
+        "postgres://medtracker:medtracker_password@postgres/medtracker_loco",
+        "postgres://medtracker:medtracker_password@postgres:5432/medtracker_loco",
+    ] {
+        assert!(is_owned_database_endpoint(&url::Url::parse(uri).unwrap()));
+    }
+    for uri in [
+        "postgres://medtracker:medtracker_password@example.com/medtracker_loco",
+        "postgres://medtracker:medtracker_password@postgres.example.com/medtracker_loco",
+        "postgres://medtracker:medtracker_password@postgres:5433/medtracker_loco",
+        "postgres://medtracker:wrong@postgres/medtracker_loco",
+        "postgres://other:medtracker_password@postgres/medtracker_loco",
+        "postgres://medtracker:medtracker_password@postgres/production",
+        "postgres://medtracker:medtracker_password@postgres/medtracker_loco/extra",
+        "postgres://medtracker:medtracker_password@postgres/medtracker_loco?host=remote",
+        "postgres://medtracker:medtracker_password@postgres/medtracker_loco#remote",
+        "http://medtracker:medtracker_password@postgres/medtracker_loco",
+        "postgres://medtracker:medtracker_password@127.0.0.1/medtracker_loco",
+        "postgres://medtracker:medtracker_password@127.0.0.1:0/medtracker_loco",
+    ] {
+        assert!(
+            !is_owned_database_endpoint(&url::Url::parse(uri).unwrap()),
+            "{uri}"
+        );
+    }
 }
 
 #[allow(dead_code)]

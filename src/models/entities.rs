@@ -42,7 +42,6 @@ pub use super::_entities::platform_admins as platform_admin;
 pub use super::_entities::push_subscriptions as push_subscription;
 pub use super::_entities::schedules as schedule;
 pub use super::_entities::security_audit_events as security_audit_event;
-pub use super::_entities::users as user;
 pub use super::_entities::versions as version;
 
 pub mod active_session_key {
@@ -67,4 +66,5 @@ pub mod active_session_key {
 
 pub use super::identity::better_auth::schema::{
     api_key as identity_api_key, passkey as identity_passkey, session as identity_session,
+    verification as identity_verification,
 };

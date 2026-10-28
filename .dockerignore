@@ -1,4 +1,6 @@
 **
+!.config/
+!.config/nextest.toml
 !Cargo.toml
 !Cargo.lock
 !build.rs
@@ -21,6 +23,18 @@ rails/**
 rails/config/**
 !rails/config/ai_medication_sources.yml
 !rails/config/medication_review_labels.yml
+!rails/app/
+!rails/app/components/
+!rails/app/components/auth/
+!rails/app/components/auth/mt_logo.rb
+!rails/app/components/auth/benefit_icons/
+!rails/app/components/auth/benefit_icons/heart_check.rb
+!rails/app/components/auth/benefit_icons/schedule_calendar.rb
+!rails/app/components/auth/benefit_icons/progress_path_pin.rb
+!rails/app/components/auth/benefit_icons/insights_search.rb
+!rails/app/assets/
+!rails/app/assets/fonts/
+!rails/app/assets/fonts/**
 !Taskfile.yml
 !Taskfiles/
 !Taskfiles/**
@@ -29,6 +43,8 @@ rails/config/**
 scripts/__pycache__/
 !tests/
 !tests/**
+!examples/
+!examples/api-fixtures.rs
 
 !docs/
 !docs/api/

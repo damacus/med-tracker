@@ -16,8 +16,6 @@ mod capabilities;
 mod contract;
 #[path = "favicon.rs"]
 mod favicon;
-#[path = "../care_api/fixture.rs"]
-mod fixture;
 #[path = "household_selection.rs"]
 mod household_selection;
 #[path = "household_settings.rs"]
@@ -26,53 +24,97 @@ mod household_settings;
 mod me_ui;
 #[path = "people.rs"]
 mod people;
+#[path = "personal_history.rs"]
+mod personal_history;
 #[path = "profile.rs"]
 mod profile;
+#[path = "request_trace.rs"]
+mod request_trace;
 
-use fixture::Fixture;
+use crate::scenario::Scenario;
 use loco_rs::{
     TestServer,
     app::Hooks,
     boot::{BootResult, StartMode},
-    config::{Config, QueueConfig},
+    config::Config,
     environment::Environment,
 };
+#[path = "fixture.rs"]
+mod request_fixture;
+use request_fixture::{CredentialKind, RequestFixture};
 use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
-async fn boot_fixture() -> (Fixture, BootResult) {
-    boot_fixture_with(|_| {}).await
+async fn install_browser_session(request: &mut TestServer, boot: &BootResult, account_id: i64) {
+    let cookies = crate::session_fixture::browser_cookie(&boot.app_context, account_id).await;
+    assert!(
+        !cookies.is_empty(),
+        "native browser fixture must issue cookies"
+    );
+    for pair in cookies.split("; ") {
+        request.add_cookie(pair.parse().expect("native browser cookie pair"));
+    }
 }
 
-async fn boot_fixture_with(configure: impl FnOnce(&mut Config)) -> (Fixture, BootResult) {
-    let fixture = Fixture::new().await;
-    let mut config = Config::new(&Environment::Test).unwrap();
-    config.database.uri = fixture.runtime_uri.clone();
-    let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
-        panic!("PostgreSQL queue required")
-    };
-    queue.uri = fixture.runtime_uri.clone();
+async fn select_request_household(
+    request: &mut TestServer,
+    fixture: &RequestFixture,
+    boot: &BootResult,
+) -> Result<(), Box<dyn std::error::Error>> {
+    install_browser_session(request, boot, fixture.account.id).await;
+    let chooser = request.get("/households/choose").await;
+    let html = chooser.text();
+    let csrf =
+        administration_overview::authenticity_token(&html).ok_or("household form token missing")?;
+    let selected = request
+        .post("/households/select")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("household_id", fixture.household.id.to_string().as_str()),
+            ("authenticity_token", csrf),
+        ])
+        .await;
+    assert_eq!(selected.status_code(), 303, "{}", selected.text());
+    Ok(())
+}
+
+async fn boot_request_fixture() -> (RequestFixture, BootResult) {
+    let fixture = RequestFixture::new().await;
+    let boot = loco_rs::testing::request::boot_test::<med_tracker::app::App>()
+        .await
+        .unwrap();
+    (fixture, boot)
+}
+
+async fn boot_request_fixture_with(
+    configure: impl FnOnce(&mut Config),
+) -> (RequestFixture, BootResult) {
+    let fixture = RequestFixture::new().await;
+    let mut config = med_tracker::app::App::load_config(&Environment::Test)
+        .await
+        .unwrap();
     configure(&mut config);
+    assert!(!config.database.dangerously_truncate);
+    assert!(!config.database.dangerously_recreate);
     let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
         .await
         .unwrap();
     (fixture, boot)
 }
 
-async fn boot_rate_fixture(trusted_proxy_ips: &[&str]) -> (Fixture, BootResult) {
-    boot_rate_fixture_with(trusted_proxy_ips, None).await
+async fn boot_request_rate_fixture(trusted_proxy_ips: &[&str]) -> (RequestFixture, BootResult) {
+    boot_request_rate_fixture_with(trusted_proxy_ips, None).await
 }
 
-async fn boot_rate_fixture_with(
+async fn boot_request_rate_fixture_with(
     trusted_proxy_ips: &[&str],
     request_id_enabled: Option<bool>,
-) -> (Fixture, BootResult) {
-    boot_fixture_with(|config| {
+) -> (RequestFixture, BootResult) {
+    boot_request_fixture_with(|config| {
         config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] = json!({
-            "fixed_now_unix_seconds": 1000,
-            "trusted_proxy_ips": trusted_proxy_ips.join(","),
+            "fixed_now_unix_seconds":1000, "trusted_proxy_ips":trusted_proxy_ips.join(","),
         });
         if let Some(enable) = request_id_enabled {
             config.server.middlewares.request_id =
@@ -82,12 +124,54 @@ async fn boot_rate_fixture_with(
     .await
 }
 
-async fn close(fixture: Fixture, boot: BootResult) {
+async fn close_request(fixture: RequestFixture, boot: BootResult) {
+    close_boot(boot).await;
+    fixture.close().await;
+}
+
+async fn boot_shared_fixture() -> (Scenario, BootResult) {
+    let scenario = Scenario::new().await;
+    let boot = loco_rs::testing::request::boot_test::<med_tracker::app::App>()
+        .await
+        .unwrap();
+    (scenario, boot)
+}
+
+async fn boot_shared_fixture_with(configure: impl FnOnce(&mut Config)) -> (Scenario, BootResult) {
+    let scenario = Scenario::new().await;
+    let mut config = med_tracker::app::App::load_config(&Environment::Test)
+        .await
+        .unwrap();
+    configure(&mut config);
+    assert!(!config.database.dangerously_truncate);
+    assert!(!config.database.dangerously_recreate);
+    assert_eq!(config.database.uri, std::env::var("DATABASE_URL").unwrap());
+    let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
+        .await
+        .unwrap();
+    (scenario, boot)
+}
+
+async fn boot_shared_rate_fixture(trusted_proxy_ips: &[&str]) -> (Scenario, BootResult) {
+    boot_shared_fixture_with(|config| {
+        config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] = json!({
+            "fixed_now_unix_seconds": 1000,
+            "trusted_proxy_ips": trusted_proxy_ips.join(","),
+        });
+    })
+    .await
+}
+
+async fn close_shared(scenario: Scenario, boot: BootResult) {
+    close_boot(boot).await;
+    scenario.close().await;
+}
+
+async fn close_boot(boot: BootResult) {
     if let Some(queue) = boot.app_context.queue_provider.as_ref() {
         queue.shutdown().unwrap();
     }
     boot.app_context.db.close().await.unwrap();
-    fixture.close().await;
 }
 
 fn server(boot: &BootResult) -> TestServer {
@@ -246,7 +330,7 @@ pub mod baseline {
 
     #[tokio::test]
     async fn inventory_reconciles_collected_loco_routes() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
         let registered = api_v1_routes(&boot);
         let documented = operations();
         let documented_routes = documented
@@ -278,12 +362,12 @@ pub mod baseline {
             "Undocumented Loco API v1 routes: {extra:?}"
         );
         drop(registered);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
 
     #[tokio::test]
     async fn anonymous_access() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
         let row = boot
             .app_context
             .db
@@ -295,10 +379,15 @@ pub mod baseline {
             .unwrap()
             .unwrap();
         let role: String = row.try_get("", "current_user").unwrap();
-        assert!(role.starts_with("care_runtime_"));
+        assert_eq!(
+            role,
+            url::Url::parse(&fixture.runtime_uri).unwrap().username()
+        );
         assert!(row.try_get::<bool>("", "rls_active").unwrap());
         let request = server(&boot);
-        let response = request.get("/api/v1/households/72001/me").await;
+        let response = request
+            .get(&format!("/api/v1/households/{}/me", fixture.household.id))
+            .await;
         assert_eq!(response.status_code(), 401);
         assert_eq!(response.header("cache-control"), "no-store");
         let identity = request
@@ -308,12 +397,36 @@ pub mod baseline {
         assert_eq!(identity.status_code(), 200);
         assert_eq!(fixture.effect().await.0, 0);
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
+    }
+
+    async fn source_buckets(fixture: &RequestFixture) -> BTreeMap<String, i32> {
+        use sea_orm::sea_query::{Alias, Query};
+        let query = Query::select()
+            .columns([Alias::new("bucket"), Alias::new("attempts")])
+            .from(Alias::new("identity_rate_limits"))
+            .to_owned();
+        fixture
+            .admin
+            .query_all_raw(fixture.admin.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|row| {
+                (
+                    row.try_get("", "bucket").unwrap(),
+                    row.try_get("", "attempts").unwrap(),
+                )
+            })
+            .collect()
     }
 
     #[tokio::test]
     async fn auth_boundary_rejects_rotating_spoofed_sources() {
-        let (fixture, boot) = boot_fixture().await;
+        crate::authentication_fixture::reset_source_quota().await;
+        let (fixture, boot) = boot_request_fixture().await;
+        let bucket = hex::encode(Sha256::digest("source:127.0.0.1".as_bytes()));
+        let before = source_buckets(&fixture).await;
         let request = server(&boot);
         for source in ["198.51.100.77", "203.0.113.77"] {
             let response = request
@@ -323,22 +436,22 @@ pub mod baseline {
                 .await;
             assert_eq!(response.status_code(), 400);
         }
-        let buckets = fixture
-            .admin
-            .query_all_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT bucket, attempts FROM public.identity_rate_limits",
-            ))
-            .await;
-        let buckets = buckets.unwrap();
-        assert_eq!(buckets.len(), 1);
-        assert_eq!(buckets[0].try_get::<i32>("", "attempts").unwrap(), 2);
+        let after = source_buckets(&fixture).await;
         assert_eq!(
-            buckets[0].try_get::<String>("", "bucket").unwrap(),
-            hex::encode(Sha256::digest("source:127.0.0.1".as_bytes()))
+            after.get(&bucket),
+            Some(&(before.get(&bucket).copied().unwrap_or(0) + 2))
+        );
+        for source in ["198.51.100.77", "203.0.113.77"] {
+            let spoofed = hex::encode(Sha256::digest(format!("source:{source}").as_bytes()));
+            assert_eq!(after.get(&spoofed), before.get(&spoofed));
+        }
+        assert!(
+            after
+                .keys()
+                .all(|key| key == &bucket || before.contains_key(key))
         );
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
 }
 
@@ -347,68 +460,73 @@ pub mod rate_limit {
     use axum::{Extension, extract::ConnectInfo, http::Method};
     use std::net::SocketAddr;
 
-    const EXPORT: &str = "/api/v1/households/72001/data_exports/health_data_json";
+    fn export(fixture: &RequestFixture) -> String {
+        format!(
+            "/api/v1/households/{}/data_exports/health_data_json",
+            fixture.household.id
+        )
+    }
 
     #[tokio::test]
     async fn missing_socket_peer_returns_json_unavailable_error() {
-        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let (fixture, boot) = boot_request_rate_fixture(&[]).await;
         let request = TestServer::new(boot.router.clone().unwrap()).unwrap();
-        let response = request.get(EXPORT).await;
+        let response = request.get(&export(&fixture)).await;
         assert_eq!(response.status_code(), 503);
         assert_eq!(response.header("content-type"), "application/json");
         assert_eq!(response.header("cache-control"), "no-store");
         let body: Value = response.json();
         assert_eq!(body["error"]["code"], "service_unavailable");
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
 
     #[tokio::test]
     async fn missing_socket_peer_head_response_has_no_body() {
-        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let (fixture, boot) = boot_request_rate_fixture(&[]).await;
         let request = TestServer::builder()
             .mock_transport()
             .build(boot.router.clone().unwrap())
             .unwrap();
-        let response = request.method(Method::HEAD, EXPORT).await;
+        let response = request.method(Method::HEAD, &export(&fixture)).await;
         assert_eq!(response.status_code(), 503);
         assert_eq!(response.header("cache-control"), "no-store");
         assert!(response.as_bytes().is_empty());
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
 
     #[tokio::test]
     async fn exhausted_export_head_response_has_no_body() {
-        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let (fixture, boot) = boot_request_rate_fixture(&[]).await;
         let peer = ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 12345)));
         let request = TestServer::builder()
             .mock_transport()
             .build(boot.router.clone().unwrap().layer(Extension(peer)))
             .unwrap();
         for attempt in 1..=10 {
-            let response = request.get(EXPORT).await;
+            let response = request.get(&export(&fixture)).await;
             assert_eq!(response.status_code(), 401, "request {attempt}");
         }
-        let response = request.method(Method::HEAD, EXPORT).await;
+        let response = request.method(Method::HEAD, &export(&fixture)).await;
         assert_eq!(response.status_code(), 429);
         assert_eq!(response.header("retry-after"), "20");
         assert_eq!(response.header("cache-control"), "no-store");
         assert!(response.as_bytes().is_empty());
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
 
     #[tokio::test]
     async fn fixed_export_window_rejects_eleventh_request_with_contract_headers() {
-        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let (fixture, boot) = boot_request_rate_fixture(&[]).await;
         let request = server(&boot);
         for attempt in 1..=10 {
-            let response = request.get(EXPORT).await;
+            let response = request.get(&export(&fixture)).await;
             assert_eq!(response.status_code(), 401, "request {attempt}");
         }
         let before = fixture.effect().await;
-        let rejected = request.get(EXPORT).await;
+        let rejected = request.get(&export(&fixture)).await;
         assert_eq!(rejected.status_code(), 429);
         assert_eq!(rejected.header("retry-after"), "20");
         assert_eq!(rejected.header("ratelimit-limit"), "10");
@@ -431,7 +549,7 @@ pub mod rate_limit {
         );
         assert_eq!(fixture.effect().await, before);
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
         let document = contract::contract();
         contract::assert_value(
             document,
@@ -448,15 +566,15 @@ pub mod rate_limit {
 
     #[tokio::test]
     async fn rejected_export_preserves_sanitized_supplied_request_id() {
-        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let (fixture, boot) = boot_request_rate_fixture(&[]).await;
         let request = server(&boot);
         for attempt in 1..=10 {
-            let response = request.get(EXPORT).await;
+            let response = request.get(&export(&fixture)).await;
             assert_eq!(response.status_code(), 401, "request {attempt}");
         }
         let before = fixture.effect().await;
         let rejected = request
-            .get(EXPORT)
+            .get(&export(&fixture))
             .add_header("x-request-id", "client-42 / spoof")
             .await;
         let status = rejected.status_code();
@@ -474,7 +592,7 @@ pub mod rate_limit {
         let body: Value = rejected.json();
         let after = fixture.effect().await;
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
         assert_eq!(status, 429);
         assert_eq!(retry_after, "20");
         assert_eq!(limit, "10");
@@ -499,15 +617,15 @@ pub mod rate_limit {
 
     #[tokio::test]
     async fn disabled_request_id_layer_keeps_rejected_export_without_an_id() {
-        let (fixture, boot) = boot_rate_fixture_with(&[], Some(false)).await;
+        let (fixture, boot) = boot_request_rate_fixture_with(&[], Some(false)).await;
         let request = server(&boot);
         for attempt in 1..=10 {
-            let response = request.get(EXPORT).await;
+            let response = request.get(&export(&fixture)).await;
             assert_eq!(response.status_code(), 401, "request {attempt}");
             assert!(!response.header("x-request-id").is_empty());
         }
         let before = fixture.effect().await;
-        let rejected = request.get(EXPORT).await;
+        let rejected = request.get(&export(&fixture)).await;
         let status = rejected.status_code();
         let retry_after = rejected.header("retry-after").to_owned();
         let limit = rejected.header("ratelimit-limit").to_owned();
@@ -519,7 +637,7 @@ pub mod rate_limit {
         let body: Value = rejected.json();
         let after = fixture.effect().await;
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
         assert_eq!(status, 429);
         assert_eq!(retry_after, "20");
         assert_eq!(limit, "10");
@@ -544,113 +662,96 @@ pub mod rate_limit {
 
     #[tokio::test]
     async fn head_export_uses_the_get_export_bucket() {
-        let (fixture, boot) = boot_rate_fixture(&[]).await;
-        let token_request = axum::http::Request::builder()
-            .method("POST")
-            .uri("/token")
-            .header("content-type", "application/x-www-form-urlencoded")
-            .body(axum::body::Body::from(
-                serde_urlencoded::to_string([
-                    ("grant_type", "authorization_code"),
-                    ("client_id", "native"),
-                    ("code", "synthetic-legacy-code"),
-                    ("redirect_uri", "io.damacus.medtracker:/oauth2redirect"),
-                    (
-                        "code_verifier",
-                        "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-                    ),
-                ])
-                .unwrap(),
-            ))
-            .unwrap();
-        let token = med_tracker::models::identity::exchange(&fixture.runtime, token_request, None)
-            .await
-            .unwrap()["access_token"]
-            .as_str()
-            .unwrap()
-            .to_owned();
+        let (fixture, boot) = boot_request_rate_fixture(&[]).await;
+        let token = fixture.token().await;
         let request = server(&boot);
         let first = request
-            .method(Method::HEAD, EXPORT)
+            .method(Method::HEAD, &export(&fixture))
             .add_header("authorization", format!("Bearer {token}"))
             .await;
         assert_eq!(first.status_code(), 200);
         for attempt in 1..=9 {
-            let response = request.get(EXPORT).await;
+            let response = request.get(&export(&fixture)).await;
             assert_eq!(response.status_code(), 401, "request {attempt}");
         }
         let rejected = request
-            .method(Method::HEAD, EXPORT)
+            .method(Method::HEAD, &export(&fixture))
             .add_header("authorization", format!("Bearer {token}"))
             .await;
         assert_eq!(rejected.status_code(), 429);
         assert_eq!(rejected.header("ratelimit-limit"), "10");
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
 
     #[tokio::test]
     async fn untrusted_forwarded_sources_share_the_socket_peer_bucket() {
-        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let (fixture, boot) = boot_request_rate_fixture(&[]).await;
         let request = server(&boot);
         for attempt in 1..=10 {
             let response = request
-                .get(EXPORT)
+                .get(&export(&fixture))
                 .add_header("x-forwarded-for", format!("198.51.100.{attempt}"))
                 .await;
             assert_eq!(response.status_code(), 401, "request {attempt}");
         }
         let rejected = request
-            .get(EXPORT)
+            .get(&export(&fixture))
             .add_header("x-forwarded-for", "203.0.113.11")
             .await;
         assert_eq!(rejected.status_code(), 429);
         assert_eq!(rejected.header("ratelimit-limit"), "10");
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
 
     #[tokio::test]
     async fn configured_loopback_proxy_separates_forwarded_client_buckets() {
-        let (fixture, boot) = boot_rate_fixture(&["127.0.0.1"]).await;
+        let (fixture, boot) = boot_request_rate_fixture(&["127.0.0.1"]).await;
         let request = server(&boot);
         for attempt in 1..=10 {
             let response = request
-                .get(EXPORT)
+                .get(&export(&fixture))
                 .add_header("x-forwarded-for", "198.51.100.20")
                 .await;
             assert_eq!(response.status_code(), 401, "request {attempt}");
         }
         let other_client = request
-            .get(EXPORT)
+            .get(&export(&fixture))
             .add_header("x-forwarded-for", "203.0.113.20")
             .await;
         assert_eq!(other_client.status_code(), 401);
         let malformed_chain = request
-            .get(EXPORT)
+            .get(&export(&fixture))
             .add_header("x-forwarded-for", "198.51.100.20, invalid")
             .await;
         assert_eq!(malformed_chain.status_code(), 401);
         for attempt in 1..=9 {
-            let peer = request.get(EXPORT).await;
+            let peer = request.get(&export(&fixture)).await;
             assert_eq!(peer.status_code(), 401, "socket peer request {attempt}");
         }
-        let exhausted_peer = request.get(EXPORT).await;
+        let exhausted_peer = request.get(&export(&fixture)).await;
         assert_eq!(exhausted_peer.status_code(), 429);
         let exhausted = request
-            .get(EXPORT)
+            .get(&export(&fixture))
             .add_header("x-forwarded-for", "198.51.100.20")
             .await;
         assert_eq!(exhausted.status_code(), 429);
         assert_eq!(exhausted.header("ratelimit-reset"), "1020");
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
     }
 }
 
+enum StoredRow {
+    Session(i64),
+    App(i64),
+    Grant(i64),
+}
+
 async fn overlap_requests_at_row_lock<A, B>(
-    fixture: &Fixture,
-    lock_sql: &str,
+    fixture: &RequestFixture,
+    target: StoredRow,
     wait_query_pattern: &str,
     first: A,
     second: B,
@@ -669,11 +770,34 @@ where
         .unwrap()
         .unwrap();
     let blocker_pid = row.try_get::<i32>("", "pid").unwrap();
-    blocker
-        .query_one_raw(Statement::from_string(DbBackend::Postgres, lock_sql))
-        .await
-        .unwrap()
-        .unwrap();
+    use med_tracker::models::_entities::{api_app_tokens, api_sessions, oauth_grants};
+    use sea_orm::{EntityTrait, QuerySelect};
+    match target {
+        StoredRow::Session(id) => {
+            api_sessions::Entity::find_by_id(id)
+                .lock_exclusive()
+                .one(&blocker)
+                .await
+                .unwrap()
+                .unwrap();
+        }
+        StoredRow::App(id) => {
+            api_app_tokens::Entity::find_by_id(id)
+                .lock_exclusive()
+                .one(&blocker)
+                .await
+                .unwrap()
+                .unwrap();
+        }
+        StoredRow::Grant(id) => {
+            oauth_grants::Entity::find_by_id(id)
+                .lock_exclusive()
+                .one(&blocker)
+                .await
+                .unwrap()
+                .unwrap();
+        }
+    }
     let runtime_role = url::Url::parse(&fixture.runtime_uri)
         .unwrap()
         .username()
@@ -705,7 +829,15 @@ where
 pub mod account {
     use super::*;
     use axum::http::Method;
-    use base64::Engine;
+    use med_tracker::models::_entities::{
+        account_lockouts, accounts, api_app_tokens, api_sessions, households, oauth_grants,
+        security_audit_events, versions,
+    };
+    use sea_orm::sea_query::Expr;
+    use sea_orm::{
+        ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
+        QueryOrder, QuerySelect, Set,
+    };
 
     fn assert_response_schema(method: &str, path: &str, status: u16, body: &Value) {
         let spec_path = match (method, path) {
@@ -739,67 +871,221 @@ pub mod account {
         );
     }
 
-    pub(super) async fn mobile_token(fixture: &Fixture) -> String {
-        let token_request = axum::http::Request::builder()
-            .method("POST")
-            .uri("/token")
-            .header("content-type", "application/x-www-form-urlencoded")
-            .body(axum::body::Body::from(
-                serde_urlencoded::to_string([
-                    ("grant_type", "authorization_code"),
-                    ("client_id", "native"),
-                    ("code", "synthetic-legacy-code"),
-                    ("redirect_uri", "io.damacus.medtracker:/oauth2redirect"),
-                    (
-                        "code_verifier",
-                        "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-                    ),
-                ])
-                .unwrap(),
-            ))
-            .unwrap();
-        med_tracker::models::identity::exchange(&fixture.runtime, token_request, None)
+    pub(super) async fn mobile_token(fixture: &RequestFixture) -> String {
+        fixture.token().await
+    }
+    async fn stored_credentials(fixture: &RequestFixture) {
+        let now = chrono::Utc::now().naive_utc();
+        let current = fixture
+            .session(&fixture.credential("synthetic-current-session"))
+            .await;
+        let mut current = current.into_active_model();
+        current.device_name = Set(Some("Current phone".into()));
+        current.created_at = Set(now - chrono::Duration::days(1));
+        current.update(&fixture.admin).await.unwrap();
+        let expired = fixture
+            .session(&fixture.credential("synthetic-expired-session"))
+            .await;
+        let mut expired = expired.into_active_model();
+        expired.device_name = Set(Some("Expired phone".into()));
+        expired.created_at = Set(now - chrono::Duration::days(2));
+        expired.access_expires_at = Set(now - chrono::Duration::hours(1));
+        expired.refresh_expires_at = Set(now - chrono::Duration::minutes(1));
+        expired.last_used_at = Set(now - chrono::Duration::days(2));
+        expired.update(&fixture.admin).await.unwrap();
+        fixture
+            .app_token(&fixture.credential("synthetic-app-token"))
+            .await;
+    }
+    async fn foreign_session(fixture: &RequestFixture) -> api_sessions::Model {
+        let now = chrono::Utc::now().naive_utc();
+        api_sessions::ActiveModel {
+            account_id: Set(fixture.foreign.account.id),
+            household_membership_id: Set(Some(fixture.foreign.membership.id)),
+            access_token_digest: Set(uuid::Uuid::new_v4().to_string()),
+            refresh_token_digest: Set(uuid::Uuid::new_v4().to_string()),
+            permissions_version: Set(1),
+            access_expires_at: Set(now + chrono::Duration::minutes(15)),
+            refresh_expires_at: Set(now + chrono::Duration::days(1)),
+            last_used_at: Set(now),
+            device_name: Set(Some("Foreign device".into())),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&fixture.admin)
+        .await
+        .unwrap()
+    }
+    async fn version_count(
+        fixture: &RequestFixture,
+        item_type: &str,
+        account_id: i64,
+        event: &str,
+    ) -> u64 {
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq(item_type))
+            .filter(versions::Column::ItemId.eq(account_id))
+            .filter(versions::Column::Event.eq(event))
+            .count(&fixture.admin)
             .await
-            .unwrap()["access_token"]
-            .as_str()
             .unwrap()
-            .to_owned()
+    }
+    async fn revocation_counts(fixture: &RequestFixture) -> (u64, u64, u64) {
+        (
+            version_count(
+                fixture,
+                "AuthenticationToken",
+                fixture.account.id,
+                "auth_token/api_session/revoked",
+            )
+            .await,
+            version_count(
+                fixture,
+                "AuthenticationToken",
+                fixture.account.id,
+                "auth_token/api_app_token/revoked",
+            )
+            .await,
+            version_count(
+                fixture,
+                "Account",
+                fixture.account.id,
+                "mobile_oauth.revoked",
+            )
+            .await,
+        )
+    }
+    async fn current_grant(fixture: &RequestFixture) -> oauth_grants::Model {
+        oauth_grants::Entity::find_by_id(fixture.authorization.id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+    }
+    async fn aged_state(
+        fixture: &RequestFixture,
+        ids: [i64; 2],
+    ) -> Vec<(i64, chrono::NaiveDateTime)> {
+        oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::Id.is_in(ids))
+            .order_by_asc(oauth_grants::Column::Id)
+            .all(&fixture.admin)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|row| (row.id, row.last_used_at.unwrap()))
+            .collect()
     }
 
-    async fn stored_credentials(fixture: &Fixture) {
-        let session = hex::encode(Sha256::digest(b"synthetic-current-session"));
-        let expired = hex::encode(Sha256::digest(b"synthetic-expired-session"));
-        let app_token = hex::encode(Sha256::digest(b"synthetic-app-token"));
-        fixture.admin.execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,device_name,created_at,updated_at) VALUES (88001,71001,74001,$1,'synthetic-current-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),'Current phone',now()-interval '1 day',now()),(88002,71001,74001,$2,'synthetic-expired-refresh',1,now()-interval '1 hour',now()-interval '1 minute',now()-interval '2 days','Expired phone',now()-interval '2 days',now())",
-            [session.into(), expired.into()],
-        )).await.unwrap();
-        fixture.admin.execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES (88010,71001,74001,'Synthetic app',$1,1,now()+interval '1 month',now(),now(),now())",
-            [app_token.into()],
-        )).await.unwrap();
+    #[derive(Clone, Copy)]
+    enum DenialChange {
+        SessionRevoked,
+        AppRevoked,
+        AppExpired,
+        AppOverage,
+        Permissions,
+        MembershipRevoked,
+        Lockout,
+    }
+    async fn authority_change(fixture: &RequestFixture, change: DenialChange, restore: bool) {
+        let now = chrono::Utc::now().naive_utc();
+        match change {
+            DenialChange::SessionRevoked => fixture.revoke(CredentialKind::Session, !restore).await,
+            DenialChange::AppRevoked => fixture.revoke(CredentialKind::App, !restore).await,
+            DenialChange::Permissions => {
+                fixture
+                    .membership_state(if restore { 1 } else { 2 }, false)
+                    .await
+            }
+            DenialChange::MembershipRevoked => fixture.membership_state(1, !restore).await,
+            DenialChange::Lockout => {
+                if restore {
+                    account_lockouts::Entity::delete_by_id(fixture.account.id)
+                        .exec(&fixture.admin)
+                        .await
+                        .unwrap();
+                } else {
+                    account_lockouts::ActiveModel {
+                        account_id: Set(fixture.account.id),
+                        key: Set(fixture.credential("account-route-test")),
+                        deadline: Set(now + chrono::Duration::hours(1)),
+                        created_at: Set(Some(now)),
+                        updated_at: Set(Some(now)),
+                        ..Default::default()
+                    }
+                    .insert(&fixture.admin)
+                    .await
+                    .unwrap();
+                }
+            }
+            DenialChange::AppExpired => {
+                api_app_tokens::Entity::update_many()
+                    .col_expr(
+                        api_app_tokens::Column::CreatedAt,
+                        Expr::value(if restore {
+                            now
+                        } else {
+                            now - chrono::Duration::days(2)
+                        }),
+                    )
+                    .col_expr(
+                        api_app_tokens::Column::ExpiresAt,
+                        Expr::value(if restore {
+                            now.checked_add_months(chrono::Months::new(1)).unwrap()
+                        } else {
+                            now - chrono::Duration::days(1)
+                        }),
+                    )
+                    .filter(api_app_tokens::Column::AccountId.eq(fixture.account.id))
+                    .exec(&fixture.admin)
+                    .await
+                    .unwrap();
+            }
+            DenialChange::AppOverage => {
+                api_app_tokens::Entity::update_many()
+                    .col_expr(
+                        api_app_tokens::Column::CreatedAt,
+                        Expr::value(if restore {
+                            now
+                        } else {
+                            now.checked_sub_months(chrono::Months::new(13)).unwrap()
+                        }),
+                    )
+                    .filter(api_app_tokens::Column::AccountId.eq(fixture.account.id))
+                    .exec(&fixture.admin)
+                    .await
+                    .unwrap();
+            }
+        }
     }
 
-    fn account_surface_routes() -> Vec<(Method, &'static str, Option<Value>)> {
+    fn account_surface_routes(fixture: &RequestFixture) -> Vec<(Method, String, Option<Value>)> {
         vec![
-            (Method::GET, "/api/v1/auth/households", None),
-            (Method::GET, "/api/v1/auth/sessions", None),
-            (Method::DELETE, "/api/v1/auth/sessions/76001", None),
-            (Method::GET, "/api/v1/auth/profile", None),
+            (Method::GET, "/api/v1/auth/households".into(), None),
+            (Method::GET, "/api/v1/auth/sessions".into(), None),
+            (
+                Method::DELETE,
+                format!("/api/v1/auth/sessions/{}", fixture.authorization.id),
+                None,
+            ),
+            (Method::GET, "/api/v1/auth/profile".into(), None),
             (
                 Method::PATCH,
-                "/api/v1/auth/profile",
+                "/api/v1/auth/profile".into(),
                 Some(json!({"profile":{"name":"Surface sweep"}})),
             ),
-            (Method::GET, "/api/v1/auth/profile/avatar", None),
-            (Method::PUT, "/api/v1/auth/profile/avatar", None),
-            (Method::DELETE, "/api/v1/auth/profile/avatar", None),
-            (Method::GET, "/api/v1/auth/guardian-declarations", None),
+            (Method::GET, "/api/v1/auth/profile/avatar".into(), None),
+            (Method::PUT, "/api/v1/auth/profile/avatar".into(), None),
+            (Method::DELETE, "/api/v1/auth/profile/avatar".into(), None),
+            (
+                Method::GET,
+                "/api/v1/auth/guardian-declarations".into(),
+                None,
+            ),
             (
                 Method::PATCH,
-                "/api/v1/auth/guardian-declarations/1",
+                "/api/v1/auth/guardian-declarations/1".into(),
                 Some(json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}})),
             ),
         ]
@@ -859,7 +1145,8 @@ pub mod account {
 
     #[tokio::test]
     async fn malformed_delete_session_authenticates_before_identifier_validation() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+
         let request = server(&boot);
         let token = mobile_token(&fixture).await;
         let mut responses = Vec::new();
@@ -880,7 +1167,7 @@ pub mod account {
         }
 
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
 
         let statuses = responses
             .iter()
@@ -928,25 +1215,24 @@ pub mod account {
 
     #[tokio::test]
     async fn account_management_authentication_envelopes_match_each_route() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+
         let token = mobile_token(&fixture).await;
         let request = server(&boot);
         let mut anonymous = Vec::new();
-        for (method, path, body) in account_surface_routes() {
-            let pending = request.method(method.clone(), path);
+        for (method, path, body) in account_surface_routes(&fixture) {
+            let pending = request.method(method.clone(), &path);
             let pending = match &body {
                 Some(body) => pending.json(body),
                 None => pending,
             };
             anonymous.push((method.as_str().to_lowercase(), path, pending.await));
         }
-        fixture.admin.execute_unprepared(
-            "UPDATE oauth_grants SET access_token_scopes='patient/*.read',access_token_scope_hash=token_hash WHERE id=76001"
-        ).await.unwrap();
+        fixture.wrong_scope().await;
         let mut insufficient = Vec::new();
-        for (method, path, body) in account_surface_routes() {
+        for (method, path, body) in account_surface_routes(&fixture) {
             let pending = request
-                .method(method.clone(), path)
+                .method(method.clone(), &path)
                 .add_header("authorization", format!("Bearer {token}"));
             let pending = match &body {
                 Some(body) => pending.json(body),
@@ -954,18 +1240,9 @@ pub mod account {
             };
             insufficient.push((method.as_str().to_lowercase(), path, pending.await));
         }
-        let grant = fixture
-            .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT revoked_at IS NULL AS active FROM oauth_grants WHERE id=76001",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        let active: bool = grant.try_get("", "active").unwrap();
+        let active = current_grant(&fixture).await.revoked_at.is_none();
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
 
         assert!(active);
         for (method, path, response) in anonymous {
@@ -978,7 +1255,7 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "unauthorized");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(&method, path, 401, &body);
+            assert_response_schema(&method, &path, 401, &body);
         }
         for (method, path, response) in insufficient {
             assert_eq!(response.status_code(), 403, "{method} {path}");
@@ -993,35 +1270,70 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "forbidden");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(&method, path, 403, &body);
+            assert_response_schema(&method, &path, 403, &body);
         }
     }
 
     #[tokio::test]
     async fn account_collections_keep_household_scope_and_session_secrets_out() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+        let account_id = fixture.account.id;
+
+        let household_id = fixture.household.id;
+        let grant_id = fixture.authorization.id;
+        let foreign_household_id = fixture.foreign.household.id;
+        let session = fixture.credential("synthetic-current-session");
+        let expired_session = fixture.credential("synthetic-expired-session");
+        let app = fixture.credential("synthetic-app-token");
         stored_credentials(&fixture).await;
-        fixture.admin.execute_unprepared(
-            "INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Held household','held-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,73001,'member',now(),now(),now())"
-        ).await.unwrap();
-        fixture.admin.execute_unprepared(
-            "INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73005,'foreign-collection-account@example.test',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72004,71002,'Foreign active household','foreign-active-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,device_name,created_at,updated_at) VALUES(88004,71002,74004,'foreign-collection-digest','foreign-collection-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),'Foreign device',now(),now())"
-        ).await.unwrap();
+        let current_id = fixture.session_id("synthetic-current-session").await;
+        let expired_id = fixture.session_id("synthetic-expired-session").await;
+        let (additional, additional_membership) = super::household_selection::home(
+            &fixture.scenario,
+            "Second household",
+            "second-household",
+            "member",
+            false,
+        )
+        .await
+        .unwrap();
+        let additional_id = additional.id;
+        let additional_member_id = additional_membership.id;
+        let (held, _) = super::household_selection::home(
+            &fixture.scenario,
+            "Held household",
+            "held-household",
+            "member",
+            false,
+        )
+        .await
+        .unwrap();
+        households::Entity::update_many()
+            .col_expr(households::Column::LifecycleState, Expr::value("held"))
+            .filter(households::Column::Id.eq(held.id))
+            .exec(&fixture.admin)
+            .await
+            .unwrap();
+        let foreign_session = foreign_session(&fixture).await;
+        let foreign_session_id = foreign_session.id;
         let mobile = mobile_token(&fixture).await;
-        let aged_maximum = "synthetic-mobile-over-maximum";
-        let aged_inactivity = "synthetic-mobile-over-inactivity";
-        let maximum_digest = base64::engine::general_purpose::URL_SAFE
-            .encode(Sha256::digest(aged_maximum.as_bytes()));
-        let inactivity_digest = base64::engine::general_purpose::URL_SAFE
-            .encode(Sha256::digest(aged_inactivity.as_bytes()));
-        fixture.admin.execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76004,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$1,now()+interval '15 minutes',now()-interval '31 days',now()-interval '1 minute','Over maximum',now()-interval '31 days',now()),(76005,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$2,now()+interval '15 minutes',now()-interval '9 days',now()-interval '8 days','Over inactivity',now()-interval '9 days',now())",
-            [maximum_digest.into(), inactivity_digest.into()],
-        )).await.unwrap();
+        let aged_maximum = fixture.credential("synthetic-mobile-over-maximum");
+        let aged_inactivity = fixture.credential("synthetic-mobile-over-inactivity");
+        let maximum = fixture
+            .mobile_login("synthetic-mobile-over-maximum", 31, 0, false)
+            .await;
+        let inactivity = fixture
+            .mobile_login("synthetic-mobile-over-inactivity", 9, 8, false)
+            .await;
+        let current_refresh = api_sessions::Entity::find_by_id(current_id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .refresh_token_digest;
         let request = server(&boot);
         let mut collections = Vec::new();
-        for bearer in ["synthetic-current-session", "synthetic-app-token"] {
+        for bearer in [session.as_str(), app.as_str()] {
             let households = request
                 .get("/api/v1/auth/households")
                 .add_header("authorization", format!("Bearer {bearer}"))
@@ -1036,69 +1348,37 @@ pub mod account {
             .get("/api/v1/auth/households")
             .add_header("authorization", format!("Bearer {mobile}"))
             .await;
-        fixture
-            .admin
-            .execute_unprepared(
-                "UPDATE oauth_grants SET last_used_at=now()-interval '1 day' WHERE id=76001",
+        oauth_grants::Entity::update_many()
+            .col_expr(
+                oauth_grants::Column::LastUsedAt,
+                Expr::value(chrono::Utc::now().naive_utc() - chrono::Duration::days(1)),
             )
+            .filter(oauth_grants::Column::Id.eq(fixture.authorization.id))
+            .exec(&fixture.admin)
             .await
             .unwrap();
-        let before_row = fixture
-            .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT last_used_at,authenticated_at FROM oauth_grants WHERE id=76001",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        let mobile_before: chrono::NaiveDateTime = before_row.try_get("", "last_used_at").unwrap();
-        let mobile_authenticated: chrono::NaiveDateTime =
-            before_row.try_get("", "authenticated_at").unwrap();
+        let before_row = current_grant(&fixture).await;
+        let mobile_before = before_row.last_used_at.unwrap();
+        let mobile_authenticated = before_row.authenticated_at.unwrap();
         let mobile_sessions = request
             .get("/api/v1/auth/sessions")
             .add_header("authorization", format!("Bearer {mobile}"))
             .await;
-        let after_row = fixture
-            .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT last_used_at FROM oauth_grants WHERE id=76001",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        let mobile_after: chrono::NaiveDateTime = after_row.try_get("", "last_used_at").unwrap();
+        let mobile_after = current_grant(&fixture).await.last_used_at.unwrap();
         let session_settings = &boot.app_context.config.settings.as_ref().unwrap()["session"];
         let inactivity_days = session_settings["inactivity_timeout_days"]
             .as_i64()
             .unwrap();
         let maximum_days = session_settings["max_age_days"].as_i64().unwrap();
-        let aged_before = fixture
-            .admin
-            .query_all_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT id,last_used_at FROM oauth_grants WHERE id IN (76004,76005) ORDER BY id",
-            ))
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|row| {
-                (
-                    row.try_get::<i64>("", "id").unwrap(),
-                    row.try_get::<chrono::NaiveDateTime>("", "last_used_at")
-                        .unwrap(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let aged_before = aged_state(&fixture, [maximum.id, inactivity.id]).await;
         let mut aged_denials = Vec::new();
         for (label, bearer) in [
-            ("maximum age", aged_maximum),
-            ("inactivity", aged_inactivity),
+            ("maximum age", aged_maximum.as_str()),
+            ("inactivity", aged_inactivity.as_str()),
         ] {
-            for (method, path, body) in account_surface_routes() {
+            for (method, path, body) in account_surface_routes(&fixture) {
                 let pending = request
-                    .method(method.clone(), path)
+                    .method(method.clone(), &path)
                     .add_header("authorization", format!("Bearer {bearer}"));
                 let pending = match &body {
                     Some(body) => pending.json(body),
@@ -1107,25 +1387,9 @@ pub mod account {
                 aged_denials.push((label, method.as_str().to_lowercase(), path, pending.await));
             }
         }
-        let aged_after = fixture
-            .admin
-            .query_all_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT id,last_used_at FROM oauth_grants WHERE id IN (76004,76005) ORDER BY id",
-            ))
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|row| {
-                (
-                    row.try_get::<i64>("", "id").unwrap(),
-                    row.try_get::<chrono::NaiveDateTime>("", "last_used_at")
-                        .unwrap(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let aged_after = aged_state(&fixture, [maximum.id, inactivity.id]).await;
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
 
         for (households, sessions) in collections {
             assert_eq!(households.status_code(), 200);
@@ -1137,34 +1401,34 @@ pub mod account {
             }
             let households: Value = households.json();
             assert_response_schema("get", "/api/v1/auth/households", 200, &households);
-            assert_eq!(households["account_id"], 71001);
+            assert_eq!(households["account_id"], account_id);
             assert_eq!(households["data"].as_array().unwrap().len(), 2);
-            assert_eq!(households["data"][0]["id"], 72001);
-            assert_eq!(households["data"][1]["id"], 72002);
-            assert_eq!(households["data"][1]["membership_id"], 74002);
+            assert_eq!(households["data"][0]["id"], household_id);
+            assert_eq!(households["data"][1]["id"], additional_id);
+            assert_eq!(households["data"][1]["membership_id"], additional_member_id);
             assert!(
                 households["data"]
                     .as_array()
                     .unwrap()
                     .iter()
-                    .all(|row| row["id"] != 72004)
+                    .all(|row| row["id"] != foreign_household_id)
             );
             let sessions: Value = sessions.json();
             assert_response_schema("get", "/api/v1/auth/sessions", 200, &sessions);
             assert_eq!(sessions["data"].as_array().unwrap().len(), 2);
-            assert_eq!(sessions["data"][0]["id"], 88001);
-            assert_eq!(sessions["data"][1]["id"], 88002);
+            assert_eq!(sessions["data"][0]["id"], current_id);
+            assert_eq!(sessions["data"][1]["id"], expired_id);
             assert!(
                 sessions["data"]
                     .as_array()
                     .unwrap()
                     .iter()
-                    .all(|row| row["id"] != 88004)
+                    .all(|row| row["id"] != foreign_session_id)
             );
             for secret in [
-                "synthetic-current-session",
-                "synthetic-current-refresh",
-                "synthetic-expired-session",
+                session.as_str(),
+                current_refresh.as_str(),
+                expired_session.as_str(),
             ] {
                 assert!(!sessions.to_string().contains(secret));
             }
@@ -1179,12 +1443,12 @@ pub mod account {
                 .as_array()
                 .unwrap()
                 .iter()
-                .all(|row| row["id"] != 72004)
+                .all(|row| row["id"] != foreign_household_id)
         );
         let mobile_sessions: Value = mobile_sessions.json();
         assert_response_schema("get", "/api/v1/auth/sessions", 200, &mobile_sessions);
         assert_eq!(mobile_sessions["data"].as_array().unwrap().len(), 1);
-        assert_eq!(mobile_sessions["data"][0]["id"], 76001);
+        assert_eq!(mobile_sessions["data"][0]["id"], grant_id);
         assert!(mobile_sessions["data"][0]["household_id"].is_null());
         assert!(mobile_after > mobile_before);
         let stamp = |time| {
@@ -1214,30 +1478,33 @@ pub mod account {
             assert_eq!(response.header("www-authenticate"), "Bearer");
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "unauthorized");
-            assert_response_schema(&method, path, 401, &body);
+            assert_response_schema(&method, &path, 401, &body);
         }
     }
 
     #[tokio::test]
     async fn mobile_sessions_hide_foreign_and_expired_login_targets_from_listing_and_revocation() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+        let grant_id = fixture.authorization.id;
+
         let mobile = mobile_token(&fixture).await;
-        fixture.admin.execute_unprepared(
-            "INSERT INTO people(id,name,created_at,updated_at) VALUES(73998,'Foreign mobile account',now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73998,'foreign-mobile-account@example.test',now(),now()); INSERT INTO oauth_applications(id,account_id,client_id,client_kind,name,redirect_uri,scopes,token_endpoint_auth_method,created_at,updated_at) VALUES(75002,71002,'foreign-native','mobile','Foreign native','io.damacus.medtracker:/oauth2redirect','medtracker offline_access','none',now(),now())"
-        ).await.unwrap();
-        let foreign_digest = base64::engine::general_purpose::URL_SAFE
-            .encode(Sha256::digest(b"synthetic-foreign-mobile"));
-        let maximum_digest = base64::engine::general_purpose::URL_SAFE
-            .encode(Sha256::digest(b"synthetic-aged-mobile-maximum"));
-        let inactivity_digest = base64::engine::general_purpose::URL_SAFE
-            .encode(Sha256::digest(b"synthetic-aged-mobile-inactivity"));
-        let access_expired_digest = base64::engine::general_purpose::URL_SAFE
-            .encode(Sha256::digest(b"synthetic-access-expired-login-active"));
-        fixture.admin.execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76008,71002,75002,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$1,now()+interval '15 minutes',now(),now(),'Foreign mobile',now(),now()),(76004,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$2,now()+interval '15 minutes',now()-interval '31 days',now()-interval '1 minute','Over maximum',now()-interval '31 days',now()),(76005,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$3,now()+interval '15 minutes',now()-interval '9 days',now()-interval '8 days','Over inactivity',now()-interval '9 days',now()),(76009,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$4,now()-interval '1 minute',now(),now(),'Access expired, login active',now(),now())",
-            [foreign_digest.into(), maximum_digest.into(), inactivity_digest.into(), access_expired_digest.into()],
-        )).await.unwrap();
+        let foreign = RequestFixture::new().await;
+        let foreign_grant = foreign
+            .mobile_login("synthetic-foreign-mobile", 0, 0, false)
+            .await;
+        let foreign_grant_id = foreign_grant.id;
+        let maximum = fixture
+            .mobile_login("synthetic-aged-mobile-maximum", 31, 0, false)
+            .await;
+        let maximum_id = maximum.id;
+        let inactivity = fixture
+            .mobile_login("synthetic-aged-mobile-inactivity", 9, 8, false)
+            .await;
+        let inactivity_id = inactivity.id;
+        let access_expired_grant = fixture
+            .mobile_login("synthetic-access-expired-login-active", 0, 0, true)
+            .await;
+        let access_expired_id = access_expired_grant.id;
         let request = server(&boot);
         let listed = request
             .get("/api/v1/auth/sessions")
@@ -1245,9 +1512,9 @@ pub mod account {
             .await;
         let mut denials = Vec::new();
         for (label, id) in [
-            ("foreign account", 76008),
-            ("maximum login age", 76004),
-            ("login inactivity", 76005),
+            ("foreign account", foreign_grant_id),
+            ("maximum login age", maximum_id),
+            ("login inactivity", inactivity_id),
         ] {
             denials.push((
                 label,
@@ -1258,32 +1525,46 @@ pub mod account {
             ));
         }
         let access_expired = request
-            .method(Method::DELETE, "/api/v1/auth/sessions/76009")
+            .method(
+                Method::DELETE,
+                format!("/api/v1/auth/sessions/{access_expired_id}").as_str(),
+            )
             .add_header("authorization", format!("Bearer {mobile}"))
             .await;
-        let rows = fixture.admin.query_all_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT id,revoked_at IS NULL AS active FROM oauth_grants WHERE id IN (76004,76005,76008,76009) ORDER BY id",
-        )).await.unwrap();
+        let rows = oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::Id.is_in([
+                maximum.id,
+                inactivity.id,
+                foreign_grant.id,
+                access_expired_grant.id,
+            ]))
+            .order_by_asc(oauth_grants::Column::Id)
+            .all(&fixture.admin)
+            .await
+            .unwrap();
         let active = rows
             .into_iter()
-            .map(|row| {
-                (
-                    row.try_get::<i64>("", "id").unwrap(),
-                    row.try_get::<bool>("", "active").unwrap(),
-                )
-            })
+            .map(|row| (row.id, row.revoked_at.is_none()))
             .collect::<Vec<_>>();
-        let audit = fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.revoked') AS own, (SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=71002 AND event='mobile_oauth.revoked') AS foreign",
-        )).await.unwrap().unwrap();
         let audits = (
-            audit.try_get::<i64>("", "own").unwrap(),
-            audit.try_get::<i64>("", "foreign").unwrap(),
+            version_count(
+                &fixture,
+                "Account",
+                fixture.account.id,
+                "mobile_oauth.revoked",
+            )
+            .await,
+            version_count(
+                &fixture,
+                "Account",
+                foreign.account.id,
+                "mobile_oauth.revoked",
+            )
+            .await,
         );
+        foreign.close().await;
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
 
         assert_eq!(listed.status_code(), 200);
         let list: Value = listed.json();
@@ -1293,7 +1574,7 @@ pub mod account {
             .iter()
             .map(|session| session["id"].as_i64().unwrap())
             .collect::<BTreeSet<_>>();
-        assert_eq!(listed_ids, BTreeSet::from([76001, 76009]));
+        assert_eq!(listed_ids, BTreeSet::from([grant_id, access_expired_id]));
         let statuses = denials
             .iter()
             .map(|(label, response)| (*label, response.status_code().as_u16()))
@@ -1322,27 +1603,35 @@ pub mod account {
         assert_eq!(access_expired.status_code(), 204);
         assert!(access_expired.as_bytes().is_empty());
         assert_eq!(access_expired.header("cache-control"), "no-store");
-        assert_eq!(
-            active,
-            [(76004, true), (76005, true), (76008, true), (76009, false)]
-        );
+        let mut expected_active = vec![
+            (maximum_id, true),
+            (inactivity_id, true),
+            (foreign_grant_id, true),
+            (access_expired_id, false),
+        ];
+        expected_active.sort_unstable_by_key(|row| row.0);
+        assert_eq!(active, expected_active);
         assert_eq!(audits, (1, 0));
     }
 
     #[tokio::test]
     async fn account_routes_reject_invalid_revoked_and_stale_credentials_without_writes() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+        let grant_id = fixture.authorization.id;
+        let session = fixture.credential("synthetic-current-session");
+        let expired_session = fixture.credential("synthetic-expired-session");
+        let app = fixture.credential("synthetic-app-token");
         stored_credentials(&fixture).await;
         let mobile = mobile_token(&fixture).await;
         let request = server(&boot);
         let mut denied = Vec::new();
         for (label, bearer) in [
             ("invalid", "unknown"),
-            ("expired", "synthetic-expired-session"),
+            ("expired", expired_session.as_str()),
         ] {
-            for (method, path, body) in account_surface_routes() {
+            for (method, path, body) in account_surface_routes(&fixture) {
                 let pending = request
-                    .method(method.clone(), path)
+                    .method(method.clone(), &path)
                     .add_header("authorization", format!("Bearer {bearer}"));
                 let pending = match &body {
                     Some(body) => pending.json(body),
@@ -1356,9 +1645,9 @@ pub mod account {
             ("missing bearer value", "Bearer"),
             ("empty bearer value", "Bearer "),
         ] {
-            for (method, path, body) in account_surface_routes() {
+            for (method, path, body) in account_surface_routes(&fixture) {
                 let pending = request
-                    .method(method.clone(), path)
+                    .method(method.clone(), &path)
                     .add_header("authorization", authorization);
                 let pending = match &body {
                     Some(body) => pending.json(body),
@@ -1370,71 +1659,45 @@ pub mod account {
         let changes = [
             (
                 "revoked session",
-                "synthetic-current-session",
-                "UPDATE api_sessions SET revoked_at=now() WHERE id=88001",
-                "UPDATE api_sessions SET revoked_at=NULL WHERE id=88001",
+                session.as_str(),
+                DenialChange::SessionRevoked,
             ),
-            (
-                "revoked app token",
-                "synthetic-app-token",
-                "UPDATE api_app_tokens SET revoked_at=now() WHERE id=88010",
-                "UPDATE api_app_tokens SET revoked_at=NULL WHERE id=88010",
-            ),
-            (
-                "expired app token",
-                "synthetic-app-token",
-                "UPDATE api_app_tokens SET created_at=now()-interval '2 days',expires_at=now()-interval '1 day' WHERE id=88010",
-                "UPDATE api_app_tokens SET created_at=now(),expires_at=now()+interval '1 month' WHERE id=88010",
-            ),
-            (
-                "overage app token",
-                "synthetic-app-token",
-                "UPDATE api_app_tokens SET created_at=now()-interval '13 months' WHERE id=88010",
-                "UPDATE api_app_tokens SET created_at=now() WHERE id=88010",
-            ),
+            ("revoked app token", app.as_str(), DenialChange::AppRevoked),
+            ("expired app token", app.as_str(), DenialChange::AppExpired),
+            ("overage app token", app.as_str(), DenialChange::AppOverage),
             (
                 "stale session permissions",
-                "synthetic-current-session",
-                "UPDATE household_memberships SET permissions_version=2 WHERE id=74001",
-                "UPDATE household_memberships SET permissions_version=1 WHERE id=74001",
+                session.as_str(),
+                DenialChange::Permissions,
             ),
             (
                 "stale app token permissions",
-                "synthetic-app-token",
-                "UPDATE household_memberships SET permissions_version=2 WHERE id=74001",
-                "UPDATE household_memberships SET permissions_version=1 WHERE id=74001",
+                app.as_str(),
+                DenialChange::Permissions,
             ),
             (
                 "revoked membership",
-                "synthetic-current-session",
-                "UPDATE household_memberships SET revoked_at=now() WHERE id=74001",
-                "UPDATE household_memberships SET revoked_at=NULL WHERE id=74001",
+                session.as_str(),
+                DenialChange::MembershipRevoked,
             ),
-            (
-                "locked account",
-                "synthetic-current-session",
-                "INSERT INTO account_lockouts(account_id,deadline,key,created_at,updated_at) VALUES(71001,now()+interval '1 hour','account-route-test',now(),now())",
-                "DELETE FROM account_lockouts WHERE account_id=71001 AND key='account-route-test'",
-            ),
+            ("locked account", session.as_str(), DenialChange::Lockout),
             (
                 "locked account app token",
-                "synthetic-app-token",
-                "INSERT INTO account_lockouts(account_id,deadline,key,created_at,updated_at) VALUES(71001,now()+interval '1 hour','account-route-test',now(),now())",
-                "DELETE FROM account_lockouts WHERE account_id=71001 AND key='account-route-test'",
+                app.as_str(),
+                DenialChange::Lockout,
             ),
             (
                 "locked account mobile",
                 mobile.as_str(),
-                "INSERT INTO account_lockouts(account_id,deadline,key,created_at,updated_at) VALUES(71001,now()+interval '1 hour','account-route-test',now(),now())",
-                "DELETE FROM account_lockouts WHERE account_id=71001 AND key='account-route-test'",
+                DenialChange::Lockout,
             ),
         ];
         let mut mobile_without_membership = Vec::new();
-        for (label, bearer, change, restore) in changes {
-            fixture.admin.execute_unprepared(change).await.unwrap();
-            for (method, path, body) in account_surface_routes() {
+        for (label, bearer, change) in changes {
+            authority_change(&fixture, change, false).await;
+            for (method, path, body) in account_surface_routes(&fixture) {
                 let pending = request
-                    .method(method.clone(), path)
+                    .method(method.clone(), &path)
                     .add_header("authorization", format!("Bearer {bearer}"));
                 let pending = match &body {
                     Some(body) => pending.json(body),
@@ -1455,16 +1718,12 @@ pub mod account {
                         .await,
                 ));
             }
-            fixture.admin.execute_unprepared(restore).await.unwrap();
+            authority_change(&fixture, change, true).await;
         }
-        fixture
-            .admin
-            .execute_unprepared("UPDATE oauth_grants SET revoked_at=now() WHERE id=76001")
-            .await
-            .unwrap();
-        for (method, path, body) in account_surface_routes() {
+        fixture.revoke(CredentialKind::Mobile, true).await;
+        for (method, path, body) in account_surface_routes(&fixture) {
             let pending = request
-                .method(method.clone(), path)
+                .method(method.clone(), &path)
                 .add_header("authorization", format!("Bearer {mobile}"));
             let pending = match &body {
                 Some(body) => pending.json(body),
@@ -1477,14 +1736,23 @@ pub mod account {
                 pending.await,
             ));
         }
-        let row = fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT count(*) FROM versions WHERE event='auth_token/api_session/revoked') AS revocations, (SELECT revoked_at IS NULL FROM api_sessions WHERE id=88001) AS active",
-        )).await.unwrap().unwrap();
-        let revocations: i64 = row.try_get("", "revocations").unwrap();
-        let active: bool = row.try_get("", "active").unwrap();
+        let revocations = version_count(
+            &fixture,
+            "AuthenticationToken",
+            fixture.account.id,
+            "auth_token/api_session/revoked",
+        )
+        .await;
+        let active =
+            api_sessions::Entity::find_by_id(fixture.session_id("synthetic-current-session").await)
+                .one(&fixture.admin)
+                .await
+                .unwrap()
+                .unwrap()
+                .revoked_at
+                .is_none();
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
 
         assert_eq!(revocations, 0);
         assert!(active);
@@ -1498,7 +1766,7 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "unauthorized");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(&method, path, 401, &body);
+            assert_response_schema(&method, &path, 401, &body);
         }
         for (label, households, sessions) in mobile_without_membership {
             assert_eq!(households.status_code(), 200, "{label}: households");
@@ -1508,33 +1776,34 @@ pub mod account {
             if label == "revoked membership" {
                 assert!(household_body["data"].as_array().unwrap().is_empty());
             }
-            assert_eq!(session_body["data"][0]["id"], 76001);
+            assert_eq!(session_body["data"][0]["id"], grant_id);
         }
     }
 
     #[tokio::test]
     async fn account_routes_share_the_fixed_general_limit() {
-        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let (fixture, boot) = boot_request_rate_fixture(&[]).await;
+
         let request = server(&boot);
         for attempt in 1..=300 {
             let response = request.get("/api/v1/capabilities").await;
             assert_eq!(response.status_code(), 200, "request {attempt}");
         }
         let mut denied = Vec::new();
-        for (method, path, _) in account_surface_routes() {
+        for (method, path, _) in account_surface_routes(&fixture) {
             denied.push((
                 method.as_str().to_lowercase(),
-                path,
-                request.method(method, path).await,
+                path.clone(),
+                request.method(method, &path).await,
             ));
         }
         denied.push((
             "delete".to_owned(),
-            "/api/v1/auth/logout",
+            "/api/v1/auth/logout".to_owned(),
             request.method(Method::DELETE, "/api/v1/auth/logout").await,
         ));
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
         for (method, path, response) in denied {
             assert_eq!(response.status_code(), 429, "{method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
@@ -1545,43 +1814,80 @@ pub mod account {
             assert_eq!(response.header("retry-after"), "200");
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "rate_limited");
-            assert_response_schema(&method, path, 429, &body);
+            assert_response_schema(&method, &path, 429, &body);
         }
     }
 
     #[tokio::test]
     async fn account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+        let grant_id = fixture.authorization.id;
+        let absent_id = i64::MAX;
+        let session = fixture.credential("synthetic-current-session");
+
+        let app = fixture.credential("synthetic-app-token");
         stored_credentials(&fixture).await;
+        let current_id = fixture.session_id("synthetic-current-session").await;
+        let expired_id = fixture.session_id("synthetic-expired-session").await;
         let mobile = mobile_token(&fixture).await;
-        fixture.admin.execute_unprepared(
-            "INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Foreign person',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73004,'other-session-account@example.test',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-session-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73004,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88004,71002,74002,'foreign-digest','foreign-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())"
-        ).await.unwrap();
+        let foreign_session = foreign_session(&fixture).await;
+        let foreign_session_id = foreign_session.id;
+        // Independent credential sequences can assign the same number to different namespaces.
+        let wrong_mobile_id = [current_id, expired_id]
+            .into_iter()
+            .find(|id| *id != grant_id)
+            .unwrap();
         let request = server(&boot);
         let mut not_found = Vec::new();
         for (label, bearer, id) in [
-            ("missing", "synthetic-current-session", 99999),
-            ("foreign", "synthetic-current-session", 88004),
-            ("wrong mobile namespace", mobile.as_str(), 88001),
-            ("wrong stored namespace", "synthetic-app-token", 76001),
+            ("missing", session.as_str(), absent_id),
+            ("foreign", session.as_str(), foreign_session_id),
+            ("wrong mobile namespace", mobile.as_str(), wrong_mobile_id),
         ] {
-            not_found.push((
-                label,
-                request
-                    .method(Method::DELETE, &format!("/api/v1/auth/sessions/{id}"))
-                    .add_header("authorization", format!("Bearer {bearer}"))
-                    .await,
-            ));
+            let response = request
+                .method(Method::DELETE, &format!("/api/v1/auth/sessions/{id}"))
+                .add_header("authorization", format!("Bearer {bearer}"))
+                .await;
+            assert_eq!(response.status_code(), 404, "{label}");
+            not_found.push((label, response));
         }
+        let stored_ids = [current_id, expired_id];
+        let mut wrong_stored_id = grant_id;
+        // Three distinct grants cannot all overlap these two stored-session IDs.
+        for label in [
+            "synthetic-namespace-spare-one",
+            "synthetic-namespace-spare-two",
+        ] {
+            if !stored_ids.contains(&wrong_stored_id) {
+                break;
+            }
+            wrong_stored_id = fixture.mobile_login(label, 0, 0, false).await.id;
+        }
+        assert!(!stored_ids.contains(&wrong_stored_id));
+        let wrong_stored = request
+            .method(
+                Method::DELETE,
+                &format!("/api/v1/auth/sessions/{wrong_stored_id}"),
+            )
+            .add_header("authorization", format!("Bearer {app}"))
+            .await;
+        assert_eq!(wrong_stored.status_code(), 404, "wrong stored namespace");
+        not_found.push(("wrong stored namespace", wrong_stored));
         let revoked = request
-            .method(Method::DELETE, "/api/v1/auth/sessions/88002")
-            .add_header("authorization", "Bearer synthetic-current-session")
+            .method(
+                Method::DELETE,
+                format!("/api/v1/auth/sessions/{expired_id}").as_str(),
+            )
+            .add_header("authorization", format!("Bearer {}", session))
             .await;
         not_found.push((
             "repeat revoke",
             request
-                .method(Method::DELETE, "/api/v1/auth/sessions/88002")
-                .add_header("authorization", "Bearer synthetic-current-session")
+                .method(
+                    Method::DELETE,
+                    format!("/api/v1/auth/sessions/{expired_id}").as_str(),
+                )
+                .add_header("authorization", format!("Bearer {}", session))
                 .await,
         ));
         let absent = request.method(Method::DELETE, "/api/v1/auth/logout").await;
@@ -1590,11 +1896,7 @@ pub mod account {
             .add_header("authorization", "Bearer unknown")
             .await;
         let mut logouts = Vec::new();
-        for bearer in [
-            "synthetic-current-session",
-            "synthetic-app-token",
-            mobile.as_str(),
-        ] {
+        for bearer in [session.as_str(), app.as_str(), mobile.as_str()] {
             let first = request
                 .method(Method::DELETE, "/api/v1/auth/logout")
                 .add_header("authorization", format!("Bearer {bearer}"))
@@ -1609,17 +1911,9 @@ pub mod account {
                 .await;
             logouts.push((first, replay, after));
         }
-        let counts = fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT count(*) FROM versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/api_session/revoked') AS sessions, (SELECT count(*) FROM versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/api_app_token/revoked') AS app_tokens, (SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.revoked') AS mobile",
-        )).await.unwrap().unwrap();
-        let effects = (
-            counts.try_get::<i64>("", "sessions").unwrap(),
-            counts.try_get::<i64>("", "app_tokens").unwrap(),
-            counts.try_get::<i64>("", "mobile").unwrap(),
-        );
+        let effects = revocation_counts(&fixture).await;
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
 
         for response in [&revoked, &absent, &unknown] {
             assert_eq!(response.status_code(), 204);
@@ -1651,39 +1945,48 @@ pub mod account {
 
     #[tokio::test]
     async fn concurrent_account_revocation_and_logout_commit_one_effect_each() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+        let session = fixture.credential("synthetic-current-session");
+
+        let app = fixture.credential("synthetic-app-token");
         stored_credentials(&fixture).await;
+        let expired_id = fixture.session_id("synthetic-expired-session").await;
+        let app_id = fixture.app_token_id("synthetic-app-token").await;
         let mobile = mobile_token(&fixture).await;
-        let other_mobile = "synthetic-other-mobile-caller";
-        let target_mobile = "synthetic-mobile-revocation-target";
-        let other_digest = base64::engine::general_purpose::URL_SAFE
-            .encode(Sha256::digest(other_mobile.as_bytes()));
-        let target_digest = base64::engine::general_purpose::URL_SAFE
-            .encode(Sha256::digest(target_mobile.as_bytes()));
-        fixture.admin.execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76006,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$1,now()+interval '15 minutes',now(),now(),'Revocation target',now(),now()),(76007,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$2,now()+interval '15 minutes',now(),now(),'Second caller',now(),now())",
-            [target_digest.into(), other_digest.into()],
-        )).await.unwrap();
+        let other_mobile = fixture.credential("synthetic-other-mobile-caller");
+
+        let target = fixture
+            .mobile_login("synthetic-mobile-revocation-target", 0, 0, false)
+            .await;
+        let target_id = target.id;
+        let _other_mobile_grant = fixture
+            .mobile_login("synthetic-other-mobile-caller", 0, 0, false)
+            .await;
         let request = server(&boot);
 
         let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
         let (session_first, session_second, session_overlapped) = overlap_requests_at_row_lock(
             &fixture,
-            "SELECT id FROM api_sessions WHERE id=88002 FOR UPDATE",
+            StoredRow::Session(expired_id),
             "UPDATE api_sessions SET revoked_at=%",
             async {
                 start.wait().await;
                 request
-                    .method(Method::DELETE, "/api/v1/auth/sessions/88002")
-                    .add_header("authorization", "Bearer synthetic-current-session")
+                    .method(
+                        Method::DELETE,
+                        format!("/api/v1/auth/sessions/{expired_id}").as_str(),
+                    )
+                    .add_header("authorization", format!("Bearer {}", session))
                     .await
             },
             async {
                 start.wait().await;
                 request
-                    .method(Method::DELETE, "/api/v1/auth/sessions/88002")
-                    .add_header("authorization", "Bearer synthetic-app-token")
+                    .method(
+                        Method::DELETE,
+                        format!("/api/v1/auth/sessions/{expired_id}").as_str(),
+                    )
+                    .add_header("authorization", format!("Bearer {}", app))
                     .await
             },
         )
@@ -1692,19 +1995,25 @@ pub mod account {
         let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
         let (mobile_first, mobile_second, mobile_overlapped) = overlap_requests_at_row_lock(
             &fixture,
-            "SELECT id FROM oauth_grants WHERE id=76006 FOR UPDATE",
+            StoredRow::Grant(target_id),
             "UPDATE oauth_grants SET revoked_at=%",
             async {
                 start.wait().await;
                 request
-                    .method(Method::DELETE, "/api/v1/auth/sessions/76006")
+                    .method(
+                        Method::DELETE,
+                        format!("/api/v1/auth/sessions/{target_id}").as_str(),
+                    )
                     .add_header("authorization", format!("Bearer {mobile}"))
                     .await
             },
             async {
                 start.wait().await;
                 request
-                    .method(Method::DELETE, "/api/v1/auth/sessions/76006")
+                    .method(
+                        Method::DELETE,
+                        format!("/api/v1/auth/sessions/{target_id}").as_str(),
+                    )
                     .add_header("authorization", format!("Bearer {other_mobile}"))
                     .await
             },
@@ -1714,39 +2023,59 @@ pub mod account {
         let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
         let (logout_first, logout_second, logout_overlapped) = overlap_requests_at_row_lock(
             &fixture,
-            "SELECT id FROM api_app_tokens WHERE id=88010 FOR UPDATE",
+            StoredRow::App(app_id),
             "UPDATE api_app_tokens SET revoked_at=%",
             async {
                 start.wait().await;
                 request
                     .method(Method::DELETE, "/api/v1/auth/logout")
-                    .add_header("authorization", "Bearer synthetic-app-token")
+                    .add_header("authorization", format!("Bearer {}", app))
                     .await
             },
             async {
                 start.wait().await;
                 request
                     .method(Method::DELETE, "/api/v1/auth/logout")
-                    .add_header("authorization", "Bearer synthetic-app-token")
+                    .add_header("authorization", format!("Bearer {}", app))
                     .await
             },
         )
         .await;
 
-        let effects = fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT revoked_at IS NOT NULL FROM api_sessions WHERE id=88002) AS session_revoked, (SELECT revoked_at IS NOT NULL FROM oauth_grants WHERE id=76006) AS mobile_revoked, (SELECT revoked_at IS NOT NULL FROM api_app_tokens WHERE id=88010) AS app_revoked, (SELECT count(*) FROM versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/api_session/revoked') AS session_audits, (SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.revoked') AS mobile_audits, (SELECT count(*) FROM versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/api_app_token/revoked') AS app_audits",
-        )).await.unwrap().unwrap();
+        let session_revoked =
+            api_sessions::Entity::find_by_id(fixture.session_id("synthetic-expired-session").await)
+                .one(&fixture.admin)
+                .await
+                .unwrap()
+                .unwrap()
+                .revoked_at
+                .is_some();
+        let mobile_revoked = oauth_grants::Entity::find_by_id(target.id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .revoked_at
+            .is_some();
+        let app_revoked =
+            api_app_tokens::Entity::find_by_id(fixture.app_token_id("synthetic-app-token").await)
+                .one(&fixture.admin)
+                .await
+                .unwrap()
+                .unwrap()
+                .revoked_at
+                .is_some();
+        let counts = revocation_counts(&fixture).await;
         let persisted = (
-            effects.try_get::<bool>("", "session_revoked").unwrap(),
-            effects.try_get::<bool>("", "mobile_revoked").unwrap(),
-            effects.try_get::<bool>("", "app_revoked").unwrap(),
-            effects.try_get::<i64>("", "session_audits").unwrap(),
-            effects.try_get::<i64>("", "mobile_audits").unwrap(),
-            effects.try_get::<i64>("", "app_audits").unwrap(),
+            session_revoked,
+            mobile_revoked,
+            app_revoked,
+            counts.0,
+            counts.1,
+            counts.2,
         );
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
 
         assert!(
             session_overlapped,
@@ -1792,23 +2121,19 @@ pub mod account {
 
     #[tokio::test]
     async fn integration_grant_cannot_manage_account_sessions_but_can_log_out() {
-        let (fixture, boot) = boot_fixture().await;
-        let smart = "synthetic-smart-access";
-        let digest =
-            base64::engine::general_purpose::URL_SAFE.encode(Sha256::digest(smart.as_bytes()));
-        fixture.admin.execute_unprepared(
-            "INSERT INTO oauth_applications(id,account_id,client_id,client_kind,name,redirect_uri,scopes,token_endpoint_auth_method,client_secret_hash,created_at,updated_at) VALUES(75003,71001,'smart-journey','integration','Synthetic SMART journey','https://example.test/callback?tenant=7','launch/patient patient/*.rs offline_access','client_secret_post',crypt('password',gen_salt('bf',4)),now(),now())"
-        ).await.unwrap();
-        fixture.admin.execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,household_membership_id,person_id,permissions_version,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76003,71001,75003,'integration',74001,73001,1,'https://example.test/callback?tenant=7','launch/patient patient/*.rs offline_access',$1,now()+interval '15 minutes',now(),now(),'SMART client',now(),now())",
-            [digest.into()],
-        )).await.unwrap();
+        let (fixture, boot) = boot_request_fixture().await;
+        let account_id = fixture.account.id;
+        let person_id = fixture.account.person_id;
+        let membership_id = fixture.membership.id;
+
+        let smart = fixture.credential("synthetic-smart-access");
+        let integration = fixture.integration(&smart).await;
+        let integration_application_id = integration.oauth_application_id;
         let request = server(&boot);
         let mut denied = Vec::new();
-        for (method, path, body) in account_surface_routes() {
+        for (method, path, body) in account_surface_routes(&fixture) {
             let pending = request
-                .method(method.clone(), path)
+                .method(method.clone(), &path)
                 .add_header("authorization", format!("Bearer {smart}"));
             let pending = match &body {
                 Some(body) => pending.json(body),
@@ -1816,30 +2141,45 @@ pub mod account {
             };
             denied.push((method.as_str().to_lowercase(), path, pending.await));
         }
-        let before = fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT revoked_at IS NULL FROM oauth_grants WHERE id=76003) AS active, (SELECT count(*) FROM security_audit_events WHERE household_id=72001 AND actor_account_id=71001 AND event_type='smart_oauth.revoked') AS audits",
-        )).await.unwrap().unwrap();
-        let active_before: bool = before.try_get("", "active").unwrap();
-        let audit_before: i64 = before.try_get("", "audits").unwrap();
+        let active_before = oauth_grants::Entity::find_by_id(integration.id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .revoked_at
+            .is_none();
+        let audit_before = security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+            .filter(security_audit_events::Column::ActorAccountId.eq(fixture.account.id))
+            .filter(security_audit_events::Column::EventType.eq("smart_oauth.revoked"))
+            .count(&fixture.admin)
+            .await
+            .unwrap();
         let logout = request
             .method(Method::DELETE, "/api/v1/auth/logout")
             .add_header("authorization", format!("Bearer {smart}"))
             .await;
-        let first = fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT revoked_at IS NOT NULL FROM oauth_grants WHERE id=76003) AS revoked, (SELECT count(*) FROM security_audit_events WHERE household_id=72001 AND actor_account_id=71001 AND event_type='smart_oauth.revoked') AS audits, (SELECT max(request_id) FROM security_audit_events WHERE household_id=72001 AND actor_account_id=71001 AND event_type='smart_oauth.revoked') AS audit_request_id",
-        )).await.unwrap().unwrap();
-        let revoked: bool = first.try_get("", "revoked").unwrap();
-        let audit_first: i64 = first.try_get("", "audits").unwrap();
-        let audit_request_id: Option<String> = first.try_get("", "audit_request_id").unwrap();
-        let audit = fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT actor_membership_id,metadata,audit_context FROM security_audit_events WHERE household_id=72001 AND actor_account_id=71001 AND event_type='smart_oauth.revoked' LIMIT 1",
-        )).await.unwrap().unwrap();
-        let audit_membership: Option<i64> = audit.try_get("", "actor_membership_id").unwrap();
-        let audit_metadata: Value = audit.try_get("", "metadata").unwrap();
-        let audit_context: Value = audit.try_get("", "audit_context").unwrap();
+        let revoked = oauth_grants::Entity::find_by_id(integration.id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .revoked_at
+            .is_some();
+        let audits = security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+            .filter(security_audit_events::Column::ActorAccountId.eq(fixture.account.id))
+            .filter(security_audit_events::Column::EventType.eq("smart_oauth.revoked"))
+            .order_by_desc(security_audit_events::Column::Id)
+            .all(&fixture.admin)
+            .await
+            .unwrap();
+        let audit_first = u64::try_from(audits.len()).unwrap();
+        let audit = &audits[0];
+        let audit_request_id = audit.request_id.clone();
+        let audit_membership = audit.actor_membership_id;
+        let audit_metadata = audit.metadata.clone();
+        let audit_context = audit.audit_context.clone();
         let replay = request
             .method(Method::DELETE, "/api/v1/auth/logout")
             .add_header("authorization", format!("Bearer {smart}"))
@@ -1848,13 +2188,15 @@ pub mod account {
             .get("/api/v1/auth/sessions")
             .add_header("authorization", format!("Bearer {smart}"))
             .await;
-        let final_row = fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS audits FROM security_audit_events WHERE household_id=72001 AND actor_account_id=71001 AND event_type='smart_oauth.revoked'",
-        )).await.unwrap().unwrap();
-        let audit_final: i64 = final_row.try_get("", "audits").unwrap();
+        let audit_final = security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+            .filter(security_audit_events::Column::ActorAccountId.eq(fixture.account.id))
+            .filter(security_audit_events::Column::EventType.eq("smart_oauth.revoked"))
+            .count(&fixture.admin)
+            .await
+            .unwrap();
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
 
         assert!(active_before);
         assert!(revoked);
@@ -1864,17 +2206,20 @@ pub mod account {
             logout.header("x-request-id").to_str().ok()
         );
         assert_eq!(audit_final, audit_first);
-        assert_eq!(audit_membership, Some(74001));
-        assert_eq!(audit_metadata["oauth_application_id"], 75003);
-        assert_eq!(audit_metadata["account_id"], 71001);
-        assert_eq!(audit_metadata["household_membership_id"], 74001);
-        assert_eq!(audit_metadata["person_id"], 73001);
+        assert_eq!(audit_membership, Some(membership_id));
+        assert_eq!(
+            audit_metadata["oauth_application_id"],
+            integration_application_id
+        );
+        assert_eq!(audit_metadata["account_id"], account_id);
+        assert_eq!(audit_metadata["household_membership_id"], membership_id);
+        assert_eq!(audit_metadata["person_id"], person_id);
         assert_eq!(
             audit_context["request_id"],
             audit_request_id.as_deref().unwrap()
         );
-        assert!(!audit_metadata.to_string().contains(smart));
-        assert!(!audit_context.to_string().contains(smart));
+        assert!(!audit_metadata.to_string().contains(smart.as_str()));
+        assert!(!audit_context.to_string().contains(smart.as_str()));
         for (method, path, response) in denied {
             assert_eq!(response.status_code(), 401, "{method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
@@ -1884,7 +2229,7 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "unauthorized");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(&method, path, 401, &body);
+            assert_response_schema(&method, &path, 401, &body);
         }
         for response in [logout, replay] {
             assert_eq!(response.status_code(), 204);
@@ -1897,7 +2242,8 @@ pub mod account {
 
     #[tokio::test]
     async fn guardian_declaration_listing_rejects_invalid_windows_before_authentication() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+
         let token = mobile_token(&fixture).await;
         let request = server(&boot);
         let mut responses = Vec::new();
@@ -1920,7 +2266,7 @@ pub mod account {
             ));
         }
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
         for (suffix, anonymous, authenticated) in responses {
             for response in [&anonymous, &authenticated] {
                 assert_eq!(response.status_code(), 422, "{suffix}");
@@ -1936,11 +2282,13 @@ pub mod account {
 
     #[tokio::test]
     async fn account_surface_lock_timeout_returns_internal_error_envelopes() {
-        let (fixture, boot) = boot_fixture().await;
+        let (fixture, boot) = boot_request_fixture().await;
+
         let token = mobile_token(&fixture).await;
         let blocker = fixture.admin.begin().await.unwrap();
-        blocker
-            .execute_unprepared("SELECT id FROM accounts WHERE id=71001 FOR NO KEY UPDATE")
+        accounts::Entity::find_by_id(fixture.account.id)
+            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+            .one(&blocker)
             .await
             .unwrap();
         let request = server(&boot);
@@ -1981,7 +2329,7 @@ pub mod account {
         );
         blocker.rollback().await.unwrap();
         drop(request);
-        close(fixture, boot).await;
+        close_request(fixture, boot).await;
         for (method, path, response) in [
             ("get", "/api/v1/auth/profile", profile),
             ("patch", "/api/v1/auth/profile", profile_update),

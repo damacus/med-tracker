@@ -108,6 +108,7 @@ impl<'a> Page<'a> {
             return browser::unavailable();
         };
         let mut data = rendering::index(context, rows, query, zone, draft, error);
+        data["slug"] = json!(self.path.0);
         data["authenticity_token"] = json!(authenticity_token);
         data["path"] = json!(format!(
             "/households/{}/people/{}/treatments/{}/{}/doses",

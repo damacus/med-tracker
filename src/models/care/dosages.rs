@@ -26,7 +26,7 @@ use uuid::Uuid;
 
 pub use reading::{Pagination, for_medication, list, read, representation as represent};
 pub use removal::destroy;
-pub use validation::{DosageInput, FormDosageInput};
+pub use validation::{DosageInput, DoseCycle, FormDosageInput};
 use validation::{storage_decimal, valid_persisted_dosage};
 pub(crate) use writing::{add_stock, create_with_parent, update_stock_checked};
 pub use writing::{create, update};

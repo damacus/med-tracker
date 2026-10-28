@@ -1,7 +1,9 @@
 use chrono::{FixedOffset, Utc};
+#[path = "browser_fixtures.rs"]
+pub mod browser;
 use med_tracker::models::_entities::{
     accounts, household_memberships, households, identity_onboarding, locations, medications,
-    oauth_applications, oauth_grants, people, person_access_grants, person_medications, users,
+    oauth_applications, oauth_grants, people, person_access_grants, person_medications,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait, IntoActiveModel,
@@ -154,18 +156,6 @@ async fn seed_verified_user(db: &DatabaseConnection) {
     account.status = Set(2);
     account.update(db).await.expect("verify fixture account");
     seed_native_password(db, 71001).await;
-    users::Entity::insert(users::ActiveModel {
-        id: Set(77001),
-        person_id: Set(73001),
-        email_address: Set("persistence@example.test".into()),
-
-        created_at: Set(now()),
-        updated_at: Set(now()),
-        ..Default::default()
-    })
-    .exec(db)
-    .await
-    .expect("seed user");
 }
 
 pub async fn seed_care_doses(db: &DatabaseConnection) {
@@ -661,18 +651,6 @@ pub async fn seed_tenant_access(db: &DatabaseConnection) {
     .exec(db)
     .await
     .expect("seed other membership");
-    users::Entity::insert(users::ActiveModel {
-        id: Set(77002),
-        person_id: Set(73004),
-        email_address: Set("other@example.test".into()),
-
-        created_at: Set(now()),
-        updated_at: Set(now()),
-        ..Default::default()
-    })
-    .exec(db)
-    .await
-    .expect("seed other user");
     person_access_grants::Entity::insert(person_access_grants::ActiveModel {
         id: Set(78002),
         household_id: Set(72002),

@@ -42,7 +42,10 @@ pub(super) async fn run(ctx: &AppContext) -> Result<(), DbErr> {
 }
 
 pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbErr> {
-    let origin = ctx.config.server.full_url();
+    let origin = crate::models::settings::public_origin(ctx)
+        .map_err(|_| invalid())?
+        .origin()
+        .ascii_serialization();
     let mut headers = header::HeaderMap::new();
     headers.insert(
         "x-medtracker-canary-smoke",

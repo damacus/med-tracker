@@ -1,5 +1,7 @@
 use super::*;
+use med_tracker::models::_entities as rows;
 use sea_orm::TransactionTrait;
+use sea_orm::sea_query::{Expr, ExprTrait, Func, Query};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use tracing::field::{Field, Visit};
@@ -8,7 +10,16 @@ use tracing::span::{Attributes, Id, Record};
 use tracing::{Event, Metadata, Subscriber};
 
 #[derive(Clone, Default)]
-struct ImportTimingEvents(Arc<Mutex<Vec<serde_json::Value>>>);
+struct ImportTimingEvents(
+    Arc<Mutex<Vec<serde_json::Value>>>,
+    Arc<Mutex<Option<ImportPause>>>,
+);
+
+struct ImportPause {
+    phase: &'static str,
+    reached: tokio::sync::oneshot::Sender<()>,
+    resume: std::sync::mpsc::Receiver<()>,
+}
 
 #[derive(Default)]
 struct ImportTimingFields(serde_json::Map<String, serde_json::Value>);
@@ -39,6 +50,7 @@ impl Visit for ImportTimingFields {
 impl Subscriber for ImportTimingEvents {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         metadata.fields().field("duration_ms").is_some()
+            || metadata.fields().field("secondary_failure").is_some()
     }
 
     fn new_span(&self, _: &Attributes<'_>) -> Id {
@@ -52,6 +64,28 @@ impl Subscriber for ImportTimingEvents {
     fn event(&self, event: &Event<'_>) {
         let mut fields = ImportTimingFields::default();
         event.record(&mut fields);
+        let pause = {
+            let mut pending = self.1.lock().unwrap();
+            if pending.as_ref().is_some_and(|pause| {
+                fields
+                    .0
+                    .get("phase")
+                    .is_some_and(|phase| phase == pause.phase)
+            }) {
+                pending.take()
+            } else {
+                None
+            }
+        };
+        if let Some(pause) = pause {
+            let _ = pause.reached.send(());
+            tokio::task::block_in_place(|| {
+                pause
+                    .resume
+                    .recv_timeout(std::time::Duration::from_secs(30))
+            })
+            .unwrap();
+        }
         self.0.lock().unwrap().push(fields.0.into());
     }
 
@@ -61,6 +95,24 @@ impl Subscriber for ImportTimingEvents {
 }
 
 impl ImportTimingEvents {
+    fn pause_at(
+        phase: &'static str,
+    ) -> (
+        Self,
+        tokio::sync::oneshot::Receiver<()>,
+        std::sync::mpsc::Sender<()>,
+    ) {
+        let events = Self::default();
+        let (reached, waiting) = tokio::sync::oneshot::channel();
+        let (resume, resumed) = std::sync::mpsc::channel();
+        *events.1.lock().unwrap() = Some(ImportPause {
+            phase,
+            reached,
+            resume: resumed,
+        });
+        (events, waiting, resume)
+    }
+
     fn for_run(&self, run_id: i64) -> Vec<serde_json::Value> {
         self.0
             .lock()
@@ -72,24 +124,252 @@ impl ImportTimingEvents {
     }
 }
 
-fn release() -> Vec<u8> {
-    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
-    for (name, xml) in [
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn nhs_dmd_reconciled_worker_preserves_specific_failure_without_publishing() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
+    let app = Application::new().await;
+    let previous = med_tracker::models::nhs_dmd::upload(&app.context, "previous.zip", release())
+        .await
+        .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, previous)
+        .await
+        .unwrap();
+    for (phase, bytes, expected, earlier_failure) in [
         (
-            "f_ampp2_3000000.xml",
-            "<ACTUAL_MEDICINAL_PROD_PACKS><AMPPS><AMPP><APPID>777</APPID><NM>Scanner imported tablets</NM></AMPP></AMPPS></ACTUAL_MEDICINAL_PROD_PACKS>",
+            "total",
+            release_with_ampp_xml("<AMPPS><AMPP><AMPP></AMPP></AMPP></AMPPS>"),
+            Some("Nested AMPP record in release XML"),
+            None,
         ),
         (
-            "f_gtin2_0000000.xml",
-            "<GTIN_DETAILS><AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA><GTIN>5016298210989</GTIN><STARTDT>2020-01-01</STARTDT></GTINDATA></AMPP></AMPPS></GTIN_DETAILS>",
+            "total",
+            release_with_ampp_xml("<AMPPS><AMPP><AMPP></AMPP></AMPP></AMPPS>"),
+            None,
+            Some("Earlier specific failure"),
+        ),
+        (
+            "parse_gtin",
+            release_with_amp("replacement", "5016298210990"),
+            None,
+            None,
         ),
     ] {
+        let id = med_tracker::models::nhs_dmd::upload(&app.context, "stalled.zip", bytes)
+            .await
+            .unwrap();
+        let before = rows::nhs_dmd_imports::Entity::find_by_id(id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let archive_key = before.archive_key.unwrap();
+        let (events, reached, resume) = ImportTimingEvents::pause_at(phase);
+        let ctx = app.context.clone();
+        let worker = tokio::spawn(async move {
+            med_tracker::models::nhs_dmd::run(&ctx, id)
+                .with_subscriber(events)
+                .await
+        });
+        tokio::time::timeout(std::time::Duration::from_secs(30), reached)
+            .await
+            .unwrap()
+            .unwrap();
+        rows::nhs_dmd_imports::Entity::update_many()
+            .col_expr(
+                rows::nhs_dmd_imports::Column::UpdatedAt,
+                Expr::value(chrono::Utc::now().naive_utc() - chrono::Duration::minutes(31)),
+            )
+            .filter(rows::nhs_dmd_imports::Column::Id.eq(id))
+            .exec(&app.fixture.admin)
+            .await
+            .unwrap();
+        med_tracker::models::nhs_dmd::reconcile(&app.context)
+            .await
+            .unwrap();
+        if let Some(earlier_failure) = earlier_failure {
+            rows::nhs_dmd_imports::Entity::update_many()
+                .col_expr(
+                    rows::nhs_dmd_imports::Column::ErrorMessage,
+                    Expr::value(earlier_failure),
+                )
+                .filter(rows::nhs_dmd_imports::Column::Id.eq(id))
+                .exec(&app.fixture.admin)
+                .await
+                .unwrap();
+        }
+        let stale = rows::nhs_dmd_imports::Entity::find_by_id(id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(stale.status, 5);
+        assert_eq!(
+            stale.error_message.as_deref(),
+            Some(
+                earlier_failure
+                    .unwrap_or("The import stopped making progress. Upload the release again.")
+            )
+        );
+        resume.send(()).unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(30), worker)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        let failed = rows::nhs_dmd_imports::Entity::find_by_id(id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(failed.status, 5);
+        assert_eq!(failed.completed_at, stale.completed_at);
+        if let Some(expected) = expected {
+            assert_eq!(failed.error_message.as_deref(), Some(expected));
+            assert!(
+                failed
+                    .log
+                    .as_ref()
+                    .unwrap()
+                    .contains("stopped making progress")
+            );
+            assert!(
+                failed
+                    .log
+                    .as_ref()
+                    .unwrap()
+                    .contains(failed.error_message.as_ref().unwrap())
+            );
+        } else {
+            assert_eq!(failed.error_message, stale.error_message);
+        }
+        let store =
+            med_tracker::models::nhs_dmd::storage::ArchiveStore::configured(&app.context).unwrap();
+        assert!(failed.archive_key.is_none());
+        assert!(store.get(&archive_key).await.is_err());
+        let diagnostic = failed.error_message;
+        med_tracker::models::nhs_dmd::run(&app.context, id)
+            .await
+            .unwrap();
+        let retried = rows::nhs_dmd_imports::Entity::find_by_id(id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(retried.status, 5);
+        assert_eq!(retried.error_message, diagnostic);
+        assert!(
+            rows::nhs_dmd_barcodes::Entity::find()
+                .filter(rows::nhs_dmd_barcodes::Column::Gtin.eq("5016298210989"))
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            rows::nhs_dmd_barcodes::Entity::find()
+                .filter(rows::nhs_dmd_barcodes::Column::Gtin.eq("5016298210990"))
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+    app.close().await;
+}
+
+fn release() -> Vec<u8> {
+    release_with_ampp_xml(
+        "<ACTUAL_MEDICINAL_PROD_PACKS><AMPPS><AMPP><APPID>777</APPID><NM>Scanner imported tablets</NM></AMPP></AMPPS></ACTUAL_MEDICINAL_PROD_PACKS>",
+    )
+}
+
+fn release_with_ampp_xml(ampp: &str) -> Vec<u8> {
+    release_with_xml(
+        ampp,
+        "<GTIN_DETAILS><AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA><GTIN>5016298210989</GTIN><STARTDT>2020-01-01</STARTDT></GTINDATA></AMPP></AMPPS></GTIN_DETAILS>",
+    )
+}
+
+fn release_with_xml(ampp: &str, gtin: &str) -> Vec<u8> {
+    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for (name, xml) in [("f_ampp2_3000000.xml", ampp), ("f_gtin2_0000000.xml", gtin)] {
         writer
             .start_file(name, zip::write::SimpleFileOptions::default())
             .unwrap();
         writer.write_all(xml.as_bytes()).unwrap();
     }
     writer.finish().unwrap().into_inner()
+}
+
+#[tokio::test]
+async fn nhs_dmd_parser_failures_survive_progress_failure() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
+    let app = Application::new().await;
+    let ampp = format!(
+        "<AMPPS>{}<AMPP><AMPP></AMPP></AMPP></AMPPS>",
+        "<AMPP/>".repeat(250)
+    );
+    let gtin = format!(
+        "<AMPPS><AMPP>{}<GTINDATA><GTINDATA></GTINDATA></GTINDATA></AMPP></AMPPS>",
+        "<GTINDATA/>".repeat(250)
+    );
+    for (phase, bytes, expected) in [
+        (
+            "parse_ampp",
+            release_with_ampp_xml(&ampp),
+            "Nested AMPP record in release XML",
+        ),
+        (
+            "parse_gtin",
+            release_with_xml(
+                "<AMPPS><AMPP><APPID>777</APPID><NM>Synthetic tablets</NM></AMPP></AMPPS>",
+                &gtin,
+            ),
+            "Nested GTINDATA record in GTIN XML",
+        ),
+    ] {
+        let id = med_tracker::models::nhs_dmd::upload(&app.context, "broken.zip", bytes)
+            .await
+            .unwrap();
+        // SeaQuery TableAlterStatement has no add-CHECK API; this fixed fault-injection constraint needs PostgreSQL DDL and exclusive execution.
+        app.fixture.admin.execute_unprepared("ALTER TABLE nhs_dmd_imports ADD CONSTRAINT synthetic_progress_failure CHECK (processed_records < 250) NOT VALID").await.unwrap();
+        let events = ImportTimingEvents::default();
+        let result = med_tracker::models::nhs_dmd::run(&app.context, id)
+            .with_subscriber(events.clone())
+            .await;
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    sea_orm::sea_query::Table::alter()
+                        .table("nhs_dmd_imports")
+                        .drop_constraint("synthetic_progress_failure"),
+                ),
+            )
+            .await
+            .unwrap();
+        result.unwrap();
+        let failed = rows::nhs_dmd_imports::Entity::find_by_id(id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(failed.status, 5);
+        assert_eq!(failed.error_message.as_deref(), Some(expected));
+        assert!(failed.log.as_ref().unwrap().contains(expected));
+        assert!(failed.archive_key.is_none());
+        let captured = events.for_run(id);
+        assert!(
+            captured.iter().any(|event| event["phase"] == phase
+                && event["secondary_failure"] == "activity_reporting")
+        );
+        assert!(
+            !serde_json::to_string(&captured)
+                .unwrap()
+                .contains("synthetic_progress_failure")
+        );
+    }
+    app.close().await;
 }
 
 fn release_with_amp(amp: &str, gtin: &str) -> Vec<u8> {
@@ -157,6 +437,7 @@ async fn booted_application_registers_named_storage_stores() {
 
 #[tokio::test]
 async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_failure() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let timings = ImportTimingEvents::default();
     let _subscriber = tracing::subscriber::set_default(timings.clone());
     let app = Application::new().await;
@@ -213,6 +494,7 @@ async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_fa
 
 #[tokio::test]
 async fn nhs_dmd_synthetic_supplementary_release_publishes_trade_relationships() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
     let id = med_tracker::models::nhs_dmd::upload(
         &app.context,
@@ -224,19 +506,79 @@ async fn nhs_dmd_synthetic_supplementary_release_publishes_trade_relationships()
     med_tracker::models::nhs_dmd::run(&app.context, id)
         .await
         .unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT i.status, (SELECT count(*) FROM nhs_dmd_trade_family_groups) AS groups, (SELECT count(*) FROM nhs_dmd_trade_families) AS families, (SELECT count(*) FROM nhs_dmd_amp_trade_families WHERE amp_code = 'A1') AS memberships, (SELECT count(*) FROM nhs_dmd_supplementary_releases) AS releases FROM nhs_dmd_imports i WHERE i.id = $1",
-        [id.into()],
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i32>("", "status").unwrap(), 4);
-    for field in ["groups", "families", "memberships", "releases"] {
-        assert_eq!(row.try_get::<i64>("", field).unwrap(), 1, "{field}");
+    let row = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.status, 4);
+    for (field, count) in [
+        (
+            "groups",
+            rows::nhs_dmd_trade_family_groups::Entity::find()
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+        ),
+        (
+            "families",
+            rows::nhs_dmd_trade_families::Entity::find()
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+        ),
+        (
+            "memberships",
+            rows::nhs_dmd_amp_trade_families::Entity::find()
+                .filter(rows::nhs_dmd_amp_trade_families::Column::AmpCode.eq("A1"))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+        ),
+        (
+            "releases",
+            rows::nhs_dmd_supplementary_releases::Entity::find()
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+        ),
+    ] {
+        assert_eq!(count, 1, "{field}");
     }
-    let linkage = app.fixture.admin.query_one_raw(Statement::from_string(
-        DbBackend::Postgres,
-        "SELECT f.code AS family_code, g.code AS group_code, m.amp_code, r.released_on FROM nhs_dmd_amp_trade_families m JOIN nhs_dmd_trade_families f ON f.id=m.trade_family_id JOIN nhs_dmd_trade_family_groups g ON g.id=f.trade_family_group_id CROSS JOIN nhs_dmd_supplementary_releases r WHERE m.amp_code='A1'",
-    )).await.unwrap().unwrap();
+    let linkage = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(Expr::col(("f", "code")), "family_code")
+                    .expr_as(Expr::col(("g", "code")), "group_code")
+                    .column(("m", "amp_code"))
+                    .column((
+                        rows::nhs_dmd_supplementary_releases::Entity,
+                        rows::nhs_dmd_supplementary_releases::Column::ReleasedOn,
+                    ))
+                    .from_as(rows::nhs_dmd_amp_trade_families::Entity, "m")
+                    .join_as(
+                        sea_orm::JoinType::InnerJoin,
+                        rows::nhs_dmd_trade_families::Entity,
+                        "f",
+                        Expr::col(("f", "id")).eq(Expr::col(("m", "trade_family_id"))),
+                    )
+                    .join_as(
+                        sea_orm::JoinType::InnerJoin,
+                        rows::nhs_dmd_trade_family_groups::Entity,
+                        "g",
+                        Expr::col(("g", "id")).eq(Expr::col(("f", "trade_family_group_id"))),
+                    )
+                    .cross_join(rows::nhs_dmd_supplementary_releases::Entity)
+                    .and_where(Expr::col(("m", "amp_code")).eq("A1"))
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(linkage.try_get::<String>("", "family_code").unwrap(), "F1");
     assert_eq!(linkage.try_get::<String>("", "group_code").unwrap(), "G1");
     assert_eq!(linkage.try_get::<String>("", "amp_code").unwrap(), "A1");
@@ -251,6 +593,7 @@ async fn nhs_dmd_synthetic_supplementary_release_publishes_trade_relationships()
 
 #[tokio::test]
 async fn nhs_dmd_blank_amp_code_omits_relationship_but_preserves_barcode_value() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
     let id = med_tracker::models::nhs_dmd::upload(
         &app.context,
@@ -262,17 +605,26 @@ async fn nhs_dmd_blank_amp_code_omits_relationship_but_preserves_barcode_value()
     med_tracker::models::nhs_dmd::run(&app.context, id)
         .await
         .unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(
-        DbBackend::Postgres,
-        "SELECT b.amp_code, (SELECT count(*) FROM nhs_dmd_ampp_relationships) AS relationships FROM nhs_dmd_barcodes b WHERE b.gtin='5016298210989'",
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<String>("", "amp_code").unwrap(), "   ");
-    assert_eq!(row.try_get::<i64>("", "relationships").unwrap(), 0);
+    let row = rows::nhs_dmd_barcodes::Entity::find()
+        .filter(rows::nhs_dmd_barcodes::Column::Gtin.eq("5016298210989"))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.amp_code.as_deref(), Some("   "));
+    assert_eq!(
+        rows::nhs_dmd_ampp_relationships::Entity::find()
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
     app.close().await;
 }
 
 #[tokio::test]
 async fn nhs_dmd_failed_replacement_preserves_previous_relationships_and_barcodes() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
     let first = med_tracker::models::nhs_dmd::upload(
         &app.context,
@@ -284,6 +636,7 @@ async fn nhs_dmd_failed_replacement_preserves_previous_relationships_and_barcode
     med_tracker::models::nhs_dmd::run(&app.context, first)
         .await
         .unwrap();
+    // SeaQuery TableAlterStatement cannot mark a fault-injection CHECK constraint NOT VALID; these cases require exclusive execution.
     app.fixture.admin.execute_unprepared("ALTER TABLE nhs_dmd_barcodes ADD CONSTRAINT reject_replacement_gtin CHECK (gtin <> '5016298210990') NOT VALID").await.unwrap();
     let second = med_tracker::models::nhs_dmd::upload(
         &app.context,
@@ -298,33 +651,64 @@ async fn nhs_dmd_failed_replacement_preserves_previous_relationships_and_barcode
     let old_relationship = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT amp_code FROM nhs_dmd_ampp_relationships WHERE ampp_code = '777'",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_ampp_relationships", "amp_code")))
+                    .from("nhs_dmd_ampp_relationships")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_ampp_relationships", "ampp_code")).eq(Expr::val("777")),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
     let old_barcode = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT amp_code FROM nhs_dmd_barcodes WHERE gtin = '5016298210989'",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_barcodes", "amp_code")))
+                    .from("nhs_dmd_barcodes")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_barcodes", "gtin")).eq(Expr::val("5016298210989")),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
     let failed_run = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status FROM nhs_dmd_imports WHERE id = $1",
-            [second.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(second)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
+        .unwrap();
+    // SeaQuery TableAlterStatement cannot mark a fault-injection CHECK constraint NOT VALID; these cases require exclusive execution.
+    app.fixture
+        .admin
+        .execute_raw(
+            app.fixture.admin.get_database_backend().build(
+                &sea_orm::sea_query::Table::alter()
+                    .table("nhs_dmd_barcodes")
+                    .drop_constraint("reject_replacement_gtin")
+                    .to_owned(),
+            ),
+        )
+        .await
         .unwrap();
     app.close().await;
     assert_eq!(failed_run.try_get::<i32>("", "status").unwrap(), 5);
@@ -419,24 +803,47 @@ async fn stop_worker(
 
 #[tokio::test]
 async fn nhs_dmd_queue_failure_marks_import_failed_and_cleans_archive() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     assert_eq!(std::env::var("MEDTRACKER_OWNED_STORAGE").unwrap(), "1");
     let app = Application::new().await;
+    // SeaQuery TableAlterStatement cannot mark a fault-injection CHECK constraint NOT VALID; these cases require exclusive execution.
     app.fixture.admin.execute_unprepared("ALTER TABLE pg_loco_queue ADD CONSTRAINT synthetic_enqueue_failure CHECK(false) NOT VALID").await.unwrap();
     let result =
         med_tracker::models::nhs_dmd::upload(&app.context, "synthetic.zip", release()).await;
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,archive_key,error_message FROM nhs_dmd_imports ORDER BY id DESC LIMIT 1",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                    .expr(Expr::col(("nhs_dmd_imports", "error_message")))
+                    .from("nhs_dmd_imports")
+                    .order_by_expr(Expr::col(("nhs_dmd_imports", "id")), sea_orm::Order::Desc)
+                    .limit(1)
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
     let status: i32 = row.try_get("", "status").unwrap();
     let key: Option<String> = row.try_get("", "archive_key").unwrap();
     let error: Option<String> = row.try_get("", "error_message").unwrap();
+    // SeaQuery TableAlterStatement cannot mark a fault-injection CHECK constraint NOT VALID; these cases require exclusive execution.
+    app.fixture
+        .admin
+        .execute_raw(
+            app.fixture.admin.get_database_backend().build(
+                &sea_orm::sea_query::Table::alter()
+                    .table("pg_loco_queue")
+                    .drop_constraint("synthetic_enqueue_failure")
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap();
     app.close().await;
     assert!(result.is_err());
     assert_eq!(status, 5);
@@ -445,7 +852,119 @@ async fn nhs_dmd_queue_failure_marks_import_failed_and_cleans_archive() {
 }
 
 #[tokio::test]
+async fn nhs_dmd_archive_failure_refines_a_reconciled_run() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let (reached, waiting) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    let gate = Arc::new(tokio::sync::Mutex::new(Some((reached, resumed))));
+    let routes = axum::Router::new().fallback(move |method: axum::http::Method| {
+        let gate = gate.clone();
+        async move {
+            if matches!(method, axum::http::Method::GET | axum::http::Method::HEAD) {
+                let (reached, resumed) = gate.lock().await.take().unwrap();
+                reached.send(()).unwrap();
+                resumed.await.unwrap();
+                (
+                    axum::http::StatusCode::NOT_FOUND,
+                    "<Error><Code>NoSuchKey</Code></Error>",
+                )
+            } else if method == axum::http::Method::DELETE {
+                (axum::http::StatusCode::NO_CONTENT, "")
+            } else {
+                (axum::http::StatusCode::OK, "")
+            }
+        }
+    });
+    let storage_server = tokio::spawn(async move { axum::serve(listener, routes).await.unwrap() });
+    let upload_app = Application::new().await;
+    let id = med_tracker::models::nhs_dmd::upload(&upload_app.context, "unreadable.zip", release())
+        .await
+        .unwrap();
+    let archive = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&upload_app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let original_store =
+        med_tracker::models::nhs_dmd::storage::ArchiveStore::configured(&upload_app.context)
+            .unwrap();
+    let app =
+        Application::new_configured(Some("synthetic-dose-occurrence-signing-key"), |settings| {
+            settings["dmd_storage"] = json!({
+                "endpoint": endpoint,
+                "bucket": "synthetic-archive-failure",
+                "region": "us-east-1",
+                "access_key_id": "synthetic-access",
+                "secret_access_key": "synthetic-secret"
+            });
+        })
+        .await;
+    let ctx = app.context.clone();
+    let worker = tokio::spawn(async move { med_tracker::models::nhs_dmd::run(&ctx, id).await });
+    tokio::time::timeout(std::time::Duration::from_secs(30), waiting)
+        .await
+        .unwrap()
+        .unwrap();
+    rows::nhs_dmd_imports::Entity::update_many()
+        .col_expr(
+            rows::nhs_dmd_imports::Column::UpdatedAt,
+            Expr::value(chrono::Utc::now().naive_utc() - chrono::Duration::minutes(31)),
+        )
+        .filter(rows::nhs_dmd_imports::Column::Id.eq(id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::nhs_dmd::reconcile(&app.context)
+        .await
+        .unwrap();
+    let stale = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(stale.status, 5);
+    resume.send(()).unwrap();
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_secs(30), worker)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_err()
+    );
+    let failed = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    original_store
+        .delete(archive.archive_key.as_deref().unwrap())
+        .await
+        .unwrap();
+    app.close().await;
+    upload_app.close().await;
+    storage_server.abort();
+    let _ = storage_server.await;
+    assert_eq!(failed.status, 5);
+    assert_eq!(failed.completed_at, stale.completed_at);
+    assert_eq!(
+        failed.error_message.as_deref(),
+        Some("The release archive could not be read. Upload the release again.")
+    );
+    assert!(
+        failed
+            .log
+            .as_ref()
+            .unwrap()
+            .contains("stopped making progress")
+    );
+    assert!(failed.archive_key.is_none());
+}
+
+#[tokio::test]
 async fn nhs_dmd_missing_stored_object_marks_import_failed() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     assert_eq!(std::env::var("MEDTRACKER_OWNED_STORAGE").unwrap(), "1");
     let app = Application::new().await;
     let id = med_tracker::models::nhs_dmd::upload(&app.context, "synthetic.zip", release())
@@ -454,11 +973,15 @@ async fn nhs_dmd_missing_stored_object_marks_import_failed() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT archive_key FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -472,11 +995,16 @@ async fn nhs_dmd_missing_stored_object_marks_import_failed() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status,error_message FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .expr(Expr::col(("nhs_dmd_imports", "error_message")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -489,6 +1017,7 @@ async fn nhs_dmd_missing_stored_object_marks_import_failed() {
 
 #[tokio::test]
 async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     assert_eq!(std::env::var("MEDTRACKER_OWNED_STORAGE").unwrap(), "1");
     let app = Application::new().await;
     let id = med_tracker::models::nhs_dmd::upload(&app.context, "synthetic-release.zip", release())
@@ -497,11 +1026,15 @@ async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion()
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT archive_key FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -528,11 +1061,16 @@ async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion()
             let row = app
                 .fixture
                 .admin
-                .query_one_raw(Statement::from_sql_and_values(
-                    DbBackend::Postgres,
-                    "SELECT status,archive_key FROM nhs_dmd_imports WHERE id=$1",
-                    [id.into()],
-                ))
+                .query_one_raw(
+                    app.fixture.admin.get_database_backend().build(
+                        &Query::select()
+                            .expr(Expr::col(("nhs_dmd_imports", "status")))
+                            .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                            .from("nhs_dmd_imports")
+                            .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                            .to_owned(),
+                    ),
+                )
                 .await
                 .unwrap()
                 .unwrap();
@@ -554,13 +1092,38 @@ async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion()
     let found = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT code FROM nhs_dmd_barcodes WHERE gtin='5016298210989'",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_barcodes", "code")))
+                    .from("nhs_dmd_barcodes")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_barcodes", "gtin")).eq(Expr::val("5016298210989")),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap();
-    let progress = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT total_records,processed_records,imported_count,created_count,log FROM nhs_dmd_imports WHERE id=$1",[id.into()])).await.unwrap().unwrap();
+    let progress = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "total_records")))
+                    .expr(Expr::col(("nhs_dmd_imports", "processed_records")))
+                    .expr(Expr::col(("nhs_dmd_imports", "imported_count")))
+                    .expr(Expr::col(("nhs_dmd_imports", "created_count")))
+                    .expr(Expr::col(("nhs_dmd_imports", "log")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
     let missing = store.get(&key).await.is_err();
     app.close().await;
     assert_eq!(completed.unwrap(), 4);
@@ -580,6 +1143,7 @@ async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion()
 
 #[tokio::test]
 async fn nhs_dmd_nested_gtin_temp_files_are_removed_after_success_and_failure() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     assert_eq!(std::env::var("MEDTRACKER_OWNED_STORAGE").unwrap(), "1");
     let app = Application::new().await;
     let before = leaked_nested_directories();
@@ -596,11 +1160,15 @@ async fn nhs_dmd_nested_gtin_temp_files_are_removed_after_success_and_failure() 
     let completed = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status FROM nhs_dmd_imports WHERE id=$1",
-            [good.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(good)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap()
@@ -630,11 +1198,15 @@ async fn nhs_dmd_nested_gtin_temp_files_are_removed_after_success_and_failure() 
     let failed = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status FROM nhs_dmd_imports WHERE id=$1",
-            [bad.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(bad)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap()
@@ -654,6 +1226,7 @@ async fn nhs_dmd_nested_gtin_temp_files_are_removed_after_success_and_failure() 
 
 #[tokio::test]
 async fn nhs_dmd_queued_release_survives_worker_restart() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     assert_eq!(std::env::var("MEDTRACKER_OWNED_STORAGE").unwrap(), "1");
     let app = Application::new().await;
     let original = app.context.queue_provider.as_ref().unwrap().clone();
@@ -669,11 +1242,15 @@ async fn nhs_dmd_queued_release_survives_worker_restart() {
     let queued = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -684,11 +1261,16 @@ async fn nhs_dmd_queued_release_survives_worker_restart() {
             let row = app
                 .fixture
                 .admin
-                .query_one_raw(Statement::from_sql_and_values(
-                    DbBackend::Postgres,
-                    "SELECT status,archive_key FROM nhs_dmd_imports WHERE id=$1",
-                    [id.into()],
-                ))
+                .query_one_raw(
+                    app.fixture.admin.get_database_backend().build(
+                        &Query::select()
+                            .expr(Expr::col(("nhs_dmd_imports", "status")))
+                            .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                            .from("nhs_dmd_imports")
+                            .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                            .to_owned(),
+                    ),
+                )
                 .await
                 .unwrap()
                 .unwrap();
@@ -708,10 +1290,17 @@ async fn nhs_dmd_queued_release_survives_worker_restart() {
     let imported = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT code FROM nhs_dmd_barcodes WHERE gtin='5016298210989'",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_barcodes", "code")))
+                    .from("nhs_dmd_barcodes")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_barcodes", "gtin")).eq(Expr::val("5016298210989")),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap();
     app.close().await;
@@ -724,6 +1313,7 @@ async fn nhs_dmd_queued_release_survives_worker_restart() {
 
 #[tokio::test]
 async fn nhs_dmd_interrupted_release_fails_without_restart_rerun() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     assert_eq!(std::env::var("MEDTRACKER_OWNED_STORAGE").unwrap(), "1");
     let app = Application::new().await;
     let original = app.context.queue_provider.as_ref().unwrap().clone();
@@ -737,7 +1327,23 @@ async fn nhs_dmd_interrupted_release_fails_without_restart_rerun() {
         med_tracker::models::nhs_dmd::upload(&app.context, "interrupted-release.zip", release())
             .await
             .unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"UPDATE nhs_dmd_imports SET status=3,updated_at=now()-interval '31 minutes' WHERE id=$1",[id.into()])).await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::update()
+                    .table("nhs_dmd_imports")
+                    .value("status", Expr::val(3_i64))
+                    .value(
+                        "updated_at",
+                        Expr::val(chrono::Utc::now().naive_utc() - chrono::Duration::minutes(31)),
+                    )
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap();
     med_tracker::models::nhs_dmd::reconcile(&app.context)
         .await
         .unwrap();
@@ -747,10 +1353,25 @@ async fn nhs_dmd_interrupted_release_fails_without_restart_rerun() {
             let pending: i64 = app
                 .fixture
                 .admin
-                .query_one_raw(Statement::from_string(
-                    DbBackend::Postgres,
-                    "SELECT count(*) AS pending FROM pg_loco_queue WHERE name='ImportWorker' AND status IN ('queued','processing')",
-                ))
+                .query_one_raw(
+                    app.fixture.admin.get_database_backend().build(
+                        &Query::select()
+                            .expr_as(Expr::col(("pg_loco_queue", "id")).count(), "pending")
+                            .from("pg_loco_queue")
+                            .cond_where(
+                                sea_orm::Condition::all()
+                                    .add(
+                                        Expr::col(("pg_loco_queue", "name"))
+                                            .eq(Expr::val("ImportWorker")),
+                                    )
+                                    .add(
+                                        Expr::col(("pg_loco_queue", "status"))
+                                            .is_in(["queued", "processing"]),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                )
                 .await
                 .unwrap()
                 .unwrap()
@@ -768,21 +1389,34 @@ async fn nhs_dmd_interrupted_release_fails_without_restart_rerun() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status,archive_key,error_message FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                    .expr(Expr::col(("nhs_dmd_imports", "error_message")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
     let imported = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT code FROM nhs_dmd_barcodes WHERE gtin='5016298210989'",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_barcodes", "code")))
+                    .from("nhs_dmd_barcodes")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_barcodes", "gtin")).eq(Expr::val("5016298210989")),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap();
     app.close().await;
@@ -803,18 +1437,36 @@ async fn nhs_dmd_interrupted_release_fails_without_restart_rerun() {
 
 #[tokio::test]
 async fn nhs_dmd_reconciliation_fails_stale_imports_and_keeps_fresh_work_active() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO nhs_dmd_imports(id,uploaded_filename,status,created_at,updated_at) VALUES(94001,'stale.zip',3,now()-interval '31 minutes',now()-interval '31 minutes')").await.unwrap();
+    let stamp = chrono::Utc::now().naive_utc() - chrono::Duration::minutes(31);
+    let seeded_import = rows::nhs_dmd_imports::ActiveModel {
+        uploaded_filename: Set("stale.zip".into()),
+        status: Set(3),
+        created_at: Set(stamp),
+        updated_at: Set(stamp),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     med_tracker::models::nhs_dmd::reconcile(&app.context)
         .await
         .unwrap();
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status FROM nhs_dmd_imports WHERE id=94001",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(seeded_import.id)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -825,14 +1477,28 @@ async fn nhs_dmd_reconciliation_fails_stale_imports_and_keeps_fresh_work_active(
 
 #[tokio::test]
 async fn nhs_dmd_reconciliation_fails_stalled_import_even_while_worker_owns_lock() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO nhs_dmd_imports(id,uploaded_filename,status,created_at,updated_at) VALUES(94001,'stalled.zip',3,now()-interval '31 minutes',now()-interval '31 minutes')").await.unwrap();
+    let stamp = chrono::Utc::now().naive_utc() - chrono::Duration::minutes(31);
+    let seeded_import = rows::nhs_dmd_imports::ActiveModel {
+        uploaded_filename: Set("stalled.zip".into()),
+        status: Set(3),
+        created_at: Set(stamp),
+        updated_at: Set(stamp),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let lease = app.fixture.admin.begin().await.unwrap();
     lease
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT pg_advisory_xact_lock(7369918)",
-        ))
+        .query_one_raw(
+            lease.get_database_backend().build(
+                &Query::select()
+                    .expr(Func::cust("pg_advisory_xact_lock").args([Expr::val(7369918_i64)]))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap();
     med_tracker::models::nhs_dmd::reconcile(&app.context)
@@ -841,10 +1507,17 @@ async fn nhs_dmd_reconciliation_fails_stalled_import_even_while_worker_owns_lock
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status FROM nhs_dmd_imports WHERE id=94001",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(seeded_import.id)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -856,18 +1529,37 @@ async fn nhs_dmd_reconciliation_fails_stalled_import_even_while_worker_owns_lock
 
 #[tokio::test]
 async fn nhs_dmd_missing_archive_fails_without_blocking_future_uploads() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO nhs_dmd_imports(id,uploaded_filename,status,created_at,updated_at) VALUES(94001,'lost.zip',0,now(),now())").await.unwrap();
-    med_tracker::models::nhs_dmd::run(&app.context, 94001)
+    let stamp = chrono::Utc::now().naive_utc();
+    let seeded_import = rows::nhs_dmd_imports::ActiveModel {
+        uploaded_filename: Set("lost.zip".into()),
+        status: Set(0),
+        created_at: Set(stamp),
+        updated_at: Set(stamp),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, seeded_import.id)
         .await
         .unwrap();
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,error_message FROM nhs_dmd_imports WHERE id=94001",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .expr(Expr::col(("nhs_dmd_imports", "error_message")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(seeded_import.id)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -880,6 +1572,7 @@ async fn nhs_dmd_missing_archive_fails_without_blocking_future_uploads() {
 
 #[tokio::test]
 async fn nhs_dmd_rejects_concurrent_upload_and_allows_the_next_release_after_completion() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
     let first = med_tracker::models::nhs_dmd::upload(&app.context, "first.zip", release())
         .await
@@ -899,6 +1592,7 @@ async fn nhs_dmd_rejects_concurrent_upload_and_allows_the_next_release_after_com
 
 #[tokio::test]
 async fn nhs_dmd_rejects_tampered_archive_before_catalogue_writes() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
     let id = med_tracker::models::nhs_dmd::upload(&app.context, "synthetic.zip", release())
         .await
@@ -906,11 +1600,15 @@ async fn nhs_dmd_rejects_tampered_archive_before_catalogue_writes() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT archive_key FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -926,11 +1624,17 @@ async fn nhs_dmd_rejects_tampered_archive_before_catalogue_writes() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status,error_message,archive_key FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .expr(Expr::col(("nhs_dmd_imports", "error_message")))
+                    .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -940,10 +1644,17 @@ async fn nhs_dmd_rejects_tampered_archive_before_catalogue_writes() {
     let catalog = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT code FROM nhs_dmd_barcodes WHERE gtin='5016298210989'",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_barcodes", "code")))
+                    .from("nhs_dmd_barcodes")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_barcodes", "gtin")).eq(Expr::val("5016298210989")),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap();
     app.close().await;
@@ -955,6 +1666,7 @@ async fn nhs_dmd_rejects_tampered_archive_before_catalogue_writes() {
 
 #[tokio::test]
 async fn nhs_dmd_bad_zip_fails_and_does_not_publish_partial_catalogue() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
     let app = Application::new().await;
     let id = med_tracker::models::nhs_dmd::upload(
         &app.context,
@@ -969,11 +1681,16 @@ async fn nhs_dmd_bad_zip_fails_and_does_not_publish_partial_catalogue() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status,error_message FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_imports", "status")))
+                    .expr(Expr::col(("nhs_dmd_imports", "error_message")))
+                    .from("nhs_dmd_imports")
+                    .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -982,10 +1699,17 @@ async fn nhs_dmd_bad_zip_fails_and_does_not_publish_partial_catalogue() {
     let catalog = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT code FROM nhs_dmd_barcodes WHERE gtin='5016298210989'",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("nhs_dmd_barcodes", "code")))
+                    .from("nhs_dmd_barcodes")
+                    .cond_where(
+                        Expr::col(("nhs_dmd_barcodes", "gtin")).eq(Expr::val("5016298210989")),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap();
     app.close().await;
@@ -996,69 +1720,105 @@ async fn nhs_dmd_bad_zip_fails_and_does_not_publish_partial_catalogue() {
 
 #[tokio::test]
 async fn nhs_dmd_retries_terminal_cleanup_without_restarting_import() {
-    let app = Application::new().await;
-    let id = med_tracker::models::nhs_dmd::upload(&app.context, "synthetic.zip", release())
-        .await
-        .unwrap();
-    app.fixture.admin.execute_unprepared("ALTER TABLE nhs_dmd_imports ADD CONSTRAINT synthetic_cleanup_failure CHECK (archive_key IS NOT NULL) NOT VALID").await.unwrap();
-    assert!(
+    crate::reference_fixture::clean_nhs_catalogue().await;
+    for (bytes, expected_status) in [(release(), 4), (b"not a zip release".to_vec(), 5)] {
+        let app = Application::new().await;
+        let id = med_tracker::models::nhs_dmd::upload(&app.context, "synthetic.zip", bytes)
+            .await
+            .unwrap();
+        // SeaQuery TableAlterStatement cannot mark a fault-injection CHECK constraint NOT VALID; these cases require exclusive execution.
+        app.fixture.admin.execute_unprepared("ALTER TABLE nhs_dmd_imports ADD CONSTRAINT synthetic_cleanup_failure CHECK (archive_key IS NOT NULL) NOT VALID").await.unwrap();
+        assert!(
+            med_tracker::models::nhs_dmd::run(&app.context, id)
+                .await
+                .is_err()
+        );
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::select()
+                        .expr(Expr::col(("nhs_dmd_imports", "status")))
+                        .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                        .expr(Expr::col(("nhs_dmd_imports", "error_message")))
+                        .from("nhs_dmd_imports")
+                        .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                        .to_owned(),
+                ),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.try_get::<i32>("", "status").unwrap(), expected_status);
+        assert!(
+            row.try_get::<Option<String>>("", "archive_key")
+                .unwrap()
+                .is_some()
+        );
+        let diagnostic: Option<String> = row.try_get("", "error_message").unwrap();
+        assert_eq!(diagnostic.is_some(), expected_status == 5);
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &sea_orm::sea_query::Table::alter()
+                        .table("nhs_dmd_imports")
+                        .drop_constraint("synthetic_cleanup_failure")
+                        .to_owned(),
+                ),
+            )
+            .await
+            .unwrap();
         med_tracker::models::nhs_dmd::run(&app.context, id)
             .await
-            .is_err()
-    );
-    let row = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status,archive_key FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(row.try_get::<i32>("", "status").unwrap(), 4);
-    assert!(
-        row.try_get::<Option<String>>("", "archive_key")
+            .unwrap();
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::select()
+                        .expr(Expr::col(("nhs_dmd_imports", "status")))
+                        .expr(Expr::col(("nhs_dmd_imports", "archive_key")))
+                        .expr(Expr::col(("nhs_dmd_imports", "error_message")))
+                        .from("nhs_dmd_imports")
+                        .cond_where(Expr::col(("nhs_dmd_imports", "id")).eq(Expr::val(id)))
+                        .to_owned(),
+                ),
+            )
+            .await
             .unwrap()
-            .is_some()
-    );
-    app.fixture
-        .admin
-        .execute_unprepared("ALTER TABLE nhs_dmd_imports DROP CONSTRAINT synthetic_cleanup_failure")
-        .await
-        .unwrap();
-    med_tracker::models::nhs_dmd::run(&app.context, id)
-        .await
-        .unwrap();
-    let row = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status,archive_key FROM nhs_dmd_imports WHERE id=$1",
-            [id.into()],
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    let catalog = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT code FROM nhs_dmd_barcodes WHERE gtin='5016298210989'",
-        ))
-        .await
-        .unwrap();
-    app.close().await;
-    assert_eq!(row.try_get::<i32>("", "status").unwrap(), 4);
-    assert!(
-        row.try_get::<Option<String>>("", "archive_key")
-            .unwrap()
-            .is_none()
-    );
-    assert!(catalog.is_some());
+            .unwrap();
+        let catalog = app
+            .fixture
+            .admin
+            .query_one_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::select()
+                        .expr(Expr::col(("nhs_dmd_barcodes", "code")))
+                        .from("nhs_dmd_barcodes")
+                        .cond_where(
+                            Expr::col(("nhs_dmd_barcodes", "gtin")).eq(Expr::val("5016298210989")),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+            .unwrap();
+        app.close().await;
+        assert_eq!(row.try_get::<i32>("", "status").unwrap(), expected_status);
+        assert!(
+            row.try_get::<Option<String>>("", "archive_key")
+                .unwrap()
+                .is_none()
+        );
+        assert!(catalog.is_some());
+        assert_eq!(
+            row.try_get::<Option<String>>("", "error_message").unwrap(),
+            diagnostic
+        );
+    }
 }
 
 #[test]

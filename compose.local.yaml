@@ -12,6 +12,14 @@ x-storage-environment: &storage_environment
   ACTIVE_STORAGE_S3_FORCE_PATH_STYLE: "true"
 
 services:
+  mailpit:
+    environment:
+      MP_SMTP_BIND_ADDR: "0.0.0.0:${MEDTRACKER_SMTP_PORT:-1025}"
+    ports: !override
+      - target: ${MEDTRACKER_SMTP_PORT:-1025}
+        host_ip: 127.0.0.1
+      - target: 8025
+        host_ip: 127.0.0.1
   postgres:
     volumes:
       - database:/var/lib/postgresql
@@ -29,6 +37,7 @@ services:
       MEDTRACKER_OWNED_STORAGE: "1"
       CARGO_INCREMENTAL: "1"
       CARGO_BUILD_JOBS: "2"
+      NEXTEST_TEST_THREADS:
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
       BINDING: 0.0.0.0
@@ -74,6 +83,10 @@ services:
     environment:
       MEDTRACKER_PUBLIC_ORIGIN: ${MT_PUBLIC_ORIGIN:-}
       MEDTRACKER_COOKIE_SECURE: ${MT_COOKIE_SECURE:-true}
+      MEDTRACKER_CAPTURE_MAIL: ${MEDTRACKER_CAPTURE_MAIL:-false}
+      MEDTRACKER_SMTP_HOST: mailpit
+      MEDTRACKER_SMTP_PORT: ${MEDTRACKER_SMTP_PORT:-1025}
+      MEDTRACKER_INVITATION_MAIL_FROM: "${MEDTRACKER_INVITATION_MAIL_FROM:-MedTracker <invitations@medtracker.test>}"
       DATABASE_URL: postgres://medtracker_runtime:synthetic_local_runtime_password@postgres/medtracker_loco
     command: [cargo, watch, --poll, --ignore-nothing, -w, /app/run/bin/med-tracker, -w, assets/views, -w, config, --, /app/run/bin/med-tracker, start, --server-and-worker, --environment, development]
     ports:

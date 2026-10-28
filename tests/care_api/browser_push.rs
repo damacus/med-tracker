@@ -1,10 +1,29 @@
 use super::*;
 use med_tracker::models::{
-    access::{self, Actor, HouseholdScope},
+    access,
     care::browser_push::{self, Delivery, Service, Transport},
     entities::push_subscription,
 };
 use std::sync::{Arc, Mutex};
+
+async fn subscription(app: &Application, account_id: i64) -> push_subscription::Model {
+    let now = chrono::Utc::now().naive_utc();
+    push_subscription::ActiveModel {
+        account_id: Set(account_id),
+        endpoint: Set(format!(
+            "https://fcm.googleapis.com/fcm/send/{}",
+            uuid::Uuid::new_v4()
+        )),
+        p256dh: Set("synthetic".into()),
+        auth: Set("synthetic".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap()
+}
 
 struct TestTransport {
     outcome: Delivery,
@@ -25,12 +44,10 @@ impl Transport for TestTransport {
 #[tokio::test]
 async fn browser_push_test_delivery_is_scoped_audited_and_cleans_only_expired_owned_endpoints() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic other push account owner',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73004,'synthetic-push-other@example.test',now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/owned','synthetic','synthetic',now(),now()),(71002,'https://fcm.googleapis.com/fcm/send/foreign','synthetic','synthetic',now(),now())").await.unwrap();
-    let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
-        request_id: "synthetic-browser-push".into(),
-    };
+    let other = app.fixture.foreign_household().await;
+    let owned = subscription(&app, app.fixture.account.id).await;
+    let foreign = subscription(&app, other.account.id).await;
+    let scope = app.fixture.scope();
     for outcome in [Delivery::Accepted, Delivery::Failed, Delivery::Expired] {
         let transport = Arc::new(TestTransport {
             outcome,
@@ -42,45 +59,61 @@ async fn browser_push_test_delivery_is_scoped_audited_and_cleans_only_expired_ow
         };
         let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
         assert!(
-            browser_push::send_test(
-                &tenant,
-                &service,
-                "https://fcm.googleapis.com/fcm/send/foreign"
-            )
-            .await
-            .is_err()
+            browser_push::send_test(&tenant, &service, &foreign.endpoint)
+                .await
+                .is_err()
         );
         assert!(transport.payloads.lock().unwrap().is_empty());
         assert_eq!(
-            browser_push::send_test(
-                &tenant,
-                &service,
-                "https://fcm.googleapis.com/fcm/send/owned"
-            )
-            .await
-            .unwrap(),
+            browser_push::send_test(&tenant, &service, &owned.endpoint)
+                .await
+                .unwrap(),
             outcome
         );
         assert_eq!(
             transport.payloads.lock().unwrap().as_slice(),
             &[
-                json!({"title":"MedTracker","body":"Test notification","path":"/households/persistence-fixture/profile#notifications","account_id":"71001"})
+                json!({"title":"MedTracker","body":"Test notification","path":format!("/households/{}/profile#notifications", app.fixture.household.slug),"account_id":app.fixture.account.id.to_string()})
             ]
         );
         tenant.commit().await.unwrap();
     }
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT count(*) FILTER (WHERE account_id=71001) AS owned, count(*) FILTER (WHERE account_id=71002) AS foreign FROM push_subscriptions")).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "owned").unwrap(), 0);
-    assert_eq!(row.try_get::<i64>("", "foreign").unwrap(), 1);
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT count(*) AS n FROM security_audit_events WHERE event_type='browser_push.test.completed' AND actor_account_id=71001")).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "n").unwrap(), 3);
+    assert!(
+        push_subscription::Entity::find_by_id(owned.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        push_subscription::Entity::find_by_id(foreign.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    let audits = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::ActorAccountId.eq(app.fixture.account.id))
+        .filter(security_audit_events::Column::EventType.eq("browser_push.test.completed"))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(audits, 3);
+    other.close().await;
     app.close().await;
 }
 
 #[tokio::test]
 async fn browser_push_audit_failure_prevents_delivery() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/audit','synthetic','synthetic',now(),now()); CREATE FUNCTION public.reject_browser_push_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type LIKE 'browser_push.%' THEN RAISE EXCEPTION 'synthetic push audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_push_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_push_audit()").await.unwrap();
+    let owned = subscription(&app, app.fixture.account.id).await;
+    let fault = format!(
+        "reject_browser_push_audit_{}",
+        uuid::Uuid::new_v4().simple()
+    );
+    // SeaORM has no trigger or PL/pgSQL function builder. Whole-run exclusivity
+    // isolates this fault injection; both objects are removed before assertions.
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION public.{fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type LIKE 'browser_push.%' THEN RAISE EXCEPTION 'synthetic push audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.{fault}()")).await.unwrap();
     let transport = Arc::new(TestTransport {
         outcome: Delivery::Accepted,
         payloads: Mutex::new(vec![]),
@@ -89,34 +122,25 @@ async fn browser_push_audit_failure_prevents_delivery() {
         public_key: String::new(),
         transport: transport.clone(),
     };
-    let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
-        request_id: "synthetic-browser-push-audit".into(),
-    };
+    let scope = app.fixture.scope();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
-    assert!(
-        browser_push::send_test(
-            &tenant,
-            &service,
-            "https://fcm.googleapis.com/fcm/send/audit"
-        )
-        .await
-        .is_err()
-    );
-    assert!(transport.payloads.lock().unwrap().is_empty());
+    let result = browser_push::send_test(&tenant, &service, &owned.endpoint).await;
     tenant.rollback().await.unwrap();
-    let row = app
-        .fixture
+    app.fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS n FROM push_subscriptions WHERE account_id=71001",
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON security_audit_events; DROP FUNCTION public.{fault}()"
         ))
         .await
-        .unwrap()
         .unwrap();
-    assert_eq!(row.try_get::<i64>("", "n").unwrap(), 1);
+    assert!(result.is_err());
+    assert!(transport.payloads.lock().unwrap().is_empty());
+    let count = push_subscription::Entity::find()
+        .filter(push_subscription::Column::AccountId.eq(app.fixture.account.id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
     app.close().await;
 }
 

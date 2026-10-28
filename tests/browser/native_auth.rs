@@ -5,6 +5,71 @@ use serde_json::{Value, json};
 
 use crate::harness::{self, named};
 
+#[path = "native_auth/challenges.rs"]
+mod challenges;
+#[path = "native_auth/oauth.rs"]
+mod oauth;
+
+async fn register_and_sign_out(journey: &harness::Journey) {
+    let page = &journey.page;
+    let context = page.context().unwrap();
+    let cdp = context.new_cdp_session(page).await.unwrap();
+    cdp.send("WebAuthn.enable", Some(json!({"enableUI": false})))
+        .await
+        .unwrap();
+    cdp.send(
+        "WebAuthn.addVirtualAuthenticator",
+        Some(json!({"options": {
+            "protocol": "ctap2", "transport": "internal", "hasResidentKey": true,
+            "hasUserVerification": true, "isUserVerified": true,
+            "automaticPresenceSimulation": true
+        }})),
+    )
+    .await
+    .unwrap();
+    harness::sign_in(journey).await;
+    page.goto(&format!("{}/account/security", journey.origin), None)
+        .await
+        .unwrap();
+    page.get_by_role(AriaRole::Link, named("Add passkey"))
+        .click(None)
+        .await
+        .unwrap();
+    page.get_by_label("Passkey name", true)
+        .fill("Fresh journey key", None)
+        .await
+        .unwrap();
+    page.get_by_role(AriaRole::Button, named("Register Passkey"))
+        .click(None)
+        .await
+        .unwrap();
+    expect(page.get_by_text("Passkey: Fresh journey key", true))
+        .to_be_visible()
+        .await
+        .unwrap();
+    sign_out(page).await;
+}
+
+async fn sign_out(page: &Page) {
+    page.get_by_role(AriaRole::Button, named("Sign out"))
+        .click(None)
+        .await
+        .unwrap();
+    expect(page.get_by_role(AriaRole::Heading, named("Welcome back")))
+        .to_be_visible()
+        .await
+        .unwrap();
+    assert_signed_out(page).await;
+}
+
+async fn assert_signed_out(page: &Page) {
+    let session = native_session(page).await;
+    assert!(
+        session.is_null() || session["session"].is_null(),
+        "unexpected authenticated native session"
+    );
+}
+
 async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static str) {
     harness::journey(viewport, |journey| {
         Box::pin(async move {

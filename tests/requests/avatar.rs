@@ -1,4 +1,11 @@
 use super::*;
+#[path = "account_avatars.rs"]
+mod account_avatars;
+use med_tracker::models::_entities::{
+    active_storage_attachments, active_storage_blobs, api_change_events,
+};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
+
 use axum::{body::Bytes, http::Method};
 use base64::{Engine, engine::general_purpose::STANDARD};
 
@@ -135,15 +142,44 @@ fn assert_private(reply: &Reply) {
     }
 }
 
-async fn avatar_state(fixture: &Fixture) -> Value {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM account_avatars WHERE account_id=71001) AS attachments,(SELECT count(*) FROM active_storage_attachments WHERE record_type='Person' AND record_id=73001 AND name='avatar') AS legacy_attachments,(SELECT count(*) FROM active_storage_blobs)+(SELECT count(*) FROM account_avatars) AS blobs,(SELECT count(*) FROM versions WHERE item_type IN ('Person','Account')) AS versions,(SELECT count(*) FROM api_change_events WHERE record_type IN ('Person','Account')) AS changes")).await.unwrap().unwrap();
-    json!({"legacy_attachments":row.try_get::<i64>("","legacy_attachments").unwrap(),"attachments":row.try_get::<i64>("","attachments").unwrap(),"blobs":row.try_get::<i64>("","blobs").unwrap(),"versions":row.try_get::<i64>("","versions").unwrap(),"changes":row.try_get::<i64>("","changes").unwrap()})
+async fn avatar_state(fixture: &RequestFixture) -> Value {
+    let attachments = account_avatars::Entity::find()
+        .filter(account_avatars::Column::AccountId.eq(fixture.account.id))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    let legacy_attachments = active_storage_attachments::Entity::find()
+        .filter(active_storage_attachments::Column::RecordType.eq("Person"))
+        .filter(active_storage_attachments::Column::RecordId.eq(fixture.account.person_id))
+        .filter(active_storage_attachments::Column::Name.eq("avatar"))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    // Legacy blobs cannot be attributed to an account without an attachment.
+    // Preserve the orphan-leak check globally; snapshot callers run exclusively.
+    let blobs = active_storage_blobs::Entity::find()
+        .count(&fixture.admin)
+        .await
+        .unwrap()
+        + account_avatars::Entity::find()
+            .count(&fixture.admin)
+            .await
+            .unwrap();
+    let profile = profile::state(fixture).await;
+    let changes = api_change_events::Entity::find()
+        .filter(api_change_events::Column::HouseholdId.eq(fixture.household.id))
+        .filter(api_change_events::Column::RecordType.is_in(["Person", "Account"]))
+        .count(&fixture.admin)
+        .await
+        .unwrap();
+    json!({"attachments":attachments,"legacy_attachments":legacy_attachments,"blobs":blobs,
+        "versions":profile["versions"],"changes":changes})
 }
 
-async fn owned_avatar_fixture() -> (Fixture, BootResult) {
+async fn owned_avatar_fixture() -> (RequestFixture, BootResult) {
     let bucket = format!("medtracker-fixture-{}", uuid::Uuid::new_v4().simple());
     crate::avatar_storage::create_owned_bucket(&bucket).await;
-    boot_fixture_with(|config| {
+    boot_request_fixture_with(|config| {
         config.settings.get_or_insert_with(|| json!({}))["avatar_storage"]["bucket"] =
             json!(bucket);
     })
@@ -153,33 +189,40 @@ async fn owned_avatar_fixture() -> (Fixture, BootResult) {
 #[tokio::test]
 async fn avatar_upload_download_delete_use_real_owned_storage_and_private_wire() {
     let (fixture, boot) = owned_avatar_fixture().await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     profile::seed_credentials(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
-        .await
-        .unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     let mobile = profile::mobile_token(&fixture).await;
     let png = STANDARD.decode(AVATAR).unwrap();
     let server = server(&boot);
-    let missing = send(&server, Method::GET, 72001, Some("profile-session"), None).await;
+    let missing = send(
+        &server,
+        Method::GET,
+        household_id,
+        Some(session.as_str()),
+        None,
+    )
+    .await;
     let mut rotations = Vec::new();
     for (name, bearer) in [
-        ("api", "profile-session"),
-        ("app", "profile-app"),
+        ("api", session.as_str()),
+        ("app", app.as_str()),
         ("mobile", mobile.as_str()),
     ] {
         let uploaded = send(
             &server,
             Method::PUT,
-            72001,
+            household_id,
             Some(bearer),
             Some((&png, "image/png")),
         )
         .await;
         let after_upload = avatar_state(&fixture).await;
-        let download = send(&server, Method::GET, 72001, Some(bearer), None).await;
-        let deleted = send(&server, Method::DELETE, 72001, Some(bearer), None).await;
+        let download = send(&server, Method::GET, household_id, Some(bearer), None).await;
+        let deleted = send(&server, Method::DELETE, household_id, Some(bearer), None).await;
         let after_delete = avatar_state(&fixture).await;
         rotations.push((
             name,
@@ -190,9 +233,16 @@ async fn avatar_upload_download_delete_use_real_owned_storage_and_private_wire()
             after_delete,
         ));
     }
-    let gone = send(&server, Method::GET, 72001, Some("profile-session"), None).await;
+    let gone = send(
+        &server,
+        Method::GET,
+        household_id,
+        Some(session.as_str()),
+        None,
+    )
+    .await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(missing.status, 404);
     assert_json("get", &missing);
     for (name, uploaded, after_upload, download, deleted, after_delete) in rotations {
@@ -223,6 +273,10 @@ async fn avatar_upload_download_delete_use_real_owned_storage_and_private_wire()
 #[tokio::test]
 async fn avatar_methods_separate_own_foreign_absent_and_invalid_credentials() {
     let (fixture, boot) = owned_avatar_fixture().await;
+    let household_id = fixture.household.id;
+    let foreign_id = fixture.foreign.household.id;
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     profile::seed_credentials(&fixture).await;
     let mobile = profile::mobile_token(&fixture).await;
     let png = STANDARD.decode(AVATAR).unwrap();
@@ -231,11 +285,11 @@ async fn avatar_methods_separate_own_foreign_absent_and_invalid_credentials() {
     let mut replies = Vec::new();
     for method in [Method::GET, Method::PUT, Method::DELETE] {
         for (name, bearer) in [
-            ("api", "profile-session"),
-            ("app", "profile-app"),
+            ("api", session.as_str()),
+            ("app", app.as_str()),
             ("mobile", mobile.as_str()),
         ] {
-            for (household, expected) in [(72004, 403), (99999, 404)] {
+            for (household, expected) in [(foreign_id, 403), (i64::MAX, 404)] {
                 let reply = send(
                     &server,
                     method.clone(),
@@ -253,7 +307,7 @@ async fn avatar_methods_separate_own_foreign_absent_and_invalid_credentials() {
                 ));
             }
         }
-        for household in [72001, 99999] {
+        for household in [household_id, i64::MAX] {
             let reply = send(
                 &server,
                 method.clone(),
@@ -273,7 +327,7 @@ async fn avatar_methods_separate_own_foreign_absent_and_invalid_credentials() {
     }
     let after = avatar_state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(before, after);
     for (method, name, household, expected, reply) in replies {
         assert_eq!(reply.status, expected, "{method} {name} {household}");
@@ -286,10 +340,14 @@ async fn avatar_methods_separate_own_foreign_absent_and_invalid_credentials() {
 #[tokio::test]
 async fn avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials() {
     let (fixture, boot) = owned_avatar_fixture().await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     profile::seed_credentials(&fixture).await;
     let mobile = profile::mobile_token(&fixture).await;
-    let smart = "synthetic-profile-smart";
-    profile::seed_disallowed_grants(&fixture, smart).await;
+    let smart = fixture.credential("synthetic-profile-smart");
+    profile::seed_disallowed_grants(&fixture, &smart).await;
     let png = STANDARD.decode(AVATAR).unwrap();
     let before = avatar_state(&fixture).await;
     let server = server(&boot);
@@ -297,7 +355,7 @@ async fn avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials() {
     for method in [Method::GET, Method::PUT, Method::DELETE] {
         for (name, bearer, expected) in [
             ("invalid", "invalid", 401),
-            ("smart", smart, 401),
+            ("smart", smart.as_str(), 401),
             ("mobile_scope", mobile.as_str(), 403),
         ] {
             replies.push((
@@ -307,7 +365,7 @@ async fn avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials() {
                 send(
                     &server,
                     method.clone(),
-                    72001,
+                    household_id,
                     Some(bearer),
                     (method == Method::PUT).then_some((png.as_slice(), "image/png")),
                 )
@@ -315,11 +373,11 @@ async fn avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials() {
             ));
         }
     }
-    fixture.admin.execute_unprepared("UPDATE api_sessions SET revoked_at=now() WHERE id=88031; UPDATE api_app_tokens SET revoked_at=now() WHERE id=88032; UPDATE oauth_grants SET revoked_at=now() WHERE id=76001").await.unwrap();
+    fixture.revoke_all().await;
     for method in [Method::GET, Method::PUT, Method::DELETE] {
         for (name, bearer) in [
-            ("api", "profile-session"),
-            ("app", "profile-app"),
+            ("api", session.as_str()),
+            ("app", app.as_str()),
             ("mobile", mobile.as_str()),
         ] {
             replies.push((
@@ -329,7 +387,7 @@ async fn avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials() {
                 send(
                     &server,
                     method.clone(),
-                    72001,
+                    household_id,
                     Some(bearer),
                     (method == Method::PUT).then_some((png.as_slice(), "image/png")),
                 )
@@ -339,7 +397,7 @@ async fn avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials() {
     }
     let after = avatar_state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(before, after);
     for (method, name, expected, reply) in replies {
         assert_eq!(reply.status, expected, "{method} {name}");
@@ -352,19 +410,19 @@ async fn avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials() {
 #[tokio::test]
 async fn avatar_methods_recheck_stale_permissions_and_membership() {
     let (fixture, boot) = owned_avatar_fixture().await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+    let app = fixture.credential("profile-app");
     profile::seed_credentials(&fixture).await;
     let mobile = profile::mobile_token(&fixture).await;
     let png = STANDARD.decode(AVATAR).unwrap();
     let before = avatar_state(&fixture).await;
     let server = server(&boot);
-    fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET permissions_version=2 WHERE id=74001")
-        .await
-        .unwrap();
+    fixture.membership_state(2, false).await;
     let mut replies = Vec::new();
     for method in [Method::GET, Method::PUT, Method::DELETE] {
-        for (name, bearer) in [("api", "profile-session"), ("app", "profile-app")] {
+        for (name, bearer) in [("api", session.as_str()), ("app", app.as_str())] {
             replies.push((
                 method.as_str().to_lowercase(),
                 name,
@@ -372,7 +430,7 @@ async fn avatar_methods_recheck_stale_permissions_and_membership() {
                 send(
                     &server,
                     method.clone(),
-                    72001,
+                    household_id,
                     Some(bearer),
                     (method == Method::PUT).then_some((png.as_slice(), "image/png")),
                 )
@@ -380,11 +438,11 @@ async fn avatar_methods_recheck_stale_permissions_and_membership() {
             ));
         }
     }
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET permissions_version=1,revoked_at=now() WHERE id=74001").await.unwrap();
+    fixture.membership_state(1, true).await;
     for method in [Method::GET, Method::PUT, Method::DELETE] {
         for (name, bearer, expected) in [
-            ("api", "profile-session", 401),
-            ("app", "profile-app", 401),
+            ("api", session.as_str(), 401),
+            ("app", app.as_str(), 401),
             ("mobile", mobile.as_str(), 403),
         ] {
             replies.push((
@@ -394,7 +452,7 @@ async fn avatar_methods_recheck_stale_permissions_and_membership() {
                 send(
                     &server,
                     method.clone(),
-                    72001,
+                    household_id,
                     Some(bearer),
                     (method == Method::PUT).then_some((png.as_slice(), "image/png")),
                 )
@@ -404,7 +462,7 @@ async fn avatar_methods_recheck_stale_permissions_and_membership() {
     }
     let after = avatar_state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(before, after);
     for (method, name, expected, reply) in replies {
         assert_eq!(reply.status, expected, "{method} {name}");
@@ -417,19 +475,19 @@ async fn avatar_methods_recheck_stale_permissions_and_membership() {
 #[tokio::test]
 async fn avatar_malformed_multipart_does_not_replace_current_image() {
     let (fixture, boot) = owned_avatar_fixture().await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+
     profile::seed_credentials(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
-        .await
-        .unwrap();
+    fixture.birth(Some("1990-01-01".parse().unwrap())).await;
     let png = STANDARD.decode(AVATAR).unwrap();
     let server = server(&boot);
     let original = send(
         &server,
         Method::PUT,
-        72001,
-        Some("profile-session"),
+        household_id,
+        Some(session.as_str()),
         Some((&png, "image/png")),
     )
     .await;
@@ -444,17 +502,24 @@ async fn avatar_malformed_multipart_does_not_replace_current_image() {
             send(
                 &server,
                 Method::PUT,
-                72001,
-                Some("profile-session"),
+                household_id,
+                Some(session.as_str()),
                 Some((bytes, content_type)),
             )
             .await,
         );
     }
     let after = avatar_state(&fixture).await;
-    let retained = send(&server, Method::GET, 72001, Some("profile-session"), None).await;
+    let retained = send(
+        &server,
+        Method::GET,
+        household_id,
+        Some(session.as_str()),
+        None,
+    )
+    .await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(original.status, 200);
     assert_eq!(before, after);
     for reply in invalid {
@@ -469,11 +534,15 @@ async fn avatar_malformed_multipart_does_not_replace_current_image() {
 
 #[tokio::test]
 async fn avatar_methods_share_fixed_general_limit_without_storage_effects() {
-    let (fixture, boot) = boot_fixture_with(|config| {
+    let (fixture, boot) = boot_request_fixture_with(|config| {
         config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] =
             json!({"fixed_now_unix_seconds":1000,"trusted_proxy_ips":""});
     })
     .await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+
     profile::seed_credentials(&fixture).await;
     let server = server(&boot);
     for _ in 0..300 {
@@ -495,8 +564,8 @@ async fn avatar_methods_share_fixed_general_limit_without_storage_effects() {
             send(
                 &server,
                 method.clone(),
-                72001,
-                Some("profile-session"),
+                household_id,
+                Some(session.as_str()),
                 (method == Method::PUT).then_some((png.as_slice(), "image/png")),
             )
             .await,
@@ -504,7 +573,7 @@ async fn avatar_methods_share_fixed_general_limit_without_storage_effects() {
     }
     let after = avatar_state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(after, before);
     for (method, reply) in replies {
         assert_eq!(reply.status, 429, "{method}");
@@ -521,11 +590,15 @@ async fn avatar_methods_share_fixed_general_limit_without_storage_effects() {
 async fn avatar_missing_owned_bucket_returns_declared_unavailable_without_attachment() {
     crate::avatar_storage::ensure_owned_bucket().await;
     let bucket = format!("medtracker-fixture-{}", uuid::Uuid::new_v4().simple());
-    let (fixture, boot) = boot_fixture_with(|config| {
+    let (fixture, boot) = boot_request_fixture_with(|config| {
         config.settings.get_or_insert_with(|| json!({}))["avatar_storage"]["bucket"] =
             json!(bucket);
     })
     .await;
+    let household_id = fixture.household.id;
+
+    let session = fixture.credential("profile-session");
+
     profile::seed_credentials(&fixture).await;
     let server = server(&boot);
     let png = STANDARD.decode(AVATAR).unwrap();
@@ -533,14 +606,14 @@ async fn avatar_missing_owned_bucket_returns_declared_unavailable_without_attach
     let failure = send(
         &server,
         Method::PUT,
-        72001,
-        Some("profile-session"),
+        household_id,
+        Some(session.as_str()),
         Some((&png, "image/png")),
     )
     .await;
     let after = avatar_state(&fixture).await;
     drop(server);
-    close(fixture, boot).await;
+    close_request(fixture, boot).await;
     assert_eq!(failure.status, 503);
     assert_eq!(json_body(&failure)["error"]["code"], "avatar_unavailable");
     assert_eq!(before, after);

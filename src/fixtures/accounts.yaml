@@ -1,4 +1,5 @@
 - id: 71001
+  active: true
   person_id: 73001
   email: "persistence@example.test"
   status: 2

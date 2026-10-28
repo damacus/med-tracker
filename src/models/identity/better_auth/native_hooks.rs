@@ -182,6 +182,13 @@ impl SeaOrmHooks<AccountSchema> for DomainHooks {
         if !matches!(status, 1 | 2) {
             return Err(AuthError::Unauthenticated);
         }
+        let account_id = row.try_get("", "id").map_err(database_error)?;
+        if let Some(tx) = ctx.tx {
+            crate::models::access::verify_account_enabled(tx, account_id).await
+        } else {
+            crate::models::access::verify_account_enabled(ctx.db, account_id).await
+        }
+        .map_err(super::policy::operation_error)?;
         Ok(DatabaseHookUpdate::Continue)
     }
 
@@ -232,6 +239,9 @@ async fn eligible(tx: &impl ConnectionTrait, account_id: i64) -> AuthResult<&'st
     ))
     .await
     .map_err(database_error)?;
+    crate::models::access::verify_account_enabled(tx, account_id)
+        .await
+        .map_err(super::policy::operation_error)?;
     let row = tx.query_one_raw(statement(
         "SELECT a.status,(o.account_id IS NULL OR o.completed_at IS NOT NULL) AS ready FROM accounts a JOIN people p ON p.id=a.person_id LEFT JOIN identity_onboarding o ON o.account_id=a.id WHERE a.id=$1 AND a.status IN (1,2) AND p.date_of_birth <= (CURRENT_DATE - INTERVAL '18 years')::date AND NOT EXISTS(SELECT 1 FROM account_lockouts l WHERE l.account_id=a.id AND l.deadline>CURRENT_TIMESTAMP)",
         [account_id.into()],

@@ -1,10 +1,71 @@
-use super::Application;
+use super::*;
 use chrono::{Duration, Utc};
+use med_tracker::models::_entities::{account_lockouts, accounts};
 use med_tracker::models::entities::identity_session;
+use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, sea_query::Expr};
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement, sea_query::Expr,
+    QueryOrder, QuerySelect,
+    sea_query::{ExprTrait, Func, Query},
 };
 use serde_json::{Value, json};
+
+async fn factor_field<T: sea_orm::TryGetable>(app: &Application, table: &str, column: &str) -> T {
+    let query = Query::select()
+        .column(sea_orm::sea_query::Alias::new(column))
+        .from(sea_orm::sea_query::Alias::new(table))
+        .and_where(
+            Expr::col(if table == "accounts" {
+                "id"
+            } else {
+                "account_id"
+            })
+            .eq(app.fixture.account.id),
+        )
+        .to_owned();
+    app.fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", column)
+        .unwrap()
+}
+
+async fn factor_count(app: &Application) -> i64 {
+    let query = Query::select()
+        .expr_as(Expr::col("id").count(), "count")
+        .from("identity_two_factors")
+        .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+        .to_owned();
+    app.fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "count")
+        .unwrap()
+}
+
+async fn lockout(app: &Application, locked: bool) {
+    if locked {
+        account_lockouts::ActiveModel {
+            account_id: Set(app.fixture.account.id),
+            key: Set(uuid::Uuid::new_v4().to_string()),
+            deadline: Set(Utc::now().naive_utc() + Duration::hours(1)),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    } else {
+        account_lockouts::Entity::delete_by_id(app.fixture.account.id)
+            .exec(&app.fixture.admin)
+            .await
+            .unwrap();
+    }
+}
 
 fn cookies(response: &reqwest::Response) -> String {
     response
@@ -37,7 +98,7 @@ async fn login(app: &Application) -> reqwest::Response {
     app.client
         .post(format!("{}/api/auth/sign-in/email", app.origin))
         .header("origin", app.context.config.server.full_url())
-        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .json(&json!({"email":app.fixture.account.email,"password":"password"}))
         .send()
         .await
         .unwrap()
@@ -46,13 +107,14 @@ async fn login(app: &Application) -> reqwest::Response {
 #[tokio::test]
 async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() {
     let app = Application::new().await;
-    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let cookie =
+        super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
     let selected = identity_session::Entity::update_many()
         .col_expr(
             identity_session::Column::ActiveHouseholdId,
-            Expr::value(72001_i64),
+            Expr::value(app.fixture.household.id),
         )
-        .filter(identity_session::Column::UserId.eq(71001_i64))
+        .filter(identity_session::Column::UserId.eq(app.fixture.account.id))
         .exec(&app.fixture.admin)
         .await
         .unwrap();
@@ -86,17 +148,7 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
         .await
         .unwrap();
     assert!(rejected.status().is_client_error());
-    let state = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT two_factor_enabled FROM accounts WHERE id=71001",
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(!state.try_get::<bool>("", "two_factor_enabled").unwrap());
+    assert!(!factor_field::<bool>(&app, "accounts", "two_factor_enabled").await);
     let enrolled = app
         .client
         .post(format!("{}/api/auth/security/totp/finish", app.origin))
@@ -110,16 +162,18 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
     let enrolled_cookie = cookies(&enrolled);
     let body: Value = enrolled.json().await.unwrap();
     assert_eq!(status.as_u16(), 200, "{body}");
-    let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT a.two_factor_enabled,f.verified FROM accounts a JOIN identity_two_factors f ON f.account_id=a.id WHERE a.id=71001")).await.unwrap().unwrap();
-    assert!(state.try_get::<bool>("", "two_factor_enabled").unwrap());
-    assert!(state.try_get::<bool>("", "verified").unwrap());
+    assert!(factor_field::<bool>(&app, "accounts", "two_factor_enabled").await);
+    assert!(factor_field::<bool>(&app, "identity_two_factors", "verified").await);
     let rotated = identity_session::Entity::find()
-        .filter(identity_session::Column::UserId.eq(71001_i64))
+        .filter(identity_session::Column::UserId.eq(app.fixture.account.id))
         .all(&app.fixture.admin)
         .await
         .unwrap();
     assert_eq!(rotated.len(), 1);
-    assert_eq!(rotated[0].active_household_id, Some(72001));
+    assert_eq!(
+        rotated[0].active_household_id,
+        Some(app.fixture.household.id)
+    );
     let current = app
         .client
         .get(format!("{}/api/auth/get-session", app.origin))
@@ -129,7 +183,10 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
         .unwrap();
     assert_eq!(current.status().as_u16(), 200);
     let current: Value = current.json().await.unwrap();
-    assert_eq!(current["session"]["active_household_id"], "72001");
+    assert_eq!(
+        current["session"]["active_household_id"],
+        app.fixture.household.id.to_string()
+    );
     assert!(
         current["session"]
             .get("activeOrganizationId")
@@ -145,7 +202,7 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
     assert_eq!(home.status().as_u16(), 200);
     assert_eq!(
         home.url().path(),
-        "/households/persistence-fixture/dashboard"
+        format!("/households/{}/dashboard", app.fixture.household.slug)
     );
     let old = app
         .client
@@ -154,7 +211,7 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
         .send()
         .await
         .unwrap();
-    assert!(old.json::<Value>().await.unwrap().is_null());
+    assert!(Value::is_null(&old.json::<Value>().await.unwrap()));
     let first_totp = login(&app).await;
     let totp_cookie = cookies(&first_totp);
     let challenge: Value = first_totp.json().await.unwrap();
@@ -224,19 +281,8 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
         .await
         .unwrap();
     assert!(replay.status().is_client_error());
-    let before = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT backup_codes FROM identity_two_factors WHERE account_id=71001",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get::<String>("", "backup_codes")
-        .unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'native-mfa-lock',now()+interval '1 hour')").await.unwrap();
+    let before = factor_field::<String>(&app, "identity_two_factors", "backup_codes").await;
+    lockout(&app, true).await;
     for path in ["/two-factor/generate-backup-codes", "/two-factor/disable"] {
         let denied = app
             .client
@@ -249,24 +295,9 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
             .unwrap();
         assert!(denied.status().is_client_error());
     }
-    let after = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT backup_codes FROM identity_two_factors WHERE account_id=71001",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get::<String>("", "backup_codes")
-        .unwrap();
+    let after = factor_field::<String>(&app, "identity_two_factors", "backup_codes").await;
     assert_eq!(before, after);
-    app.fixture
-        .admin
-        .execute_unprepared("DELETE FROM account_lockouts WHERE account_id=71001")
-        .await
-        .unwrap();
+    lockout(&app, false).await;
     let disabled = app
         .client
         .post(format!(
@@ -283,13 +314,8 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
     let disabled_cookie = cookies(&disabled);
     let body: Value = disabled.json().await.unwrap();
     assert_eq!(status.as_u16(), 200, "{body}");
-    let disabled_state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT a.two_factor_enabled,(SELECT count(*) FROM identity_two_factors WHERE account_id=a.id) AS factors FROM accounts a WHERE a.id=71001")).await.unwrap().unwrap();
-    assert!(
-        !disabled_state
-            .try_get::<bool>("", "two_factor_enabled")
-            .unwrap()
-    );
-    assert_eq!(disabled_state.try_get::<i64>("", "factors").unwrap(), 0);
+    assert!(!factor_field::<bool>(&app, "accounts", "two_factor_enabled").await);
+    assert_eq!(factor_count(&app).await, 0);
     let current = app
         .client
         .get(format!("{}/api/auth/get-session", app.origin))
@@ -308,7 +334,7 @@ async fn public_authenticator_setup_replaces_pending_factor_and_finishes_once() 
         .send()
         .await
         .unwrap();
-    assert!(old.json::<Value>().await.unwrap().is_null());
+    assert!(Value::is_null(&old.json::<Value>().await.unwrap()));
     app.close().await;
 }
 
@@ -324,13 +350,13 @@ async fn zero_quota_personal_key_public_replay_is_denied_with_redacted_errors() 
         .api_keys()
         .unwrap()
         .create(
-            "71001",
+            &app.fixture.account.id.to_string(),
             better_auth::server_api::CreateKeyOptions {
                 config_id: Some("medtracker-personal".into()),
                 name: Some("Exhausted synthetic key".into()),
                 expires_in: Some(Duration::days(1).num_seconds() as f64),
                 remaining: Some(0.0),
-                metadata: Some(json!({"households":[72001]})),
+                metadata: Some(json!({"households":[app.fixture.household.id]})),
                 permissions: Some(std::collections::HashMap::from([(
                     "medtracker".into(),
                     vec!["care:read".into()],
@@ -345,7 +371,10 @@ async fn zero_quota_personal_key_public_replay_is_denied_with_redacted_errors() 
     for _ in 0..2 {
         let response = app
             .client
-            .get(format!("{}/api/v1/households/72001/profile", app.origin))
+            .get(format!(
+                "{}/api/v1/households/{}/profile",
+                app.origin, app.fixture.household.id
+            ))
             .bearer_auth(&secret)
             .send()
             .await
@@ -384,7 +413,7 @@ async fn zero_quota_personal_key_public_replay_is_denied_with_redacted_errors() 
 #[tokio::test]
 async fn native_personal_key_scoped_reads_writes_and_live_membership_denial() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let other = app.fixture.foreign_household().await;
     let service = app
         .context
         .shared_store
@@ -394,12 +423,12 @@ async fn native_personal_key_scoped_reads_writes_and_live_membership_denial() {
         .api_keys()
         .unwrap()
         .create(
-            "71001",
+            &app.fixture.account.id.to_string(),
             better_auth::server_api::CreateKeyOptions {
                 config_id: Some("medtracker-personal".into()),
                 name: Some("Scoped synthetic key".into()),
                 expires_in: Some(Duration::days(1).num_seconds() as f64),
-                metadata: Some(json!({"households":[72001]})),
+                metadata: Some(json!({"households":[app.fixture.household.id]})),
                 permissions: Some(std::collections::HashMap::from([(
                     "medtracker".into(),
                     vec!["care:read".into(), "care:write".into()],
@@ -412,7 +441,10 @@ async fn native_personal_key_scoped_reads_writes_and_live_membership_denial() {
     let secret = issued.key;
     let read = app
         .client
-        .get(format!("{}/api/v1/households/72001/profile", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/profile",
+            app.origin, app.fixture.household.id
+        ))
         .bearer_auth(&secret)
         .send()
         .await
@@ -423,9 +455,12 @@ async fn native_personal_key_scoped_reads_writes_and_live_membership_denial() {
     assert!(!body.to_string().contains(&secret));
     let write = app
         .client
-        .patch(format!("{}/api/v1/households/72001/profile", app.origin))
+        .patch(format!(
+            "{}/api/v1/households/{}/profile",
+            app.origin, app.fixture.household.id
+        ))
         .bearer_auth(&secret)
-        .header("idempotency-key", "native-key-profile-write")
+        .header("idempotency-key", uuid::Uuid::new_v4().to_string())
         .json(&json!({"profile":{"time_zone":"Europe/London"}}))
         .send()
         .await
@@ -433,74 +468,115 @@ async fn native_personal_key_scoped_reads_writes_and_live_membership_denial() {
     let status = write.status();
     let body: Value = write.json().await.unwrap();
     assert_eq!(status.as_u16(), 200, "{body}");
-    let stored = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT preferences->>'time_zone' AS zone FROM accounts WHERE id=71001",
-        ))
+    let account = accounts::Entity::find_by_id(app.fixture.account.id)
+        .one(&app.fixture.admin)
         .await
         .unwrap()
-        .unwrap()
-        .try_get::<String>("", "zone")
         .unwrap();
+    let stored = account.preferences["time_zone"].as_str().unwrap();
     assert_eq!(stored, "Europe/London");
     let foreign = app
         .client
-        .get(format!("{}/api/v1/households/72002/profile", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/profile",
+            app.origin, other.household.id
+        ))
         .bearer_auth(&secret)
         .send()
         .await
         .unwrap();
     assert_eq!(foreign.status().as_u16(), 403);
-    let revoked = app
-        .fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74001",
-        )
-        .await
-        .unwrap();
-    assert_eq!(revoked.rows_affected(), 1);
+    let mut member = app.fixture.membership.clone().into_active_model();
+    member.status = Set("revoked".into());
+    member.revoked_at = Set(Some(Utc::now().naive_utc()));
+    let revoked = member.update(&app.fixture.admin).await.unwrap();
+    assert_eq!(revoked.id, app.fixture.membership.id);
     let denied = app
         .client
-        .get(format!("{}/api/v1/households/72001/profile", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/profile",
+            app.origin, app.fixture.household.id
+        ))
         .bearer_auth(&secret)
         .send()
         .await
         .unwrap();
     assert_eq!(denied.status().as_u16(), 403);
+    other.close().await;
     app.close().await;
 }
 
 async fn key_lifecycle_state(app: &Application) -> Value {
-    app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT jsonb_build_object('keys',(SELECT jsonb_agg(to_jsonb(k) ORDER BY id) FROM identity_api_keys k WHERE reference_id=71001),'audits',(SELECT jsonb_agg(to_jsonb(v) ORDER BY id) FROM versions v WHERE event LIKE 'native_auth/api_key/%'),'notices',(SELECT jsonb_agg(to_jsonb(q) ORDER BY id) FROM pg_loco_queue q WHERE task_data->>'subject' IN('API key created','API key revoked'))) AS state"
-    )).await.unwrap().unwrap().try_get("","state").unwrap()
+    let query = Query::select()
+        .expr_as(Func::cust("to_jsonb").arg(Expr::col("k")), "record")
+        .from_as("identity_api_keys", "k")
+        .and_where(Expr::col(("k", "reference_id")).eq(app.fixture.account.id))
+        .order_by(("k", "id"), sea_orm::Order::Asc)
+        .to_owned();
+    let keys = app
+        .fixture
+        .admin
+        .query_all_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| row.try_get::<Value>("", "record").unwrap())
+        .collect::<Vec<_>>();
+    let audits = versions::Entity::find()
+        .filter(versions::Column::ItemId.eq(app.fixture.account.id))
+        .filter(versions::Column::Event.starts_with("native_auth/api_key/"))
+        .order_by_asc(versions::Column::Id)
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let mut notices = super::native_password_reset::queued_mail(
+        app,
+        &app.fixture.account.email,
+        "API key created",
+    )
+    .await;
+    notices.extend(
+        super::native_password_reset::queued_mail(
+            app,
+            &app.fixture.account.email,
+            "API key revoked",
+        )
+        .await,
+    );
+    json!({
+        "keys": if keys.is_empty() {Value::Null} else {json!(keys)},
+        "audits": if audits.is_empty() {Value::Null} else {json!(audits)},
+        "notices": if notices.is_empty() {Value::Null} else {json!(notices)}
+    })
 }
 
 async fn create_lifecycle_key(app: &Application, cookie: &str) -> reqwest::Response {
     app.client.post(format!("{}/api/auth/security/api-key/create",app.origin))
         .header("origin",app.context.config.server.full_url()).header("cookie",cookie)
-        .json(&json!({"name":"Atomic lifecycle key","households":[72001],"permissions":["care:read"],"expires_days":30})).send().await.unwrap()
+        .json(&json!({"name":"Atomic lifecycle key","households":[app.fixture.household.id],"permissions":["care:read"],"expires_days":30})).send().await.unwrap()
 }
 
 #[tokio::test]
 async fn native_personal_key_lifecycle_rolls_back_notice_and_audit() {
     let app = Application::new().await;
-    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let cookie =
+        super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
     let before = key_lifecycle_state(&app).await;
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE key_failure_reached; GRANT USAGE,SELECT ON SEQUENCE key_failure_reached TO med_tracker_app; CREATE FUNCTION reject_key_notice() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('public.key_failure_reached'); RAISE EXCEPTION 'synthetic key notice failure' USING ERRCODE='23514'; END $$; CREATE TRIGGER reject_key_notice BEFORE INSERT ON pg_loco_queue FOR EACH ROW WHEN(NEW.task_data->>'subject' IN('API key created','API key revoked')) EXECUTE FUNCTION reject_key_notice()").await.unwrap();
+    let fault = format!("reject_key_notice_{}", uuid::Uuid::new_v4().simple());
+    let marker = format!("{fault}_reached");
+    // SeaORM has no trigger, PL/pgSQL function or GRANT/REVOKE builder. These
+    // faults require whole-run exclusivity; schema and grants are restored below.
+    app.fixture.admin.execute_unprepared(&format!("CREATE SEQUENCE {marker}; GRANT USAGE,SELECT ON SEQUENCE {marker} TO med_tracker_app; CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('public.{marker}'); RAISE EXCEPTION 'synthetic key notice failure' USING ERRCODE='23514'; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON pg_loco_queue FOR EACH ROW WHEN(NEW.task_data->>'subject' IN('API key created','API key revoked')) EXECUTE FUNCTION {fault}()")).await.unwrap();
     let rejected = create_lifecycle_key(&app, &cookie).await;
     assert_eq!(rejected.status().as_u16(), 500);
+    let probe = Query::select()
+        .column("is_called")
+        .from(sea_orm::sea_query::Alias::new(marker.clone()))
+        .to_owned();
     assert!(
         app.fixture
             .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT is_called FROM key_failure_reached"
-            ))
+            .query_one_raw(app.fixture.admin.get_database_backend().build(&probe))
             .await
             .unwrap()
             .unwrap()
@@ -514,7 +590,7 @@ async fn native_personal_key_lifecycle_rolls_back_notice_and_audit() {
     );
     app.fixture
         .admin
-        .execute_unprepared("DROP TRIGGER reject_key_notice ON pg_loco_queue")
+        .execute_unprepared(&format!("DROP TRIGGER {fault} ON pg_loco_queue"))
         .await
         .unwrap();
     app.fixture
@@ -547,10 +623,10 @@ async fn native_personal_key_lifecycle_rolls_back_notice_and_audit() {
     assert!(!serde_json::to_string(&created).unwrap().contains(secret));
     assert_eq!(
         created["keys"][0]["metadata"],
-        serde_json::to_string(&json!({"households":[72001]})).unwrap()
+        serde_json::to_string(&json!({"households":[app.fixture.household.id]})).unwrap()
     );
     let key_id = created["keys"][0]["id"].as_i64().unwrap().to_string();
-    app.fixture.admin.execute_unprepared("CREATE TRIGGER reject_key_notice BEFORE INSERT ON pg_loco_queue FOR EACH ROW WHEN(NEW.task_data->>'subject'='API key revoked') EXECUTE FUNCTION reject_key_notice()").await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("CREATE TRIGGER {fault} BEFORE INSERT ON pg_loco_queue FOR EACH ROW WHEN(NEW.task_data->>'subject'='API key revoked') EXECUTE FUNCTION {fault}()")).await.unwrap();
     let revoke = || {
         app.client
             .post(format!("{}/api/auth/security/api-key/revoke", app.origin))
@@ -567,7 +643,9 @@ async fn native_personal_key_lifecycle_rolls_back_notice_and_audit() {
     );
     app.fixture
         .admin
-        .execute_unprepared("DROP TRIGGER reject_key_notice ON pg_loco_queue")
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON pg_loco_queue; DROP FUNCTION {fault}(); DROP SEQUENCE {marker}"
+        ))
         .await
         .unwrap();
     assert_eq!(revoke().await.unwrap().status().as_u16(), 200);
@@ -588,8 +666,10 @@ async fn native_personal_key_lifecycle_rolls_back_notice_and_audit() {
 #[tokio::test]
 async fn native_personal_key_create_retains_authoritative_admission_and_typed_scopes() {
     let app = Application::new().await;
-    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
-    let input = json!({"name":"Admission key","households":[72001],"permissions":["care:read"],"expires_days":30});
+    let other = app.fixture.foreign_household().await;
+    let cookie =
+        super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
+    let input = json!({"name":"Admission key","households":[app.fixture.household.id],"permissions":["care:read"],"expires_days":30});
     let before = key_lifecycle_state(&app).await;
     let anonymous = app
         .client
@@ -611,9 +691,9 @@ async fn native_personal_key_create_retains_authoritative_admission_and_typed_sc
         .unwrap();
     assert_eq!(csrf.status().as_u16(), 403);
     for injected in [
-        json!({"userId":"71002"}),
+        json!({"userId":other.account.id.to_string()}),
         json!({"configId":"other"}),
-        json!({"metadata":{"households":[72002]}}),
+        json!({"metadata":{"households":[other.household.id]}}),
         json!({"remaining":100}),
     ] {
         let mut body = input.clone();
@@ -632,7 +712,7 @@ async fn native_personal_key_create_retains_authoritative_admission_and_typed_sc
         assert_eq!(denied.status().as_u16(), 400);
     }
     for (field, value) in [
-        ("households", json!([72002])),
+        ("households", json!([other.household.id])),
         ("permissions", json!(["unsupported:write"])),
         ("expires_days", json!(366)),
     ] {
@@ -659,29 +739,8 @@ async fn native_personal_key_create_retains_authoritative_admission_and_typed_sc
         .await
         .unwrap();
     assert_eq!(bypass.status().as_u16(), 403);
-    for (mutation, restore) in [
-        (
-            "UPDATE identity_sessions SET purpose='enrolment' WHERE account_id=71001",
-            "UPDATE identity_sessions SET purpose='authenticated' WHERE account_id=71001",
-        ),
-        (
-            "UPDATE accounts SET status=3 WHERE id=71001",
-            "UPDATE accounts SET status=2 WHERE id=71001",
-        ),
-        (
-            "INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'key-admission',now()+interval '1 hour')",
-            "DELETE FROM account_lockouts WHERE account_id=71001",
-        ),
-        (
-            "UPDATE identity_sessions SET expires_at=now()-interval '1 minute' WHERE account_id=71001",
-            "UPDATE identity_sessions SET expires_at=now()+interval '1 day' WHERE account_id=71001",
-        ),
-    ] {
-        app.fixture
-            .admin
-            .execute_unprepared(mutation)
-            .await
-            .unwrap();
+    for kind in 0..4 {
+        set_admission(&app, kind, false).await;
         let denied = app
             .client
             .post(format!("{}/api/auth/security/api-key/create", app.origin))
@@ -692,10 +751,11 @@ async fn native_personal_key_create_retains_authoritative_admission_and_typed_sc
             .await
             .unwrap();
         assert!(denied.status().is_client_error(), "{}", denied.status());
-        app.fixture.admin.execute_unprepared(restore).await.unwrap();
+        set_admission(&app, kind, true).await;
     }
     assert_eq!(key_lifecycle_state(&app).await, before);
-    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let cookie =
+        super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
     let allowed = create_lifecycle_key(&app, &cookie).await;
     assert_eq!(allowed.status().as_u16(), 200);
     let body: Value = allowed.json().await.unwrap();
@@ -703,7 +763,10 @@ async fn native_personal_key_create_retains_authoritative_admission_and_typed_sc
     let before_use = key_lifecycle_state(&app).await;
     let clinical = app
         .client
-        .get(format!("{}/api/v1/households/72001/profile", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{}/profile",
+            app.origin, app.fixture.household.id
+        ))
         .bearer_auth(secret)
         .send()
         .await
@@ -717,6 +780,7 @@ async fn native_personal_key_create_retains_authoritative_admission_and_typed_sc
             .unwrap()
             .contains(secret)
     );
+    other.close().await;
     app.close().await;
 }
 
@@ -724,32 +788,63 @@ async fn native_personal_key_create_retains_authoritative_admission_and_typed_sc
 async fn native_personal_key_create_waits_for_account_closure_and_rechecks_status() {
     use sea_orm::TransactionTrait;
     let app = Application::new().await;
-    let cookie = super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+    let cookie =
+        super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
     let transaction = app.fixture.admin.begin().await.unwrap();
-    transaction
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT id FROM accounts WHERE id=71001 FOR UPDATE",
-        ))
+    accounts::Entity::find_by_id(app.fixture.account.id)
+        .lock_exclusive()
+        .one(&transaction)
         .await
+        .unwrap();
+    let pid_query = Query::select()
+        .expr_as(Func::cust("pg_backend_pid"), "pid")
+        .to_owned();
+    let blocker: i32 = transaction
+        .query_one_raw(transaction.get_database_backend().build(&pid_query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "pid")
         .unwrap();
     let client = app.client.clone();
     let origin = app.origin.clone();
     let public = app.context.config.server.full_url();
+    let household_id = app.fixture.household.id;
     let create = tokio::spawn(async move {
-        client.post(format!("{origin}/api/auth/security/api-key/create")).header("origin",public).header("cookie",cookie).json(&json!({"name":"Concurrent close key","households":[72001],"permissions":["care:read"],"expires_days":30})).send().await.unwrap()
+        client.post(format!("{origin}/api/auth/security/api-key/create")).header("origin",public).header("cookie",cookie).json(&json!({"name":"Concurrent close key","households":[household_id],"permissions":["care:read"],"expires_days":30})).send().await.unwrap()
     });
-    let waited=tokio::time::timeout(std::time::Duration::from_secs(5),async {
+    let waited = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         loop {
-            let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%FOR NO KEY UPDATE%') AS waited")).await.unwrap().unwrap();
-            if row.try_get::<bool>("","waited").unwrap() {break;}
+            let query = Query::select()
+                .expr_as(
+                    Func::cust("to_jsonb")
+                        .arg(Func::cust("pg_blocking_pids").arg(Expr::col("pid"))),
+                    "blockers",
+                )
+                .from("pg_stat_activity")
+                .and_where(Expr::col("datname").eq(Func::cust("current_database")))
+                .and_where(Expr::col("wait_event_type").eq("Lock"))
+                .to_owned();
+            let rows = app
+                .fixture
+                .admin
+                .query_all_raw(app.fixture.admin.get_database_backend().build(&query))
+                .await
+                .unwrap();
+            if rows.iter().any(|row| {
+                let pids: Vec<i32> =
+                    serde_json::from_value(row.try_get::<Value>("", "blockers").unwrap()).unwrap();
+                pids.contains(&blocker)
+            }) {
+                break;
+            }
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
-    }).await;
-    transaction
-        .execute_unprepared("UPDATE accounts SET status=3 WHERE id=71001")
-        .await
-        .unwrap();
+    })
+    .await;
+    let mut account = app.fixture.account.clone().into_active_model();
+    account.status = Set(3);
+    account.update(&transaction).await.unwrap();
     transaction.commit().await.unwrap();
     let response = tokio::time::timeout(std::time::Duration::from_secs(5), create)
         .await
@@ -761,8 +856,49 @@ async fn native_personal_key_create_waits_for_account_closure_and_rechecks_statu
     );
     assert_eq!(response.status().as_u16(), 401);
     let state = key_lifecycle_state(&app).await;
-    assert!(state["keys"].is_null());
-    assert!(state["notices"].is_null());
-    assert!(state["audits"].is_null());
+    assert!(Value::is_null(&state["keys"]));
+    assert!(Value::is_null(&state["notices"]));
+    assert!(Value::is_null(&state["audits"]));
     app.close().await;
+}
+
+async fn set_admission(app: &Application, kind: u8, allowed: bool) {
+    match kind {
+        0 => {
+            identity_session::Entity::update_many()
+                .col_expr(
+                    identity_session::Column::ClinicalSessionPurpose,
+                    Expr::value(if allowed {
+                        "authenticated"
+                    } else {
+                        "enrolment"
+                    }),
+                )
+                .filter(identity_session::Column::UserId.eq(app.fixture.account.id))
+                .exec(&app.fixture.admin)
+                .await
+                .unwrap();
+        }
+        1 => {
+            let mut account = app.fixture.account.clone().into_active_model();
+            account.status = Set(if allowed { 2 } else { 3 });
+            account.update(&app.fixture.admin).await.unwrap();
+        }
+        2 => lockout(app, !allowed).await,
+        _ => {
+            identity_session::Entity::update_many()
+                .col_expr(
+                    identity_session::Column::ExpiresAt,
+                    Expr::value(if allowed {
+                        Utc::now() + Duration::days(1)
+                    } else {
+                        Utc::now() - Duration::minutes(1)
+                    }),
+                )
+                .filter(identity_session::Column::UserId.eq(app.fixture.account.id))
+                .exec(&app.fixture.admin)
+                .await
+                .unwrap();
+        }
+    }
 }

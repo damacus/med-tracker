@@ -1,8 +1,12 @@
 use super::contract::{assert_value, contract, resolve};
 use super::*;
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
 async fn create_schedule(app: &Application, token: &str) -> i64 {
-    let response=app.client.post(format!("{}/api/v1/households/72001/schedules",app.origin)).bearer_auth(token).json(&json!({"schedule":{"person_id":"73001","medication_id":"80001","dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}})).send().await.unwrap();
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let response=app.client.post(format!("{}/api/v1/households/{fixture_household_id}/schedules",app.origin)).bearer_auth(token).json(&json!({"schedule":{"person_id":fixture_person_id.to_string(),"medication_id":fixture_medication_id.to_string(),"dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}})).send().await.unwrap();
     assert_eq!(response.status().as_u16(), 201);
     response.json::<Value>().await.unwrap()["data"]["id"]
         .as_i64()
@@ -12,21 +16,45 @@ async fn create_schedule(app: &Application, token: &str) -> i64 {
 #[tokio::test]
 async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let unique_identifier_0 = uuid::Uuid::new_v4().to_string();
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
-    app.fixture
-        .admin
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE schedules SET active=false WHERE id=$1",
-            [id.into()],
-        ))
+    med_tracker::models::_entities::schedules::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::schedules::Column::Active,
+            sea_orm::sea_query::Expr::value(false),
+        )
+        .filter(med_tracker::models::_entities::schedules::Column::Id.eq(id))
+        .filter(
+            med_tracker::models::_entities::schedules::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO medication_pause_periods(id,household_id,portable_id,schedule_id,reason,note,legacy_context,recorded_by_membership_id,started_at,created_at,updated_at) VALUES(84999,72001,'aaa00000-0000-4000-8000-000000084999',$1,'clinician_advice','Synthetic pause',false,74001,now(),now(),now())",[id.into()])).await.unwrap();
+    let _medication_pause_periods_84999 =
+        med_tracker::models::_entities::medication_pause_periods::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            portable_id: sea_orm::Set(unique_identifier_0.clone()),
+            schedule_id: sea_orm::Set(Some(id)),
+            reason: sea_orm::Set("clinician_advice".to_owned()),
+            note: sea_orm::Set(Some("Synthetic pause".to_owned())),
+            legacy_context: sea_orm::Set(false),
+            recorded_by_membership_id: sea_orm::Set(Some(fixture_membership_id)),
+            started_at: sea_orm::Set(Some((chrono::Utc::now()).naive_utc())),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
     let collection = format!(
-        "{}/api/v1/households/72001/schedules?page=1&per_page=1",
+        "{}/api/v1/households/{fixture_household_id}/schedules?page=1&per_page=1",
         app.origin
     );
     let list = app
@@ -38,7 +66,10 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
         .unwrap();
     let list_status = list.status().as_u16();
     let list = list.json::<Value>().await.unwrap_or(Value::Null);
-    let endpoint = format!("{}/api/v1/households/72001/schedules/{id}", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules/{id}",
+        app.origin
+    );
     let read = app
         .client
         .get(&endpoint)
@@ -67,8 +98,9 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
     let hidden = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/schedules/{id}",
-            app.origin
+            "{}/api/v1/households/{fixture_72002}/schedules/{id}",
+            app.origin,
+            fixture_72002 = foreign_household.id
         ))
         .bearer_auth(&token)
         .send()
@@ -103,7 +135,7 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
     );
     assert_eq!(
         detail["data"]["eligible_stock_medication_ids"],
-        json!([80001])
+        json!([fixture_medication_id])
     );
     assert_eq!(
         detail["data"]["current_pause_period"]["reason"],
@@ -111,17 +143,61 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
     );
     assert_eq!(
         detail["data"]["current_pause_period"]["recorded_by_membership_id"],
-        "74001"
+        fixture_membership_id.to_string()
     );
 }
 
 #[tokio::test]
 async fn schedule_lifecycle_partial_update_stale_and_immutable_person() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73999,'Synthetic visible lifecycle person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74999,72001,73999,'member','active',now(),now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78999,72001,74001,73999,'view','family_member',now(),now())").await.unwrap();
-    let endpoint = format!("{}/api/v1/households/72001/schedules/{id}", app.origin);
+    let _people_73999 = med_tracker::models::_entities::people::ActiveModel {
+        name: sea_orm::Set("Synthetic visible lifecycle person".to_owned()),
+        person_type: sea_orm::Set(0),
+        has_capacity: sea_orm::Set(true),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _household_memberships_74999 =
+        med_tracker::models::_entities::household_memberships::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            person_id: sea_orm::Set(_people_73999.id),
+            role: sea_orm::Set("member".to_owned()),
+            status: sea_orm::Set("active".to_owned()),
+            joined_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let _person_access_grants_78999 =
+        med_tracker::models::_entities::person_access_grants::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            household_membership_id: sea_orm::Set(fixture_membership_id),
+            person_id: sea_orm::Set(_people_73999.id),
+            access_level: sea_orm::Set("view".to_owned()),
+            relationship_type: sea_orm::Set("family_member".to_owned()),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules/{id}",
+        app.origin
+    );
     let changed=app.client.patch(&endpoint).bearer_auth(&token).json(&json!({"schedule":{"dose_amount":"3","end_date":"2027-02-01","schedule_config":{"as_needed":true}}})).send().await.unwrap();
     let changed_status = changed.status().as_u16();
     let changed = changed.json::<Value>().await.unwrap_or(Value::Null);
@@ -140,13 +216,32 @@ async fn schedule_lifecycle_partial_update_stale_and_immutable_person() {
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .json(&json!({"schedule":{"person_id":"73999"}}))
+        .json(&json!({"schedule":{"person_id":_people_73999.id.to_string()}}))
         .send()
         .await
         .unwrap()
         .status()
         .as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT dose_amount::text AS amount,person_id,end_date::text AS ending FROM schedules WHERE id=$1",[id.into()])).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(QueryExpr::col("dose_amount").cast_as("text"), "amount")
+                .expr(QueryExpr::col("person_id"))
+                .expr_as(QueryExpr::col("end_date").cast_as("text"), "ending")
+                .from("schedules")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let amount: String = row.try_get("", "amount").unwrap();
     let person_id: i64 = row.try_get("", "person_id").unwrap();
     let ending: String = row.try_get("", "ending").unwrap();
@@ -155,16 +250,24 @@ async fn schedule_lifecycle_partial_update_stale_and_immutable_person() {
     assert_eq!(changed["data"]["dose_amount"], "3.0");
     assert_eq!(
         (amount.as_str(), person_id, ending.as_str()),
-        ("3.00", 73001, "2027-02-01")
+        ("3.00", fixture_person_id, "2027-02-01")
     );
 }
 
 #[tokio::test]
+// Whole-run exclusive: PostgreSQL trigger functions, trigger installation and sequence privileges are unsupported by SeaORM Schema and SeaQuery Table/Query builders. The raw DDL is limited to this case and removed before closing.
 async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_grant_id = app.fixture.grant.id;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
-    let endpoint = format!("{}/api/v1/households/72001/schedules/{id}", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules/{id}",
+        app.origin
+    );
     let body = json!({"schedule":{"notes":"Synthetic lifecycle"}});
     let first = app
         .client
@@ -191,7 +294,20 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
         .get("idempotency-replayed")
         .is_some_and(|value| value == "true");
     let replay_status = replay.status().as_u16();
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_schedule_audit_reached; GRANT USAGE,SELECT ON SEQUENCE synthetic_schedule_audit_reached TO med_tracker_app; CREATE FUNCTION reject_schedule_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Schedule' AND NEW.event='update' THEN PERFORM nextval('synthetic_schedule_audit_reached'); RAISE EXCEPTION 'Synthetic schedule audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_schedule_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_schedule_audit()").await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("CREATE SEQUENCE synthetic_schedule_audit_reached")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "GRANT USAGE,SELECT ON SEQUENCE synthetic_schedule_audit_reached TO med_tracker_app",
+        )
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_schedule_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Schedule' AND NEW.event='update' THEN PERFORM nextval('synthetic_schedule_audit_reached'); RAISE EXCEPTION 'Synthetic schedule audit rejection'; END IF; RETURN NEW; END $$").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER reject_schedule_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_schedule_audit()").await.unwrap();
     let failed = app
         .client
         .patch(&endpoint)
@@ -199,10 +315,58 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
         .json(&json!({"schedule":{"notes":"Must roll back"}}))
         .send()
         .await
+        .unwrap();
+    let failed_status = failed.status().as_u16();
+    let failed_request_id = failed.headers()["x-request-id"]
+        .to_str()
         .unwrap()
-        .status()
-        .as_u16();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='record' WHERE id=78001").await.unwrap();
+        .to_owned();
+    let failed_body: Value = failed.json().await.unwrap();
+    let failed_put = app
+        .client
+        .put(&endpoint)
+        .bearer_auth(&token)
+        .json(&json!({"schedule":{"notes":"PUT must roll back"}}))
+        .send()
+        .await
+        .unwrap();
+    let failed_put_status = failed_put.status().as_u16();
+    let failed_put_request_id = failed_put.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let failed_put_body: Value = failed_put.json().await.unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    med_tracker::models::_entities::person_access_grants::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::person_access_grants::Column::AccessLevel,
+            sea_orm::sea_query::Expr::value("record".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::Id.eq(fixture_grant_id),
+        )
+        .filter(
+            med_tracker::models::_entities::person_access_grants::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let self_replay = app
         .client
         .patch(&endpoint)
@@ -213,7 +377,33 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
         .await
         .unwrap();
     let self_replay_status = self_replay.status().as_u16();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::value("revoked".to_owned()),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            sea_orm::sea_query::Expr::col(
+                med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            )
+            .add(1),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let denied = app
         .client
         .patch(&endpoint)
@@ -227,31 +417,124 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
         .as_u16();
     let malformed_denied = app
         .client
-        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .post(format!(
+            "{}/api/v1/households/{fixture_household_id}/schedules",
+            app.origin
+        ))
         .bearer_auth(&token)
-        .json(&json!({"schedule":{"person_id":"73001","start_date":"2026-1-2"}}))
+        .json(&json!({"schedule":{"person_id":fixture_person_id.to_string(),"start_date":"2026-1-2"}}))
         .send()
         .await
         .unwrap()
         .status()
         .as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT notes,(SELECT is_called FROM synthetic_schedule_audit_reached) AS reached,(SELECT count(*) FROM versions WHERE item_type='Schedule' AND event='update') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Schedule' AND action='update') AS changes FROM schedules WHERE id=$1",[id.into()])).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr(QueryExpr::col("notes"))
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::col("is_called"))
+                            .from("synthetic_schedule_audit_reached")
+                            .to_owned(),
+                    ),
+                    "reached",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(QueryExpr::col("item_type").eq(QueryExpr::val("Schedule")))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("Schedule")),
+                                    )
+                                    .and(QueryExpr::col("action").eq(QueryExpr::val("update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "changes",
+                )
+                .from("schedules")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let notes: Option<String> = row.try_get("", "notes").unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let versions: i64 = row.try_get("", "versions").unwrap();
     let changes: i64 = row.try_get("", "changes").unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER IF EXISTS reject_schedule_audit ON versions")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP FUNCTION IF EXISTS reject_schedule_audit()")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP SEQUENCE IF EXISTS synthetic_schedule_audit_reached")
+        .await
+        .unwrap();
     app.close().await;
     assert_eq!(
         (
             first,
             replay_status,
-            failed,
+            failed_status,
+            failed_put_status,
             self_replay_status,
             denied,
             malformed_denied
         ),
-        (200, 200, 500, 200, 403, 403)
+        (200, 200, 500, 500, 200, 403, 403)
     );
+    for (method, request_id, body) in [
+        ("patch", &failed_request_id, &failed_body),
+        ("put", &failed_put_request_id, &failed_put_body),
+    ] {
+        super::schedule_contracts::assert_internal_error(
+            "/households/{household_id}/schedules/{id}",
+            method,
+            request_id,
+            body,
+        );
+    }
     assert!(replayed && reached);
     assert_eq!(notes.as_deref(), Some("Synthetic lifecycle"));
     assert_eq!((versions, changes), (1, 1));
@@ -260,6 +543,13 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
 #[tokio::test]
 async fn schedule_get_matches_documented_contract() {
     let app = Application::new().await;
+    let unique_identifier_0 = uuid::Uuid::new_v4().to_string();
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_person_id = app.fixture.account.person_id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_minor_membership_id = app.fixture.minor_membership.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
     let contract: Value =
@@ -287,12 +577,45 @@ async fn schedule_get_matches_documented_contract() {
     assert_eq!(etag_schema["required"], true);
     assert_eq!(etag_schema["schema"]["type"], "string");
 
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"UPDATE schedules SET schedule_config='{\"weekdays\":[\"Monday\"],\"dates\":[\"2026-10-05\"]}' WHERE id=$1",[id.into()])).await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO medication_pause_periods(id,household_id,portable_id,schedule_id,reason,note,legacy_context,recorded_by_membership_id,started_at,created_at,updated_at) VALUES(84999,72001,'aaa00000-0000-4000-8000-000000084999',$1,'clinician_advice','Synthetic pause',false,74001,now(),now(),now())",[id.into()])).await.unwrap();
+    med_tracker::models::_entities::schedules::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::schedules::Column::ScheduleConfig,
+            sea_orm::sea_query::Expr::value(
+                serde_json::from_str::<serde_json::Value>(
+                    "{\"weekdays\":[\"Monday\"],\"dates\":[\"2026-10-05\"]}",
+                )
+                .unwrap(),
+            ),
+        )
+        .filter(med_tracker::models::_entities::schedules::Column::Id.eq(id))
+        .filter(
+            med_tracker::models::_entities::schedules::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let _medication_pause_periods_84999 =
+        med_tracker::models::_entities::medication_pause_periods::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            portable_id: sea_orm::Set(unique_identifier_0.clone()),
+            schedule_id: sea_orm::Set(Some(id)),
+            reason: sea_orm::Set("clinician_advice".to_owned()),
+            note: sea_orm::Set(Some("Synthetic pause".to_owned())),
+            legacy_context: sea_orm::Set(false),
+            recorded_by_membership_id: sea_orm::Set(Some(fixture_membership_id)),
+            started_at: sea_orm::Set(Some((chrono::Utc::now()).naive_utc())),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
     let read = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/schedules/{id}",
+            "{}/api/v1/households/{fixture_household_id}/schedules/{id}",
             app.origin
         ))
         .bearer_auth(&token)
@@ -318,7 +641,7 @@ async fn schedule_get_matches_documented_contract() {
         "schedule response",
     );
     assert_eq!(body["data"]["id"], id);
-    assert_eq!(body["data"]["person_id"], 73001);
+    assert_eq!(body["data"]["person_id"], fixture_person_id);
     assert_eq!(body["data"]["schedule_type"], "prn");
     assert_eq!(
         body["data"]["schedule_config"]["weekdays"],
@@ -330,13 +653,13 @@ async fn schedule_get_matches_documented_contract() {
     );
     assert_eq!(
         body["data"]["current_pause_period"]["portable_id"],
-        "aaa00000-0000-4000-8000-000000084999"
+        unique_identifier_0.clone()
     );
 
     let missing = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/schedules/99999",
+            "{}/api/v1/households/{fixture_household_id}/schedules/99999",
             app.origin
         ))
         .bearer_auth(&token)
@@ -359,24 +682,69 @@ async fn schedule_get_matches_documented_contract() {
     assert_eq!(missing_body["error"]["code"], "not_found");
     assert_eq!(missing_body["error"]["request_id"], missing_request_id);
 
-    app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(84998,72001,73002,80001,true,'2026-01-01','2027-01-01',2,'tablet',4,'{}',now(),now())").await.unwrap();
+    let _schedules_84998 = med_tracker::models::_entities::schedules::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        person_id: sea_orm::Set(fixture_minor_id),
+        medication_id: sea_orm::Set(fixture_medication_id),
+        active: sea_orm::Set(true),
+        start_date: sea_orm::Set(Some("2026-01-01".parse::<chrono::NaiveDate>().unwrap())),
+        end_date: sea_orm::Set(Some("2027-01-01".parse::<chrono::NaiveDate>().unwrap())),
+        dose_amount: sea_orm::Set(Some("2".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+        schedule_type: sea_orm::Set(4),
+        schedule_config: sea_orm::Set(serde_json::from_str::<serde_json::Value>("{}").unwrap()),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let participant = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/schedules/84998",
-            app.origin
+            "{}/api/v1/households/{fixture_household_id}/schedules/{fixture_84998}",
+            app.origin,
+            fixture_84998 = _schedules_84998.id
         ))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     assert_eq!(participant.status().as_u16(), 200);
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74980").await.unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::value("revoked".to_owned()),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            sea_orm::sea_query::Expr::col(
+                med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            )
+            .add(1),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_minor_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let outside_scope = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/schedules/84998",
-            app.origin
+            "{}/api/v1/households/{fixture_household_id}/schedules/{fixture_84998}",
+            app.origin,
+            fixture_84998 = _schedules_84998.id
         ))
         .bearer_auth(&token)
         .send()
@@ -403,10 +771,14 @@ async fn schedule_get_matches_documented_contract() {
 #[tokio::test]
 async fn schedule_list_matches_documented_contract() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
-    let collection = format!("{}/api/v1/households/72001/schedules", app.origin);
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/schedules",
+        app.origin
+    );
     let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/schedules"]["get"];
     assert_eq!(operation["operationId"], "listSchedules");
@@ -473,7 +845,11 @@ async fn schedule_list_matches_documented_contract() {
 
     let foreign = app
         .client
-        .get(format!("{}/api/v1/households/72002/schedules", app.origin))
+        .get(format!(
+            "{}/api/v1/households/{fixture_72002}/schedules",
+            app.origin,
+            fixture_72002 = foreign_household.id
+        ))
         .bearer_auth(&token)
         .send()
         .await

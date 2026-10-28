@@ -1,27 +1,130 @@
 use super::*;
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
-fn dosage_body() -> Value {
-    json!({"dosage_option":{"medication_id":"80001","amount":"2","unit":"tablet","frequency":"daily","default_max_daily_doses":3,"default_min_hours_between_doses":"4","default_dose_cycle":"daily","current_supply":"12","reorder_threshold":"3"}})
+fn dosage_body(app: &Application) -> Value {
+    let fixture_medication_id = app.fixture.medication.id;
+    json!({"dosage_option":{"medication_id":fixture_medication_id.to_string(),"amount":"2","unit":"tablet","frequency":"daily","default_max_daily_doses":3,"default_min_hours_between_doses":"4","default_dose_cycle":"daily","current_supply":"12","reorder_threshold":"3"}})
+}
+
+#[tokio::test]
+async fn dosage_response_preserves_exact_fields_nulls_decimals_and_etag() {
+    use sha2::{Digest, Sha256};
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let collection = format!(
+        "{}/api/v1/households/{}/dosage_options",
+        app.origin, app.fixture.household.id
+    );
+    let mut input = dosage_body(&app);
+    input["dosage_option"]["amount"] = json!("2.50");
+    input["dosage_option"]["default_min_hours_between_doses"] = json!("4.5");
+    input["dosage_option"]["current_supply"] = Value::Null;
+    input["dosage_option"]["reorder_threshold"] = Value::Null;
+    input["dosage_option"]["default_dose_cycle"] = json!("weekly");
+    let created = app
+        .client
+        .post(&collection)
+        .bearer_auth(&token)
+        .json(&input)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let created_etag = created.headers()["etag"].to_str().unwrap().to_owned();
+    let created: Value = created.json().await.unwrap();
+    let record = &created["data"];
+    let expected = json!({
+        "id": record["id"], "portable_id": record["portable_id"],
+        "medication_id": app.fixture.medication.id,
+        "medication_portable_id": app.fixture.medication.portable_id,
+        "amount": "2.5", "unit": "tablet", "frequency": "daily", "description": null,
+        "default_for_adults": false, "default_for_children": false,
+        "default_max_daily_doses": 3, "default_min_hours_between_doses": "4.5",
+        "default_dose_cycle": "weekly", "current_supply": null, "reorder_threshold": null,
+        "updated_at": record["updated_at"]
+    });
+    assert_eq!(created, json!({"data": expected}));
+    let mut canonical = created.clone();
+    canonical.sort_all_objects();
+    let expected_etag = format!(
+        "\"{}\"",
+        hex::encode(Sha256::digest(serde_json::to_vec(&canonical).unwrap()))
+    );
+    assert_eq!(created_etag, expected_etag);
+
+    let endpoint = format!("{collection}/{}", record["portable_id"].as_str().unwrap());
+    let read = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(read.status().as_u16(), 200);
+    assert_eq!(read.headers()["etag"], created_etag);
+    assert_eq!(read.json::<Value>().await.unwrap(), created);
+    let list = app
+        .client
+        .get(format!("{collection}?per_page=1"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(list.status().as_u16(), 200);
+    assert_eq!(
+        list.json::<Value>().await.unwrap(),
+        json!({"data": [expected], "meta": {"page": 1, "per_page": 1, "total_count": 1}})
+    );
+    let cached = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .header("if-none-match", &created_etag)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(cached.status().as_u16(), 304);
+    assert_eq!(cached.headers()["etag"], created_etag);
+    assert!(cached.bytes().await.unwrap().is_empty());
+    app.close().await;
 }
 
 #[tokio::test]
 async fn dosage_conformance_tracked_description_update_retains_parent_inventory_callback() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/dosage_options", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/dosage_options",
+        app.origin
+    );
     let created = app
         .client
         .post(&endpoint)
         .bearer_auth(&token)
-        .json(&dosage_body())
+        .json(&dosage_body(&app))
         .send()
         .await
         .unwrap();
     let body: Value = created.json().await.unwrap();
     let id = body["data"]["id"].as_i64().unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE medications SET updated_at='2020-01-01' WHERE id=80001")
+    med_tracker::models::_entities::medications::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::medications::Column::UpdatedAt,
+            sea_orm::sea_query::Expr::value(
+                "2020-01-01T00:00:00"
+                    .parse::<chrono::NaiveDateTime>()
+                    .unwrap(),
+            ),
+        )
+        .filter(med_tracker::models::_entities::medications::Column::Id.eq(fixture_medication_id))
+        .filter(
+            med_tracker::models::_entities::medications::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let response = app
@@ -33,7 +136,97 @@ async fn dosage_conformance_tracked_description_update_retains_parent_inventory_
         .await
         .unwrap();
     let status = response.status().as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT current_supply::text AS supply,reorder_threshold::text AS threshold,updated_at>'2020-01-01' AS refreshed,(SELECT count(*) FROM versions WHERE item_type='Medication' AND event='api_update') AS versions,(SELECT count(*) FROM versions WHERE item_type='MedicationDosageOption' AND item_id=$1 AND event='api_update') AS option_updates,(SELECT count(*) FROM api_change_events WHERE record_type='Medication' AND action='update') AS changes FROM medications WHERE id=80001",[id.into()])).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(QueryExpr::col("current_supply").cast_as("text"), "supply")
+                .expr_as(
+                    QueryExpr::col("reorder_threshold").cast_as("text"),
+                    "threshold",
+                )
+                .expr_as(
+                    QueryExpr::col("updated_at").gt(QueryExpr::val(
+                        "2020-01-01T00:00:00"
+                            .parse::<chrono::NaiveDateTime>()
+                            .unwrap(),
+                    )),
+                    "refreshed",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("item_type")
+                                            .eq(QueryExpr::val("Medication")),
+                                    )
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("api_update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("item_type")
+                                            .eq(QueryExpr::val("MedicationDosageOption")),
+                                    )
+                                    .and(QueryExpr::col("item_id").eq(QueryExpr::val(id)))
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("api_update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "option_updates",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("Medication")),
+                                    )
+                                    .and(QueryExpr::col("action").eq(QueryExpr::val("update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "changes",
+                )
+                .from("medications")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(fixture_medication_id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let supply: String = row.try_get("", "supply").unwrap();
     let threshold: String = row.try_get("", "threshold").unwrap();
     let refreshed: bool = row.try_get("", "refreshed").unwrap();
@@ -51,13 +244,15 @@ async fn dosage_conformance_tracked_description_update_retains_parent_inventory_
 #[tokio::test]
 async fn dosage_conformance_untracked_creation_retains_raw_parent_mode_sync_without_version() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    let mut body = dosage_body();
+    let mut body = dosage_body(&app);
     body["dosage_option"]["current_supply"] = Value::Null;
     let response = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/dosage_options",
+            "{}/api/v1/households/{fixture_household_id}/dosage_options",
             app.origin
         ))
         .bearer_auth(&token)
@@ -66,7 +261,84 @@ async fn dosage_conformance_untracked_creation_retains_raw_parent_mode_sync_with
         .await
         .unwrap();
     let status = response.status().as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT dose_amount IS NULL AS mode,current_supply::text AS supply,(SELECT count(*) FROM versions WHERE item_type='Medication') AS parent_versions,(SELECT count(*) FROM versions WHERE item_type='MedicationDosageOption' AND event='api_create') AS option_versions,(SELECT count(*) FROM api_change_events WHERE record_type='Medication' AND action='update') AS changes FROM medications WHERE id=80001")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(QueryExpr::col("dose_amount").is_null(), "mode")
+                .expr_as(QueryExpr::col("current_supply").cast_as("text"), "supply")
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("item_type")
+                                            .eq(QueryExpr::val("Medication")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "parent_versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("item_type")
+                                            .eq(QueryExpr::val("MedicationDosageOption")),
+                                    )
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("api_create"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "option_versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("Medication")),
+                                    )
+                                    .and(QueryExpr::col("action").eq(QueryExpr::val("update"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "changes",
+                )
+                .from("medications")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(fixture_medication_id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let mode: bool = row.try_get("", "mode").unwrap();
     let supply: String = row.try_get("", "supply").unwrap();
     let counts: Vec<i64> = ["parent_versions", "option_versions", "changes"]
@@ -80,8 +352,85 @@ async fn dosage_conformance_untracked_creation_retains_raw_parent_mode_sync_with
     assert_eq!(counts, vec![0, 1, 1]);
 }
 
-async fn seed_removable_options(app: &Application) {
-    app.fixture.admin.execute_unprepared("INSERT INTO dosages(id,household_id,medication_id,amount,unit,frequency,current_supply,reorder_threshold,default_dose_cycle,default_max_daily_doses,default_min_hours_between_doses,created_at,updated_at) VALUES(82001,72001,80001,2,'tablet','daily',6,3,0,4,0,now(),now()),(82002,72001,80001,1,'tablet','daily',4,2,0,4,0,now(),now()); UPDATE medications SET dose_amount=NULL,current_supply=10,reorder_threshold=5,supply_at_last_restock=10 WHERE id=80001").await.unwrap();
+async fn seed_removable_options(
+    app: &Application,
+) -> (
+    med_tracker::models::_entities::dosages::Model,
+    med_tracker::models::_entities::dosages::Model,
+) {
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let _dosages_82001 = med_tracker::models::_entities::dosages::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        medication_id: sea_orm::Set(fixture_medication_id),
+        amount: sea_orm::Set("2".parse::<sea_orm::prelude::Decimal>().unwrap()),
+        unit: sea_orm::Set("tablet".to_owned()),
+        frequency: sea_orm::Set("daily".to_owned()),
+        current_supply: sea_orm::Set(Some("6".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        reorder_threshold: sea_orm::Set(Some("3".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        default_dose_cycle: sea_orm::Set(0),
+        default_max_daily_doses: sea_orm::Set(4),
+        default_min_hours_between_doses: sea_orm::Set(
+            "0".parse::<sea_orm::prelude::Decimal>().unwrap(),
+        ),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _dosages_82002 = med_tracker::models::_entities::dosages::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        medication_id: sea_orm::Set(fixture_medication_id),
+        amount: sea_orm::Set("1".parse::<sea_orm::prelude::Decimal>().unwrap()),
+        unit: sea_orm::Set("tablet".to_owned()),
+        frequency: sea_orm::Set("daily".to_owned()),
+        current_supply: sea_orm::Set(Some("4".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        reorder_threshold: sea_orm::Set(Some("2".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        default_dose_cycle: sea_orm::Set(0),
+        default_max_daily_doses: sea_orm::Set(4),
+        default_min_hours_between_doses: sea_orm::Set(
+            "0".parse::<sea_orm::prelude::Decimal>().unwrap(),
+        ),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    med_tracker::models::_entities::medications::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::medications::Column::DoseAmount,
+            sea_orm::sea_query::Expr::value(None::<f64>),
+        )
+        .col_expr(
+            med_tracker::models::_entities::medications::Column::CurrentSupply,
+            sea_orm::sea_query::Expr::value(Some(
+                "10".parse::<sea_orm::prelude::Decimal>().unwrap(),
+            )),
+        )
+        .col_expr(
+            med_tracker::models::_entities::medications::Column::ReorderThreshold,
+            sea_orm::sea_query::Expr::value("5".parse::<sea_orm::prelude::Decimal>().unwrap()),
+        )
+        .col_expr(
+            med_tracker::models::_entities::medications::Column::SupplyAtLastRestock,
+            sea_orm::sea_query::Expr::value(Some(
+                "10".parse::<sea_orm::prelude::Decimal>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::medications::Column::Id.eq(fixture_medication_id))
+        .filter(
+            med_tracker::models::_entities::medications::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+
+    (_dosages_82001, _dosages_82002)
 }
 
 async fn removal_context(
@@ -90,6 +439,7 @@ async fn removal_context(
     med_tracker::models::identity::resource::ValidatedPrincipal,
     med_tracker::models::access::TenantTransaction,
 ) {
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
     let mut headers = axum::http::HeaderMap::new();
     headers.insert("authorization", format!("Bearer {token}").parse().unwrap());
@@ -100,8 +450,8 @@ async fn removal_context(
     let tenant = principal
         .begin_household(
             &app.fixture.runtime,
-            72001,
-            "synthetic-remove-dosage".into(),
+            fixture_household_id,
+            "synthetic-remove-dosage".to_owned(),
             None,
         )
         .await
@@ -112,17 +462,104 @@ async fn removal_context(
 #[tokio::test]
 async fn dosage_removal_recalculates_parent_and_records_atomic_history() {
     let app = Application::new().await;
-    seed_removable_options(&app).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let (_dosages_82001, _dosages_82002) = seed_removable_options(&app).await;
     let (principal, tenant) = removal_context(&app).await;
-    let result =
-        med_tracker::models::care::dosages::destroy(&tenant, "82001", Some(principal.provenance()))
-            .await;
+    let result = med_tracker::models::care::dosages::destroy(
+        &tenant,
+        &_dosages_82001.id.to_string(),
+        Some(principal.provenance()),
+    )
+    .await;
     if result.is_ok() {
         tenant.commit().await.unwrap();
     } else {
         tenant.rollback().await.unwrap();
     }
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT current_supply::text AS supply,reorder_threshold::text AS threshold,supply_at_last_restock::text AS baseline,(SELECT count(*) FROM dosages WHERE id=82001) AS removed,(SELECT count(*) FROM versions WHERE item_type='MedicationDosageOption' AND event='destroy') AS versions,(SELECT count(*) FROM api_tombstones WHERE record_type='MedicationDosageOption') AS tombstones FROM medications WHERE id=80001")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(QueryExpr::col("current_supply").cast_as("text"), "supply")
+                .expr_as(
+                    QueryExpr::col("reorder_threshold").cast_as("text"),
+                    "threshold",
+                )
+                .expr_as(
+                    QueryExpr::col("supply_at_last_restock").cast_as("text"),
+                    "baseline",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("dosages")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("id").eq(QueryExpr::val(_dosages_82001.id)),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "removed",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("item_type")
+                                            .eq(QueryExpr::val("MedicationDosageOption")),
+                                    )
+                                    .and(QueryExpr::col("event").eq(QueryExpr::val("destroy"))),
+                            )
+                            .to_owned(),
+                    ),
+                    "versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_tombstones")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("MedicationDosageOption")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "tombstones",
+                )
+                .from("medications")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(fixture_medication_id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let values: Vec<String> = ["supply", "threshold", "baseline"]
         .iter()
         .map(|field| row.try_get("", field).unwrap())
@@ -141,21 +578,93 @@ async fn dosage_removal_recalculates_parent_and_records_atomic_history() {
 async fn dosage_removal_protects_inactive_schedule_and_assignment_references() {
     for reference in ["assignment", "schedule"] {
         let app = Application::new().await;
-        seed_removable_options(&app).await;
+        let fixture_household_id = app.fixture.household.id;
+        let fixture_person_id = app.fixture.account.person_id;
+        let fixture_medication_id = app.fixture.medication.id;
+        let fixture_assignment_id = app.fixture.assignment.id;
+        let (_dosages_82001, _dosages_82002) = seed_removable_options(&app).await;
         if reference == "assignment" {
-            app.fixture.admin.execute_unprepared("UPDATE person_medications SET source_dosage_option_id=82001,active=false WHERE id=81001").await.unwrap();
+            med_tracker::models::_entities::person_medications::Entity::update_many().col_expr(med_tracker::models::_entities::person_medications::Column::SourceDosageOptionId, sea_orm::sea_query::Expr::value(Some(_dosages_82001.id))).col_expr(med_tracker::models::_entities::person_medications::Column::Active, sea_orm::sea_query::Expr::value(false)).filter(med_tracker::models::_entities::person_medications::Column::Id.eq(fixture_assignment_id)).filter(med_tracker::models::_entities::person_medications::Column::HouseholdId.eq(app.fixture.household.id)).exec(&app.fixture.admin).await.unwrap();
         } else {
-            app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,source_dosage_option_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,82001,false,'2026-10-05','2026-10-10',2,'tablet',6,'{}',now(),now())").await.unwrap();
+            let _schedules_83001 = med_tracker::models::_entities::schedules::ActiveModel {
+                household_id: sea_orm::Set(fixture_household_id),
+                person_id: sea_orm::Set(fixture_person_id),
+                medication_id: sea_orm::Set(fixture_medication_id),
+                source_dosage_option_id: sea_orm::Set(Some(_dosages_82001.id)),
+                active: sea_orm::Set(false),
+                start_date: sea_orm::Set(Some("2026-10-05".parse::<chrono::NaiveDate>().unwrap())),
+                end_date: sea_orm::Set(Some("2026-10-10".parse::<chrono::NaiveDate>().unwrap())),
+                dose_amount: sea_orm::Set(Some("2".parse::<sea_orm::prelude::Decimal>().unwrap())),
+                dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+                schedule_type: sea_orm::Set(6),
+                schedule_config: sea_orm::Set(
+                    serde_json::from_str::<serde_json::Value>("{}").unwrap(),
+                ),
+                created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+                updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+                ..Default::default()
+            }
+            .insert(&app.fixture.admin)
+            .await
+            .unwrap();
         }
         let (principal, tenant) = removal_context(&app).await;
         let result = med_tracker::models::care::dosages::destroy(
             &tenant,
-            "82001",
+            &_dosages_82001.id.to_string(),
             Some(principal.provenance()),
         )
         .await;
         tenant.rollback().await.unwrap();
-        let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM dosages WHERE id=82001) AS options,(SELECT count(*) FROM versions WHERE item_type='MedicationDosageOption') AS versions")).await.unwrap().unwrap();
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw({
+                let query = Query::select()
+                    .expr_as(
+                        QueryExpr::expr(
+                            Query::select()
+                                .expr(QueryExpr::expr(QueryFunc::count(
+                                    sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                                )))
+                                .from("dosages")
+                                .and_where(
+                                    QueryExpr::col("household_id")
+                                        .eq(QueryExpr::val(fixture_household_id))
+                                        .and(
+                                            QueryExpr::col("id")
+                                                .eq(QueryExpr::val(_dosages_82001.id)),
+                                        ),
+                                )
+                                .to_owned(),
+                        ),
+                        "options",
+                    )
+                    .expr_as(
+                        QueryExpr::expr(
+                            Query::select()
+                                .expr(QueryExpr::expr(QueryFunc::count(
+                                    sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                                )))
+                                .from("versions")
+                                .and_where(
+                                    QueryExpr::col("household_id")
+                                        .eq(QueryExpr::val(fixture_household_id))
+                                        .and(
+                                            QueryExpr::col("item_type")
+                                                .eq(QueryExpr::val("MedicationDosageOption")),
+                                        ),
+                                )
+                                .to_owned(),
+                        ),
+                        "versions",
+                    )
+                    .to_owned();
+                app.fixture.admin.get_database_backend().build(&query)
+            })
+            .await
+            .unwrap()
+            .unwrap();
         let counts: Vec<i64> = ["options", "versions"]
             .iter()
             .map(|field| row.try_get("", field).unwrap())
@@ -173,20 +682,127 @@ async fn dosage_removal_protects_inactive_schedule_and_assignment_references() {
 }
 
 #[tokio::test]
+// Whole-run exclusive: PostgreSQL trigger functions, trigger installation and sequence privileges are unsupported by SeaORM Schema and SeaQuery Table/Query builders. The raw DDL is limited to this case and removed before closing.
 async fn dosage_removal_audit_rejection_rolls_back_deleted_option_and_parent_stock() {
     let app = Application::new().await;
-    seed_removable_options(&app).await;
-    app.fixture.admin.execute_unprepared("CREATE SEQUENCE dosage_removal_audit_reached; GRANT USAGE,SELECT ON SEQUENCE dosage_removal_audit_reached TO med_tracker_app; CREATE FUNCTION reject_dosage_removal_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationDosageOption' AND NEW.event='destroy' THEN IF NOT EXISTS(SELECT 1 FROM dosages WHERE id=82001) AND (SELECT current_supply FROM medications WHERE id=80001)=4 THEN PERFORM nextval('dosage_removal_audit_reached'); END IF; RAISE EXCEPTION 'Synthetic removal audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_dosage_removal_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_dosage_removal_audit()").await.unwrap();
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let (_dosages_82001, _dosages_82002) = seed_removable_options(&app).await;
+    app.fixture
+        .admin
+        .execute_unprepared("CREATE SEQUENCE dosage_removal_audit_reached")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "GRANT USAGE,SELECT ON SEQUENCE dosage_removal_audit_reached TO med_tracker_app",
+        )
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION reject_dosage_removal_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationDosageOption' AND NEW.event='destroy' THEN IF NOT EXISTS(SELECT 1 FROM dosages WHERE id={fixture_82001}) AND (SELECT current_supply FROM medications WHERE id={fixture_medication_id})=4 THEN PERFORM nextval('dosage_removal_audit_reached'); END IF; RAISE EXCEPTION 'Synthetic removal audit rejection'; END IF; RETURN NEW; END $$", fixture_82001 = _dosages_82001.id)).await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER reject_dosage_removal_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_dosage_removal_audit()").await.unwrap();
     let (principal, tenant) = removal_context(&app).await;
-    let result =
-        med_tracker::models::care::dosages::destroy(&tenant, "82001", Some(principal.provenance()))
-            .await;
+    let result = med_tracker::models::care::dosages::destroy(
+        &tenant,
+        &_dosages_82001.id.to_string(),
+        Some(principal.provenance()),
+    )
+    .await;
     tenant.rollback().await.unwrap();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM dosage_removal_audit_reached) AS reached,(SELECT count(*) FROM dosages WHERE id=82001) AS options,(SELECT current_supply::text FROM medications WHERE id=80001) AS supply,(SELECT count(*) FROM api_tombstones WHERE record_type='MedicationDosageOption') AS tombstones")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::col("is_called"))
+                            .from("dosage_removal_audit_reached")
+                            .to_owned(),
+                    ),
+                    "reached",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("dosages")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("id").eq(QueryExpr::val(_dosages_82001.id)),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "options",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::col("current_supply").cast_as("text"))
+                            .from("medications")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("id")
+                                            .eq(QueryExpr::val(fixture_medication_id)),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "supply",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_tombstones")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("MedicationDosageOption")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "tombstones",
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let options: i64 = row.try_get("", "options").unwrap();
     let supply: String = row.try_get("", "supply").unwrap();
     let tombstones: i64 = row.try_get("", "tombstones").unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER IF EXISTS reject_dosage_removal_audit ON versions")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP FUNCTION IF EXISTS reject_dosage_removal_audit()")
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP SEQUENCE IF EXISTS dosage_removal_audit_reached")
+        .await
+        .unwrap();
     app.close().await;
     assert!(result.is_err());
     assert!(reached);
@@ -196,16 +812,31 @@ async fn dosage_removal_audit_rejection_rolls_back_deleted_option_and_parent_sto
 #[tokio::test]
 async fn dosage_removal_requires_current_manager_and_scoped_parent() {
     let app = Application::new().await;
-    seed_removable_options(&app).await;
+    let fixture_membership_id = app.fixture.membership.id;
+    let (_dosages_82001, _dosages_82002) = seed_removable_options(&app).await;
     let (principal, tenant) = removal_context(&app).await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
-    let denied =
-        med_tracker::models::care::dosages::destroy(&tenant, "82001", Some(principal.provenance()))
-            .await;
+    let denied = med_tracker::models::care::dosages::destroy(
+        &tenant,
+        &_dosages_82001.id.to_string(),
+        Some(principal.provenance()),
+    )
+    .await;
     tenant.rollback().await.unwrap();
     app.close().await;
     assert!(matches!(
@@ -217,13 +848,18 @@ async fn dosage_removal_requires_current_manager_and_scoped_parent() {
 #[tokio::test]
 async fn dosage_api_create_is_immediately_readable_and_inventory_audit_are_atomic() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/dosage_options", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/dosage_options",
+        app.origin
+    );
     let response = app
         .client
         .post(&endpoint)
         .bearer_auth(&token)
-        .json(&dosage_body())
+        .json(&dosage_body(&app))
         .send()
         .await
         .unwrap();
@@ -252,7 +888,67 @@ async fn dosage_api_create_is_immediately_readable_and_inventory_audit_are_atomi
         .await
         .unwrap();
     let collection_status = collection.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT dose_amount IS NULL AS options_mode,current_supply::text AS supply,reorder_threshold::text AS threshold,(SELECT count(*) FROM versions WHERE item_type='MedicationDosageOption') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='MedicationDosageOption') AS changes FROM medications WHERE id=80001")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(QueryExpr::col("dose_amount").is_null(), "options_mode")
+                .expr_as(QueryExpr::col("current_supply").cast_as("text"), "supply")
+                .expr_as(
+                    QueryExpr::col("reorder_threshold").cast_as("text"),
+                    "threshold",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("versions")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("item_type")
+                                            .eq(QueryExpr::val("MedicationDosageOption")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "versions",
+                )
+                .expr_as(
+                    QueryExpr::expr(
+                        Query::select()
+                            .expr(QueryExpr::expr(QueryFunc::count(
+                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
+                            )))
+                            .from("api_change_events")
+                            .and_where(
+                                QueryExpr::col("household_id")
+                                    .eq(QueryExpr::val(fixture_household_id))
+                                    .and(
+                                        QueryExpr::col("record_type")
+                                            .eq(QueryExpr::val("MedicationDosageOption")),
+                                    ),
+                            )
+                            .to_owned(),
+                    ),
+                    "changes",
+                )
+                .from("medications")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(QueryExpr::col("id").eq(QueryExpr::val(fixture_medication_id))),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     let mode: bool = row.try_get("", "options_mode").unwrap();
     let supply: String = row.try_get("", "supply").unwrap();
     let threshold: String = row.try_get("", "threshold").unwrap();
@@ -270,13 +966,17 @@ async fn dosage_api_create_is_immediately_readable_and_inventory_audit_are_atomi
 #[tokio::test]
 async fn dosage_api_partial_update_and_optional_stale_etag_preserve_existing_values() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/dosage_options", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/dosage_options",
+        app.origin
+    );
     let created = app
         .client
         .post(&endpoint)
         .bearer_auth(&token)
-        .json(&dosage_body())
+        .json(&dosage_body(&app))
         .send()
         .await
         .unwrap();
@@ -318,9 +1018,14 @@ async fn dosage_api_partial_update_and_optional_stale_etag_preserve_existing_val
 #[tokio::test]
 async fn dosage_api_invalid_and_duplicate_defaults_have_no_partial_effect() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/dosage_options", app.origin);
-    let mut invalid = dosage_body();
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/dosage_options",
+        app.origin
+    );
+    let mut invalid = dosage_body(&app);
     invalid["dosage_option"]["amount"] = json!("0");
     let rejected = app
         .client
@@ -330,7 +1035,7 @@ async fn dosage_api_invalid_and_duplicate_defaults_have_no_partial_effect() {
         .send()
         .await
         .unwrap();
-    let mut valid = dosage_body();
+    let mut valid = dosage_body(&app);
     valid["dosage_option"]["default_for_adults"] = json!(true);
     let first = app
         .client
@@ -356,10 +1061,26 @@ async fn dosage_api_invalid_and_duplicate_defaults_have_no_partial_effect() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS options FROM dosages WHERE medication_id=80001",
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(
+                    QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(
+                        sea_orm::sea_query::Asterisk,
+                    ))),
+                    "options",
+                )
+                .from("dosages")
+                .and_where(
+                    QueryExpr::col("household_id")
+                        .eq(QueryExpr::val(fixture_household_id))
+                        .and(
+                            QueryExpr::col("medication_id")
+                                .eq(QueryExpr::val(fixture_medication_id)),
+                        ),
+                )
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
@@ -372,17 +1093,30 @@ async fn dosage_api_invalid_and_duplicate_defaults_have_no_partial_effect() {
 #[tokio::test]
 async fn dosage_api_member_write_denial_precedes_validation_and_foreign_reads_are_hidden() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let denied = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/dosage_options",
+            "{}/api/v1/households/{fixture_household_id}/dosage_options",
             app.origin
         ))
         .bearer_auth(&token)
@@ -393,8 +1127,9 @@ async fn dosage_api_member_write_denial_precedes_validation_and_foreign_reads_ar
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/dosage_options",
-            app.origin
+            "{}/api/v1/households/{fixture_72002}/dosage_options",
+            app.origin,
+            fixture_72002 = foreign_household.id
         ))
         .bearer_auth(&token)
         .send()
@@ -409,9 +1144,17 @@ async fn dosage_api_member_write_denial_precedes_validation_and_foreign_reads_ar
 async fn dosage_option_get_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_location_id = app.fixture.location.id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
-    let collection = format!("{}/api/v1/households/72001/dosage_options", app.origin);
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/dosage_options",
+        app.origin
+    );
     let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/dosage_options/{id}"]["get"];
     assert_eq!(operation["operationId"], "getDosageOption");
@@ -450,7 +1193,7 @@ async fn dosage_option_get_matches_documented_contract() {
         .client
         .post(&collection)
         .bearer_auth(&token)
-        .json(&dosage_body())
+        .json(&dosage_body(&app))
         .send()
         .await
         .unwrap();
@@ -493,7 +1236,7 @@ async fn dosage_option_get_matches_documented_contract() {
         &body,
         "dosage option response",
     );
-    assert_eq!(body["data"]["medication_id"], 80001);
+    assert_eq!(body["data"]["medication_id"], fixture_medication_id);
     assert_eq!(body["data"]["amount"], "2.0");
 
     let cached = app
@@ -539,10 +1282,77 @@ async fn dosage_option_get_matches_documented_contract() {
     assert_eq!(missing_body["error"]["code"], "not_found");
     assert_eq!(missing_body["error"]["request_id"], missing_request_id);
 
-    app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92005,72001,79001,'Synthetic ungranted medicine',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92006,72001,73002,92005,2,'tablet',0,now(),now()); INSERT INTO dosages(id,household_id,medication_id,amount,unit,frequency,current_supply,reorder_threshold,default_dose_cycle,default_max_daily_doses,default_min_hours_between_doses,created_at,updated_at) VALUES(92007,72001,92005,2,'tablet','daily',6,3,0,4,0,now(),now()); UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
+    let _medications_92005 = med_tracker::models::_entities::medications::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        location_id: sea_orm::Set(fixture_location_id),
+        name: sea_orm::Set(Some("Synthetic ungranted medicine".to_owned())),
+        current_supply: sea_orm::Set(Some("10".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        dose_amount: sea_orm::Set(Some(2.0)),
+        dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _person_medications_92006 =
+        med_tracker::models::_entities::person_medications::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            person_id: sea_orm::Set(fixture_minor_id),
+            medication_id: sea_orm::Set(_medications_92005.id),
+            dose_amount: sea_orm::Set(Some("2".parse::<sea_orm::prelude::Decimal>().unwrap())),
+            dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+            position: sea_orm::Set(0),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let _dosages_92007 = med_tracker::models::_entities::dosages::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        medication_id: sea_orm::Set(_medications_92005.id),
+        amount: sea_orm::Set("2".parse::<sea_orm::prelude::Decimal>().unwrap()),
+        unit: sea_orm::Set("tablet".to_owned()),
+        frequency: sea_orm::Set("daily".to_owned()),
+        current_supply: sea_orm::Set(Some("6".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        reorder_threshold: sea_orm::Set(Some("3".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        default_dose_cycle: sea_orm::Set(0),
+        default_max_daily_doses: sea_orm::Set(4),
+        default_min_hours_between_doses: sea_orm::Set(
+            "0".parse::<sea_orm::prelude::Decimal>().unwrap(),
+        ),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let ungranted = app
         .client
-        .get(format!("{collection}/92007"))
+        .get(format!(
+            "{collection}/{fixture_92007}",
+            fixture_92007 = _dosages_92007.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
@@ -559,13 +1369,14 @@ async fn dosage_option_get_matches_documented_contract() {
         &ungranted_body,
         "participating person's dosage option",
     );
-    assert_eq!(ungranted_body["data"]["id"], 92007);
+    assert_eq!(ungranted_body["data"]["id"], _dosages_92007.id);
 
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/dosage_options/{id}",
-            app.origin
+            "{}/api/v1/households/{fixture_72002}/dosage_options/{id}",
+            app.origin,
+            fixture_72002 = foreign_household.id
         ))
         .bearer_auth(&token)
         .send()
@@ -593,9 +1404,16 @@ async fn dosage_option_get_matches_documented_contract() {
 async fn dosage_option_list_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_location_id = app.fixture.location.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
-    let collection = format!("{}/api/v1/households/72001/dosage_options", app.origin);
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/dosage_options",
+        app.origin
+    );
     let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/dosage_options"]["get"];
     assert_eq!(operation["operationId"], "listDosageOptions");
@@ -619,7 +1437,7 @@ async fn dosage_option_list_matches_documented_contract() {
         .client
         .post(&collection)
         .bearer_auth(&token)
-        .json(&dosage_body())
+        .json(&dosage_body(&app))
         .send()
         .await
         .unwrap();
@@ -672,7 +1490,71 @@ async fn dosage_option_list_matches_documented_contract() {
         assert_eq!(rejected_body["error"]["request_id"], rejected_request_id);
     }
 
-    app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92008,72001,79001,'Synthetic ungranted option medicine',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92009,72001,73002,92008,2,'tablet',0,now(),now()); INSERT INTO dosages(id,household_id,medication_id,amount,unit,frequency,current_supply,reorder_threshold,default_dose_cycle,default_max_daily_doses,default_min_hours_between_doses,created_at,updated_at) VALUES(92012,72001,92008,2,'tablet','daily',6,3,0,4,0,now(),now()); UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
+    let _medications_92008 = med_tracker::models::_entities::medications::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        location_id: sea_orm::Set(fixture_location_id),
+        name: sea_orm::Set(Some("Synthetic ungranted option medicine".to_owned())),
+        current_supply: sea_orm::Set(Some("10".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        dose_amount: sea_orm::Set(Some(2.0)),
+        dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _person_medications_92009 =
+        med_tracker::models::_entities::person_medications::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            person_id: sea_orm::Set(fixture_minor_id),
+            medication_id: sea_orm::Set(_medications_92008.id),
+            dose_amount: sea_orm::Set(Some("2".parse::<sea_orm::prelude::Decimal>().unwrap())),
+            dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+            position: sea_orm::Set(0),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let _dosages_92012 = med_tracker::models::_entities::dosages::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        medication_id: sea_orm::Set(_medications_92008.id),
+        amount: sea_orm::Set("2".parse::<sea_orm::prelude::Decimal>().unwrap()),
+        unit: sea_orm::Set("tablet".to_owned()),
+        frequency: sea_orm::Set("daily".to_owned()),
+        current_supply: sea_orm::Set(Some("6".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        reorder_threshold: sea_orm::Set(Some("3".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        default_dose_cycle: sea_orm::Set(0),
+        default_max_daily_doses: sea_orm::Set(4),
+        default_min_hours_between_doses: sea_orm::Set(
+            "0".parse::<sea_orm::prelude::Decimal>().unwrap(),
+        ),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let scoped = app
         .client
         .get(&collection)
@@ -685,13 +1567,14 @@ async fn dosage_option_list_matches_documented_contract() {
     assert_eq!(scoped_status, 200);
     assert_eq!(scoped_body["meta"]["total_count"], 2);
     assert_eq!(scoped_body["data"][0]["id"], id);
-    assert_eq!(scoped_body["data"][1]["id"], 92012);
+    assert_eq!(scoped_body["data"][1]["id"], _dosages_92012.id);
 
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/dosage_options",
-            app.origin
+            "{}/api/v1/households/{fixture_72002}/dosage_options",
+            app.origin,
+            fixture_72002 = foreign_household.id
         ))
         .bearer_auth(&token)
         .send()

@@ -69,5 +69,4 @@ pub mod schema_migrations;
 pub mod security_audit_events;
 pub mod storage_migration_runs;
 pub mod support_access_sessions;
-pub mod users;
 pub mod versions;

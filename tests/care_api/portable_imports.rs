@@ -1,6 +1,9 @@
 use super::*;
+use med_tracker::models::_entities as rows;
 use med_tracker::models::care::portable_crypto;
 use med_tracker::models::entities::{location, location_membership, person};
+use sea_orm::sea_query::extension::postgres::PgExpr;
+use sea_orm::sea_query::{Alias, Expr, ExprTrait, Query};
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 
 const PASSPHRASE: &str = "synthetic portable secret";
@@ -9,9 +12,12 @@ const PASSPHRASE_HEADER: &str = "x-medtracker-portable-passphrase";
 #[tokio::test]
 async fn portable_v3_rejects_legacy_person_location_links_before_any_writes() {
     let app = Application::new().await;
+    let fixture_imported_person_id = format!("imported-person-{}", app.fixture.client_uuid);
+    let fixture_imported_location_id = format!("imported-location-{}", app.fixture.client_uuid);
     let token = app.token().await;
     let before = import_effects(&app).await;
     let links = location_membership::Entity::find()
+        .filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id))
         .count(&app.fixture.admin)
         .await
         .unwrap();
@@ -20,10 +26,10 @@ async fn portable_v3_rejects_legacy_person_location_links_before_any_writes() {
         "medtracker.portable.v2",
         "medtracker.portable.v3",
     ] {
-        let mut payload = importable_payload();
+        let mut payload = importable_payload(&app);
         payload["format"] = json!(format);
         payload["records"]["people"][0]["location_portable_ids"] =
-            json!(["imported-location-0001"]);
+            json!([fixture_imported_location_id.as_str()]);
         let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
         for endpoint in ["portable_imports/dry_run", "portable_imports"] {
             let response = app
@@ -33,21 +39,25 @@ async fn portable_v3_rejects_legacy_person_location_links_before_any_writes() {
                 .header(PASSPHRASE_HEADER, PASSPHRASE)
                 .json(&fresh_dependent_request(
                     bundle.clone(),
-                    "imported-person-0001",
+                    fixture_imported_person_id.as_str(),
                 ))
                 .send()
                 .await
                 .unwrap();
             assert_eq!(response.status().as_u16(), 422, "{format} {endpoint}");
             let body: Value = response.json().await.unwrap();
-            assert!(body.to_string().contains("location_portable_ids"), "{body}");
             assert!(
-                body.to_string().contains("medtracker.portable.v3"),
+                str::contains(&body.to_string(), "location_portable_ids"),
+                "{body}"
+            );
+            assert!(
+                str::contains(&body.to_string(), "medtracker.portable.v3"),
                 "{body}"
             );
             assert_eq!(import_effects(&app).await, before);
             assert_eq!(
                 location_membership::Entity::find()
+                    .filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id))
                     .count(&app.fixture.admin)
                     .await
                     .unwrap(),
@@ -61,8 +71,10 @@ async fn portable_v3_rejects_legacy_person_location_links_before_any_writes() {
 #[tokio::test]
 async fn portable_v3_import_restores_labels_without_person_location_memberships() {
     let app = Application::new().await;
+    let fixture_imported_person_id = format!("imported-person-{}", app.fixture.client_uuid);
+    let fixture_imported_location_id = format!("imported-location-{}", app.fixture.client_uuid);
     let token = app.token().await;
-    let mut payload = importable_payload();
+    let mut payload = importable_payload(&app);
     payload["format"] = json!("medtracker.portable.v3");
     payload["records"]["people"][0]
         .as_object_mut()
@@ -71,6 +83,7 @@ async fn portable_v3_import_restores_labels_without_person_location_memberships(
     let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
     let before = import_effects(&app).await;
     let links = location_membership::Entity::find()
+        .filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id))
         .count(&app.fixture.admin)
         .await
         .unwrap();
@@ -86,7 +99,7 @@ async fn portable_v3_import_restores_labels_without_person_location_memberships(
         let request = if attempt == 2 {
             json!({"bundle":bundle.clone()})
         } else {
-            fresh_dependent_request(bundle.clone(), "imported-person-0001")
+            fresh_dependent_request(bundle.clone(), fixture_imported_person_id.as_str())
         };
         let response = app
             .client
@@ -106,6 +119,7 @@ async fn portable_v3_import_restores_labels_without_person_location_memberships(
         );
         assert_eq!(
             location_membership::Entity::find()
+                .filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id))
                 .count(&app.fixture.admin)
                 .await
                 .unwrap(),
@@ -119,7 +133,7 @@ async fn portable_v3_import_restores_labels_without_person_location_memberships(
     }
     assert_eq!(
         location::Entity::find()
-            .filter(location::Column::PortableId.eq("imported-location-0001"))
+            .filter(location::Column::PortableId.eq(fixture_imported_location_id.as_str()))
             .count(&app.fixture.admin)
             .await
             .unwrap(),
@@ -127,7 +141,19 @@ async fn portable_v3_import_restores_labels_without_person_location_memberships(
     );
     assert_eq!(
         person::Entity::find()
-            .filter(person::Column::PortableId.eq("imported-person-0001"))
+            .filter(
+                person::Column::Id.in_subquery(
+                    Query::select()
+                        .column(rows::household_memberships::Column::PersonId)
+                        .from(rows::household_memberships::Entity)
+                        .and_where(
+                            Expr::col(rows::household_memberships::Column::HouseholdId)
+                                .eq(app.fixture.household.id)
+                        )
+                        .to_owned()
+                )
+            )
+            .filter(person::Column::PortableId.eq(fixture_imported_person_id.as_str()))
             .count(&app.fixture.admin)
             .await
             .unwrap(),
@@ -141,14 +167,19 @@ async fn portable_v3_import_restores_labels_without_person_location_memberships(
 }
 
 fn import_url(app: &Application, endpoint: &str) -> String {
-    format!("{}/api/v1/households/72001/{endpoint}", app.origin)
+    let fixture_household_id = app.fixture.household.id;
+    format!(
+        "{}/api/v1/households/{fixture_household_id}/{endpoint}",
+        app.origin
+    )
 }
 
 async fn export_bundle(app: &Application, token: &str) -> Value {
+    let fixture_household_id = app.fixture.household.id;
     let response = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/portable_export?version=3",
+            "{}/api/v1/households/{fixture_household_id}/portable_export?version=3",
             app.origin
         ))
         .bearer_auth(token)
@@ -160,40 +191,16 @@ async fn export_bundle(app: &Application, token: &str) -> Value {
     response.json::<Value>().await.unwrap()["data"].clone()
 }
 
-async fn audit_count(app: &Application, event: &str, clause: &str) -> i64 {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            format!(
-                "SELECT count(*) AS count FROM security_audit_events WHERE event_type='{event}' AND {clause}"
-            ),
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
-        .unwrap()
-}
-
 async fn version_count(app: &Application) -> i64 {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM versions WHERE household_id = 72001",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
-        .unwrap()
+    i64::try_from(app.fixture.versions().await.len()).unwrap()
 }
 
 #[tokio::test]
 async fn portable_imports_validate_the_request_shape_and_credentials() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(99999).await;
+    let foreign = app.fixture.foreign_household().await;
+    let foreign_id = foreign.household.id;
+    foreign.close().await;
     let token = app.token().await;
     let mut statuses = Vec::new();
     let mut messages = Vec::new();
@@ -250,7 +257,7 @@ async fn portable_imports_validate_the_request_shape_and_credentials() {
     let foreign = app
         .client
         .post(format!(
-            "{}/api/v1/households/99999/portable_imports/dry_run",
+            "{}/api/v1/households/{foreign_id}/portable_imports/dry_run",
             app.origin
         ))
         .bearer_auth(&token)
@@ -277,7 +284,9 @@ async fn portable_imports_validate_the_request_shape_and_credentials() {
     assert_eq!(foreign_status, 403);
 }
 
-fn importable_payload() -> Value {
+fn importable_payload(app: &Application) -> Value {
+    let fixture_imported_person_id = format!("imported-person-{}", app.fixture.client_uuid);
+    let fixture_imported_location_id = format!("imported-location-{}", app.fixture.client_uuid);
     json!({
         "format": "medtracker.portable.v1",
         "scope": "household",
@@ -285,14 +294,14 @@ fn importable_payload() -> Value {
         "source_instance_id": "synthetic:test",
         "records": {
             "locations": [{
-                "portable_id": "imported-location-0001",
+                "portable_id": fixture_imported_location_id.as_str(),
                 "name": "Imported Pharmacy",
                 "description": "restored from a portable bundle"
             }],
             "people": [{
-                "portable_id": "imported-person-0001",
+                "portable_id": fixture_imported_person_id.as_str(),
                 "name": "Imported Dependent Adult",
-                "email": "imported.dependent@example.test",
+                "email": format!("imported.dependent.{}@example.test", app.fixture.client_uuid),
                 "date_of_birth": "1990-01-15",
                 "person_type": "dependent_adult",
                 "has_capacity": false,
@@ -309,51 +318,74 @@ fn fresh_dependent_request(bundle: Value, person_portable_id: &str) -> Value {
 }
 
 pub(super) async fn import_effects(app: &Application) -> Value {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT jsonb_build_object(
-          'takes',(SELECT count(*) FROM medication_takes),
-          'stock',(SELECT current_supply::text FROM medications WHERE id=80001),
-          'people',(SELECT count(*) FROM people),
-          'memberships',(SELECT count(*) FROM household_memberships),
-          'declarations',(SELECT count(*) FROM guardian_declarations),
-          'carers',(SELECT count(*) FROM carer_relationships),
-          'grants',(SELECT count(*) FROM person_access_grants),
-          'locations',(SELECT count(*) FROM locations),
-          'versions',(SELECT count(*) FROM versions),
-          'changes',(SELECT count(*) FROM api_change_events),
-          'notifications',(SELECT count(*) FROM notification_events),
-          'deliveries',(SELECT count(*) FROM notification_deliveries),
-          'jobs',(SELECT count(*) FROM pg_loco_queue)) AS state",
-        ))
+    let household = app.fixture.household.id;
+    macro_rules! count {
+        ($entity:ident) => {
+            rows::$entity::Entity::find()
+                .filter(rows::$entity::Column::HouseholdId.eq(household))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap()
+        };
+    }
+    let people = rows::people::Entity::find()
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let medication = rows::medications::Entity::find_by_id(app.fixture.medication.id)
+        .one(&app.fixture.admin)
         .await
         .unwrap()
-        .unwrap()
-        .try_get("", "state")
-        .unwrap()
+        .unwrap();
+    // Queue jobs are instance-wide. Cases using this no-side-effect snapshot require whole-run exclusivity.
+    json!({"takes":count!(medication_takes),"stock":format!("{:.2}",medication.current_supply.unwrap()),"people":people,
+        "memberships":count!(household_memberships),"declarations":generic_count(app,"guardian_declarations",Some("origin_household_id")).await,
+        "carers":count!(carer_relationships),"grants":count!(person_access_grants),"locations":count!(locations),
+        "versions":app.fixture.versions().await.len(),"changes":count!(api_change_events),"notifications":count!(notification_events),
+        "deliveries":count!(notification_deliveries),"jobs":generic_count(app,"pg_loco_queue",None).await})
 }
 
 async fn table_count(app: &Application, table: &str) -> i64 {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            format!("SELECT count(*) AS count FROM {table} WHERE household_id = 72001"),
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
-        .unwrap()
+    match table {
+        "locations" => i64::try_from(
+            rows::locations::Entity::find()
+                .filter(rows::locations::Column::HouseholdId.eq(app.fixture.household.id))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+        )
+        .unwrap(),
+        _ => panic!("unsupported fixture table"),
+    }
+}
+
+#[tokio::test]
+async fn portable_import_effect_snapshot_detects_unlinked_person_rows() {
+    let app = Application::new().await;
+    let before = import_effects(&app).await;
+    let mut orphan = app.fixture.adult.clone().into_active_model();
+    orphan.id = sea_orm::ActiveValue::NotSet;
+    orphan.portable_id = Set(uuid::Uuid::new_v4().to_string());
+    orphan.name = Set(format!(
+        "Unlinked synthetic person {}",
+        app.fixture.client_uuid
+    ));
+    orphan.insert(&app.fixture.admin).await.unwrap();
+    let after = import_effects(&app).await;
+    assert_eq!(after["memberships"], before["memberships"]);
+    assert_eq!(
+        after["people"].as_u64().unwrap(),
+        before["people"].as_u64().unwrap() + 1
+    );
+    app.close().await;
 }
 
 #[tokio::test]
 async fn portable_import_dry_run_reports_counts_without_writing() {
     let app = Application::new().await;
+    let fixture_imported_person_id = format!("imported-person-{}", app.fixture.client_uuid);
     let token = app.token().await;
-    let bundle = portable_crypto::encrypt(&importable_payload(), PASSPHRASE).unwrap();
+    let bundle = portable_crypto::encrypt(&importable_payload(&app), PASSPHRASE).unwrap();
     let versions_before = version_count(&app).await;
     let effects_before = import_effects(&app).await;
     let locations_before = table_count(&app, "locations").await;
@@ -362,7 +394,10 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
         .post(import_url(&app, "portable_imports/dry_run"))
         .bearer_auth(&token)
         .header(PASSPHRASE_HEADER, PASSPHRASE)
-        .json(&fresh_dependent_request(bundle, "imported-person-0001"))
+        .json(&fresh_dependent_request(
+            bundle,
+            fixture_imported_person_id.as_str(),
+        ))
         .send()
         .await
         .unwrap();
@@ -396,9 +431,41 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
     );
     assert_eq!(denied_body["error"]["code"], "forbidden");
     assert_eq!(import_effects(&app).await, effects_before);
-    assert_eq!(audit_count(&app, "api.request", "metadata->>'controller'='api/v1/portable_imports' AND metadata->>'action'='dry_run' AND metadata->>'status'='403'").await, 1);
-    let grants = app.fixture.admin.execute_unprepared("INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,expires_at,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now()+interval '1 hour',now(),now()),(78003,72001,74001,73003,'manage','parent',now()+interval '1 hour',now(),now())").await.unwrap();
-    assert_eq!(grants.rows_affected(), 2);
+    assert_eq!(
+        audit_fields(
+            &app,
+            "api.request",
+            &[
+                ("controller", "api/v1/portable_imports"),
+                ("action", "dry_run"),
+                ("status", "403")
+            ]
+        )
+        .await,
+        1
+    );
+    let mut grants = Vec::new();
+    for subject in [app.fixture.minor.id, app.fixture.dependent.id] {
+        grants.push(
+            rows::person_access_grants::ActiveModel {
+                household_id: Set(app.fixture.household.id),
+                household_membership_id: Set(app.fixture.membership.id),
+                person_id: Set(subject),
+                access_level: Set("manage".into()),
+                relationship_type: Set("parent".into()),
+                expires_at: Set(Some(
+                    chrono::Utc::now().naive_utc() + chrono::Duration::hours(1),
+                )),
+                created_at: Set(chrono::Utc::now().naive_utc()),
+                updated_at: Set(chrono::Utc::now().naive_utc()),
+                ..Default::default()
+            }
+            .insert(&app.fixture.admin)
+            .await
+            .unwrap(),
+        );
+    }
+    assert_eq!(grants.len(), 2);
     let authorized_effects_before = import_effects(&app).await;
     let legacy_roundtrip = app
         .client
@@ -415,7 +482,7 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
     use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, sea_query::Expr};
     membership::Entity::update_many()
         .col_expr(membership::Column::Role, Expr::value("member"))
-        .filter(membership::Column::Id.eq(74001))
+        .filter(membership::Column::Id.eq(app.fixture.membership.id))
         .exec(&app.fixture.admin)
         .await
         .unwrap();
@@ -427,7 +494,7 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
     );
     membership::Entity::update_many()
         .col_expr(membership::Column::Role, Expr::value("administrator"))
-        .filter(membership::Column::Id.eq(74001))
+        .filter(membership::Column::Id.eq(app.fixture.membership.id))
         .exec(&app.fixture.admin)
         .await
         .unwrap();
@@ -443,7 +510,7 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
     let roundtrip_status = roundtrip.status().as_u16();
     let roundtrip_body: Value = roundtrip.json().await.unwrap();
     assert_eq!(import_effects(&app).await, authorized_effects_before);
-    assert_eq!(audit_count(&app, "portable_data.imported", "1=1").await, 0);
+    assert_eq!(audit_fields(&app, "portable_data.imported", &[]).await, 0);
     app.close().await;
     assert_eq!(status, 200);
     let data = &body["data"];
@@ -472,9 +539,11 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
 #[tokio::test]
 async fn portable_import_apply_writes_records_and_audits_the_import() {
     let app = Application::new().await;
+    let fixture_imported_person_id = format!("imported-person-{}", app.fixture.client_uuid);
+    let fixture_imported_location_id = format!("imported-location-{}", app.fixture.client_uuid);
     let token = app.token().await;
-    let bundle = portable_crypto::encrypt(&importable_payload(), PASSPHRASE).unwrap();
-    let imported = audit_count(&app, "portable_data.imported", "1=1").await;
+    let bundle = portable_crypto::encrypt(&importable_payload(&app), PASSPHRASE).unwrap();
+    let imported = audit_fields(&app, "portable_data.imported", &[]).await;
     let versions_before = version_count(&app).await;
     let effects_before = import_effects(&app).await;
     let response = app
@@ -482,107 +551,203 @@ async fn portable_import_apply_writes_records_and_audits_the_import() {
         .post(import_url(&app, "portable_imports"))
         .bearer_auth(&token)
         .header(PASSPHRASE_HEADER, PASSPHRASE)
-        .json(&fresh_dependent_request(bundle, "imported-person-0001"))
+        .json(&fresh_dependent_request(
+            bundle,
+            fixture_imported_person_id.as_str(),
+        ))
         .send()
         .await
         .unwrap();
     let status = response.status().as_u16();
     let body: Value = response.json().await.unwrap();
-    let audits = audit_count(&app, "portable_data.imported", "1=1").await;
-    let requests = audit_count(
+    let audits = audit_fields(&app, "portable_data.imported", &[]).await;
+    let requests = audit_fields(
         &app,
         "api.request",
-        "metadata->>'controller'='api/v1/portable_imports' AND metadata->>'action'='create' AND metadata->>'status'='201'",
+        &[
+            ("controller", "api/v1/portable_imports"),
+            ("action", "create"),
+            ("status", "201"),
+        ],
     )
     .await;
-    let locations: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM locations WHERE household_id = 72001 AND portable_id = 'imported-location-0001'",
-        ))
+    let locations = rows::locations::Entity::find()
+        .filter(rows::locations::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::locations::Column::PortableId.eq(fixture_imported_location_id.as_str()))
+        .count(&app.fixture.admin)
         .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
         .unwrap();
-    let people: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001) AND portable_id = 'imported-person-0001'",
-        ))
+    let people = rows::people::Entity::find()
+        .filter(rows::people::Column::PortableId.eq(fixture_imported_person_id.as_str()))
+        .filter(
+            rows::people::Column::Id.in_subquery(
+                Query::select()
+                    .column(rows::household_memberships::Column::PersonId)
+                    .from(rows::household_memberships::Entity)
+                    .and_where(
+                        Expr::col(rows::household_memberships::Column::HouseholdId)
+                            .eq(app.fixture.household.id),
+                    )
+                    .to_owned(),
+            ),
+        )
+        .count(&app.fixture.admin)
         .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
         .unwrap();
     let imported_person = person::Entity::find()
-        .filter(person::Column::PortableId.eq("imported-person-0001"))
+        .filter(
+            person::Column::Id.in_subquery(
+                Query::select()
+                    .column(rows::household_memberships::Column::PersonId)
+                    .from(rows::household_memberships::Entity)
+                    .and_where(
+                        Expr::col(rows::household_memberships::Column::HouseholdId)
+                            .eq(app.fixture.household.id),
+                    )
+                    .to_owned(),
+            ),
+        )
+        .filter(person::Column::PortableId.eq(fixture_imported_person_id.as_str()))
         .one(&app.fixture.admin)
         .await
         .unwrap()
         .unwrap();
     let memberships = location_membership::Entity::find()
-        .filter(location_membership::Column::HouseholdId.eq(72001))
+        .filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id))
         .filter(location_membership::Column::PersonId.eq(imported_person.id))
         .count(&app.fixture.admin)
         .await
         .unwrap();
-    let grants: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM person_access_grants g JOIN people person ON person.id = g.person_id WHERE g.household_id = 72001 AND g.household_membership_id = 74001 AND person.portable_id = 'imported-person-0001' AND g.access_level = 'manage' AND g.revoked_at IS NULL",
-        ))
+    let grants = rows::person_access_grants::Entity::find()
+        .filter(rows::person_access_grants::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(
+            rows::person_access_grants::Column::HouseholdMembershipId.eq(app.fixture.membership.id),
+        )
+        .filter(rows::person_access_grants::Column::PersonId.eq(imported_person.id))
+        .filter(rows::person_access_grants::Column::AccessLevel.eq("manage"))
+        .filter(rows::person_access_grants::Column::RevokedAt.is_null())
+        .count(&app.fixture.admin)
         .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
         .unwrap();
-    let authority = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS declarations,bool_and(
-            d.guardian_person_id=73001 AND d.declared_by_account_id=71001
-            AND d.origin_household_id=72001 AND d.statement_version=1 AND d.revision=1
-            AND d.withdrawn_at IS NULL AND d.declared_at>'2026-10-11T10:00:00Z'::timestamptz
-            AND m.status='active' AND m.revoked_at IS NULL
-            AND c.active AND c.carer_id=d.guardian_person_id
-            AND a.actor_account_id=71001 AND a.actor_membership_id=74001
-            AND a.request_id=v.request_id) AS current_authority
-         FROM people p JOIN guardian_declarations d ON d.subject_person_id=p.id
-         JOIN household_memberships m ON m.person_id=p.id AND m.household_id=72001
-         JOIN carer_relationships c ON c.patient_id=p.id AND c.household_id=72001 AND c.guardian_declaration_id=d.id
-         JOIN versions v ON v.item_type='GuardianDeclaration' AND v.item_id=d.id AND v.event='create' AND v.household_id=72001
-         JOIN security_audit_events a ON a.event_type='guardian_declaration.created' AND a.household_id=72001 AND a.metadata->>'id'=d.id::text
-         WHERE p.portable_id='imported-person-0001'"
-    )).await.unwrap().unwrap();
-    let version_evidence = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "WITH request AS (
-           SELECT v.request_id FROM people p JOIN guardian_declarations d ON d.subject_person_id=p.id
-           JOIN versions v ON v.item_type='GuardianDeclaration' AND v.item_id=d.id AND v.event='create'
-           WHERE p.portable_id='imported-person-0001' AND d.origin_household_id=72001
-         ), grouped AS (
-           SELECT v.item_type,count(*) AS records,bool_and(COALESCE(v.event='create' AND v.whodunnit='77001'
-             AND v.actor_membership_id=74001 AND v.audit_context->>'actor_account_id'='71001'
-             AND v.request_id IS NOT NULL AND v.audit_context->>'request_id'=v.request_id,false)) AS attributed
-           FROM versions v JOIN request r ON r.request_id=v.request_id WHERE v.household_id=72001 GROUP BY v.item_type
-         ) SELECT jsonb_object_agg(item_type,records) AS counts,bool_and(attributed) AS attributed FROM grouped"
-    )).await.unwrap().unwrap();
-    let versions = version_count(&app).await - versions_before;
-    let changes: i64 = app
+    let query = Query::select()
+        .columns([
+            "id",
+            "guardian_person_id",
+            "declared_by_account_id",
+            "origin_household_id",
+            "statement_version",
+            "revision",
+            "withdrawn_at",
+            "declared_at",
+        ])
+        .from("guardian_declarations")
+        .and_where(Expr::col("subject_person_id").eq(imported_person.id))
+        .and_where(Expr::col("origin_household_id").eq(app.fixture.household.id))
+        .to_owned();
+    let declarations = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM api_change_events WHERE household_id = 72001 AND record_portable_id IN ('imported-location-0001', 'imported-person-0001')",
-        ))
+        .query_all_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap();
+    assert_eq!(declarations.len(), 1);
+    let declaration = &declarations[0];
+    let declaration_id: i64 = declaration.try_get("", "id").unwrap();
+    let member = rows::household_memberships::Entity::find()
+        .filter(rows::household_memberships::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::household_memberships::Column::PersonId.eq(imported_person.id))
+        .one(&app.fixture.admin)
         .await
         .unwrap()
+        .unwrap();
+    let carer = rows::carer_relationships::Entity::find()
+        .filter(rows::carer_relationships::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::carer_relationships::Column::PatientId.eq(imported_person.id))
+        .filter(rows::carer_relationships::Column::GuardianDeclarationId.eq(declaration_id))
+        .one(&app.fixture.admin)
+        .await
         .unwrap()
-        .try_get("", "count")
+        .unwrap();
+    let version = rows::versions::Entity::find()
+        .filter(rows::versions::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::versions::Column::ItemType.eq("GuardianDeclaration"))
+        .filter(rows::versions::Column::ItemId.eq(declaration_id))
+        .filter(rows::versions::Column::Event.eq("create"))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let audit = rows::security_audit_events::Entity::find()
+        .filter(rows::security_audit_events::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::security_audit_events::Column::EventType.eq("guardian_declaration.created"))
+        .filter(
+            Expr::col(rows::security_audit_events::Column::Metadata)
+                .cast_json_field("id")
+                .eq(declaration_id.to_string()),
+        )
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let current_authority = declaration
+        .try_get::<i64>("", "guardian_person_id")
+        .unwrap()
+        == app.fixture.adult.id
+        && declaration
+            .try_get::<i64>("", "declared_by_account_id")
+            .unwrap()
+            == app.fixture.account.id
+        && declaration
+            .try_get::<i64>("", "origin_household_id")
+            .unwrap()
+            == app.fixture.household.id
+        && declaration.try_get::<i16>("", "statement_version").unwrap() == 1
+        && declaration.try_get::<i64>("", "revision").unwrap() == 1
+        && declaration
+            .try_get::<Option<chrono::DateTime<chrono::FixedOffset>>>("", "withdrawn_at")
+            .unwrap()
+            .is_none()
+        && declaration
+            .try_get::<chrono::DateTime<chrono::FixedOffset>>("", "declared_at")
+            .unwrap()
+            > "2026-10-11T10:00:00Z"
+                .parse::<chrono::DateTime<chrono::FixedOffset>>()
+                .unwrap()
+        && member.status == "active"
+        && member.revoked_at.is_none()
+        && carer.active
+        && carer.carer_id == app.fixture.adult.id
+        && audit.actor_account_id == Some(app.fixture.account.id)
+        && audit.actor_membership_id == Some(app.fixture.membership.id)
+        && audit.request_id == version.request_id;
+    let evidence = rows::versions::Entity::find()
+        .filter(rows::versions::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::versions::Column::RequestId.eq(version.request_id.clone().unwrap()))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let mut version_counts = std::collections::BTreeMap::<String, u64>::new();
+    let attributed = evidence.iter().all(|row| {
+        row.event == "create"
+            && row.whodunnit.as_deref() == Some(app.fixture.account.id.to_string().as_str())
+            && row.actor_membership_id == Some(app.fixture.membership.id)
+            && row.audit_context["actor_account_id"].as_i64() == Some(app.fixture.account.id)
+            && row.request_id.is_some()
+            && row.audit_context["request_id"].as_str() == row.request_id.as_deref()
+    });
+    for row in evidence {
+        *version_counts.entry(row.item_type).or_default() += 1;
+    }
+    let versions = version_count(&app).await - versions_before;
+    let changes = rows::api_change_events::Entity::find()
+        .filter(rows::api_change_events::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::api_change_events::Column::RecordPortableId.is_in([
+            fixture_imported_location_id.as_str(),
+            fixture_imported_person_id.as_str(),
+        ]))
+        .count(&app.fixture.admin)
+        .await
         .unwrap();
     let effects_after = import_effects(&app).await;
     for field in ["takes", "stock", "notifications", "deliveries", "jobs"] {
@@ -600,15 +765,15 @@ async fn portable_import_apply_writes_records_and_audits_the_import() {
     assert_eq!(people, 1);
     assert_eq!(memberships, 0);
     assert_eq!(grants, 0);
-    assert_eq!(authority.try_get::<i64>("", "declarations").unwrap(), 1);
-    assert!(authority.try_get::<bool>("", "current_authority").unwrap());
+    assert_eq!(declarations.len(), 1);
+    assert!(current_authority);
     assert_eq!(
-        version_evidence.try_get::<Value>("", "counts").unwrap(),
+        json!(version_counts),
         json!({
             "Location":1,"Person":1,"GuardianDeclaration":1,"HouseholdMembership":1,"CarerRelationship":1
         })
     );
-    assert!(version_evidence.try_get::<bool>("", "attributed").unwrap());
+    assert!(attributed);
     assert_eq!(versions, 5);
     assert_eq!(changes, 2);
     assert_eq!(audits - imported, 1);
@@ -616,31 +781,41 @@ async fn portable_import_apply_writes_records_and_audits_the_import() {
 }
 
 async fn portable_id(app: &Application, table: &str, id: i64) -> String {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            format!("SELECT portable_id AS pid FROM {table} WHERE id = {id}"),
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "pid")
-        .unwrap()
+    match table {
+        "people" => {
+            rows::people::Entity::find_by_id(id)
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .unwrap()
+                .portable_id
+        }
+        "medications" => {
+            rows::medications::Entity::find_by_id(id)
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .unwrap()
+                .portable_id
+        }
+        _ => panic!("unsupported fixture table"),
+    }
 }
 
 #[tokio::test]
 async fn portable_import_applies_nullable_and_sparse_rows() {
     let app = Application::new().await;
+    let fixture_imported_schedule_id = format!("imported-schedule-{}", app.fixture.client_uuid);
+    let fixture_imported_prefs_id = format!("imported-prefs-{}", app.fixture.client_uuid);
     let token = app.token().await;
-    let person_pid = portable_id(&app, "people", 73001).await;
-    let medication_pid = portable_id(&app, "medications", 80001).await;
+    let person_pid = portable_id(&app, "people", app.fixture.adult.id).await;
+    let medication_pid = portable_id(&app, "medications", app.fixture.medication.id).await;
     let payload = json!({
         "format": "medtracker.portable.v1",
         "scope": "household",
         "records": {
             "schedules": [{
-                "portable_id": "imported-schedule-001",
+                "portable_id": fixture_imported_schedule_id.as_str(),
                 "person_portable_id": person_pid,
                 "medication_portable_id": medication_pid,
                 "schedule_type": "daily",
@@ -652,7 +827,7 @@ async fn portable_import_applies_nullable_and_sparse_rows() {
                 "active": true
             }],
             "notification_preferences": [{
-                "portable_id": "imported-prefs-001",
+                "portable_id": fixture_imported_prefs_id.as_str(),
                 "person_portable_id": person_pid
             }]
         }
@@ -680,17 +855,16 @@ async fn portable_import_applies_nullable_and_sparse_rows() {
         .unwrap();
     let status = response.status().as_u16();
     let body: Value = response.json().await.unwrap();
-    let prefs: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM notification_preferences WHERE household_id = 72001 AND portable_id = 'imported-prefs-001' AND enabled AND dose_due_enabled",
-        ))
+    let prefs = rows::notification_preferences::Entity::find()
+        .filter(rows::notification_preferences::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(
+            rows::notification_preferences::Column::PortableId
+                .eq(fixture_imported_prefs_id.as_str()),
+        )
+        .filter(rows::notification_preferences::Column::Enabled.eq(true))
+        .filter(rows::notification_preferences::Column::DoseDueEnabled.eq(true))
+        .count(&app.fixture.admin)
         .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
         .unwrap();
     app.close().await;
     assert_eq!(dry_status, 200, "dry-run body: {dry_body}");
@@ -703,30 +877,41 @@ async fn portable_import_applies_nullable_and_sparse_rows() {
 async fn portable_import_accepts_derived_occurrence_window_ends() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture
-        .admin
-        .execute_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "INSERT INTO schedules (household_id, person_id, medication_id, portable_id, schedule_type, schedule_config, created_at, updated_at) VALUES (72001, 73001, 80001, 'seeded-schedule-001', 0, '{}'::jsonb, NOW(), NOW())",
-        ))
-        .await
-        .unwrap();
-    app.fixture
-        .admin
-        .execute_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "INSERT INTO medication_dose_occurrences (household_id, schedule_id, portable_id, window_starts_on, position, outcome, created_at, updated_at) VALUES (72001, (SELECT id FROM schedules WHERE household_id = 72001 AND portable_id = 'seeded-schedule-001'), 'seeded-occurrence-001', '2026-10-06', 1, 'open', NOW(), NOW())",
-        ))
-        .await
-        .unwrap();
+    let now = chrono::Utc::now().naive_utc();
+    let schedule = rows::schedules::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(app.fixture.adult.id),
+        medication_id: Set(app.fixture.medication.id),
+        schedule_type: Set(0),
+        schedule_config: Set(json!({})),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let occurrence = rows::medication_dose_occurrences::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        schedule_id: Set(Some(schedule.id)),
+        window_starts_on: Set("2026-10-06".parse().unwrap()),
+        position: Set(1),
+        outcome: Set("open".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let payload = json!({
         "format": "medtracker.portable.v2",
         "scope": "household",
         "records": {
             "dose_occurrences": [{
-                "portable_id": "seeded-occurrence-001",
+                "portable_id": occurrence.portable_id,
                 "source_type": "schedule",
-                "source_portable_id": "seeded-schedule-001",
+                "source_portable_id": schedule.portable_id,
                 "window_starts_on": "2026-10-06",
                 "window_ends_on": "2026-10-06",
                 "position": 1,
@@ -764,30 +949,42 @@ async fn portable_import_accepts_derived_occurrence_window_ends() {
 async fn portable_import_preflight_projects_pause_closures() {
     let app = Application::new().await;
     let token = app.token().await;
-    let person_pid = portable_id(&app, "people", 73001).await;
-    let medication_pid = portable_id(&app, "medications", 80001).await;
-    app.fixture
-        .admin
-        .execute_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "INSERT INTO schedules (household_id, person_id, medication_id, portable_id, schedule_type, schedule_config, created_at, updated_at) VALUES (72001, 73001, 80001, 'seeded-schedule-002', 0, '{}'::jsonb, NOW(), NOW())",
-        ))
-        .await
-        .unwrap();
-    app.fixture
-        .admin
-        .execute_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "INSERT INTO medication_pause_periods (household_id, schedule_id, portable_id, reason, started_at, imported_context, legacy_context, created_at, updated_at) VALUES (72001, (SELECT id FROM schedules WHERE household_id = 72001 AND portable_id = 'seeded-schedule-002'), 'seeded-pause-001', 'side_effects', '2026-10-01T09:00:00Z', true, false, NOW(), NOW())",
-        ))
-        .await
-        .unwrap();
+    let person_pid = portable_id(&app, "people", app.fixture.adult.id).await;
+    let medication_pid = portable_id(&app, "medications", app.fixture.medication.id).await;
+    let now = chrono::Utc::now().naive_utc();
+    let schedule = rows::schedules::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(app.fixture.adult.id),
+        medication_id: Set(app.fixture.medication.id),
+        schedule_type: Set(0),
+        schedule_config: Set(json!({})),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let pause = rows::medication_pause_periods::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        schedule_id: Set(Some(schedule.id)),
+        reason: Set("side_effects".into()),
+        started_at: Set(Some("2026-10-01T09:00:00".parse().unwrap())),
+        imported_context: Set(true),
+        legacy_context: Set(false),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let payload = json!({
         "format": "medtracker.portable.v2",
         "scope": "household",
         "records": {
             "schedules": [{
-                "portable_id": "seeded-schedule-002",
+                "portable_id": schedule.portable_id,
                 "person_portable_id": person_pid,
                 "medication_portable_id": medication_pid,
                 "schedule_type": "daily",
@@ -795,9 +992,9 @@ async fn portable_import_preflight_projects_pause_closures() {
                 "active": false
             }],
             "medication_pause_periods": [{
-                "portable_id": "seeded-pause-001",
+                "portable_id": pause.portable_id,
                 "source_type": "schedule",
-                "source_portable_id": "seeded-schedule-002",
+                "source_portable_id": schedule.portable_id,
                 "reason": "side_effects",
                 "note": null,
                 "started_at": "2026-10-01T09:00:00Z",
@@ -887,5 +1084,40 @@ async fn portable_import_rejects_unsupported_and_inconsistent_payloads() {
             "people[0] has unsupported fields",
         ]
     );
-    assert!(messages[6].contains("includes Rails numeric IDs: id"));
+    assert!(str::contains(
+        &messages[6],
+        "includes Rails numeric IDs: id"
+    ));
+}
+
+pub(super) async fn audit_fields(app: &Application, event: &str, fields: &[(&str, &str)]) -> i64 {
+    let mut query = rows::security_audit_events::Entity::find()
+        .filter(rows::security_audit_events::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::security_audit_events::Column::EventType.eq(event));
+    for (key, value) in fields {
+        query = query.filter(
+            Expr::col(rows::security_audit_events::Column::Metadata)
+                .cast_json_field(*key)
+                .eq(*value),
+        );
+    }
+    i64::try_from(query.count(&app.fixture.admin).await.unwrap()).unwrap()
+}
+
+async fn generic_count(app: &Application, table: &str, household_column: Option<&str>) -> i64 {
+    let mut query = Query::select();
+    query
+        .expr_as(Expr::col("id").count(), "count")
+        .from(Alias::new(table));
+    if let Some(column) = household_column {
+        query.and_where(Expr::col(Alias::new(column)).eq(app.fixture.household.id));
+    }
+    app.fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "count")
+        .unwrap()
 }

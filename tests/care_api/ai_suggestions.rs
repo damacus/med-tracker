@@ -1,68 +1,86 @@
 use super::*;
+use med_tracker::models::_entities as rows;
+use sea_orm::QueryOrder;
+use sea_orm::sea_query::extension::postgres::PgExpr;
+use sea_orm::sea_query::{Expr, ExprTrait};
 
 fn suggestions_url(app: &Application) -> String {
+    let fixture_household_id = app.fixture.household.id;
     format!(
-        "{}/api/v1/households/72001/ai_medication_suggestions",
+        "{}/api/v1/households/{fixture_household_id}/ai_medication_suggestions",
         app.origin
     )
 }
 
 async fn upgrade_plan(app: &Application) {
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE households SET subscription_plan = 'family_plus' WHERE id = 72001",
-        )
-        .await
-        .unwrap();
+    let mut household = app.fixture.household.clone().into_active_model();
+    household.subscription_plan = Set("family_plus".into());
+    household.update(&app.fixture.admin).await.unwrap();
 }
 
 async fn suggestion_audit(app: &Application) -> Option<Value> {
-    let row = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT event, object, household_id FROM versions WHERE item_type = 'AiMedicationSuggestion'",
-        ))
+    let row = rows::versions::Entity::find()
+        .filter(rows::versions::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::versions::Column::ItemType.eq("AiMedicationSuggestion"))
+        .one(&app.fixture.admin)
         .await
         .unwrap()?;
-    let object: Value =
-        serde_json::from_str(&row.try_get::<String>("", "object").unwrap()).unwrap();
-    Some(json!({
-        "event": row.try_get::<String>("", "event").unwrap(),
-        "household_id": row.try_get::<i64>("", "household_id").unwrap(),
-        "object": object,
-    }))
+    let object: Value = serde_json::from_str(row.object.as_deref().unwrap()).unwrap();
+    Some(json!({"event":row.event,"household_id":row.household_id,"object":object}))
 }
 
 async fn suggestion_access_state(app: &Application) -> Value {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT jsonb_build_object(
-              'clinical',jsonb_build_object(
-                'medications',(SELECT jsonb_agg(to_jsonb(m) ORDER BY m.id) FROM medications m),
-                'assignments',(SELECT jsonb_agg(to_jsonb(m) ORDER BY m.id) FROM person_medications m),
-                'schedules',(SELECT jsonb_agg(to_jsonb(s) ORDER BY s.id) FROM schedules s),
-                'takes',(SELECT jsonb_agg(to_jsonb(t) ORDER BY t.id) FROM medication_takes t),
-                'versions',(SELECT jsonb_agg(to_jsonb(v) ORDER BY v.id) FROM versions v WHERE item_type IN ('Medication','PersonMedication','Schedule','MedicationTake')),
-                'changes',(SELECT jsonb_agg(to_jsonb(c) ORDER BY c.id) FROM api_change_events c)),
-              'suggestions',COALESCE((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.id) FROM versions v WHERE item_type='AiMedicationSuggestion'),'[]'::jsonb),
-              'requests',COALESCE((SELECT jsonb_agg(to_jsonb(a) ORDER BY a.id) FROM security_audit_events a WHERE event_type='api.request' AND metadata->>'controller'='api/v1/ai_medication_suggestions'),'[]'::jsonb)
-            ) AS state",
-        ))
+    let household = app.fixture.household.id;
+    macro_rules! records {
+        ($entity:ident) => {
+            rows::$entity::Entity::find()
+                .filter(rows::$entity::Column::HouseholdId.eq(household))
+                .order_by_asc(rows::$entity::Column::Id)
+                .all(&app.fixture.admin)
+                .await
+                .unwrap()
+        };
+    }
+    let versions = rows::versions::Entity::find()
+        .filter(rows::versions::Column::HouseholdId.eq(household))
+        .filter(rows::versions::Column::ItemType.is_in([
+            "Medication",
+            "PersonMedication",
+            "Schedule",
+            "MedicationTake",
+        ]))
+        .order_by_asc(rows::versions::Column::Id)
+        .all(&app.fixture.admin)
         .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "state")
-        .unwrap()
+        .unwrap();
+    let suggestions = rows::versions::Entity::find()
+        .filter(rows::versions::Column::HouseholdId.eq(household))
+        .filter(rows::versions::Column::ItemType.eq("AiMedicationSuggestion"))
+        .order_by_asc(rows::versions::Column::Id)
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let requests = rows::security_audit_events::Entity::find()
+        .filter(rows::security_audit_events::Column::HouseholdId.eq(household))
+        .filter(rows::security_audit_events::Column::EventType.eq("api.request"))
+        .filter(
+            Expr::col(rows::security_audit_events::Column::Metadata)
+                .cast_json_field("controller")
+                .eq("api/v1/ai_medication_suggestions"),
+        )
+        .order_by_asc(rows::security_audit_events::Column::Id)
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    json!({"clinical":{"medications":records!(medications),"assignments":records!(person_medications),"schedules":records!(schedules),"takes":records!(medication_takes),"versions":versions,"changes":records!(api_change_events)},"suggestions":suggestions,"requests":requests})
 }
 
 #[tokio::test]
 async fn ai_medication_suggestions_require_authentication_and_access() {
     let app = Application::new_with_ai_help(true).await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
     upgrade_plan(&app).await;
     assert_eq!(
         app.context.config.settings.as_ref().unwrap()["ai_medication_help"],
@@ -81,12 +99,16 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
     assert_eq!(unauthenticated_state["clinical"], initial["clinical"]);
     assert_eq!(unauthenticated_state["suggestions"], json!([]));
 
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE household_memberships SET role='member' WHERE id=74001;
-             UPDATE person_access_grants SET revoked_at=now() WHERE household_membership_id=74001",
+    app.fixture.member().await;
+    rows::person_access_grants::Entity::update_many()
+        .col_expr(
+            rows::person_access_grants::Column::RevokedAt,
+            Expr::val(chrono::Utc::now().naive_utc()),
         )
+        .filter(
+            rows::person_access_grants::Column::HouseholdMembershipId.eq(app.fixture.membership.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let token = app.token().await;
@@ -108,9 +130,9 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
     let suggestions = accepted["suggestions"].as_array().unwrap();
     assert_eq!(suggestions.len(), 1);
     assert_eq!(suggestions[0]["event"], "ai_medication/suggestion");
-    assert_eq!(suggestions[0]["whodunnit"], "77001");
-    assert_eq!(suggestions[0]["actor_membership_id"], 74001);
-    assert_eq!(suggestions[0]["household_id"], 72001);
+    assert_eq!(suggestions[0]["whodunnit"], fixture_account_id.to_string());
+    assert_eq!(suggestions[0]["actor_membership_id"], fixture_membership_id);
+    assert_eq!(suggestions[0]["household_id"], fixture_household_id);
     let audit = suggestion_audit(&app).await.unwrap();
     assert_eq!(audit["object"]["source_count"], 0);
     assert_eq!(audit["object"]["dose_count"], 0);
@@ -118,20 +140,17 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
     assert_eq!(audit["object"]["result_status"], "error");
     let requests = accepted["requests"].as_array().unwrap();
     assert_eq!(requests.len(), 1);
-    assert_eq!(requests[0]["actor_account_id"], 71001);
-    assert_eq!(requests[0]["actor_membership_id"], 74001);
+    assert_eq!(requests[0]["actor_account_id"], fixture_account_id);
+    assert_eq!(requests[0]["actor_membership_id"], fixture_membership_id);
     assert_eq!(requests[0]["metadata"]["status"], 200);
     assert_eq!(requests[0]["metadata"]["outcome"], "success");
     assert_eq!(requests[0]["request_id"], suggestions[0]["request_id"]);
 
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1
-             WHERE id=74001 AND household_id=72001 AND person_id=(SELECT person_id FROM accounts WHERE id=71001)",
-        )
-        .await
-        .unwrap();
+    let mut member = app.fixture.membership.clone().into_active_model();
+    member.status = Set("revoked".into());
+    member.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    member.permissions_version = Set(app.fixture.membership.permissions_version + 1);
+    member.update(&app.fixture.admin).await.unwrap();
     let denied = app
         .client
         .post(suggestions_url(&app))
@@ -177,10 +196,7 @@ async fn ai_medication_suggestions_requires_enabled_paid_feature() {
     let disabled_token = disabled.token().await;
     let disabled_response = disabled
         .client
-        .post(format!(
-            "{}/api/v1/households/72001/ai_medication_suggestions",
-            disabled.origin
-        ))
+        .post(suggestions_url(&disabled))
         .bearer_auth(&disabled_token)
         .json(&json!({"medication": {"name": "Synthetic medicine"}}))
         .send()
@@ -188,6 +204,7 @@ async fn ai_medication_suggestions_requires_enabled_paid_feature() {
         .unwrap();
     Application::assert_status(disabled_response, 404).await;
     disabled.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
@@ -217,11 +234,13 @@ async fn ai_medication_suggestions_validates_the_identity_shape() {
             json!(["is invalid"])
         );
     }
+    app.close().await;
 }
 
 #[tokio::test]
 async fn ai_medication_suggestions_returns_a_draft_and_records_the_suggestion() {
     let app = Application::new_with_ai_help(true).await;
+    let fixture_household_id = app.fixture.household.id;
     upgrade_plan(&app).await;
     let token = app.token().await;
     let response = app
@@ -240,7 +259,7 @@ async fn ai_medication_suggestions_returns_a_draft_and_records_the_suggestion() 
 
     let audit = suggestion_audit(&app).await.expect("suggestion audit");
     assert_eq!(audit["event"], "ai_medication/suggestion");
-    assert_eq!(audit["household_id"], 72001);
+    assert_eq!(audit["household_id"], fixture_household_id);
     assert!(
         audit["object"]["identity_hash"]
             .as_str()
@@ -250,6 +269,7 @@ async fn ai_medication_suggestions_returns_a_draft_and_records_the_suggestion() 
     assert!(audit["object"]["dose_count"].is_number());
     assert!(audit["object"]["error_count"].is_number());
     assert!(audit["object"]["result_status"].is_string());
+    app.close().await;
 }
 
 const CALPOL_SEED_URL: &str =

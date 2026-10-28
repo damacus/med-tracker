@@ -3,7 +3,7 @@ mod db;
 #[path = "support/fixtures.rs"]
 pub mod fixtures;
 #[path = "support/harness.rs"]
-mod harness;
+pub mod harness;
 #[path = "browser/journeys.rs"]
 mod journeys;
 #[path = "browser/malformed_auth_entry.rs"]
@@ -66,6 +66,9 @@ mod report_clarity;
 
 #[path = "browser/security_entry.rs"]
 mod security_entry;
+
+#[path = "browser/personal_profile.rs"]
+mod personal_profile;
 
 #[path = "browser/report_table_layout.rs"]
 mod report_table_layout;

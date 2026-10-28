@@ -7,11 +7,28 @@
   const status = panel.querySelector('[data-global-search-status]');
   const form = panel.querySelector('[data-global-search-form]');
   const triggers = [...document.querySelectorAll('[data-global-search-trigger]')];
+  const apple = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || '');
+  function shortcutHints() {
+    triggers.forEach(button => {
+      button.setAttribute('aria-keyshortcuts', apple ? 'Meta+K' : 'Control+K');
+      let hint = button.querySelector('kbd');
+      if (!hint) {
+        hint = document.createElement('kbd');
+        button.append(document.createTextNode(' '), hint);
+      }
+      hint.className = 'app-search-shortcut';
+      hint.setAttribute('aria-hidden', 'true');
+      hint.textContent = apple ? '⌘K' : 'Ctrl+K';
+      button.setAttribute('aria-label', `${button.getAttribute('aria-label')} — ${button.textContent.trim()}`);
+    });
+  }
+  shortcutHints();
   let opener;
   let active = -1;
   let controller;
   let timer;
   let generation = 0;
+  let searchOpen = false;
 
   const labels = panel.dataset;
 
@@ -25,10 +42,11 @@
           button.setAttribute('aria-label', translated.open);
           button.textContent = translated.open_short;
         });
+        shortcutHints();
         panel.setAttribute('aria-label', translated.dialog_label);
         panel.querySelector('label[for="global_search_query"]').textContent = translated.input_label;
         input.placeholder = translated.placeholder;
-        panel.querySelector('[data-global-search-close]').setAttribute('aria-label', translated.close);
+        panel.querySelectorAll('[data-global-search-close]').forEach(button => button.setAttribute('aria-label', translated.close));
         Object.assign(panel.dataset, {
           loading: translated.loading,
           noResults: translated.no_results,
@@ -77,16 +95,9 @@
     clearTimeout(timer);
   }
 
-  function position() {
-    panel.style.left = '50%';
-    panel.style.top = '50%';
-    panel.style.width = 'min(40rem, calc(100vw - 2rem))';
-    panel.style.transform = 'translate(-50%, -50%)';
-  }
-
   function open(event) {
     event?.preventDefault();
-    if (!panel.hidden) {
+    if (panel.open) {
       input.focus({ preventScroll: true });
       return;
     }
@@ -96,23 +107,27 @@
       .find(trigger => trigger.getClientRects().length > 0);
     opener = clickedTrigger || navigationTrigger || document.activeElement;
     navigationPanels.forEach(dialog => dialog.close());
-    position();
-    panel.hidden = false;
-    panel.setAttribute('aria-hidden', 'false');
+    searchOpen = true;
+    panel.showModal();
     triggers.forEach(button => button.setAttribute('aria-expanded', 'true'));
     input.value = '';
     clear();
     input.focus({ preventScroll: true });
   }
 
-  function close(event, restoreFocus = true) {
-    event?.preventDefault();
-    if (panel.hidden) return;
+  function finishClose() {
+    if (panel.open || !searchOpen) return;
+    searchOpen = false;
     abort();
-    panel.hidden = true;
-    panel.setAttribute('aria-hidden', 'true');
     triggers.forEach(button => button.setAttribute('aria-expanded', 'false'));
-    if (restoreFocus) opener?.focus?.({ preventScroll: true });
+    opener?.focus?.({ preventScroll: true });
+  }
+
+  function close(event) {
+    event?.preventDefault();
+    if (!panel.open) return;
+    panel.close();
+    finishClose();
   }
 
   function addResult(result, group) {
@@ -194,7 +209,7 @@
   }
 
   triggers.forEach(button => button.addEventListener('click', open));
-  panel.querySelector('[data-global-search-close]').addEventListener('click', close);
+  panel.querySelectorAll('[data-global-search-close]').forEach(button => button.addEventListener('click', close));
   input.addEventListener('input', () => {
     abort();
     clear();
@@ -208,9 +223,8 @@
       location.assign((rows()[active] || rows()[0]).href);
     }
   });
-  panel.addEventListener('keydown', event => {
-    if (event.key === 'Escape') close(event);
-  });
+  panel.addEventListener('cancel', close);
+  panel.addEventListener('close', finishClose);
   form.addEventListener('submit', event => {
     if (!rows().length) return;
     event.preventDefault();
@@ -218,11 +232,5 @@
   });
   document.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') open(event);
-  });
-  document.addEventListener('pointerdown', event => {
-    if (!panel.hidden && !panel.contains(event.target) && !triggers.some(button => button.contains(event.target))) close();
-  });
-  document.addEventListener('focusin', event => {
-    if (!panel.hidden && !panel.contains(event.target)) close(undefined, false);
   });
 })();

@@ -15,7 +15,7 @@ use crate::models::{
     care::{doses::CredentialProvenance, locations},
     entities::{
         account, carer_relationship, grant, household, household_invitation, membership, person,
-        security_audit_event, user, version,
+        security_audit_event, version,
     },
     errors::OperationError,
 };

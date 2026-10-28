@@ -39,8 +39,8 @@ async fn worker() -> TestResult {
             .await
             .expect("create seed probe");
         std::fs::write(marker, "seeded").expect("write seed marker");
-        std::thread::sleep(Duration::from_secs(3));
         assert_ne!(std::env::var("TEMPLATE_REGRESSION_PANIC").as_deref(), Ok("1"));
+        std::thread::sleep(Duration::from_secs(3));
     })
     .await;
     Ok(())

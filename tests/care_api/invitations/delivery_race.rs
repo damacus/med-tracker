@@ -1,3 +1,6 @@
+// SeaQuery has no PostgreSQL trigger/function DDL API. The exclusive race probe
+// retains narrow DDL and removes its trigger before App close.
+
 use super::*;
 use loco_rs::{bgworker::BackgroundWorker, mailer::EmailSender};
 use med_tracker::models::{
@@ -7,22 +10,55 @@ use med_tracker::models::{
         delivery::{InvitationMail, InvitationMailWorker},
     },
 };
-use sea_orm::TransactionTrait;
+use sea_orm::{
+    Order, TransactionTrait,
+    sea_query::{Asterisk, Expr, ExprTrait, Func, Query},
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 async fn waiting(app: &Application, query: &str) -> TestResult {
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         loop {
-            let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query ILIKE $1 AND cardinality(pg_blocking_pids(pid))>0) AS waiting",
-                [query.into()],
-            )).await?.ok_or("lock observation missing")?;
-            if row.try_get::<bool>("", "waiting")? { return Ok::<_,Box<dyn std::error::Error>>(()); }
+            let observer = Query::select()
+                .expr_as(
+                    Expr::exists(
+                        Query::select()
+                            .expr(Expr::val(1))
+                            .from("pg_stat_activity")
+                            .and_where(
+                                Expr::col("datname").eq(Expr::expr(Func::cust("current_database"))),
+                            )
+                            .and_where(Expr::col("wait_event_type").eq("Lock"))
+                            .and_where(
+                                Expr::expr(Func::lower(Expr::col("query")))
+                                    .like(query.to_lowercase()),
+                            )
+                            .and_where(
+                                Expr::expr(
+                                    Func::cust("cardinality")
+                                        .arg(Func::cust("pg_blocking_pids").arg(Expr::col("pid"))),
+                                )
+                                .gt(0),
+                            )
+                            .to_owned(),
+                    ),
+                    "waiting",
+                )
+                .to_owned();
+            let row = app
+                .fixture
+                .admin
+                .query_one_raw(app.fixture.admin.get_database_backend().build(&observer))
+                .await?
+                .ok_or("lock observation missing")?;
+            if row.try_get::<bool>("", "waiting")? {
+                return Ok::<_, Box<dyn std::error::Error>>(());
+            }
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
-    }).await??;
+    })
+    .await??;
     Ok(())
 }
 
@@ -30,8 +66,10 @@ async fn queued(app: &Application) -> Result<InvitationMail, Box<dyn std::error:
     let tenant = access::begin(
         &app.fixture.runtime,
         &HouseholdScope {
-            actor: Actor { account_id: 71001 },
-            household_id: 72001,
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
             request_id: "deterministic-live-invitation-race".into(),
         },
         None,
@@ -39,7 +77,7 @@ async fn queued(app: &Application) -> Result<InvitationMail, Box<dyn std::error:
     .await?;
     invitations::create(
         &tenant,
-        invitations::InvitationInput::from_form("race@example.test", "member", false),
+        invitations::InvitationInput::from_form(&race_email(app), "member", false),
         Some(&url::Url::parse(
             "https://synthetic.example.test/invitations/accept",
         )?),
@@ -50,10 +88,23 @@ async fn queued(app: &Application) -> Result<InvitationMail, Box<dyn std::error:
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT task_data FROM pg_loco_queue ORDER BY id DESC LIMIT 1",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .column("task_data")
+                    .from("pg_loco_queue")
+                    .and_where(
+                        Expr::expr(
+                            Func::cust("jsonb_extract_path_text")
+                                .args([Expr::col("task_data"), Expr::val("household_id")]),
+                        )
+                        .eq(app.fixture.household.id.to_string()),
+                    )
+                    .order_by("id", Order::Desc)
+                    .limit(1)
+                    .to_owned(),
+            ),
+        )
         .await?
         .ok_or("queued mail missing")?;
     let payload: serde_json::Value = row.try_get("", "task_data")?;
@@ -64,11 +115,14 @@ async fn queued(app: &Application) -> Result<InvitationMail, Box<dyn std::error:
 async fn invitation_live_duplicate_cannot_suppress_a_committed_start() -> TestResult {
     let mut app = Application::new().await;
     app.context.mailer = Some(EmailSender::stub());
+    let result:TestResult=async {
     let mail = queued(&app).await?;
     app.fixture.admin.execute_unprepared("CREATE FUNCTION synthetic_invitation_start_gate() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF OLD.started_at IS NULL AND NEW.started_at IS NOT NULL THEN PERFORM pg_advisory_xact_lock(1829712041,1); END IF; RETURN NEW; END $$; CREATE TRIGGER synthetic_invitation_start_gate AFTER UPDATE ON invitation_mail_attempts FOR EACH ROW EXECUTE FUNCTION synthetic_invitation_start_gate()").await?;
     let blocker = app.fixture.admin.begin().await?;
     blocker
-        .execute_unprepared("SELECT pg_advisory_xact_lock(1829712041,1)")
+        .execute_raw(blocker.get_database_backend().build(&Query::select().expr(
+            Func::cust("pg_advisory_xact_lock").args([Expr::val(1829712041_i32), Expr::val(1_i32)]),
+        ).to_owned()))
         .await?;
     let before = app
         .context
@@ -99,8 +153,8 @@ async fn invitation_live_duplicate_cannot_suppress_a_committed_start() -> TestRe
         .deliveries()
         .count
         - before;
-    let receipt = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT status,category,started_at IS NOT NULL AND finished_at IS NOT NULL AS finished FROM invitation_mail_attempts")).await?.ok_or("receipt missing")?;
-    app.close().await;
+    let receipt = app.fixture.admin.query_one_raw(app.fixture.admin.get_database_backend().build(&Query::select().expr(Expr::col("status")).expr(Expr::col("category")).expr_as(Expr::col("started_at").is_not_null().and(Expr::col("finished_at").is_not_null()),"finished").from("invitation_mail_attempts").and_where(Expr::col("household_id").eq(app.fixture.household.id)).to_owned())).await?.ok_or("receipt missing")?;
+
     assert_eq!(
         deliveries, 1,
         "a healthy duplicate must neither suppress nor repeat delivery"
@@ -109,12 +163,17 @@ async fn invitation_live_duplicate_cannot_suppress_a_committed_start() -> TestRe
     assert_eq!(receipt.try_get::<Option<String>>("", "category")?, None);
     assert!(receipt.try_get::<bool>("", "finished")?);
     Ok(())
+    }.await;
+    let cleanup=app.fixture.admin.execute_unprepared("DROP TRIGGER IF EXISTS synthetic_invitation_start_gate ON public.invitation_mail_attempts; DROP FUNCTION IF EXISTS public.synthetic_invitation_start_gate()").await;
+    app.close().await;
+    cleanup?;
+    result
 }
 
 #[tokio::test]
 async fn invitation_marker_capacity_failure_is_terminal_and_new_invitation_recovers() -> TestResult
 {
-    let mut app = Application::new_single_connection().await;
+    let mut app = Application::new_single_connection(Some(250)).await;
     app.context.mailer = Some(EmailSender::stub());
     let mail = queued(&app).await?;
     let worker = InvitationMailWorker::build(&app.context);
@@ -130,10 +189,17 @@ async fn invitation_marker_capacity_failure_is_terminal_and_new_invitation_recov
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,category,started_at IS NULL AS unstarted FROM invitation_mail_attempts",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col("status"))
+                    .expr(Expr::col("category"))
+                    .expr_as(Expr::col("started_at").is_null(), "unstarted")
+                    .from("invitation_mail_attempts")
+                    .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                    .to_owned(),
+            ),
+        )
         .await?
         .ok_or("attempt missing")?;
     assert_eq!(row.try_get::<String>("", "status")?, "failed");
@@ -152,8 +218,10 @@ async fn invitation_marker_capacity_failure_is_terminal_and_new_invitation_recov
     let tenant = access::begin(
         &app.fixture.runtime,
         &HouseholdScope {
-            actor: Actor { account_id: 71001 },
-            household_id: 72001,
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
             request_id: "explicit-capacity-recovery".into(),
         },
         None,
@@ -162,17 +230,22 @@ async fn invitation_marker_capacity_failure_is_terminal_and_new_invitation_recov
     let invitation = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT id FROM household_invitations",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col("id"))
+                    .from("household_invitations")
+                    .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                    .to_owned(),
+            ),
+        )
         .await?
         .ok_or("invitation missing")?
         .try_get::<i64>("", "id")?;
     invitations::cancel(&tenant, invitation, None).await?;
     invitations::create(
         &tenant,
-        invitations::InvitationInput::from_form("race@example.test", "member", false),
+        invitations::InvitationInput::from_form(&race_email(&app), "member", false),
         Some(&url::Url::parse(
             "https://synthetic.example.test/invitations/accept",
         )?),
@@ -183,10 +256,23 @@ async fn invitation_marker_capacity_failure_is_terminal_and_new_invitation_recov
     let payload = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT task_data FROM pg_loco_queue ORDER BY id DESC LIMIT 1",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .column("task_data")
+                    .from("pg_loco_queue")
+                    .and_where(
+                        Expr::expr(
+                            Func::cust("jsonb_extract_path_text")
+                                .args([Expr::col("task_data"), Expr::val("household_id")]),
+                        )
+                        .eq(app.fixture.household.id.to_string()),
+                    )
+                    .order_by("id", Order::Desc)
+                    .limit(1)
+                    .to_owned(),
+            ),
+        )
         .await?
         .ok_or("resend missing")?
         .try_get::<serde_json::Value>("", "task_data")?;
@@ -202,7 +288,22 @@ async fn invitation_marker_capacity_failure_is_terminal_and_new_invitation_recov
             .count,
         1
     );
-    let sent = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS count FROM invitation_mail_attempts WHERE status='sent_to_provider'")).await?.ok_or("receipt missing")?.try_get::<i64>("","count")?;
+    let sent = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(Expr::col(Asterisk).count(), "count")
+                    .from("invitation_mail_attempts")
+                    .and_where(Expr::col("status").eq(Expr::val("sent_to_provider")))
+                    .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                    .to_owned(),
+            ),
+        )
+        .await?
+        .ok_or("receipt missing")?
+        .try_get::<i64>("", "count")?;
     app.close().await;
     assert_eq!(sent, 1);
     Ok(())
@@ -238,10 +339,16 @@ async fn invitation_stalled_provider_times_out_as_uncertain_without_retry() -> T
     let receipt = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,category FROM invitation_mail_attempts",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col("status"))
+                    .expr(Expr::col("category"))
+                    .from("invitation_mail_attempts")
+                    .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                    .to_owned(),
+            ),
+        )
         .await?
         .ok_or("receipt missing")?;
     if completed {
@@ -282,10 +389,17 @@ async fn invitation_invalid_deadline_records_unavailable_without_starting() -> T
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,category,started_at IS NULL AS unstarted FROM invitation_mail_attempts",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col("status"))
+                    .expr(Expr::col("category"))
+                    .expr_as(Expr::col("started_at").is_null(), "unstarted")
+                    .from("invitation_mail_attempts")
+                    .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                    .to_owned(),
+            ),
+        )
         .await?
         .ok_or("attempt missing")?;
     let delivered = app
@@ -301,4 +415,8 @@ async fn invitation_invalid_deadline_records_unavailable_without_starting() -> T
     assert_eq!(row.try_get::<String>("", "category")?, "unavailable");
     assert!(row.try_get::<bool>("", "unstarted")?);
     Ok(())
+}
+
+fn race_email(app: &Application) -> String {
+    format!("race-{}@example.test", app.fixture.client_uuid)
 }

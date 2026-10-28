@@ -4,9 +4,11 @@ use loco_rs::{
     bgworker::BackgroundWorker,
     task::{Task, Vars},
 };
+use med_tracker::models::_entities as rows;
 use med_tracker::models::care::review_prompts::refresh::{
     RefreshRun, RefreshTask, RefreshWorker, import_snapshot,
 };
+use sea_orm::sea_query::{Expr, ExprTrait, Func, Query};
 
 #[test]
 fn review_lease_delete_contract_allows_idempotent_omitted_token() {
@@ -26,57 +28,217 @@ fn review_lease_delete_contract_allows_idempotent_omitted_token() {
 }
 
 async fn review_refresh_run(app: &Application) -> i64 {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "INSERT INTO medication_review_evidence_refresh_runs(status,created_at,updated_at) VALUES (0,now(),now()) RETURNING id",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "id")
-        .unwrap()
+    rows::medication_review_evidence_refresh_runs::ActiveModel {
+        status: Set(0),
+        created_at: Set(chrono::Utc::now().naive_utc()),
+        updated_at: Set(chrono::Utc::now().naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap()
+    .id
 }
 
 fn review_refresh_snapshot(version: &str, text: &str) -> Value {
-    json!({"openfda_last_updated":"2026-10-01","labels":[
-        {"set_id":"synthetic-worker-label","version":version,"effective_time":"20261001",
-         "selection_term":"ibuprofen","drug_interactions":[text],
-         "openfda":{"brand_name":["Synthetic tablets"],"substance_name":["ibuprofen"]}}
-    ]})
+    json!({"openfda_last_updated":"2026-10-01","labels":[{"set_id":"synthetic-worker-label","version":version,"effective_time":"20261001","selection_term":"ibuprofen","drug_interactions":[text],"openfda":{"brand_name":["Synthetic tablets"],"substance_name":["ibuprofen"]}}]})
 }
 
-async fn seed_prompt(app: &Application, id: i64, status: &str) {
-    app.fixture
-        .admin
-        .execute_unprepared(&format!(
-            "INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,interacting_terms,created_at,updated_at) VALUES ({id}00,'Synthetic reference','report-{id}','https://example.test/evidence/{id}','Synthetic tablets','Warnings','Synthetic evidence.','2026-01-01','moderate','high','reviewed_pair',ARRAY['synthetic tablets']::varchar[],ARRAY['synthetic tablets']::varchar[],now(),now())"
-        ))
-        .await
-        .unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared(&format!(
-            "INSERT INTO medication_review_prompts(id,household_id,person_id,primary_medication_id,interacting_medication_id,evidence_record_id,primary_medication_name,interacting_medication_name,evidence_source_name,evidence_source_url,evidence_source_version,evidence_source_checked_on,evidence_source_effective_on,evidence_text,match_confidence,match_reason,match_type,matched_term,risk_level,source_instruction,status,created_at,updated_at) VALUES ({id},72001,73001,80001,80001,{id}00,'Synthetic tablets','Synthetic tablets','Synthetic reference','https://example.test/evidence/{id}','1','2026-01-01','2026-01-01','Synthetic evidence.','high','A reviewed rule identifies synthetic tablets as the interacting medicine.','curated','synthetic tablets','moderate','unclassified','{status}',now(),now())"
-        ))
-        .await
-        .unwrap();
-    app.fixture.admin.execute_unprepared(&format!(
-        "UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id={id} AND e.id=p.evidence_record_id"
-    )).await.unwrap();
+struct SeededPrompt {
+    prompt: rows::medication_review_prompts::Model,
+    evidence: rows::medication_review_evidence_records::Model,
+    identity: Option<rows::medication_review_evidence_records::Model>,
+    other_medication: Option<rows::medications::Model>,
 }
 
-async fn seed_matched_prompt(app: &Application, id: i64, status: &str) {
-    seed_prompt(app, id, status).await;
-    app.fixture.admin.execute_unprepared(&format!(
-        "UPDATE medications SET name='Aspirin tablets' WHERE id=80001; INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES (80003,72001,79001,'Warfarin tablets',10,1,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES (81003,72001,73001,80003,1,'tablet',1,now(),now()); UPDATE medication_review_evidence_records SET source_version='1',evidence_text='Avoid warfarin with aspirin.',match_status='unreviewed',candidate_terms=ARRAY['aspirin']::varchar[],interacting_terms=ARRAY[]::varchar[],risk_level='unknown',match_confidence='unknown' WHERE id={id}00; INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,candidate_terms,pharmacologic_classes,created_at,updated_at) VALUES ({id}01,'Synthetic reference','identity-{id}','https://example.test/evidence/identity-{id}','Warfarin','Warnings','Warfarin medicine information.','2026-01-01','unknown','unknown',ARRAY['warfarin']::varchar[],ARRAY['anticoagulant']::varchar[],now(),now()); UPDATE medication_review_prompts SET primary_medication_id=80001,interacting_medication_id=80003,primary_medication_name='Aspirin tablets',interacting_medication_name='Warfarin tablets',evidence_source_version='1',evidence_text='Avoid warfarin with aspirin.',matched_term='warfarin',match_type='ingredient',source_instruction='avoid',match_reason='The label explicitly names the ingredient warfarin.',risk_level='high',match_confidence='high' WHERE id={id}; UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id={id} AND e.id=p.evidence_record_id"
-    )).await.unwrap();
+async fn evidence(
+    app: &Application,
+    product: &str,
+) -> rows::medication_review_evidence_records::Model {
+    let now = chrono::Utc::now().naive_utc();
+    let unique = uuid::Uuid::new_v4();
+    rows::medication_review_evidence_records::ActiveModel {
+        source_name: Set("Synthetic reference".into()),
+        source_record_id: Set(format!("report-{unique}")),
+        source_url: Set(format!("https://example.test/evidence/{unique}")),
+        product_name: Set(product.into()),
+        label_section: Set("Warnings".into()),
+        evidence_text: Set("Synthetic evidence.".into()),
+        retrieved_on: Set("2026-01-01".parse().unwrap()),
+        risk_level: Set("moderate".into()),
+        match_confidence: Set("high".into()),
+        match_status: Set("reviewed_pair".into()),
+        candidate_terms: Set(vec!["synthetic tablets".into()]),
+        interacting_terms: Set(vec!["synthetic tablets".into()]),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap()
+}
+
+async fn fingerprint(app: &Application, prompt_id: i64, evidence_id: i64) {
+    let values = [
+        "source_name",
+        "source_url",
+        "source_version",
+        "source_effective_on",
+        "evidence_text",
+        "risk_level",
+        "match_confidence",
+    ]
+    .map(Expr::col);
+    let query = Query::select()
+        .expr_as(
+            Func::cust("md5").args([Func::cust("jsonb_build_array")
+                .args(values)
+                .cast_as(sea_orm::sea_query::Alias::new("text"))]),
+            "fingerprint",
+        )
+        .from(rows::medication_review_evidence_records::Entity)
+        .and_where(Expr::col("id").eq(evidence_id))
+        .to_owned();
+    let fingerprint: String = app
+        .fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "fingerprint")
+        .unwrap();
+    let update = Query::update()
+        .table(rows::medication_review_prompts::Entity)
+        .value("evidence_source_fingerprint", fingerprint)
+        .and_where(Expr::col("id").eq(prompt_id))
+        .to_owned();
+    app.fixture
+        .admin
+        .execute_raw(app.fixture.admin.get_database_backend().build(&update))
+        .await
+        .unwrap();
+}
+
+async fn seed_prompt(app: &Application, status: &str) -> SeededPrompt {
+    let evidence = evidence(app, "Synthetic tablets").await;
+    let now = chrono::Utc::now().naive_utc();
+    let prompt = rows::medication_review_prompts::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(app.fixture.adult.id),
+        primary_medication_id: Set(app.fixture.medication.id),
+        interacting_medication_id: Set(app.fixture.medication.id),
+        evidence_record_id: Set(evidence.id),
+        primary_medication_name: Set("Synthetic tablets".into()),
+        interacting_medication_name: Set("Synthetic tablets".into()),
+        evidence_source_name: Set("Synthetic reference".into()),
+        evidence_source_url: Set(evidence.source_url.clone()),
+        evidence_source_version: Set("1".into()),
+        evidence_source_checked_on: Set("2026-01-01".parse().unwrap()),
+        evidence_source_effective_on: Set("2026-01-01".parse().unwrap()),
+        evidence_text: Set("Synthetic evidence.".into()),
+        match_confidence: Set("high".into()),
+        match_reason: Set(
+            "A reviewed rule identifies synthetic tablets as the interacting medicine.".into(),
+        ),
+        match_type: Set("curated".into()),
+        matched_term: Set("synthetic tablets".into()),
+        risk_level: Set("moderate".into()),
+        source_instruction: Set("unclassified".into()),
+        status: Set(status.into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    fingerprint(app, prompt.id, evidence.id).await;
+    SeededPrompt {
+        prompt,
+        evidence,
+        identity: None,
+        other_medication: None,
+    }
+}
+
+async fn seed_matched_prompt(app: &Application, status: &str) -> SeededPrompt {
+    let mut seeded = seed_prompt(app, status).await;
+    let mut medication = app.fixture.medication.clone().into_active_model();
+    medication.name = Set(Some("Aspirin tablets".into()));
+    medication.update(&app.fixture.admin).await.unwrap();
+    let now = chrono::Utc::now().naive_utc();
+    let other = rows::medications::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        location_id: Set(app.fixture.location.id),
+        name: Set(Some("Warfarin tablets".into())),
+        current_supply: Set(Some(sea_orm::prelude::Decimal::new(10, 0))),
+        dose_amount: Set(Some(1.0)),
+        dose_unit: Set(Some("tablet".into())),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    rows::person_medications::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(app.fixture.adult.id),
+        medication_id: Set(other.id),
+        dose_amount: Set(Some(sea_orm::prelude::Decimal::ONE)),
+        dose_unit: Set(Some("tablet".into())),
+        position: Set(1),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let mut label = seeded.evidence.clone().into_active_model();
+    label.source_version = Set(Some("1".into()));
+    label.evidence_text = Set("Avoid warfarin with aspirin.".into());
+    label.match_status = Set("unreviewed".into());
+    label.candidate_terms = Set(vec!["aspirin".into()]);
+    label.interacting_terms = Set(vec![]);
+    label.risk_level = Set("unknown".into());
+    label.match_confidence = Set("unknown".into());
+    seeded.evidence = label.update(&app.fixture.admin).await.unwrap();
+    let identity = evidence(app, "Warfarin").await;
+    let mut identity = identity.into_active_model();
+    identity.evidence_text = Set("Warfarin medicine information.".into());
+    identity.risk_level = Set("unknown".into());
+    identity.match_confidence = Set("unknown".into());
+    identity.match_status = Set("unreviewed".into());
+    identity.candidate_terms = Set(vec!["warfarin".into()]);
+    identity.pharmacologic_classes = Set(vec!["anticoagulant".into()]);
+    identity.interacting_terms = Set(vec![]);
+    let identity = identity.update(&app.fixture.admin).await.unwrap();
+    let mut prompt = seeded.prompt.clone().into_active_model();
+    prompt.interacting_medication_id = Set(other.id);
+    prompt.primary_medication_name = Set("Aspirin tablets".into());
+    prompt.interacting_medication_name = Set("Warfarin tablets".into());
+    prompt.evidence_source_version = Set("1".into());
+    prompt.evidence_text = Set("Avoid warfarin with aspirin.".into());
+    prompt.matched_term = Set("warfarin".into());
+    prompt.match_type = Set("ingredient".into());
+    prompt.source_instruction = Set("avoid".into());
+    prompt.match_reason = Set("The label explicitly names the ingredient warfarin.".into());
+    prompt.risk_level = Set("high".into());
+    prompt.match_confidence = Set("high".into());
+    seeded.prompt = prompt.update(&app.fixture.admin).await.unwrap();
+    fingerprint(app, seeded.prompt.id, seeded.evidence.id).await;
+    seeded.identity = Some(identity);
+    seeded.other_medication = Some(other);
+    seeded
 }
 
 fn prompts(app: &Application, suffix: &str) -> String {
+    let fixture_household_id = app.fixture.household.id;
     format!(
-        "{}/api/v1/households/72001/medication_review_prompts{suffix}",
+        "{}/api/v1/households/{fixture_household_id}/medication_review_prompts{suffix}",
         app.origin
     )
 }
@@ -96,12 +258,14 @@ async fn edit_token(app: &Application, bearer: &str, id: i64) -> String {
 
 #[tokio::test]
 async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_save() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
     let token = app.token().await;
-    seed_prompt(&app, 91101, "needs_review").await;
+    let seeded_91101 = seed_prompt(&app, "needs_review").await;
+    let prompt_id_91101 = seeded_91101.prompt.id;
     let shown = app
         .client
-        .get(prompts(&app, "/91101"))
+        .get(prompts(&app, &format!("/{prompt_id_91101}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -115,7 +279,7 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
         .to_owned();
     let without_lease = app
         .client
-        .patch(prompts(&app, "/91101"))
+        .patch(prompts(&app, &format!("/{prompt_id_91101}")))
         .bearer_auth(&token)
         .header("if-match", &etag)
         .json(&json!({"medication_review_prompt":{"review_note":"Unleased"}}))
@@ -124,7 +288,7 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
         .unwrap();
     let acquired = app
         .client
-        .post(prompts(&app, "/91101/lease"))
+        .post(prompts(&app, &format!("/{prompt_id_91101}/lease")))
         .bearer_auth(&token)
         .send()
         .await
@@ -134,14 +298,14 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
     let lease = acquired_body["data"]["token"].as_str().unwrap_or("");
     let competing = app
         .client
-        .post(prompts(&app, "/91101/lease"))
+        .post(prompts(&app, &format!("/{prompt_id_91101}/lease")))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
     let saved = app
         .client
-        .patch(prompts(&app, "/91101"))
+        .patch(prompts(&app, &format!("/{prompt_id_91101}")))
         .bearer_auth(&token)
         .header("if-match", &etag)
         .header("x-review-lease", lease)
@@ -151,7 +315,7 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
         .unwrap();
     let reacquired = app
         .client
-        .post(prompts(&app, "/91101/lease"))
+        .post(prompts(&app, &format!("/{prompt_id_91101}/lease")))
         .bearer_auth(&token)
         .send()
         .await
@@ -160,7 +324,7 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
     let reacquired_body: Value = reacquired.json().await.unwrap();
     let cancel = app
         .client
-        .delete(prompts(&app, "/91101/lease"))
+        .delete(prompts(&app, &format!("/{prompt_id_91101}/lease")))
         .bearer_auth(&token)
         .header(
             "x-review-lease",
@@ -171,7 +335,7 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
         .unwrap();
     let repeated_cancel = app
         .client
-        .delete(prompts(&app, "/91101/lease"))
+        .delete(prompts(&app, &format!("/{prompt_id_91101}/lease")))
         .bearer_auth(&token)
         .send()
         .await
@@ -179,10 +343,18 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
     let remaining = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT token FROM medication_review_edit_leases WHERE prompt_id=91101",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("medication_review_edit_leases", "token")))
+                    .from("medication_review_edit_leases")
+                    .cond_where(
+                        Expr::col(("medication_review_edit_leases", "prompt_id"))
+                            .eq(Expr::val(prompt_id_91101)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap();
     app.close().await;
@@ -199,12 +371,14 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
 
 #[tokio::test]
 async fn review_save_with_unchanged_fields_releases_lease_without_history() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
     let token = app.token().await;
-    seed_prompt(&app, 91252, "not_relevant").await;
+    let seeded_91252 = seed_prompt(&app, "not_relevant").await;
+    let prompt_id_91252 = seeded_91252.prompt.id;
     let shown = app
         .client
-        .get(prompts(&app, "/91252"))
+        .get(prompts(&app, &format!("/{prompt_id_91252}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -216,10 +390,10 @@ async fn review_save_with_unchanged_fields_releases_lease_without_history() {
         .to_str()
         .unwrap()
         .to_owned();
-    let lease = edit_token(&app, &token, 91252).await;
+    let lease = edit_token(&app, &token, prompt_id_91252).await;
     let saved = app
         .client
-        .patch(prompts(&app, "/91252"))
+        .patch(prompts(&app, &format!("/{prompt_id_91252}")))
         .bearer_auth(&token)
         .header("if-match", &etag)
         .header("x-review-lease", &lease)
@@ -229,17 +403,45 @@ async fn review_save_with_unchanged_fields_releases_lease_without_history() {
         .unwrap();
     assert_eq!(saved.status().as_u16(), 200);
     assert_eq!(saved.headers().get("etag").unwrap().to_str().unwrap(), etag);
-    let count = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*)::bigint AS total FROM medication_review_histories WHERE prompt_id=91252"
-    )).await.unwrap().unwrap().try_get::<i64>("", "total").unwrap();
+    let count = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(
+                        Expr::col(("medication_review_histories", "id")).count(),
+                        "total",
+                    )
+                    .from("medication_review_histories")
+                    .cond_where(
+                        Expr::col(("medication_review_histories", "prompt_id"))
+                            .eq(Expr::val(prompt_id_91252)),
+                    )
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<i64>("", "total")
+        .unwrap();
     assert_eq!(count, 0);
     let remaining = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT token FROM medication_review_edit_leases WHERE prompt_id=91252",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("medication_review_edit_leases", "token")))
+                    .from("medication_review_edit_leases")
+                    .cond_where(
+                        Expr::col(("medication_review_edit_leases", "prompt_id"))
+                            .eq(Expr::val(prompt_id_91252)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap();
     assert!(remaining.is_none());
@@ -248,18 +450,68 @@ async fn review_save_with_unchanged_fields_releases_lease_without_history() {
 
 #[tokio::test]
 async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_adult_id = app.fixture.adult.id;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    seed_matched_prompt(&app, 91102, "reviewed_with_practitioner").await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91102",
-    ).await.unwrap();
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET retrieved_on='2026-10-02' WHERE id=9110200",
-    ).await.unwrap();
+    let seeded_91102 = seed_matched_prompt(&app, "reviewed_with_practitioner").await;
+    let prompt_id_91102 = seeded_91102.prompt.id;
+    let evidence_id_91102 = seeded_91102.evidence.id;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_prompts")
+                        .value("practitioner_name", Expr::val("Dr Test"))
+                        .value("practitioner_role", Expr::val("GP"))
+                        .value(
+                            "reviewed_on",
+                            Expr::val("2026-10-01".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .value("review_note", Expr::val("Discussed"))
+                        .value(
+                            "reviewed_by_membership_id",
+                            Expr::val(fixture_membership_id),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_prompts", "id"))
+                                .eq(Expr::val(prompt_id_91102)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value(
+                            "retrieved_on",
+                            Expr::val("2026-10-02".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91102)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let before: Value = app
         .client
-        .get(prompts(&app, "/91102"))
+        .get(prompts(&app, &format!("/{prompt_id_91102}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -278,7 +530,7 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
     assert_eq!(unchanged.status().as_u16(), 200);
     let after_timestamp: Value = app
         .client
-        .get(prompts(&app, "/91102"))
+        .get(prompts(&app, &format!("/{prompt_id_91102}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -291,12 +543,32 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
         "reviewed_with_practitioner"
     );
     assert_eq!(after_timestamp["data"]["etag"], original_etag);
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET source_version='2',evidence_text='Monitor anticoagulants with aspirin.' WHERE id=9110200",
-    ).await.unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("source_version", Expr::val("2"))
+                        .value(
+                            "evidence_text",
+                            Expr::val("Monitor anticoagulants with aspirin."),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91102)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let detail_after_change: Value = app
         .client
-        .get(prompts(&app, "/91102"))
+        .get(prompts(&app, &format!("/{prompt_id_91102}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -316,7 +588,7 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
     assert_eq!(refreshed.status().as_u16(), 200);
     let after: Value = app
         .client
-        .get(prompts(&app, "/91102"))
+        .get(prompts(&app, &format!("/{prompt_id_91102}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -356,8 +628,8 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
         "avoid"
     );
     let snapshot = after["history"][0]["snapshot"].as_object().unwrap();
-    assert_eq!(snapshot["id"], "91102");
-    assert_eq!(snapshot["person_id"], "73001");
+    assert_eq!(snapshot["id"], prompt_id_91102.to_string());
+    assert_eq!(snapshot["person_id"], fixture_adult_id.to_string());
     assert_eq!(snapshot["etag"], original_etag);
     assert!(!snapshot.contains_key("evidence_source_fingerprint"));
     assert!(!snapshot.contains_key("household_id"));
@@ -365,18 +637,68 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
 
 #[tokio::test]
 async fn changed_evidence_without_a_pair_match_retires_the_warning_and_keeps_history() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    seed_matched_prompt(&app, 91108, "reviewed_with_practitioner").await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91108",
-    ).await.unwrap();
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET source_version='2',evidence_text='This product has no named interacting medicines.' WHERE id=9110800",
-    ).await.unwrap();
+    let seeded_91108 = seed_matched_prompt(&app, "reviewed_with_practitioner").await;
+    let prompt_id_91108 = seeded_91108.prompt.id;
+    let evidence_id_91108 = seeded_91108.evidence.id;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_prompts")
+                        .value("practitioner_name", Expr::val("Dr Test"))
+                        .value("practitioner_role", Expr::val("GP"))
+                        .value(
+                            "reviewed_on",
+                            Expr::val("2026-10-01".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .value("review_note", Expr::val("Discussed"))
+                        .value(
+                            "reviewed_by_membership_id",
+                            Expr::val(fixture_membership_id),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_prompts", "id"))
+                                .eq(Expr::val(prompt_id_91108)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("source_version", Expr::val("2"))
+                        .value(
+                            "evidence_text",
+                            Expr::val("This product has no named interacting medicines."),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91108)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let first: Value = app
         .client
-        .get(prompts(&app, "/91108"))
+        .get(prompts(&app, &format!("/{prompt_id_91108}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -386,7 +708,7 @@ async fn changed_evidence_without_a_pair_match_retires_the_warning_and_keeps_his
         .unwrap();
     let second: Value = app
         .client
-        .get(prompts(&app, "/91108"))
+        .get(prompts(&app, &format!("/{prompt_id_91108}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -424,15 +746,45 @@ async fn changed_evidence_without_a_pair_match_retires_the_warning_and_keeps_his
 
 #[tokio::test]
 async fn changed_evidence_keeps_an_equivalent_legacy_review_untouched() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    seed_prompt(&app, 91109, "reviewed_with_practitioner").await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91109",
-    ).await.unwrap();
+    let seeded_91109 = seed_prompt(&app, "reviewed_with_practitioner").await;
+    let prompt_id_91109 = seeded_91109.prompt.id;
+    let evidence_id_91109 = seeded_91109.evidence.id;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_prompts")
+                        .value("practitioner_name", Expr::val("Dr Test"))
+                        .value("practitioner_role", Expr::val("GP"))
+                        .value(
+                            "reviewed_on",
+                            Expr::val("2026-10-01".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .value("review_note", Expr::val("Discussed"))
+                        .value(
+                            "reviewed_by_membership_id",
+                            Expr::val(fixture_membership_id),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_prompts", "id"))
+                                .eq(Expr::val(prompt_id_91109)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let first: Value = app
         .client
-        .get(prompts(&app, "/91109"))
+        .get(prompts(&app, &format!("/{prompt_id_91109}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -440,12 +792,31 @@ async fn changed_evidence_keeps_an_equivalent_legacy_review_untouched() {
         .json()
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET retrieved_on='2026-10-02' WHERE id=9110900",
-    ).await.unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value(
+                            "retrieved_on",
+                            Expr::val("2026-10-02".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91109)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let second: Value = app
         .client
-        .get(prompts(&app, "/91109"))
+        .get(prompts(&app, &format!("/{prompt_id_91109}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -463,15 +834,60 @@ async fn changed_evidence_keeps_an_equivalent_legacy_review_untouched() {
 
 #[tokio::test]
 async fn changed_evidence_match_inputs_alone_retire_and_restore_a_warning() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    seed_matched_prompt(&app, 91110, "reviewed_with_practitioner").await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91110; UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['unrelated']::varchar[] WHERE id=9111000",
-    ).await.unwrap();
+    let seeded_91110 = seed_matched_prompt(&app, "reviewed_with_practitioner").await;
+    let prompt_id_91110 = seeded_91110.prompt.id;
+    let evidence_id_91110 = seeded_91110.evidence.id;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_prompts")
+                        .value("practitioner_name", Expr::val("Dr Test"))
+                        .value("practitioner_role", Expr::val("GP"))
+                        .value(
+                            "reviewed_on",
+                            Expr::val("2026-10-01".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .value("review_note", Expr::val("Discussed"))
+                        .value(
+                            "reviewed_by_membership_id",
+                            Expr::val(fixture_membership_id),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_prompts", "id"))
+                                .eq(Expr::val(prompt_id_91110)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await?;
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("candidate_terms", Expr::val(vec!["unrelated".to_owned()]))
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91110)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let retired: Value = app
         .client
-        .get(prompts(&app, "/91110"))
+        .get(prompts(&app, &format!("/{prompt_id_91110}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -479,12 +895,28 @@ async fn changed_evidence_match_inputs_alone_retire_and_restore_a_warning() {
         .json()
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['aspirin']::varchar[] WHERE id=9111000",
-    ).await.unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("candidate_terms", Expr::val(vec!["aspirin".to_owned()]))
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91110)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let restored: Value = app
         .client
-        .get(prompts(&app, "/91110"))
+        .get(prompts(&app, &format!("/{prompt_id_91110}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -506,15 +938,96 @@ async fn changed_evidence_match_inputs_alone_retire_and_restore_a_warning() {
 
 #[tokio::test]
 async fn changed_evidence_supporting_identity_alone_retires_a_warning() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    seed_matched_prompt(&app, 91111, "reviewed_with_practitioner").await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET evidence_text='Monitor glimmerase with aspirin.' WHERE id=9111100; UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['warfarin','glimmerase']::varchar[] WHERE id=9111101; UPDATE medication_review_prompts SET evidence_text='Monitor glimmerase with aspirin.',matched_term='glimmerase',match_type='ingredient',source_instruction='monitor_or_adjust',match_reason='The label explicitly names the ingredient glimmerase.',risk_level='moderate',match_confidence='high',practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91111; UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id=91111 AND e.id=p.evidence_record_id",
-    ).await.unwrap();
+    let seeded_91111 = seed_matched_prompt(&app, "reviewed_with_practitioner").await;
+    let prompt_id_91111 = seeded_91111.prompt.id;
+    let evidence_id_91111 = seeded_91111.evidence.id;
+    let identity_id_91111 = seeded_91111.identity.as_ref().unwrap().id;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value(
+                            "evidence_text",
+                            Expr::val("Monitor glimmerase with aspirin."),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91111)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await?;
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value(
+                            "candidate_terms",
+                            Expr::val(vec!["warfarin".to_owned(), "glimmerase".to_owned()]),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(identity_id_91111)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await?;
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_prompts")
+                        .value(
+                            "evidence_text",
+                            Expr::val("Monitor glimmerase with aspirin."),
+                        )
+                        .value("matched_term", Expr::val("glimmerase"))
+                        .value("match_type", Expr::val("ingredient"))
+                        .value("source_instruction", Expr::val("monitor_or_adjust"))
+                        .value(
+                            "match_reason",
+                            Expr::val("The label explicitly names the ingredient glimmerase."),
+                        )
+                        .value("risk_level", Expr::val("moderate"))
+                        .value("match_confidence", Expr::val("high"))
+                        .value("practitioner_name", Expr::val("Dr Test"))
+                        .value("practitioner_role", Expr::val("GP"))
+                        .value(
+                            "reviewed_on",
+                            Expr::val("2026-10-01".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .value("review_note", Expr::val("Discussed"))
+                        .value(
+                            "reviewed_by_membership_id",
+                            Expr::val(fixture_membership_id),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_prompts", "id"))
+                                .eq(Expr::val(prompt_id_91111)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
+    fingerprint(&app, prompt_id_91111, evidence_id_91111).await;
     let before: Value = app
         .client
-        .get(prompts(&app, "/91111"))
+        .get(prompts(&app, &format!("/{prompt_id_91111}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -522,12 +1035,28 @@ async fn changed_evidence_supporting_identity_alone_retires_a_warning() {
         .json()
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['warfarin']::varchar[] WHERE id=9111101",
-    ).await.unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("candidate_terms", Expr::val(vec!["warfarin".to_owned()]))
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(identity_id_91111)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let after: Value = app
         .client
-        .get(prompts(&app, "/91111"))
+        .get(prompts(&app, &format!("/{prompt_id_91111}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -547,15 +1076,76 @@ async fn changed_evidence_supporting_identity_alone_retires_a_warning() {
 
 #[tokio::test]
 async fn changed_evidence_reversed_curated_pair_retires_the_old_direction() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    seed_matched_prompt(&app, 91112, "reviewed_with_practitioner").await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET match_status='reviewed_pair',candidate_terms=ARRAY['aspirin']::varchar[],interacting_terms=ARRAY['warfarin']::varchar[],risk_level='high',match_confidence='high' WHERE id=9111200; UPDATE medication_review_prompts SET match_type='curated',matched_term='warfarin',source_instruction='unclassified',match_reason='A reviewed rule identifies warfarin as the interacting medicine.',practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91112; UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id=91112 AND e.id=p.evidence_record_id",
-    ).await.unwrap();
+    let seeded_91112 = seed_matched_prompt(&app, "reviewed_with_practitioner").await;
+    let prompt_id_91112 = seeded_91112.prompt.id;
+    let evidence_id_91112 = seeded_91112.evidence.id;
+    let matching_medication_id = seeded_91112.other_medication.as_ref().unwrap().id;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("match_status", Expr::val("reviewed_pair"))
+                        .value("candidate_terms", Expr::val(vec!["aspirin".to_owned()]))
+                        .value("interacting_terms", Expr::val(vec!["warfarin".to_owned()]))
+                        .value("risk_level", Expr::val("high"))
+                        .value("match_confidence", Expr::val("high"))
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91112)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await?;
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_prompts")
+                        .value("match_type", Expr::val("curated"))
+                        .value("matched_term", Expr::val("warfarin"))
+                        .value("source_instruction", Expr::val("unclassified"))
+                        .value(
+                            "match_reason",
+                            Expr::val(
+                                "A reviewed rule identifies warfarin as the interacting medicine.",
+                            ),
+                        )
+                        .value("practitioner_name", Expr::val("Dr Test"))
+                        .value("practitioner_role", Expr::val("GP"))
+                        .value(
+                            "reviewed_on",
+                            Expr::val("2026-10-01".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .value("review_note", Expr::val("Discussed"))
+                        .value(
+                            "reviewed_by_membership_id",
+                            Expr::val(fixture_membership_id),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_prompts", "id"))
+                                .eq(Expr::val(prompt_id_91112)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
+    fingerprint(&app, prompt_id_91112, evidence_id_91112).await;
     let before: Value = app
         .client
-        .get(prompts(&app, "/91112"))
+        .get(prompts(&app, &format!("/{prompt_id_91112}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -563,9 +1153,26 @@ async fn changed_evidence_reversed_curated_pair_retires_the_old_direction() {
         .json()
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['warfarin']::varchar[],interacting_terms=ARRAY['aspirin']::varchar[] WHERE id=9111200",
-    ).await.unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("candidate_terms", Expr::val(vec!["warfarin".to_owned()]))
+                        .value("interacting_terms", Expr::val(vec!["aspirin".to_owned()]))
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91112)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let list: Value = app
         .client
         .get(prompts(&app, ""))
@@ -578,7 +1185,7 @@ async fn changed_evidence_reversed_curated_pair_retires_the_old_direction() {
         .unwrap();
     let old: Value = app
         .client
-        .get(prompts(&app, "/91112"))
+        .get(prompts(&app, &format!("/{prompt_id_91112}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -592,21 +1199,54 @@ async fn changed_evidence_reversed_curated_pair_retires_the_old_direction() {
     assert_eq!(old["history"][0]["snapshot"]["review_note"], "Discussed");
     let visible = list["data"].as_array().unwrap();
     assert_eq!(visible.len(), 1);
-    assert_eq!(visible[0]["primary_medication_id"], "80003");
-    assert_eq!(visible[0]["interacting_medication_id"], "80001");
+    assert_eq!(
+        visible[0]["primary_medication_id"],
+        matching_medication_id.to_string()
+    );
+    assert_eq!(
+        visible[0]["interacting_medication_id"],
+        fixture_medication_id.to_string()
+    );
     assert_eq!(visible[0]["matched_term"], "aspirin");
     assert_eq!(visible[0]["status"], "needs_review");
 }
 
 #[tokio::test]
 async fn review_date_can_be_cleared_for_a_non_practitioner_outcome() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    for (id, date) in [(91106, Value::Null), (91107, json!(""))] {
-        seed_prompt(&app, id, "reviewed_with_practitioner").await;
-        app.fixture.admin.execute_unprepared(&format!(
-            "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',reviewed_by_membership_id=74001 WHERE id={id}"
-        )).await.unwrap();
+    for date in [Value::Null, json!("")] {
+        let seeded = seed_prompt(&app, "reviewed_with_practitioner").await;
+        let id = seeded.prompt.id;
+        async {
+            app.fixture
+                .admin
+                .execute_raw(
+                    app.fixture.admin.get_database_backend().build(
+                        &Query::update()
+                            .table("medication_review_prompts")
+                            .value("practitioner_name", Expr::val("Dr Test"))
+                            .value("practitioner_role", Expr::val("GP"))
+                            .value(
+                                "reviewed_on",
+                                Expr::val("2026-10-01".parse::<chrono::NaiveDate>().unwrap()),
+                            )
+                            .value(
+                                "reviewed_by_membership_id",
+                                Expr::val(fixture_membership_id),
+                            )
+                            .cond_where(
+                                Expr::col(("medication_review_prompts", "id")).eq(Expr::val(id)),
+                            )
+                            .to_owned(),
+                    ),
+                )
+                .await
+        }
+        .await
+        .unwrap();
         let shown = app
             .client
             .get(prompts(&app, &format!("/{id}")))
@@ -640,7 +1280,7 @@ async fn review_date_can_be_cleared_for_a_non_practitioner_outcome() {
         let status = response.status().as_u16();
         let body: Value = response.json().await.unwrap();
         assert_eq!(status, 200, "{body}");
-        assert!(body["data"]["reviewed_on"].is_null());
+        assert!(Value::is_null(&body["data"]["reviewed_on"]));
         let detail: Value = app
             .client
             .get(prompts(&app, &format!("/{id}")))
@@ -661,12 +1301,15 @@ async fn review_date_can_be_cleared_for_a_non_practitioner_outcome() {
 
 #[tokio::test]
 async fn changed_evidence_blocks_an_edit_started_before_refresh() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
     let token = app.token().await;
-    seed_prompt(&app, 91105, "needs_review").await;
+    let seeded_91105 = seed_prompt(&app, "needs_review").await;
+    let prompt_id_91105 = seeded_91105.prompt.id;
+    let evidence_id_91105 = seeded_91105.evidence.id;
     let shown: Value = app
         .client
-        .get(prompts(&app, "/91105"))
+        .get(prompts(&app, &format!("/{prompt_id_91105}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -675,13 +1318,30 @@ async fn changed_evidence_blocks_an_edit_started_before_refresh() {
         .await
         .unwrap();
     let etag = shown["data"]["etag"].as_str().unwrap();
-    let lease = edit_token(&app, &token, 91105).await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET source_version='2',evidence_text='New evidence before save.' WHERE id=9110500",
-    ).await.unwrap();
+    let lease = edit_token(&app, &token, prompt_id_91105).await;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("source_version", Expr::val("2"))
+                        .value("evidence_text", Expr::val("New evidence before save."))
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91105)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let stale = app
         .client
-        .patch(prompts(&app, "/91105"))
+        .patch(prompts(&app, &format!("/{prompt_id_91105}")))
         .bearer_auth(&token)
         .header("if-match", etag)
         .header("x-review-lease", &lease)
@@ -691,7 +1351,7 @@ async fn changed_evidence_blocks_an_edit_started_before_refresh() {
         .unwrap();
     let current: Value = app
         .client
-        .get(prompts(&app, "/91105"))
+        .get(prompts(&app, &format!("/{prompt_id_91105}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -702,10 +1362,22 @@ async fn changed_evidence_blocks_an_edit_started_before_refresh() {
     let lease_row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT token::text AS token FROM medication_review_edit_leases WHERE prompt_id=91105",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(
+                        Expr::col(("medication_review_edit_leases", "token"))
+                            .cast_as(sea_orm::sea_query::Alias::new("text")),
+                        "token",
+                    )
+                    .from("medication_review_edit_leases")
+                    .cond_where(
+                        Expr::col(("medication_review_edit_leases", "prompt_id"))
+                            .eq(Expr::val(prompt_id_91105)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -722,12 +1394,17 @@ async fn changed_evidence_blocks_an_edit_started_before_refresh() {
 
 #[tokio::test]
 async fn expired_review_lease_or_revoked_membership_cannot_be_used_by_api_or_sync() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_grant_id = app.fixture.grant.id;
     let token = app.token().await;
-    seed_prompt(&app, 91103, "needs_review").await;
+    let seeded_91103 = seed_prompt(&app, "needs_review").await;
+    let prompt_id_91103 = seeded_91103.prompt.id;
     let shown: Value = app
         .client
-        .get(prompts(&app, "/91103"))
+        .get(prompts(&app, &format!("/{prompt_id_91103}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -736,13 +1413,34 @@ async fn expired_review_lease_or_revoked_membership_cannot_be_used_by_api_or_syn
         .await
         .unwrap();
     let etag = shown["data"]["etag"].as_str().unwrap();
-    let lease = edit_token(&app, &token, 91103).await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_edit_leases SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE prompt_id=91103",
-    ).await.unwrap();
+    let lease = edit_token(&app, &token, prompt_id_91103).await;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_edit_leases")
+                        .value(
+                            "expires_at",
+                            Expr::val(
+                                chrono::Utc::now().naive_utc() - chrono::Duration::seconds(1),
+                            ),
+                        )
+                        .cond_where(
+                            Expr::col(("medication_review_edit_leases", "prompt_id"))
+                                .eq(Expr::val(prompt_id_91103)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let expired = app
         .client
-        .patch(prompts(&app, "/91103"))
+        .patch(prompts(&app, &format!("/{prompt_id_91103}")))
         .bearer_auth(&token)
         .header("if-match", etag)
         .header("x-review-lease", &lease)
@@ -750,19 +1448,48 @@ async fn expired_review_lease_or_revoked_membership_cannot_be_used_by_api_or_syn
         .send()
         .await
         .unwrap();
-    let new_lease = edit_token(&app, &token, 91103).await;
-    let sync = app.client.post(format!("{}/api/v1/households/72001/sync/batches", app.origin))
+    let new_lease = edit_token(&app, &token, prompt_id_91103).await;
+    let sync = app.client.post(format!("{}/api/v1/households/{fixture_household_id}/sync/batches", app.origin))
         .bearer_auth(&token)
-        .json(&json!({"batch":{"operations":[{"resource_type":"medication_review_prompt","action":"update","id":"91103","if_match":etag,"attributes":{"status":"not_relevant","review_note":"No lease in sync"}}]}}))
+        .json(&json!({"batch":{"operations":[{"resource_type":"medication_review_prompt","action":"update","id":prompt_id_91103.to_string(),"if_match":etag,"attributes":{"status":"not_relevant","review_note":"No lease in sync"}}]}}))
         .send().await.unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
-        .await
-        .unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("person_access_grants")
+                        .value("access_level", Expr::val("view"))
+                        .cond_where(
+                            Expr::col(("person_access_grants", "id"))
+                                .eq(Expr::val(fixture_grant_id)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await?;
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("household_memberships")
+                        .value("revoked_at", Expr::val(chrono::Utc::now().naive_utc()))
+                        .cond_where(
+                            Expr::col(("household_memberships", "id"))
+                                .eq(Expr::val(fixture_membership_id)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let revoked = app
         .client
-        .patch(prompts(&app, "/91103"))
+        .patch(prompts(&app, &format!("/{prompt_id_91103}")))
         .bearer_auth(&token)
         .header("if-match", etag)
         .header("x-review-lease", &new_lease)
@@ -773,10 +1500,19 @@ async fn expired_review_lease_or_revoked_membership_cannot_be_used_by_api_or_syn
     let stored = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,review_note FROM medication_review_prompts WHERE id=91103",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("medication_review_prompts", "status")))
+                    .expr(Expr::col(("medication_review_prompts", "review_note")))
+                    .from("medication_review_prompts")
+                    .cond_where(
+                        Expr::col(("medication_review_prompts", "id"))
+                            .eq(Expr::val(prompt_id_91103)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -792,12 +1528,14 @@ async fn expired_review_lease_or_revoked_membership_cannot_be_used_by_api_or_syn
 
 #[tokio::test]
 async fn failed_review_audit_rolls_back_mutation_and_keeps_the_lease() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
     let token = app.token().await;
-    seed_prompt(&app, 91104, "needs_review").await;
+    let seeded_91104 = seed_prompt(&app, "needs_review").await;
+    let prompt_id_91104 = seeded_91104.prompt.id;
     let shown: Value = app
         .client
-        .get(prompts(&app, "/91104"))
+        .get(prompts(&app, &format!("/{prompt_id_91104}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -806,13 +1544,14 @@ async fn failed_review_audit_rolls_back_mutation_and_keeps_the_lease() {
         .await
         .unwrap();
     let etag = shown["data"]["etag"].as_str().unwrap();
-    let lease = edit_token(&app, &token, 91104).await;
+    let lease = edit_token(&app, &token, prompt_id_91104).await;
+    // SeaORM Schema cannot define PostgreSQL trigger functions. These fault cases require whole-run exclusivity.
     app.fixture.admin.execute_unprepared(
         "CREATE FUNCTION synthetic_fail_review_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='medication_review_prompt.updated' THEN RAISE EXCEPTION 'synthetic audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER synthetic_review_audit_failure BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION synthetic_fail_review_audit()",
     ).await.unwrap();
     let failed = app
         .client
-        .patch(prompts(&app, "/91104"))
+        .patch(prompts(&app, &format!("/{prompt_id_91104}")))
         .bearer_auth(&token)
         .header("if-match", etag)
         .header("x-review-lease", &lease)
@@ -820,11 +1559,34 @@ async fn failed_review_audit_rolls_back_mutation_and_keeps_the_lease() {
         .send()
         .await
         .unwrap();
-    let stored = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT p.review_note,l.token::text AS token FROM medication_review_prompts p JOIN medication_review_edit_leases l ON l.prompt_id=p.id WHERE p.id=91104"))
-        .await.unwrap().unwrap();
+    let stored = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .column(("p", "review_note"))
+                    .expr_as(
+                        Expr::col(("l", "token")).cast_as(sea_orm::sea_query::Alias::new("text")),
+                        "token",
+                    )
+                    .from_as(rows::medication_review_prompts::Entity, "p")
+                    .join_as(
+                        sea_orm::JoinType::InnerJoin,
+                        "medication_review_edit_leases",
+                        "l",
+                        Expr::col(("l", "prompt_id")).eq(Expr::col(("p", "id"))),
+                    )
+                    .and_where(Expr::col(("p", "id")).eq(prompt_id_91104))
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
     let note: Option<String> = stored.try_get("", "review_note").unwrap();
     let stored_token: String = stored.try_get("", "token").unwrap();
+    app.fixture.admin.execute_unprepared("DROP TRIGGER synthetic_review_audit_failure ON security_audit_events; DROP FUNCTION synthetic_fail_review_audit()").await.unwrap();
     app.close().await;
     assert_eq!(failed.status().as_u16(), 500);
     assert_eq!(note, None);
@@ -833,10 +1595,13 @@ async fn failed_review_audit_rolls_back_mutation_and_keeps_the_lease() {
 
 #[tokio::test]
 async fn review_prompt_index_matches_documented_contract() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_adult_id = app.fixture.adult.id;
     let token = app.token().await;
-    seed_prompt(&app, 91001, "needs_review").await;
-    seed_prompt(&app, 91002, "hidden_low_signal").await;
+    let seeded_91001 = seed_prompt(&app, "needs_review").await;
+    let prompt_id_91001 = seeded_91001.prompt.id;
+    seed_prompt(&app, "hidden_low_signal").await;
     let response = app
         .client
         .get(prompts(&app, ""))
@@ -883,8 +1648,8 @@ async fn review_prompt_index_matches_documented_contract() {
     assert!(no_store);
     let rows = body["data"].as_array().unwrap();
     assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0]["id"], "91001");
-    assert_eq!(rows[0]["person_id"], "73001");
+    assert_eq!(rows[0]["id"], prompt_id_91001.to_string());
+    assert_eq!(rows[0]["person_id"], fixture_adult_id.to_string());
     assert_eq!(rows[0]["status"], "needs_review");
     assert!(rows[0]["etag"].is_string());
     assert_eq!(body["meta"]["page"], 1);
@@ -898,12 +1663,15 @@ async fn review_prompt_index_matches_documented_contract() {
 
 #[tokio::test]
 async fn review_prompt_show_and_update_preserve_version_and_audit() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_membership_id = app.fixture.membership.id;
     let token = app.token().await;
-    seed_prompt(&app, 91001, "needs_review").await;
+    let seeded_91001 = seed_prompt(&app, "needs_review").await;
+    let prompt_id_91001 = seeded_91001.prompt.id;
     let shown = app
         .client
-        .get(prompts(&app, "/91001"))
+        .get(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -916,13 +1684,13 @@ async fn review_prompt_show_and_update_preserve_version_and_audit() {
         .to_str()
         .unwrap()
         .to_owned();
-    let lease = edit_token(&app, &token, 91001).await;
+    let lease = edit_token(&app, &token, prompt_id_91001).await;
     let shown_body: Value = shown.json().await.unwrap();
     assert_eq!(shown_status, 200);
-    assert_eq!(shown_body["data"]["id"], "91001");
+    assert_eq!(shown_body["data"]["id"], prompt_id_91001.to_string());
     let missing = app
         .client
-        .patch(prompts(&app, "/91001"))
+        .patch(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .json(&json!({"medication_review_prompt":{"review_note":"early note"}}))
         .send()
@@ -931,7 +1699,7 @@ async fn review_prompt_show_and_update_preserve_version_and_audit() {
     let missing_status = missing.status().as_u16();
     let stale = app
         .client
-        .patch(prompts(&app, "/91001"))
+        .patch(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .header("if-match", "\"stale\"")
         .json(&json!({"medication_review_prompt":{"review_note":"stale note"}}))
@@ -941,7 +1709,7 @@ async fn review_prompt_show_and_update_preserve_version_and_audit() {
     let stale_status = stale.status().as_u16();
     let incomplete = app
         .client
-        .patch(prompts(&app, "/91001"))
+        .patch(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .header("if-match", &etag)
         .header("x-review-lease", &lease)
@@ -952,7 +1720,7 @@ async fn review_prompt_show_and_update_preserve_version_and_audit() {
     let incomplete_status = incomplete.status().as_u16();
     let updated = app
         .client
-        .put(prompts(&app, "/91001"))
+        .put(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .header("if-match", &etag)
         .header("x-review-lease", &lease)
@@ -972,15 +1740,31 @@ async fn review_prompt_show_and_update_preserve_version_and_audit() {
     let event = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(DbBackend::Postgres,
-            "SELECT metadata FROM security_audit_events WHERE event_type='medication_review_prompt.updated' ORDER BY id DESC LIMIT 1"))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("security_audit_events", "metadata")))
+                    .from("security_audit_events")
+                    .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                    .cond_where(
+                        Expr::col(("security_audit_events", "event_type"))
+                            .eq(Expr::val("medication_review_prompt.updated")),
+                    )
+                    .order_by_expr(
+                        Expr::col(("security_audit_events", "id")),
+                        sea_orm::Order::Desc,
+                    )
+                    .limit(1)
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
     let metadata: Value = event.try_get("", "metadata").unwrap();
     let malformed = app
         .client
-        .patch(prompts(&app, "/91001"))
+        .patch(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .header("if-match", &next_etag)
         .header("content-type", "application/json")
@@ -1005,9 +1789,12 @@ async fn review_prompt_show_and_update_preserve_version_and_audit() {
     assert_eq!(updated_status, 200);
     assert_ne!(etag, next_etag);
     assert_eq!(updated_body["data"]["status"], "reviewed_with_practitioner");
-    assert_eq!(updated_body["data"]["reviewed_by_membership_id"], "74001");
+    assert_eq!(
+        updated_body["data"]["reviewed_by_membership_id"],
+        fixture_membership_id.to_string()
+    );
     assert_eq!(updated_body["data"]["practitioner_name"], "Dr Test");
-    assert_eq!(metadata["prompt_id"], 91001);
+    assert_eq!(metadata["prompt_id"], prompt_id_91001);
     assert_eq!(metadata["previous_status"], "needs_review");
     assert_eq!(metadata["status"], "reviewed_with_practitioner");
     assert_eq!(malformed_status, 400);
@@ -1017,12 +1804,14 @@ async fn review_prompt_show_and_update_preserve_version_and_audit() {
 
 #[tokio::test]
 async fn review_prompt_update_replays_under_an_idempotency_key() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
     let token = app.token().await;
-    seed_prompt(&app, 91001, "needs_review").await;
+    let seeded_91001 = seed_prompt(&app, "needs_review").await;
+    let prompt_id_91001 = seeded_91001.prompt.id;
     let shown = app
         .client
-        .get(prompts(&app, "/91001"))
+        .get(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -1034,10 +1823,10 @@ async fn review_prompt_update_replays_under_an_idempotency_key() {
         .to_str()
         .unwrap()
         .to_owned();
-    let lease = edit_token(&app, &token, 91001).await;
+    let lease = edit_token(&app, &token, prompt_id_91001).await;
     let first = app
         .client
-        .patch(prompts(&app, "/91001"))
+        .patch(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .header("if-match", &etag)
         .header("x-review-lease", &lease)
@@ -1049,7 +1838,7 @@ async fn review_prompt_update_replays_under_an_idempotency_key() {
     let first_status = first.status().as_u16();
     let replay = app
         .client
-        .patch(prompts(&app, "/91001"))
+        .patch(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .header("if-match", &etag)
         .header("x-review-lease", &lease)
@@ -1063,8 +1852,19 @@ async fn review_prompt_update_replays_under_an_idempotency_key() {
     let events = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(DbBackend::Postgres,
-            "SELECT count(*) AS total FROM security_audit_events WHERE event_type='medication_review_prompt.updated'"))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(Expr::col(("security_audit_events", "id")).count(), "total")
+                    .from("security_audit_events")
+                    .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                    .cond_where(
+                        Expr::col(("security_audit_events", "event_type"))
+                            .eq(Expr::val("medication_review_prompt.updated")),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap()
@@ -1079,10 +1879,11 @@ async fn review_prompt_update_replays_under_an_idempotency_key() {
 
 #[tokio::test]
 async fn review_prompt_index_paginates_beyond_the_first_page() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
     let token = app.token().await;
-    for id in 91010..91032 {
-        seed_prompt(&app, id, "needs_review").await;
+    for _ in 0..22 {
+        seed_prompt(&app, "needs_review").await;
     }
     let first = app
         .client
@@ -1115,14 +1916,33 @@ async fn review_prompt_index_paginates_beyond_the_first_page() {
 
 #[tokio::test]
 async fn review_prompts_require_adult_actor_and_other_person_manage_access() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
+    let fixture_adult_id = app.fixture.adult.id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_grant_id = app.fixture.grant.id;
     let token = app.token().await;
-    seed_prompt(&app, 91001, "needs_review").await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001")
-        .await
-        .unwrap();
+    let seeded_91001 = seed_prompt(&app, "needs_review").await;
+    let prompt_id_91001 = seeded_91001.prompt.id;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("person_access_grants")
+                        .value("access_level", Expr::val("view"))
+                        .cond_where(
+                            Expr::col(("person_access_grants", "id"))
+                                .eq(Expr::val(fixture_grant_id)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let listed = app
         .client
         .get(prompts(&app, ""))
@@ -1134,7 +1954,7 @@ async fn review_prompts_require_adult_actor_and_other_person_manage_access() {
     let listed_body: Value = listed.json().await.unwrap();
     let shown = app
         .client
-        .get(prompts(&app, "/91001"))
+        .get(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .send()
         .await
@@ -1142,7 +1962,7 @@ async fn review_prompts_require_adult_actor_and_other_person_manage_access() {
     let shown_status = shown.status().as_u16();
     let denied = app
         .client
-        .patch(prompts(&app, "/91001"))
+        .patch(prompts(&app, &format!("/{prompt_id_91001}")))
         .bearer_auth(&token)
         .header("if-match", "\"anything\"")
         .json(&json!({"medication_review_prompt":{"review_note":"denied"}}))
@@ -1150,27 +1970,74 @@ async fn review_prompts_require_adult_actor_and_other_person_manage_access() {
         .await
         .unwrap();
     let denied_status = denied.status().as_u16();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE medication_review_prompts SET person_id=73002 WHERE id=91001")
-        .await
-        .unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_prompts")
+                        .value("person_id", Expr::val(fixture_minor_id))
+                        .cond_where(
+                            Expr::col(("medication_review_prompts", "id"))
+                                .eq(Expr::val(prompt_id_91001)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let other_person_lease = app
         .client
-        .post(prompts(&app, "/91001/lease"))
+        .post(prompts(&app, &format!("/{prompt_id_91001}/lease")))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap()
         .status()
         .as_u16();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE people SET person_type=1,has_capacity=false,date_of_birth=(CURRENT_DATE-interval '10 years')::date WHERE id=73001")
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("people")
+                        .value("person_type", Expr::val(1_i32))
+                        .value("has_capacity", Expr::val(false))
+                        .value(
+                            "date_of_birth",
+                            Expr::val(
+                                chrono::Utc::now()
+                                    .date_naive()
+                                    .checked_sub_months(chrono::Months::new(120))
+                                    .unwrap(),
+                            ),
+                        )
+                        .cond_where(Expr::col(("people", "id")).eq(Expr::val(fixture_adult_id)))
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
+    let setup = rows::people::Entity::find_by_id(app.fixture.adult.id)
+        .one(&app.fixture.admin)
         .await
+        .unwrap()
         .unwrap();
-    let setup=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT date_of_birth>(CURRENT_DATE-interval '18 years')::date AND person_type=1 AND NOT has_capacity AS minor FROM people WHERE id=73001")).await.unwrap().unwrap();
-    assert!(setup.try_get::<bool>("", "minor").unwrap());
+    assert!(
+        setup.person_type == 1
+            && !setup.has_capacity
+            && setup.date_of_birth.unwrap()
+                > chrono::Utc::now()
+                    .date_naive()
+                    .checked_sub_months(chrono::Months::new(216))
+                    .unwrap()
+    );
     let minor = app
         .client
         .get(prompts(&app, ""))
@@ -1190,10 +2057,26 @@ async fn review_prompts_require_adult_actor_and_other_person_manage_access() {
 
 #[tokio::test]
 async fn review_refresh_resets_non_curated_matching_fields() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared(
-        "INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,source_version,source_effective_on,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,pharmacologic_classes,interacting_terms,created_at,updated_at) VALUES (9876501,'openFDA / DailyMed SPL','synthetic-worker-label','https://example.test/old','1','2026-09-01','Old synthetic product','Drug Interactions','Old warning','2026-09-01','high','high','unreviewed',ARRAY['old']::varchar[],ARRAY['old']::varchar[],ARRAY['old']::varchar[],now(),now())"
-    ).await.unwrap();
+    let mut worker_evidence = evidence(&app, "Old synthetic product")
+        .await
+        .into_active_model();
+    worker_evidence.source_name = Set("openFDA / DailyMed SPL".into());
+    worker_evidence.source_record_id = Set("synthetic-worker-label".into());
+    worker_evidence.source_url = Set("https://example.test/old".into());
+    worker_evidence.source_version = Set(Some("1".into()));
+    worker_evidence.source_effective_on = Set(Some("2026-09-01".parse().unwrap()));
+    worker_evidence.label_section = Set("Drug Interactions".into());
+    worker_evidence.evidence_text = Set("Old warning".into());
+    worker_evidence.retrieved_on = Set("2026-09-01".parse().unwrap());
+    worker_evidence.risk_level = Set("high".into());
+    worker_evidence.match_confidence = Set("high".into());
+    worker_evidence.match_status = Set("unreviewed".into());
+    worker_evidence.candidate_terms = Set(vec!["old".into()]);
+    worker_evidence.pharmacologic_classes = Set(vec!["old".into()]);
+    worker_evidence.interacting_terms = Set(vec!["old".into()]);
+    let worker_evidence = worker_evidence.update(&app.fixture.admin).await.unwrap();
     let run_id = review_refresh_run(&app).await;
     import_snapshot(
         &app.context,
@@ -1203,10 +2086,43 @@ async fn review_refresh_resets_non_curated_matching_fields() {
     )
     .await
     .unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(
-        DbBackend::Postgres,
-        "SELECT risk_level,match_confidence,match_status,interacting_terms,candidate_terms FROM medication_review_evidence_records WHERE id=9876501",
-    )).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col((
+                        "medication_review_evidence_records",
+                        "risk_level",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_records",
+                        "match_confidence",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_records",
+                        "match_status",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_records",
+                        "interacting_terms",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_records",
+                        "candidate_terms",
+                    )))
+                    .from("medication_review_evidence_records")
+                    .cond_where(
+                        Expr::col(("medication_review_evidence_records", "id"))
+                            .eq(Expr::val(worker_evidence.id)),
+                    )
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<String>("", "risk_level").unwrap(), "unknown");
     assert_eq!(
         row.try_get::<String>("", "match_confidence").unwrap(),
@@ -1230,6 +2146,7 @@ async fn review_refresh_resets_non_curated_matching_fields() {
 
 #[tokio::test]
 async fn review_refresh_retry_and_concurrent_delivery_keep_the_first_completed_run() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
     let run_id = review_refresh_run(&app).await;
     let date = NaiveDate::from_ymd_opt(2026, 10, 13).unwrap();
@@ -1247,32 +2164,129 @@ async fn review_refresh_retry_and_concurrent_delivery_keep_the_first_completed_r
     import_snapshot(&app.context, run_id, &snapshot, date)
         .await
         .unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(
-        DbBackend::Postgres,
-        format!("SELECT created_count,updated_count,unchanged_count,status FROM medication_review_evidence_refresh_runs WHERE id={run_id}"),
-    )).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col((
+                        "medication_review_evidence_refresh_runs",
+                        "created_count",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_refresh_runs",
+                        "updated_count",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_refresh_runs",
+                        "unchanged_count",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_refresh_runs",
+                        "status",
+                    )))
+                    .from("medication_review_evidence_refresh_runs")
+                    .cond_where(
+                        Expr::col(("medication_review_evidence_refresh_runs", "id"))
+                            .eq(Expr::val(run_id)),
+                    )
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<i32>("", "created_count").unwrap(), 1);
     assert_eq!(row.try_get::<i32>("", "updated_count").unwrap(), 0);
     assert_eq!(row.try_get::<i32>("", "unchanged_count").unwrap(), 0);
     assert_eq!(row.try_get::<i32>("", "status").unwrap(), 2);
-    let count = app.fixture.admin.query_one_raw(Statement::from_string(
-        DbBackend::Postgres,
-        "SELECT count(*)::bigint AS count FROM medication_review_evidence_records WHERE source_record_id='synthetic-worker-label'",
-    )).await.unwrap().unwrap().try_get::<i64>("", "count").unwrap();
+    let count = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(
+                        Expr::col(("medication_review_evidence_records", "id")).count(),
+                        "count",
+                    )
+                    .from("medication_review_evidence_records")
+                    .cond_where(
+                        Expr::col(("medication_review_evidence_records", "source_record_id"))
+                            .eq(Expr::val("synthetic-worker-label")),
+                    )
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<i64>("", "count")
+        .unwrap();
     assert_eq!(count, 1);
     app.close().await;
 }
 
 #[tokio::test]
 async fn review_refresh_retry_reopens_changed_prompt_after_evidence_commit() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let app = Application::new().await;
-    seed_prompt(&app, 91251, "reviewed").await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_prompts SET practitioner_name='Previous clinician',practitioner_role='Clinician',reviewed_on='2026-09-01',review_note='Prior decision' WHERE id=91251"
-    ).await.unwrap();
-    app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET source_name='openFDA / DailyMed SPL',source_record_id='synthetic-worker-label',source_version='1',source_effective_on='2026-09-01',evidence_text='Old warning' WHERE id=9125100"
-    ).await.unwrap();
+    let seeded_91251 = seed_prompt(&app, "reviewed").await;
+    let prompt_id_91251 = seeded_91251.prompt.id;
+    let evidence_id_91251 = seeded_91251.evidence.id;
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_prompts")
+                        .value("practitioner_name", Expr::val("Previous clinician"))
+                        .value("practitioner_role", Expr::val("Clinician"))
+                        .value(
+                            "reviewed_on",
+                            Expr::val("2026-09-01".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .value("review_note", Expr::val("Prior decision"))
+                        .cond_where(
+                            Expr::col(("medication_review_prompts", "id"))
+                                .eq(Expr::val(prompt_id_91251)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_records")
+                        .value("source_name", Expr::val("openFDA / DailyMed SPL"))
+                        .value("source_record_id", Expr::val("synthetic-worker-label"))
+                        .value("source_version", Expr::val("1"))
+                        .value(
+                            "source_effective_on",
+                            Expr::val("2026-09-01".parse::<chrono::NaiveDate>().unwrap()),
+                        )
+                        .value("evidence_text", Expr::val("Old warning"))
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_records", "id"))
+                                .eq(Expr::val(evidence_id_91251)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
+    // SeaORM Schema cannot define PostgreSQL trigger functions. These fault cases require whole-run exclusivity.
     app.fixture.admin.execute_unprepared(
         "CREATE FUNCTION review_refresh_reconcile_block() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic blocked reconcile'; END $$"
     ).await.unwrap();
@@ -1290,10 +2304,21 @@ async fn review_refresh_retry_reopens_changed_prompt_after_evidence_commit() {
     let evidence = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT source_version FROM medication_review_evidence_records WHERE id=9125100",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col((
+                        "medication_review_evidence_records",
+                        "source_version",
+                    )))
+                    .from("medication_review_evidence_records")
+                    .cond_where(
+                        Expr::col(("medication_review_evidence_records", "id"))
+                            .eq(Expr::val(evidence_id_91251)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -1307,10 +2332,18 @@ async fn review_refresh_retry_reopens_changed_prompt_after_evidence_commit() {
     let pending = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status FROM medication_review_prompts WHERE id=91251",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("medication_review_prompts", "status")))
+                    .from("medication_review_prompts")
+                    .cond_where(
+                        Expr::col(("medication_review_prompts", "id"))
+                            .eq(Expr::val(prompt_id_91251)),
+                    )
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -1330,9 +2363,29 @@ async fn review_refresh_retry_reopens_changed_prompt_after_evidence_commit() {
     import_snapshot(&app.context, run_id, &snapshot, date)
         .await
         .unwrap();
-    let result = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        format!("SELECT r.status,r.updated_count,r.unchanged_count,p.status AS prompt_status,p.practitioner_name,p.evidence_text FROM medication_review_evidence_refresh_runs r CROSS JOIN medication_review_prompts p WHERE r.id={run_id} AND p.id=91251")
-    )).await.unwrap().unwrap();
+    let result = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .columns([
+                        ("r", "status"),
+                        ("r", "updated_count"),
+                        ("r", "unchanged_count"),
+                    ])
+                    .expr_as(Expr::col(("p", "status")), "prompt_status")
+                    .columns([("p", "practitioner_name"), ("p", "evidence_text")])
+                    .from_as(rows::medication_review_evidence_refresh_runs::Entity, "r")
+                    .from_as(rows::medication_review_prompts::Entity, "p")
+                    .and_where(Expr::col(("r", "id")).eq(run_id))
+                    .and_where(Expr::col(("p", "id")).eq(prompt_id_91251))
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(result.try_get::<i32>("", "status").unwrap(), 2);
     assert_eq!(result.try_get::<i32>("", "updated_count").unwrap(), 0);
     assert_eq!(result.try_get::<i32>("", "unchanged_count").unwrap(), 1);
@@ -1350,9 +2403,28 @@ async fn review_refresh_retry_reopens_changed_prompt_after_evidence_commit() {
         result.try_get::<String>("", "evidence_text").unwrap(),
         "Changed synthetic warning"
     );
-    let histories = app.fixture.admin.query_all_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT event_type,snapshot FROM medication_review_histories WHERE prompt_id=91251 ORDER BY id"
-    )).await.unwrap();
+    let histories = app
+        .fixture
+        .admin
+        .query_all_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("medication_review_histories", "event_type")))
+                    .expr(Expr::col(("medication_review_histories", "snapshot")))
+                    .from("medication_review_histories")
+                    .cond_where(
+                        Expr::col(("medication_review_histories", "prompt_id"))
+                            .eq(Expr::val(prompt_id_91251)),
+                    )
+                    .order_by_expr(
+                        Expr::col(("medication_review_histories", "id")),
+                        sea_orm::Order::Asc,
+                    )
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap();
     assert_eq!(histories.len(), 1);
     assert_eq!(
         histories[0].try_get::<String>("", "event_type").unwrap(),
@@ -1366,6 +2438,7 @@ async fn review_refresh_retry_reopens_changed_prompt_after_evidence_commit() {
 
 #[tokio::test]
 async fn review_refresh_queued_job_survives_worker_restart_and_duplicate_delivery() {
+    crate::reference_fixture::clean_review_catalogue().await;
     let requests = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let label = json!({"meta":{"last_updated":"2026-10-01"},"results":[
         {"set_id":"synthetic-worker-label","version":"1","effective_time":"20261001",
@@ -1424,10 +2497,19 @@ async fn review_refresh_queued_job_survives_worker_restart_and_duplicate_deliver
     let run_id: i64 = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT id FROM medication_review_evidence_refresh_runs ORDER BY id DESC LIMIT 1",
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col(("medication_review_evidence_refresh_runs", "id")))
+                    .from("medication_review_evidence_refresh_runs")
+                    .order_by_expr(
+                        Expr::col(("medication_review_evidence_refresh_runs", "id")),
+                        sea_orm::Order::Desc,
+                    )
+                    .limit(1)
+                    .to_owned(),
+            ),
+        )
         .await
         .unwrap()
         .unwrap()
@@ -1450,22 +2532,66 @@ async fn review_refresh_queued_job_survives_worker_restart_and_duplicate_deliver
     let worker = tokio::spawn(async move { running.run(vec![]).await });
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
         loop {
-            let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-                format!("SELECT status FROM medication_review_evidence_refresh_runs WHERE id={run_id}")
-            )).await.unwrap().unwrap();
-            if row.try_get::<i32>("", "status").unwrap() == 3 { break; }
+            let row = app
+                .fixture
+                .admin
+                .query_one_raw(
+                    app.fixture.admin.get_database_backend().build(
+                        &Query::select()
+                            .expr(Expr::col((
+                                "medication_review_evidence_refresh_runs",
+                                "status",
+                            )))
+                            .from("medication_review_evidence_refresh_runs")
+                            .cond_where(
+                                Expr::col(("medication_review_evidence_refresh_runs", "id"))
+                                    .eq(Expr::val(run_id)),
+                            )
+                            .to_owned(),
+                    ),
+                )
+                .await
+                .unwrap()
+                .unwrap();
+            if row.try_get::<i32>("", "status").unwrap() == 3 {
+                break;
+            }
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
     queue.shutdown().unwrap();
     tokio::time::timeout(std::time::Duration::from_secs(5), worker)
         .await
         .unwrap()
         .unwrap()
         .unwrap();
-    app.fixture.admin.execute_unprepared(&format!(
-        "UPDATE medication_review_evidence_refresh_runs SET status=1,error_message=NULL,completed_at=NULL,updated_at=now() WHERE id={run_id}"
-    )).await.unwrap();
+    async {
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("medication_review_evidence_refresh_runs")
+                        .value("status", Expr::val(1_i32))
+                        .value("error_message", Expr::val(Option::<String>::None))
+                        .value(
+                            "completed_at",
+                            Expr::val(Option::<chrono::NaiveDateTime>::None),
+                        )
+                        .value("updated_at", Expr::val(chrono::Utc::now().naive_utc()))
+                        .cond_where(
+                            Expr::col(("medication_review_evidence_refresh_runs", "id"))
+                                .eq(Expr::val(run_id)),
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await
+    }
+    .await
+    .unwrap();
     let retry_job = RefreshWorker::perform_later(&app.context, RefreshRun { run_id })
         .await
         .unwrap();
@@ -1489,11 +2615,17 @@ async fn review_refresh_queued_job_survives_worker_restart_and_duplicate_deliver
             let row = app
                 .fixture
                 .admin
-                .query_one_raw(Statement::from_sql_and_values(
-                    DbBackend::Postgres,
-                    "SELECT status FROM pg_loco_queue WHERE id=$1",
-                    [retry_job.clone().into()],
-                ))
+                .query_one_raw(
+                    app.fixture.admin.get_database_backend().build(
+                        &Query::select()
+                            .expr(Expr::col(("pg_loco_queue", "status")))
+                            .from("pg_loco_queue")
+                            .cond_where(
+                                Expr::col(("pg_loco_queue", "id")).eq(Expr::val(retry_job.clone())),
+                            )
+                            .to_owned(),
+                    ),
+                )
                 .await
                 .unwrap()
                 .unwrap();
@@ -1534,11 +2666,18 @@ async fn review_refresh_queued_job_survives_worker_restart_and_duplicate_deliver
             let row = app
                 .fixture
                 .admin
-                .query_one_raw(Statement::from_sql_and_values(
-                    DbBackend::Postgres,
-                    "SELECT status FROM pg_loco_queue WHERE id=$1",
-                    [duplicate_job.clone().into()],
-                ))
+                .query_one_raw(
+                    app.fixture.admin.get_database_backend().build(
+                        &Query::select()
+                            .expr(Expr::col(("pg_loco_queue", "status")))
+                            .from("pg_loco_queue")
+                            .cond_where(
+                                Expr::col(("pg_loco_queue", "id"))
+                                    .eq(Expr::val(duplicate_job.clone())),
+                            )
+                            .to_owned(),
+                    ),
+                )
                 .await
                 .unwrap()
                 .unwrap();
@@ -1556,16 +2695,64 @@ async fn review_refresh_queued_job_survives_worker_restart_and_duplicate_deliver
         .unwrap()
         .unwrap()
         .unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        format!("SELECT status,created_count,updated_count,unchanged_count FROM medication_review_evidence_refresh_runs WHERE id={run_id}")
-    )).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col((
+                        "medication_review_evidence_refresh_runs",
+                        "status",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_refresh_runs",
+                        "created_count",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_refresh_runs",
+                        "updated_count",
+                    )))
+                    .expr(Expr::col((
+                        "medication_review_evidence_refresh_runs",
+                        "unchanged_count",
+                    )))
+                    .from("medication_review_evidence_refresh_runs")
+                    .cond_where(
+                        Expr::col(("medication_review_evidence_refresh_runs", "id"))
+                            .eq(Expr::val(run_id)),
+                    )
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<i32>("", "status").unwrap(), 2);
     assert_eq!(row.try_get::<i32>("", "created_count").unwrap(), 1);
     assert_eq!(row.try_get::<i32>("", "updated_count").unwrap(), 0);
     assert_eq!(row.try_get::<i32>("", "unchanged_count").unwrap(), 0);
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*)::bigint AS count FROM medication_review_evidence_records WHERE source_record_id='synthetic-worker-label'"
-    )).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(
+                        Expr::col(("medication_review_evidence_records", "id")).count(),
+                        "count",
+                    )
+                    .from("medication_review_evidence_records")
+                    .cond_where(
+                        Expr::col(("medication_review_evidence_records", "source_record_id"))
+                            .eq(Expr::val("synthetic-worker-label")),
+                    )
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
     app.close().await;
     provider_server.abort();

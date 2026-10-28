@@ -225,14 +225,7 @@ async fn values(
             .into_iter()
             .map(|row| (row.id, row))
             .collect();
-    let users: HashMap<i64, i64> = user::Entity::find()
-        .filter(user::Column::PersonId.is_in(ids))
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|row| (row.person_id, row.id))
-        .collect();
-    Ok(rows.iter().map(|row|json!({"id":row.id,"account_id":accounts.get(&row.person_id).map(|account|account.id),"email":accounts.get(&row.person_id).map(|account|&account.email),"person_id":row.person_id,"person_name":people.get(&row.person_id).map(|person|&person.name),"user_id":users.get(&row.person_id),"role":row.role,"status":row.status,"permissions_version":row.permissions_version,"joined_at":row.joined_at.and_utc().to_rfc3339()})).collect())
+    Ok(rows.iter().map(|row|json!({"id":row.id,"account_id":accounts.get(&row.person_id).map(|account|account.id),"email":accounts.get(&row.person_id).map(|account|&account.email),"person_id":row.person_id,"person_name":people.get(&row.person_id).map(|person|&person.name),"role":row.role,"status":row.status,"permissions_version":row.permissions_version,"joined_at":row.joined_at.and_utc().to_rfc3339()})).collect())
 }
 pub async fn change(
     tenant: &TenantTransaction,

@@ -182,7 +182,10 @@ pub(crate) async fn boundary(
     let Ok(status) = state.status().await else {
         return unavailable();
     };
-    if status.phase == "verifying" {
+    let health_probe = request.uri().path() == "/health"
+        && (request.method() == axum::http::Method::GET
+            || request.method() == axum::http::Method::HEAD);
+    if status.phase == "verifying" && !health_probe {
         use hmac::{Hmac, KeyInit, Mac};
         use sha2::Sha256;
         let provided = request

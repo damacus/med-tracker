@@ -67,5 +67,4 @@ pub use super::schema_migrations::Entity as SchemaMigrations;
 pub use super::security_audit_events::Entity as SecurityAuditEvents;
 pub use super::storage_migration_runs::Entity as StorageMigrationRuns;
 pub use super::support_access_sessions::Entity as SupportAccessSessions;
-pub use super::users::Entity as Users;
 pub use super::versions::Entity as Versions;

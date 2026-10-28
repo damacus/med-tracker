@@ -67,7 +67,7 @@ BEGIN
   INSERT INTO public.versions(item_type,item_id,event,object,audit_context,created_at)
   VALUES('NativeAuthentication',subject_id,'native_auth/' || resource || '/' || mutation,
     jsonb_build_object('account_id',subject_id,'resource',resource,'record_id',record_id,'mutation',mutation)::text,
-    jsonb_build_object('actor_account_id',NULL,'actor_user_id',NULL,'request_id',NULL),
+    jsonb_build_object('actor_account_id',NULL,'actor_person_id',NULL,'request_id',NULL),
     timezone('UTC',clock_timestamp()));
   IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
 END $$;
@@ -79,7 +79,6 @@ FOR EACH ROW EXECUTE FUNCTION public.native_authentication_audit();
 
 CREATE FUNCTION public.native_account_email_changed() RETURNS trigger
 LANGUAGE plpgsql SET search_path = pg_catalog AS $$ BEGIN
-  UPDATE public.users SET email_address=NEW.email,updated_at=clock_timestamp() WHERE person_id=NEW.person_id;
   INSERT INTO public.pg_loco_queue(id,task_data,name,run_at,priority)
   VALUES(public.gen_random_uuid()::text,
     jsonb_build_object('from',NULL,'to',OLD.email,'reply_to',NULL,'subject','Email address changed',

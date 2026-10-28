@@ -1,12 +1,18 @@
 use super::contract::{assert_value, contract, resolve};
 use super::*;
+use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
 #[tokio::test]
 async fn medication_reads_preserve_collection_pagination_and_derived_etags() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    let collection = format!("{}/api/v1/households/72001/medications", app.origin);
-    let resource = format!("{collection}/80001");
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/medications",
+        app.origin
+    );
+    let resource = format!("{collection}/{fixture_medication_id}");
     let listed = app
         .client
         .get(format!("{collection}?page=1&per_page=1"))
@@ -39,9 +45,19 @@ async fn medication_reads_preserve_collection_pagination_and_derived_etags() {
         .await
         .unwrap();
     let conditional_status = conditional.status().as_u16();
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE medications SET current_supply=0 WHERE id=80001")
+    med_tracker::models::_entities::medications::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::medications::Column::CurrentSupply,
+            sea_orm::sea_query::Expr::value(Some(
+                "0".parse::<sea_orm::prelude::Decimal>().unwrap(),
+            )),
+        )
+        .filter(med_tracker::models::_entities::medications::Column::Id.eq(fixture_medication_id))
+        .filter(
+            med_tracker::models::_entities::medications::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let changed = app
@@ -59,9 +75,7 @@ async fn medication_reads_preserve_collection_pagination_and_derived_etags() {
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
     let changed_body = changed.json::<Value>().await.unwrap_or(Value::Null);
-    let audits = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) FILTER (WHERE audit_context->>'policy_query'='index?') AS lists, count(*) FILTER (WHERE audit_context->>'policy_query'='show?') AS reads, count(*) FILTER (WHERE metadata->>'status'='304') AS unchanged FROM security_audit_events WHERE metadata->>'controller'='api/v1/medications'"
-    )).await.unwrap().unwrap();
+    let audits = app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)).filter(QueryExpr::col("audit_context").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("policy_query")).eq(QueryExpr::val("index?")))), "lists").expr_as(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)).filter(QueryExpr::col("audit_context").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("policy_query")).eq(QueryExpr::val("show?")))), "reads").expr_as(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)).filter(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("304")))), "unchanged").from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("controller")).eq(QueryExpr::val("api/v1/medications")))).to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap();
     let counts = (
         audits.try_get::<i64>("", "lists").unwrap(),
         audits.try_get::<i64>("", "reads").unwrap(),
@@ -92,9 +106,28 @@ async fn medication_reads_preserve_collection_pagination_and_derived_etags() {
 #[tokio::test]
 async fn medication_reads_validate_filters_and_current_person_visibility() {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_location_id = app.fixture.location.id;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80002,72001,79001,'Hidden unassigned medication',10,2,'tablet',now(),now())").await.unwrap();
-    let collection = format!("{}/api/v1/households/72001/medications", app.origin);
+    let _medications_80002 = med_tracker::models::_entities::medications::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        location_id: sea_orm::Set(fixture_location_id),
+        name: sea_orm::Set(Some("Hidden unassigned medication".to_owned())),
+        current_supply: sea_orm::Set(Some("10".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        dose_amount: sea_orm::Set(Some(2.0)),
+        dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/medications",
+        app.origin
+    );
     let owner = app
         .client
         .get(&collection)
@@ -122,9 +155,20 @@ async fn medication_reads_validate_filters_and_current_person_visibility() {
         invalid.push(response.status().as_u16());
         errors.push(response.json::<Value>().await.unwrap_or(Value::Null));
     }
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let member = app
@@ -138,7 +182,10 @@ async fn medication_reads_validate_filters_and_current_person_visibility() {
     let member_body = member.json::<Value>().await.unwrap_or(Value::Null);
     let hidden = app
         .client
-        .get(format!("{collection}/80002"))
+        .get(format!(
+            "{collection}/{fixture_80002}",
+            fixture_80002 = _medications_80002.id
+        ))
         .bearer_auth(&token)
         .send()
         .await
@@ -178,6 +225,12 @@ async fn medication_reads_validate_filters_and_current_person_visibility() {
 #[tokio::test]
 async fn medication_get_matches_documented_contract() {
     let app = Application::new().await;
+    let fixture_account_id = app.fixture.account.id;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_minor_id = app.fixture.minor.id;
+    let fixture_membership_id = app.fixture.membership.id;
+    let fixture_location_id = app.fixture.location.id;
+    let fixture_medication_id = app.fixture.medication.id;
     let token = app.token().await;
     let contract: Value =
         serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
@@ -208,10 +261,21 @@ async fn medication_get_matches_documented_contract() {
         "#/components/headers/etag"
     );
 
-    let endpoint = format!("{}/api/v1/households/72001/medications/80001", app.origin);
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE medications SET reorder_status=1 WHERE id=80001")
+    let endpoint = format!(
+        "{}/api/v1/households/{fixture_household_id}/medications/{fixture_medication_id}",
+        app.origin
+    );
+    med_tracker::models::_entities::medications::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::medications::Column::ReorderStatus,
+            sea_orm::sea_query::Expr::value(Some(1)),
+        )
+        .filter(med_tracker::models::_entities::medications::Column::Id.eq(fixture_medication_id))
+        .filter(
+            med_tracker::models::_entities::medications::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
         .await
         .unwrap();
     let read = app
@@ -240,9 +304,9 @@ async fn medication_get_matches_documented_contract() {
         &body,
         "medication response",
     );
-    assert_eq!(body["data"]["id"], 80001);
+    assert_eq!(body["data"]["id"], fixture_medication_id);
     assert_eq!(body["data"]["name"], "Synthetic tablets");
-    assert_eq!(body["data"]["location_id"], 79001);
+    assert_eq!(body["data"]["location_id"], fixture_location_id);
     assert_eq!(body["data"]["reorder_status"], "ordered");
 
     let unchanged = app
@@ -267,7 +331,7 @@ async fn medication_get_matches_documented_contract() {
     let missing = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/medications/99999",
+            "{}/api/v1/households/{fixture_household_id}/medications/99999",
             app.origin
         ))
         .bearer_auth(&token)
@@ -290,12 +354,52 @@ async fn medication_get_matches_documented_contract() {
     assert_eq!(missing_body["error"]["code"], "not_found");
     assert_eq!(missing_body["error"]["request_id"], missing_request_id);
 
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Foreign synthetic household','api-medication-foreign','UTC',now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Foreign synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Foreign synthetic tablets',10,2,'tablet',now(),now())").await.unwrap();
+    let _households_92001 = med_tracker::models::_entities::households::ActiveModel {
+        created_by_account_id: sea_orm::Set(Some(fixture_account_id)),
+        name: sea_orm::Set("Foreign synthetic household".to_owned()),
+        slug: sea_orm::Set(format!(
+            "{}-{}",
+            "api-medication-foreign",
+            uuid::Uuid::new_v4()
+        )),
+        timezone: sea_orm::Set("UTC".to_owned()),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _locations_92003 = med_tracker::models::_entities::locations::ActiveModel {
+        household_id: sea_orm::Set(_households_92001.id),
+        name: sea_orm::Set("Foreign synthetic cabinet".to_owned()),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _medications_92004 = med_tracker::models::_entities::medications::ActiveModel {
+        household_id: sea_orm::Set(_households_92001.id),
+        location_id: sea_orm::Set(_locations_92003.id),
+        name: sea_orm::Set(Some("Foreign synthetic tablets".to_owned())),
+        current_supply: sea_orm::Set(Some("10".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        dose_amount: sea_orm::Set(Some(2.0)),
+        dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/medications/92004",
-            app.origin
+            "{}/api/v1/households/{fixture_household_id}/medications/{fixture_92004}",
+            app.origin,
+            fixture_92004 = _medications_92004.id
         ))
         .bearer_auth(&token)
         .send()
@@ -312,12 +416,57 @@ async fn medication_get_matches_documented_contract() {
     );
     assert_eq!(foreign_body["error"]["code"], "not_found");
 
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92005,72001,79001,'Ungranted synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92006,72001,73002,92005,2,'tablet',0,now(),now())").await.unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Role,
+            sea_orm::sea_query::Expr::value("member".to_owned()),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::Id
+                .eq(fixture_membership_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(app.fixture.household.id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let _medications_92005 = med_tracker::models::_entities::medications::ActiveModel {
+        household_id: sea_orm::Set(fixture_household_id),
+        location_id: sea_orm::Set(fixture_location_id),
+        name: sea_orm::Set(Some("Ungranted synthetic tablets".to_owned())),
+        current_supply: sea_orm::Set(Some("10".parse::<sea_orm::prelude::Decimal>().unwrap())),
+        dose_amount: sea_orm::Set(Some(2.0)),
+        dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+        created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let _person_medications_92006 =
+        med_tracker::models::_entities::person_medications::ActiveModel {
+            household_id: sea_orm::Set(fixture_household_id),
+            person_id: sea_orm::Set(fixture_minor_id),
+            medication_id: sea_orm::Set(_medications_92005.id),
+            dose_amount: sea_orm::Set(Some("2".parse::<sea_orm::prelude::Decimal>().unwrap())),
+            dose_unit: sea_orm::Set(Some("tablet".to_owned())),
+            position: sea_orm::Set(0),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
     let ungranted = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/medications/92005",
-            app.origin
+            "{}/api/v1/households/{fixture_household_id}/medications/{fixture_92005}",
+            app.origin,
+            fixture_92005 = _medications_92005.id
         ))
         .bearer_auth(&token)
         .send()
@@ -334,12 +483,39 @@ async fn medication_get_matches_documented_contract() {
         &participating_body,
         "medication linked to active participant without grant",
     );
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    med_tracker::models::_entities::household_memberships::Entity::update_many()
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::value("revoked".to_owned()),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some((chrono::Utc::now()).naive_utc())),
+        )
+        .col_expr(
+            med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            sea_orm::sea_query::Expr::col(
+                med_tracker::models::_entities::household_memberships::Column::PermissionsVersion,
+            )
+            .add(1),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::HouseholdId
+                .eq(fixture_household_id),
+        )
+        .filter(
+            med_tracker::models::_entities::household_memberships::Column::PersonId
+                .eq(fixture_minor_id),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     let ungranted = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/medications/92005",
-            app.origin
+            "{}/api/v1/households/{fixture_household_id}/medications/{fixture_92005}",
+            app.origin,
+            fixture_92005 = _medications_92005.id
         ))
         .bearer_auth(&token)
         .send()
@@ -370,9 +546,14 @@ async fn medication_get_matches_documented_contract() {
 #[tokio::test]
 async fn medication_list_matches_documented_contract() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
-    let collection = format!("{}/api/v1/households/72001/medications", app.origin);
+    let collection = format!(
+        "{}/api/v1/households/{fixture_household_id}/medications",
+        app.origin
+    );
     let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/medications"]["get"];
     assert_eq!(operation["operationId"], "listMedications");
@@ -415,7 +596,7 @@ async fn medication_list_matches_documented_contract() {
         &body,
         "medication collection",
     );
-    assert_eq!(body["data"][0]["id"], 80001);
+    assert_eq!(body["data"][0]["id"], fixture_medication_id);
     assert_eq!(body["meta"]["total_count"], 1);
 
     for query in ["page=0", "per_page=101", "updated_since=invalid"] {
@@ -440,8 +621,9 @@ async fn medication_list_matches_documented_contract() {
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/medications",
-            app.origin
+            "{}/api/v1/households/{fixture_72002}/medications",
+            app.origin,
+            fixture_72002 = foreign_household.id
         ))
         .bearer_auth(&token)
         .send()
@@ -463,10 +645,13 @@ async fn medication_list_matches_documented_contract() {
 #[tokio::test]
 async fn stock_removal_list_matches_documented_contract() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(72002).await;
+    let unique_identifier_0 = uuid::Uuid::new_v4().to_string();
+    let fixture_household_id = app.fixture.household.id;
+    let fixture_medication_id = app.fixture.medication.id;
+    let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
     let endpoint = format!(
-        "{}/api/v1/households/72001/medications/80001/stock_removals",
+        "{}/api/v1/households/{fixture_household_id}/medications/{fixture_medication_id}/stock_removals",
         app.origin
     );
     let contract = contract();
@@ -489,7 +674,7 @@ async fn stock_removal_list_matches_documented_contract() {
         &forbidden["content"]["application/json"]["schema"],
     );
 
-    let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"stock_removal":{"quantity":"2","reason":"dropped","submission_id":"206b49d9-1da2-42f1-800b-8c80867aee1c"}})).send().await.unwrap();
+    let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"stock_removal":{"quantity":"2","reason":"dropped","submission_id":unique_identifier_0.clone()}})).send().await.unwrap();
     assert_eq!(created.status().as_u16(), 201);
     let list = app
         .client
@@ -515,7 +700,10 @@ async fn stock_removal_list_matches_documented_contract() {
         "stock removal collection",
     );
     assert_eq!(body["data"][0]["reason"], "dropped");
-    assert_eq!(body["data"][0]["medication_id"], "80001");
+    assert_eq!(
+        body["data"][0]["medication_id"],
+        fixture_medication_id.to_string()
+    );
     assert_eq!(body["meta"]["total_count"], 1);
 
     for query in ["page=0", "per_page=101"] {
@@ -535,8 +723,9 @@ async fn stock_removal_list_matches_documented_contract() {
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/medications/80001/stock_removals",
-            app.origin
+            "{}/api/v1/households/{fixture_72002}/medications/{fixture_medication_id}/stock_removals",
+            app.origin,
+            fixture_72002 = foreign_household.id
         ))
         .bearer_auth(&token)
         .send()

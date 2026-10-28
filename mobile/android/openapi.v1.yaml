@@ -558,7 +558,11 @@ paths:
         - Household
         - People
       summary: Read the current account and person profile for a household session.
-      description: The person is the authenticated user's own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
+      description: |
+        The response id is the canonical Account ID and matches account.id.
+        person.id identifies that account's own Person. active is the account's
+        sign-in activation state. membership_role is the role of the selected
+        household membership, including when the Person participates in other households.
       parameters:
         - $ref: "#/components/parameters/household_id"
       responses:
@@ -5480,8 +5484,6 @@ components:
           type: string
           minLength: 1
           nullable: true
-        user_id:
-          $ref: "#/components/schemas/NullableNumericId"
         role:
           type: string
           enum:

@@ -1,9 +1,11 @@
-use crate::template;
 use aws_sdk_s3::{
     Client,
     config::{BehaviorVersion, Credentials, Region, timeout::TimeoutConfig},
 };
 use std::time::Duration;
+
+#[path = "../support/storage_endpoint.rs"]
+pub(super) mod storage_endpoint;
 
 #[tokio::test]
 #[ignore]
@@ -26,31 +28,7 @@ pub async fn create_owned_bucket(name: &str) -> Client {
 }
 
 pub fn owned_client() -> Client {
-    template::require_owned_database();
-    let endpoint = std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").unwrap();
-    let parsed = reqwest::Url::parse(&endpoint).unwrap();
-    assert_eq!(parsed.scheme(), "http");
-    assert_eq!(parsed.host_str(), Some("127.0.0.1"));
-    assert!(parsed.port().is_some());
-    assert_eq!(parsed.path(), "/");
-    assert!(parsed.query().is_none() && parsed.fragment().is_none());
-    assert!(parsed.username().is_empty() && parsed.password().is_none());
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_ACCESS_KEY_ID").unwrap(),
-        "storage-smoke-access"
-    );
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY").unwrap(),
-        "storage-smoke-secret"
-    );
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_REGION").unwrap(),
-        "us-east-1"
-    );
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_FORCE_PATH_STYLE").unwrap(),
-        "true"
-    );
+    let endpoint = storage_endpoint::owned_storage_endpoint();
     let config = aws_sdk_s3::Config::builder()
         .region(Region::new("us-east-1"))
         .credentials_provider(Credentials::new(
@@ -73,36 +51,6 @@ pub fn owned_client() -> Client {
 }
 
 async fn prepare() {
-    template::require_owned_database();
-    let endpoint = std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").unwrap();
-    let parsed = reqwest::Url::parse(&endpoint).unwrap();
-    assert_eq!(parsed.scheme(), "http");
-    assert_eq!(parsed.host_str(), Some("127.0.0.1"));
-    assert!(parsed.port().is_some());
-    assert_eq!(parsed.path(), "/");
-    assert!(parsed.query().is_none() && parsed.fragment().is_none());
-    assert!(parsed.username().is_empty() && parsed.password().is_none());
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_BUCKET").unwrap(),
-        "medtracker-fixture"
-    );
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_ACCESS_KEY_ID").unwrap(),
-        "storage-smoke-access"
-    );
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY").unwrap(),
-        "storage-smoke-secret"
-    );
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_REGION").unwrap(),
-        "us-east-1"
-    );
-    assert_eq!(
-        std::env::var("ACTIVE_STORAGE_S3_FORCE_PATH_STYLE").unwrap(),
-        "true"
-    );
-
     let client = owned_client();
     for _ in 0..30 {
         if client

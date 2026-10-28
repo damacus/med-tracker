@@ -15,6 +15,7 @@ pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};
 pub(crate) use update_input::{PersonKind, PersonUpdateInput, UpdateField};
 pub(crate) use writing::update;
+pub(crate) use writing::{SelfClinicalChanges, update_self};
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},

@@ -1,5 +1,13 @@
+// SeaQuery has no PostgreSQL trigger/function DDL API. The exclusive selection
+// failure probes retain narrow DDL and remove it before closing the App.
+
 use super::*;
-use sea_orm::DbErr;
+use med_tracker::models::_entities::{household_invitations, household_memberships};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, Order, QueryFilter, Set,
+    sea_query::{Alias, Asterisk, Expr, ExprTrait, Func, Query},
+};
+use sha2::{Digest, Sha256};
 use std::{error::Error, io};
 
 fn invitation_document(html: &str) -> Result<(Vec<String>, Option<String>), Box<dyn Error>> {
@@ -26,35 +34,57 @@ async fn invitation_browser_pages_fifty_stably_and_preserves_locale() -> Result<
 {
     let app = Application::new().await;
     let result = async {
-        let cookie = super::super::platform::sign_in(
-            &app,
-            71001,
-            "persistence@example.test",
-        )
-        .await;
-        app.fixture.admin.execute_unprepared(
-            "DELETE FROM household_invitation_grants WHERE household_id=72001; DELETE FROM household_invitations WHERE household_id=72001; INSERT INTO household_invitations(household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 72001,'browser-page-'||n||'@example.test','member','browser-page-digest-'||n,74001,now()+interval '7 days','2026-01-01','2026-01-01' FROM generate_series(1,101) n",
-        ).await?;
+        let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
+        for index in 1..=101 {
+            let created = chrono::NaiveDate::from_ymd_opt(2026, 1, 1)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap();
+            household_invitations::ActiveModel {
+                household_id: Set(app.fixture.household.id),
+                email: Set(page_email(&app, index)),
+                membership_role: Set("member".into()),
+                token_digest: Set(uuid::Uuid::new_v4().to_string()),
+                invited_by_membership_id: Set(app.fixture.membership.id),
+                expires_at: Set(chrono::Utc::now().naive_utc() + chrono::Duration::days(7)),
+                created_at: Set(created),
+                updated_at: Set(created),
+                ..Default::default()
+            }
+            .insert(&app.fixture.admin)
+            .await?;
+        }
         let first_url = format!(
-            "{}/households/persistence-fixture/admin/invitations?lang=es",
-            app.origin
+            "{}/households/{generated_slug}/admin/invitations?lang=es",
+            app.origin,
+            generated_slug = app.fixture.household.slug
         );
         let mut destination = first_url.clone();
         let mut seen = Vec::new();
         for expected_count in [50, 50, 1] {
-            let response = app.client.get(&destination)
+            let response = app
+                .client
+                .get(&destination)
                 .header("cookie", &cookie)
                 .header("accept-language", "cy")
-                .send().await?;
+                .send()
+                .await?;
             assert_eq!(response.status(), reqwest::StatusCode::OK);
             assert_eq!(
-                response.headers().get("cache-control").and_then(|value| value.to_str().ok()),
+                response
+                    .headers()
+                    .get("cache-control")
+                    .and_then(|value| value.to_str().ok()),
                 Some("no-store")
             );
             let body = response.text().await?;
             assert!(body.contains("lang=\"es\""));
             let (emails, next) = invitation_document(&body)?;
-            assert_eq!(emails.len(), expected_count, "invitation page must be bounded");
+            assert_eq!(
+                emails.len(),
+                expected_count,
+                "invitation page must be bounded"
+            );
             seen.extend(emails);
             if expected_count == 1 {
                 assert!(next.is_none());
@@ -62,29 +92,51 @@ async fn invitation_browser_pages_fifty_stably_and_preserves_locale() -> Result<
                 let next = next.ok_or_else(|| io::Error::other("missing next invitation page"))?;
                 let next = url::Url::parse(&destination)?.join(&next)?;
                 assert_eq!(next.origin(), url::Url::parse(&app.origin)?.origin());
-                assert_eq!(next.path(), "/households/persistence-fixture/admin/invitations");
-                assert!(next.query_pairs().any(|(key, value)| key == "lang" && value == "es"));
+                assert_eq!(
+                    next.path(),
+                    &format!(
+                        "/households/{generated_slug}/admin/invitations",
+                        generated_slug = app.fixture.household.slug
+                    )
+                );
+                assert!(
+                    next.query_pairs()
+                        .any(|(key, value)| key == "lang" && value == "es")
+                );
                 destination = next.to_string();
             }
         }
-        let expected = (1..=101).rev()
-            .map(|number| format!("browser-page-{number}@example.test"))
+        let expected = (1..=101)
+            .rev()
+            .map(|number| page_email(&app, number))
             .collect::<Vec<_>>();
         assert_eq!(seen, expected);
-        let repeated = app.client.get(first_url).header("cookie", &cookie)
-            .send().await?.text().await?;
+        let repeated = app
+            .client
+            .get(first_url)
+            .header("cookie", &cookie)
+            .send()
+            .await?
+            .text()
+            .await?;
         assert_eq!(
             invitation_document(&repeated)?.0,
             expected.into_iter().take(50).collect::<Vec<_>>()
         );
         Ok::<_, Box<dyn Error>>(())
-    }.await;
+    }
+    .await;
     app.close().await;
     result
 }
 
 async fn select_first_household(app: &Application) -> Result<String, Box<dyn Error>> {
-    let cookie = super::super::platform::sign_in(app, 71001, "persistence@example.test").await;
+    let cookie = super::super::platform::sign_in(
+        app,
+        app.fixture.account.id,
+        app.fixture.account.email.as_str(),
+    )
+    .await;
     let (cookie, html) =
         super::super::platform::form_page(app, &cookie, "/households/choose").await;
     let csrf = super::super::platform::hidden_field(&html, "authenticity_token");
@@ -95,25 +147,54 @@ async fn select_first_household(app: &Application) -> Result<String, Box<dyn Err
         app,
         &cookie,
         "/households/select",
-        &[("household_id", "72001"), ("authenticity_token", &csrf)],
+        &[
+            (
+                "household_id",
+                app.fixture.household.id.to_string().as_str(),
+            ),
+            ("authenticity_token", &csrf),
+        ],
     )
     .await;
     assert_eq!(response.status(), reqwest::StatusCode::OK);
     assert_eq!(
         response.url().path(),
-        "/households/persistence-fixture/dashboard"
+        &format!(
+            "/households/{generated_slug}/dashboard",
+            generated_slug = app.fixture.household.slug
+        )
     );
     Ok(super::super::platform::response_cookies(&cookie, &response))
 }
 
 async fn session_households(app: &Application) -> Result<Vec<(i64, i64)>, DbErr> {
-    app.fixture.admin.query_all_raw(Statement::from_string(
-        DbBackend::Postgres,
-        "SELECT id,active_household_id FROM identity_sessions WHERE account_id=71001 AND active AND purpose='authenticated' ORDER BY id",
-    )).await?.into_iter().map(|row| Ok((
-        row.try_get::<i64>("", "id")?,
-        row.try_get::<i64>("", "active_household_id")?,
-    ))).collect()
+    app.fixture
+        .admin
+        .query_all_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr(Expr::col("id"))
+                    .expr(Expr::col("active_household_id"))
+                    .from("identity_sessions")
+                    .and_where(
+                        Expr::col("account_id")
+                            .eq(Expr::val(app.fixture.account.id))
+                            .and(Expr::col("active"))
+                            .and(Expr::col("purpose").eq(Expr::val("authenticated"))),
+                    )
+                    .order_by("id", Order::Asc)
+                    .to_owned(),
+            ),
+        )
+        .await?
+        .into_iter()
+        .map(|row| {
+            Ok((
+                row.try_get::<i64>("", "id")?,
+                row.try_get::<i64>("", "active_household_id")?,
+            ))
+        })
+        .collect()
 }
 
 #[tokio::test]
@@ -121,8 +202,13 @@ async fn invitation_acceptance_pages_keep_locale_and_safe_invalid_link_recovery(
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let result = async {
-        super::seed_acceptance(&app).await;
-        let cookie = super::super::platform::sign_in(&app, 71001, "persistence@example.test").await;
+        let acceptance = super::seed_acceptance(&app).await;
+        let cookie = super::super::platform::sign_in(
+            &app,
+            app.fixture.account.id,
+            app.fixture.account.email.as_str(),
+        )
+        .await;
         for (locale, heading) in [
             ("en", "Accept invitation"),
             ("cy", "Derbyn gwahoddiad"),
@@ -133,8 +219,9 @@ async fn invitation_acceptance_pages_keep_locale_and_safe_invalid_link_recovery(
             let response = app
                 .client
                 .get(format!(
-                    "{}/invitations/accept?token=synthetic-account-invitation&lang={locale}",
-                    app.origin
+                    "{}/invitations/accept?token={generated_acceptance_token}&lang={locale}",
+                    app.origin,
+                    generated_acceptance_token = acceptance.token
                 ))
                 .header("accept-language", "cy")
                 .header("cookie", &cookie)
@@ -161,10 +248,22 @@ async fn invitation_acceptance_pages_keep_locale_and_safe_invalid_link_recovery(
         }
         for query in [
             "lang=es",
-            "token=synthetic-account-invitation&lang=es&lang=en",
-            "token=synthetic-account-invitation&token=other&lang=es",
-            "token=synthetic-account-invitation&lang=xx",
-            "token=synthetic-account-invitation&lang=es&next=https%3A%2F%2Fevil.example.test",
+            &format!(
+                "token={generated_acceptance_token}&lang=es&lang=en",
+                generated_acceptance_token = acceptance.token
+            ),
+            &format!(
+                "token={generated_acceptance_token}&token=other&lang=es",
+                generated_acceptance_token = acceptance.token
+            ),
+            &format!(
+                "token={generated_acceptance_token}&lang=xx",
+                generated_acceptance_token = acceptance.token
+            ),
+            &format!(
+                "token={generated_acceptance_token}&lang=es&next=https%3A%2F%2Fevil.example.test",
+                generated_acceptance_token = acceptance.token
+            ),
         ] {
             let response = app
                 .client
@@ -215,17 +314,25 @@ async fn invitation_acceptance_pages_keep_locale_and_safe_invalid_link_recovery(
 async fn invitation_acceptance_selects_only_the_current_session() -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let result = async {
-        super::seed_acceptance(&app).await;
+        let acceptance = super::seed_acceptance(&app).await;
         let first = select_first_household(&app).await?;
         let second = select_first_household(&app).await?;
         let before = session_households(&app).await?;
         assert_eq!(before.len(), 2);
-        assert!(before.iter().all(|(_, household)| *household == 72001));
+        assert!(
+            before
+                .iter()
+                .all(|(_, household)| *household == app.fixture.household.id)
+        );
         let (first, preview) = super::super::platform::form_page(
             &app,
             &first,
-            "/invitations/accept?token=synthetic-account-invitation",
-        ).await;
+            &format!(
+                "/invitations/accept?token={generated_acceptance_token}",
+                generated_acceptance_token = acceptance.token
+            ),
+        )
+        .await;
         let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
         if csrf.is_empty() {
             return Err(io::Error::other("invitation acceptance token missing").into());
@@ -234,8 +341,12 @@ async fn invitation_acceptance_selects_only_the_current_session() -> Result<(), 
             &app,
             &first,
             "/invitations/accept",
-            &[("token", "synthetic-account-invitation"), ("authenticity_token", &csrf)],
-        ).await;
+            &[
+                ("token", acceptance.token.as_str()),
+                ("authenticity_token", &csrf),
+            ],
+        )
+        .await;
         let accepted_status = response.status();
         let accepted_path = response.url().path().to_owned();
         let first = super::super::platform::response_cookies(&first, &response);
@@ -246,27 +357,145 @@ async fn invitation_acceptance_selects_only_the_current_session() -> Result<(), 
             .build()?;
         let mut destinations = Vec::new();
         for cookie in [&first, &second] {
-            let response = client.get(format!("{}/", app.origin))
-                .header("cookie", cookie).send().await?;
-            destinations.push((response.status(), response.headers().get("location")
-                .and_then(|value| value.to_str().ok()).map(str::to_owned)));
+            let response = client
+                .get(format!("{}/", app.origin))
+                .header("cookie", cookie)
+                .send()
+                .await?;
+            destinations.push((
+                response.status(),
+                response
+                    .headers()
+                    .get("location")
+                    .and_then(|value| value.to_str().ok())
+                    .map(str::to_owned),
+            ));
         }
-        let navigation = app.client.get(format!(
-            "{}/households/synthetic-invited-household/profile/navigation", app.origin
-        )).header("cookie", &first).send().await?;
+        let navigation = app
+            .client
+            .get(format!(
+                "{}/households/{generated_target_slug}/profile/navigation",
+                app.origin,
+                generated_target_slug = acceptance.target_slug
+            ))
+            .header("cookie", &first)
+            .send()
+            .await?;
         let navigation_status = navigation.status();
         let navigation: Value = navigation.json().await?;
-        let state = app.fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT (SELECT person_id FROM accounts WHERE id=71001) AS person_id,(SELECT count(*) FROM people WHERE id=73001) AS people,(SELECT count(*) FROM household_memberships WHERE household_id=72002 AND person_id=73001) AS memberships,(SELECT count(*) FROM person_access_grants WHERE household_id=72002 AND person_id=73001) AS self_grants,(SELECT count(*) FROM person_access_grants WHERE household_id=72002 AND person_id=73104) AS dependent_grants,(SELECT count(*) FROM carer_relationships WHERE household_id=72002) AS relationships",
-        )).await?.ok_or_else(|| io::Error::other("accepted identity state missing"))?;
-        assert_eq!(state.try_get::<i64>("", "person_id")?, 73001);
-        for (field, count) in [("people", 1), ("memberships", 1), ("self_grants", 0), ("dependent_grants", 0), ("relationships", 0)] {
+        let state = app
+            .fixture
+            .admin
+            .query_one_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::select()
+                        .expr_as(
+                            Expr::from(
+                                Query::select()
+                                    .expr(Expr::col("person_id"))
+                                    .from("accounts")
+                                    .and_where(
+                                        Expr::col("id").eq(Expr::val(app.fixture.account.id)),
+                                    )
+                                    .to_owned(),
+                            ),
+                            "person_id",
+                        )
+                        .expr_as(
+                            Expr::from(
+                                Query::select()
+                                    .expr(Expr::col(Asterisk).count())
+                                    .from("people")
+                                    .and_where(Expr::col("id").eq(Expr::val(app.fixture.adult.id)))
+                                    .to_owned(),
+                            ),
+                            "people",
+                        )
+                        .expr_as(
+                            Expr::from(
+                                Query::select()
+                                    .expr(Expr::col(Asterisk).count())
+                                    .from("household_memberships")
+                                    .and_where(
+                                        Expr::col("household_id")
+                                            .eq(Expr::val(acceptance.target_household.id))
+                                            .and(
+                                                Expr::col("person_id")
+                                                    .eq(Expr::val(app.fixture.adult.id)),
+                                            ),
+                                    )
+                                    .to_owned(),
+                            ),
+                            "memberships",
+                        )
+                        .expr_as(
+                            Expr::from(
+                                Query::select()
+                                    .expr(Expr::col(Asterisk).count())
+                                    .from("person_access_grants")
+                                    .and_where(
+                                        Expr::col("household_id")
+                                            .eq(Expr::val(acceptance.target_household.id))
+                                            .and(
+                                                Expr::col("person_id")
+                                                    .eq(Expr::val(app.fixture.adult.id)),
+                                            ),
+                                    )
+                                    .to_owned(),
+                            ),
+                            "self_grants",
+                        )
+                        .expr_as(
+                            Expr::from(
+                                Query::select()
+                                    .expr(Expr::col(Asterisk).count())
+                                    .from("person_access_grants")
+                                    .and_where(
+                                        Expr::col("household_id")
+                                            .eq(Expr::val(acceptance.target_household.id))
+                                            .and(
+                                                Expr::col("person_id")
+                                                    .eq(Expr::val(acceptance.invited_child.id)),
+                                            ),
+                                    )
+                                    .to_owned(),
+                            ),
+                            "dependent_grants",
+                        )
+                        .expr_as(
+                            Expr::from(
+                                Query::select()
+                                    .expr(Expr::col(Asterisk).count())
+                                    .from("carer_relationships")
+                                    .and_where(
+                                        Expr::col("household_id")
+                                            .eq(Expr::val(acceptance.target_household.id)),
+                                    )
+                                    .to_owned(),
+                            ),
+                            "relationships",
+                        )
+                        .to_owned(),
+                ),
+            )
+            .await?
+            .ok_or_else(|| io::Error::other("accepted identity state missing"))?;
+        assert_eq!(state.try_get::<i64>("", "person_id")?, app.fixture.adult.id);
+        for (field, count) in [
+            ("people", 1),
+            ("memberships", 1),
+            ("self_grants", 0),
+            ("dependent_grants", 0),
+            ("relationships", 0),
+        ] {
             assert_eq!(state.try_get::<i64>("", field)?, count, "canonical {field}");
         }
         assert_eq!(accepted_status, reqwest::StatusCode::OK);
         assert_eq!(
-            after.iter().filter(|(_, household)| *household == 72002).count(),
+            after
+                .iter()
+                .filter(|(_, household)| *household == acceptance.target_household.id)
+                .count(),
             1,
             "acceptance must select the joined household for exactly the current session"
         );
@@ -275,16 +504,47 @@ async fn invitation_acceptance_selects_only_the_current_session() -> Result<(), 
             before.iter().map(|(id, _)| id).collect::<Vec<_>>(),
             after.iter().map(|(id, _)| id).collect::<Vec<_>>()
         );
-        assert_eq!(after.iter().filter(|(_, household)| *household == 72001).count(), 1);
-        assert_eq!(accepted_path, "/households/synthetic-invited-household/dashboard");
-        assert_eq!(destinations, vec![
-            (reqwest::StatusCode::SEE_OTHER, Some("/households/synthetic-invited-household/dashboard".into())),
-            (reqwest::StatusCode::SEE_OTHER, Some("/households/persistence-fixture/dashboard".into())),
-        ]);
+        assert_eq!(
+            after
+                .iter()
+                .filter(|(_, household)| *household == app.fixture.household.id)
+                .count(),
+            1
+        );
+        assert_eq!(
+            accepted_path,
+            format!(
+                "/households/{generated_target_slug}/dashboard",
+                generated_target_slug = acceptance.target_slug
+            )
+        );
+        assert_eq!(
+            destinations,
+            vec![
+                (
+                    reqwest::StatusCode::SEE_OTHER,
+                    Some(format!(
+                        "/households/{generated_target_slug}/dashboard",
+                        generated_target_slug = acceptance.target_slug
+                    ))
+                ),
+                (
+                    reqwest::StatusCode::SEE_OTHER,
+                    Some(format!(
+                        "/households/{generated_slug}/dashboard",
+                        generated_slug = app.fixture.household.slug
+                    ))
+                ),
+            ]
+        );
         assert_eq!(navigation_status, reqwest::StatusCode::OK);
-        assert_eq!(navigation["shell"]["active_household_id"], "72002");
+        assert_eq!(
+            navigation["shell"]["active_household_id"],
+            acceptance.target_household.id.to_string().as_str()
+        );
         Ok::<_, Box<dyn Error>>(())
-    }.await;
+    }
+    .await;
     app.close().await;
     result
 }
@@ -336,27 +596,55 @@ async fn invitation_browser_empty_and_terminal_states_expose_only_permitted_acti
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let result = async {
-        let cookie = super::super::platform::sign_in(&app, 71001, "persistence@example.test").await;
-        app.fixture.admin.execute_unprepared("DELETE FROM household_invitation_grants WHERE household_id=72001; DELETE FROM household_invitations WHERE household_id=72001").await?;
-        let path = "/households/persistence-fixture/admin/invitations?lang=es";
-        let empty = app.client.get(format!("{}{path}", app.origin))
-            .header("cookie", &cookie).send().await?;
+        let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
+
+        let path = &format!(
+            "/households/{generated_slug}/admin/invitations?lang=es",
+            generated_slug = app.fixture.household.slug
+        );
+        let empty = app
+            .client
+            .get(format!("{}{path}", app.origin))
+            .header("cookie", &cookie)
+            .send()
+            .await?;
         assert_eq!(empty.status(), reqwest::StatusCode::OK);
         let empty = empty.text().await?;
         assert!(empty.contains("<html lang=\"es\""));
         assert!(empty.contains("Invitaciones"));
-        assert!(empty.contains("No hay invitaciones"), "translated empty state");
-        app.fixture.admin.execute_unprepared("INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,accepted_at,revoked_at,created_at,updated_at) VALUES (87101,72001,'pending-c4@example.test','member','pending-c4',74001,now()+interval '7 days',NULL,NULL,now(),now()),(87102,72001,'expired-c4@example.test','administrator','expired-c4',74001,now()-interval '1 day',NULL,NULL,now()-interval '2 days',now()),(87103,72001,'accepted-c4@example.test','member','accepted-c4',74001,now()+interval '7 days',now(),NULL,now()-interval '3 days',now()),(87104,72001,'revoked-c4@example.test','member','revoked-c4',74001,now()+interval '7 days',NULL,now(),now()-interval '4 days',now())").await?;
-        let response = app.client.get(format!("{}{path}", app.origin))
-            .header("cookie", &cookie).send().await?;
+        assert!(
+            empty.contains("No hay invitaciones"),
+            "translated empty state"
+        );
+        let pending =
+            local_invitation(&app, "pending-c4@example.test", "member", 7, 0, "pending").await?;
+        let expired = local_invitation(
+            &app,
+            "expired-c4@example.test",
+            "administrator",
+            -1,
+            2,
+            "pending",
+        )
+        .await?;
+        let accepted =
+            local_invitation(&app, "accepted-c4@example.test", "member", 7, 3, "accepted").await?;
+        let revoked =
+            local_invitation(&app, "revoked-c4@example.test", "member", 7, 4, "revoked").await?;
+        let response = app
+            .client
+            .get(format!("{}{path}", app.origin))
+            .header("cookie", &cookie)
+            .send()
+            .await?;
         assert_eq!(response.status(), reqwest::StatusCode::OK);
         let body = response.text().await?;
         let document = scraper::Html::parse_document(&body);
         for (email, label, actionable) in [
-            ("pending-c4@example.test", "Pendiente", true),
-            ("expired-c4@example.test", "Caducada", true),
-            ("accepted-c4@example.test", "Aceptada", false),
-            ("revoked-c4@example.test", "Revocada", false),
+            (pending.email.as_str(), "Pendiente", true),
+            (expired.email.as_str(), "Caducada", true),
+            (accepted.email.as_str(), "Aceptada", false),
+            (revoked.email.as_str(), "Revocada", false),
         ] {
             let row = invitation_row(&document, email)?;
             assert!(row.contains(label), "translated status for {email}");
@@ -365,7 +653,8 @@ async fn invitation_browser_empty_and_terminal_states_expose_only_permitted_acti
         }
         assert!(body.contains("name=\"lang\" value=\"es\""));
         Ok::<_, Box<dyn Error>>(())
-    }.await;
+    }
+    .await;
     app.close().await;
     result
 }
@@ -375,8 +664,11 @@ async fn invitation_browser_locales_preserve_forms_feedback_and_recovery()
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let result = async {
-        let cookie = super::super::platform::sign_in(&app, 71001, "persistence@example.test").await;
-        let path = "/households/persistence-fixture/admin/invitations";
+        let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
+        let path = &format!(
+            "/households/{generated_slug}/admin/invitations",
+            generated_slug = app.fixture.household.slug
+        );
         for (locale, heading) in [
             ("en", "Invitations"),
             ("cy", "Gwahoddiadau"),
@@ -444,11 +736,14 @@ async fn invitation_browser_locales_preserve_forms_feedback_and_recovery()
             &[
                 ("authenticity_token", &csrf),
                 ("lang", "es"),
-                ("email", "retired-care-c4@example.test"),
+                (
+                    "email",
+                    &browser_email(&app, "retired-care-c4@example.test"),
+                ),
                 ("membership_role", "member"),
                 ("relationship_type", "parent"),
                 ("access_level", "manage"),
-                ("dependent_ids[]", "73002"),
+                ("dependent_ids[]", app.fixture.minor.id.to_string().as_str()),
             ],
         )
         .await;
@@ -480,7 +775,7 @@ async fn invitation_browser_locales_preserve_forms_feedback_and_recovery()
             &[
                 ("authenticity_token", &csrf),
                 ("lang", "es"),
-                ("email", "locale-c4@example.test"),
+                ("email", &browser_email(&app, "locale-c4@example.test")),
                 ("membership_role", "member"),
             ],
         )
@@ -493,7 +788,7 @@ async fn invitation_browser_locales_preserve_forms_feedback_and_recovery()
                 .is_some_and(|query| query.contains("lang=es"))
         );
         let created = created.text().await?;
-        assert!(created.contains("locale-c4@example.test"));
+        assert!(created.contains(&browser_email(&app, "locale-c4@example.test")));
         assert!(created.contains("en cola"), "queued delivery feedback");
         let refreshed = app
             .client
@@ -503,7 +798,7 @@ async fn invitation_browser_locales_preserve_forms_feedback_and_recovery()
             .await?
             .text()
             .await?;
-        assert!(refreshed.contains("locale-c4@example.test"));
+        assert!(refreshed.contains(&browser_email(&app, "locale-c4@example.test")));
         Ok::<_, Box<dyn Error>>(())
     }
     .await;
@@ -516,67 +811,411 @@ async fn invitation_browser_stale_actions_recheck_manager_and_invitation_state()
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let result = async {
-        super::seed_acceptance(&app).await;
-        let cookie = super::super::platform::sign_in(&app, 71001, "persistence@example.test").await;
-        let path = "/households/persistence-fixture/admin/invitations";
-        let (cookie, html) = super::super::platform::form_page(&app, &cookie, &format!("{path}?lang=es")).await;
+        let acceptance = super::seed_acceptance(&app).await;
+        let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
+        let path = &format!(
+            "/households/{generated_slug}/admin/invitations",
+            generated_slug = app.fixture.household.slug
+        );
+        let (cookie, html) =
+            super::super::platform::form_page(&app, &cookie, &format!("{path}?lang=es")).await;
         let csrf = super::super::platform::hidden_field(&html, "authenticity_token");
-        let foreign = app.client.get(format!("{}/households/synthetic-invited-household/admin/invitations?lang=es", app.origin))
-            .header("cookie", &cookie).send().await?;
+        let foreign = app
+            .client
+            .get(format!(
+                "{}/households/{generated_target_slug}/admin/invitations?lang=es",
+                app.origin,
+                generated_target_slug = acceptance.target_slug
+            ))
+            .header("cookie", &cookie)
+            .send()
+            .await?;
         assert_forbidden_presentation(foreign).await?;
-        app.fixture.admin.execute_unprepared("INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,accepted_at,created_at,updated_at) VALUES (87111,72001,'stale-c4@example.test','member','stale-c4',74001,now()+interval '7 days',now(),now(),now())").await?;
+        let stale =
+            local_invitation(&app, "stale-c4@example.test", "member", 7, 0, "accepted").await?;
         for action in ["resend", "cancel"] {
-            let response = super::super::platform::post_form(&app, &cookie, &format!("{path}/87111/{action}"), &[("authenticity_token", &csrf),("lang", "es")]).await;
-            assert_eq!(response.status(), reqwest::StatusCode::UNPROCESSABLE_ENTITY, "accepted invitation {action}");
+            let response = super::super::platform::post_form(
+                &app,
+                &cookie,
+                &format!(
+                    "{path}/{generated_87111}/{action}",
+                    generated_87111 = stale.id
+                ),
+                &[("authenticity_token", &csrf), ("lang", "es")],
+            )
+            .await;
+            assert_eq!(
+                response.status(),
+                reqwest::StatusCode::UNPROCESSABLE_ENTITY,
+                "accepted invitation {action}"
+            );
         }
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001").await?;
-        let denied = super::super::platform::post_form(&app, &cookie, path, &[("authenticity_token", &csrf),("lang", "es"),("email", "lost-authority-c4@example.test"),("membership_role", "member")]).await;
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("household_memberships")
+                        .value("role", Expr::val("member"))
+                        .and_where(Expr::col("id").eq(Expr::val(app.fixture.membership.id)))
+                        .to_owned(),
+                ),
+            )
+            .await?;
+        let denied = super::super::platform::post_form(
+            &app,
+            &cookie,
+            path,
+            &[
+                ("authenticity_token", &csrf),
+                ("lang", "es"),
+                (
+                    "email",
+                    &browser_email(&app, "lost-authority-c4@example.test"),
+                ),
+                ("membership_role", "member"),
+            ],
+        )
+        .await;
         assert_forbidden_presentation(denied).await?;
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74001").await?;
+        app.fixture
+            .admin
+            .execute_raw(
+                app.fixture.admin.get_database_backend().build(
+                    &Query::update()
+                        .table("household_memberships")
+                        .value("status", Expr::val("revoked"))
+                        .value("revoked_at", Expr::expr(Func::cust("now")))
+                        .and_where(Expr::col("id").eq(Expr::val(app.fixture.membership.id)))
+                        .to_owned(),
+                ),
+            )
+            .await?;
         let before = manager_effect_counts(&app).await?;
-        let listed = app.client.get(format!("{}{path}?lang=es", app.origin))
-            .header("cookie", &cookie).send().await?;
+        let listed = app
+            .client
+            .get(format!("{}{path}?lang=es", app.origin))
+            .header("cookie", &cookie)
+            .send()
+            .await?;
         assert_forbidden_presentation(listed).await?;
         for (action, endpoint) in [
             ("create", path.to_owned()),
-            ("resend", format!("{path}/87111/resend")),
-            ("cancel", format!("{path}/87111/cancel")),
+            (
+                "resend",
+                format!(
+                    "{path}/{generated_87111}/resend",
+                    generated_87111 = stale.id
+                ),
+            ),
+            (
+                "cancel",
+                format!(
+                    "{path}/{generated_87111}/cancel",
+                    generated_87111 = stale.id
+                ),
+            ),
         ] {
-            let response = super::super::platform::post_form(&app, &cookie, &endpoint, &[("authenticity_token", &csrf),("lang", "es"),("email", "revoked-manager-c4@example.test"),("membership_role", "member")]).await;
-            assert_forbidden_presentation(response).await.map_err(|error| io::Error::other(format!("revoked manager {action}: {error}")))?;
+            let response = super::super::platform::post_form(
+                &app,
+                &cookie,
+                &endpoint,
+                &[
+                    ("authenticity_token", &csrf),
+                    ("lang", "es"),
+                    (
+                        "email",
+                        &browser_email(&app, "revoked-manager-c4@example.test"),
+                    ),
+                    ("membership_role", "member"),
+                ],
+            )
+            .await;
+            assert_forbidden_presentation(response)
+                .await
+                .map_err(|error| io::Error::other(format!("revoked manager {action}: {error}")))?;
         }
-        assert_eq!(manager_effect_counts(&app).await?, before, "revoked manager has no invitation, mail, version, audit or grant effects");
+        assert_eq!(
+            manager_effect_counts(&app).await?,
+            before,
+            "revoked manager has no invitation, mail, version, audit or grant effects"
+        );
         Ok::<_, Box<dyn Error>>(())
-    }.await;
+    }
+    .await;
     app.close().await;
     result
 }
 
 async fn manager_effect_counts(app: &Application) -> Result<Vec<i64>, DbErr> {
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT (SELECT count(*) FROM household_invitations WHERE household_id=72001) AS invitations,(SELECT count(*) FROM pg_loco_queue) AS jobs,(SELECT count(*) FROM versions WHERE household_id=72001 AND item_type='HouseholdInvitation') AS versions,(SELECT count(*) FROM security_audit_events WHERE household_id=72001) AS audits,(SELECT count(*) FROM household_invitation_grants WHERE household_id=72001) AS grants")).await?.ok_or_else(|| DbErr::Custom("missing manager-effect state".into()))?;
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from("household_invitations")
+                                .and_where(
+                                    Expr::col("household_id")
+                                        .eq(Expr::val(app.fixture.household.id)),
+                                )
+                                .to_owned(),
+                        ),
+                        "invitations",
+                    )
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from("pg_loco_queue")
+                                .and_where(
+                                    Expr::expr(
+                                        Func::cust("jsonb_extract_path_text").args([
+                                            Expr::col("task_data"),
+                                            Expr::val("household_id"),
+                                        ]),
+                                    )
+                                    .eq(app
+                                        .fixture
+                                        .household
+                                        .id
+                                        .to_string()),
+                                )
+                                .to_owned(),
+                        ),
+                        "jobs",
+                    )
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from("versions")
+                                .and_where(
+                                    Expr::col("household_id")
+                                        .eq(Expr::val(app.fixture.household.id))
+                                        .and(
+                                            Expr::col("item_type")
+                                                .eq(Expr::val("HouseholdInvitation")),
+                                        ),
+                                )
+                                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                                .to_owned(),
+                        ),
+                        "versions",
+                    )
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from("security_audit_events")
+                                .and_where(
+                                    Expr::col("household_id")
+                                        .eq(Expr::val(app.fixture.household.id)),
+                                )
+                                .to_owned(),
+                        ),
+                        "audits",
+                    )
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from("household_invitation_grants")
+                                .and_where(
+                                    Expr::col("household_id")
+                                        .eq(Expr::val(app.fixture.household.id)),
+                                )
+                                .to_owned(),
+                        ),
+                        "grants",
+                    )
+                    .to_owned(),
+            ),
+        )
+        .await?
+        .ok_or_else(|| DbErr::Custom("missing manager-effect state".into()))?;
     ["invitations", "jobs", "versions", "audits", "grants"]
         .iter()
         .map(|field| row.try_get::<i64>("", field))
         .collect()
 }
 
-async fn acceptance_effect_counts(app: &Application) -> Result<Vec<i64>, DbErr> {
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT (SELECT count(*) FROM household_memberships WHERE household_id=72002 AND person_id=73001) AS memberships,(SELECT count(*) FROM versions v WHERE v.item_type='HouseholdInvitation' AND v.item_id=87001 AND v.event='update' AND v.object_changes::jsonb ? 'accepted_at' AND v.audit_context->>'actor_account_id'='71001' AND v.request_id IS NOT NULL) AS versions,(SELECT count(*) FROM security_audit_events a JOIN versions v ON a.request_id=v.request_id WHERE a.household_id=72002 AND a.actor_account_id=71002 AND a.actor_membership_id=74002 AND a.event_type='household_access.membership_created' AND a.metadata->>'target_account_id'='71001' AND v.item_type='HouseholdInvitation' AND v.item_id=87001 AND v.event='update' AND v.object_changes::jsonb ? 'accepted_at') AS audits,(SELECT count(*) FROM pg_loco_queue) AS jobs")).await?.ok_or_else(|| DbErr::Custom("missing acceptance-effect state".into()))?;
-    ["memberships", "versions", "audits", "jobs"]
-        .iter()
-        .map(|field| row.try_get::<i64>("", field))
-        .collect()
+async fn acceptance_effect_counts(
+    app: &Application,
+    acceptance: &super::Acceptance,
+) -> Result<Vec<i64>, DbErr> {
+    let memberships = Query::select()
+        .expr(Expr::col(Asterisk).count())
+        .from("household_memberships")
+        .and_where(Expr::col("household_id").eq(acceptance.target_household.id))
+        .and_where(Expr::col("person_id").eq(app.fixture.adult.id))
+        .to_owned();
+    let version_condition = Expr::col(("v", "item_type"))
+        .eq("HouseholdInvitation")
+        .and(Expr::col(("v", "item_id")).eq(acceptance.invitation.id))
+        .and(Expr::col(("v", "event")).eq("update"))
+        .and(Expr::expr(Func::cust("jsonb_exists").args([
+            Expr::col(("v", "object_changes")).cast_as(Alias::new("jsonb")),
+            Expr::val("accepted_at"),
+        ])));
+    let versions = Query::select()
+        .expr(Expr::col(Asterisk).count())
+        .from_as("versions", "v")
+        .and_where(version_condition.clone())
+        .and_where(
+            Expr::expr(Func::cust("jsonb_extract_path_text").args([
+                Expr::col(("v", "audit_context")),
+                Expr::val("actor_account_id"),
+            ]))
+            .eq(app.fixture.account.id.to_string()),
+        )
+        .and_where(Expr::col(("v", "request_id")).is_not_null())
+        .to_owned();
+    let audits = Query::select()
+        .expr(Expr::col(Asterisk).count())
+        .from_as("security_audit_events", "a")
+        .join_as(
+            sea_orm::sea_query::JoinType::InnerJoin,
+            "versions",
+            "v",
+            Expr::col(("a", "request_id")).eq(Expr::col(("v", "request_id"))),
+        )
+        .and_where(version_condition)
+        .and_where(Expr::col(("a", "household_id")).eq(acceptance.target_household.id))
+        .and_where(Expr::col(("a", "actor_account_id")).eq(acceptance.inviter_account.id))
+        .and_where(Expr::col(("a", "actor_membership_id")).eq(acceptance.inviter_membership.id))
+        .and_where(Expr::col(("a", "event_type")).eq("household_access.membership_created"))
+        .and_where(
+            Expr::expr(
+                Func::cust("jsonb_extract_path_text")
+                    .args([Expr::col(("a", "metadata")), Expr::val("target_account_id")]),
+            )
+            .eq(app.fixture.account.id.to_string()),
+        )
+        .to_owned();
+    let jobs = Query::select()
+        .expr(Expr::col(Asterisk).count())
+        .from("pg_loco_queue")
+        .and_where(
+            Expr::expr(
+                Func::cust("jsonb_extract_path_text")
+                    .args([Expr::col("task_data"), Expr::val("household_id")]),
+            )
+            .is_in([
+                app.fixture.household.id.to_string(),
+                acceptance.target_household.id.to_string(),
+            ]),
+        )
+        .to_owned();
+    let mut counts = Vec::new();
+    for query in [memberships, versions, audits, jobs] {
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?
+            .ok_or_else(|| DbErr::Custom("missing acceptance-effect state".into()))?;
+        counts.push(row.try_get_by_index::<i64>(0)?);
+    }
+    Ok(counts)
 }
 
-async fn signup_effect_counts(app: &Application, email: &str) -> Result<Vec<i64>, DbErr> {
+async fn signup_effect_counts(
+    app: &Application,
+    email: &str,
+    signup: &household_invitations::Model,
+) -> Result<Vec<i64>, DbErr> {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT (SELECT count(*) FROM accounts WHERE email=$1) AS accounts,(SELECT count(*) FROM people p JOIN accounts a ON a.person_id=p.id WHERE a.email=$1) AS people,(SELECT count(*) FROM household_memberships m JOIN people p ON p.id=m.person_id JOIN accounts a ON a.person_id=p.id WHERE a.email=$1) AS memberships,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=$1) AS jobs,(SELECT count(*) FROM household_invitations WHERE id=87003 AND accepted_at IS NOT NULL) AS accepted",
-            [email.into()],
-        ))
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from("accounts")
+                                .and_where(Expr::col("email").eq(Expr::val(email)))
+                                .to_owned(),
+                        ),
+                        "accounts",
+                    )
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from_as("people", "p")
+                                .join_as(
+                                    sea_orm::sea_query::JoinType::InnerJoin,
+                                    "accounts",
+                                    "a",
+                                    Expr::col(("a", "person_id")).eq(Expr::col(("p", "id"))),
+                                )
+                                .and_where(Expr::col(("a", "email")).eq(Expr::val(email)))
+                                .to_owned(),
+                        ),
+                        "people",
+                    )
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from_as("household_memberships", "m")
+                                .join_as(
+                                    sea_orm::sea_query::JoinType::InnerJoin,
+                                    "people",
+                                    "p",
+                                    Expr::col(("p", "id")).eq(Expr::col(("m", "person_id"))),
+                                )
+                                .join_as(
+                                    sea_orm::sea_query::JoinType::InnerJoin,
+                                    "accounts",
+                                    "a",
+                                    Expr::col(("a", "person_id")).eq(Expr::col(("p", "id"))),
+                                )
+                                .and_where(Expr::col(("a", "email")).eq(Expr::val(email)))
+                                .to_owned(),
+                        ),
+                        "memberships",
+                    )
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from_as("pg_loco_queue", "q")
+                                .and_where(
+                                    Expr::expr(
+                                        Func::cust("jsonb_extract_path_text")
+                                            .args([Expr::col(("q", "task_data")), Expr::val("to")]),
+                                    )
+                                    .eq(Expr::val(email)),
+                                )
+                                .to_owned(),
+                        ),
+                        "jobs",
+                    )
+                    .expr_as(
+                        Expr::from(
+                            Query::select()
+                                .expr(Expr::col(Asterisk).count())
+                                .from("household_invitations")
+                                .and_where(
+                                    Expr::col("id")
+                                        .eq(Expr::val(signup.id))
+                                        .and(Expr::col("accepted_at").is_not_null()),
+                                )
+                                .to_owned(),
+                        ),
+                        "accepted",
+                    )
+                    .to_owned(),
+            ),
+        )
         .await?
         .ok_or_else(|| DbErr::Custom("missing invited-signup state".into()))?;
     ["accounts", "people", "memberships", "jobs", "accepted"]
@@ -588,15 +1227,14 @@ async fn signup_effect_counts(app: &Application, email: &str) -> Result<Vec<i64>
 #[tokio::test]
 async fn invitation_signup_invalid_draft_rerenders_localized_form_without_effects()
 -> Result<(), Box<dyn Error>> {
-    use sha2::{Digest, Sha256};
     let app = Application::new().await;
     let result = async {
-        super::seed_acceptance(&app).await;
-        app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87003,72002,'invited-signup@example.test','administrator',$1,74002,now()+interval '7 days',now(),now())",[hex::encode(Sha256::digest("synthetic-signup-invitation".as_bytes())).into()])).await?;
+        let acceptance=super::seed_acceptance(&app).await;
+        let (signup,signup_token,signup_email)=signup_invitation(&app,&acceptance,"administrator").await?;
         let (cookie, preview) = super::super::platform::form_page(
             &app,
             "",
-            "/invitations/accept?token=synthetic-signup-invitation&lang=es",
+            &format!("/invitations/accept?token={generated_signup_token}&lang=es",generated_signup_token=signup_token),
         )
         .await;
         assert!(
@@ -604,16 +1242,16 @@ async fn invitation_signup_invalid_draft_rerenders_localized_form_without_effect
             "invited signup form must carry the explicit language"
         );
         let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
-        let before = signup_effect_counts(&app, "invited-signup@example.test").await?;
+        let before = signup_effect_counts(&app,&signup_email,&signup).await?;
         assert_eq!(before, vec![0, 0, 0, 0, 0]);
         let form = [
             ("authenticity_token", csrf.as_str()),
             ("credential", "password"),
-            ("invitation_token", "synthetic-signup-invitation"),
+            ("invitation_token", signup_token.as_str()),
             ("lang", "es"),
             ("name", ""),
             ("date_of_birth", "1992-05-18"),
-            ("email", "invited-signup@example.test"),
+            ("email", signup_email.as_str()),
             ("password", "short"),
             ("password-confirm", "short"),
         ];
@@ -629,14 +1267,14 @@ async fn invitation_signup_invalid_draft_rerenders_localized_form_without_effect
         let invalid = invalid.text().await?;
         assert!(invalid.contains("<html lang=\"es\""), "locale: {invalid}");
         assert!(
-            invalid.contains("Synthetic invited household"),
+            invalid.contains(acceptance.target_household.name.as_str()),
             "invitation context must render: {invalid}"
         );
         let document = scraper::Html::parse_document(&invalid);
         for (selector, reason) in [
             ("#name[aria-invalid=\"true\"]", "invalid name flag"),
             ("#name-error", "name error description"),
-            ("form[action=\"/create-account\"] input[name=\"invitation_token\"][value=\"synthetic-signup-invitation\"]", "invitation token draft"),
+            (&format!("form[action=\"/create-account\"] input[name=\"invitation_token\"][value=\"{generated_signup_token}\"]",generated_signup_token=signup_token), "invitation token draft"),
             ("form[action=\"/create-account\"] input[name=\"lang\"][value=\"es\"]", "language draft"),
             ("form[action=\"/create-account\"] input[name=\"authenticity_token\"]", "fresh csrf token"),
         ] {
@@ -654,7 +1292,7 @@ async fn invitation_signup_invalid_draft_rerenders_localized_form_without_effect
             "password is never preserved"
         );
         assert_eq!(
-            signup_effect_counts(&app, "invited-signup@example.test").await?,
+            signup_effect_counts(&app,&signup_email,&signup).await?,
             before,
             "invalid invited signup must not create account, person, membership, outbox or acceptance effects"
         );
@@ -666,7 +1304,7 @@ async fn invitation_signup_invalid_draft_rerenders_localized_form_without_effect
             super::super::platform::post_form(&app, &cookie, "/create-account", &corrected).await;
         assert_eq!(created.status(), reqwest::StatusCode::OK);
         assert_eq!(
-            signup_effect_counts(&app, "invited-signup@example.test").await?,
+            signup_effect_counts(&app,&signup_email,&signup).await?,
             vec![1, 1, 1, 1, 1],
             "corrected retry provisions the invited account once"
         );
@@ -680,26 +1318,29 @@ async fn invitation_signup_invalid_draft_rerenders_localized_form_without_effect
 #[tokio::test]
 async fn invitation_signup_dead_or_unsupported_link_recovers_in_the_selected_locale()
 -> Result<(), Box<dyn Error>> {
-    use sha2::{Digest, Sha256};
     let app = Application::new().await;
     let result = async {
-        super::seed_acceptance(&app).await;
-        app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87003,72002,'invited-signup@example.test','member',$1,74002,now()+interval '7 days',now(),now())",[hex::encode(Sha256::digest("synthetic-signup-invitation".as_bytes())).into()])).await?;
+        let acceptance = super::seed_acceptance(&app).await;
+        let (signup, signup_token, signup_email) =
+            signup_invitation(&app, &acceptance, "member").await?;
         let (cookie, preview) = super::super::platform::form_page(
             &app,
             "",
-            "/invitations/accept?token=synthetic-signup-invitation&lang=es",
+            &format!(
+                "/invitations/accept?token={generated_signup_token}&lang=es",
+                generated_signup_token = signup_token
+            ),
         )
         .await;
         let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
         let mut form = vec![
             ("authenticity_token", csrf.clone()),
             ("credential", "password".to_owned()),
-            ("invitation_token", "synthetic-signup-invitation".to_owned()),
+            ("invitation_token", signup_token.as_str().to_owned()),
             ("lang", "es".to_owned()),
             ("name", "Synthetic invited signup".to_owned()),
             ("date_of_birth", "1992-05-18".to_owned()),
-            ("email", "invited-signup@example.test".to_owned()),
+            ("email", signup_email.as_str().to_owned()),
             ("password", "short".to_owned()),
             ("password-confirm", "short".to_owned()),
         ];
@@ -720,7 +1361,9 @@ async fn invitation_signup_dead_or_unsupported_link_recovers_in_the_selected_loc
             .header("content-type", "application/x-www-form-urlencoded")
             .body(
                 serde_urlencoded::to_string(
-                    form.iter().map(|(k, v)| (*k, v.as_str())).collect::<Vec<_>>(),
+                    form.iter()
+                        .map(|(k, v)| (*k, v.as_str()))
+                        .collect::<Vec<_>>(),
                 )
                 .unwrap(),
             )
@@ -737,17 +1380,22 @@ async fn invitation_signup_dead_or_unsupported_link_recovers_in_the_selected_loc
         );
         assert!(unsupported.contains("Enlace de invitación no disponible"));
         form[3].1 = "es".to_owned();
-        app.fixture
-            .admin
-            .execute_unprepared(
-                "UPDATE household_invitations SET expires_at=now()-interval '1 second' WHERE id=87003",
+        household_invitations::Entity::update_many()
+            .col_expr(
+                household_invitations::Column::ExpiresAt,
+                Expr::val(chrono::Utc::now().naive_utc() - chrono::Duration::seconds(1)),
             )
+            .filter(household_invitations::Column::Id.eq(signup.id))
+            .exec(&app.fixture.admin)
             .await?;
         let expired = super::super::platform::post_form(
             &app,
             &cookie,
             "/create-account",
-            &form.iter().map(|(k, v)| (*k, v.as_str())).collect::<Vec<_>>(),
+            &form
+                .iter()
+                .map(|(k, v)| (*k, v.as_str()))
+                .collect::<Vec<_>>(),
         )
         .await;
         assert_eq!(expired.status(), reqwest::StatusCode::NOT_FOUND);
@@ -755,7 +1403,7 @@ async fn invitation_signup_dead_or_unsupported_link_recovers_in_the_selected_loc
         assert!(expired.contains("<html lang=\"es\""));
         assert!(expired.contains("Enlace de invitación no disponible"));
         assert_eq!(
-            signup_effect_counts(&app, "invited-signup@example.test").await?,
+            signup_effect_counts(&app, &signup_email, &signup).await?,
             vec![0, 0, 0, 0, 0],
             "dead or invalid links never create effects"
         );
@@ -771,24 +1419,34 @@ async fn invitation_acceptance_recovery_chooser_switches_to_the_joined_household
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let result = async {
-        super::seed_acceptance(&app).await;
-        app.fixture.seed_foreign_household(72009).await;
-        app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72010,71999,'Revoked switch household','revoked-switch-72010','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,revoked_at,joined_at,created_at,updated_at) VALUES(74010,72010,73001,'member','revoked',now(),now()-interval '1 day',now(),now())").await?;
+        let acceptance=super::seed_acceptance(&app).await;
+        let foreign=app.fixture.foreign_household().await;
+        let foreign_household=foreign.household.clone();
+        foreign.close().await;
+        let revoked=app.fixture.foreign_household().await;
+        let revoked_household=revoked.household.clone();
+        let now=chrono::Utc::now().naive_utc();
+        household_memberships::ActiveModel {household_id:Set(revoked_household.id),person_id:Set(app.fixture.adult.id),
+            role:Set("member".into()),status:Set("revoked".into()),revoked_at:Set(Some(now)),
+            joined_at:Set(now-chrono::Duration::days(1)),created_at:Set(now),updated_at:Set(now),..Default::default()
+        }.insert(&app.fixture.admin).await?;
+        revoked.close().await;
+
         let cookie = select_first_household(&app).await?;
         let (cookie, preview) = super::super::platform::form_page(
             &app,
             &cookie,
-            "/invitations/accept?token=synthetic-account-invitation&lang=es",
+            &format!("/invitations/accept?token={generated_acceptance_token}&lang=es",generated_acceptance_token=acceptance.token),
         )
         .await;
         let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
-        app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_c4_recovery_switch() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.active_household_id=72002 THEN RAISE EXCEPTION 'synthetic session selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_c4_recovery_switch BEFORE UPDATE OF active_household_id ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_c4_recovery_switch()").await?;
+        app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION reject_c4_recovery_switch() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.active_household_id={generated_72002} THEN RAISE EXCEPTION 'synthetic session selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_c4_recovery_switch BEFORE UPDATE OF active_household_id ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_c4_recovery_switch()",generated_72002=acceptance.target_household.id)).await?;
         let failed = super::super::platform::post_form(
             &app,
             &cookie,
             "/invitations/accept",
             &[
-                ("token", "synthetic-account-invitation"),
+                ("token", acceptance.token.as_str()),
                 ("lang", "es"),
                 ("authenticity_token", &csrf),
             ],
@@ -807,7 +1465,7 @@ async fn invitation_acceptance_recovery_chooser_switches_to_the_joined_household
             recovery.contains("action=\"/invitations/accept\""),
             "retry form remains available"
         );
-        let committed = acceptance_effect_counts(&app).await?;
+        let committed = acceptance_effect_counts(&app,&acceptance).await?;
         assert_eq!(committed.first(), Some(&1), "committed membership");
         let document = scraper::Html::parse_document(&recovery);
         let chooser_link = scraper::Selector::parse("a[href^=\"/households/choose\"]")
@@ -830,24 +1488,24 @@ async fn invitation_acceptance_recovery_chooser_switches_to_the_joined_household
             .await?;
         assert_eq!(
             bounced.url().path(),
-            "/households/persistence-fixture/dashboard",
+            &format!("/households/{generated_slug}/dashboard",generated_slug=app.fixture.household.slug),
             "plain chooser still forwards to the active household dashboard"
         );
         let (cookie, chooser) =
             super::super::platform::form_page(&app, &cookie, &chooser_href).await;
         assert!(
-            chooser.contains("Synthetic invited household")
+            chooser.contains(acceptance.target_household.name.as_str())
                 && chooser.contains("action=\"/households/select\""),
             "chooser lists the newly joined household: {chooser}"
         );
         let chooser_csrf = super::super::platform::hidden_field(&chooser, "authenticity_token");
-        for denied_id in ["72009", "72010", "99999"] {
+        for denied_id in [foreign_household.id.to_string(), revoked_household.id.to_string(), i64::MAX.to_string()] {
             let denied = super::super::platform::post_form(
                 &app,
                 &cookie,
                 "/households/select",
                 &[
-                    ("household_id", denied_id),
+                    ("household_id", denied_id.as_str()),
                     ("authenticity_token", &chooser_csrf),
                 ],
             )
@@ -866,7 +1524,7 @@ async fn invitation_acceptance_recovery_chooser_switches_to_the_joined_household
             .await?;
         assert_eq!(
             still_old.url().path(),
-            "/households/persistence-fixture/dashboard",
+            &format!("/households/{generated_slug}/dashboard",generated_slug=app.fixture.household.slug),
             "denied selections never move the active household"
         );
         app.fixture.admin.execute_unprepared("DROP TRIGGER reject_c4_recovery_switch ON identity_sessions; DROP FUNCTION reject_c4_recovery_switch()").await?;
@@ -874,13 +1532,13 @@ async fn invitation_acceptance_recovery_chooser_switches_to_the_joined_household
             &app,
             &cookie,
             "/households/select",
-            &[("household_id", "72002"), ("authenticity_token", &chooser_csrf)],
+            &[("household_id", acceptance.target_household.id.to_string().as_str()), ("authenticity_token", &chooser_csrf)],
         )
         .await;
         assert_eq!(selected.status(), reqwest::StatusCode::OK);
         assert_eq!(
             selected.url().path(),
-            "/households/synthetic-invited-household/dashboard"
+            &format!("/households/{generated_target_slug}/dashboard",generated_target_slug=acceptance.target_slug)
         );
         let refreshed = app
             .client
@@ -890,18 +1548,20 @@ async fn invitation_acceptance_recovery_chooser_switches_to_the_joined_household
             .await?;
         assert_eq!(
             refreshed.url().path(),
-            "/households/synthetic-invited-household/dashboard",
+            &format!("/households/{generated_target_slug}/dashboard",generated_target_slug=acceptance.target_slug),
             "refresh follows the newly selected household"
         );
         assert_eq!(
-            acceptance_effect_counts(&app).await?,
+            acceptance_effect_counts(&app,&acceptance).await?,
             committed,
             "chooser fallback must not repeat acceptance effects"
         );
         Ok::<_, Box<dyn Error>>(())
     }
     .await;
+    let cleanup=app.fixture.admin.execute_unprepared("DROP TRIGGER IF EXISTS reject_c4_recovery_switch ON public.identity_sessions; DROP FUNCTION IF EXISTS public.reject_c4_recovery_switch()").await;
     app.close().await;
+    cleanup?;
     result
 }
 
@@ -910,37 +1570,101 @@ async fn invitation_acceptance_selection_failure_preserves_join_and_recovers()
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let result = async {
-        super::seed_acceptance(&app).await;
+        let acceptance=super::seed_acceptance(&app).await;
         let cookie = select_first_household(&app).await?;
-        let (cookie, preview) = super::super::platform::form_page(&app, &cookie, "/invitations/accept?token=synthetic-account-invitation&lang=es").await;
+        let (cookie, preview) = super::super::platform::form_page(&app, &cookie, &format!("/invitations/accept?token={generated_acceptance_token}&lang=es",generated_acceptance_token=acceptance.token)).await;
         let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
-        app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_c4_selection() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.active_household_id=72002 THEN RAISE EXCEPTION 'synthetic session selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_c4_selection BEFORE UPDATE OF active_household_id ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_c4_selection()").await?;
-        let failed = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", "synthetic-account-invitation"),("lang", "es"),("authenticity_token", &csrf)]).await;
+        app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION reject_c4_selection() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.active_household_id={generated_72002} THEN RAISE EXCEPTION 'synthetic session selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_c4_selection BEFORE UPDATE OF active_household_id ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_c4_selection()",generated_72002=acceptance.target_household.id)).await?;
+        let failed = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("authenticity_token", &csrf)]).await;
         assert!(!failed.status().is_success(), "selection must fail after join");
         let recovery = failed.text().await?;
         assert!(recovery.contains("Te has unido al hogar"), "honest translated recovery");
-        assert!(recovery.contains("name=\"token\" value=\"synthetic-account-invitation\""));
-        let committed = acceptance_effect_counts(&app).await?;
+        assert!(recovery.contains(&format!("name=\"token\" value=\"{generated_acceptance_token}\"",generated_acceptance_token=acceptance.token)));
+        let committed = acceptance_effect_counts(&app,&acceptance).await?;
         assert_eq!(committed.len(), 4);
         assert_eq!(committed.first(), Some(&1), "committed membership");
         assert_eq!(committed.get(1), Some(&1), "attributed invitation update");
         assert_eq!(committed.get(2), Some(&1), "matching membership-created security audit");
         app.fixture.admin.execute_unprepared("DROP TRIGGER reject_c4_selection ON identity_sessions; DROP FUNCTION reject_c4_selection()").await?;
-        let retry = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", "synthetic-account-invitation"),("lang", "es"),("authenticity_token", &csrf)]).await;
+        let retry = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("authenticity_token", &csrf)]).await;
         assert_eq!(retry.status(), reqwest::StatusCode::OK);
-        assert_eq!(retry.url().path(), "/households/synthetic-invited-household/dashboard");
-        assert_eq!(acceptance_effect_counts(&app).await?, committed, "selection retry does not repeat acceptance effects");
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE household_id=72002 AND person_id=73001").await?;
-        let denied = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", "synthetic-account-invitation"),("lang", "es"),("authenticity_token", &csrf)]).await;
+        assert_eq!(retry.url().path(), &format!("/households/{generated_target_slug}/dashboard",generated_target_slug=acceptance.target_slug));
+        assert_eq!(acceptance_effect_counts(&app,&acceptance).await?, committed, "selection retry does not repeat acceptance effects");
+        app.fixture.admin.execute_raw(app.fixture.admin.get_database_backend().build(&Query::update().table("household_memberships").value("status",Expr::val("revoked")).value("revoked_at",Expr::expr(Func::cust("now"))).and_where(Expr::col("household_id").eq(Expr::val(acceptance.target_household.id)).and(Expr::col("person_id").eq(Expr::val(app.fixture.adult.id)))).to_owned())).await?;
+        let denied = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("authenticity_token", &csrf)]).await;
         assert_eq!(denied.status(), reqwest::StatusCode::NOT_FOUND);
         let denied = denied.text().await?;
         assert!(denied.contains("Enlace de invitación no disponible"));
-        assert_eq!(acceptance_effect_counts(&app).await?, committed, "revoked replay must not restore membership or duplicate effects");
-        let revoked = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT status,revoked_at IS NOT NULL AS revoked FROM household_memberships WHERE household_id=72002 AND person_id=73001")).await?.ok_or_else(|| io::Error::other("missing revoked membership"))?;
+        assert_eq!(acceptance_effect_counts(&app,&acceptance).await?, committed, "revoked replay must not restore membership or duplicate effects");
+        let revoked = app.fixture.admin.query_one_raw(app.fixture.admin.get_database_backend().build(&Query::select().expr(Expr::col("status")).expr_as(Expr::col("revoked_at").is_not_null(),"revoked").from("household_memberships").and_where(Expr::col("household_id").eq(Expr::val(acceptance.target_household.id)).and(Expr::col("person_id").eq(Expr::val(app.fixture.adult.id)))).to_owned())).await?.ok_or_else(|| io::Error::other("missing revoked membership"))?;
         assert_eq!(revoked.try_get::<String>("", "status")?, "revoked");
         assert!(revoked.try_get::<bool>("", "revoked")?);
         Ok::<_, Box<dyn Error>>(())
     }.await;
+    let cleanup=app.fixture.admin.execute_unprepared("DROP TRIGGER IF EXISTS reject_c4_selection ON public.identity_sessions; DROP FUNCTION IF EXISTS public.reject_c4_selection()").await;
     app.close().await;
+    cleanup?;
     result
+}
+
+fn page_email(app: &Application, index: i32) -> String {
+    format!(
+        "browser-page-{index}-{}@example.test",
+        app.fixture.client_uuid
+    )
+}
+fn browser_email(app: &Application, label: &str) -> String {
+    format!(
+        "{}-{}@example.test",
+        label.trim_end_matches("@example.test"),
+        app.fixture.client_uuid
+    )
+}
+async fn local_invitation(
+    app: &Application,
+    label: &str,
+    role: &str,
+    days: i64,
+    age: i64,
+    status: &str,
+) -> Result<household_invitations::Model, DbErr> {
+    let now = chrono::Utc::now().naive_utc();
+    household_invitations::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        email: Set(browser_email(app, label)),
+        membership_role: Set(role.into()),
+        token_digest: Set(uuid::Uuid::new_v4().to_string()),
+        invited_by_membership_id: Set(app.fixture.membership.id),
+        expires_at: Set(now + chrono::Duration::days(days)),
+        accepted_at: Set((status == "accepted").then_some(now)),
+        revoked_at: Set((status == "revoked").then_some(now)),
+        created_at: Set(now - chrono::Duration::days(age)),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+}
+async fn signup_invitation(
+    app: &Application,
+    acceptance: &super::Acceptance,
+    role: &str,
+) -> Result<(household_invitations::Model, String, String), DbErr> {
+    let token = uuid::Uuid::new_v4().to_string();
+    let email = browser_email(app, "invited-signup@example.test");
+    let now = chrono::Utc::now().naive_utc();
+    let invitation = household_invitations::ActiveModel {
+        household_id: Set(acceptance.target_household.id),
+        email: Set(email.clone()),
+        membership_role: Set(role.into()),
+        token_digest: Set(hex::encode(Sha256::digest(token.as_bytes()))),
+        invited_by_membership_id: Set(acceptance.inviter_membership.id),
+        expires_at: Set(now + chrono::Duration::days(7)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await?;
+    Ok((invitation, token, email))
 }

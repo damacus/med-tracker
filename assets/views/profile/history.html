@@ -1,0 +1,18 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="grid gap-6 max-w-4xl">
+  <a class="link" href="/profile">{{ labels.profiles.sections.profile.title }}</a>
+  <h1 class="text-3xl font-semibold">{{ labels.profiles.personal.history }}</h1>
+  <p>{{ labels.profiles.personal.history_description }}</p>
+  <ul class="grid gap-4">
+  {% for record in records %}
+    <li class="card card-body bg-base-100 border border-base-300 gap-2">
+      <h2 class="card-title break-words">{{ record.medicine | default(value=labels.profiles.show.not_set) }}</h2>
+      <p>{{ record.amount | default(value='') }} {{ record.unit | default(value='') }}</p>
+      <p>{{ record.taken_at }}</p>
+    </li>
+  {% else %}<li>{{ labels.profiles.personal.history_empty }}</li>{% endfor %}
+  </ul>
+  {% if next_page %}<a class="btn btn-outline justify-self-start" href="{{ next_page }}">{{ labels.profiles.personal.history_next }}</a>{% endif %}
+</div>
+{% endblock content %}

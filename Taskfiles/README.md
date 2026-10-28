@@ -102,6 +102,7 @@ The shell-free, non-root scratch runtime remains unchanged.
 ```fish
 rtk task test:unit TARGET=med-tracker FILTER=domain_name
 rtk task test:integration TARGET=care_api FILTER=fixture
+rtk task test:integration TARGET=care_doses -- --test care_medications
 rtk task test:browser FILTER=login
 rtk task test:tooling
 rtk task host:fmt
@@ -111,10 +112,43 @@ rtk task host:test:integration TARGET=care_api FILTER=fixture
 
 Unit TARGET selects a package; integration/browser TARGET selects a test binary.
 FILTER is one argument; zero matches fail. Units start no database/storage.
-Integration/browser services belong to the test project; their harness uses
-restricted roles/template databases. Unfiltered integration retains the ignored
+Integration/browser services belong to the test project. Integration uses native
+nextest setup to migrate one UUID-named database and create one restricted runtime
+role per run. Ordinary API tests use generated tenant fixtures in that database
+and fresh Loco application contexts. Tests retain their rows until run cleanup;
+assertions and mutations must use their own returned IDs. Privileged setup stays
+in the test harness; application truncation remains disabled. Task cleans up the
+run-owned database and role on success or failure. Browser journeys retain their
+separate template-cloned fixtures. Unfiltered integration retains the ignored
 cross-process template acceptance. `host:ci` (also `ci`) is the native application
 gate; tooling changes use focused tests and image checks.
+
+Nextest runs four tests concurrently by default. Integration tasks select the
+`api` profile with eight workers; unit and browser tasks retain four. Override
+the native setting for either Docker or host tests, for example:
+
+```fish
+env NEXTEST_TEST_THREADS=2 rtk task test:integration TARGET=care_api FILTER=fixture
+```
+
+Schema, role, catalogue and global queue tests reserve every runner slot through
+native nextest overrides and run first, avoiding repeated waits for other workers
+to finish. Only schema acceptance resets the owned run schema.
+Ordinary tenant tests neither reset it nor create another database. Docker
+compilation remains limited to two jobs. Test concurrency is configured separately.
+
+Ordinary browser setup uses native Better Auth session fixtures. Real sign-in,
+security and quota journeys retain their authentication requests. Authentication
+cases run one at a time in their native nextest group and clear only the synthetic
+source-IP quota at test entry. Ordinary tenant tests can run alongside them;
+authentication cases that also mutate global state still reserve every worker.
+Account quotas stay intact within each journey. Storage fixtures accept loopback
+or the exact `http://rustfs:9000` service when owned Compose storage is enabled;
+synthetic credentials, bucket and URL restrictions remain required.
+
+`MT_TARGET_CACHE` can select an existing compatible Linux target volume for a
+test run. It changes the compiler cache only; networks, databases and processes
+retain their normal project isolation. Cargo supplies its own build-directory lock.
 
 Previous macOS/ARM64 observations (one sample each): cold Cargo install 4m43s,
 Rust edit/install 20.84s, unchanged install 2.08s. These preceded the public-origin

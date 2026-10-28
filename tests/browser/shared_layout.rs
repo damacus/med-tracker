@@ -7,24 +7,31 @@ use sea_orm::ConnectionTrait;
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
 async fn shared_layout_favicon_loads_on_login_and_dashboard() {
-    for (name, width, height) in [("desktop", 1440, 1000), ("mobile", 390, 844)] {
-        harness::journey(Viewport { width, height }, |journey| {
+    harness::journey(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        |journey| {
             Box::pin(async move {
                 let page = &journey.page;
-                page.goto(&format!("{}/login", journey.origin), None)
-                    .await
-                    .unwrap();
                 for screen in ["login", "dashboard"] {
                     if screen == "dashboard" {
                         harness::sign_in(journey).await;
-                        page.goto(
-                            &format!("{}/households/persistence-fixture/dashboard", journey.origin),
-                            None,
-                        )
-                        .await
-                        .unwrap();
                     }
-                    let icon = page.evaluate::<(), serde_json::Value>(r#"async () => {
+                    for (name, width, height) in [("desktop", 1440, 1000), ("mobile", 390, 844)] {
+                        page.set_viewport_size(Viewport { width, height })
+                            .await
+                            .unwrap();
+                        let path = if screen == "login" {
+                            "/login"
+                        } else {
+                            "/households/persistence-fixture/dashboard"
+                        };
+                        page.goto(&format!("{}{path}", journey.origin), None)
+                            .await
+                            .unwrap();
+                        let icon = page.evaluate::<(), serde_json::Value>(r#"async () => {
                         const link = document.querySelector('link[rel="icon"]');
                         if (!link) return null;
                         const response = await fetch(link.href);
@@ -35,15 +42,17 @@ async fn shared_layout_favicon_loads_on_login_and_dashboard() {
                             status: response.status, contentType: response.headers.get('content-type'),
                             width: image.naturalWidth, height: image.naturalHeight};
                     }"#, None).await.unwrap();
-                    assert_eq!(icon, serde_json::json!({
+                        assert_eq!(icon, serde_json::json!({
                         "href": "/favicon.ico", "type": "image/png", "status": 200,
                         "contentType": "image/png", "width": 512, "height": 512
                     }), "{screen} at {width}px");
-                    capture(page, &format!("favicon-{screen}-{name}")).await;
+                        capture(page, &format!("favicon-{screen}-{name}")).await;
+                    }
                 }
             })
-        }).await;
-    }
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -352,15 +361,15 @@ async fn shared_layout_search_handles_rapid_escape_and_queued_dialog_close() {
             search.focus();
             search.click();
             const rapidBefore=document.activeElement===input?'input':'opener';
-            document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
-            const rapid={closed:panel.hidden,restored:document.activeElement===search,before:rapidBefore};
+            panel.dispatchEvent(new Event('cancel',{cancelable:true}));
+            const rapid={closed:!panel.open,restored:document.activeElement===search,before:rapidBefore};
             panel.querySelector('[data-global-search-close]').click();
             account.click();
             const closed=new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
             document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
             input.focus();
             await closed;
-            const queued={closed:panel.hidden,inputFocused:document.activeElement===input,dialogClosed:!dialog.open};
+            const queued={closed:!panel.open,inputFocused:document.activeElement===input,dialogClosed:!dialog.matches(':popover-open')};
             return {rapid,queued,focus};
         }"#,None).await.unwrap();
         assert_eq!(observed["rapid"]["closed"],true,"{observed}");

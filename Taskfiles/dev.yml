@@ -4,6 +4,7 @@ vars:
 includes:
   internal:
     taskfile: compose.yml
+    dir: ..
     internal: true
 tasks:
   up:

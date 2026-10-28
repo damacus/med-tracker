@@ -1,3 +1,4 @@
+pub(crate) mod account_profile;
 pub(crate) mod avatar;
 mod export;
 mod notifications;

@@ -33,7 +33,6 @@ pub async fn registration_open(
 pub struct SignupInvitationContext {
     account_id: i64,
     person_id: i64,
-    user_id: i64,
     email: String,
 }
 
@@ -43,9 +42,6 @@ impl SignupInvitationContext {
     }
     pub(crate) fn person_id(&self) -> i64 {
         self.person_id
-    }
-    pub(crate) fn user_id(&self) -> i64 {
-        self.user_id
     }
     pub(crate) fn email(&self) -> &str {
         &self.email

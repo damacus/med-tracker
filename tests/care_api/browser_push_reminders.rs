@@ -10,6 +10,322 @@ use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 use std::sync::{Arc, Mutex};
 use tokio::sync::Notify;
 
+use med_tracker::models::_entities::{accounts, people, person_access_grants, schedules};
+use sea_orm::sea_query::{Alias, Expr, ExprTrait, Func, Query};
+use sea_orm::{ColumnTrait, ConnectionTrait, QueryFilter, Statement, TransactionTrait};
+
+async fn account_for(app: &Application, name: &str) -> accounts::Model {
+    accounts::Entity::find()
+        .filter(accounts::Column::PersonId.eq(participant_named(app, name).await.id))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+}
+async fn participant_named(app: &Application, name: &str) -> people::Model {
+    people::Entity::find()
+        .filter(people::Column::PortableId.eq(format!("{}-{name}", app.fixture.client_uuid)))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+}
+async fn schedule_for(app: &Application, person: i64) -> schedules::Model {
+    schedules::Entity::find()
+        .filter(schedules::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(schedules::Column::PersonId.eq(person))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+}
+async fn grant_for(app: &Application, person: i64) -> person_access_grants::Model {
+    person_access_grants::Entity::find()
+        .filter(person_access_grants::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(person_access_grants::Column::HouseholdMembershipId.eq(app.fixture.membership.id))
+        .filter(person_access_grants::Column::PersonId.eq(person))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+}
+async fn take_for(app: &Application) -> medication_takes::Model {
+    medication_takes::Entity::find()
+        .filter(medication_takes::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(medication_takes::Column::PersonMedicationId.eq(app.fixture.assignment.id))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+}
+fn pending_take_id(app: &Application) -> i64 {
+    i64::from_be_bytes(app.fixture.client_uuid.as_bytes()[..8].try_into().unwrap()).saturating_abs()
+}
+
+async fn own_recipients(
+    app: &Application,
+    now: chrono::DateTime<Utc>,
+) -> Result<Vec<browser_push::scheduler::ReminderRun>, med_tracker::models::errors::OperationError>
+{
+    let runs = browser_push::scheduler::recipients(&app.context, now).await?;
+    Ok(runs
+        .into_iter()
+        .filter(|run| {
+            run.account_id == app.fixture.account.id && run.household_id == app.fixture.household.id
+        })
+        .collect())
+}
+fn scoped_count(table: &str, condition: Expr) -> Expr {
+    Query::select()
+        .expr(Expr::col("id").count())
+        .from(Alias::new(table.to_owned()))
+        .and_where(condition)
+        .to_owned()
+        .into()
+}
+fn delivery_query(app: &Application, id: Option<i64>) -> Statement {
+    let mut query = Query::select();
+    query
+        .columns([
+            ("d", "id"),
+            ("d", "status"),
+            ("d", "outcome"),
+            ("d", "attempt_count"),
+            ("d", "next_attempt_at"),
+        ])
+        .expr_as(
+            Query::select()
+                .column("sent_at")
+                .from("notification_events")
+                .and_where(Expr::col("id").eq(Expr::col(("d", "notification_event_id"))))
+                .to_owned(),
+            "sent_at",
+        )
+        .expr_as(
+            Query::select()
+                .column("actor_membership_id")
+                .from("security_audit_events")
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("event_type").eq("browser_push.reminder.invalid"))
+                .and_where(
+                    Func::cust("jsonb_extract_path_text")
+                        .args([Expr::col("metadata"), Expr::val("delivery_id")])
+                        .eq(Expr::col(("d", "id")).cast_as(Alias::new("text"))),
+                )
+                .limit(1)
+                .to_owned(),
+            "actor_membership_id",
+        )
+        .expr_as(
+            Query::select()
+                .column("actor_account_id")
+                .from("security_audit_events")
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("event_type").eq("browser_push.reminder.invalid"))
+                .and_where(
+                    Func::cust("jsonb_extract_path_text")
+                        .args([Expr::col("metadata"), Expr::val("delivery_id")])
+                        .eq(Expr::col(("d", "id")).cast_as(Alias::new("text"))),
+                )
+                .limit(1)
+                .to_owned(),
+            "actor_account_id",
+        )
+        .expr_as(
+            scoped_count(
+                "push_subscriptions",
+                Expr::col("account_id").eq(Expr::col(("d", "account_id"))),
+            )
+            .gt(0),
+            "subscribed",
+        )
+        .expr_as(
+            scoped_count(
+                "security_audit_events",
+                Expr::col("household_id")
+                    .eq(app.fixture.household.id)
+                    .and(Expr::col("event_type").eq("browser_push.reminder.completed"))
+                    .and(
+                        Func::cust("jsonb_extract_path_text")
+                            .args([Expr::col("metadata"), Expr::val("delivery_id")])
+                            .eq(Expr::col(("d", "id")).cast_as(Alias::new("text"))),
+                    ),
+            )
+            .gt(0),
+            "audited",
+        )
+        .from_as("notification_deliveries", "d")
+        .and_where(Expr::col(("d", "household_id")).eq(app.fixture.household.id))
+        .and_where(Expr::col(("d", "account_id")).eq(app.fixture.account.id))
+        .order_by(("d", "id"), sea_orm::Order::Asc);
+    if let Some(id) = id {
+        query.and_where(Expr::col(("d", "id")).eq(id));
+    }
+    app.fixture.admin.get_database_backend().build(&query)
+}
+fn delivery_counts(app: &Application) -> Statement {
+    let own = Expr::col("household_id")
+        .eq(app.fixture.household.id)
+        .and(Expr::col("account_id").eq(app.fixture.account.id));
+    let query = Query::select()
+        .expr_as(
+            scoped_count(
+                "notification_deliveries",
+                own.clone().and(Expr::col("status").eq("accepted")),
+            ),
+            "accepted",
+        )
+        .expr_as(
+            scoped_count(
+                "notification_deliveries",
+                own.clone().and(Expr::col("status").eq("invalid")),
+            ),
+            "invalid",
+        )
+        .expr_as(
+            scoped_count(
+                "notification_deliveries",
+                own.and(Expr::col("status").eq("pending"))
+                    .and(Expr::col("attempt_count").eq(1)),
+            ),
+            "retryable",
+        )
+        .to_owned();
+    app.fixture.admin.get_database_backend().build(&query)
+}
+fn event_query(
+    app: &Application,
+    kind: Option<&str>,
+    when: Option<chrono::NaiveDateTime>,
+    aggregate: bool,
+    status: Option<&str>,
+) -> Statement {
+    let mut query = Query::select();
+    query
+        .from("notification_events")
+        .and_where(Expr::col("household_id").eq(app.fixture.household.id));
+    if aggregate {
+        query
+            .expr_as(Expr::col("id").count(), "count")
+            .expr_as(Expr::col("id").count(), "total")
+            .expr_as(Func::count_distinct(Expr::col("event_key")), "keys");
+    } else {
+        query
+            .columns(["id", "person_id", "event_key", "intended_at", "expires_at"])
+            .order_by("person_id", sea_orm::Order::Asc);
+    }
+    if let Some(kind) = kind {
+        query.and_where(Expr::col("event_type").eq(kind));
+    }
+    if let Some(when) = when {
+        query.and_where(Expr::col("intended_at").eq(when));
+    }
+    if let Some(status) = status {
+        query.and_where(
+            Func::cust("jsonb_extract_path_text")
+                .args([Expr::col("metadata"), Expr::val("delivery_status")])
+                .eq(status),
+        );
+        if status == "accepted" {
+            query.and_where(Expr::col("sent_at").is_not_null());
+        }
+    }
+    app.fixture.admin.get_database_backend().build(&query)
+}
+fn audit_query(app: &Application, kind: &str, delivery: Option<i64>) -> Statement {
+    let mut query = Query::select();
+    query
+        .expr_as(Expr::col("id").count(), "count")
+        .expr_as(Expr::col("id").count().gt(0), "audited")
+        .from("security_audit_events")
+        .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+        .and_where(Expr::col("event_type").eq(kind));
+    if let Some(delivery) = delivery {
+        query.and_where(
+            Func::cust("jsonb_extract_path_text")
+                .args([Expr::col("metadata"), Expr::val("delivery_id")])
+                .eq(delivery.to_string()),
+        );
+    }
+    app.fixture.admin.get_database_backend().build(&query)
+}
+fn update_deliveries(
+    app: &Application,
+    fields: Vec<(&str, Expr)>,
+    status: Option<&str>,
+) -> Statement {
+    let mut query = Query::update();
+    query
+        .table("notification_deliveries")
+        .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+        .and_where(Expr::col("account_id").eq(app.fixture.account.id));
+    for (column, value) in fields {
+        query.value(Alias::new(column.to_owned()), value);
+    }
+    if let Some(status) = status {
+        query.and_where(Expr::col("status").eq(status));
+    }
+    app.fixture.admin.get_database_backend().build(&query)
+}
+fn update_events(app: &Application, expiry: chrono::NaiveDateTime) -> Statement {
+    let query = Query::update()
+        .table("notification_events")
+        .value("expires_at", expiry)
+        .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+        .to_owned();
+    app.fixture.admin.get_database_backend().build(&query)
+}
+fn update_preference(app: &Application, column: &str, value: Expr) -> Statement {
+    let query = Query::update()
+        .table("notification_preferences")
+        .value(Alias::new(column.to_owned()), value)
+        .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+        .and_where(Expr::col("person_id").eq(app.fixture.adult.id))
+        .to_owned();
+    app.fixture.admin.get_database_backend().build(&query)
+}
+async fn backend_pid(db: &impl ConnectionTrait) -> i32 {
+    let query = Query::select()
+        .expr_as(Func::cust("pg_backend_pid"), "pid")
+        .to_owned();
+    db.query_one_raw(db.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "pid")
+        .unwrap()
+}
+fn blocking_query(
+    app: &Application,
+    table: Option<&str>,
+    holder: Option<i32>,
+    waiter: Option<i32>,
+) -> Statement {
+    let mut inner = Query::select();
+    inner
+        .expr(Expr::col("pid").count())
+        .from("pg_stat_activity")
+        .and_where(Expr::col("datname").eq(Func::cust("current_database")))
+        .and_where(Expr::col("wait_event_type").eq("Lock"));
+    if let Some(pid) = holder {
+        inner.and_where(
+            Expr::val(pid).eq(sea_orm::sea_query::extension::postgres::PgFunc::any(
+                Func::cust("pg_blocking_pids").arg(Expr::col("pid")),
+            )),
+        );
+    }
+    if let Some(pid) = waiter {
+        inner.and_where(Expr::col("pid").eq(pid));
+    }
+    if let Some(table) = table {
+        inner.and_where(Expr::col("query").like(format!("%{table}%")));
+    }
+    let query = Query::select()
+        .expr_as(Expr::from(inner.to_owned()).gt(0), "waiting")
+        .to_owned();
+    app.fixture.admin.get_database_backend().build(&query)
+}
+
 #[tokio::test]
 async fn browser_reminder_terminal_cleanup_audit_failure_is_atomic() {
     let app = Application::new().await;
@@ -25,32 +341,42 @@ async fn browser_reminder_terminal_cleanup_audit_failure_is_atomic() {
     browser_push::reminders::deliver_account(&app.context, &scope, now)
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships AS membership SET revoked_at=now() FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id; CREATE FUNCTION public.reject_browser_cleanup_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.reminder.invalid' THEN RAISE EXCEPTION 'synthetic cleanup audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_cleanup_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_cleanup_audit()").await.unwrap();
-    assert!(
-        browser_push::scheduler::recipients(&app.context, Utc::now())
-            .await
-            .is_err()
+    let fault = format!(
+        "reject_browser_cleanup_audit_{}",
+        uuid::Uuid::new_v4().simple()
     );
+    app.fixture
+        .admin
+        .execute_raw(authority_query(&app, AuthorityChange::Membership))
+        .await
+        .unwrap();
+    // SeaORM has no trigger, PL/pgSQL function or GRANT/REVOKE builder.
+    let household_id = app.fixture.household.id;
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION public.{fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.household_id={household_id} AND NEW.event_type='browser_push.reminder.invalid' THEN RAISE EXCEPTION 'synthetic cleanup audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.{fault}()")).await.unwrap();
+    assert!(own_recipients(&app, Utc::now()).await.is_err());
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
     assert_eq!(row.try_get::<String>("", "status").unwrap(), "pending");
     app.fixture
         .admin
-        .execute_unprepared("DROP TRIGGER reject_browser_cleanup_audit ON security_audit_events")
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON security_audit_events; DROP FUNCTION public.{fault}()"
+        ))
         .await
         .unwrap();
-    browser_push::scheduler::recipients(&app.context, Utc::now())
+    own_recipients(&app, Utc::now()).await.unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(delivery_query(&app, None))
         .await
+        .unwrap()
         .unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT d.status,a.actor_membership_id,a.actor_account_id FROM notification_deliveries d JOIN security_audit_events a ON (a.metadata->>'delivery_id')::bigint=d.id WHERE a.event_type='browser_push.reminder.invalid'")).await.unwrap().unwrap();
     assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
     assert_eq!(
         row.try_get::<Option<i64>>("", "actor_membership_id")
@@ -75,9 +401,18 @@ async fn browser_reminder_profile_update_uses_same_lock_order() {
         transport: Arc::new(Reminders(Mutex::new(vec![]))),
     });
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+    let holder = backend_pid(tenant.transaction()).await;
     tenant
         .transaction()
-        .execute_unprepared("SELECT id FROM accounts WHERE id=71001 FOR NO KEY UPDATE")
+        .execute_raw({
+            let query = Query::select()
+                .column("id")
+                .from("accounts")
+                .and_where(Expr::col("id").eq(app.fixture.account.id))
+                .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     let ctx = app.context.clone();
@@ -87,14 +422,24 @@ async fn browser_reminder_profile_update_uses_same_lock_order() {
         );
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
-            let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%accounts%') AS waiting")).await.unwrap().unwrap();
-            if row.try_get::<bool>("", "waiting").unwrap() { break; }
+            let row = app
+                .fixture
+                .admin
+                .query_one_raw(blocking_query(&app, Some("accounts"), Some(holder), None))
+                .await
+                .unwrap()
+                .unwrap();
+            if row.try_get::<bool>("", "waiting").unwrap() {
+                break;
+            }
             tokio::task::yield_now().await;
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
     let updated = profile::update(
         &tenant,
-        71001,
+        app.fixture.account.id,
         profile::Changes {
             date_of_birth: Some(chrono::NaiveDate::from_ymd_opt(1990, 1, 1).unwrap()),
             ..Default::default()
@@ -117,9 +462,9 @@ async fn browser_reminder_profile_update_uses_same_lock_order() {
 #[tokio::test]
 async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
     for mutation in [
-        "UPDATE household_memberships AS membership SET revoked_at=now() FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id",
-        "UPDATE accounts SET status=3 WHERE id=71001",
-        "UPDATE households SET status='archived',lifecycle_state='offboarded' WHERE id=72001",
+        AuthorityChange::Membership,
+        AuthorityChange::Account,
+        AuthorityChange::Household,
     ] {
         let app = Application::new().await;
         let (now, scope) = prepare_due_delivery(&app, "synthetic-lifecycle").await;
@@ -137,17 +482,22 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
             browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
         });
         transport.started.notified().await;
-        let withdrawal = if mutation.contains("memberships") {
+        let mut waiter = None;
+        let withdrawal = if matches!(mutation, AuthorityChange::Membership) {
             app.fixture
                 .admin
-                .execute_unprepared(mutation)
+                .execute_raw(authority_query(&app, mutation))
                 .await
                 .unwrap();
             None
         } else {
-            let admin = app.fixture.admin.clone();
+            let admin = app.fixture.admin.begin().await.unwrap();
+            waiter = Some(backend_pid(&admin).await);
+            let query = authority_query(&app, mutation);
             Some(tokio::spawn(async move {
-                admin.execute_unprepared(mutation).await
+                let result = admin.execute_raw(query).await;
+                admin.commit().await?;
+                result
             }))
         };
         if withdrawal.is_some() {
@@ -155,10 +505,7 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
             tokio::time::timeout(std::time::Duration::from_secs(10), async {
                 loop {
                     let row = owner
-                        .query_one_raw(Statement::from_string(
-                            DbBackend::Postgres,
-                            "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock') AS waiting",
-                        ))
+                        .query_one_raw(blocking_query(&app, None, None, waiter))
                         .await
                         .unwrap()
                         .unwrap();
@@ -170,7 +517,6 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
             })
             .await
             .unwrap();
-            owner.close().await.unwrap();
         }
         transport.release.notify_one();
         let _ = sender.await.unwrap();
@@ -181,10 +527,25 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
                 .unwrap()
                 .unwrap();
         }
-        app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET claimed_at=now()-interval '121 seconds' WHERE status='sending'").await.unwrap();
-        let runs = browser_push::scheduler::recipients(&app.context, Utc::now())
+        app.fixture
+            .admin
+            .execute_raw({
+                let query = Query::update()
+                    .table("notification_deliveries")
+                    .value(
+                        "claimed_at",
+                        Func::cust("now")
+                            .sub(Expr::val("121 seconds").cast_as(Alias::new("interval"))),
+                    )
+                    .and_where(Expr::col("status").eq(Expr::val("sending")))
+                    .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                    .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                    .to_owned();
+                app.fixture.admin.get_database_backend().build(&query)
+            })
             .await
             .unwrap();
+        let runs = own_recipients(&app, Utc::now()).await.unwrap();
         for run in runs {
             use loco_rs::bgworker::BackgroundWorker;
             browser_push::scheduler::ReminderWorker::build(&app.context)
@@ -195,16 +556,50 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
         let row = app
             .fixture
             .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
-            ))
+            .query_one_raw(delivery_query(&app, None))
             .await
             .unwrap()
             .unwrap();
         assert_eq!(row.try_get::<String>("", "status").unwrap(), "uncertain");
         assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 1);
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships AS membership SET revoked_at=NULL FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
+        async {
+            let query = Query::update()
+                .table("household_memberships")
+                .value(
+                    "revoked_at",
+                    Expr::val(Option::<chrono::NaiveDateTime>::None),
+                )
+                .and_where(Expr::col("person_id").eq(app.fixture.adult.id))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            let _ = app
+                .fixture
+                .admin
+                .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+                .await?;
+            let query = Query::update()
+                .table("accounts")
+                .value("status", Expr::val(2))
+                .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+                .to_owned();
+            let _ = app
+                .fixture
+                .admin
+                .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+                .await?;
+            let query = Query::update()
+                .table("households")
+                .value("status", Expr::val("active"))
+                .value("lifecycle_state", Expr::val("active"))
+                .and_where(Expr::col("id").eq(Expr::val(app.fixture.household.id)))
+                .to_owned();
+            app.fixture
+                .admin
+                .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+                .await
+        }
+        .await
+        .unwrap();
         assert_eq!(
             browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
                 .await
@@ -218,9 +613,9 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
 #[tokio::test]
 async fn browser_reminder_lifecycle_revocation_invalidates_pending() {
     for mutation in [
-        "UPDATE household_memberships AS membership SET revoked_at=now() FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id",
-        "UPDATE accounts SET status=3 WHERE id=71001",
-        "UPDATE households SET status='archived',lifecycle_state='offboarded' WHERE id=72001",
+        AuthorityChange::Membership,
+        AuthorityChange::Account,
+        AuthorityChange::Household,
     ] {
         let app = Application::new().await;
         let (now, scope) = prepare_due_delivery(&app, "synthetic-lifecycle-pending").await;
@@ -237,28 +632,26 @@ async fn browser_reminder_lifecycle_revocation_invalidates_pending() {
             .unwrap();
         app.fixture
             .admin
-            .execute_unprepared(mutation)
+            .execute_raw(authority_query(&app, mutation))
             .await
             .unwrap();
+        let foreign = app.fixture.foreign_household().await;
+        let foreign_id = foreign.household.id;
+        foreign.close().await;
         let other_scope = HouseholdScope {
-            household_id: 72002,
+            household_id: foreign_id,
             ..scope.clone()
         };
         let _ = browser_push::reminders::deliver_account(&app.context, &other_scope, now).await;
         let row = app
             .fixture
             .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT status FROM notification_deliveries WHERE household_id=72001 LIMIT 1",
-            ))
+            .query_one_raw(delivery_query(&app, None))
             .await
             .unwrap()
             .unwrap();
         assert_eq!(row.try_get::<String>("", "status").unwrap(), "pending");
-        let runs = browser_push::scheduler::recipients(&app.context, Utc::now())
-            .await
-            .unwrap();
+        let runs = own_recipients(&app, Utc::now()).await.unwrap();
         for run in runs {
             use loco_rs::bgworker::BackgroundWorker;
             browser_push::scheduler::ReminderWorker::build(&app.context)
@@ -269,15 +662,49 @@ async fn browser_reminder_lifecycle_revocation_invalidates_pending() {
         let row = app
             .fixture
             .admin
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT status FROM notification_deliveries LIMIT 1",
-            ))
+            .query_one_raw(delivery_query(&app, None))
             .await
             .unwrap()
             .unwrap();
         assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships AS membership SET revoked_at=NULL FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
+        async {
+            let query = Query::update()
+                .table("household_memberships")
+                .value(
+                    "revoked_at",
+                    Expr::val(Option::<chrono::NaiveDateTime>::None),
+                )
+                .and_where(Expr::col("person_id").eq(app.fixture.adult.id))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            let _ = app
+                .fixture
+                .admin
+                .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+                .await?;
+            let query = Query::update()
+                .table("accounts")
+                .value("status", Expr::val(2))
+                .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+                .to_owned();
+            let _ = app
+                .fixture
+                .admin
+                .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+                .await?;
+            let query = Query::update()
+                .table("households")
+                .value("status", Expr::val("active"))
+                .value("lifecycle_state", Expr::val("active"))
+                .and_where(Expr::col("id").eq(Expr::val(app.fixture.household.id)))
+                .to_owned();
+            app.fixture
+                .admin
+                .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+                .await
+        }
+        .await
+        .unwrap();
         browser_push::reminders::deliver_account(&app.context, &scope, now)
             .await
             .unwrap();
@@ -375,17 +802,30 @@ async fn browser_reminder_stale_selected_candidate_cannot_bypass_retry_time() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT id FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
     let id = row.try_get::<i64>("", "id").unwrap();
     let selected_by_both_drainers = [id];
     let retry_clock = now + chrono::Duration::minutes(2);
-    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET next_attempt_at=now()-interval '1 second' WHERE status='pending'").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_deliveries")
+                .value(
+                    "next_attempt_at",
+                    Func::cust("now").sub(Expr::val("1 second").cast_as(Alias::new("interval"))),
+                )
+                .and_where(Expr::col("status").eq(Expr::val("pending")))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     assert_eq!(
         browser_push::reminders::drain_candidates(
             &app.context,
@@ -411,11 +851,7 @@ async fn browser_reminder_stale_selected_candidate_cannot_bypass_retry_time() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status,attempt_count,next_attempt_at FROM notification_deliveries WHERE id=$1",
-            [id.into()],
-        ))
+        .query_one_raw(delivery_query(&app, Some(id)))
         .await
         .unwrap()
         .unwrap();
@@ -434,7 +870,35 @@ async fn browser_reminder_stale_selected_candidate_cannot_bypass_retry_time() {
 async fn browser_reminder_refreshes_clock_between_device_sends() {
     let app = Application::new().await;
     let (now, scope) = prepare_due_delivery(&app, "synthetic-batch-expiry").await;
-    app.fixture.admin.execute_unprepared("INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/second','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("push_subscriptions")
+                .columns([
+                    "account_id",
+                    "endpoint",
+                    "p256dh",
+                    "auth",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.account.id),
+                    Expr::val(format!(
+                        "https://fcm.googleapis.com/fcm/send/{}/second",
+                        app.fixture.client_uuid
+                    )),
+                    Expr::val("synthetic"),
+                    Expr::val("synthetic"),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(FirstBlockedDelivery {
         started: Notify::new(),
         release: Notify::new(),
@@ -452,18 +916,22 @@ async fn browser_reminder_refreshes_clock_between_device_sends() {
     transport.started.notified().await;
     app.fixture
         .admin
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE notification_events SET expires_at=$1 WHERE event_key LIKE 'browser:%'",
-            [(now - chrono::Duration::seconds(1)).naive_utc().into()],
+        .execute_raw(update_events(
+            &app,
+            (now - chrono::Duration::seconds(1)).naive_utc(),
         ))
         .await
         .unwrap();
     transport.release.notify_one();
     assert_eq!(sender.await.unwrap().unwrap(), 1);
     assert_eq!(transport.calls.lock().unwrap().len(), 1);
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) FILTER (WHERE status='accepted') AS accepted,count(*) FILTER (WHERE status='invalid') AS invalid FROM notification_deliveries")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(delivery_counts(&app))
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<i64>("", "accepted").unwrap(), 1);
     assert_eq!(row.try_get::<i64>("", "invalid").unwrap(), 1);
     app.close().await;
@@ -487,7 +955,38 @@ async fn browser_reminder_ttl_uses_remaining_lifetime_at_send() {
             .unwrap(),
         0
     );
-    app.fixture.admin.execute_unprepared("UPDATE notification_events SET expires_at=now()+interval '100 seconds' WHERE event_key LIKE 'browser:%'; UPDATE notification_deliveries SET next_attempt_at=now()-interval '10 minutes' WHERE status='pending'").await.unwrap();
+    async {
+        let query = Query::update()
+            .table("notification_events")
+            .value(
+                "expires_at",
+                Func::cust("now").add(Expr::val("100 seconds").cast_as(Alias::new("interval"))),
+            )
+            .and_where(Expr::col("event_key").like("browser:%"))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::update()
+            .table("notification_deliveries")
+            .value(
+                "next_attempt_at",
+                Func::cust("now").sub(Expr::val("10 minutes").cast_as(Alias::new("interval"))),
+            )
+            .and_where(Expr::col("status").eq(Expr::val("pending")))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
     let transport = Arc::new(TtlCapture(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -506,10 +1005,7 @@ async fn browser_reminder_ttl_uses_remaining_lifetime_at_send() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT expires_at FROM notification_events WHERE event_key LIKE 'browser:%' LIMIT 1",
-        ))
+        .query_one_raw(event_query(&app, None, None, false, None))
         .await
         .unwrap()
         .unwrap();
@@ -545,14 +1041,113 @@ async fn prepare_due_delivery(
         .unwrap()
         .with_nanosecond(0)
         .unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::update()
+            .table("person_medications")
+            .value("administration_kind", Expr::val(0))
+            .value("dose_cycle", Expr::val(0))
+            .value("max_daily_doses", Expr::val(1))
+            .value(
+                "created_at",
+                Func::cust("now").sub(Expr::val("2 days").cast_as(Alias::new("interval"))),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.assignment.id)))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/failed",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("notification_preferences")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "enabled",
+                    "dose_due_enabled",
+                    "missed_dose_enabled",
+                    "low_stock_enabled",
+                    "private_text_enabled",
+                    "morning_time",
+                    "afternoon_time",
+                    "evening_time",
+                    "night_time",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val(true),
+                    Expr::val(true),
+                    Expr::val(false),
+                    Expr::val(false),
+                    Expr::val(true),
+                    Expr::val(now.time()),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     (
         now,
         HouseholdScope {
-            actor: Actor { account_id: 71001 },
-            household_id: 72001,
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
             request_id: request_id.into(),
         },
     )
@@ -563,7 +1158,23 @@ async fn assert_pending_reminder_invalid_after_change(
     scope: &HouseholdScope,
     transport: &ScriptedDelivery,
 ) {
-    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET next_attempt_at=now()-interval '1 second' WHERE status='pending'").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_deliveries")
+                .value(
+                    "next_attempt_at",
+                    Func::cust("now").sub(Expr::val("1 second").cast_as(Alias::new("interval"))),
+                )
+                .and_where(Expr::col("status").eq(Expr::val("pending")))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     assert_eq!(
         browser_push::reminders::drain_pending(&app.context, scope, Utc::now())
             .await
@@ -573,10 +1184,7 @@ async fn assert_pending_reminder_invalid_after_change(
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,outcome,attempt_count FROM notification_deliveries",
-        ))
+        .query_one_raw(delivery_query(app, None))
         .await
         .unwrap()
         .unwrap();
@@ -609,16 +1217,107 @@ async fn browser_reminder_stops_pending_delivery_after_dose_outcome() {
             0
         );
         if outcome == "taken" {
-            app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84991,72001,81001,2,'tablet',now(),now(),now())").await.unwrap();
-            app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-                "INSERT INTO medication_dose_occurrences(id,household_id,person_medication_id,medication_take_id,window_starts_on,window_ends_on,position,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(85991,72001,81001,84991,$1,$1,1,'taken',now(),74001,now(),now())",
-                [now.date_naive().into()]
-            )).await.unwrap();
+            app.fixture
+                .admin
+                .execute_raw({
+                    let query = Query::insert()
+                        .into_table("medication_takes")
+                        .columns([
+                            "household_id",
+                            "person_medication_id",
+                            "dose_amount",
+                            "dose_unit",
+                            "taken_at",
+                            "created_at",
+                            "updated_at",
+                        ])
+                        .values_panic([
+                            Expr::val(app.fixture.household.id),
+                            Expr::val(app.fixture.assignment.id),
+                            Expr::val(2),
+                            Expr::val("tablet"),
+                            Func::cust("now").into(),
+                            Func::cust("now").into(),
+                            Func::cust("now").into(),
+                        ])
+                        .to_owned();
+                    app.fixture.admin.get_database_backend().build(&query)
+                })
+                .await
+                .unwrap();
+            app.fixture
+                .admin
+                .execute_raw({
+                    let query = Query::insert()
+                        .into_table("medication_dose_occurrences")
+                        .columns([
+                            "household_id",
+                            "person_medication_id",
+                            "medication_take_id",
+                            "window_starts_on",
+                            "window_ends_on",
+                            "position",
+                            "outcome",
+                            "resolved_at",
+                            "resolved_by_membership_id",
+                            "created_at",
+                            "updated_at",
+                        ])
+                        .values_panic([
+                            Expr::val(app.fixture.household.id),
+                            Expr::val(app.fixture.assignment.id),
+                            Expr::val(take_for(&app).await.id),
+                            Expr::val(now.date_naive()),
+                            Expr::val(now.date_naive()),
+                            Expr::val(1),
+                            Expr::val("taken"),
+                            Func::cust("now").into(),
+                            Expr::val(app.fixture.membership.id),
+                            Func::cust("now").into(),
+                            Func::cust("now").into(),
+                        ])
+                        .to_owned();
+                    app.fixture.admin.get_database_backend().build(&query)
+                })
+                .await
+                .unwrap();
         } else {
-            app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-                "INSERT INTO medication_dose_occurrences(id,household_id,person_medication_id,window_starts_on,window_ends_on,position,outcome,reason,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(85991,72001,81001,$1,$1,1,'not_taken','other',now(),74001,now(),now())",
-                [now.date_naive().into()]
-            )).await.unwrap();
+            app.fixture
+                .admin
+                .execute_raw({
+                    let query = Query::insert()
+                        .into_table("medication_dose_occurrences")
+                        .columns([
+                            "household_id",
+                            "person_medication_id",
+                            "window_starts_on",
+                            "window_ends_on",
+                            "position",
+                            "outcome",
+                            "reason",
+                            "resolved_at",
+                            "resolved_by_membership_id",
+                            "created_at",
+                            "updated_at",
+                        ])
+                        .values_panic([
+                            Expr::val(app.fixture.household.id),
+                            Expr::val(app.fixture.assignment.id),
+                            Expr::val(now.date_naive()),
+                            Expr::val(now.date_naive()),
+                            Expr::val(1),
+                            Expr::val("not_taken"),
+                            Expr::val("other"),
+                            Func::cust("now").into(),
+                            Expr::val(app.fixture.membership.id),
+                            Func::cust("now").into(),
+                            Func::cust("now").into(),
+                        ])
+                        .to_owned();
+                    app.fixture.admin.get_database_backend().build(&query)
+                })
+                .await
+                .unwrap();
         }
         assert_pending_reminder_invalid_after_change(&app, &scope, &transport).await;
         app.close().await;
@@ -631,13 +1330,62 @@ async fn browser_reminder_stops_pending_delivery_after_schedule_pause() {
     let (now, scope) = prepare_due_delivery(&app, "synthetic-schedule-pause").await;
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_medications SET active=false WHERE id=81001")
+        .execute_raw({
+            let query = Query::update()
+                .table("person_medications")
+                .value("active", Expr::val(false))
+                .and_where(Expr::col("id").eq(Expr::val(app.fixture.assignment.id)))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83091,72001,73001,80001,true,$1,$1,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($2::text)),now()-interval '2 days',now())",
-        [now.date_naive().into(), now.format("%H:%M").to_string().into()]
-    )).await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("schedules")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "medication_id",
+                    "active",
+                    "start_date",
+                    "end_date",
+                    "dose_amount",
+                    "dose_unit",
+                    "schedule_type",
+                    "schedule_config",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val(app.fixture.medication.id),
+                    Expr::val(true),
+                    Expr::val(now.date_naive()),
+                    Expr::val(now.date_naive()),
+                    Expr::val(2),
+                    Expr::val("tablet"),
+                    Expr::val(0),
+                    Func::cust("jsonb_build_object")
+                        .args([
+                            Expr::val("times"),
+                            Func::cust("jsonb_build_array")
+                                .args([Expr::val(now.format("%H:%M").to_string())])
+                                .into(),
+                        ])
+                        .into(),
+                    Func::cust("now").sub(Expr::val("2 days").cast_as(Alias::new("interval"))),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(ScriptedDelivery(
         Mutex::new(vec![Delivery::Temporary(None)]),
         Mutex::new(0),
@@ -652,7 +1400,34 @@ async fn browser_reminder_stops_pending_delivery_after_schedule_pause() {
             .unwrap(),
         0
     );
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_pause_periods(id,household_id,schedule_id,reason,started_at,recorded_by_membership_id,created_at,updated_at) VALUES(86091,72001,83091,'other',now()-interval '5 minutes',74001,now(),now())").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("medication_pause_periods")
+                .columns([
+                    "household_id",
+                    "schedule_id",
+                    "reason",
+                    "started_at",
+                    "recorded_by_membership_id",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(schedule_for(&app, app.fixture.adult.id).await.id),
+                    Expr::val("other"),
+                    Func::cust("now").sub(Expr::val("5 minutes").cast_as(Alias::new("interval"))),
+                    Expr::val(app.fixture.membership.id),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     assert_pending_reminder_invalid_after_change(&app, &scope, &transport).await;
     app.close().await;
 }
@@ -666,11 +1441,152 @@ async fn browser_reminder_stops_pending_missed_delivery_after_grant_withdrawal()
         .with_nanosecond(0)
         .unwrap();
     let scheduled = now - chrono::Duration::minutes(30);
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78091,72001,74001,73002,'manage','parent',true,now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/grant-withdrawal','synthetic','synthetic',now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83092,72001,73002,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now()-interval '2 days',now())",
-        [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(1)).into(),scheduled.format("%H:%M").to_string().into()]
-    )).await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("person_access_grants")
+            .columns([
+                "household_id",
+                "household_membership_id",
+                "person_id",
+                "access_level",
+                "relationship_type",
+                "missed_dose_notifications_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.membership.id),
+                Expr::val(app.fixture.minor.id),
+                Expr::val("manage"),
+                Expr::val("parent"),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("notification_preferences")
+            .columns([
+                "household_id",
+                "person_id",
+                "enabled",
+                "dose_due_enabled",
+                "missed_dose_enabled",
+                "low_stock_enabled",
+                "private_text_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.adult.id),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/grant-withdrawal",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("schedules")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "medication_id",
+                    "active",
+                    "start_date",
+                    "end_date",
+                    "dose_amount",
+                    "dose_unit",
+                    "schedule_type",
+                    "schedule_config",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.minor.id),
+                    Expr::val(app.fixture.medication.id),
+                    Expr::val(true),
+                    Expr::val(now.date_naive() - chrono::Duration::days(1)),
+                    Expr::val(now.date_naive() + chrono::Duration::days(1)),
+                    Expr::val(2),
+                    Expr::val("tablet"),
+                    Expr::val(0),
+                    Func::cust("jsonb_build_object")
+                        .args([
+                            Expr::val("times"),
+                            Func::cust("jsonb_build_array")
+                                .args([Expr::val(scheduled.format("%H:%M").to_string())])
+                                .into(),
+                        ])
+                        .into(),
+                    Func::cust("now").sub(Expr::val("2 days").cast_as(Alias::new("interval"))),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(ScriptedDelivery(
         Mutex::new(vec![Delivery::Temporary(None)]),
         Mutex::new(0),
@@ -680,8 +1596,10 @@ async fn browser_reminder_stops_pending_missed_delivery_after_grant_withdrawal()
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-grant-withdrawal".into(),
     };
     assert_eq!(
@@ -692,7 +1610,17 @@ async fn browser_reminder_stops_pending_missed_delivery_after_grant_withdrawal()
     );
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78091")
+        .execute_raw({
+            let query = Query::update()
+                .table("person_access_grants")
+                .value("revoked_at", Func::cust("now"))
+                .and_where(
+                    Expr::col("id").eq(Expr::val(grant_for(&app, app.fixture.minor.id).await.id)),
+                )
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_pending_reminder_invalid_after_change(&app, &scope, &transport).await;
@@ -703,14 +1631,125 @@ async fn prepare_pending_low_stock(
     app: &Application,
     crossed_at: chrono::DateTime<Utc>,
 ) -> HouseholdScope {
-    app.fixture.admin.execute_unprepared("UPDATE medications SET current_supply=9,reorder_threshold=10 WHERE id=80001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,false,true,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/stock-catchup','synthetic','synthetic',now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,created_at,updated_at) VALUES(72001,73001,'browser_low_stock_pending','low-stock:80001:99091:73001',jsonb_build_object('account_id',71001,'medication_id',80001,'take_id',99091),$1,now())",
-        [crossed_at.naive_utc().into()]
-    )).await.unwrap();
+    async {
+        let query = Query::update()
+            .table("medications")
+            .value("current_supply", Expr::val(9))
+            .value("reorder_threshold", Expr::val(10))
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.medication.id)))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("notification_preferences")
+            .columns([
+                "household_id",
+                "person_id",
+                "enabled",
+                "dose_due_enabled",
+                "missed_dose_enabled",
+                "low_stock_enabled",
+                "private_text_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.adult.id),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(false),
+                Expr::val(true),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/stock-catchup",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("notification_events")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "event_type",
+                    "event_key",
+                    "metadata",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val("browser_low_stock_pending"),
+                    Expr::val(format!(
+                        "low-stock:{}:{}:{}",
+                        app.fixture.medication.id,
+                        pending_take_id(app),
+                        app.fixture.adult.id
+                    )),
+                    Func::cust("jsonb_build_object")
+                        .args([
+                            Expr::val("account_id"),
+                            Expr::val(app.fixture.account.id),
+                            Expr::val("medication_id"),
+                            Expr::val(app.fixture.medication.id),
+                            Expr::val("take_id"),
+                            Expr::val(pending_take_id(app)),
+                        ])
+                        .into(),
+                    Expr::val(crossed_at.naive_utc()),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-stock-catchup".into(),
     }
 }
@@ -739,10 +1778,7 @@ async fn browser_low_stock_catches_up_and_stops_pending_delivery_after_refill() 
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT intended_at,expires_at FROM notification_events WHERE event_type='low_stock'",
-        ))
+        .query_one_raw(event_query(&app, Some("low_stock"), None, false, None))
         .await
         .unwrap()
         .unwrap();
@@ -758,7 +1794,15 @@ async fn browser_low_stock_catches_up_and_stops_pending_delivery_after_refill() 
     );
     app.fixture
         .admin
-        .execute_unprepared("UPDATE medications SET current_supply=11 WHERE id=80001")
+        .execute_raw({
+            let query = Query::update()
+                .table("medications")
+                .value("current_supply", Expr::val(11))
+                .and_where(Expr::col("id").eq(Expr::val(app.fixture.medication.id)))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_pending_reminder_invalid_after_change(&app, &scope, &transport).await;
@@ -784,10 +1828,7 @@ async fn browser_low_stock_does_not_reserve_at_exact_24_hour_expiry() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM notification_events WHERE event_type='low_stock'",
-        ))
+        .query_one_raw(event_query(&app, Some("low_stock"), None, true, None))
         .await
         .unwrap()
         .unwrap();
@@ -801,11 +1842,15 @@ async fn browser_reminder_catches_up_a_missed_due_tick_once() {
     let app = Application::new().await;
     let (now, scope) = prepare_due_delivery(&app, "synthetic-due-catchup").await;
     let intended = now - chrono::Duration::minutes(20);
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "UPDATE notification_preferences SET morning_time=$1 WHERE household_id=72001 AND person_id=73001",
-        [intended.time().into()],
-    )).await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw(update_preference(
+            &app,
+            "morning_time",
+            Expr::val(intended.time()),
+        ))
+        .await
+        .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -827,10 +1872,19 @@ async fn browser_reminder_catches_up_a_missed_due_tick_once() {
         0
     );
     assert_eq!(transport.0.lock().unwrap().len(), 1);
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT intended_at,expires_at FROM notification_events WHERE event_type='dose_due' AND intended_at=$1",
-        [intended.naive_utc().into()]
-    )).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(event_query(
+            &app,
+            Some("dose_due"),
+            Some(intended.naive_utc()),
+            false,
+            None,
+        ))
+        .await
+        .unwrap()
+        .unwrap();
     let saved: chrono::NaiveDateTime = row.try_get("", "intended_at").unwrap();
     let expires: chrono::NaiveDateTime = row.try_get("", "expires_at").unwrap();
     assert_eq!(saved, intended.naive_utc());
@@ -847,11 +1901,124 @@ async fn browser_missed_reminder_catches_up_after_grace_and_stops_at_expiry() {
         .with_nanosecond(0)
         .unwrap();
     let scheduled = now - chrono::Duration::minutes(45);
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/missed-catchup','synthetic','synthetic',now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83009,72001,73001,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now()-interval '2 days',now())",
-        [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(1)).into(),scheduled.format("%H:%M").to_string().into()]
-    )).await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("notification_preferences")
+            .columns([
+                "household_id",
+                "person_id",
+                "enabled",
+                "dose_due_enabled",
+                "missed_dose_enabled",
+                "low_stock_enabled",
+                "private_text_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.adult.id),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/missed-catchup",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("schedules")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "medication_id",
+                    "active",
+                    "start_date",
+                    "end_date",
+                    "dose_amount",
+                    "dose_unit",
+                    "schedule_type",
+                    "schedule_config",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val(app.fixture.medication.id),
+                    Expr::val(true),
+                    Expr::val(now.date_naive() - chrono::Duration::days(1)),
+                    Expr::val(now.date_naive() + chrono::Duration::days(1)),
+                    Expr::val(2),
+                    Expr::val("tablet"),
+                    Expr::val(0),
+                    Func::cust("jsonb_build_object")
+                        .args([
+                            Expr::val("times"),
+                            Func::cust("jsonb_build_array")
+                                .args([Expr::val(scheduled.format("%H:%M").to_string())])
+                                .into(),
+                        ])
+                        .into(),
+                    Func::cust("now").sub(Expr::val("2 days").cast_as(Alias::new("interval"))),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(ScriptedDelivery(
         Mutex::new(vec![Delivery::Temporary(None)]),
         Mutex::new(0),
@@ -861,8 +2028,10 @@ async fn browser_missed_reminder_catches_up_after_grace_and_stops_at_expiry() {
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-missed-catchup".into(),
     };
     assert_eq!(
@@ -874,10 +2043,7 @@ async fn browser_missed_reminder_catches_up_after_grace_and_stops_at_expiry() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT intended_at,expires_at FROM notification_events WHERE event_type='missed_dose'",
-        ))
+        .query_one_raw(event_query(&app, Some("missed_dose"), None, false, None))
         .await
         .unwrap()
         .unwrap();
@@ -901,10 +2067,7 @@ async fn browser_missed_reminder_catches_up_after_grace_and_stops_at_expiry() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,attempt_count FROM notification_deliveries",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -919,10 +2082,15 @@ async fn browser_reminder_does_not_reserve_at_exact_expiry() {
     let app = Application::new().await;
     let (now, scope) = prepare_due_delivery(&app, "synthetic-exact-expiry").await;
     let expired = now - chrono::Duration::hours(1);
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "UPDATE notification_preferences SET morning_time=$1 WHERE household_id=72001 AND person_id=73001",
-        [expired.time().into()]
-    )).await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw(update_preference(
+            &app,
+            "morning_time",
+            Expr::val(expired.time()),
+        ))
+        .await
+        .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -937,10 +2105,7 @@ async fn browser_reminder_does_not_reserve_at_exact_expiry() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM notification_events WHERE event_type='dose_due'",
-        ))
+        .query_one_raw(event_query(&app, Some("dose_due"), None, true, None))
         .await
         .unwrap()
         .unwrap();
@@ -967,7 +2132,23 @@ async fn browser_reminder_worker_drains_retry_when_tick_timestamp_is_stale() {
             .unwrap(),
         0
     );
-    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET next_attempt_at=now()-interval '1 second' WHERE status='pending'").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_deliveries")
+                .value(
+                    "next_attempt_at",
+                    Func::cust("now").sub(Expr::val("1 second").cast_as(Alias::new("interval"))),
+                )
+                .and_where(Expr::col("status").eq(Expr::val("pending")))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     use loco_rs::bgworker::BackgroundWorker;
     browser_push::scheduler::ReminderWorker::build(&app.context)
         .perform(browser_push::scheduler::ReminderRun {
@@ -981,10 +2162,7 @@ async fn browser_reminder_worker_drains_retry_when_tick_timestamp_is_stale() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,attempt_count FROM notification_deliveries",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -1017,10 +2195,7 @@ async fn browser_reminder_obeys_retry_after_and_attempt_limit() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,attempt_count,next_attempt_at FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -1045,20 +2220,20 @@ async fn browser_reminder_obeys_retry_after_and_attempt_limit() {
     let next_attempt_at = (now - chrono::Duration::seconds(1)).naive_utc();
     app.fixture
         .admin
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE notification_deliveries SET attempt_count=4,next_attempt_at=$1 WHERE status='pending'",
-            [next_attempt_at.into()],
+        .execute_raw(update_deliveries(
+            &app,
+            vec![
+                ("attempt_count", Expr::val(4)),
+                ("next_attempt_at", Expr::val(next_attempt_at)),
+            ],
+            Some("pending"),
         ))
         .await
         .unwrap();
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT next_attempt_at FROM notification_deliveries WHERE status='pending'",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -1080,10 +2255,7 @@ async fn browser_reminder_obeys_retry_after_and_attempt_limit() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -1116,10 +2288,7 @@ async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,outcome FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -1158,6 +2327,8 @@ async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
         0
     );
     let delivery = notification_deliveries::Entity::find()
+        .filter(notification_deliveries::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(notification_deliveries::Column::AccountId.eq(app.fixture.account.id))
         .one(&app.fixture.admin)
         .await
         .unwrap()
@@ -1171,9 +2342,15 @@ async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
     assert!(retry_due > now + chrono::Duration::minutes(2));
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE notification_preferences SET enabled=false WHERE person_id=73001",
-        )
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_preferences")
+                .value("enabled", Expr::val(false))
+                .and_where(Expr::col("person_id").eq(Expr::val(app.fixture.adult.id)))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_eq!(
@@ -1203,10 +2380,7 @@ async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,outcome FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -1223,7 +2397,13 @@ async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
 async fn browser_reminder_claim_audit_failure_rolls_back_before_transport() {
     let app = Application::new().await;
     let (now, scope) = prepare_due_delivery(&app, "synthetic-claim-audit").await;
-    app.fixture.admin.execute_unprepared("CREATE FUNCTION public.reject_browser_push_sending_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.reminder.sending' THEN RAISE EXCEPTION 'synthetic sending audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_push_sending_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_push_sending_audit()").await.unwrap();
+    let fault = format!(
+        "reject_browser_push_sending_audit_{}",
+        uuid::Uuid::new_v4().simple()
+    );
+    // SeaORM has no trigger, PL/pgSQL function or GRANT/REVOKE builder.
+    let household_id = app.fixture.household.id;
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION public.{fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.household_id={household_id} AND NEW.event_type='browser_push.reminder.sending' THEN RAISE EXCEPTION 'synthetic sending audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.{fault}()")).await.unwrap();
     let transport = Arc::new(ScriptedDelivery(
         Mutex::new(vec![Delivery::Accepted]),
         Mutex::new(0),
@@ -1241,15 +2421,19 @@ async fn browser_reminder_claim_audit_failure_rolls_back_before_transport() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
     assert_eq!(row.try_get::<String>("", "status").unwrap(), "pending");
     assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 0);
+    app.fixture
+        .admin
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON security_audit_events; DROP FUNCTION public.{fault}()"
+        ))
+        .await
+        .unwrap();
     app.close().await;
 }
 
@@ -1284,10 +2468,7 @@ async fn browser_reminder_uncertain_transport_result_is_never_retried() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -1315,7 +2496,23 @@ async fn browser_reminder_stale_accepted_result_cannot_overwrite_uncertain_recov
         browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
     });
     transport.started.notified().await;
-    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET claimed_at=now()-interval '121 seconds' WHERE status='sending'").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_deliveries")
+                .value(
+                    "claimed_at",
+                    Func::cust("now").sub(Expr::val("121 seconds").cast_as(Alias::new("interval"))),
+                )
+                .and_where(Expr::col("status").eq(Expr::val("sending")))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     assert_eq!(
         browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
             .await
@@ -1324,8 +2521,13 @@ async fn browser_reminder_stale_accepted_result_cannot_overwrite_uncertain_recov
     );
     transport.release.notify_one();
     assert_eq!(sender.await.unwrap().unwrap(), 0);
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT d.status,e.sent_at FROM notification_deliveries d JOIN notification_events e ON e.id=d.notification_event_id LIMIT 1")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(delivery_query(&app, None))
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<String>("", "status").unwrap(), "uncertain");
     assert!(
         row.try_get::<Option<chrono::NaiveDateTime>>("", "sent_at")
@@ -1356,17 +2558,127 @@ async fn browser_reminder_keeps_independent_device_outcomes() {
         .with_nanosecond(0)
         .unwrap()
         - chrono::Duration::minutes(1);
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/accepted','synthetic','synthetic',now(),now()),(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::update()
+            .table("person_medications")
+            .value("administration_kind", Expr::val(0))
+            .value("dose_cycle", Expr::val(0))
+            .value("max_daily_doses", Expr::val(1))
+            .value(
+                "created_at",
+                Func::cust("now").sub(Expr::val("2 days").cast_as(Alias::new("interval"))),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.assignment.id)))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/accepted",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/failed",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("notification_preferences")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "enabled",
+                    "dose_due_enabled",
+                    "missed_dose_enabled",
+                    "low_stock_enabled",
+                    "private_text_enabled",
+                    "morning_time",
+                    "afternoon_time",
+                    "evening_time",
+                    "night_time",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val(true),
+                    Expr::val(true),
+                    Expr::val(false),
+                    Expr::val(false),
+                    Expr::val(true),
+                    Expr::val(now.time()),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(PartialDelivery(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-two-devices".into(),
     };
     assert_eq!(
@@ -1375,21 +2687,36 @@ async fn browser_reminder_keeps_independent_device_outcomes() {
             .unwrap(),
         1
     );
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) FILTER (WHERE status='accepted') AS accepted, count(*) FILTER (WHERE status='pending' AND attempt_count=1) AS retryable FROM notification_deliveries")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(delivery_counts(&app))
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<i64>("", "accepted").unwrap(), 1);
     assert_eq!(row.try_get::<i64>("", "retryable").unwrap(), 1);
     assert_eq!(transport.0.lock().unwrap().len(), 2);
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT next_attempt_at FROM notification_deliveries WHERE status='pending' AND attempt_count=1")).await.unwrap().unwrap();
-    let retry_at = row
-        .try_get::<chrono::NaiveDateTime>("", "next_attempt_at")
+    let pending = notification_deliveries::Entity::find()
+        .filter(notification_deliveries::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(notification_deliveries::Column::AccountId.eq(app.fixture.account.id))
+        .filter(notification_deliveries::Column::Status.eq("pending"))
+        .filter(notification_deliveries::Column::AttemptCount.eq(1))
+        .one(&app.fixture.admin)
+        .await
         .unwrap()
-        .and_utc();
+        .unwrap();
+    let retry_at = pending.next_attempt_at.and_utc();
     assert!(retry_at > now + chrono::Duration::minutes(2));
     app.fixture
         .admin
-        .execute_unprepared("DELETE FROM push_subscriptions WHERE account_id=71001")
+        .execute_raw({
+            let query = Query::delete()
+                .from_table("push_subscriptions")
+                .and_where(Expr::col("account_id").eq(Expr::val(app.fixture.account.id)))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_eq!(
@@ -1402,8 +2729,13 @@ async fn browser_reminder_keeps_independent_device_outcomes() {
         .unwrap(),
         0
     );
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) FILTER (WHERE status='accepted') AS accepted, count(*) FILTER (WHERE status='invalid') AS invalid FROM notification_deliveries")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(delivery_counts(&app))
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<i64>("", "accepted").unwrap(), 1);
     assert_eq!(row.try_get::<i64>("", "invalid").unwrap(), 1);
     assert_eq!(transport.0.lock().unwrap().len(), 2);
@@ -1418,17 +2750,116 @@ async fn browser_reminder_recovers_stale_claim_as_uncertain_without_resending() 
         .unwrap()
         .with_nanosecond(0)
         .unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::update()
+            .table("person_medications")
+            .value("administration_kind", Expr::val(0))
+            .value("dose_cycle", Expr::val(0))
+            .value("max_daily_doses", Expr::val(1))
+            .value(
+                "created_at",
+                Func::cust("now").sub(Expr::val("2 days").cast_as(Alias::new("interval"))),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.assignment.id)))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/failed",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("notification_preferences")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "enabled",
+                    "dose_due_enabled",
+                    "missed_dose_enabled",
+                    "low_stock_enabled",
+                    "private_text_enabled",
+                    "morning_time",
+                    "afternoon_time",
+                    "evening_time",
+                    "night_time",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val(true),
+                    Expr::val(true),
+                    Expr::val(false),
+                    Expr::val(false),
+                    Expr::val(true),
+                    Expr::val(now.time()),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(PartialDelivery(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-recover-claim".into(),
     };
     assert_eq!(
@@ -1437,7 +2868,24 @@ async fn browser_reminder_recovers_stale_claim_as_uncertain_without_resending() 
             .unwrap(),
         0
     );
-    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET status='sending',claimed_at=now()-interval '119 seconds' WHERE status='pending'").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_deliveries")
+                .value("status", Expr::val("sending"))
+                .value(
+                    "claimed_at",
+                    Func::cust("now").sub(Expr::val("119 seconds").cast_as(Alias::new("interval"))),
+                )
+                .and_where(Expr::col("status").eq(Expr::val("pending")))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     assert_eq!(
         browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
             .await
@@ -1447,15 +2895,28 @@ async fn browser_reminder_recovers_stale_claim_as_uncertain_without_resending() 
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
     assert_eq!(row.try_get::<String>("", "status").unwrap(), "sending");
-    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET claimed_at=now()-interval '121 seconds' WHERE status='sending'").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_deliveries")
+                .value(
+                    "claimed_at",
+                    Func::cust("now").sub(Expr::val("121 seconds").cast_as(Alias::new("interval"))),
+                )
+                .and_where(Expr::col("status").eq(Expr::val("sending")))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     assert_eq!(
         browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
             .await
@@ -1471,10 +2932,7 @@ async fn browser_reminder_recovers_stale_claim_as_uncertain_without_resending() 
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
-        ))
+        .query_one_raw(delivery_query(&app, None))
         .await
         .unwrap()
         .unwrap();
@@ -1492,18 +2950,123 @@ async fn browser_reminder_retries_a_pending_reservation_once_after_database_fail
         .unwrap()
         .with_nanosecond(0)
         .unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/retry','synthetic','synthetic',now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
-    app.fixture.admin.execute_unprepared("CREATE FUNCTION fail_reminder_delivery_read() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN REVOKE SELECT ON public.push_subscriptions FROM med_tracker_app; RETURN NEW; END $$; CREATE TRIGGER fail_reminder_delivery_read AFTER INSERT ON security_audit_events FOR EACH ROW WHEN (NEW.event_type='browser_push.reminder.requested') EXECUTE FUNCTION fail_reminder_delivery_read()").await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::update()
+            .table("person_medications")
+            .value("administration_kind", Expr::val(0))
+            .value("dose_cycle", Expr::val(0))
+            .value("max_daily_doses", Expr::val(1))
+            .value(
+                "created_at",
+                Func::cust("now").sub(Expr::val("2 days").cast_as(Alias::new("interval"))),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.assignment.id)))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/retry",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("notification_preferences")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "enabled",
+                    "dose_due_enabled",
+                    "missed_dose_enabled",
+                    "low_stock_enabled",
+                    "private_text_enabled",
+                    "morning_time",
+                    "afternoon_time",
+                    "evening_time",
+                    "night_time",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val(true),
+                    Expr::val(true),
+                    Expr::val(false),
+                    Expr::val(false),
+                    Expr::val(true),
+                    Expr::val(now.time()),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
+    let fault = format!(
+        "fail_reminder_delivery_read_{}",
+        uuid::Uuid::new_v4().simple()
+    );
+    // SeaORM has no trigger, PL/pgSQL function or GRANT/REVOKE builder.
+    let household_id = app.fixture.household.id;
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN REVOKE SELECT ON public.push_subscriptions FROM med_tracker_app; RETURN NEW; END $$; CREATE TRIGGER {fault} AFTER INSERT ON security_audit_events FOR EACH ROW WHEN (NEW.household_id={household_id} AND NEW.event_type='browser_push.reminder.requested') EXECUTE FUNCTION {fault}()")).await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-reminder-retry".into(),
     };
     assert!(
@@ -1512,11 +3075,56 @@ async fn browser_reminder_retries_a_pending_reservation_once_after_database_fail
             .is_err()
     );
     assert!(transport.0.lock().unwrap().is_empty());
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM notification_events WHERE event_type='dose_due' AND metadata->>'delivery_status'='pending'")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(event_query(
+            &app,
+            Some("dose_due"),
+            None,
+            true,
+            Some("pending"),
+        ))
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
-    app.fixture.admin.execute_unprepared("DROP TRIGGER fail_reminder_delivery_read ON security_audit_events; DROP FUNCTION fail_reminder_delivery_read(); GRANT SELECT ON public.push_subscriptions TO med_tracker_app").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,created_at,updated_at) SELECT household_id,person_id,event_type,replace(event_key,'browser:71001:',''),'{}'::jsonb,now(),now() FROM notification_events WHERE event_type='dose_due'").await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("DROP TRIGGER {fault} ON security_audit_events; DROP FUNCTION {fault}(); GRANT SELECT ON public.push_subscriptions TO med_tracker_app")).await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let selection = Query::select()
+                .columns(["household_id", "person_id", "event_type"])
+                .expr(Func::cust("replace").args([
+                    Expr::col("event_key"),
+                    Expr::val(format!("browser:{}:", app.fixture.account.id)),
+                    Expr::val(""),
+                ]))
+                .expr(Expr::val(json!({})))
+                .expr(Func::cust("now"))
+                .expr(Func::cust("now"))
+                .from("notification_events")
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("event_type").eq("dose_due"))
+                .to_owned();
+            let query = Query::insert()
+                .into_table("notification_events")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "event_type",
+                    "event_key",
+                    "metadata",
+                    "created_at",
+                    "updated_at",
+                ])
+                .select_from(selection)
+                .unwrap()
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     assert_eq!(
         browser_push::reminders::deliver_account(&app.context, &scope, now)
             .await
@@ -1524,7 +3132,22 @@ async fn browser_reminder_retries_a_pending_reservation_once_after_database_fail
         0
     );
     assert!(transport.0.lock().unwrap().is_empty());
-    app.fixture.admin.execute_unprepared("DELETE FROM notification_events WHERE event_type='dose_due' AND event_key LIKE 'dose-due:%'").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::delete()
+                .from_table("notification_events")
+                .and_where(
+                    Expr::col("event_type")
+                        .eq(Expr::val("dose_due"))
+                        .and(Expr::col("event_key").like("dose-due:%")),
+                )
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let (first, second) = tokio::join!(
         browser_push::reminders::deliver_account(&app.context, &scope, now),
         browser_push::reminders::deliver_account(&app.context, &scope, now)
@@ -1537,8 +3160,19 @@ async fn browser_reminder_retries_a_pending_reservation_once_after_database_fail
             .unwrap(),
         0
     );
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM notification_events WHERE event_type='dose_due' AND metadata->>'delivery_status'='accepted' AND sent_at IS NOT NULL")).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(event_query(
+            &app,
+            Some("dose_due"),
+            None,
+            true,
+            Some("accepted"),
+        ))
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
     for event in [
         "browser_push.reminder.requested",
@@ -1547,11 +3181,7 @@ async fn browser_reminder_retries_a_pending_reservation_once_after_database_fail
         let row = app
             .fixture
             .admin
-            .query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "SELECT count(*) AS count FROM security_audit_events WHERE event_type=$1",
-                [event.into()],
-            ))
+            .query_one_raw(audit_query(&app, event, None))
             .await
             .unwrap()
             .unwrap();
@@ -1563,15 +3193,89 @@ async fn browser_reminder_retries_a_pending_reservation_once_after_database_fail
 #[tokio::test]
 async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE medications SET current_supply=11,reorder_threshold=10 WHERE id=80001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,false,true,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/stock-reminder','synthetic','synthetic',now(),now())").await.unwrap();
+    let household_id = app.fixture.household.id;
+    async {
+        let query = Query::update()
+            .table("medications")
+            .value("current_supply", Expr::val(11))
+            .value("reorder_threshold", Expr::val(10))
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.medication.id)))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("notification_preferences")
+            .columns([
+                "household_id",
+                "person_id",
+                "enabled",
+                "dose_due_enabled",
+                "missed_dose_enabled",
+                "low_stock_enabled",
+                "private_text_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.adult.id),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(false),
+                Expr::val(true),
+                Expr::val(false),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/stock-reminder",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-stock-reminder".into(),
     };
     assert_eq!(
@@ -1581,13 +3285,18 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
         0
     );
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/medication_takes", app.origin);
-    app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_stock_take_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationTake' THEN RAISE EXCEPTION 'synthetic take audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_stock_take_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_stock_take_audit()").await.unwrap();
+    let endpoint = format!(
+        "{}/api/v1/households/{household_id}/medication_takes",
+        app.origin
+    );
+    let fault = format!("reject_stock_take_audit_{}", uuid::Uuid::new_v4().simple());
+    // SeaORM has no trigger, PL/pgSQL function or GRANT/REVOKE builder.
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.household_id={household_id} AND NEW.item_type='MedicationTake' THEN RAISE EXCEPTION 'synthetic take audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION {fault}()")).await.unwrap();
     let rejected = app
         .client
         .post(&endpoint)
         .bearer_auth(&token)
-        .json(&take_body())
+        .json(&shared_take_body(&app.fixture))
         .send()
         .await
         .unwrap();
@@ -1598,21 +3307,33 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
             .unwrap(),
         0
     );
-    app.fixture.admin.execute_unprepared("DROP TRIGGER reject_stock_take_audit ON versions; DROP FUNCTION reject_stock_take_audit()").await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON versions; DROP FUNCTION {fault}()"
+        ))
+        .await
+        .unwrap();
     let response = app
         .client
         .post(&endpoint)
         .bearer_auth(&token)
-        .json(&take_body())
+        .json(&shared_take_body(&app.fixture))
         .send()
         .await
         .unwrap();
     assert_eq!(response.status().as_u16(), 201);
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE notification_preferences SET low_stock_enabled=false WHERE person_id=73001",
-        )
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_preferences")
+                .value("low_stock_enabled", Expr::val(false))
+                .and_where(Expr::col("person_id").eq(Expr::val(app.fixture.adult.id)))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_eq!(
@@ -1623,9 +3344,15 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
     );
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE notification_preferences SET low_stock_enabled=true WHERE person_id=73001",
-        )
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_preferences")
+                .value("low_stock_enabled", Expr::val(true))
+                .and_where(Expr::col("person_id").eq(Expr::val(app.fixture.adult.id)))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_eq!(
@@ -1642,7 +3369,7 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
     );
     assert_eq!(
         transport.0.lock().unwrap()[0],
-        json!({"title":"Stock reminder","body":"A medication may be running low.","path":"/households/persistence-fixture/dashboard","account_id":"71001"})
+        json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard",app.fixture.household.slug),"account_id":app.fixture.account.id.to_string()})
     );
     app.close().await;
 }
@@ -1685,35 +3412,128 @@ async fn reminders_use_saved_zone(saved_zone: &str, zone: chrono_tz::Tz) {
         .unwrap();
     app.fixture
         .admin
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE accounts SET preferences=jsonb_build_object('time_zone',$1::text) WHERE id=71001;",
-            [saved_zone.into()],
-        ))
+        .execute_raw({
+            let query = Query::update()
+                .table("accounts")
+                .value("preferences", json!({"time_zone":saved_zone}))
+                .and_where(Expr::col("id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE households SET timezone='Pacific/Auckland' WHERE id=72001")
+        .execute_raw({
+            let query = Query::update()
+                .table("households")
+                .value("timezone", Expr::val("Pacific/Auckland"))
+                .and_where(Expr::col("id").eq(Expr::val(app.fixture.household.id)))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.with_timezone(&zone).time().into()]
-    )).await.unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/reminder','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("notification_preferences")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "enabled",
+                    "dose_due_enabled",
+                    "missed_dose_enabled",
+                    "low_stock_enabled",
+                    "private_text_enabled",
+                    "morning_time",
+                    "afternoon_time",
+                    "evening_time",
+                    "night_time",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val(true),
+                    Expr::val(true),
+                    Expr::val(false),
+                    Expr::val(false),
+                    Expr::val(true),
+                    Expr::val(now.with_timezone(&zone).time()),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Expr::val(Option::<chrono::NaiveTime>::None),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
+    async {
+        let query = Query::update()
+            .table("person_medications")
+            .value("administration_kind", Expr::val(0))
+            .value("dose_cycle", Expr::val(0))
+            .value("max_daily_doses", Expr::val(1))
+            .value(
+                "created_at",
+                Func::cust("now").sub(Expr::val("2 days").cast_as(Alias::new("interval"))),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.assignment.id)))
+            .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/reminder",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-due-reminder".into(),
     };
-    let runs = browser_push::scheduler::recipients(&app.context, now)
-        .await
-        .unwrap();
+    let runs = own_recipients(&app, now).await.unwrap();
     assert_eq!(runs.len(), 1);
     assert_eq!(runs[0].account_id, scope.actor.account_id);
     assert_eq!(runs[0].household_id, scope.household_id);
@@ -1731,14 +3551,20 @@ async fn reminders_use_saved_zone(saved_zone: &str, zone: chrono_tz::Tz) {
     assert_eq!(
         transport.0.lock().unwrap().as_slice(),
         &[
-            json!({"title":"Medication reminder","body":"A dose is due.","path":"/households/persistence-fixture/dashboard","account_id":"71001"})
+            json!({"title":"Medication reminder","body":"A dose is due.","path":format!("/households/{}/dashboard",app.fixture.household.slug),"account_id":app.fixture.account.id.to_string()})
         ]
     );
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE notification_preferences SET enabled=false WHERE person_id=73001",
-        )
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_preferences")
+                .value("enabled", Expr::val(false))
+                .and_where(Expr::col("person_id").eq(Expr::val(app.fixture.adult.id)))
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_eq!(
@@ -1766,18 +3592,250 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     let scheduled = (now - chrono::Duration::minutes(30))
         .format("%H:%M")
         .to_string();
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Managed adult',0,true,now(),now()),(73005,'View-only adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74984,72001,73004,'member','active',now(),now(),now()),(74985,72001,73005,'member','active',now(),now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',false,now(),now()),(78004,72001,74001,73004,'manage','carer',false,now(),now()),(78005,72001,74001,73005,'view','carer',true,now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/managed-reminder','synthetic','synthetic',now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) SELECT 83000+id-73000,72001,id,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now() FROM people WHERE id IN(73002,73004,73005)", [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(2)).into(),scheduled.into()]
-    )).await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("people")
+            .columns([
+                "name",
+                "person_type",
+                "has_capacity",
+                "created_at",
+                "updated_at",
+                "portable_id",
+            ])
+            .values_panic([
+                Expr::val("Managed adult"),
+                Expr::val(0),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+                Expr::val(format!("{}-{}", app.fixture.client_uuid, "Managed adult")),
+            ])
+            .values_panic([
+                Expr::val("View-only adult"),
+                Expr::val(0),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+                Expr::val(format!("{}-{}", app.fixture.client_uuid, "View-only adult")),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("household_memberships")
+            .columns([
+                "household_id",
+                "person_id",
+                "role",
+                "status",
+                "joined_at",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(participant_named(&app, "Managed adult").await.id),
+                Expr::val("member"),
+                Expr::val("active"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(participant_named(&app, "View-only adult").await.id),
+                Expr::val("member"),
+                Expr::val("active"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("person_access_grants")
+            .columns([
+                "household_id",
+                "household_membership_id",
+                "person_id",
+                "access_level",
+                "relationship_type",
+                "missed_dose_notifications_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.membership.id),
+                Expr::val(app.fixture.minor.id),
+                Expr::val("manage"),
+                Expr::val("parent"),
+                Expr::val(false),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.membership.id),
+                Expr::val(participant_named(&app, "Managed adult").await.id),
+                Expr::val("manage"),
+                Expr::val("carer"),
+                Expr::val(false),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.membership.id),
+                Expr::val(participant_named(&app, "View-only adult").await.id),
+                Expr::val("view"),
+                Expr::val("carer"),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("notification_preferences")
+            .columns([
+                "household_id",
+                "person_id",
+                "enabled",
+                "dose_due_enabled",
+                "missed_dose_enabled",
+                "low_stock_enabled",
+                "private_text_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.adult.id),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(false),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/managed-reminder",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let selection = Query::select()
+                .expr(Expr::val(app.fixture.household.id))
+                .column("id")
+                .expr(Expr::val(app.fixture.medication.id))
+                .expr(Expr::val(true))
+                .expr(Expr::val(now.date_naive() - chrono::Duration::days(1)))
+                .expr(Expr::val(now.date_naive() + chrono::Duration::days(2)))
+                .expr(Expr::val(2))
+                .expr(Expr::val("tablet"))
+                .expr(Expr::val(0))
+                .expr(Expr::val(json!({"times":[scheduled]})))
+                .expr(Func::cust("now"))
+                .expr(Func::cust("now"))
+                .from("people")
+                .and_where(Expr::col("id").is_in([
+                    app.fixture.minor.id,
+                    participant_named(&app, "Managed adult").await.id,
+                    participant_named(&app, "View-only adult").await.id,
+                ]))
+                .to_owned();
+            let query = Query::insert()
+                .into_table("schedules")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "medication_id",
+                    "active",
+                    "start_date",
+                    "end_date",
+                    "dose_amount",
+                    "dose_unit",
+                    "schedule_type",
+                    "schedule_config",
+                    "created_at",
+                    "updated_at",
+                ])
+                .select_from(selection)
+                .unwrap()
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-missed-reminder".into(),
     };
     assert_eq!(
@@ -1802,9 +3860,21 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     );
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE person_access_grants SET missed_dose_notifications_enabled=true WHERE id=78004",
-        )
+        .execute_raw({
+            let query = Query::update()
+                .table("person_access_grants")
+                .value("missed_dose_notifications_enabled", Expr::val(true))
+                .and_where(
+                    Expr::col("id").eq(Expr::val(
+                        grant_for(&app, participant_named(&app, "Managed adult").await.id)
+                            .await
+                            .id,
+                    )),
+                )
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_eq!(
@@ -1819,9 +3889,24 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     );
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE person_access_grants SET revoked_at=now() WHERE id IN(78002,78004)",
-        )
+        .execute_raw({
+            let query = Query::update()
+                .table("person_access_grants")
+                .value("revoked_at", Func::cust("now"))
+                .and_where(
+                    Expr::col("id").is_in([
+                        Expr::val(grant_for(&app, app.fixture.minor.id).await.id),
+                        Expr::val(
+                            grant_for(&app, participant_named(&app, "Managed adult").await.id)
+                                .await
+                                .id,
+                        ),
+                    ]),
+                )
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     assert_eq!(
@@ -1842,18 +3927,79 @@ async fn prepare_managed_dependent_dose(
     request_id: &str,
 ) -> (chrono::DateTime<Utc>, HouseholdScope) {
     let (now, scope) = prepare_due_delivery(app, request_id).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',false,now(),now())").await.unwrap();
     app.fixture
         .admin
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83002,72001,73002,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now())",
-            [
-                (now.date_naive() - chrono::Duration::days(1)).into(),
-                (now.date_naive() + chrono::Duration::days(2)).into(),
-                now.format("%H:%M").to_string().into(),
-            ],
-        ))
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("person_access_grants")
+                .columns([
+                    "household_id",
+                    "household_membership_id",
+                    "person_id",
+                    "access_level",
+                    "relationship_type",
+                    "missed_dose_notifications_enabled",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.membership.id),
+                    Expr::val(app.fixture.minor.id),
+                    Expr::val("manage"),
+                    Expr::val("parent"),
+                    Expr::val(false),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("schedules")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "medication_id",
+                    "active",
+                    "start_date",
+                    "end_date",
+                    "dose_amount",
+                    "dose_unit",
+                    "schedule_type",
+                    "schedule_config",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.minor.id),
+                    Expr::val(app.fixture.medication.id),
+                    Expr::val(true),
+                    Expr::val(now.date_naive() - chrono::Duration::days(1)),
+                    Expr::val(now.date_naive() + chrono::Duration::days(2)),
+                    Expr::val(2),
+                    Expr::val("tablet"),
+                    Expr::val(0),
+                    Func::cust("jsonb_build_object")
+                        .args([
+                            Expr::val("times"),
+                            Func::cust("jsonb_build_array")
+                                .args([Expr::val(now.format("%H:%M").to_string())])
+                                .into(),
+                        ])
+                        .into(),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     (now, scope)
@@ -1865,9 +4011,19 @@ async fn browser_dose_due_reaches_managed_dependent_subjects() {
     let (now, scope) = prepare_managed_dependent_dose(&app, "synthetic-due-managed").await;
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE notification_preferences SET private_text_enabled=false WHERE household_id=72001 AND person_id=73001",
-        )
+        .execute_raw({
+            let query = Query::update()
+                .table("notification_preferences")
+                .value("private_text_enabled", Expr::val(false))
+                .and_where(
+                    Expr::col("household_id")
+                        .eq(Expr::val(app.fixture.household.id))
+                        .and(Expr::col("person_id").eq(Expr::val(app.fixture.adult.id))),
+                )
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
@@ -1902,23 +4058,20 @@ async fn browser_dose_due_reaches_managed_dependent_subjects() {
     let events = app
         .fixture
         .admin
-        .query_all_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT person_id,event_key FROM notification_events WHERE event_type='dose_due' ORDER BY person_id",
-        ))
+        .query_all_raw(event_query(&app, Some("dose_due"), None, false, None))
         .await
         .unwrap();
     let person_ids = events
         .iter()
         .map(|row| row.try_get::<i64>("", "person_id").unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(person_ids, vec![73001, 73002]);
+    assert_eq!(person_ids, vec![app.fixture.adult.id, app.fixture.minor.id]);
     let keys = events
         .iter()
         .map(|row| row.try_get::<String>("", "event_key").unwrap())
         .collect::<Vec<_>>();
-    assert!(keys[0].contains("dose-due:73001:"));
-    assert!(keys[1].contains("dose-due:73002:"));
+    assert!(keys[0].contains(&format!("dose-due:{}:", app.fixture.adult.id)));
+    assert!(keys[1].contains(&format!("dose-due:{}:", app.fixture.minor.id)));
     app.close().await;
 }
 
@@ -1954,18 +4107,183 @@ async fn browser_dose_due_keeps_managed_dependent_names_private() {
 async fn browser_dose_due_skips_decided_and_unmanaged_dependents() {
     let app = Application::new().await;
     let (now, scope) = prepare_managed_dependent_dose(&app, "synthetic-due-decided").await;
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO medication_dose_occurrences(household_id,schedule_id,window_starts_on,window_ends_on,position,scheduled_at,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(72001,83002,$1,$1,1,$2,'not_taken',now(),74001,now(),now())",
-        [now.date_naive().into(),now.naive_utc().into()])).await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic unmanaged adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74984,72001,73004,'member','active',now(),now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78004,72001,74001,73004,'manage','carer',false,now(),now())").await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83004,72001,73004,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now())",
-        [
-            (now.date_naive() - chrono::Duration::days(1)).into(),
-            (now.date_naive() + chrono::Duration::days(2)).into(),
-            now.format("%H:%M").to_string().into(),
-        ],
-    )).await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("medication_dose_occurrences")
+                .columns([
+                    "household_id",
+                    "schedule_id",
+                    "window_starts_on",
+                    "window_ends_on",
+                    "position",
+                    "scheduled_at",
+                    "outcome",
+                    "resolved_at",
+                    "resolved_by_membership_id",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(schedule_for(&app, app.fixture.minor.id).await.id),
+                    Expr::val(now.date_naive()),
+                    Expr::val(now.date_naive()),
+                    Expr::val(1),
+                    Expr::val(now.naive_utc()),
+                    Expr::val("not_taken"),
+                    Func::cust("now").into(),
+                    Expr::val(app.fixture.membership.id),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
+    async {
+        let query = Query::insert()
+            .into_table("people")
+            .columns([
+                "name",
+                "person_type",
+                "has_capacity",
+                "created_at",
+                "updated_at",
+                "portable_id",
+            ])
+            .values_panic([
+                Expr::val("Synthetic unmanaged adult"),
+                Expr::val(0),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+                Expr::val(format!(
+                    "{}-{}",
+                    app.fixture.client_uuid, "Synthetic unmanaged adult"
+                )),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("household_memberships")
+            .columns([
+                "household_id",
+                "person_id",
+                "role",
+                "status",
+                "joined_at",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(
+                    participant_named(&app, "Synthetic unmanaged adult")
+                        .await
+                        .id,
+                ),
+                Expr::val("member"),
+                Expr::val("active"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("person_access_grants")
+            .columns([
+                "household_id",
+                "household_membership_id",
+                "person_id",
+                "access_level",
+                "relationship_type",
+                "missed_dose_notifications_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.membership.id),
+                Expr::val(
+                    participant_named(&app, "Synthetic unmanaged adult")
+                        .await
+                        .id,
+                ),
+                Expr::val("manage"),
+                Expr::val("carer"),
+                Expr::val(false),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("schedules")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "medication_id",
+                    "active",
+                    "start_date",
+                    "end_date",
+                    "dose_amount",
+                    "dose_unit",
+                    "schedule_type",
+                    "schedule_config",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(
+                        participant_named(&app, "Synthetic unmanaged adult")
+                            .await
+                            .id,
+                    ),
+                    Expr::val(app.fixture.medication.id),
+                    Expr::val(true),
+                    Expr::val(now.date_naive() - chrono::Duration::days(1)),
+                    Expr::val(now.date_naive() + chrono::Duration::days(2)),
+                    Expr::val(2),
+                    Expr::val("tablet"),
+                    Expr::val(0),
+                    Func::cust("jsonb_build_object")
+                        .args([
+                            Expr::val("times"),
+                            Func::cust("jsonb_build_array")
+                                .args([Expr::val(now.format("%H:%M").to_string())])
+                                .into(),
+                        ])
+                        .into(),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -1980,17 +4298,14 @@ async fn browser_dose_due_skips_decided_and_unmanaged_dependents() {
     let events = app
         .fixture
         .admin
-        .query_all_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT person_id FROM notification_events WHERE event_type='dose_due'",
-        ))
+        .query_all_raw(event_query(&app, Some("dose_due"), None, false, None))
         .await
         .unwrap();
     let person_ids = events
         .iter()
         .map(|row| row.try_get::<i64>("", "person_id").unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(person_ids, vec![73001]);
+    assert_eq!(person_ids, vec![app.fixture.adult.id]);
     app.close().await;
 }
 
@@ -2018,10 +4333,7 @@ async fn browser_dose_due_dependents_dedupe_across_reruns() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS total,count(DISTINCT event_key) AS keys FROM notification_events WHERE event_type='dose_due'",
-        ))
+        .query_one_raw(event_query(&app, Some("dose_due"), None, true, None))
         .await
         .unwrap()
         .unwrap();
@@ -2031,10 +4343,7 @@ async fn browser_dose_due_dependents_dedupe_across_reruns() {
 }
 
 async fn owner_connection(app: &Application) -> sea_orm::DatabaseConnection {
-    let mut uri = url::Url::parse(&app.fixture.runtime_uri).unwrap();
-    uri.set_username("medtracker").unwrap();
-    uri.set_password(Some("medtracker_password")).unwrap();
-    sea_orm::Database::connect(uri.to_string()).await.unwrap()
+    app.fixture.admin.clone()
 }
 
 async fn seed_claimable_delivery(
@@ -2043,23 +4352,50 @@ async fn seed_claimable_delivery(
     now: chrono::DateTime<Utc>,
 ) -> i64 {
     let key = format!(
-        "browser:{}:dose-due:73001:{}",
+        "browser:{}:dose-due:{}:{}",
         scope.actor.account_id,
+        app.fixture.adult.id,
         now.format("%Y-%m-%dT%H:%M:%SZ")
     );
     let event = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,intended_at,expires_at,created_at,updated_at) VALUES(72001,73001,'dose_due',$1,jsonb_build_object('account_id',$2,'delivery_status','pending'),$3,$4,now(),now()) RETURNING id",
-            [
-                key.into(),
-                scope.actor.account_id.into(),
-                now.naive_utc().into(),
-                (now + chrono::Duration::hours(1)).naive_utc().into(),
-            ],
-        ))
+        .query_one_raw({
+            let query = Query::insert()
+                .into_table("notification_events")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "event_type",
+                    "event_key",
+                    "metadata",
+                    "intended_at",
+                    "expires_at",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(app.fixture.adult.id),
+                    Expr::val("dose_due"),
+                    Expr::val(key),
+                    Func::cust("jsonb_build_object")
+                        .args([
+                            Expr::val("account_id"),
+                            Expr::val(scope.actor.account_id),
+                            Expr::val("delivery_status"),
+                            Expr::val("pending"),
+                        ])
+                        .into(),
+                    Expr::val(now.naive_utc()),
+                    Expr::val((now + chrono::Duration::hours(1)).naive_utc()),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .returning(Query::returning().column("id").to_owned())
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
@@ -2067,15 +4403,32 @@ async fn seed_claimable_delivery(
     let delivery = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO notification_deliveries(notification_event_id,subscription_id,household_id,account_id,next_attempt_at) SELECT $1,id,72001,$2,$3 FROM push_subscriptions WHERE account_id=$2 LIMIT 1 RETURNING id",
-            [
-                event_id.into(),
-                scope.actor.account_id.into(),
-                now.naive_utc().into(),
-            ],
-        ))
+        .query_one_raw({
+            let selection = Query::select()
+                .expr(Expr::val(event_id))
+                .column("id")
+                .expr(Expr::val(app.fixture.household.id))
+                .expr(Expr::val(scope.actor.account_id))
+                .expr(Expr::val(now.naive_utc()))
+                .from("push_subscriptions")
+                .and_where(Expr::col("account_id").eq(scope.actor.account_id))
+                .limit(1)
+                .to_owned();
+            let query = Query::insert()
+                .into_table("notification_deliveries")
+                .columns([
+                    "notification_event_id",
+                    "subscription_id",
+                    "household_id",
+                    "account_id",
+                    "next_attempt_at",
+                ])
+                .select_from(selection)
+                .unwrap()
+                .returning(Query::returning().column("id").to_owned())
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
@@ -2086,18 +4439,9 @@ async fn seed_claimable_delivery(
 async fn browser_reminder_authority_revoked_before_send_is_suppressed() {
     use med_tracker::models::access;
     for (mutation, expected) in [
-        (
-            "UPDATE notification_preferences SET enabled=false WHERE household_id=72001 AND person_id=73001",
-            "no_longer_eligible",
-        ),
-        (
-            "DELETE FROM push_subscriptions WHERE account_id=71001",
-            "no_longer_eligible",
-        ),
-        (
-            "UPDATE household_memberships AS membership SET revoked_at=now() FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id",
-            "recipient_revoked",
-        ),
+        (AuthorityChange::Preference, "no_longer_eligible"),
+        (AuthorityChange::Subscription, "no_longer_eligible"),
+        (AuthorityChange::Membership, "recipient_revoked"),
     ] {
         let app = Application::new().await;
         let (now, scope) = prepare_due_delivery(&app, "synthetic-presend-revoke").await;
@@ -2111,11 +4455,18 @@ async fn browser_reminder_authority_revoked_before_send_is_suppressed() {
         });
         let delivery_id = seed_claimable_delivery(&app, &scope, now).await;
         let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+        let holder = backend_pid(tenant.transaction()).await;
         tenant
             .transaction()
-            .execute_unprepared(
-                "SELECT id FROM push_subscriptions WHERE account_id=71001 FOR UPDATE",
-            )
+            .execute_raw({
+                let query = Query::select()
+                    .column("id")
+                    .from("push_subscriptions")
+                    .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                    .lock(sea_orm::sea_query::LockType::Update)
+                    .to_owned();
+                app.fixture.admin.get_database_backend().build(&query)
+            })
             .await
             .unwrap();
         let ctx = app.context.clone();
@@ -2125,7 +4476,18 @@ async fn browser_reminder_authority_revoked_before_send_is_suppressed() {
         });
         tokio::time::timeout(std::time::Duration::from_secs(10), async {
             loop {
-                let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%push_subscriptions%') AS waiting")).await.unwrap().unwrap();
+                let row = app
+                    .fixture
+                    .admin
+                    .query_one_raw(blocking_query(
+                        &app,
+                        Some("push_subscriptions"),
+                        Some(holder),
+                        None,
+                    ))
+                    .await
+                    .unwrap()
+                    .unwrap();
                 if row.try_get::<bool>("", "waiting").unwrap() {
                     break;
                 }
@@ -2136,7 +4498,7 @@ async fn browser_reminder_authority_revoked_before_send_is_suppressed() {
         .unwrap();
         tenant
             .transaction()
-            .execute_unprepared(mutation)
+            .execute_raw(authority_query(&app, mutation))
             .await
             .unwrap();
         tenant.commit().await.unwrap();
@@ -2148,11 +4510,7 @@ async fn browser_reminder_authority_revoked_before_send_is_suppressed() {
         let row = app
             .fixture
             .admin
-            .query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "SELECT status,outcome FROM notification_deliveries WHERE id=$1",
-                [delivery_id.into()],
-            ))
+            .query_one_raw(delivery_query(&app, Some(delivery_id)))
             .await
             .unwrap()
             .unwrap();
@@ -2166,10 +4524,10 @@ async fn browser_reminder_authority_revoked_before_send_is_suppressed() {
         let audited = app
             .fixture
             .admin
-            .query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "SELECT EXISTS(SELECT 1 FROM security_audit_events WHERE event_type='browser_push.reminder.invalid' AND (metadata->>'delivery_id')::bigint=$1) AS audited",
-                [delivery_id.into()],
+            .query_one_raw(audit_query(
+                &app,
+                "browser_push.reminder.invalid",
+                Some(delivery_id),
             ))
             .await
             .unwrap()
@@ -2203,11 +4561,7 @@ async fn browser_reminder_submicrosecond_claim_clock_keeps_send_ownership() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status FROM notification_deliveries WHERE id=$1",
-            [delivery_id.into()],
-        ))
+        .query_one_raw(delivery_query(&app, Some(delivery_id)))
         .await
         .unwrap()
         .unwrap();
@@ -2241,25 +4595,30 @@ async fn browser_reminder_in_flight_send_finishes_before_revocation_lands() {
     .await
     .unwrap();
     let owner = owner_connection(&app).await;
-    let withdrawal = {
-        let owner = owner.clone();
-        tokio::spawn(async move {
-            owner
-                .execute_unprepared(
-                    "UPDATE push_subscriptions SET updated_at=timezone('UTC',clock_timestamp()) WHERE account_id=71001",
-                )
-                .await
-        })
+    let (waiter, withdrawal) = {
+        let owner = owner.begin().await.unwrap();
+        let waiter = backend_pid(&owner).await;
+        let query = Query::update()
+            .table("push_subscriptions")
+            .value("updated_at", Utc::now().naive_utc())
+            .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+            .to_owned();
+        let statement = owner.get_database_backend().build(&query);
+        (
+            Some(waiter),
+            tokio::spawn(async move {
+                let result = owner.execute_raw(statement).await;
+                owner.commit().await?;
+                result
+            }),
+        )
     };
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             let row = app
                 .fixture
                 .admin
-                .query_one_raw(Statement::from_string(
-                    DbBackend::Postgres,
-                    "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock') AS waiting",
-                ))
+                .query_one_raw(blocking_query(&app, None, None, waiter))
                 .await
                 .unwrap()
                 .unwrap();
@@ -2282,16 +4641,12 @@ async fn browser_reminder_in_flight_send_finishes_before_revocation_lands() {
         .unwrap()
         .unwrap()
         .unwrap();
-    owner.close().await.unwrap();
+
     assert_eq!(transport.calls.lock().unwrap().len(), 1);
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT d.status,d.outcome,EXISTS(SELECT 1 FROM push_subscriptions s WHERE s.account_id=d.account_id) AS subscribed,EXISTS(SELECT 1 FROM security_audit_events a WHERE a.event_type='browser_push.reminder.completed' AND (a.metadata->>'delivery_id')::bigint=d.id) AS audited FROM notification_deliveries d WHERE d.id=$1",
-            [delivery_id.into()],
-        ))
+        .query_one_raw(delivery_query(&app, Some(delivery_id)))
         .await
         .unwrap()
         .unwrap();
@@ -2315,9 +4670,10 @@ async fn create_declared_dependent(
     kind: &str,
     birth: &str,
 ) -> i64 {
+    let household_id = app.fixture.household.id;
     let response = app
         .client
-        .post(format!("{}/api/v1/households/72001/people", app.origin))
+        .post(format!("{}/api/v1/households/{household_id}/people", app.origin))
         .bearer_auth(token)
         .header("idempotency-key", key)
         .json(&json!({"person":{"name":name,"date_of_birth":birth,"person_type":kind,"has_capacity":false,"initial_guardian_declaration":true}}))
@@ -2336,15 +4692,132 @@ async fn seed_daily_schedule(
     now: chrono::DateTime<Utc>,
     time: &str,
 ) -> i64 {
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO schedules(household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(72001,$1,80001,true,$2,$3,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($4::text)),now(),now()) RETURNING id",
-        [person_id.into(),(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(2)).into(),time.into()])).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw({
+            let query = Query::insert()
+                .into_table("schedules")
+                .columns([
+                    "household_id",
+                    "person_id",
+                    "medication_id",
+                    "active",
+                    "start_date",
+                    "end_date",
+                    "dose_amount",
+                    "dose_unit",
+                    "schedule_type",
+                    "schedule_config",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(person_id),
+                    Expr::val(app.fixture.medication.id),
+                    Expr::val(true),
+                    Expr::val(now.date_naive() - chrono::Duration::days(1)),
+                    Expr::val(now.date_naive() + chrono::Duration::days(2)),
+                    Expr::val(2),
+                    Expr::val("tablet"),
+                    Expr::val(0),
+                    Func::cust("jsonb_build_object")
+                        .args([
+                            Expr::val("times"),
+                            Func::cust("jsonb_build_array")
+                                .args([Expr::val(time)])
+                                .into(),
+                        ])
+                        .into(),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .returning(Query::returning().column("id").to_owned())
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap()
+        .unwrap();
     row.try_get("", "id").unwrap()
 }
 
 async fn declared_reminder_account(app: &Application) -> String {
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/declared-reminder','synthetic','synthetic',now(),now())").await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("notification_preferences")
+            .columns([
+                "household_id",
+                "person_id",
+                "enabled",
+                "dose_due_enabled",
+                "missed_dose_enabled",
+                "low_stock_enabled",
+                "private_text_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.adult.id),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(false),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/declared-reminder",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
     token
 }
 
@@ -2385,8 +4858,10 @@ async fn browser_missed_reminder_reaches_declared_dependents_without_grants() {
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-declared-reminder".into(),
     };
     assert_eq!(
@@ -2413,11 +4888,15 @@ async fn browser_missed_reminder_reaches_declared_dependents_without_grants() {
     let row = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT count(*) AS grants FROM person_access_grants WHERE person_id=ANY($1::bigint[])",
-            [declared.into()],
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .expr_as(Expr::col("id").count(), "grants")
+                .from("person_access_grants")
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("person_id").is_in(declared))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
@@ -2461,11 +4940,14 @@ async fn browser_missed_reminder_stops_declared_dependents_when_authority_breaks
     let declaration = app
         .fixture
         .admin
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT id FROM guardian_declarations WHERE subject_person_id=$1",
-            [people[0].into()],
-        ))
+        .query_one_raw({
+            let query = Query::select()
+                .column("id")
+                .from("guardian_declarations")
+                .and_where(Expr::col("subject_person_id").eq(people[0]))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap()
         .unwrap();
@@ -2484,20 +4966,35 @@ async fn browser_missed_reminder_stops_declared_dependents_when_authority_breaks
     assert_eq!(withdrawn.status().as_u16(), 200);
     app.fixture
         .admin
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE carer_relationships SET active=false,updated_at=now() WHERE household_id=72001 AND patient_id=$1",
-            [people[1].into()],
-        ))
+        .execute_raw({
+            let query = Query::update()
+                .table("carer_relationships")
+                .value("active", false)
+                .value("updated_at", Utc::now().naive_utc())
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("patient_id").eq(people[1]))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     app.fixture
         .admin
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1,updated_at=now() WHERE household_id=72001 AND person_id=$1",
-            [people[2].into()],
-        ))
+        .execute_raw({
+            let query = Query::update()
+                .table("household_memberships")
+                .value("status", "revoked")
+                .value("revoked_at", Utc::now().naive_utc())
+                .value("updated_at", Utc::now().naive_utc())
+                .value(
+                    "permissions_version",
+                    Expr::col("permissions_version").add(1),
+                )
+                .and_where(Expr::col("household_id").eq(app.fixture.household.id))
+                .and_where(Expr::col("person_id").eq(people[2]))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
         .await
         .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
@@ -2506,8 +5003,10 @@ async fn browser_missed_reminder_stops_declared_dependents_when_authority_breaks
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-declared-revocation".into(),
     };
     assert_eq!(
@@ -2548,17 +5047,52 @@ async fn browser_missed_reminder_skips_decided_dependent_doses_and_undeclared_ma
     )
     .await;
     let schedule = seed_daily_schedule(&app, decided, now, &scheduled).await;
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO medication_dose_occurrences(household_id,schedule_id,window_starts_on,window_ends_on,position,scheduled_at,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(72001,$1,$2,$2,1,$3,'not_taken',now(),74001,now(),now())",
-        [schedule.into(),scheduled_at.date_naive().into(),scheduled_at.naive_utc().into()])).await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw({
+            let query = Query::insert()
+                .into_table("medication_dose_occurrences")
+                .columns([
+                    "household_id",
+                    "schedule_id",
+                    "window_starts_on",
+                    "window_ends_on",
+                    "position",
+                    "scheduled_at",
+                    "outcome",
+                    "resolved_at",
+                    "resolved_by_membership_id",
+                    "created_at",
+                    "updated_at",
+                ])
+                .values_panic([
+                    Expr::val(app.fixture.household.id),
+                    Expr::val(schedule),
+                    Expr::val(scheduled_at.date_naive()),
+                    Expr::val(scheduled_at.date_naive()),
+                    Expr::val(1),
+                    Expr::val(scheduled_at.naive_utc()),
+                    Expr::val("not_taken"),
+                    Func::cust("now").into(),
+                    Expr::val(app.fixture.membership.id),
+                    Func::cust("now").into(),
+                    Func::cust("now").into(),
+                ])
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        })
+        .await
+        .unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-declared-decided".into(),
     };
     assert_eq!(
@@ -2567,10 +5101,155 @@ async fn browser_missed_reminder_skips_decided_dependent_doses_and_undeclared_ma
             .unwrap(),
         0
     );
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73010,'Synthetic unrelated manager',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71002,73010,'unrelated-manager@example.test',2,now(),now()); INSERT INTO users(id,person_id,email_address,created_at,updated_at) VALUES(77002,73010,'unrelated-manager@example.test',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74010,72001,73010,'administrator','active',now(),now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73010,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71002,'https://fcm.googleapis.com/fcm/send/unrelated-manager','synthetic','synthetic',now(),now())").await.unwrap();
+    async {
+        let query = Query::insert()
+            .into_table("people")
+            .columns([
+                "name",
+                "person_type",
+                "has_capacity",
+                "created_at",
+                "updated_at",
+                "portable_id",
+            ])
+            .values_panic([
+                Expr::val("Synthetic unrelated manager"),
+                Expr::val(0),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+                Expr::val(format!(
+                    "{}-{}",
+                    app.fixture.client_uuid, "Synthetic unrelated manager"
+                )),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("accounts")
+            .columns(["person_id", "email", "status", "created_at", "updated_at"])
+            .values_panic([
+                Expr::val(
+                    participant_named(&app, "Synthetic unrelated manager")
+                        .await
+                        .id,
+                ),
+                Expr::val(format!(
+                    "{}-unrelated-manager@example.test",
+                    app.fixture.client_uuid
+                )),
+                Expr::val(2),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("household_memberships")
+            .columns([
+                "household_id",
+                "person_id",
+                "role",
+                "status",
+                "joined_at",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(
+                    participant_named(&app, "Synthetic unrelated manager")
+                        .await
+                        .id,
+                ),
+                Expr::val("administrator"),
+                Expr::val("active"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("notification_preferences")
+            .columns([
+                "household_id",
+                "person_id",
+                "enabled",
+                "dose_due_enabled",
+                "missed_dose_enabled",
+                "low_stock_enabled",
+                "private_text_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(
+                    participant_named(&app, "Synthetic unrelated manager")
+                        .await
+                        .id,
+                ),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(false),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(account_for(&app, "Synthetic unrelated manager").await.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/unrelated-manager",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
     let unrelated = HouseholdScope {
-        actor: Actor { account_id: 71002 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: account_for(&app, "Synthetic unrelated manager").await.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-undeclared-manager".into(),
     };
     assert_eq!(
@@ -2587,7 +5266,79 @@ async fn browser_missed_reminder_skips_decided_dependent_doses_and_undeclared_ma
 async fn browser_missed_reminder_keeps_declared_dependent_names_private() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/declared-private','synthetic','synthetic',now(),now())").await.unwrap();
+    async {
+        let query = Query::update()
+            .table("accounts")
+            .value(
+                "preferences",
+                Func::cust("jsonb_build_object").args([Expr::val("time_zone"), Expr::val("UTC")]),
+            )
+            .and_where(Expr::col("id").eq(Expr::val(app.fixture.account.id)))
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("notification_preferences")
+            .columns([
+                "household_id",
+                "person_id",
+                "enabled",
+                "dose_due_enabled",
+                "missed_dose_enabled",
+                "low_stock_enabled",
+                "private_text_enabled",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.household.id),
+                Expr::val(app.fixture.adult.id),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Expr::val(false),
+                Expr::val(true),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        let _ = app
+            .fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await?;
+        let query = Query::insert()
+            .into_table("push_subscriptions")
+            .columns([
+                "account_id",
+                "endpoint",
+                "p256dh",
+                "auth",
+                "created_at",
+                "updated_at",
+            ])
+            .values_panic([
+                Expr::val(app.fixture.account.id),
+                Expr::val(format!(
+                    "https://fcm.googleapis.com/fcm/send/{}/declared-private",
+                    app.fixture.client_uuid
+                )),
+                Expr::val("synthetic"),
+                Expr::val("synthetic"),
+                Func::cust("now").into(),
+                Func::cust("now").into(),
+            ])
+            .to_owned();
+        app.fixture
+            .admin
+            .execute_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+    }
+    .await
+    .unwrap();
     let now = Utc::now()
         .with_second(0)
         .unwrap()
@@ -2612,8 +5363,10 @@ async fn browser_missed_reminder_keeps_declared_dependent_names_private() {
         transport: transport.clone(),
     });
     let scope = HouseholdScope {
-        actor: Actor { account_id: 71001 },
-        household_id: 72001,
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
         request_id: "synthetic-declared-private".into(),
     };
     assert_eq!(
@@ -2631,4 +5384,50 @@ async fn browser_missed_reminder_keeps_declared_dependent_names_private() {
         );
     }
     app.close().await;
+}
+
+#[derive(Clone, Copy, Debug)]
+enum AuthorityChange {
+    Membership,
+    Account,
+    Household,
+    Preference,
+    Subscription,
+}
+fn authority_query(app: &Application, change: AuthorityChange) -> Statement {
+    match change {
+        AuthorityChange::Membership => {
+            let query = Query::update()
+                .table("household_memberships")
+                .value("revoked_at", Utc::now().naive_utc())
+                .and_where(Expr::col("person_id").eq(app.fixture.adult.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        }
+        AuthorityChange::Account => {
+            let query = Query::update()
+                .table("accounts")
+                .value("status", 3)
+                .and_where(Expr::col("id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        }
+        AuthorityChange::Household => {
+            let query = Query::update()
+                .table("households")
+                .value("status", "archived")
+                .value("lifecycle_state", "offboarded")
+                .and_where(Expr::col("id").eq(app.fixture.household.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        }
+        AuthorityChange::Preference => update_preference(app, "enabled", Expr::val(false)),
+        AuthorityChange::Subscription => {
+            let query = Query::delete()
+                .from_table("push_subscriptions")
+                .and_where(Expr::col("account_id").eq(app.fixture.account.id))
+                .to_owned();
+            app.fixture.admin.get_database_backend().build(&query)
+        }
+    }
 }

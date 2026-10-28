@@ -30,11 +30,10 @@ impl Drop for Container {
     }
 }
 
-async fn seed_session(fixture: &Fixture, id: i64, platform_admin_id: i64) -> TestResult {
+async fn seed_session(fixture: &Fixture, platform_admin_id: i64) -> TestResult<i64> {
     let now = chrono::Utc::now().naive_utc();
-    support_access_sessions::ActiveModel {
-        id: Set(id),
-        household_id: Set(72001),
+    let session = support_access_sessions::ActiveModel {
+        household_id: Set(fixture.household.id),
         platform_admin_id: Set(platform_admin_id),
         reason: Set("Synthetic shell-free scheduler acceptance".into()),
         starts_at: Set(now - chrono::Duration::hours(2)),
@@ -45,7 +44,7 @@ async fn seed_session(fixture: &Fixture, id: i64, platform_admin_id: i64) -> Tes
     }
     .insert(&fixture.admin)
     .await?;
-    Ok(())
+    Ok(session.id)
 }
 
 async fn wait_for_expiry(fixture: &Fixture, id: i64, container: &str) -> TestResult {
@@ -79,9 +78,9 @@ async fn actual_schedule_expires_support_and_audits_once_without_a_shell() -> Te
     let result = async {
         let now = chrono::Utc::now().naive_utc();
         let admin = platform_admins::ActiveModel {
-            account_id: Set(71001), status: Set("active".into()), created_at: Set(now), updated_at: Set(now), ..Default::default()
+            account_id: Set(fixture.account.id), status: Set("active".into()), created_at: Set(now), updated_at: Set(now), ..Default::default()
         }.insert(&fixture.admin).await?;
-        seed_session(&fixture, 98001, admin.id).await?;
+        let first = seed_session(&fixture, admin.id).await?;
         let directory = tempfile::tempdir()?;
         let config = directory.path().join("scheduler.yaml");
         std::fs::write(&config, "jobs:\n  expiry:\n    run: support-access-expire\n    schedule: '*/1 * * * * *'\n    run_on_start: true\n")?;
@@ -113,34 +112,36 @@ async fn actual_schedule_expires_support_and_audits_once_without_a_shell() -> Te
             "Unexpected shell execution failure: {shell_output}; scheduler logs: {}",
             docker(&["logs", &name])?
         );
-        wait_for_expiry(&fixture, 98001, &name).await?;
-        seed_session(&fixture, 98002, admin.id).await?;
-        wait_for_expiry(&fixture, 98002, &name).await?;
+        wait_for_expiry(&fixture, first, &name).await?;
+        let second = seed_session(&fixture, admin.id).await?;
+        wait_for_expiry(&fixture, second, &name).await?;
         tokio::time::sleep(Duration::from_secs(2)).await;
         let versions = versions::Entity::find()
+            .filter(versions::Column::HouseholdId.eq(fixture.household.id))
             .filter(versions::Column::ItemType.eq("SupportAccessSession"))
             .filter(versions::Column::Event.eq("platform/support/expired"))
             .all(&fixture.admin).await?;
         let mut subjects: Vec<_> = versions.iter().map(|row| row.item_id).collect();
         subjects.sort_unstable();
-        assert_eq!(subjects, [98001, 98002]);
+        assert_eq!(subjects, [first, second]);
         for row in versions {
-            assert_eq!(row.household_id, Some(72001));
+            assert_eq!(row.household_id, Some(fixture.household.id));
             assert_eq!(row.whodunnit, None);
-            assert_eq!(row.audit_context["actor_account_id"], 71001);
+            assert_eq!(row.audit_context["actor_account_id"], fixture.account.id);
             assert_eq!(row.audit_context["active_role"], "support_expiry_task");
         }
         let audits = security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
             .filter(security_audit_events::Column::EventType.eq("support_access_session.expired"))
             .all(&fixture.admin).await?;
         let mut subjects: Vec<_> = audits.iter().map(|row| row.metadata["support_access_session_id"].as_i64()).collect();
         subjects.sort_unstable();
-        assert_eq!(subjects, [Some(98001), Some(98002)]);
+        assert_eq!(subjects, [Some(first), Some(second)]);
         for row in audits {
-            assert_eq!(row.household_id, 72001);
-            assert_eq!(row.actor_account_id, Some(71001));
+            assert_eq!(row.household_id, fixture.household.id);
+            assert_eq!(row.actor_account_id, Some(fixture.account.id));
             assert_eq!(row.actor_membership_id, None);
-            assert_eq!(row.audit_context["actor_account_id"], 71001);
+            assert_eq!(row.audit_context["actor_account_id"], fixture.account.id);
             assert_eq!(row.audit_context["active_role"], "support_expiry_task");
         }
         docker(&["kill", "--signal=SIGINT", &name])?;

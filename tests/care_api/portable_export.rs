@@ -1,4 +1,5 @@
 use super::*;
+
 use med_tracker::models::care::portable_crypto;
 use med_tracker::models::entities::{location, medication, membership};
 use sea_orm::{ActiveModelTrait, Set};
@@ -9,8 +10,9 @@ const PASSPHRASE: &str = "synthetic portable secret";
 async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_without_person_links()
 {
     let app = Application::new().await;
+    let fixture_household_id = app.fixture.household.id;
     membership::ActiveModel {
-        id: Set(74001),
+        id: Set(app.fixture.membership.id),
         role: Set("member".into()),
         ..Default::default()
     }
@@ -21,19 +23,19 @@ async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_wit
     let take = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/medication_takes",
+            "{}/api/v1/households/{fixture_household_id}/medication_takes",
             app.origin
         ))
         .bearer_auth(&token)
-        .json(&take_body())
+        .json(&shared_take_body(&app.fixture))
         .send()
         .await
         .unwrap();
     assert_eq!(take.status().as_u16(), 201);
     let now = chrono::Utc::now().naive_utc();
     let moved = location::ActiveModel {
-        household_id: Set(72001),
-        portable_id: Set("portable-v3-relocated-stock".into()),
+        household_id: Set(app.fixture.household.id),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
         name: Set("Relocated inventory".into()),
         created_at: Set(now),
         updated_at: Set(now),
@@ -43,7 +45,7 @@ async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_wit
     .await
     .unwrap();
     medication::ActiveModel {
-        id: Set(80001),
+        id: Set(app.fixture.medication.id),
         location_id: Set(moved.id),
         ..Default::default()
     }
@@ -88,7 +90,7 @@ async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_wit
     let denied = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/portable_imports",
+            "{}/api/v1/households/{fixture_household_id}/portable_imports",
             app.origin
         ))
         .bearer_auth(&token)
@@ -100,7 +102,7 @@ async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_wit
     assert_eq!(denied.status().as_u16(), 403);
     assert_eq!(super::portable_imports::import_effects(&app).await, before);
     membership::ActiveModel {
-        id: Set(74001),
+        id: Set(app.fixture.membership.id),
         role: Set("administrator".into()),
         ..Default::default()
     }
@@ -115,7 +117,7 @@ async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_wit
     let rejected = app
         .client
         .post(format!(
-            "{}/api/v1/households/72001/portable_imports",
+            "{}/api/v1/households/{fixture_household_id}/portable_imports",
             app.origin
         ))
         .bearer_auth(&token)
@@ -155,7 +157,7 @@ async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_wit
         let imported = app
             .client
             .post(format!(
-                "{}/api/v1/households/72001/portable_imports",
+                "{}/api/v1/households/{fixture_household_id}/portable_imports",
                 app.origin
             ))
             .bearer_auth(&token)
@@ -173,24 +175,23 @@ async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_wit
 }
 
 fn export_url(app: &Application, query: &str) -> String {
+    let fixture_household_id = app.fixture.household.id;
     format!(
-        "{}/api/v1/households/72001/portable_export{query}",
+        "{}/api/v1/households/{fixture_household_id}/portable_export{query}",
         app.origin
     )
 }
 
 async fn export_events(app: &Application) -> i64 {
-    app.fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM security_audit_events WHERE event_type='portable_data.exported' AND metadata->>'export_mode'='encrypted_migration_bundle' AND metadata->>'encrypted'='true'",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
-        .unwrap()
+    super::portable_imports::audit_fields(
+        app,
+        "portable_data.exported",
+        &[
+            ("export_mode", "encrypted_migration_bundle"),
+            ("encrypted", "true"),
+        ],
+    )
+    .await
 }
 
 #[tokio::test]
@@ -218,18 +219,16 @@ async fn portable_export_requires_a_passphrase_and_returns_an_encrypted_envelope
     let body_text = response.text().await.unwrap();
     let body: Value = serde_json::from_str(&body_text).unwrap();
     let audits = export_events(&app).await;
-    let requests: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/portable_exports' AND metadata->>'action'='show' AND metadata->>'status'='200'",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
-        .unwrap();
+    let requests = super::portable_imports::audit_fields(
+        &app,
+        "api.request",
+        &[
+            ("controller", "api/v1/portable_exports"),
+            ("action", "show"),
+            ("status", "200"),
+        ],
+    )
+    .await;
     app.close().await;
     assert_eq!(missing_status, 422);
     assert_eq!(missing_body["error"]["code"], "unprocessable_content");
@@ -301,7 +300,9 @@ async fn portable_export_selects_the_requested_portable_format() {
 #[tokio::test]
 async fn portable_export_rejects_invalid_options_and_foreign_households() {
     let app = Application::new().await;
-    app.fixture.seed_foreign_household(99999).await;
+    let foreign = app.fixture.foreign_household().await;
+    let foreign_id = foreign.household.id;
+    foreign.close().await;
     let token = app.token().await;
     let mut statuses = Vec::new();
     let mut messages = Vec::new();
@@ -337,7 +338,7 @@ async fn portable_export_rejects_invalid_options_and_foreign_households() {
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/99999/portable_export",
+            "{}/api/v1/households/{foreign_id}/portable_export",
             app.origin
         ))
         .bearer_auth(&token)

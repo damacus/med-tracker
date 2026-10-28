@@ -20,7 +20,7 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: &scheduler_icu_lib
         sh: 'if [ "$(uname -s)" = Darwin ]; then icu_prefix=$(brew --prefix icu4c@78) && printf "%s/lib" "$icu_prefix"; else pkg-config --variable=libdir icu-uc; fi'
     cmds:
-      - cargo nextest run --locked --test scheduler_process --no-tests=fail --test-threads 2
+      - cargo nextest run --locked --test scheduler_process --no-tests=fail
   test:scheduler:image:
     desc: Prove scheduled expiry and audit writes in the scratch release image
     env:
@@ -28,6 +28,8 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: *scheduler_icu_lib
       LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
     vars:
+      API_RUN_ID:
+        sh: uuidgen
       OWNED_PROJECT:
         sh: 'printf "mtloco-scheduler-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
     cmds:
@@ -48,8 +50,10 @@ tasks:
         export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
         export MEDTRACKER_OWNED_DATABASE=1;
         export MEDTRACKER_IMAGE_NETWORK="${1}_default";
-        cargo nextest run --locked --test care_api --run-ignored only --no-tests=fail --test-threads 1 scheduler_image
-        ' sh {{.OWNED_PROJECT | shellQuote}}
+        export MEDTRACKER_TEST_RUN_ID="$2";
+        trap "cargo run --locked --example api-fixtures -- cleanup" EXIT;
+        cargo nextest run --locked --profile api --test care_api --run-ignored only --no-tests=fail --test-threads 1 scheduler_image
+        ' sh {{.OWNED_PROJECT | shellQuote}} {{.API_RUN_ID | shellQuote}}
   foundation:db-up:
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -186,12 +190,14 @@ tasks:
     desc: Run database-free Rust library, doc and JavaScript unit tests
     cmds:
       - task: :frontend:test
-      - 'cargo nextest run --locked --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
+      - 'cargo nextest run --locked --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}}'
       - cargo test --locked --workspace --doc
   test:integration:
     desc: Run compiled API, security and database integration tests
     deps: [":frontend:prepare"]
     vars:
+      API_RUN_ID:
+        sh: uuidgen
       OWNED_PROJECT:
         sh: 'printf "mtloco-http-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
     cmds:
@@ -200,13 +206,15 @@ tasks:
           FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
           TARGET: '{{.TARGET | default ""}}'
           FILTER: '{{.FILTER | default ""}}'
+          API_RUN_ID: '{{.API_RUN_ID}}'
   test:integration:direct:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
-      - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--tests{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
+      - defer: 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo run --locked --example api-fixtures -- cleanup'
+      - 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo nextest run --locked --profile api {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}} {{.CLI_ARGS}}{{if and (not .TARGET) (not (.FILTER | default "")) (not .CLI_ARGS)}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
   test:integration:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -236,6 +244,8 @@ tasks:
         unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG DOCKER_TLS_VERIFY DOCKER_CERT_PATH;
         export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
         export MEDTRACKER_OWNED_DATABASE=1;
+        export MEDTRACKER_TEST_RUN_ID="$4";
+        trap "cargo run --locked --example api-fixtures -- cleanup" EXIT;
         export MEDTRACKER_OWNED_STORAGE=1;
         export S3_ENDPOINT="$storage_endpoint";
         export S3_BUCKET=scanner-fixture;
@@ -253,19 +263,21 @@ tasks:
         export RAILS_SECRET_KEY_BASE=synthetic-slice-rails-verification-secret;
         target="$2";
         filter="$3";
+        shift 4;
+        extra_count="$#";
         if [ -n "$target" ]; then
-          set -- --test "$target";
+          set -- --test "$target" "$@";
         else
-          set -- --tests;
+          set -- --test "*" "$@";
         fi;
         if [ -n "$filter" ]; then
           set -- "$@" "$filter";
         fi;
-        cargo nextest run --locked --no-tests=fail --test-threads 2 "$@";
-        if [ -z "$target" ] && [ -z "$filter" ]; then
+        cargo nextest run --locked --profile api --no-tests=fail "$@";
+        if [ -z "$target" ] && [ -z "$filter" ] && [ "$extra_count" = 0 ]; then
           cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
         fi
-        ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}}
+        ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}} {{.API_RUN_ID | shellQuote}} {{.CLI_ARGS}}
   test:browser:
     desc: Run the Rust browser journeys against a private owned database
     deps: [":frontend:prepare"]
@@ -284,7 +296,7 @@ tasks:
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
     internal: true
     cmds:
-      - 'cargo nextest run --locked --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
+      - 'cargo nextest run --locked --test {{.TARGET | default "browser" | shellQuote}} --run-ignored only --no-tests=fail {{.FILTER | default "" | shellQuote}}'
   test:browser:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -318,7 +330,7 @@ tasks:
         export ACTIVE_STORAGE_S3_ACCESS_KEY_ID=storage-smoke-access;
         export ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY=storage-smoke-secret;
         export ACTIVE_STORAGE_S3_FORCE_PATH_STYLE=true;
-        cargo nextest run --locked --test "$3" --run-ignored only --no-tests=fail --test-threads 2 "$2";
+        cargo nextest run --locked --test "$3" --run-ignored only --no-tests=fail "$2";
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}} {{.TARGET | default "browser" | shellQuote}}
   routes:
     env:

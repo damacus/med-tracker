@@ -61,6 +61,9 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::locations::routes()))
             .add_route(browser(crate::controllers::people::routes()))
             .add_route(browser(crate::controllers::profile::routes()))
+            .add_route(browser(
+                crate::controllers::profile::account_profile::routes(),
+            ))
             .add_route(browser(crate::controllers::guardian_declarations::routes()))
             .add_route(browser(crate::controllers::profile::avatar::routes()))
             .add_route(browser(crate::controllers::treatments::routes()))
@@ -177,7 +180,7 @@ impl Hooks for App {
             ctx.clone(),
             crate::models::canary::boundary,
         ));
-        if ctx
+        let router = if ctx
             .config
             .server
             .middlewares
@@ -185,12 +188,13 @@ impl Hooks for App {
             .as_ref()
             .is_none_or(|request_id| request_id.enable)
         {
-            Ok(router.layer(axum::middleware::from_fn(
+            router.layer(axum::middleware::from_fn(
                 middleware::request_id::request_id_middleware,
-            )))
+            ))
         } else {
-            Ok(router)
-        }
+            router
+        };
+        Ok(router.layer(axum::middleware::from_fn(crate::request_trace::boundary)))
     }
 
     fn register_tasks(tasks: &mut Tasks) {

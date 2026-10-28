@@ -2278,6 +2278,15 @@ en:
         metric_label: Review
         metric_value: Schedule
   profiles:
+    personal:
+      clinical_invalid: "Enter a name and a valid date of birth. Account holders must be at least 18."
+      description: "Manage your account and your clinical information."
+      account_name: "Account display name"
+      clinical: "Clinical information"
+      history: "My taken-dose history"
+      history_description: "What you have taken, including records from households you have left."
+      history_empty: "No taken doses have been recorded for you."
+      history_next: "Older records"
     security_flow:
       incomplete_link: "Incomplete link"
       incomplete_reset_guidance: "This password reset link is incomplete. Request a new link to reset your password."

@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use super::{AuthenticationLifetime, audit, store};
 use crate::models::{
     care::doses::CredentialMethod,
-    entities::{api_app_token, api_session, oauth_grant},
+    entities::{account, api_app_token, api_session, oauth_grant},
     errors::OperationError,
 };
 
@@ -318,19 +318,15 @@ async fn audit_token(
 ) -> Result<(), OperationError> {
     let event = format!("auth_token/{kind}/revoked");
     let metadata = json!({"account_id":account_id,"credential_id":credential_id,"token_type":kind,"action":"revoked"});
-    let actor = transaction.query_one_raw(statement(
-        "SELECT u.id AS user_id FROM accounts a JOIN people p ON p.id=a.person_id LEFT JOIN users u ON u.person_id=p.id WHERE a.id=$1",
-        [account_id.into()],
-    )).await.map_err(unavailable)?;
-    let user_id: Option<i64> = match actor {
-        Some(row) => row.try_get("", "user_id").map_err(unavailable)?,
-        None => None,
-    };
-    let context =
-        json!({"actor_account_id":account_id,"actor_user_id":user_id,"request_id":request_id});
+    let actor = account::Entity::find_by_id(account_id)
+        .one(transaction)
+        .await
+        .map_err(unavailable)?
+        .ok_or(OperationError::Unauthenticated)?;
+    let context = json!({"actor_account_id":account_id,"actor_person_id":actor.person_id,"request_id":request_id});
     transaction.execute_raw(statement(
         "INSERT INTO versions(item_type,item_id,event,object,whodunnit,request_id,audit_context,created_at) VALUES('AuthenticationToken',$1,$2,$3,$4,$5,$6,timezone('UTC',clock_timestamp()))",
-        [account_id.into(), event.clone().into(), metadata.to_string().into(), user_id.map(|id| id.to_string()).into(), request_id.into(), context.clone().into()],
+        [account_id.into(), event.clone().into(), metadata.to_string().into(), Some(account_id.to_string()).into(), request_id.into(), context.clone().into()],
     )).await.map_err(unavailable)?;
     if let Some(member_id) = member_id {
         let row = transaction

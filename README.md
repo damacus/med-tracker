@@ -152,7 +152,10 @@ with the entire graph. Stock currently requires a storage label in the app.
 
 HTTP requests require the matching ready image. During fresh verification only
 requests carrying the internal smoke key pass the gate; ordinary authentication
-and household permissions still apply. Workers and scheduled tasks wait while
+and household permissions still apply. Read-only `/health` probes also pass
+during fresh verification so Kubernetes can mark the server ready for the smoke
+journey. Health remains unavailable when the control phase or heartbeat is unsafe.
+Workers and scheduled tasks wait while
 the gate is closed. Canary configuration must omit the optional queue reaper so
 it cannot reclaim a live waiting handler. After a worker dies, recover its
 Processing jobs with Loco's native requeue command only after confirming the old

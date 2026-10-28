@@ -94,14 +94,25 @@
     const sidebar = document.querySelector('.app-sidebar');
     const sidebarTrigger = document.querySelector('[data-sidebar-account]');
     const template = document.getElementById('app-navigation-template');
-    if (!header || !template || !data?.labels || installed) return;
+    const layout = document.querySelector('[data-app-drawer-layout]');
+    if (!header || !template || !layout || !data?.labels || installed) return;
     const labels = data.labels;
     const searchTrigger = header?.querySelector('[data-global-search-trigger]');
     const appearanceTrigger = header?.querySelector('[data-dialog-open="appearance-dialog"]');
     const securityLink = header?.querySelector('a[href="/account/security"]');
     const selected = data.selected_section;
+    const menu = controls => {
+      const list = element('ul', null, 'menu w-full');
+      for (const control of controls) {
+        const item = element('li');
+        item.append(control);
+        list.append(item);
+      }
+      return list;
+    };
     const link = item => {
-      const anchor = element('a', item.label, 'app-navigation-link');
+      const anchor = element('a', null, 'min-w-0 whitespace-normal wrap-anywhere');
+      anchor.append(element('span', item.label, 'min-w-0 wrap-anywhere'));
       anchor.href = item.href;
       anchor.dataset.section = item.id;
       if (item.id === selected) anchor.setAttribute('aria-current', 'page');
@@ -123,37 +134,136 @@
       token.type = 'hidden';
       token.name = 'authenticity_token';
       token.value = data.authenticity_token;
-      const button = element('button', labels.sidebar.sign_out, 'app-navigation-link');
+      const button = element('button', labels.sidebar.sign_out, 'min-w-0 whitespace-normal wrap-anywhere');
       button.type = 'submit';
-      form.append(token, button);
+      form.append(token, menu([button]));
       return form;
     };
-    const dialog = (id, title, triggers) => {
-      const panel = element('dialog', null, `app-navigation-panel ${id}`);
-      panel.id = id;
-      panel.setAttribute('aria-label', title);
+    const heading = (panel, title, closePanel) => {
       const top = element('div', null, 'app-navigation-heading');
-      top.append(element('h2', id === 'app-drawer' ? labels.mobile_menu.brand : title));
+      top.append(element('h2', title));
       const close = element('button', '×', 'btn btn-ghost');
       close.type = 'button';
       close.setAttribute('aria-label', labels.mobile_menu.close_menu);
-      close.addEventListener('click', () => panel.close());
+      close.addEventListener('click', closePanel);
       top.append(close);
       panel.append(top);
+    };
+    const drawer = trigger => {
+      const toggle = layout.querySelector('.drawer-toggle');
+      const content = layout.querySelector('.drawer-content');
+      const side = layout.querySelector('.drawer-side');
+      const overlay = layout.querySelector('.drawer-overlay');
+      const panel = layout.querySelector('#app-drawer');
+      overlay.setAttribute('aria-label', labels.mobile_menu.close_menu);
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-modal', 'true');
+      panel.setAttribute('aria-label', data.navigation_label);
+      side.inert = true;
+      let focusFrame;
+      const focusWhenVisible = () => {
+        if (!toggle.checked) return;
+        const button = panel.querySelector('button');
+        if (getComputedStyle(button).visibility === 'visible') button.focus({ preventScroll: true });
+        else focusFrame = requestAnimationFrame(focusWhenVisible);
+      };
+      const sync = () => {
+        cancelAnimationFrame(focusFrame);
+        const open = toggle.checked;
+        trigger.setAttribute('aria-expanded', String(open));
+        panel.toggleAttribute('open', open);
+        side.inert = !open;
+        content.inert = open;
+        if (open) focusFrame = requestAnimationFrame(focusWhenVisible);
+        else if (panel.contains(document.activeElement) || document.activeElement === document.body) trigger.focus({ preventScroll: true });
+      };
+      panel.close = () => {
+        toggle.checked = false;
+        sync();
+        panel.dispatchEvent(new Event('close'));
+      };
+      heading(panel, labels.mobile_menu.brand, panel.close);
+      trigger.addEventListener('click', () => { toggle.checked = !toggle.checked; sync(); });
+      toggle.addEventListener('change', sync);
+      document.addEventListener('keydown', event => {
+        if (!toggle.checked) return;
+        if (event.key === 'Escape') { event.preventDefault(); panel.close(); }
+        if (event.key !== 'Tab') return;
+        const controls = [...panel.querySelectorAll('a[href], button:not([disabled]), [tabindex="0"]')].filter(node => node.getClientRects().length);
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      });
+      return panel;
+    };
+    const dropdown = triggers => {
+      const panel = element('nav', null, 'dropdown app-navigation-panel app-account');
+      panel.id = 'app-account';
+      panel.popover = 'auto';
+      panel.setAttribute('aria-label', labels.profile_menu.my_account);
       let activeTrigger;
-      for (const trigger of Array.isArray(triggers) ? triggers : [triggers]) {
-        trigger.setAttribute('aria-label', title);
-        trigger.addEventListener('click', () => { activeTrigger = trigger; panel.showModal(); trigger.setAttribute('aria-expanded', 'true'); });
+      const finishClose = () => {
+        if (!panel.hasAttribute('open')) return;
+        panel.removeAttribute('open');
+        activeTrigger?.setAttribute('aria-expanded', 'false');
+        panel.dispatchEvent(new Event('close'));
+      };
+      panel.close = () => {
+        if (panel.matches(':popover-open')) panel.hidePopover();
+        finishClose();
+      };
+      const anchorSupported = CSS.supports('position-anchor: --account-trigger') && CSS.supports('position-area: bottom');
+      if (!anchorSupported) {
+        panel.style.positionArea = 'none';
+        panel.style.inset = 'auto';
+        panel.style.margin = '0';
+      }
+      const position = () => {
+        if (!activeTrigger) return;
+        if (!activeTrigger.getClientRects().length) { panel.close(); return; }
+        if (anchorSupported) return;
+        const bounds = activeTrigger.getBoundingClientRect();
+        const sidebar = activeTrigger === sidebarTrigger;
+        panel.style.maxHeight = Math.max(0, sidebar ? bounds.top - 16 : innerHeight - bounds.bottom - 16) + 'px';
+        panel.style.left = Math.max(8, Math.min(sidebar ? bounds.left : bounds.right - panel.offsetWidth, innerWidth - panel.offsetWidth - 8)) + 'px';
+        panel.style.top = Math.max(8, sidebar ? bounds.top - panel.offsetHeight - 8 : bounds.bottom + 8) + 'px';
+      };
+      for (const [index, trigger] of triggers.entries()) {
+        const anchor = '--account-trigger-' + index;
+        trigger.style.anchorName = anchor;
+        trigger.setAttribute('popovertarget', panel.id);
+        trigger.removeAttribute('aria-haspopup');
+        trigger.addEventListener('click', () => {
+          activeTrigger = trigger;
+          panel.style.positionAnchor = anchor;
+          panel.classList.toggle('dropdown-top', trigger === sidebarTrigger);
+          panel.classList.toggle('dropdown-start', trigger === sidebarTrigger);
+          panel.classList.toggle('dropdown-bottom', trigger !== sidebarTrigger);
+          panel.classList.toggle('dropdown-end', trigger !== sidebarTrigger);
+        });
+        trigger.addEventListener('keydown', event => {
+          if (event.key !== 'ArrowDown') return;
+          event.preventDefault();
+          if (!panel.matches(':popover-open')) trigger.click();
+          panel.querySelector('button, a[href]')?.focus({ preventScroll: true });
+        });
         trigger.hidden = false;
       }
-      panel.addEventListener('close', () => {
-        activeTrigger?.setAttribute('aria-expanded', 'false');
-        if (document.activeElement === document.body || panel.contains(document.activeElement)) activeTrigger?.focus();
+      panel.addEventListener('beforetoggle', event => {
+        if (event.newState !== 'open') return;
+        panel.setAttribute('open', '');
+        activeTrigger?.setAttribute('aria-expanded', 'true');
       });
-      panel.addEventListener('click', event => {
-        const bounds = panel.getBoundingClientRect();
-        if (event.target === panel && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) panel.close();
+      panel.addEventListener('toggle', event => {
+        if (event.newState === 'closed') finishClose();
+        else position();
       });
+      document.addEventListener('focusin', event => {
+        if (panel.matches(':popover-open') && !panel.contains(event.target) && event.target !== activeTrigger) panel.close();
+      });
+      window.addEventListener('resize', position);
+      document.addEventListener('scroll', position, true);
       document.body.append(panel);
       return panel;
     };
@@ -161,15 +271,15 @@
       header.replaceChildren(template.content.cloneNode(true));
       if (searchTrigger) header.querySelector('.app-header').insertBefore(searchTrigger, header.querySelector('[data-app-account]'));
       const drawerTrigger = header.querySelector('[data-app-drawer]');
-      const drawer = dialog('app-drawer', data.navigation_label, drawerTrigger);
+      const navigationDrawer = drawer(drawerTrigger);
       drawerTrigger.setAttribute('aria-label', labels.mobile_menu.open_menu);
       const navigation = element('nav');
       navigation.setAttribute('aria-label', labels.mobile_rail.primary_navigation);
-      data.sidebar.forEach(item => navigation.append(link(item)));
       const profile = data.choices.find(item => item.id === 'profile');
-      if (profile) navigation.append(link(profile));
-      if (sidebar) sidebar.querySelector('[data-sidebar-navigation]').replaceChildren(...[...data.sidebar, ...(profile ? [profile] : [])].map(link));
-      drawer.append(navigation, logout());
+      const destinations = [...data.sidebar, ...(profile ? [profile] : [])];
+      navigation.append(menu(destinations.map(link)));
+      if (sidebar) sidebar.querySelector('[data-sidebar-navigation]').replaceChildren(menu(destinations.map(link)));
+      navigationDrawer.append(navigation, logout());
       header.querySelector('[data-account-name]').textContent = data.name;
       const avatar = header.querySelector('[data-profile-avatar]');
       avatar.classList.add('relative');
@@ -189,11 +299,12 @@
       sidebar.querySelector("[data-sidebar-navigation]").setAttribute("aria-label", labels.mobile_rail.primary_navigation);
       const switcher = sidebar.querySelector('a[href="/households/choose?switch=1"]');
       const selectedHousehold = data.households?.find(household => String(household.id) === String(data.active_household_id) && typeof household.name === 'string');
-      switcher.replaceChildren(element('span', labels.profile_menu.households));
+      const householdName = element('span', null, 'grid min-w-0 wrap-anywhere');
+      householdName.append(element('span', labels.profile_menu.households));
+      switcher.replaceChildren(householdName);
       if (selectedHousehold) {
-        switcher.append(element('span', selectedHousehold.name, 'text-xs shell-muted'));
+        householdName.append(element('span', selectedHousehold.name, 'text-xs shell-muted'));
       }
-      switcher.classList.add('app-household-switcher');
       sidebar.querySelector('[data-sidebar-name]').textContent = data.name;
       sidebar.querySelector('[data-sidebar-avatar]').replaceChildren(...[...header.querySelector('[data-profile-avatar]').childNodes].map(node => node.cloneNode(true)));
       sidebar.querySelector('[data-sidebar-profile]').hidden = true;
@@ -204,25 +315,27 @@
       } else sidebar.querySelector('.app-sidebar-account').append(logout());
     }
     const accountTriggers = [header.querySelector('[data-app-account]'), ...(sidebarTrigger ? [sidebarTrigger] : [])];
-    const account = dialog('app-account', labels.profile_menu.my_account, accountTriggers);
+    const account = dropdown(accountTriggers);
+    const accountControls = [];
     for (const trigger of accountTriggers) trigger.setAttribute('aria-label', `${data.initials} ${data.name} ${labels.profile_menu.my_account}`);
     if (appearanceTrigger) {
-      appearanceTrigger.className = 'app-navigation-link';
+      appearanceTrigger.className = 'min-w-0 whitespace-normal wrap-anywhere';
       appearanceTrigger.addEventListener('click', () => account.close());
-      account.append(appearanceTrigger);
+      accountControls.push(appearanceTrigger);
     }
     if (securityLink) {
-      securityLink.className = 'app-navigation-link';
-      account.append(securityLink);
+      securityLink.className = 'min-w-0 whitespace-normal wrap-anywhere';
+      accountControls.push(securityLink);
     }
     for (const id of ['dashboard', 'profile', 'administration']) {
       const item = data.choices.find(item => item.id === id);
-      if (item) account.append(link({ ...item, label: labels.profile_menu[id] }));
+      if (item) accountControls.push(link({ ...item, label: labels.profile_menu[id] }));
     }
-    if (data.platform_url === '/platform/users') account.append(link({ id: 'administration', label: 'Platform administration', href: '/platform/users' }));
+    if (data.platform_url === '/platform/users') accountControls.push(link({ id: 'administration', label: 'Platform administration', href: '/platform/users' }));
+    account.append(menu(accountControls));
     if (Array.isArray(data.households) && data.households.length) {
       const section = element('section', null, 'border-t border-base-300 mt-2 pt-3');
-      section.append(element('h3', labels.profile_menu.households, 'text-sm font-semibold px-4'));
+      section.append(element('h3', labels.profile_menu.households, 'menu-title'));
       for (const household of data.households) {
         if (!Number.isSafeInteger(household.id) || household.id <= 0 || typeof household.name !== 'string') continue;
         const form = element('form');
@@ -235,10 +348,10 @@
           input.value = value;
           form.append(input);
         }
-        const button = element('button', `${labels.profile_menu.switch_to} ${household.name}`, 'app-navigation-link');
+        const button = element('button', `${labels.profile_menu.switch_to} ${household.name}`, 'min-w-0 whitespace-normal wrap-anywhere');
         button.type = 'submit';
         if (String(household.id) === data.active_household_id) button.setAttribute('aria-current', 'true');
-        form.append(button);
+        form.append(menu([button]));
         section.append(form);
       }
       account.append(section);

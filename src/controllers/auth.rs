@@ -272,6 +272,14 @@ pub(crate) fn authenticated_redirect(session: &Session<SessionPgPool>) -> Respon
     {
         return redirect(&format!("/authorize?{query}"));
     }
+    if let Some(destination) = pending_invitation_url(session) {
+        session.remove("invitation_pending");
+        return redirect(&destination);
+    }
+    redirect("/")
+}
+
+pub(crate) fn pending_invitation_url(session: &Session<SessionPgPool>) -> Option<String> {
     let invitation = session
         .get::<InvitationContinuation>("invitation_pending")
         .or_else(|| {
@@ -279,16 +287,14 @@ pub(crate) fn authenticated_redirect(session: &Session<SessionPgPool>) -> Respon
                 .get::<String>("invitation_pending")
                 .map(|token| InvitationContinuation { token, lang: None })
         });
-    if let Some(invitation) = invitation {
-        session.remove("invitation_pending");
+    invitation.map(|invitation| {
         let mut query = url::form_urlencoded::Serializer::new(String::new());
         query.append_pair("token", &invitation.token);
         if let Some(language) = invitation.lang {
             query.append_pair("lang", language.as_str());
         }
-        return redirect(&format!("/invitations/accept?{}", query.finish()));
-    }
-    redirect("/")
+        format!("/invitations/accept?{}", query.finish())
+    })
 }
 
 async fn sign_out(
