@@ -89,6 +89,7 @@ impl Task for SupportExpiryTask {
     }
 
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> loco_rs::Result<()> {
+        crate::models::canary::work(ctx).await?;
         let run = expire_due(ctx)
             .await
             .map_err(|_| loco_rs::Error::string("Support expiry run failed"))?;
