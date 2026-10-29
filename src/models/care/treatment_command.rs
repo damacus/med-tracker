@@ -1,5 +1,3 @@
-use uuid::Uuid;
-
 macro_rules! selector {
     ($name:ident) => {
         #[derive(Clone, Debug, Eq, PartialEq)]
@@ -9,9 +7,7 @@ macro_rules! selector {
             type Err = ();
 
             fn from_str(value: &str) -> Result<Self, Self::Err> {
-                if value.parse::<i64>().is_ok_and(|number| number > 0)
-                    || Uuid::parse_str(value).is_ok()
-                {
+                if crate::models::care::valid_identifier(value) {
                     Ok(Self(value.to_owned()))
                 } else {
                     Err(())

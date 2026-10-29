@@ -10,6 +10,7 @@ mod timing;
 mod validation;
 mod writing;
 
+pub(crate) use crate::models::care::valid_identifier;
 use crate::models::{
     access::{self, HouseholdScope, PersonAccess, TenantTransaction},
     entities::{
@@ -45,7 +46,6 @@ pub(crate) use timing::dashboard_timing;
 use timing::{applies_on, timing_allowed};
 use uuid::Uuid;
 use validation::parse_decimal_str;
-pub(crate) use validation::valid_identifier;
 
 type ApiError = OperationError;
 

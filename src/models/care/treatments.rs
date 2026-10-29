@@ -12,6 +12,7 @@ use crate::models::{
         doses::CredentialProvenance,
         medications,
         treatment_command::{DosageOptionId, DoseCycle, MedicationId, PersonId, ScheduleType},
+        valid_identifier,
     },
     entities::{api_change_event, dosage, household, medication, person, schedule},
     errors::OperationError,
@@ -253,9 +254,6 @@ pub(crate) fn representation(row: &schedule::Model) -> (Value, String) {
 }
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
-}
-fn valid_identifier(id: &str) -> bool {
-    id.parse::<i64>().is_ok_and(|id| id > 0) || Uuid::parse_str(id).is_ok()
 }
 fn parse_decimal(value: &Value) -> Option<Decimal> {
     Decimal::from_str(value.as_str()?).ok()

@@ -11,6 +11,7 @@ use crate::models::{
         treatment_command::{
             AdministrationKind, DosageOptionId, DoseCycle, MedicationId, PersonId,
         },
+        valid_identifier,
     },
     entities::{api_change_event, dosage, household, medication, person, person_medication},
     errors::OperationError,
@@ -46,9 +47,6 @@ fn parse_decimal(value: &Value) -> Option<Decimal> {
     value
         .as_str()
         .and_then(|value| Decimal::from_str(value).ok())
-}
-fn valid_identifier(value: &str) -> bool {
-    value.parse::<i64>().is_ok_and(|value| value > 0) || Uuid::parse_str(value).is_ok()
 }
 fn storage_decimal(amount: Decimal, integer: u32, places: u32) -> Option<Decimal> {
     (amount.abs() < Decimal::from(10_i64.pow(integer)) && amount.normalize().scale() <= places)
