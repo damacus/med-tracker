@@ -310,9 +310,9 @@ fn authentication(error: AuthenticationError, request_id: &str) -> Response {
             response
         }
         AuthenticationError::Unavailable => failure(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_error",
-            "Internal server error",
+            StatusCode::SERVICE_UNAVAILABLE,
+            "service_unavailable",
+            "Service is temporarily unavailable",
             request_id,
         ),
     }
@@ -330,6 +330,12 @@ fn operation(error: OperationError, request_id: &str) -> Response {
             authentication(AuthenticationError::Unauthenticated, request_id)
         }
         OperationError::Forbidden => authentication(AuthenticationError::Forbidden, request_id),
+        OperationError::Unavailable => failure(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "service_unavailable",
+            "Service is temporarily unavailable",
+            request_id,
+        ),
         _ => failure(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_error",
@@ -364,4 +370,25 @@ fn reply(status: StatusCode, body: Option<Value>, request_id: &str) -> Response 
             .insert(header::WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));
     }
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn unavailable_maps_to_service_unavailable_envelope() {
+        for response in [
+            authentication(AuthenticationError::Unavailable, "request-id"),
+            operation(OperationError::Unavailable, "request-id"),
+        ] {
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+            let bytes = axum::body::to_bytes(response.into_body(), 4096)
+                .await
+                .expect("error envelope body");
+            let body: Value = serde_json::from_slice(&bytes).expect("error envelope JSON");
+            assert_eq!(body["error"]["code"], "service_unavailable");
+            assert_eq!(body["error"]["request_id"], "request-id");
+        }
+    }
 }

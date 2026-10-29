@@ -796,7 +796,8 @@ BEGIN
    OR captured.person_id<>actual_source.person_id OR captured.household_id<>NEW.household_id
    OR captured.captured_by_account_id<>med_tracker.current_account_id()
    OR captured.captured_by_membership_id<>med_tracker.current_membership_id()
-   OR captured.fact_hash IS DISTINCT FROM med_tracker.adoption_fact_hash(captured::public.shared_schedule_adoption_facts)
+   OR captured.fact_hash IS DISTINCT FROM (SELECT med_tracker.adoption_fact_hash(fact)
+    FROM public.shared_schedule_adoption_facts fact WHERE fact.medication_take_id=NEW.medication_take_id)
    OR (captured.medication_take_id,captured.take_portable_id,captured.client_uuid,captured.taken_at,captured.dose_amount,captured.dose_unit,
     captured.taken_from_medication_id,captured.taken_from_location_id,captured.take_created_at,captured.take_updated_at)
     IS DISTINCT FROM (actual_take.id,actual_take.portable_id,actual_take.client_uuid,actual_take.taken_at,actual_take.dose_amount,actual_take.dose_unit,

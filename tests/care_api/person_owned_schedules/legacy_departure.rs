@@ -772,8 +772,8 @@ async fn legacy_departure_adoption_audit_failure_rolls_back_canonical_safe_and_a
         reached,
         "Fault must reach audit after tentative canonical/safe/association writes"
     );
-    let body = Application::assert_status(response, 500).await;
-    assert_eq!(body["error"]["code"], "internal_error");
+    let body = Application::assert_status(response, 503).await;
+    assert_eq!(body["error"]["code"], "service_unavailable");
     assert!(
         !body
             .to_string()
