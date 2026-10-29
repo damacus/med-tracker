@@ -661,7 +661,9 @@ async fn personal_history_audit_failure_releases_no_records() -> TestResult {
     .await?;
     // SeaQuery schema builders cannot create PostgreSQL trigger functions or triggers.
     // The parameterised marker limits this DDL exception to this scenario's account.
-    fixture.admin.execute_unprepared(&format!("CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='AccountClinicalAccess' AND NEW.event IN ('personal_history_read','personal_history_denied') AND EXISTS (SELECT 1 FROM public.versions WHERE item_type='SyntheticHistoryAuditFailure' AND item_id=NEW.item_id) THEN RAISE EXCEPTION 'Synthetic history audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON public.versions FOR EACH ROW EXECUTE FUNCTION {fault}()")).await?;
+    // SECURITY DEFINER keeps the marker lookup deterministic: versions runs FORCE
+    // ROW LEVEL SECURITY, and invoker privilege cannot read synthetic marker rows.
+    fixture.admin.execute_unprepared(&format!("CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'pg_catalog', 'public' AS $$ BEGIN IF NEW.item_type='AccountClinicalAccess' AND NEW.event IN ('personal_history_read','personal_history_denied') AND EXISTS (SELECT 1 FROM public.versions WHERE item_type='SyntheticHistoryAuditFailure' AND item_id=NEW.item_id) THEN RAISE EXCEPTION 'Synthetic history audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON public.versions FOR EACH ROW EXECUTE FUNCTION {fault}()")).await?;
     let request = server(&boot);
     let read = request
         .get(ENDPOINT)

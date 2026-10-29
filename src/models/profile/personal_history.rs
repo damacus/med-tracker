@@ -4,7 +4,7 @@ use crate::models::{
     identity::resource::HistoryActor,
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, EntityTrait,
+    ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, EntityTrait,
     QueryFilter, QueryOrder, QuerySelect, Set,
     sea_query::{Expr, Func, Query},
 };
@@ -118,13 +118,16 @@ pub(crate) async fn record_access(
         AccessOutcome::Denied => ("personal_history_denied", "denied"),
     };
     let provenance = actor.provenance();
-    version::ActiveModel {
+    // Append-only audit writes must not rely on INSERT ... RETURNING: FORCE RLS
+    // on versions only makes the new row SELECT-visible to the audited account
+    // context, which blank-context denial transactions do not carry.
+    version::Entity::insert(version::ActiveModel {
         item_type: Set("AccountClinicalAccess".into()),
         item_id: Set(account_id), event: Set(event.into()),
         whodunnit: Set(Some(account_id.to_string())), request_id: Set(Some(request_id.into())),
         object: Set(Some(json!({"outcome":outcome}).to_string())),
         audit_context: Set(json!({"actor_account_id":account_id,"actor_person_id":person_id,"household_id":null,"request_id":request_id,"outcome":outcome,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"PersonalClinicalAccess","policy_query":"read_self_taken_doses"})),
         created_at: Set(Some(chrono::Utc::now().naive_utc())), ..Default::default()
-    }.insert(transaction).await?;
+    }).exec_without_returning(transaction).await?;
     Ok(())
 }
