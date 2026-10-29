@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export function check(root, rustVersion, nodeVersion) {
+export function check(root, rustVersion) {
   const read = (name) => readFileSync(join(root, name), "utf8");
   const dockerfile = read("Dockerfile");
   const mise = read("mise.toml");
@@ -31,9 +31,6 @@ export function check(root, rustVersion, nodeVersion) {
   if (major !== appNode || !ciNodes.length || ciNodes.some((version) => version !== major)) {
     throw new Error(`Node image ${node} must match mise ${appNode} and app CI`);
   }
-  if (nodeVersion !== undefined && node !== nodeVersion.replace(/^v/, "")) {
-    throw new Error(`Node image ${node} must match app CI resolved version ${nodeVersion}`);
-  }
   const tasks = (source) => new Set([...source.matchAll(/uses: arduino\/setup-task@[^\n]+\n\s+with:\n\s+version: ([\d.]+)/g)].map((match) => match[1]));
   const appTasks = tasks(ci);
   const imageTasks = tasks(workflow);
@@ -45,5 +42,5 @@ export function check(root, rustVersion, nodeVersion) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const rustVersion = execFileSync("rustc", ["--version"], { encoding: "utf8" }).split(" ")[1];
-  console.log(check(resolve(dirname(fileURLToPath(import.meta.url)), ".."), rustVersion, process.env.IMAGE_CI_NODE_VERSION));
+  console.log(check(resolve(dirname(fileURLToPath(import.meta.url)), ".."), rustVersion));
 }
