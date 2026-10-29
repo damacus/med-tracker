@@ -30,7 +30,7 @@
     <form action="/households/{{ slug }}/admin/dependent-sharing-invitations" method="post" class="flex flex-col gap-4">
       {% include "invitations/context.html" %}
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-      <label for="guardian-email" class="font-semibold">{{ invite.form.email }}</label>
+      <label for="guardian-email" class="font-semibold">{{ invite.form.guardian_email }}</label>
       <input id="guardian-email" name="email" type="email" class="input w-full" required>
       <button class="btn btn-neutral" type="submit">{{ invite_labels.acceptance.invite_guardian }}</button>
     </form>

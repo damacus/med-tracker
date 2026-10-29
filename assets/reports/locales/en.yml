@@ -353,6 +353,7 @@ en:
           unavailable: The invitation could not be changed. Check its status and try again.
         form:
           email: Email
+          guardian_email: Guardian's email
           role: Household role
           relationship_type: Dependent relationship
           select_relationship_type: Select relationship

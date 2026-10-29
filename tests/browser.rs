@@ -69,6 +69,8 @@ mod security_entry;
 
 #[path = "browser/person_owned_schedules.rs"]
 mod person_owned_schedules;
+#[path = "browser/care_sharing.rs"]
+mod care_sharing;
 #[path = "browser/personal_profile.rs"]
 mod personal_profile;
 

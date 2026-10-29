@@ -618,6 +618,7 @@ cy:
           unavailable: Ni ellid newid y gwahoddiad. Gwiriwch ei statws a rhowch gynnig arall arni.
         form:
           email: E-bost
+          guardian_email: E-bost y gwarcheidwad
           role: Rôl aelwyd
           relationship_type: Perthynas ddibynnydd
           select_relationship_type: Dewiswch berthynas

@@ -625,6 +625,7 @@ pt:
           unavailable: Não foi possível alterar o convite. Verifique o estado e tente novamente.
         form:
           email: Email
+          guardian_email: Email do tutor
           role: Função do agregado
           relationship_type: Relação do dependente
           select_relationship_type: Selecione a relação

@@ -401,6 +401,7 @@ ga:
           unavailable: Níorbh fhéidir an cuireadh a athrú. Seiceáil a stádas agus bain triail eile as.
         form:
           email: Ríomhphost
+          guardian_email: Ríomhphost an chaomhnóra
           role: Ról teaghlaigh
           relationship_type: Gaol cleithiúnaí
           select_relationship_type: Roghnaigh gaol

@@ -623,6 +623,7 @@ es:
           unavailable: No se pudo cambiar la invitación. Comprueba su estado e inténtalo de nuevo.
         form:
           email: Correo electrónico
+          guardian_email: Correo electrónico del tutor
           role: Rol del hogar
           relationship_type: Relación de la persona dependiente
           select_relationship_type: Selecciona una relación
