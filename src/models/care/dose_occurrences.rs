@@ -10,6 +10,7 @@ mod projection;
 mod representation;
 mod scheduling;
 mod writing;
+use crate::models::identity::credentials::CredentialProvenance;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     care::{administration, doses, valid_identifier},
@@ -23,7 +24,6 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use calendar::{config_times, cycle_bounds, date, local_midnight};
 pub(crate) use calendar::{scheduled_time_in_zone, with_dashboard_timezone};
 use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone, Utc};
-use doses::CredentialProvenance;
 use hmac::{Hmac, KeyInit, Mac};
 use identity::{Kind, Source};
 use input::ActionInput;

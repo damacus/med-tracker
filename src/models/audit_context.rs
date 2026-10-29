@@ -1,6 +1,6 @@
 use super::access::{HouseholdScope, TenantTransaction};
-use super::care::doses::CredentialProvenance;
 use super::entities::membership;
+use super::identity::credentials::CredentialProvenance;
 use serde_json::{Value, json};
 
 pub(crate) fn household(
@@ -48,7 +48,7 @@ fn build(
 mod tests {
     use super::*;
     use crate::models::access::Actor;
-    use crate::models::care::doses::CredentialMethod;
+    use crate::models::identity::credentials::CredentialMethod;
     use serde_json::json;
 
     fn fixture() -> (HouseholdScope, membership::Model) {

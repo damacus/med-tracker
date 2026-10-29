@@ -11,9 +11,9 @@ pub mod stock_removals;
 
 use crate::models::{
     access::{self, TenantTransaction},
-    care::doses::CredentialProvenance,
     entities::{api_change_event, dosage, household, medication, version},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::Utc;
 use sea_orm::prelude::Decimal;

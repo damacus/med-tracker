@@ -10,6 +10,7 @@ mod audit;
 pub mod authorization;
 pub mod better_auth;
 pub mod browser;
+pub mod credentials;
 mod input;
 pub mod oauth;
 mod registrar;

@@ -140,10 +140,8 @@ async fn parent_assignment_fixture(
 async fn person_carer_nonmanager_cannot_restore_or_assign_ineligible_existing_accounts() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            person_carers,
-        },
+        care::person_carers,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     use sea_orm::ConnectionTrait;
     let app = super::Application::new().await;
@@ -363,10 +361,8 @@ async fn person_carer_nonmanager_cannot_restore_or_assign_ineligible_existing_ac
 async fn person_carer_nonmanager_ignores_forged_role_and_rejects_unmanaged_or_adult_people() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            person_carers,
-        },
+        care::person_carers,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     use sea_orm::ConnectionTrait;
     let app = super::Application::new().await;
@@ -493,11 +489,8 @@ async fn person_carer_removal_withdraws_linked_manage_but_preserves_member_recor
  {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            health_events::browser,
-            person_carers,
-        },
+        care::{health_events::browser, person_carers},
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     use sea_orm::ConnectionTrait;
     let app = super::Application::new().await;
@@ -733,10 +726,8 @@ async fn person_carer_pending_invitation_cannot_attach_a_dependent_its_original_
  {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            person_carers,
-        },
+        care::person_carers,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     use sea_orm::ConnectionTrait;
     let app = super::Application::new().await;

@@ -5,9 +5,10 @@ pub(crate) mod self_account;
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::{doses::CredentialProvenance, people},
+    care::people,
     entities::{account, active_storage_attachment, person, version},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::{NaiveDate, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};

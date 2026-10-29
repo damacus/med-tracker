@@ -19,12 +19,12 @@ pub(crate) use writing::{SelfClinicalChanges, update_self};
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::doses::CredentialProvenance,
     entities::{
         api_change_event, carer_relationship, household, location, location_membership, membership,
         notification_preference, person, version,
     },
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::{Datelike, NaiveDate, Utc};
 use chrono_tz::Tz;

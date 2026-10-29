@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::{care::doses::CredentialMethod, entities::api_idempotency_key};
+use crate::models::{entities::api_idempotency_key, identity::credentials::CredentialMethod};
 use chrono::Duration;
 use loco_rs::model::TenantQueryExt;
 

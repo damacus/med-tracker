@@ -1,8 +1,8 @@
 use crate::models::{
     access::{self, TenantTransaction},
-    care::doses::CredentialProvenance,
     entities::{account, person, security_audit_event, version},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::{NaiveDate, Utc};
 use sea_orm::{

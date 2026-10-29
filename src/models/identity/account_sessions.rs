@@ -10,9 +10,9 @@ use sha2::{Digest, Sha256};
 
 use super::{AuthenticationLifetime, audit, store};
 use crate::models::{
-    care::doses::CredentialMethod,
     entities::{account, api_app_token, api_session, oauth_grant},
     errors::OperationError,
+    identity::credentials::CredentialMethod,
 };
 
 pub async fn households(db: &DatabaseConnection, account_id: i64) -> Result<Value, OperationError> {
