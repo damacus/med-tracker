@@ -7,8 +7,8 @@ pub struct FixtureBucket {
     operator: opendal::Operator,
 }
 
-#[allow(dead_code)]
 impl FixtureBucket {
+    #[allow(dead_code)]
     pub async fn key_count(&self) -> usize {
         self.operator
             .list_with("/")
@@ -20,6 +20,7 @@ impl FixtureBucket {
             .count()
     }
 
+    #[allow(dead_code)]
     pub async fn content_type(&self, key: &str) -> String {
         self.operator
             .stat(key)
@@ -30,6 +31,7 @@ impl FixtureBucket {
             .to_owned()
     }
 
+    #[allow(dead_code)]
     pub async fn get(&self, key: &str) -> opendal::Result<opendal::Buffer> {
         self.operator.read(key).await
     }
@@ -50,6 +52,7 @@ pub async fn ensure_owned_bucket() {
     READY.get_or_init(prepare).await;
 }
 
+#[allow(dead_code)]
 pub async fn create_owned_bucket(name: &str) -> FixtureBucket {
     assert!(name.starts_with("medtracker-fixture-"));
     assert!(name[19..].bytes().all(|byte| byte.is_ascii_hexdigit()));
