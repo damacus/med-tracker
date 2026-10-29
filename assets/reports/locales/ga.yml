@@ -329,6 +329,16 @@ ga:
         existing_account: An bhfuil cuntas agat cheana?
         sign_in: Sínigh isteach
         to_accept: chun glacadh leis an gcuireadh seo.
+        dependent_label: Cleithiúnaí a roinnfear a chúram
+        dependent_choose: Roghnaigh cleithiúnaí
+        no_dependents: Níl údarás caomhnóra incháilithe reatha agat do chleithiúnaí. Athbhreithnigh do dhearbhuithe sula nglacann tú leis.
+        dependent_consent: Is caomhnóir dearbhaithe reatha mé agus ceadaím pleananna cúraim reatha agus amach anseo an chleithiúnaí seo, stádas sosanna agus stádas sábháilteachta na dáileoige is déanaí a roinnt leis an teaghlach seo. Fanann nótaí príobháideacha agus stair mhionsonraithe príobháideach. Críochnaíonn an cead nuair a tharraingítear siar é nó nuair a fhágtar an teaghlach.
+        dependent_approved: Roinnt cúraim ceadaithe
+        dependent_approved_description: Roinntear pleananna reatha agus amach anseo an chleithiúnaí roghnaithe. Fanann tú sna teaghlaigh reatha agus is féidir an cead a tharraingt siar ó do chuntas.
+        return_profile: Fill ar do chuntas
+        invite_guardian: Tabhair cuireadh do chaomhnóir cúram a roinnt
+        invite_guardian_description: Roghnaíonn caomhnóir dearbhaithe reatha an cleithiúnaí agus ceadaíonn sé an roinnt. Fanann an caomhnóir sna teaghlaigh reatha.
+        sharing_consent: Ceadaím mo phleananna cúraim reatha agus amach anseo, stádas sosanna agus stádas sábháilteachta na dáileoige is déanaí a roinnt leis an teaghlach seo. Fanann nótaí príobháideacha agus stair mhionsonraithe príobháideach. Críochnaíonn an cead seo nuair a fhágann mé.
         invalid_title: Níl nasc an chuiridh ar fáil
         invalid_guidance: Tá nasc an chuiridh neamhbhailí nó imithe in éag. Iarr cuireadh nua ar bhainisteoir an teaghlaigh.
         recovery_title: Glacadh leat sa teaghlach

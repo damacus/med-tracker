@@ -546,6 +546,16 @@ cy:
         existing_account: Oes gennych gyfrif eisoes?
         sign_in: Mewngofnodwch
         to_accept: i dderbyn y gwahoddiad hwn.
+        dependent_label: Dibynnydd y bydd ei ofal yn cael ei rannu
+        dependent_choose: Dewiswch ddibynnydd
+        no_dependents: Nid oes gennych awdurdod gwarcheidwad cymwys cyfredol dros ddibynnydd. Adolygwch eich datganiadau cyn derbyn.
+        dependent_consent: Rwy’n warcheidwad datganedig cyfredol ac yn cymeradwyo rhannu cynlluniau gofal presennol ac yn y dyfodol, statws seibiant a statws diogelwch y dos diweddaraf y dibynnydd hwn gyda’r aelwyd hon. Mae nodiadau preifat a hanes manwl yn aros yn breifat. Mae tynnu’n ôl neu adael yn dod â’r gymeradwyaeth i ben.
+        dependent_approved: Cymeradwywyd rhannu gofal
+        dependent_approved_description: Rhennir cynlluniau presennol ac yn y dyfodol y dibynnydd a ddewiswyd. Rydych yn aros yn eich aelwydydd presennol a gallwch dynnu’r gymeradwyaeth yn ôl o’ch cyfrif.
+        return_profile: Dychwelyd i’ch cyfrif
+        invite_guardian: Gwahodd gwarcheidwad i rannu gofal
+        invite_guardian_description: Mae gwarcheidwad datganedig cyfredol yn dewis y dibynnydd ac yn cymeradwyo rhannu. Mae’r gwarcheidwad yn aros yn ei aelwydydd presennol.
+        sharing_consent: Rwy’n cymeradwyo rhannu fy nghynlluniau gofal presennol ac yn y dyfodol, statws seibiant a statws diogelwch y dos diweddaraf gyda’r aelwyd hon. Mae nodiadau preifat a hanes manwl yn aros yn breifat. Mae gadael yn dod â’r gymeradwyaeth hon i ben.
         invalid_title: Nid yw dolen y gwahoddiad ar gael
         invalid_guidance: Mae dolen y gwahoddiad yn annilys neu wedi dod i ben. Gofynnwch i reolwr y cartref am wahoddiad newydd.
         recovery_title: Wedi ymuno â'r cartref

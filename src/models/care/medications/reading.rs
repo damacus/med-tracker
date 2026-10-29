@@ -18,6 +18,7 @@ pub async fn list(
     if page < 1 || !(1..=100).contains(&per_page) {
         return Err(validation("Invalid pagination"));
     }
+    super::super::person_schedules::projection::refresh(tenant).await?;
     let mut query = access::medication_scope(tenant);
     if let Some(timestamp) = updated_since {
         query = query.filter(medication::Column::UpdatedAt.gte(timestamp));

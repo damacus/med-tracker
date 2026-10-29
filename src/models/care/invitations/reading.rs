@@ -61,5 +61,7 @@ pub async fn preview(db: &DatabaseConnection, token: &str) -> Result<Value, Oper
         return Err(super::acceptance::unavailable());
     }
     transaction.commit().await?;
-    Ok(json!({"email":row.email,"membership_role":row.membership_role,"household_name":home.name}))
+    Ok(
+        json!({"email":row.email,"membership_role":row.membership_role,"household_name":home.name,"dependent_sharing":row.dependent_sharing}),
+    )
 }

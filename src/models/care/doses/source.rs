@@ -191,7 +191,9 @@ pub(super) async fn source(
             Ok(source_from_assignment(value))
         }
         DoseSource::Schedule(ScheduleId(id)) => {
-            let mut query = schedule::Entity::find().in_tenant(household_id);
+            let mut query = schedule::Entity::find()
+                .in_tenant(household_id)
+                .filter(schedule::Column::ExecutionEndedAt.is_null());
             query = match id {
                 SourceId::Database(id) => query.filter(schedule::Column::Id.eq(*id)),
                 SourceId::Portable(id) => query.filter(schedule::Column::PortableId.eq(id)),

@@ -19,6 +19,7 @@ pub struct Model {
     pub stock_dose_default: Option<Decimal>,
     pub stock_default_known: bool,
     pub pause_started_at: Option<DateTime>,
+    pub pause_instance_id: Option<String>,
     pub pause_reason: Option<String>,
     pub pause_note: Option<String>,
     pub origin_time_zone: String,

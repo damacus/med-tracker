@@ -1,4 +1,5 @@
 use super::plans;
+use crate::models::_entities::notification_deliveries as notification_delivery;
 use crate::models::{
     access::{self, HouseholdScope, TenantTransaction},
     care::{
@@ -12,12 +13,14 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use loco_rs::app::AppContext;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QuerySelect, Statement,
+    sea_query::{Alias, Expr, JoinType, LockBehavior, LockType, Query},
 };
 use serde_json::json;
 
 struct Claim {
     event_id: i64,
     key: String,
+    metadata: serde_json::Value,
     attempt: i32,
     claimed_at: NaiveDateTime,
     subscription: push_subscription::Model,
@@ -55,16 +58,50 @@ async fn claim(
     id: i64,
     now: DateTime<Utc>,
 ) -> Result<Option<Claim>, OperationError> {
+    use sea_orm::sea_query::ExprTrait;
     let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     push_subscriptions::lock_account(&tenant).await?;
-    let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT d.notification_event_id,d.subscription_id,d.status,d.attempt_count,d.next_attempt_at,d.claimed_at,e.event_key,e.event_type,e.intended_at,e.expires_at FROM notification_deliveries d JOIN notification_events e ON e.id=d.notification_event_id AND e.household_id=d.household_id WHERE d.id=$1 AND d.household_id=$2 AND d.account_id=$3 FOR UPDATE OF d SKIP LOCKED",
-        [id.into(),scope.household_id.into(),scope.actor.account_id.into()]
-    )).await?;
+    crate::models::care::person_schedules::projection::refresh(&tenant).await?;
+    let query = Query::select()
+        .columns([
+            ("d", "notification_event_id"),
+            ("d", "subscription_id"),
+            ("d", "status"),
+            ("d", "attempt_count"),
+            ("d", "next_attempt_at"),
+            ("d", "claimed_at"),
+            ("e", "event_key"),
+            ("e", "event_type"),
+            ("e", "intended_at"),
+            ("e", "expires_at"),
+        ])
+        .expr_as(Expr::col(("e", "metadata")), "event_metadata")
+        .from_as(Alias::new("notification_deliveries"), Alias::new("d"))
+        .join_as(
+            JoinType::InnerJoin,
+            Alias::new("notification_events"),
+            Alias::new("e"),
+            Expr::col(("e", "id"))
+                .eq(Expr::col(("d", "notification_event_id")))
+                .and(Expr::col(("e", "household_id")).eq(Expr::col(("d", "household_id")))),
+        )
+        .and_where(Expr::col(("d", "id")).eq(id))
+        .and_where(Expr::col(("d", "household_id")).eq(scope.household_id))
+        .and_where(Expr::col(("d", "account_id")).eq(scope.actor.account_id))
+        .lock_with_tables_behavior(
+            LockType::Update,
+            [Alias::new("d")],
+            LockBehavior::SkipLocked,
+        )
+        .to_owned();
+    let row = tenant
+        .transaction()
+        .query_one_raw(tenant.transaction().get_database_backend().build(&query))
+        .await?;
     let Some(row) = row else {
         return Ok(None);
     };
-    let now = now.max(Utc::now());
+    let now = std::cmp::max(now, Utc::now());
     let status: String = row.try_get("", "status")?;
     if status == "sending" {
         let claimed_at: Option<NaiveDateTime> = row.try_get("", "claimed_at")?;
@@ -113,19 +150,11 @@ async fn claim(
     }
     let key: String = row.try_get("", "event_key")?;
     let kind: String = row.try_get("", "event_type")?;
-    if let Some(legacy_key) = key.strip_prefix(&format!("browser:{}:", scope.actor.account_id)) {
-        let legacy = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$2 AND event_key=$3 LIMIT 1",
-            [scope.household_id.into(),kind.into(),legacy_key.into()]
-        )).await?;
-        if legacy.is_some() {
-            return Ok(None);
-        }
-    }
+    let metadata: serde_json::Value = row.try_get("", "event_metadata")?;
     let intent = plans(&tenant, now)
         .await?
         .into_iter()
-        .find(|intent| intent.key == key);
+        .find(|intent| intent.key == key && intent.kind == kind && intent.epoch.matches(&metadata));
     let subscription = push_subscription::Entity::find_by_id(subscription_id)
         .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
         .one(tenant.transaction())
@@ -151,6 +180,7 @@ async fn claim(
     Ok(Some(Claim {
         event_id,
         key,
+        metadata,
         attempt: attempt_count + 1,
         claimed_at,
         subscription,
@@ -174,7 +204,6 @@ async fn presend_authority(
     service: &Service,
     id: i64,
     claim: &Claim,
-    ttl: u32,
     send_at: DateTime<Utc>,
 ) -> Result<Guard, OperationError> {
     let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
@@ -193,15 +222,21 @@ async fn presend_authority(
             .one(tenant.transaction())
             .await?
             .ok_or(OperationError::Forbidden)?;
+        crate::models::care::person_schedules::projection::refresh(&tenant).await?;
         let subscription = push_subscription::Entity::find_by_id(claim.subscription.id)
             .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
             .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
             .one(tenant.transaction())
             .await?;
-        let owned = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT 1 AS owned FROM notification_deliveries WHERE id=$1 AND household_id=$2 AND account_id=$3 AND status='sending' AND attempt_count=$4 AND claimed_at=$5",
-            [id.into(),scope.household_id.into(),scope.actor.account_id.into(),claim.attempt.into(),claim.claimed_at.into()]
-        )).await?.is_some();
+        let owned = notification_delivery::Entity::find_by_id(id)
+            .filter(notification_delivery::Column::HouseholdId.eq(scope.household_id))
+            .filter(notification_delivery::Column::AccountId.eq(scope.actor.account_id))
+            .filter(notification_delivery::Column::Status.eq("sending"))
+            .filter(notification_delivery::Column::AttemptCount.eq(claim.attempt))
+            .filter(notification_delivery::Column::ClaimedAt.eq(claim.claimed_at))
+            .one(tenant.transaction())
+            .await?
+            .is_some();
         access::recheck(&tenant).await?;
         Ok::<_, OperationError>((subscription, owned))
     }
@@ -228,16 +263,32 @@ async fn presend_authority(
         tenant.commit().await?;
         return Ok(Guard::Stale);
     }
+    let send_at = send_at.max(Utc::now());
+    if send_at >= claim.expires_at {
+        suppress(&tenant, id, "deadline_before_send").await?;
+        tenant.commit().await?;
+        return Ok(Guard::Suppressed);
+    }
     let intent = plans(&tenant, send_at)
         .await?
         .into_iter()
-        .find(|intent| intent.key == claim.key);
+        .find(|intent| intent.key == claim.key && intent.epoch.matches(&claim.metadata));
     let Some((intent, subscription)) = intent.zip(subscription) else {
         suppress(&tenant, id, "no_longer_eligible").await?;
         tenant.commit().await?;
         return Ok(Guard::Suppressed);
     };
     let payload = serde_json::to_vec(&intent.payload).map_err(|_| OperationError::Unavailable)?;
+    let expires_at = claim.expires_at.min(intent.expires_at);
+    let remaining = expires_at - send_at.max(Utc::now());
+    if remaining <= chrono::Duration::zero() {
+        suppress(&tenant, id, "deadline_before_send").await?;
+        tenant.commit().await?;
+        return Ok(Guard::Suppressed);
+    }
+    let ttl = u32::try_from(remaining.num_seconds())
+        .map_err(|_| OperationError::Unavailable)?
+        .min(300);
     let outcome = service
         .transport
         .send_with_ttl(&subscription, &payload, ttl)
@@ -361,10 +412,7 @@ pub async fn drain_candidates(
             let result = if send_at >= claim.expires_at {
                 AttemptOutcome::Deadline
             } else {
-                let ttl = (claim.expires_at - send_at).num_seconds().max(0) as u32;
-                match presend_authority(ctx, scope, &service, id, &claim, ttl.min(300), send_at)
-                    .await?
-                {
+                match presend_authority(ctx, scope, &service, id, &claim, send_at).await? {
                     Guard::Attempt(outcome) => AttemptOutcome::Provider(outcome),
                     Guard::Suppressed | Guard::Stale => continue,
                 }

@@ -21,6 +21,9 @@ pub mod m20261022_000017_guardian_recovery;
 pub mod m20261027_000018_personal_history;
 pub mod m20261028_000019_person_schedules;
 pub mod m20261028_000020_person_schedule_execution_policy;
+pub mod m20261028_000021_approved_sharing;
+pub mod m20261029_000022_legacy_schedule_prescriptions;
+pub mod m20261029_000023_live_adoption_history;
 mod native_authentication;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
@@ -50,6 +53,9 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261027_000018_personal_history::Migration),
             Box::new(m20261028_000019_person_schedules::Migration),
             Box::new(m20261028_000020_person_schedule_execution_policy::Migration),
+            Box::new(m20261028_000021_approved_sharing::Migration),
+            Box::new(m20261029_000022_legacy_schedule_prescriptions::Migration),
+            Box::new(m20261029_000023_live_adoption_history::Migration),
         ]
     }
 }

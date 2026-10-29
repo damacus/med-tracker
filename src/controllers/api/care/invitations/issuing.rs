@@ -30,6 +30,7 @@ pub(in crate::controllers::api::care) async fn create(
     ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
+    dependent: Option<Extension<super::DependentSharing>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
 ) -> Response {
     let request_id = request_id(request);
@@ -37,7 +38,15 @@ pub(in crate::controllers::api::care) async fn create(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
-    let result = process(&tenant, &principal, household_id, &headers, body).await;
+    let result = process(
+        &tenant,
+        &principal,
+        household_id,
+        &headers,
+        body,
+        dependent.is_some(),
+    )
+    .await;
     complete(
         tenant,
         &principal,
@@ -54,20 +63,44 @@ async fn process(
     household_id: i64,
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
+    dependent: bool,
 ) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
     crate::models::care::administration::authorize(tenant)
         .await
         .map_err(response::operation)?;
     let AxumJson(body) =
         body.map_err(|_| response::Failure::bad_request("Invalid JSON request body"))?;
-    let path = format!("/api/v1/households/{household_id}/admin/invitations");
+    let path = format!(
+        "/api/v1/households/{household_id}/admin/{}",
+        if dependent {
+            "dependent_sharing_invitations"
+        } else {
+            "invitations"
+        }
+    );
     if let Some(key) = key(headers)
         && let Some(saved) =
             super::super::locations::keyed_replay(tenant, key, "POST", &path, &body).await?
     {
         return Ok(saved);
     }
-    let attributes = attributes(&body)?;
+    let attributes = if dependent {
+        let values = body
+            .get("household_invitation")
+            .and_then(Value::as_object)
+            .filter(|values| values.len() == 1)
+            .ok_or_else(|| {
+                response::Failure::bad_request("Only the guardian recipient email may be selected")
+            })?;
+        invitations::InvitationInput::dependent(
+            values
+                .get("email")
+                .and_then(Value::as_str)
+                .unwrap_or_default(),
+        )
+    } else {
+        attributes(&body)?
+    };
     let savepoint = tenant
         .transaction()
         .begin()

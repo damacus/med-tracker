@@ -377,6 +377,12 @@ async fn find_source(
             if !retired {
                 query = query.filter(schedule::Column::RetiredAt.is_null());
             }
+            let initial = query
+                .clone()
+                .one(tenant.transaction())
+                .await?
+                .ok_or(OperationError::NotFound)?;
+            super::person_schedules::projection::refresh_one(tenant, initial.id).await?;
             query
                 .lock_exclusive()
                 .one(tenant.transaction())
@@ -408,6 +414,7 @@ async fn source_for_period(
     period: &pause_period::Model,
 ) -> Result<Source, OperationError> {
     let source = if let Some(id) = period.schedule_id {
+        super::person_schedules::projection::refresh_one(tenant, id).await?;
         schedule::Entity::find_by_id(id)
             .in_tenant(tenant.scope().household_id)
             .lock_exclusive()

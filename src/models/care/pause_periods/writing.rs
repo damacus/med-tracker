@@ -45,6 +45,15 @@ async fn period(
     if Uuid::parse_str(id).is_err() {
         return Err(OperationError::NotFound);
     }
+    let initial = pause_period::Entity::find()
+        .in_tenant(tenant.scope().household_id)
+        .filter(pause_period::Column::PortableId.eq(id))
+        .one(tenant.transaction())
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    if let Some(source) = initial.schedule_id {
+        super::super::person_schedules::projection::refresh_one(tenant, source).await?;
+    }
     pause_period::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(pause_period::Column::PortableId.eq(id))

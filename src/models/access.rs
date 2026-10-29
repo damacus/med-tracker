@@ -107,12 +107,15 @@ pub async fn begin(
     }
     .await;
     match result {
-        Ok(membership) => Ok(TenantTransaction {
-            transaction,
-            scope: scope.clone(),
-            membership,
-            settings: settings.cloned(),
-        }),
+        Ok(membership) => {
+            let tenant = TenantTransaction {
+                transaction,
+                scope: scope.clone(),
+                membership,
+                settings: settings.cloned(),
+            };
+            Ok(tenant)
+        }
         Err(error) => {
             transaction.rollback().await?;
             Err(error)

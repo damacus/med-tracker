@@ -234,6 +234,18 @@ pub(crate) async fn serialize_schedules(
     let reference_date = Utc::now()
         .with_timezone(&crate::models::care::doses::app_zone(context.settings()))
         .date_naive();
+    let canonical_ids: Vec<_> = records
+        .iter()
+        .filter(|row| row.execution_ended_at.is_none())
+        .filter_map(|row| row.person_schedule_id.clone())
+        .collect();
+    let pause_starts: HashMap<_, _> = crate::models::entities::shared_schedule::Entity::find()
+        .filter(crate::models::entities::shared_schedule::Column::Id.is_in(canonical_ids))
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|state| (state.id, state.pause_started_at))
+        .collect();
     let sources: Vec<SourceRef> = records
         .iter()
         .map(|record| SourceRef {
@@ -247,7 +259,16 @@ pub(crate) async fn serialize_schedules(
     let associations = source_context(db, context, &sources, SourceKind::Schedule).await?;
     Ok(records
         .into_iter()
-        .map(|record| schedule_row(record, &associations, reference_date))
+        .map(|record| {
+            let pause_start = record
+                .person_schedule_id
+                .as_ref()
+                .filter(|_| record.execution_ended_at.is_none())
+                .and_then(|id| pause_starts.get(id))
+                .copied()
+                .flatten();
+            schedule_row(record, &associations, reference_date, pause_start)
+        })
         .collect())
 }
 
@@ -255,6 +276,7 @@ fn schedule_row(
     record: schedule::Model,
     associations: &SourceContext,
     reference_date: NaiveDate,
+    pause_start: Option<chrono::NaiveDateTime>,
 ) -> Value {
     let reference_date = record
         .origin_time_zone
@@ -286,6 +308,7 @@ fn schedule_row(
         "end_date": record.end_date.map(|date| date.to_string()),
         "active": active,
         "paused": !record.active,
+        "pause_started_at": pause_start.map(timestamp),
         "can_manage": associations.manageable_people.contains(&record.person_id),
         "can_record": associations.recordable_people.contains(&record.person_id),
         "eligible_stock_medication_ids": associations.eligible_stock.get(&record.id).cloned().unwrap_or_default(),

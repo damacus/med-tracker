@@ -43,7 +43,7 @@ pub(crate) async fn token_event(
     });
     let audit_context = context(tenant, provenance);
     let now = Utc::now().naive_utc();
-    version::ActiveModel {
+    version::Entity::insert(version::ActiveModel {
         item_type: Set("AuthenticationToken".into()),
         item_id: Set(tenant.scope().actor.account_id),
         event: Set(event.clone()),
@@ -56,8 +56,8 @@ pub(crate) async fn token_event(
         audit_context: Set(audit_context.clone()),
         created_at: Set(Some(now)),
         ..Default::default()
-    }
-    .insert(tenant.transaction())
+    })
+    .exec_without_returning(tenant.transaction())
     .await?;
     security_audit_event::ActiveModel {
         household_id: Set(tenant.scope().household_id),
@@ -125,7 +125,7 @@ pub(crate) async fn record_version_as(
             changes.insert(key, json!([old, new]));
         }
     }
-    version::ActiveModel {
+    version::Entity::insert(version::ActiveModel {
         item_type: Set(kind.into()),
         item_id: Set(id),
         event: Set(event.into()),
@@ -138,8 +138,8 @@ pub(crate) async fn record_version_as(
         audit_context: Set(context(tenant, provenance)),
         created_at: Set(Some(Utc::now().naive_utc())),
         ..Default::default()
-    }
-    .insert(tenant.transaction())
+    })
+    .exec_without_returning(tenant.transaction())
     .await?;
     Ok(())
 }

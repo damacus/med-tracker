@@ -551,6 +551,16 @@ es:
         existing_account: ¿Ya tienes una cuenta?
         sign_in: Inicia sesión
         to_accept: para aceptar esta invitación.
+        dependent_label: Persona dependiente cuya atención se compartirá
+        dependent_choose: Elija una persona dependiente
+        no_dependents: No tiene autoridad tutelar vigente y válida sobre una persona dependiente. Revise sus declaraciones antes de aceptar.
+        dependent_consent: Soy tutor declarado actualmente y apruebo compartir los planes de atención actuales y futuros, las pausas y el estado de seguridad de la última dosis de esta persona dependiente con este hogar. Las notas privadas y el historial detallado siguen siendo privados. La retirada o salida finaliza esta aprobación.
+        dependent_approved: Atención compartida aprobada
+        dependent_approved_description: Se comparten los planes actuales y futuros de la persona dependiente elegida. Usted permanece en sus hogares actuales y puede retirar la aprobación desde su cuenta.
+        return_profile: Volver a su cuenta
+        invite_guardian: Invitar a un tutor a compartir la atención
+        invite_guardian_description: Un tutor declarado actualmente elige la persona dependiente y aprueba compartir la atención. El tutor permanece en sus hogares actuales.
+        sharing_consent: Apruebo compartir mis planes de atención actuales y futuros, las pausas y el estado de seguridad de la última dosis con este hogar. Las notas privadas y el historial detallado siguen siendo privados. Al salir finaliza esta aprobación.
         invalid_title: Enlace de invitación no disponible
         invalid_guidance: Este enlace de invitación no es válido o ha caducado. Solicita una nueva invitación a un administrador del hogar.
         recovery_title: Te has unido al hogar

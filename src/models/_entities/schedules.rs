@@ -25,6 +25,8 @@ pub struct Model {
     pub notes: Option<String>,
     pub person_id: i64,
     pub person_schedule_id: Option<String>,
+    pub sharing_approval_id: Option<i64>,
+    pub canonical_origin: bool,
     pub clinical_revision: Option<i64>,
     pub origin_time_zone: Option<String>,
     pub execution_ended_at: Option<DateTime>,

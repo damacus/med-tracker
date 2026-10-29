@@ -151,6 +151,24 @@ pub(super) async fn link_take(
     take: &medication_take::Model,
     request_id: &str,
 ) -> Result<dose_occurrence::Model, ApiError> {
+    if let Source::Schedule(source) = source
+        && source.person_schedule_id.is_some()
+    {
+        use crate::models::entities::shared_administration;
+        let ledger = shared_administration::Entity::find()
+            .filter(shared_administration::Column::MedicationTakeId.eq(take.id))
+            .one(db)
+            .await?
+            .ok_or(OperationError::Unavailable)?;
+        let mut ledger: shared_administration::ActiveModel = ledger.into();
+        ledger.occurrence_starts_on = Set(Some(row.window_start));
+        ledger.occurrence_position = Set(Some(row.position));
+        ledger.update(db).await.map_err(|error| {
+            if matches!(error.sql_err(),Some(sea_orm::SqlErr::UniqueConstraintViolation(name)) if name.contains("shared_administration_occurrence")) {
+                OperationError::Conflict{code:"occurrence_already_recorded".into(),details:json!({"error":"This dose has already been recorded"})}
+            } else {OperationError::from(error)}
+        })?;
+    }
     let now = Utc::now().naive_utc();
     let before = row.record.as_ref().map(snapshot);
     let model = if let Some(record) = &row.record {

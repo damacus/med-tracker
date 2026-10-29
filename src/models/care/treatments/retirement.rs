@@ -25,10 +25,10 @@ pub async fn retire(
         query.filter(schedule::Column::PortableId.eq(id))
     };
     let row = query
-        .lock_exclusive()
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
+    let row = super::super::person_schedules::projection::refresh_one(tenant, row.id).await?;
     if !access::can_access_person(tenant, row.person_id, PersonAccess::View).await? {
         return Err(OperationError::NotFound);
     }

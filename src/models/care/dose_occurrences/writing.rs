@@ -29,6 +29,12 @@ async fn source(
             } else {
                 query.filter(schedule::Column::PortableId.eq(id))
             };
+            let initial = query
+                .clone()
+                .one(tenant.transaction())
+                .await?
+                .ok_or(OperationError::NotFound)?;
+            super::super::person_schedules::projection::refresh_one(tenant, initial.id).await?;
             let query = if locked {
                 query.lock_exclusive()
             } else {

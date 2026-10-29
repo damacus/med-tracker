@@ -127,10 +127,17 @@ pub(crate) async fn audit_read(
     request_id: &str,
     provenance: &CredentialProvenance,
 ) -> Result<(), OperationError> {
+    let person = access::person_queries::account_person(access::Actor {
+        account_id: actor.get(),
+    })
+    .one(db)
+    .await?
+    .ok_or(OperationError::Unauthenticated)?;
     version::ActiveModel {
         item_type: Set("AccountClinicalAccess".into()), item_id: Set(actor.get()), event: Set("personal_plans_read".into()),
+        whodunnit: Set(Some(actor.get().to_string())),
         request_id: Set(Some(request_id.into())), created_at: Set(Some(Utc::now().naive_utc())),
-        audit_context: Set(json!({"actor_account_id":actor.get(),"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"PersonalClinicalAccess","policy_query":"read_self_schedules"})),
+        audit_context: Set(json!({"actor_account_id":actor.get(),"actor_person_id":person.id,"household_id":null,"request_id":request_id,"authentication_method":provenance.method.label(),"session_reference":format!("{}:{}",provenance.method.reference_prefix(),provenance.reference),"policy_class":"PersonalClinicalAccess","policy_query":"read_self_schedules"})),
         ..Default::default()
     }.insert(db).await?;
     Ok(())
@@ -171,6 +178,7 @@ pub(crate) async fn update_personal(
         PersonalAction::Pause => {
             if next.active {
                 next.pause_started_at = Some(Utc::now().naive_utc());
+                next.pause_instance_id = Some(Uuid::new_v4().to_string());
                 next.pause_reason = Some("temporarily_not_needed".into());
                 next.pause_note = None;
             }
@@ -179,6 +187,7 @@ pub(crate) async fn update_personal(
         PersonalAction::Resume => {
             next.active = true;
             next.pause_started_at = None;
+            next.pause_instance_id = None;
             next.pause_reason = None;
             next.pause_note = None;
         }
@@ -194,9 +203,23 @@ pub(crate) async fn update_personal(
     next.updated_at = Utc::now().naive_utc();
     let active = next.clone().into_active_model().reset_all();
     let saved = active.update(db).await?;
+    super::projection::publish(db, &saved).await?;
+    super::pauses::record_resume(
+        db,
+        row.pause_instance_id.as_deref(),
+        &saved.id,
+        super::pauses::ResumeActor {
+            account: actor,
+            membership: None,
+            request_id,
+            provenance: Some(provenance),
+        },
+    )
+    .await?;
     project_current_execution(db, actor, &saved, request_id).await?;
     version::ActiveModel {
         item_type: Set("PersonSchedule".into()), item_id: Set(saved.origin_schedule_id), event: Set("update".into()),
+        whodunnit: Set(Some(actor.get().to_string())),
         object: Set(Some(serde_json::to_string(&row).map_err(|_| OperationError::Unavailable)?)),
         object_changes: Set(Some(serde_json::to_string(&saved).map_err(|_| OperationError::Unavailable)?)),
         request_id: Set(Some(request_id.into())), created_at: Set(Some(Utc::now().naive_utc())),
@@ -269,7 +292,7 @@ async fn project_current_execution(
         .one(db)
         .await?;
     if let Some(row) = row {
-        sync_pause(db, &row, plan, member.id).await?;
+        sync_pause(db, &row, plan, member.id, Some(actor)).await?;
         let row_id = row.id;
         let portable_id = row.portable_id.clone();
         let mut execution = row.into_active_model();
@@ -339,6 +362,11 @@ async fn lock_current_execution(
             .one(db)
             .await?
             .ok_or(OperationError::NotFound)?;
+        crate::models::entities::shared_schedule::Entity::find_by_id(id.as_str())
+            .lock_exclusive()
+            .one(db)
+            .await?
+            .ok_or(OperationError::NotFound)?;
         let candidate = membership::Entity::find_by_id(candidate.id)
             .filter(membership::Column::Status.eq("active"))
             .filter(membership::Column::RevokedAt.is_null())
@@ -356,6 +384,12 @@ async fn lock_current_execution(
                 .await?;
             context(db, None).await?;
         }
+    } else {
+        crate::models::entities::shared_schedule::Entity::find_by_id(id.as_str())
+            .lock_exclusive()
+            .one(db)
+            .await?
+            .ok_or(OperationError::NotFound)?;
     }
     Ok(())
 }
@@ -365,26 +399,37 @@ pub(super) async fn sync_pause(
     row: &schedule::Model,
     plan: &person_schedule::Model,
     actor_membership_id: i64,
+    clinical_actor: Option<AccountId>,
 ) -> Result<(), OperationError> {
+    super::pauses::project_owned(db, row).await?;
+    let open = pause_period::Entity::find()
+        .filter(pause_period::Column::ScheduleId.eq(row.id))
+        .filter(pause_period::Column::EndedAt.is_null())
+        .lock_exclusive()
+        .one(db)
+        .await?;
     if row.active != plan.active {
-        let open = pause_period::Entity::find()
-            .filter(pause_period::Column::ScheduleId.eq(row.id))
-            .filter(pause_period::Column::EndedAt.is_null())
-            .lock_exclusive()
-            .one(db)
-            .await?;
         if plan.active {
-            if let Some(open) = open {
-                let mut period = open.into_active_model();
-                period.ended_at = Set(Some(plan.updated_at));
-                period.resumed_by_membership_id = Set(Some(actor_membership_id));
-                period.updated_at = Set(plan.updated_at);
-                period.update(db).await?;
+            if open.is_some() {
+                return Err(OperationError::Unavailable);
             }
-        } else if plan.retired_at.is_none() && open.is_none() {
+        } else if plan.retired_at.is_none()
+            && open.is_none()
+            && let Some(actor) = clinical_actor
+        {
+            let actual = crate::models::entities::account::Entity::find_by_id(actor.get())
+                .one(db)
+                .await?
+                .ok_or(OperationError::Unauthenticated)?;
+            if actual.person_id != plan.person_id {
+                return Err(OperationError::Forbidden);
+            }
             pause_period::ActiveModel {
                 household_id: Set(row.household_id),
-                portable_id: Set(Uuid::new_v4().to_string()),
+                portable_id: Set(plan
+                    .pause_instance_id
+                    .clone()
+                    .ok_or(OperationError::Unavailable)?),
                 schedule_id: Set(Some(row.id)),
                 reason: Set(plan
                     .pause_reason
@@ -402,6 +447,7 @@ pub(super) async fn sync_pause(
             }
             .insert(db)
             .await?;
+            super::pauses::associate_start(db, row).await?;
         }
     }
     Ok(())

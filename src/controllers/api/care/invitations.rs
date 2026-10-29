@@ -8,6 +8,9 @@ pub(super) use acceptance::accept;
 pub(super) use issuing::{create, index};
 pub(super) use lifecycle::{destroy, resend};
 
+#[derive(Clone)]
+pub(super) struct DependentSharing;
+
 fn no_store(mut response: Response) -> Response {
     response.headers_mut().insert(
         axum::http::header::CACHE_CONTROL,
@@ -28,7 +31,12 @@ fn attributes(
         .filter(|(name, value)| {
             matches!(
                 name.as_str(),
-                "dependent_ids" | "dependent_ids[]" | "relationship_type" | "access_level"
+                "person_id"
+                    | "subject_person_id"
+                    | "dependent_ids"
+                    | "dependent_ids[]"
+                    | "relationship_type"
+                    | "access_level"
             ) || (matches!(name.as_str(), "email" | "membership_role")
                 && !value.is_array()
                 && !value.is_object())

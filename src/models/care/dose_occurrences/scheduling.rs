@@ -118,6 +118,8 @@ mod tests {
     ) -> schedule::Model {
         schedule::Model {
             person_schedule_id: None,
+            sharing_approval_id: None,
+            canonical_origin: false,
             clinical_revision: None,
             origin_time_zone: None,
             execution_ended_at: None,

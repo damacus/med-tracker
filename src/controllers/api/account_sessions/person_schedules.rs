@@ -4,6 +4,70 @@ use crate::models::care::{
     treatments,
 };
 
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct AdoptionInput {
+    source_portable_id: String,
+}
+
+pub(super) async fn adopt(
+    State(ctx): State<AppContext>,
+    headers: HeaderMap,
+    request: Option<axum::Extension<LocoRequestId>>,
+    body: std::result::Result<Json<AdoptionInput>, JsonRejection>,
+) -> Response {
+    let request_id = request_id(request);
+    let Json(input) = match body {
+        Ok(input) => input,
+        Err(_) => {
+            return operation(
+                crate::models::profile::validation("source_portable_id", "is required"),
+                &request_id,
+            );
+        }
+    };
+    let principal =
+        match resource::authenticate(&ctx.db, &headers, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(error) => return authentication(error, &request_id),
+        };
+    let transaction = match principal
+        .personal_plan_transaction(&ctx.db, ctx.config.settings.as_ref(), true)
+        .await
+    {
+        Ok(transaction) => transaction,
+        Err(error) => return authentication(error, &request_id),
+    };
+    match person_schedules::legacy::adopt(
+        &transaction,
+        &principal,
+        &input.source_portable_id,
+        &request_id,
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
+        Ok(plan) => match transaction.commit().await {
+            Ok(()) => (
+                StatusCode::CREATED,
+                [
+                    (header::CACHE_CONTROL, "no-store"),
+                    (header::ETAG, plan.etag.as_str()),
+                ],
+                Json(json!({"data":plan})),
+            )
+                .into_response(),
+            Err(error) => operation(error.into(), &request_id),
+        },
+        Err(person_schedules::shared_commands::Failure::Operation(error)) => {
+            operation(error, &request_id)
+        }
+        Err(person_schedules::shared_commands::Failure::Authentication(error)) => {
+            authentication(error, &request_id)
+        }
+    }
+}
+
 pub(super) async fn index(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
@@ -124,6 +188,46 @@ pub(super) async fn update(
                     (header::ETAG, plan.etag().as_str()),
                 ],
                 Json(json!({"data":plan})),
+            )
+                .into_response(),
+            Err(error) => operation(error.into(), &request_id),
+        },
+        Err(error) => operation(error, &request_id),
+    }
+}
+
+pub(super) async fn withdraw_sharing(
+    State(ctx): State<AppContext>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    request: Option<axum::Extension<LocoRequestId>>,
+) -> Response {
+    let request_id = request_id(request);
+    let principal =
+        match resource::authenticate(&ctx.db, &headers, ctx.config.settings.as_ref()).await {
+            Ok(value) => value,
+            Err(error) => return authentication(error, &request_id),
+        };
+    let transaction = match principal
+        .guardian_declaration_transaction(&ctx.db, ctx.config.settings.as_ref(), true)
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => return authentication(error, &request_id),
+    };
+    match person_schedules::sharing::withdraw(
+        &transaction,
+        AccountId::from_database(principal.account_id()),
+        id,
+        &request_id,
+        principal.provenance(),
+    )
+    .await
+    {
+        Ok(()) => match transaction.commit().await {
+            Ok(()) => (
+                StatusCode::NO_CONTENT,
+                [(header::CACHE_CONTROL, "no-store")],
             )
                 .into_response(),
             Err(error) => operation(error.into(), &request_id),

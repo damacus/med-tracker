@@ -282,6 +282,9 @@ fn storage_decimal(value: Decimal, integer: u32, fraction: u32) -> Option<Decima
 const UNITS: &[&str] = &[
     "tablet", "capsule", "gummy", "mg", "ml", "g", "mcg", "IU", "spray", "drop", "sachet", "pad",
 ];
+pub(super) fn supported_unit(unit: &str) -> bool {
+    UNITS.contains(&unit)
+}
 const FIELDS: &[&str] = &[
     "origin_time_zone",
     "person_id",
@@ -406,6 +409,91 @@ pub(crate) fn amend_personal(
     .map_err(failure)
 }
 
+pub(crate) fn amend_shared(
+    row: &mut crate::models::entities::shared_schedule::Model,
+    input: &ValidatedScheduleInput,
+) -> Result<(), OperationError> {
+    let input = input.as_ref();
+    if input.person_id.is_some()
+        || input.medication_id.is_some()
+        || input.source_dosage_option_id.is_some()
+        || input.notes.is_some()
+    {
+        return Err(failure(InputFailure::Invalid(
+            "schedule",
+            "shared clinical edits cannot select inventory or private notes",
+        )));
+    }
+    if let Some(value) = input.dose_amount {
+        row.dose_amount = Some(value);
+    }
+    if let Some(value) = input.dose_unit.as_ref() {
+        row.dose_unit = Some(value.clone());
+    }
+    if let Some(value) = input.frequency.as_ref() {
+        row.frequency = Some(value.clone());
+    }
+    if let Some(value) = input.start_date {
+        row.start_date = Some(value);
+    }
+    if let Some(value) = input.end_date {
+        row.end_date = Some(value);
+    }
+    if let Some(value) = input.max_daily_doses {
+        row.max_daily_doses = Some(value);
+    }
+    if let Some(value) = input.min_hours_between_doses {
+        row.min_hours_between_doses = value;
+    }
+    if let Some(value) = input.dose_cycle {
+        row.dose_cycle = Some(value.database());
+    }
+    if let Some(value) = input.schedule_type {
+        row.schedule_type = value.database();
+    }
+    if let Some(value) = input.schedule_config.as_ref() {
+        row.schedule_config = value.clone();
+    }
+    if let Some(value) = input.origin_time_zone {
+        row.origin_time_zone = value.name().into();
+    }
+    ScheduleFields {
+        origin_time_zone: input.origin_time_zone,
+        person_id: Some(row.person_id),
+        medication_id: None,
+        source_dosage_option_id: None,
+        dose_amount: row.dose_amount,
+        dose_unit: row.dose_unit.clone(),
+        frequency: row.frequency.clone(),
+        start_date: row.start_date,
+        end_date: row.end_date,
+        notes: None,
+        max_daily_doses: row.max_daily_doses,
+        min_hours_between_doses: row.min_hours_between_doses,
+        dose_cycle: row.dose_cycle,
+        schedule_type: row.schedule_type,
+        schedule_config: row.schedule_config.clone(),
+    }
+    .validate_fields(false)
+    .map_err(failure)
+}
+
+pub(crate) fn prescribed_amount(value: &str) -> Result<Decimal, OperationError> {
+    let amount = Decimal::from_str(value).map_err(|_| {
+        failure(InputFailure::Invalid(
+            "dose_amount",
+            "must be a decimal string",
+        ))
+    })?;
+    if amount <= Decimal::ZERO || storage_decimal(amount, 8, 2).is_none() {
+        return Err(failure(InputFailure::Invalid(
+            "dose_amount",
+            "must fit two decimal places",
+        )));
+    }
+    Ok(amount)
+}
+
 impl ScheduleInput {
     pub(crate) fn validated(self) -> Result<ValidatedScheduleInput, OperationError> {
         if self.dose_amount.is_some_and(|amount| {
@@ -499,11 +587,15 @@ impl ScheduleFields {
     }
 
     fn validate(&self) -> Result<(), InputFailure> {
+        self.validate_fields(true)
+    }
+
+    fn validate_fields(&self, local_stock: bool) -> Result<(), InputFailure> {
         let mut errors = Map::new();
         if self.person_id.is_none() {
             errors.insert("person_id".to_owned(), json!(["can't be blank"]));
         }
-        if self.medication_id.is_none() {
+        if local_stock && self.medication_id.is_none() {
             errors.insert("medication_id".to_owned(), json!(["can't be blank"]));
         }
         if self.dose_amount.is_none() {

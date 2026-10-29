@@ -10,7 +10,15 @@ use sea_orm::{
     QuerySelect, Set,
 };
 use uuid::Uuid;
+mod adoption_history;
+pub(crate) mod legacy;
+mod pauses;
 mod personal;
+mod view;
+pub(crate) use view::SharedPlan;
+pub(crate) mod projection;
+pub(crate) mod shared_commands;
+pub(crate) mod sharing;
 pub(crate) use personal::audit_read;
 pub(crate) use personal::{PersonalAction, PersonalPlan, own_plans, update_personal};
 
@@ -38,6 +46,14 @@ impl ClinicalRevision {
         (value > 0)
             .then_some(Self(value))
             .ok_or(OperationError::NotFound)
+    }
+    pub(crate) fn from_etag(id: &PersonScheduleId, value: &str) -> Result<Self, OperationError> {
+        let revision = value
+            .strip_prefix(&format!("\"person-schedule:{}:", id.as_str()))
+            .and_then(|value| value.strip_suffix('"'))
+            .and_then(|value| value.parse().ok())
+            .ok_or_else(|| crate::models::profile::validation("if_match", "is invalid"))?;
+        Self::parse(revision)
     }
 }
 
@@ -93,6 +109,12 @@ pub(crate) async fn save_execution(
         return Err(OperationError::NotFound);
     }
     let current = if let Some(id) = row.person_schedule_id.as_ref() {
+        crate::models::entities::shared_schedule::Entity::find_by_id(id)
+            .lock_exclusive()
+            .one(db)
+            .await?
+            .ok_or(OperationError::NotFound)?;
+        crate::models::access::recheck(tenant).await?;
         Some(
             person_schedule::Entity::find_by_id(id)
                 .lock_exclusive()
@@ -104,6 +126,20 @@ pub(crate) async fn save_execution(
         None
     };
     let previous = current.clone();
+    let shared_before = if row.sharing_approval_id.is_some() {
+        Some(
+            crate::models::entities::shared_schedule::Entity::find_by_id(
+                row.person_schedule_id
+                    .as_ref()
+                    .ok_or(OperationError::Unavailable)?,
+            )
+            .one(db)
+            .await?
+            .ok_or(OperationError::NotFound)?,
+        )
+    } else {
+        None
+    };
     let mut plan = if let Some(current) = current {
         current.into_active_model()
     } else {
@@ -125,7 +161,8 @@ pub(crate) async fn save_execution(
         }
     };
     if plan.origin_stock_id.is_not_set()
-        || plan.origin_stock_id.clone().unwrap() != row.medication_id
+        || (row.sharing_approval_id.is_none()
+            && plan.origin_stock_id.clone().unwrap() != row.medication_id)
     {
         let stock = medication::Entity::find_by_id(row.medication_id)
             .one(db)
@@ -152,19 +189,43 @@ pub(crate) async fn save_execution(
     plan.frequency = Set(row.frequency.clone());
     plan.start_date = Set(row.start_date);
     plan.end_date = Set(row.end_date);
-    plan.notes = Set(row.notes.clone());
+    if row.sharing_approval_id.is_none() {
+        plan.notes = Set(row.notes.clone());
+    }
     plan.max_daily_doses = Set(row.max_daily_doses);
     plan.min_hours_between_doses = Set(row.min_hours_between_doses);
     plan.schedule_type = Set(row.schedule_type);
     plan.schedule_config = Set(row.schedule_config.clone());
-    let pause = crate::models::entities::pause_period::Entity::find()
-        .filter(crate::models::entities::pause_period::Column::ScheduleId.eq(row.id))
-        .filter(crate::models::entities::pause_period::Column::EndedAt.is_null())
-        .one(db)
-        .await?;
-    plan.pause_started_at = Set(pause.as_ref().and_then(|pause| pause.started_at));
-    plan.pause_reason = Set(pause.as_ref().map(|pause| pause.reason.clone()));
-    plan.pause_note = Set(pause.and_then(|pause| pause.note));
+    if row.active && previous.as_ref().is_some_and(|previous| !previous.active) {
+        plan.pause_started_at = Set(None);
+        plan.pause_instance_id = Set(None);
+        plan.pause_reason = Set(None);
+        plan.pause_note = Set(None);
+    } else if !row.active {
+        let pause = crate::models::entities::pause_period::Entity::find()
+            .filter(crate::models::entities::pause_period::Column::ScheduleId.eq(row.id))
+            .filter(crate::models::entities::pause_period::Column::EndedAt.is_null())
+            .one(db)
+            .await?;
+        if let Some(pause) = pause
+            && previous.as_ref().is_none_or(|previous| {
+                previous.active || previous.pause_instance_id.as_ref() == Some(&pause.portable_id)
+            })
+        {
+            plan.pause_started_at = Set(pause.started_at);
+            plan.pause_instance_id = Set(Some(pause.portable_id));
+            plan.pause_reason = Set(if row.sharing_approval_id.is_none() {
+                Some(pause.reason)
+            } else {
+                None
+            });
+            plan.pause_note = Set(if row.sharing_approval_id.is_none() {
+                pause.note
+            } else {
+                None
+            });
+        }
+    }
     if let Some(zone) = row.origin_time_zone.as_ref() {
         if plan.origin_time_zone.clone().unwrap() != *zone {
             plan.origin_time_zone = Set(zone.clone());
@@ -172,33 +233,134 @@ pub(crate) async fn save_execution(
         }
     }
     plan.clinical_revision = Set(plan.clinical_revision.clone().unwrap() + 1);
-    plan.updated_at = Set(Utc::now().naive_utc());
+    let resumed_at = if row.active
+        && let Some(instance) = previous
+            .as_ref()
+            .and_then(|previous| previous.pause_instance_id.as_ref())
+    {
+        crate::models::entities::pause_period::Entity::find()
+            .select_only()
+            .column(crate::models::entities::pause_period::Column::EndedAt)
+            .filter(crate::models::entities::pause_period::Column::ScheduleId.eq(row.id))
+            .filter(crate::models::entities::pause_period::Column::PortableId.eq(instance))
+            .into_tuple::<Option<chrono::NaiveDateTime>>()
+            .one(db)
+            .await?
+            .flatten()
+    } else {
+        None
+    };
+    plan.updated_at = Set(resumed_at.unwrap_or_else(|| Utc::now().naive_utc()));
     let plan = if row.person_schedule_id.is_some() {
         plan.update(db).await?
     } else {
         plan.insert(db).await?
     };
-    super::administration::persistence::record_version_as(
-        tenant,
-        "PersonSchedule",
-        plan.origin_schedule_id,
-        if previous.is_some() {
-            "update"
+    projection::publish(db, &plan).await?;
+    if let Some(before) = shared_before {
+        let after = crate::models::entities::shared_schedule::Entity::find_by_id(&plan.id)
+            .one(db)
+            .await?
+            .ok_or(OperationError::NotFound)?;
+        let declaration = if tenant.membership().person_id == plan.person_id {
+            None
         } else {
-            "create"
-        },
+            Some(
+                sharing::guardian(
+                    db,
+                    crate::models::ids::PersonId::from_database(plan.person_id),
+                )
+                .await?
+                .ok_or(OperationError::Forbidden)?,
+            )
+        };
+        let mut context = crate::models::audit_context::household(tenant, provenance);
+        context["person_schedule_id"] = serde_json::json!(plan.id);
+        context["subject_person_id"] = serde_json::json!(plan.person_id);
+        context["clinical_revision"] = serde_json::json!(plan.clinical_revision);
+        context["guardian_declaration_id"] = serde_json::json!(declaration);
+        context["policy_class"] = serde_json::json!("SharedPersonScheduleClinical");
+        crate::models::entities::version::Entity::insert(
+            crate::models::entities::version::ActiveModel {
+                item_type: Set("SharedPersonSchedule".into()),
+                item_id: Set(plan.person_id),
+                event: Set("update".into()),
+                object_changes: Set(Some(view::clinical_changes(&before, &after)?.to_string())),
+                whodunnit: Set(Some(tenant.scope().actor.account_id.to_string())),
+                household_id: Set(Some(tenant.scope().household_id)),
+                actor_membership_id: Set(Some(tenant.membership().id)),
+                request_id: Set(Some(tenant.scope().request_id.clone())),
+                created_at: Set(Some(plan.updated_at)),
+                audit_context: Set(context),
+                ..Default::default()
+            },
+        )
+        .exec_without_returning(db)
+        .await?;
+    } else {
+        super::administration::persistence::record_version_as(
+            tenant,
+            "PersonSchedule",
+            plan.origin_schedule_id,
+            if previous.is_some() {
+                "update"
+            } else {
+                "create"
+            },
+            previous
+                .as_ref()
+                .map(|previous| serde_json::json!(previous)),
+            serde_json::json!(&plan),
+            provenance,
+        )
+        .await?;
+    }
+    pauses::record_resume(
+        db,
         previous
             .as_ref()
-            .map(|previous| serde_json::json!(previous)),
-        serde_json::json!(&plan),
-        provenance,
+            .and_then(|row| row.pause_instance_id.as_deref()),
+        &plan.id,
+        pauses::ResumeActor {
+            account: crate::models::ids::AccountId::from_database(tenant.scope().actor.account_id),
+            membership: Some(tenant.membership().id),
+            request_id: &tenant.scope().request_id,
+            provenance,
+        },
     )
     .await?;
+    let history = adoption_history::capture(tenant, &row, &plan, provenance).await?;
     let mut linked = row.into_active_model();
+    linked.canonical_origin = Set(plan.origin_schedule_id == linked.id.clone().unwrap());
     linked.person_schedule_id = Set(Some(plan.id));
     linked.clinical_revision = Set(Some(plan.clinical_revision));
     linked.origin_time_zone = Set(Some(plan.origin_time_zone));
-    Ok(linked.update(db).await?)
+    let linked = linked.update(db).await?;
+    pauses::associate_start(db, &linked).await?;
+    use crate::models::entities::sharing_approval;
+    let approval = sharing_approval::Entity::find()
+        .filter(sharing_approval::Column::HouseholdId.eq(linked.household_id))
+        .filter(sharing_approval::Column::PersonId.eq(linked.person_id))
+        .filter(sharing_approval::Column::EndedAt.is_null())
+        .lock_shared()
+        .one(db)
+        .await?;
+    crate::models::access::recheck(tenant).await?;
+    if let Some(approval) = approval {
+        projection::record_execution(db, &linked, Some(approval.id)).await?;
+    } else if sharing_approval::Entity::find()
+        .filter(sharing_approval::Column::HouseholdId.eq(linked.household_id))
+        .filter(sharing_approval::Column::PersonId.eq(linked.person_id))
+        .one(db)
+        .await?
+        .is_some()
+    {
+        return Err(OperationError::Forbidden);
+    } else if linked.canonical_origin {
+        projection::record_execution(db, &linked, None).await?;
+    }
+    history.seed(tenant, &linked).await?;
+    Ok(linked)
 }
 
 pub(crate) async fn end_participation(
@@ -213,29 +375,23 @@ pub(crate) async fn end_participation(
         .all(tenant.transaction())
         .await?;
     for row in rows {
-        let row = if row.person_schedule_id.is_none() {
-            save_execution(
-                tenant,
-                row,
-                None,
-                super::doses::app_zone(tenant.settings()),
-                None,
-            )
-            .await?
-        } else {
-            row
-        };
-        let before = super::treatments::representation(&row).0["data"].clone();
         let now = Utc::now().naive_utc();
-        let retired_at = row.retired_at.or(Some(now));
+        if row.person_schedule_id.is_none() {
+            legacy::freeze(tenant, &row, now).await?;
+        }
+        let before = super::treatments::representation(&row).0["data"].clone();
         let mut ended = row.into_active_model();
         ended.execution_ended_at = Set(Some(now));
         ended.active = Set(false);
-        ended.retired_at = Set(retired_at);
         ended.updated_at = Set(now);
         let ended = ended.update(tenant.transaction()).await?;
         super::treatments::persist(tenant, &ended, Some(before), "update", None).await?;
     }
+    sharing::end(
+        tenant,
+        crate::models::ids::PersonId::from_database(person_id),
+    )
+    .await?;
     Ok(())
 }
 
@@ -270,44 +426,7 @@ pub(crate) async fn restore_participation(
     tenant: &TenantTransaction,
     person_id: i64,
 ) -> Result<(), OperationError> {
-    let subject = crate::models::entities::membership::Entity::find()
-        .filter(
-            crate::models::entities::membership::Column::HouseholdId
-                .eq(tenant.scope().household_id),
-        )
-        .filter(crate::models::entities::membership::Column::PersonId.eq(person_id))
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    let rows = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(schedule::Column::PersonId.eq(person_id))
-        .filter(schedule::Column::ExecutionEndedAt.is_null())
-        .filter(schedule::Column::RetiredAt.is_null())
-        .filter(schedule::Column::PersonScheduleId.is_not_null())
-        .lock_exclusive()
-        .all(tenant.transaction())
-        .await?;
-    for row in rows {
-        let plan = person_schedule::Entity::find_by_id(
-            row.person_schedule_id
-                .as_ref()
-                .ok_or(OperationError::Unavailable)?,
-        )
-        .lock_shared()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-        if row.clinical_revision == Some(plan.clinical_revision) {
-            continue;
-        }
-        personal::sync_pause(tenant.transaction(), &row, &plan, subject.id).await?;
-        let mut execution = row.into_active_model();
-        project_clinical(&plan, &mut execution);
-        let execution = execution.update(tenant.transaction()).await?;
-        super::treatments::persist(tenant, &execution, None, "update", None).await?;
-    }
-    Ok(())
+    projection::refresh_for(tenant, Some(person_id)).await
 }
 
 pub(crate) fn stock_matches(plan: &person_schedule::Model, stock: &medication::Model) -> bool {

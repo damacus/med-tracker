@@ -24,6 +24,7 @@ use crate::models::{
 mod avatar;
 mod guardian_declarations;
 mod person_schedules;
+mod shared_schedules;
 
 pub fn routes() -> Routes {
     Routes::new()
@@ -31,7 +32,13 @@ pub fn routes() -> Routes {
         .add("/households", get(households))
         .add("/profile", get(profile).patch(update_profile))
         .add("/schedules", get(person_schedules::index))
+        .add("/schedules/adopt", post(person_schedules::adopt))
         .add("/schedules/{id}", patch(person_schedules::update))
+        .add("/shared_schedules/{id}", patch(shared_schedules::update))
+        .add(
+            "/care-sharing/{id}",
+            delete(person_schedules::withdraw_sharing),
+        )
         .add("/guardian-declarations", get(guardian_declarations::index))
         .add(
             "/guardian-declarations/{id}",

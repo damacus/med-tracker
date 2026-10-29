@@ -481,6 +481,12 @@ impl From<OperationError> for TakeFailure {
         Self { error, cause: None }
     }
 }
+
+impl From<sea_orm::DbErr> for TakeFailure {
+    fn from(error: sea_orm::DbErr) -> Self {
+        OperationError::from(error).into()
+    }
+}
 impl TakeFailure {
     fn into_error(self) -> OperationError {
         let mut error = self.error;

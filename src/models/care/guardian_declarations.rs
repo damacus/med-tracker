@@ -104,6 +104,14 @@ pub(crate) async fn withdraw_own(
     if current.withdrawn_at.is_some() {
         return Ok(current);
     }
+    super::person_schedules::sharing::withdraw_declaration(
+        transaction,
+        crate::models::ids::AccountId::from_database(account_id),
+        declaration_id,
+        request_id,
+        provenance,
+    )
+    .await?;
     let updated = transaction.query_one_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "UPDATE public.guardian_declarations SET withdrawn_at=pg_catalog.clock_timestamp(),revision=revision+1 WHERE id=$1 RETURNING *",
@@ -151,6 +159,9 @@ impl InitialGuardianAttestation {
 pub(crate) struct DeclarationId(i64);
 
 impl DeclarationId {
+    pub(crate) const fn from_database(value: i64) -> Self {
+        Self(value)
+    }
     pub(crate) const fn get(self) -> i64 {
         self.0
     }

@@ -1,8 +1,253 @@
 use super::*;
 use med_tracker::models::_entities::{
-    api_change_events, medication_pause_periods, person_schedules, schedules,
+    api_change_events, medication_pause_periods, medications, person_schedules, schedules,
 };
+use sea_orm::TransactionTrait;
 use sea_orm::prelude::Decimal;
+#[path = "person_owned_schedules/adoption_history.rs"]
+mod adoption_history;
+#[path = "person_owned_schedules/legacy_departure.rs"]
+mod legacy_departure;
+
+#[tokio::test]
+async fn person_owned_schedule_second_household_requires_explicit_consent() {
+    let app = Application::new().await;
+    let invitation = super::invitations::seed_acceptance(&app).await;
+    let response = app
+        .client
+        .post(format!("{}/api/v1/invitations/accept", app.origin))
+        .bearer_auth(&invitation.bearer)
+        .json(&json!({"token":invitation.token}))
+        .send()
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let joined = household_memberships::Entity::find()
+        .filter(household_memberships::Column::HouseholdId.eq(invitation.target_household.id))
+        .filter(household_memberships::Column::PersonId.eq(app.fixture.adult.id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(
+        status, 422,
+        "Joining another household must require explicit care-sharing consent"
+    );
+    assert_eq!(joined, 0, "Missing consent cannot create participation");
+}
+
+#[tokio::test]
+async fn person_owned_schedule_consent_is_attributable_and_once_only() {
+    use med_tracker::models::_entities::person_household_approvals;
+    let app = Application::new().await;
+    let invitation = super::invitations::seed_acceptance(&app).await;
+    for _ in 0..2 {
+        Application::assert_status(
+            app.client
+                .post(format!("{}/api/v1/invitations/accept", app.origin))
+                .bearer_auth(&invitation.bearer)
+                .json(&json!({"token":invitation.token,"sharing_consent":true}))
+                .send()
+                .await
+                .unwrap(),
+            200,
+        )
+        .await;
+    }
+    let approvals = person_household_approvals::Entity::find()
+        .filter(person_household_approvals::Column::InvitationId.eq(invitation.invitation.id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(approvals.len(), 1);
+    assert_eq!(approvals[0].person_id, app.fixture.adult.id);
+    assert_eq!(approvals[0].approved_by_account_id, app.fixture.account.id);
+    assert_eq!(approvals[0].approved_by_person_id, app.fixture.adult.id);
+    assert!(approvals[0].guardian_declaration_id.is_none());
+    assert!(approvals[0].ended_at.is_none());
+    app.close().await;
+}
+
+#[tokio::test]
+async fn person_owned_schedule_personal_audits_identify_account_and_person() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let schedule_id = super::schedule_lifecycle::create_schedule(&app, &token).await;
+    let plan = plans(&app, &token).await["data"][0].clone();
+    Application::assert_status(
+        personal_change(&app, &token, &plan, json!({"schedule":{"dose_amount":"3"}})).await,
+        200,
+    )
+    .await;
+    for (item_type, item_id, event) in [
+        (
+            "AccountClinicalAccess",
+            app.fixture.account.id,
+            "personal_plans_read",
+        ),
+        ("PersonSchedule", schedule_id, "update"),
+    ] {
+        let audit = versions::Entity::find()
+            .filter(versions::Column::ItemType.eq(item_type))
+            .filter(versions::Column::ItemId.eq(item_id))
+            .filter(versions::Column::Event.eq(event))
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(audit.whodunnit, Some(app.fixture.account.id.to_string()));
+        assert_eq!(
+            audit.audit_context["actor_account_id"],
+            app.fixture.account.id
+        );
+        assert_eq!(audit.audit_context["actor_person_id"], app.fixture.adult.id);
+        assert!(audit.household_id.is_none());
+        assert!(audit.actor_membership_id.is_none());
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn person_owned_schedule_dependent_browser_requires_subject_and_guardian_consent() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let child=Application::assert_status(app.client.post(format!("{}/api/v1/households/{}/people",app.origin,app.fixture.household.id))
+        .bearer_auth(&token).json(&json!({"person":{"name":"Synthetic sharing child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap(),201).await;
+    let child_id = child["data"]["id"]
+        .as_i64()
+        .or_else(|| {
+            child["data"]["id"]
+                .as_str()
+                .and_then(|value| value.parse::<i64>().ok())
+        })
+        .unwrap();
+    let invitation = super::invitations::seed_acceptance(&app).await;
+    let mut row = invitation.invitation.clone().into_active_model();
+    row.dependent_sharing = Set(true);
+    row.update(&app.fixture.admin).await.unwrap();
+    let cookie = super::platform::fixture_session(&app, app.fixture.account.id).await;
+    let (cookie, preview) = super::platform::form_page(
+        &app,
+        &cookie,
+        &format!("/invitations/accept?token={}", invitation.token),
+    )
+    .await;
+    let document = scraper::Html::parse_document(&preview);
+    let selector = scraper::Selector::parse("select[name='subject_person_id'] option").unwrap();
+    assert!(
+        document
+            .select(&selector)
+            .any(|option| option.value().attr("value") == Some(child_id.to_string().as_str())),
+        "A guardian outside the destination must explicitly select an eligible dependent"
+    );
+    assert!(
+        preview.contains("/invitations/dependent-sharing/accept"),
+        "Dependent consent needs its dedicated acceptance path"
+    );
+    let before = Application::assert_status(
+        app.client
+            .get(format!("{}/api/v1/auth/households", app.origin))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let csrf = super::platform::hidden_field(&preview, "authenticity_token");
+    let child = child_id.to_string();
+    let accepted = super::platform::post_form(
+        &app,
+        &cookie,
+        "/invitations/dependent-sharing/accept",
+        &[
+            ("authenticity_token", csrf.as_str()),
+            ("token", invitation.token.as_str()),
+            ("sharing_consent", "true"),
+            ("subject_person_id", child.as_str()),
+        ],
+    )
+    .await;
+    assert_eq!(accepted.status().as_u16(), 200);
+    assert!(
+        accepted
+            .text()
+            .await
+            .unwrap()
+            .contains("Care sharing approved")
+    );
+    let after = Application::assert_status(
+        app.client
+            .get(format!("{}/api/v1/auth/households", app.origin))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    assert_eq!(
+        after, before,
+        "Dependent consent cannot change the guardian's actual household context"
+    );
+    assert_eq!(
+        household_memberships::Entity::find()
+            .filter(household_memberships::Column::HouseholdId.eq(invitation.target_household.id))
+            .filter(household_memberships::Column::PersonId.eq(app.fixture.adult.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn person_owned_schedule_approval_can_be_withdrawn_without_departure() {
+    use med_tracker::models::_entities::person_household_approvals;
+    let app = Application::new().await;
+    let oauth = app.token().await;
+    let invitation = super::invitations::seed_acceptance(&app).await;
+    Application::assert_status(
+        app.client
+            .post(format!("{}/api/v1/invitations/accept", app.origin))
+            .bearer_auth(&invitation.bearer)
+            .json(&json!({"token":invitation.token,"sharing_consent":true}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let approval = person_household_approvals::Entity::find()
+        .filter(person_household_approvals::Column::InvitationId.eq(invitation.invitation.id))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let response = app
+        .client
+        .delete(format!(
+            "{}/api/v1/auth/care-sharing/{}",
+            app.origin, approval.id
+        ))
+        .bearer_auth(&oauth)
+        .send()
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let row = person_household_approvals::Entity::find_by_id(approval.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    app.close().await;
+    assert_eq!(
+        status, 204,
+        "The person must be able to withdraw an approval without leaving the household"
+    );
+    assert!(row.ended_at.is_some());
+}
 
 pub(super) async fn plans(app: &Application, token: &str) -> Value {
     let body = Application::assert_status(
@@ -148,9 +393,47 @@ async fn person_owned_schedule_personal_edits_pause_resume_stale_and_immutable_d
         .unwrap()
         .unwrap();
     assert!(period.ended_at.is_some());
-    assert_eq!(
-        period.resumed_by_membership_id,
-        Some(app.fixture.membership.id)
+    assert_eq!(period.resumed_by_membership_id, None);
+    let closure =
+        med_tracker::models::_entities::shared_schedule_pause_closures::Entity::find_by_id(
+            period.canonical_resume_id.as_ref().unwrap(),
+        )
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(closure.actor_account_id, app.fixture.account.id);
+    assert_eq!(closure.actor_person_id, app.fixture.adult.id);
+    assert!(closure.actor_membership_id.is_none());
+    assert!(closure.guardian_declaration_id.is_none());
+    assert_eq!(closure.clinical_revision, 4);
+    assert_eq!(Some(closure.ended_at), period.ended_at);
+    assert_eq!(closure.authentication_method.as_deref(), Some("oauth"));
+    let grant_id = closure
+        .session_reference
+        .as_ref()
+        .unwrap()
+        .strip_prefix("oauth_grant:")
+        .unwrap()
+        .parse::<i64>()
+        .unwrap();
+    let grant = med_tracker::models::_entities::oauth_grants::Entity::find_by_id(grant_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(grant.account_id, app.fixture.account.id);
+    assert_eq!(grant.client_kind, "mobile");
+    assert!(!closure.request_id.is_empty());
+    assert!(
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("PersonSchedule"))
+            .filter(versions::Column::ItemId.eq(id))
+            .filter(versions::Column::RequestId.eq(&closure.request_id))
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .is_some()
     );
     let retired = Application::assert_status(
         personal_change(&app, &token, &resumed, json!({"action":"retire"})).await,
@@ -281,6 +564,442 @@ async fn manager_token(app: &Application) -> (Fixture, String) {
         .unwrap()
         .to_owned();
     (manager, token)
+}
+
+async fn missed_pause_transitions(ending_paused: bool) {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let id = super::schedule_lifecycle::create_schedule(&app, &token).await;
+    let source = schedules::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    Application::assert_status(app.client.post(format!("{}/api/v1/households/{}/medication_pause_periods",app.origin,app.fixture.household.id))
+        .bearer_auth(&token).json(&json!({"medication_pause_period":{"source_type":"schedule","source_id":source.portable_id,"reason":"clinician_advice","note":"Synthetic first private pause"}})).send().await.unwrap(),201).await;
+    let interval = medication_pause_periods::Entity::find()
+        .filter(medication_pause_periods::Column::ScheduleId.eq(id))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let (manager, manager_token) = manager_token(&app).await;
+    let endpoint = format!(
+        "{}/api/v1/households/{}/admin/memberships/{}",
+        app.origin, app.fixture.household.id, app.fixture.membership.id
+    );
+    Application::assert_status(
+        app.client
+            .patch(&endpoint)
+            .bearer_auth(&manager_token)
+            .json(&json!({"household_membership":{"status":"suspended"}}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let mut first_resume = None;
+    let actions: &[&str] = if ending_paused {
+        &["resume", "pause"]
+    } else {
+        &["resume", "pause", "resume"]
+    };
+    for action in actions {
+        let current = plans(&app, &token).await["data"][0].clone();
+        let changed = personal_change(&app, &token, &current, json!({"action":action})).await;
+        assert_eq!(
+            changed.status().as_u16(),
+            200,
+            "Personal {action} while origin suspended: {}",
+            changed.text().await.unwrap()
+        );
+        if first_resume.is_none() {
+            first_resume = Some(
+                person_schedules::Entity::find_by_id(current["id"].as_str().unwrap())
+                    .one(&app.fixture.admin)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .updated_at,
+            );
+        }
+    }
+    assert!(
+        medication_pause_periods::Entity::find_by_id(interval.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .ended_at
+            .is_none()
+    );
+    let probe = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &med_tracker::models::access::HouseholdScope {
+            actor: med_tracker::models::access::Actor {
+                account_id: manager.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: uuid::Uuid::new_v4().to_string(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    household_memberships::Entity::update_many()
+        .col_expr(
+            household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::val("active"),
+        )
+        .filter(household_memberships::Column::Id.eq(app.fixture.membership.id))
+        .exec(probe.transaction())
+        .await
+        .unwrap();
+    assert!(
+        person_schedules::Entity::find_by_id(source.person_schedule_id.as_ref().unwrap())
+            .one(probe.transaction())
+            .await
+            .unwrap()
+            .is_some(),
+        "Operational origin read remains permitted without clinical UPDATE"
+    );
+    let closure =
+        med_tracker::models::_entities::shared_schedule_pause_closures::Entity::find_by_id(
+            &interval.portable_id,
+        )
+        .one(probe.transaction())
+        .await
+        .unwrap()
+        .expect("An active owned origin interval can read its exact closure proof");
+    let mut invalid = vec![
+        (
+            closure.pause_instance_id.clone(),
+            closure.ended_at + chrono::Duration::seconds(1),
+        ),
+        (uuid::Uuid::new_v4().to_string(), closure.ended_at),
+    ];
+    if let Some(other) = med_tracker::models::_entities::shared_schedule_pause_closures::Entity::find()
+        .filter(med_tracker::models::_entities::shared_schedule_pause_closures::Column::PersonScheduleId.eq(source.person_schedule_id.as_ref().unwrap()))
+        .filter(med_tracker::models::_entities::shared_schedule_pause_closures::Column::PauseInstanceId.ne(&interval.portable_id))
+        .one(&app.fixture.admin).await.unwrap()
+    {
+        assert!(med_tracker::models::_entities::shared_schedule_pause_closures::Entity::find_by_id(&other.pause_instance_id).one(probe.transaction()).await.unwrap().is_none(),"An unowned pause instance cannot become a history reader");
+        invalid.push((other.pause_instance_id,other.ended_at));
+    }
+    for (proof, time) in invalid {
+        let attempt = probe.transaction().begin().await.unwrap();
+        let changed = medication_pause_periods::Entity::update_many()
+            .col_expr(
+                medication_pause_periods::Column::CanonicalResumeId,
+                sea_orm::sea_query::Expr::val(proof),
+            )
+            .col_expr(
+                medication_pause_periods::Column::EndedAt,
+                sea_orm::sea_query::Expr::val(time),
+            )
+            .col_expr(
+                medication_pause_periods::Column::ResumedByMembershipId,
+                sea_orm::sea_query::Expr::val(Option::<i64>::None),
+            )
+            .filter(medication_pause_periods::Column::Id.eq(interval.id))
+            .exec(&attempt)
+            .await;
+        attempt.rollback().await.unwrap();
+        assert!(
+            changed.is_err() || changed.unwrap().rows_affected == 0,
+            "Foreign, unproven or mismatched closure proof cannot close an owned interval"
+        );
+    }
+    probe.rollback().await.unwrap();
+    let restored = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&manager_token)
+        .json(&json!({"household_membership":{"status":"active"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(
+        restored.status().as_u16(),
+        200,
+        "Restore before private interval projection: {}",
+        restored.text().await.unwrap()
+    );
+    let projected = medication_pause_periods::Entity::find_by_id(interval.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        projected.ended_at, first_resume,
+        "Later projection must retain the first interval's actual canonical resume, even after more transitions"
+    );
+    assert_eq!(projected.note, interval.note);
+    assert!(projected.canonical_resume_id.is_some());
+    assert!(
+        projected.resumed_by_membership_id.is_none(),
+        "An account command does not acquire the suspended origin membership"
+    );
+    let current_source = schedules::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(current_source.active, !ending_paused);
+    assert_eq!(
+        medication_pause_periods::Entity::find()
+            .filter(medication_pause_periods::Column::ScheduleId.eq(id))
+            .filter(medication_pause_periods::Column::EndedAt.is_null())
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0,
+        "Restore must not fabricate a local interval for a pause begun outside the household context"
+    );
+    let current_body = Application::assert_status(
+        app.client
+            .get(format!(
+                "{}/api/v1/households/{}/schedules/{id}",
+                app.origin, app.fixture.household.id
+            ))
+            .bearer_auth(&manager_token)
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    assert_eq!(current_body["data"]["paused"], ending_paused);
+    if ending_paused {
+        assert!(current_body["data"]["pause_started_at"].as_str().is_some());
+        let current = plans(&app, &token).await["data"][0].clone();
+        Application::assert_status(
+            personal_change(&app, &token, &current, json!({"action":"resume"})).await,
+            200,
+        )
+        .await;
+        assert_eq!(
+            medication_pause_periods::Entity::find()
+                .filter(medication_pause_periods::Column::ScheduleId.eq(id))
+                .filter(medication_pause_periods::Column::EndedAt.is_null())
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+            0
+        );
+    }
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &med_tracker::models::access::HouseholdScope {
+            actor: med_tracker::models::access::Actor {
+                account_id: manager.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: uuid::Uuid::new_v4().to_string(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let changed_closure = medication_pause_periods::Entity::update_many()
+        .col_expr(
+            medication_pause_periods::Column::EndedAt,
+            sea_orm::sea_query::Expr::val(first_resume.unwrap() + chrono::Duration::minutes(1)),
+        )
+        .filter(medication_pause_periods::Column::Id.eq(interval.id))
+        .exec(tenant.transaction())
+        .await;
+    tenant.rollback().await.unwrap();
+    assert!(
+        changed_closure.is_err() || changed_closure.unwrap().rows_affected == 0,
+        "A restricted runtime actor cannot rewrite a consumed canonical closure"
+    );
+    assert_eq!(projected.started_at, interval.started_at);
+    assert_eq!(
+        projected.recorded_by_membership_id,
+        interval.recorded_by_membership_id
+    );
+    assert!(
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("PersonSchedule"))
+            .filter(versions::Column::ItemId.eq(id))
+            .all(&app.fixture.admin)
+            .await
+            .unwrap()
+            .iter()
+            .any(|version| version
+                .object
+                .as_ref()
+                .is_some_and(|value| value.contains("Synthetic first private pause")))
+    );
+    manager.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn person_owned_schedule_missed_pause_transitions_close_the_original_private_interval_exactly()
+ {
+    missed_pause_transitions(false).await;
+}
+
+#[tokio::test]
+async fn person_owned_schedule_missed_pause_transitions_ending_paused_do_not_invent_local_history()
+{
+    missed_pause_transitions(true).await;
+}
+
+#[tokio::test]
+async fn person_owned_schedule_manager_legacy_departure_preserves_rx_for_protected_adoption() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let mut stock = app.fixture.medication.clone().into_active_model();
+    stock.dmd_system = Set(Some("https://dmd.nhs.uk".into()));
+    stock.dmd_concept_class = Set(Some("VMP".into()));
+    stock.dmd_code = Set(Some("123456".into()));
+    stock.update(&app.fixture.admin).await.unwrap();
+    let source = super::legacy_pause::legacy_schedule(&app).await;
+    let (manager, manager_token) = manager_token(&app).await;
+    let endpoint = format!(
+        "{}/api/v1/households/{}/admin/memberships/{}",
+        app.origin, app.fixture.household.id, app.fixture.membership.id
+    );
+    let removed = app
+        .client
+        .delete(&endpoint)
+        .bearer_auth(&manager_token)
+        .send()
+        .await
+        .unwrap();
+    println!(
+        "legacy manager departure HTTP status: {}",
+        removed.status().as_u16()
+    );
+    assert!(
+        removed.status().is_success(),
+        "Operational legacy removal must not require or invent manager clinical authority: {}",
+        removed.text().await.unwrap()
+    );
+    let frozen = schedules::Entity::find_by_id(source.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(frozen.person_schedule_id.is_none());
+    assert!(frozen.execution_ended_at.is_some());
+    assert_eq!(frozen.retired_at, source.retired_at);
+    assert_eq!(frozen.portable_id, source.portable_id);
+    assert_eq!(
+        person_schedules::Entity::find()
+            .filter(person_schedules::Column::OriginScheduleId.eq(source.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    let mut changed_stock = app.fixture.medication.clone().into_active_model();
+    changed_stock.name = Set(Some("Synthetic changed former stock".into()));
+    changed_stock.dmd_code = Set(Some("654321".into()));
+    changed_stock.dose_unit = Set(Some("mg".into()));
+    changed_stock.update(&app.fixture.admin).await.unwrap();
+    let adopted = Application::assert_status(
+        app.client
+            .post(format!("{}/api/v1/auth/schedules/adopt", app.origin))
+            .bearer_auth(&token)
+            .json(&json!({"source_portable_id":source.portable_id}))
+            .send()
+            .await
+            .unwrap(),
+        201,
+    )
+    .await;
+    assert_eq!(adopted["data"]["dmd_code"], "123456");
+    assert_eq!(adopted["data"]["stock_unit"], "tablet");
+    assert_eq!(adopted["data"]["dose_amount"], "2");
+    assert_eq!(adopted["data"]["active"], true);
+    for private in [
+        "notes",
+        "pause_reason",
+        "pause_note",
+        "origin_stock_id",
+        "origin_household_id",
+    ] {
+        assert!(adopted["data"].get(private).is_none());
+    }
+    assert_eq!(
+        schedules::Entity::find_by_id(source.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        frozen
+    );
+    manager.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn person_owned_schedule_adoption_indexes_actual_prior_take_without_recording_it_again() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let mut legacy = super::legacy_pause::legacy_schedule(&app)
+        .await
+        .into_active_model();
+    legacy.schedule_type = Set(4);
+    let legacy = legacy.update(&app.fixture.admin).await.unwrap();
+    let taken = Application::assert_status(app.client.post(format!("{}/api/v1/households/{}/medication_takes",app.origin,app.fixture.household.id)).bearer_auth(&token).json(&json!({"medication_take":{"source_type":"schedule","source_id":legacy.id.to_string(),"dose_amount":"2","dose_unit":"tablet","taken_at":chrono::Utc::now().to_rfc3339(),"client_uuid":uuid::Uuid::new_v4().to_string()}})).send().await.unwrap(),201).await;
+    let take_id = taken["data"]["id"].as_i64().unwrap();
+    let original = medication_takes::Entity::find_by_id(take_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let original_stock = medications::Entity::find_by_id(app.fixture.medication.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    Application::assert_status(
+        app.client
+            .patch(format!(
+                "{}/api/v1/households/{}/schedules/{}",
+                app.origin, app.fixture.household.id, legacy.id
+            ))
+            .bearer_auth(&token)
+            .json(&json!({"schedule":{"notes":"Adopt actual existing care"}}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let source = schedules::Entity::find_by_id(legacy.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let count = med_tracker::models::_entities::shared_schedule_administrations::Entity::find().filter(med_tracker::models::_entities::shared_schedule_administrations::Column::PersonScheduleId.eq(source.person_schedule_id.unwrap())).filter(med_tracker::models::_entities::shared_schedule_administrations::Column::MedicationTakeId.eq(take_id)).count(&app.fixture.admin).await.unwrap();
+    assert_eq!(
+        count, 1,
+        "Protected adoption must include the actual prior immutable administration in global safety"
+    );
+    assert_eq!(
+        medication_takes::Entity::find_by_id(take_id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        original
+    );
+    assert_eq!(
+        medications::Entity::find_by_id(app.fixture.medication.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        original_stock
+    );
+    app.close().await;
 }
 
 #[tokio::test]

@@ -281,6 +281,16 @@ en:
         existing_account: Already have an account?
         sign_in: Sign in
         to_accept: to accept this invitation.
+        dependent_label: Dependent whose care will be shared
+        dependent_choose: Choose a dependent
+        no_dependents: No dependent has current eligible guardian authority. Review your guardian declarations before accepting.
+        dependent_consent: I am a current declared guardian and approve sharing this dependent’s current and future care plans, pause status and latest dose safety status with this household. Private notes and detailed history stay private. Withdrawal or departure ends this approval.
+        dependent_approved: Care sharing approved
+        dependent_approved_description: The selected dependent’s current and future plans are shared. You remain in your current households and can withdraw this approval from your account.
+        return_profile: Return to your account
+        invite_guardian: Invite a guardian to share care
+        invite_guardian_description: A current declared guardian chooses the dependent and approves sharing. The guardian remains in their current households.
+        sharing_consent: I approve sharing my current and future care plans, pause status and latest dose safety status with this household. Private notes and detailed history stay private. Leaving ends this approval.
         invalid_title: Invitation link unavailable
         invalid_guidance: This invitation link is invalid or has expired. Ask a household manager for a new invitation.
         recovery_title: Household joined
