@@ -13,8 +13,8 @@ mod writing;
 use crate::models::{
     access::{self, HouseholdScope, PersonAccess, TenantTransaction},
     entities::{
-        api_change_event, dosage, medication, medication_take, membership, person_medication,
-        schedule,
+        api_change_event, dosage, household, medication, medication_take, membership,
+        person_medication, schedule,
     },
     errors::OperationError,
 };
@@ -22,13 +22,13 @@ use audit::{StockVersionChange, record_domain_audit, stock_version};
 use changes::{SyncRecord, record_change};
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use input::{ProposedTake, prepare};
-use locking::lock_row;
+use locking::{lock_dosage, lock_household, lock_medication};
 use persistence::insert_take;
 use replay::{existing_take, lock_client_uuid, replay_matches};
 use sea_orm::prelude::Decimal;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, DbBackend,
-    EntityTrait, QueryFilter, Set, Statement,
+    EntityTrait, PrimaryKeyTrait, QueryFilter, QuerySelect, Set, Statement,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -540,7 +540,7 @@ pub async fn execute_attempt_in_timezone(
             };
             let db = tenant.transaction();
             let household_id = tenant.scope().household_id;
-            lock_row(db, "households", household_id).await?;
+            lock_household(db, household_id).await?;
             access::recheck(tenant).await?;
             lock_client_uuid(db, malformed.client_uuid).await?;
             let existing = match existing_take(db, household_id, malformed.client_uuid).await {

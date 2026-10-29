@@ -26,13 +26,20 @@ pub(super) async fn enqueue(
     invitation: &household_invitation::Model,
     email: Email,
 ) -> Result<(), OperationError> {
-    let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "INSERT INTO invitation_mail_attempts(household_id,invitation_id,original_invitation_id,sender_account_id,sender_membership_id,sender_permissions_version,token_digest) VALUES($1,$2,$2,$3,$4,$5,$6) RETURNING id",
-        [tenant.scope().household_id.into(),invitation.id.into(),tenant.scope().actor.account_id.into(),tenant.membership().id.into(),tenant.membership().permissions_version.into(),invitation.token_digest.clone().into()],
-    )).await?.ok_or(OperationError::Unavailable)?;
+    let attempt = invitation_mail_attempt::ActiveModel {
+        household_id: Set(tenant.scope().household_id),
+        invitation_id: Set(Some(invitation.id)),
+        original_invitation_id: Set(invitation.id),
+        sender_account_id: Set(tenant.scope().actor.account_id),
+        sender_membership_id: Set(tenant.membership().id),
+        sender_permissions_version: Set(tenant.membership().permissions_version),
+        token_digest: Set(invitation.token_digest.clone()),
+        ..Default::default()
+    }
+    .insert(tenant.transaction())
+    .await?;
     let mail = InvitationMail {
-        attempt_id: AttemptId(row.try_get("", "id")?),
+        attempt_id: AttemptId(attempt.id),
         household_id: tenant.scope().household_id,
         email,
     };

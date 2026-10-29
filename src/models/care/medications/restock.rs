@@ -16,12 +16,12 @@ pub(super) async fn execute_selected(
 ) -> Result<medication::Model, OperationError> {
     let tenant = context.tenant;
     let db = tenant.transaction();
-    lock_row(db, "households", tenant.scope().household_id).await?;
+    lock_household(db, tenant.scope().household_id).await?;
     access::recheck(tenant).await?;
     let found = visible_medication(tenant, &input.medication_id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    lock_row(db, "medications", found.id).await?;
+    lock_medication(db, found.id).await?;
     let current = visible_medication(tenant, &input.medication_id)
         .await?
         .ok_or(OperationError::NotFound)?;

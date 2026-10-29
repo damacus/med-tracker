@@ -64,6 +64,34 @@ pub mod active_session_key {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+pub mod invitation_mail_attempt {
+    use sea_orm::entity::prelude::*;
+
+    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    #[sea_orm(table_name = "invitation_mail_attempts")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i64,
+        pub household_id: i64,
+        pub invitation_id: Option<i64>,
+        pub original_invitation_id: i64,
+        pub sender_account_id: i64,
+        pub sender_membership_id: i64,
+        pub sender_permissions_version: i32,
+        pub token_digest: String,
+        pub status: String,
+        pub category: Option<String>,
+        pub queued_at: DateTime,
+        pub started_at: Option<DateTime>,
+        pub finished_at: Option<DateTime>,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 pub use super::identity::better_auth::schema::{
     api_key as identity_api_key, passkey as identity_passkey, session as identity_session,
     verification as identity_verification,

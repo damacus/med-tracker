@@ -505,6 +505,9 @@ async fn import_claimed_snapshot(
         attributes.insert(id, row);
     }
     let transaction = ctx.db.begin().await?;
+    // SeaORM lock clauses express row-level SELECT locks (FOR UPDATE/FOR SHARE)
+    // but not statement-level LOCK TABLE modes; SHARE ROW EXCLUSIVE serialises
+    // the snapshot merge against concurrent refresh writers.
     transaction
         .execute_unprepared(
             "LOCK TABLE medication_review_evidence_records IN SHARE ROW EXCLUSIVE MODE",

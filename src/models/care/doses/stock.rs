@@ -113,7 +113,7 @@ pub(super) async fn decrement_stock(
     request_id: &str,
     proposed: &ProposedTake,
 ) -> Result<(), ApiError> {
-    lock_row(db, "medications", proposed.selected.id).await?;
+    lock_medication(db, proposed.selected.id).await?;
     let selected = medication::Entity::find_by_id(proposed.selected.id)
         .in_tenant(context.scope().household_id)
         .one(db)
@@ -196,7 +196,7 @@ pub(super) async fn decrement_stock(
             "Selected location is unavailable for this medication.",
         )
     })?;
-    lock_row(db, "dosages", selected_option.id).await?;
+    lock_dosage(db, selected_option.id).await?;
     let selected_option = dosage::Entity::find_by_id(selected_option.id)
         .in_tenant(context.scope().household_id)
         .one(db)

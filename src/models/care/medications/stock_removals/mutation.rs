@@ -11,10 +11,10 @@ pub(super) async fn apply(
     let db = context.tenant.transaction();
     let (previous, remaining, unit) = if let Some(id) = dosage_id {
         let id = id.parse::<i64>().map_err(|_| invalid())?;
-        db.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT id FROM dosages WHERE id=$1 AND household_id=$2 AND medication_id=$3 FOR UPDATE",[id.into(),context.tenant.scope().household_id.into(),medication.id.into()])).await.map_err(database_error)?.ok_or_else(invalid)?;
         let option = dosage::Entity::find_by_id(id)
             .in_tenant(context.tenant.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(medication.id))
+            .lock_exclusive()
             .one(db)
             .await
             .map_err(database_error)?
