@@ -82,6 +82,82 @@ async fn legacy_manage_grant_cannot_edit_other_care_or_expose_manage_controls() 
     result
 }
 
+#[tokio::test]
+async fn withdrawn_declaration_drops_relationship_owned_grant_recipients() -> Result<(), DbErr> {
+    use med_tracker::models::access;
+    use med_tracker::models::entities::{carer_relationship, grant};
+    use med_tracker::models::notification_preferences::managed;
+    use sea_orm::{ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
+
+    async fn managed_ids(app: &Application) -> Result<Vec<i64>, DbErr> {
+        let tenant = access::begin(&app.fixture.runtime, &app.fixture.scope(), None)
+            .await
+            .map_err(|error| DbErr::Custom(format!("Tenant begin failed: {error}")))?;
+        let people = managed::read(&tenant)
+            .await
+            .map_err(|error| DbErr::Custom(format!("Managed recipients read failed: {error}")))?;
+        tenant
+            .rollback()
+            .await
+            .map_err(|error| DbErr::Custom(format!("Tenant rollback failed: {error}")))?;
+        Ok(people.iter().map(|person| person.id).collect())
+    }
+
+    let app = Application::new().await;
+    let result = async {
+        let token = app.token().await;
+        let (subject, declaration_id) = super::withdrawal::declaration(&app, &token).await?;
+        let link = carer_relationship::Entity::find()
+            .filter(carer_relationship::Column::GuardianDeclarationId.eq(declaration_id))
+            .filter(carer_relationship::Column::HouseholdId.eq(app.fixture.household.id))
+            .one(&app.fixture.admin)
+            .await?
+            .ok_or_else(|| DbErr::Custom("Expected declaration-backed local link".into()))?;
+        let now = chrono::Utc::now().naive_utc();
+        grant::Entity::insert(grant::ActiveModel {
+            household_id: Set(app.fixture.household.id),
+            household_membership_id: Set(app.fixture.membership.id),
+            person_id: Set(subject),
+            access_level: Set("manage".into()),
+            relationship_type: Set("parent".into()),
+            carer_relationship_id: Set(Some(link.id)),
+            granted_by_membership_id: Set(Some(app.fixture.membership.id)),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        })
+        .exec(&app.fixture.admin)
+        .await?;
+        require(
+            managed_ids(&app).await?.contains(&subject),
+            "A relationship-owned manage grant must list the declared subject before withdrawal",
+        )?;
+        let withdrawn = app
+            .client
+            .patch(format!(
+                "{}/api/v1/auth/guardian-declarations/{declaration_id}",
+                app.origin
+            ))
+            .bearer_auth(&token)
+            .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+            .send()
+            .await
+            .map_err(|_| DbErr::Custom("Guardian withdrawal failed before response".into()))?;
+        require(
+            withdrawn.status().as_u16() == 200,
+            "Guardian withdrawal must succeed for the stale-authority check",
+        )?;
+        require(
+            !managed_ids(&app).await?.contains(&subject),
+            "Withdrawal must end reminder recipient authority derived from the declaration-backed link",
+        )?;
+        Ok(())
+    }
+    .await;
+    app.close().await;
+    result
+}
+
 async fn capabilities(app: &Application, token: &str) -> Result<Value, DbErr> {
     let household = app.fixture.household.id;
     let response = app
