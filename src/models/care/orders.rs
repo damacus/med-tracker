@@ -1,8 +1,9 @@
 use crate::models::{
     access::{self, TenantTransaction},
-    care::{administration, doses::CredentialProvenance, medications},
+    care::{administration, medications},
     entities::{api_change_event, household, medication},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::{NaiveDate, Utc};
 use sea_orm::prelude::Decimal;

@@ -124,18 +124,9 @@ async fn access(
     _: &DatabaseTransaction,
     context: &AuthContext<'_>,
     id: i64,
-    level: &str,
+    level: PersonAccess,
 ) -> Result<bool, OperationError> {
-    access::can_access_person(
-        context.tenant,
-        id,
-        match level {
-            "manage" => PersonAccess::Manage,
-            "record" => PersonAccess::Record,
-            _ => PersonAccess::View,
-        },
-    )
-    .await
+    access::can_access_person(context.tenant, id, level).await
 }
 async fn visible_medication(
     _: &DatabaseTransaction,
@@ -631,7 +622,7 @@ async fn visible_person(
     let Some(found) = found else {
         return Ok(None);
     };
-    if access(db, context, found.id, "view").await? {
+    if access(db, context, found.id, PersonAccess::View).await? {
         Ok(Some(found))
     } else {
         Ok(None)
@@ -656,7 +647,7 @@ async fn visible_event(
     let Some(found) = found else {
         return Ok(None);
     };
-    if access(db, context, found.person_id, "view").await? {
+    if access(db, context, found.person_id, PersonAccess::View).await? {
         Ok(Some(found))
     } else {
         Ok(None)
@@ -783,7 +774,7 @@ async fn apply_sync_operation(
         let person = visible_person(db, context, attrs.person_id.as_deref().unwrap())
             .await?
             .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
-        if !access(db, context, person.id, "record").await? {
+        if !access(db, context, person.id, PersonAccess::Record).await? {
             return Err(sync_error(StatusCode::FORBIDDEN));
         }
         if context
@@ -867,7 +858,7 @@ async fn apply_sync_operation(
     let record = visible_event(db, context, id)
         .await?
         .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
-    if !access(db, context, record.person_id, "manage").await? {
+    if !access(db, context, record.person_id, PersonAccess::Manage).await? {
         return Err(sync_error(StatusCode::FORBIDDEN));
     }
     if context
@@ -901,7 +892,7 @@ async fn apply_sync_operation(
                 let requested = visible_person(db, context, id)
                     .await?
                     .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
-                if !access(db, context, requested.id, "manage").await? {
+                if !access(db, context, requested.id, PersonAccess::Manage).await? {
                     return Err(sync_error(StatusCode::FORBIDDEN));
                 }
                 requested
@@ -1151,9 +1142,9 @@ async fn authorize_sync_replay(
         return Err(OperationError::Forbidden);
     };
     let level = if operation.action == "create" {
-        "record"
+        PersonAccess::Record
     } else {
-        "manage"
+        PersonAccess::Manage
     };
     if !access(db, context, current_person_id, level).await? {
         return Err(OperationError::Forbidden);

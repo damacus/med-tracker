@@ -837,10 +837,8 @@ async fn health_events_participation_allows_record_and_departure_hides_subject()
 async fn health_events_browser_role_matrix_preserves_view_record_manage_boundaries() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            health_events::browser,
-        },
+        care::health_events::browser,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     for (label, role, relationship, level, self_subject, can_create, can_manage) in [
         (
@@ -1073,10 +1071,8 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
 async fn health_events_browser_preserves_unselectable_links_and_audits_link_changes() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            health_events::browser,
-        },
+        care::health_events::browser,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;
@@ -1309,10 +1305,8 @@ async fn health_events_same_second_api_edits_reject_stale_content_etags() {
 async fn health_events_browser_unchanged_medication_set_keeps_revision_and_snapshots() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            health_events::browser,
-        },
+        care::health_events::browser,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;

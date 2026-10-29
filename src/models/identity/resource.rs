@@ -19,9 +19,9 @@ use super::{
 };
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
-    care::doses::{CredentialMethod, CredentialProvenance},
     entities::{account, household, oauth_application, oauth_grant},
     errors::OperationError,
+    identity::credentials::{CredentialMethod, CredentialProvenance},
 };
 
 mod personal_history;

@@ -8,14 +8,13 @@ mod source_stock;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     care::{
-        administration,
-        doses::CredentialProvenance,
-        medications,
+        administration, medications,
         treatment_command::{DosageOptionId, DoseCycle, MedicationId, PersonId, ScheduleType},
         valid_identifier,
     },
     entities::{api_change_event, dosage, household, medication, person, schedule},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::{NaiveDate, Utc};
 pub use retirement::retire;

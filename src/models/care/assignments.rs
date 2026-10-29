@@ -7,7 +7,6 @@ use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     care::{
         administration,
-        doses::CredentialProvenance,
         treatment_command::{
             AdministrationKind, DosageOptionId, DoseCycle, MedicationId, PersonId,
         },
@@ -15,6 +14,7 @@ use crate::models::{
     },
     entities::{api_change_event, dosage, household, medication, person, person_medication},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use axum::http::StatusCode;
 use chrono::Utc;

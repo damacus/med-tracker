@@ -13,8 +13,8 @@ mod audit;
 use super::{resource::AuthenticationError, store::Lifetime};
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
-    care::doses::{CredentialMethod, CredentialProvenance},
     entities::{account, household, identity_session, membership},
+    identity::credentials::{CredentialMethod, CredentialProvenance},
     ids::HouseholdId,
     settings,
 };

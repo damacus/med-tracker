@@ -3,9 +3,10 @@ pub mod browser;
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::{doses::CredentialProvenance, people::Pagination, sync},
+    care::{people::Pagination, sync},
     entities::health_event,
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde_json::{Value, json};

@@ -1,8 +1,9 @@
 use crate::models::{
     access::{self, TenantTransaction},
-    care::{dosages, doses::CredentialProvenance, locations, medications},
+    care::{dosages, locations, medications},
     entities::{dosage, medication},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use loco_rs::model::TenantQueryExt;
 use sea_orm::prelude::Decimal;
