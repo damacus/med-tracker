@@ -12,14 +12,14 @@ pub mod stock_removals;
 use crate::models::{
     access::{self, TenantTransaction},
     care::doses::CredentialProvenance,
-    entities::{api_change_event, dosage, medication, version},
+    entities::{api_change_event, dosage, household, medication, version},
     errors::OperationError,
 };
 use chrono::Utc;
 use sea_orm::prelude::Decimal;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, Set, Statement,
+    PrimaryKeyTrait, QueryFilter, QuerySelect, Set, Statement,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -146,25 +146,32 @@ async fn visible_medication(
         .map_err(database_error)
 }
 
-pub(crate) async fn lock_row(
+async fn lock<E>(db: &DatabaseTransaction, id: i64) -> Result<(), OperationError>
+where
+    E: EntityTrait,
+    E::PrimaryKey: PrimaryKeyTrait<ValueType = i64>,
+{
+    E::find_by_id(id)
+        .lock_exclusive()
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or(OperationError::NotFound)?;
+    Ok(())
+}
+
+pub(crate) async fn lock_household(
     db: &DatabaseTransaction,
-    table: &str,
     id: i64,
 ) -> Result<(), OperationError> {
-    let sql = match table {
-        "households" => "SELECT id FROM households WHERE id=$1 FOR UPDATE",
-        "medications" => "SELECT id FROM medications WHERE id=$1 FOR UPDATE",
-        _ => return Err(OperationError::Unavailable),
-    };
-    db.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        sql,
-        [id.into()],
-    ))
-    .await
-    .map_err(database_error)?
-    .ok_or(OperationError::NotFound)?;
-    Ok(())
+    lock::<household::Entity>(db, id).await
+}
+
+pub(crate) async fn lock_medication(
+    db: &DatabaseTransaction,
+    id: i64,
+) -> Result<(), OperationError> {
+    lock::<medication::Entity>(db, id).await
 }
 
 fn database_error(error: sea_orm::DbErr) -> OperationError {

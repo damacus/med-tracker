@@ -468,6 +468,32 @@ async fn dose_take_concurrent_uuid_has_one_clinical_effect() {
     fixture.close().await;
 }
 
+#[tokio::test]
+async fn dose_take_concurrent_stock_claims_deduct_once() {
+    let fixture = Fixture::new().await;
+    let mut stock = fixture.medication.clone().into_active_model();
+    stock.current_supply = Set(Some(Decimal::new(2, 0)));
+    stock.update(&fixture.admin).await.unwrap();
+    let mut second = take_input(&fixture);
+    second.client_uuid = Some(uuid::Uuid::new_v4().to_string());
+    let (first, second) = tokio::join!(
+        take(&fixture, command(&fixture)),
+        take(&fixture, Command::Take(second.validate().unwrap()))
+    );
+    assert!(matches!(
+        (&first, &second),
+        (
+            Ok(Outcome::Created(_)),
+            Err(OperationError::Validation { .. })
+        ) | (
+            Err(OperationError::Validation { .. }),
+            Ok(Outcome::Created(_))
+        )
+    ));
+    assert_eq!(fixture.effect().await, (1, "0.00".into(), 1, 1));
+    fixture.close().await;
+}
+
 async fn tracked_fixture(fixture: &Fixture) -> [dosages::Model; 2] {
     let mut rows = Vec::new();
     for (amount, supply) in [(2, 6), (1, 4)] {

@@ -45,15 +45,10 @@ pub async fn create(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
     let context = StockContext { tenant, provenance };
-    lock_row(
-        tenant.transaction(),
-        "households",
-        tenant.scope().household_id,
-    )
-    .await?;
+    lock_household(tenant.transaction(), tenant.scope().household_id).await?;
     let found = authorize(tenant, &input.medication_id).await?;
     let (quantity, facts) = validate(&input)?;
-    lock_row(tenant.transaction(), "medications", found.id).await?;
+    lock_medication(tenant.transaction(), found.id).await?;
     let found = authorize(tenant, &input.medication_id).await?;
     if let Some(id) = input.dosage_id.as_deref() {
         let owned = dosage::Entity::find_by_id(id.parse::<i64>().map_err(|_| invalid())?)

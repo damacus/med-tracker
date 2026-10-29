@@ -346,12 +346,7 @@ async fn save(
         display: String::new(),
         package_unit: None,
     };
-    medications::lock_row(
-        tenant.transaction(),
-        "households",
-        tenant.scope().household_id,
-    )
-    .await?;
+    medications::lock_household(tenant.transaction(), tenant.scope().household_id).await?;
     if !medication_lookup::stock_matches(tenant, &candidate)
         .await?
         .is_empty()

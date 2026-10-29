@@ -31,12 +31,7 @@ pub(crate) async fn create_with_schedule_config(
 ) -> Result<medication::Model, OperationError> {
     let input = input.into();
     let context = StockContext { tenant, provenance };
-    lock_row(
-        tenant.transaction(),
-        "households",
-        tenant.scope().household_id,
-    )
-    .await?;
+    lock_household(tenant.transaction(), tenant.scope().household_id).await?;
     access::recheck(tenant).await?;
     if !may_create(tenant).await? {
         return Err(OperationError::Forbidden);
@@ -207,12 +202,7 @@ async fn locked_manager(
     id: &str,
     etag: Option<&str>,
 ) -> Result<medication::Model, OperationError> {
-    lock_row(
-        tenant.transaction(),
-        "households",
-        tenant.scope().household_id,
-    )
-    .await?;
+    lock_household(tenant.transaction(), tenant.scope().household_id).await?;
     access::recheck(tenant).await?;
     let found = visible_medication(tenant, id)
         .await?
@@ -220,7 +210,7 @@ async fn locked_manager(
     if !access::can_manage_household(tenant) {
         return Err(OperationError::Forbidden);
     }
-    lock_row(tenant.transaction(), "medications", found.id).await?;
+    lock_medication(tenant.transaction(), found.id).await?;
     let found = visible_medication(tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;

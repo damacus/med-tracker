@@ -74,12 +74,7 @@ pub async fn apply(
     {
         return Err(invalid());
     }
-    medications::lock_row(
-        tenant.transaction(),
-        "households",
-        tenant.scope().household_id,
-    )
-    .await?;
+    medications::lock_household(tenant.transaction(), tenant.scope().household_id).await?;
     access::recheck(tenant).await?;
     if !access::can_manage_household(tenant) {
         return Err(OperationError::Forbidden);

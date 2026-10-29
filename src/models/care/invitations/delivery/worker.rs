@@ -6,6 +6,7 @@ use crate::models::{
     entities::{household, membership},
 };
 use loco_rs::{app::AppContext, mailer::MailerWorker};
+use sea_orm::sea_query::{Expr, Func, SimpleExpr};
 use sea_orm::{DatabaseTransaction, QuerySelect};
 
 pub struct InvitationMailWorker {
@@ -43,36 +44,33 @@ async fn locked(
         db.rollback().await?;
         return Ok(None);
     }
-    let target = db.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT original_invitation_id FROM invitation_mail_attempts WHERE household_id=$1 AND id=$2",
-        [mail.household_id.into(),mail.attempt_id.0.into()],
-    )).await?;
-    let Some(target) = target else {
+    let Some(target) = invitation_mail_attempt::Entity::find_by_id(mail.attempt_id.0)
+        .filter(invitation_mail_attempt::Column::HouseholdId.eq(mail.household_id))
+        .one(&db)
+        .await?
+    else {
         db.rollback().await?;
         return Ok(None);
     };
-    let invitation_id: i64 = target.try_get("", "original_invitation_id")?;
-    let invitation = household_invitation::Entity::find_by_id(invitation_id)
+    let invitation = household_invitation::Entity::find_by_id(target.original_invitation_id)
         .filter(household_invitation::Column::HouseholdId.eq(mail.household_id))
         .lock_exclusive()
         .one(&db)
         .await?;
-    let row = db.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT invitation_id,original_invitation_id,sender_account_id,sender_membership_id,sender_permissions_version,token_digest,status,started_at FROM invitation_mail_attempts WHERE household_id=$1 AND id=$2",
-        [mail.household_id.into(),mail.attempt_id.0.into()],
-    )).await?.ok_or(OperationError::Unavailable)?;
-    let status: String = row.try_get("", "status")?;
+    let row = invitation_mail_attempt::Entity::find_by_id(mail.attempt_id.0)
+        .filter(invitation_mail_attempt::Column::HouseholdId.eq(mail.household_id))
+        .one(&db)
+        .await?
+        .ok_or(OperationError::Unavailable)?;
     let attempt = Attempt {
-        invitation_id: row.try_get("", "invitation_id")?,
-        original_invitation_id: row.try_get("", "original_invitation_id")?,
-        sender_account_id: row.try_get("", "sender_account_id")?,
-        sender_membership_id: row.try_get("", "sender_membership_id")?,
-        sender_permissions_version: row.try_get("", "sender_permissions_version")?,
-        token_digest: row.try_get("", "token_digest")?,
-        status: AttemptStatus::parse(&status)?,
-        started_at: row.try_get("", "started_at")?,
+        invitation_id: row.invitation_id,
+        original_invitation_id: row.original_invitation_id,
+        sender_account_id: row.sender_account_id,
+        sender_membership_id: row.sender_membership_id,
+        sender_permissions_version: row.sender_permissions_version,
+        token_digest: row.token_digest,
+        status: AttemptStatus::parse(&row.status)?,
+        started_at: row.started_at,
     };
     Ok(Some(LockedAttempt {
         db,
@@ -129,15 +127,36 @@ async fn allowed(locked: &LockedAttempt, mail: &InvitationMail) -> Result<bool, 
     }
 }
 
+fn database_now() -> SimpleExpr {
+    Func::cust("timezone")
+        .args([Expr::val("UTC"), Func::cust("clock_timestamp").into()])
+        .into()
+}
+
 async fn finish(
     db: &DatabaseTransaction,
     mail: &InvitationMail,
     category: Option<FailureCategory>,
 ) -> Result<(), OperationError> {
-    db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "UPDATE invitation_mail_attempts SET status=$3,category=$4,finished_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND id=$2 AND status='queued'",
-        [mail.household_id.into(),mail.attempt_id.0.into(),if category.is_some() { "failed" } else { "sent_to_provider" }.into(),category.map(|value|value.key().to_owned()).into()],
-    )).await?;
+    invitation_mail_attempt::Entity::update_many()
+        .col_expr(
+            invitation_mail_attempt::Column::Status,
+            Expr::val(if category.is_some() {
+                "failed"
+            } else {
+                "sent_to_provider"
+            }),
+        )
+        .col_expr(
+            invitation_mail_attempt::Column::Category,
+            Expr::val(category.map(|value| value.key().to_owned())),
+        )
+        .col_expr(invitation_mail_attempt::Column::FinishedAt, database_now())
+        .filter(invitation_mail_attempt::Column::HouseholdId.eq(mail.household_id))
+        .filter(invitation_mail_attempt::Column::Id.eq(mail.attempt_id.0))
+        .filter(invitation_mail_attempt::Column::Status.eq(AttemptStatus::Queued.key()))
+        .exec(db)
+        .await?;
     Ok(())
 }
 
@@ -173,10 +192,14 @@ fn send_settings(
 impl InvitationMailWorker {
     async fn start(&self, mail: &InvitationMail) -> Result<(), OperationError> {
         let marker = household_transaction(&self.ctx, mail.household_id).await?;
-        marker.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "UPDATE invitation_mail_attempts SET started_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND id=$2 AND status='queued' AND started_at IS NULL",
-            [mail.household_id.into(),mail.attempt_id.0.into()],
-        )).await?;
+        invitation_mail_attempt::Entity::update_many()
+            .col_expr(invitation_mail_attempt::Column::StartedAt, database_now())
+            .filter(invitation_mail_attempt::Column::HouseholdId.eq(mail.household_id))
+            .filter(invitation_mail_attempt::Column::Id.eq(mail.attempt_id.0))
+            .filter(invitation_mail_attempt::Column::Status.eq(AttemptStatus::Queued.key()))
+            .filter(invitation_mail_attempt::Column::StartedAt.is_null())
+            .exec(&marker)
+            .await?;
         marker.commit().await?;
         Ok(())
     }
@@ -220,12 +243,13 @@ impl InvitationMailWorker {
             first.db.commit().await?;
             return Err(error);
         }
-        let row = first.db.query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status FROM invitation_mail_attempts WHERE household_id=$1 AND id=$2 FOR UPDATE",
-            [mail.household_id.into(),mail.attempt_id.0.into()],
-        )).await?.ok_or(OperationError::Unavailable)?;
-        if AttemptStatus::parse(&row.try_get::<String>("", "status")?)? != AttemptStatus::Queued {
+        let row = invitation_mail_attempt::Entity::find_by_id(mail.attempt_id.0)
+            .filter(invitation_mail_attempt::Column::HouseholdId.eq(mail.household_id))
+            .lock_exclusive()
+            .one(&first.db)
+            .await?
+            .ok_or(OperationError::Unavailable)?;
+        if AttemptStatus::parse(&row.status)? != AttemptStatus::Queued {
             first.db.commit().await?;
             return Ok(());
         }
