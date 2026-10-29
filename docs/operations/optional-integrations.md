@@ -84,7 +84,7 @@ medication help disabled; configure one of the supported providers above.
 
 The assistant receives the medication identity entered for the suggestion. It
 can also receive text fetched from URLs in
-`config/ai_medication_sources.yml`. Those URLs are restricted to configured
+`assets/catalogue/ai_medication_sources.yml`. Those URLs are restricted to configured
 HTTPS domains and paths.
 
 The request contract supplies medication identity rather than person, household,

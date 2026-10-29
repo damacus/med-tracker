@@ -22,8 +22,6 @@ rails/**
 !rails/Gemfile.lock
 !rails/config/
 rails/config/**
-!rails/config/ai_medication_sources.yml
-!rails/config/medication_review_labels.yml
 !rails/config/application.rb
 !rails/app/
 !rails/app/services/

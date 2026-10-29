@@ -170,7 +170,7 @@ async fn fetch_snapshot(ctx: &AppContext) -> Result<Value, OperationError> {
             serde_json::from_value(value.clone()).map_err(|_| OperationError::Unavailable)?
         }
         None => serde_yaml_ng::from_str(include_str!(
-            "../../../../rails/config/medication_review_labels.yml"
+            "../../../../assets/catalogue/medication_review_labels.yml"
         ))
         .map_err(|_| OperationError::Unavailable)?,
     };

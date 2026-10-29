@@ -51,7 +51,6 @@ COPY Cargo.toml Cargo.lock build.rs ./
 COPY migration/ migration/
 COPY src/ src/
 COPY assets/ assets/
-COPY rails/config/ai_medication_sources.yml rails/config/medication_review_labels.yml rails/config/
 RUN --mount=type=cache,id=loco-registry-${TARGETARCH},target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=loco-git-${TARGETARCH},target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,id=loco-target-${TARGETARCH},target=/app/target,sharing=locked \
