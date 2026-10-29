@@ -3,6 +3,7 @@ pub mod access;
 pub(crate) mod audit_context;
 pub(crate) mod authorization;
 pub mod care;
+pub mod clinical_transfer;
 pub mod entities;
 pub mod errors;
 mod household_tenancy;

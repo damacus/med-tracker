@@ -19,6 +19,8 @@ SOURCES = %w[
   rails/app/services/portable_data/dose_occurrence_serializer.rb
   rails/app/services/portable_data/exporter.rb
   rails/app/services/portable_data/encryptor.rb
+  rails/app/services/households/hosted_export_authorization.rb
+  rails/app/services/households/hosted_export.rb
 ].freeze
 SOURCES.each { |path| require File.join(ROOT, path) }
 PROVENANCE_SOURCES = (SOURCES + %w[rails/config/application.rb rails/Gemfile.lock]).freeze
@@ -129,7 +131,7 @@ prepare = lambda do |name, sequence|
   person.define_singleton_method(:email) { "portable-fixture-#{name}@example.test" }
   take.define_singleton_method(:client_uuid) { format('550e8400-e29b-41d4-a716-%012d', sequence) }
   medication.define_singleton_method(:barcode) do
-    %w[2000000000015 2000000000022 2000000000039 2000000000046 2000000000053].fetch(sequence - 1)
+    %w[2000000000015 2000000000022 2000000000039 2000000000046 2000000000053 2000000000060 2000000000077].fetch(sequence - 1)
   end
 end
 payloads = {}
@@ -142,6 +144,19 @@ payloads['household-v2'] = exporter.household_payload
 take.define_singleton_method(:taken_from_location) { old_location }
 prepare.call('historical-location-v2', 4)
 payloads['historical-location-v2'] = exporter.household_payload
+prepare.call('prepared-history-v2', 6)
+payloads['prepared-history-v2'] = exporter.household_payload
+schedule.define_singleton_method(:schedule_type) { 'tapering' }
+schedule.define_singleton_method(:schedule_config) do
+  { 'taper_steps' => [
+    { 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'amount' => 0.5, 'unit' => 'tablet' },
+    { 'start_date' => '2026-10-16', 'end_date' => '2026-10-31', 'amount' => 1.0, 'unit' => 'tablet' }
+  ] }
+end
+prepare.call('prepared-taper-v2', 7)
+payloads['prepared-taper-v2'] = exporter.household_payload
+schedule.define_singleton_method(:schedule_type) { 'daily' }
+schedule.define_singleton_method(:schedule_config) { {} }
 take.define_singleton_method(:taken_from_location) { location }
 person.define_singleton_method(:locations) { [location] }
 prepare.call('linked-migration-v2', 5)
@@ -167,8 +182,21 @@ payloads.each do |name, payload|
     abort "#{name}: encrypted fixture differs" unless decrypted == JSON.parse(serialized)
   else
     File.write(plaintext_path, JSON.pretty_generate(JSON.parse(serialized)) + "\n")
-    envelope = PortableData::Encryptor.encrypt(payload, passphrase: 'synthetic portable secret')
+    envelope = File.file?(envelope_path) ? JSON.parse(File.read(envelope_path)) : nil
+    unchanged = envelope && PortableData::Encryptor.decrypt(envelope, passphrase: 'synthetic portable secret') == JSON.parse(serialized)
+    envelope = PortableData::Encryptor.encrypt(payload, passphrase: 'synthetic portable secret') unless unchanged
     File.write(envelope_path, JSON.pretty_generate(envelope) + "\n")
+  end
+  next unless payload.fetch(:scope) == 'household'
+
+  export_manifest = Households::HostedExport.send(:export_manifest, SyntheticRecord.new(id: 2702), payload, [])
+  archive_entries = Households::HostedExport.send(:archive_entries, payload, export_manifest, {})
+  abort "#{name}: hosted payload serialization differs" unless JSON.parse(archive_entries.fetch('portable.json')) == JSON.parse(serialized)
+  export_manifest_path = File.join(__dir__, "#{name}.manifest.json")
+  if checking
+    abort "#{name}: hosted manifest differs" unless JSON.parse(File.read(export_manifest_path)) == JSON.parse(archive_entries.fetch('manifest.json'))
+  else
+    File.write(export_manifest_path, JSON.pretty_generate(export_manifest) + "\n")
   end
 end
 manifest_path = File.join(__dir__, 'provenance.json')

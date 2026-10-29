@@ -8,7 +8,15 @@ fn portable_rails_source_hashes_match_recorded_provenance() {
 
     let provenance: Value =
         serde_json::from_str(include_str!("../fixtures/portable_rails/provenance.json")).unwrap();
-    let sources: [(&str, &[u8]); 8] = [
+    let sources: [(&str, &[u8]); 10] = [
+        (
+            "rails/app/services/households/hosted_export_authorization.rb",
+            include_bytes!("../../rails/app/services/households/hosted_export_authorization.rb"),
+        ),
+        (
+            "rails/app/services/households/hosted_export.rb",
+            include_bytes!("../../rails/app/services/households/hosted_export.rb"),
+        ),
         (
             "rails/app/services/api/record_etag.rb",
             include_bytes!("../../rails/app/services/api/record_etag.rb"),
@@ -53,6 +61,39 @@ fn portable_rails_source_hashes_match_recorded_provenance() {
             "Retained source changed: {path}; review and regenerate the synthetic Rails fixtures"
         );
     }
+}
+
+#[tokio::test]
+async fn prepared_rails_serializer_taper_numbers_restore_and_replay() {
+    let prepared = med_tracker::models::clinical_transfer::prepare(
+        include_bytes!("../fixtures/portable_rails/prepared-taper-v2.json"),
+        include_bytes!("../fixtures/portable_rails/prepared-taper-v2.manifest.json"),
+        PASSPHRASE,
+    )
+    .unwrap();
+    let payload = portable_crypto::decrypt(&prepared.bundle, PASSPHRASE).unwrap();
+    restore_fixture(
+        &serde_json::to_string(&payload).unwrap(),
+        &serde_json::to_string(&prepared.bundle).unwrap(),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn prepared_rails_serializer_household_preserves_moved_stock_and_replays() {
+    let prepared = med_tracker::models::clinical_transfer::prepare(
+        include_bytes!("../fixtures/portable_rails/prepared-history-v2.json"),
+        include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json"),
+        PASSPHRASE,
+    )
+    .unwrap();
+    let payload = portable_crypto::decrypt(&prepared.bundle, PASSPHRASE).unwrap();
+    assert_eq!(payload["format"], "medtracker.portable.v3");
+    restore_fixture(
+        &serde_json::to_string(&payload).unwrap(),
+        &serde_json::to_string(&prepared.bundle).unwrap(),
+    )
+    .await;
 }
 
 #[tokio::test]

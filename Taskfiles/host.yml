@@ -192,6 +192,13 @@ tasks:
       - task: :frontend:test
       - 'cargo nextest run --locked --lib {{if .TARGET}}--package {{.TARGET | shellQuote}}{{else}}--workspace{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}}'
       - cargo test --locked --workspace --doc
+  portable:prepare:
+    requires: {vars: [PAYLOAD, MANIFEST, OUTPUT]}
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
+    cmds:
+      - 'cargo run --locked --example prepare-clinical-transfer -- {{.PAYLOAD | shellQuote}} {{.MANIFEST | shellQuote}} {{.OUTPUT | shellQuote}}'
   test:integration:
     desc: Run compiled API, security and database integration tests
     deps: [":frontend:prepare"]
