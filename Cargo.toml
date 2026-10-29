@@ -111,12 +111,6 @@ iri-string = { version = "=0.7.14", default-features = false }
 loco-rs = { version = "=1.2.0", default-features = false, features = [
     "testing",
 ] }
-aws-sdk-s3 = { version = "=1.156.0", default-features = false, features = [
-    "default-https-client",
-    "http-1x",
-    "rt-tokio",
-    "behavior-version-latest",
-] }
 proptest = "=1.12.0"
 regex = "=1.13.1"
 playwright-rs = { version = "=0.20.1", default-features = false, features = [

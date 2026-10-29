@@ -17,6 +17,9 @@ mod oauth_consent;
 #[path = "support/template.rs"]
 mod template;
 
+#[path = "care_api/avatar_storage.rs"]
+pub mod avatar_storage;
+
 #[path = "browser/shared_layout.rs"]
 mod shared_layout;
 

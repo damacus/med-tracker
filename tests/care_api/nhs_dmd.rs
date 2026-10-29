@@ -1042,14 +1042,10 @@ async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion()
     let store =
         med_tracker::models::nhs_dmd::storage::ArchiveStore::configured(&app.context).unwrap();
     assert_eq!(store.get(&key).await.unwrap(), release());
-    let object = crate::avatar_storage::owned_client()
-        .head_object()
-        .bucket("scanner-fixture")
-        .key(&key)
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(object.content_type().unwrap(), "application/zip");
+    let content_type = crate::avatar_storage::owned_operator("scanner-fixture")
+        .content_type(&key)
+        .await;
+    assert_eq!(content_type, "application/zip");
     let queue = app.context.queue_provider.as_ref().unwrap().clone();
     med_tracker::app::App::connect_workers(&app.context, &queue)
         .await

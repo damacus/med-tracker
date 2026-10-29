@@ -526,14 +526,8 @@ async fn profile_avatar_api_upload_read_replace_remove_and_recheck_access() {
     assert_eq!(read.headers().get("cache-control").unwrap(), "no-store");
     assert_eq!(&read.bytes().await.unwrap()[..8], &png[..8]);
     let key = avatar_key(&app.fixture.admin, app.fixture.account.id).await;
-    let object = crate::avatar_storage::owned_client()
-        .head_object()
-        .bucket(bucket(&app.context))
-        .key(&key)
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(object.content_type().unwrap(), "image/png");
+    let object = crate::avatar_storage::owned_operator(&bucket(&app.context));
+    assert_eq!(object.content_type(&key).await, "image/png");
     let unauthenticated = app.client.get(&endpoint).send().await.unwrap();
     assert_eq!(unauthenticated.status().as_u16(), 401);
 
@@ -774,13 +768,7 @@ async fn profile_avatar_api_audit_failure_rolls_back_metadata_and_cleans_new_obj
         .await
         .unwrap();
     assert_eq!(original.status().as_u16(), 200);
-    let objects = client
-        .list_objects_v2()
-        .bucket(&bucket)
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(objects.key_count(), Some(1));
+    assert_eq!(client.key_count().await, 1);
     let original_key = avatar_key(&app.fixture.admin, app.fixture.account.id).await;
     let failure = FailureTrigger::install(&app.fixture, false, &bucket).await;
     let failed = app
@@ -797,13 +785,7 @@ async fn profile_avatar_api_audit_failure_rolls_back_metadata_and_cleans_new_obj
         .unwrap();
     failure.remove(&app.fixture).await;
     assert!(matches!(failed.status().as_u16(), 500 | 503));
-    let objects = client
-        .list_objects_v2()
-        .bucket(&bucket)
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(objects.key_count(), Some(1));
+    assert_eq!(client.key_count().await, 1);
     let attached = attachment_count(&app.fixture.admin, app.fixture.account.id).await;
     assert_eq!(attached, 1);
     assert_eq!(
@@ -945,16 +927,8 @@ async fn avatar_retirement_worker_preserves_active_key_and_retries_removed_key_i
     assert_eq!(queue.retry_failed(Some(&job_id)).await.unwrap(), 1);
     worker.perform(retired.clone()).await.unwrap();
     worker.perform(retired).await.unwrap();
-    let client = crate::avatar_storage::owned_client();
-    assert!(
-        client
-            .get_object()
-            .bucket(bucket(&app.context))
-            .key(&key)
-            .send()
-            .await
-            .is_err()
-    );
+    let client = crate::avatar_storage::owned_operator(&bucket(&app.context));
+    assert!(client.get(&key).await.is_err());
     app.close().await;
 }
 

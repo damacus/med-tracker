@@ -5,44 +5,8 @@ use playwright_rs::{
     protocol::{FilePayload, Viewport},
 };
 
-#[path = "../support/storage_endpoint.rs"]
-mod storage_endpoint;
-
 pub(crate) async fn prepare_avatar_storage() {
-    let endpoint = storage_endpoint::owned_storage_endpoint();
-    let config = aws_sdk_s3::Config::builder()
-        .region(aws_sdk_s3::config::Region::new("us-east-1"))
-        .credentials_provider(aws_sdk_s3::config::Credentials::new(
-            "storage-smoke-access",
-            "storage-smoke-secret",
-            None,
-            None,
-            "owned-browser-avatar",
-        ))
-        .endpoint_url(endpoint)
-        .force_path_style(true)
-        .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest())
-        .timeout_config(
-            aws_sdk_s3::config::timeout::TimeoutConfig::builder()
-                .operation_timeout(std::time::Duration::from_secs(4))
-                .build(),
-        )
-        .build();
-    let client = aws_sdk_s3::Client::from_conf(config);
-    if client
-        .head_bucket()
-        .bucket("medtracker-fixture")
-        .send()
-        .await
-        .is_err()
-    {
-        client
-            .create_bucket()
-            .bucket("medtracker-fixture")
-            .send()
-            .await
-            .unwrap();
-    }
+    crate::avatar_storage::ensure_owned_bucket().await;
 }
 
 async fn capture(page: &playwright_rs::protocol::Page, name: &str) {
