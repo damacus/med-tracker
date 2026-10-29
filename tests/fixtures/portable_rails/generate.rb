@@ -131,7 +131,7 @@ prepare = lambda do |name, sequence|
   person.define_singleton_method(:email) { "portable-fixture-#{name}@example.test" }
   take.define_singleton_method(:client_uuid) { format('550e8400-e29b-41d4-a716-%012d', sequence) }
   medication.define_singleton_method(:barcode) do
-    %w[2000000000015 2000000000022 2000000000039 2000000000046 2000000000053 2000000000060].fetch(sequence - 1)
+    %w[2000000000015 2000000000022 2000000000039 2000000000046 2000000000053 2000000000060 2000000000077].fetch(sequence - 1)
   end
 end
 payloads = {}
@@ -146,6 +146,17 @@ prepare.call('historical-location-v2', 4)
 payloads['historical-location-v2'] = exporter.household_payload
 prepare.call('prepared-history-v2', 6)
 payloads['prepared-history-v2'] = exporter.household_payload
+schedule.define_singleton_method(:schedule_type) { 'tapering' }
+schedule.define_singleton_method(:schedule_config) do
+  { 'taper_steps' => [
+    { 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'amount' => 0.5, 'unit' => 'tablet' },
+    { 'start_date' => '2026-10-16', 'end_date' => '2026-10-31', 'amount' => 1.0, 'unit' => 'tablet' }
+  ] }
+end
+prepare.call('prepared-taper-v2', 7)
+payloads['prepared-taper-v2'] = exporter.household_payload
+schedule.define_singleton_method(:schedule_type) { 'daily' }
+schedule.define_singleton_method(:schedule_config) { {} }
 take.define_singleton_method(:taken_from_location) { location }
 person.define_singleton_method(:locations) { [location] }
 prepare.call('linked-migration-v2', 5)

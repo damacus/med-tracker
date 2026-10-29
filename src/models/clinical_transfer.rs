@@ -6,8 +6,9 @@ use std::{
     path::Path,
 };
 
+use sea_orm::prelude::Decimal;
 use serde::{Deserialize, Serialize, de};
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, value::RawValue};
 use sha2::{Digest, Sha256};
 
 use super::care::portable_crypto;
@@ -36,6 +37,7 @@ pub enum PreparationError {
     InputUnavailable,
     TooLarge,
     InvalidDocument,
+    UnsupportedNumber,
     UnsupportedFormat,
     UnsupportedFields,
     UnsupportedAttachments,
@@ -52,7 +54,8 @@ impl fmt::Display for PreparationError {
         formatter.write_str(match self {
             Self::InputUnavailable => "Cannot read preparation input.",
             Self::TooLarge => "Preparation input exceeds its documented size limit.",
-            Self::InvalidDocument => "Invalid JSON: use unique keys and decimal strings for fractional numbers.",
+            Self::InvalidDocument => "Invalid JSON: use unique keys and decimal strings outside schedule configuration.",
+            Self::UnsupportedNumber => "Schedule configuration numbers must be fixed-point decimals with a 96-bit coefficient, at most 28 decimal places and no JSON round-trip precision loss.",
             Self::UnsupportedFormat => "Expected a household v2 payload and household-export v1 manifest.",
             Self::UnsupportedFields => "Unsupported or missing collection/field; review the source export.",
             Self::UnsupportedAttachments => "Attachments are unsupported; no output was prepared.",
@@ -97,8 +100,8 @@ pub fn prepare(
     {
         return Err(PreparationError::InvalidPassphrase);
     }
-    let mut payload = parse(payload_bytes, PAYLOAD_LIMIT)?;
-    let manifest = parse(manifest_bytes, MANIFEST_LIMIT)?;
+    let mut payload = parse(payload_bytes, PAYLOAD_LIMIT, JsonScope::Payload)?;
+    let manifest = parse(manifest_bytes, MANIFEST_LIMIT, JsonScope::Other)?;
     exact_keys(
         &payload,
         "format scope exported_at source_instance_id records",
@@ -396,64 +399,130 @@ fn fields(kind: &str) -> &'static str {
     }
 }
 
-struct UniqueJson(Value);
+#[derive(Clone, Copy)]
+enum JsonScope {
+    Payload,
+    Records,
+    Schedules,
+    Schedule,
+    Configuration,
+    Other,
+}
 
-impl<'de> Deserialize<'de> for UniqueJson {
-    fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = UniqueJson;
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                formatter.write_str("JSON with unique keys and exact integers")
-            }
-            fn visit_bool<E: de::Error>(self, value: bool) -> Result<Self::Value, E> {
-                Ok(UniqueJson(Value::Bool(value)))
-            }
-            fn visit_i64<E: de::Error>(self, value: i64) -> Result<Self::Value, E> {
-                Ok(UniqueJson(Value::from(value)))
-            }
-            fn visit_u64<E: de::Error>(self, value: u64) -> Result<Self::Value, E> {
-                Ok(UniqueJson(Value::from(value)))
-            }
-            fn visit_f64<E: de::Error>(self, _: f64) -> Result<Self::Value, E> {
-                Err(E::custom("fractional numbers must be decimal strings"))
-            }
-            fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
-                Ok(UniqueJson(Value::String(value.to_owned())))
-            }
-            fn visit_unit<E: de::Error>(self) -> Result<Self::Value, E> {
-                Ok(UniqueJson(Value::Null))
-            }
-            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-                let mut values = Vec::new();
-                while let Some(UniqueJson(value)) = seq.next_element()? {
-                    values.push(value);
-                }
-                Ok(UniqueJson(Value::Array(values)))
-            }
-            fn visit_map<A: de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-                let mut values = Map::new();
-                while let Some(key) = map.next_key::<String>()? {
-                    if values.contains_key(&key) {
-                        return Err(de::Error::custom("duplicate JSON key"));
-                    }
-                    let UniqueJson(value) = map.next_value()?;
-                    values.insert(key, value);
-                }
-                Ok(UniqueJson(Value::Object(values)))
-            }
+impl JsonScope {
+    fn member(self, key: &str) -> Self {
+        match (self, key) {
+            (Self::Payload, "records") => Self::Records,
+            (Self::Records, "schedules") => Self::Schedules,
+            (Self::Schedule, "schedule_config") | (Self::Configuration, _) => Self::Configuration,
+            _ => Self::Other,
         }
-        deserializer.deserialize_any(Visitor)
+    }
+
+    fn element(self) -> Self {
+        match self {
+            Self::Schedules => Self::Schedule,
+            Self::Configuration => Self::Configuration,
+            _ => Self::Other,
+        }
     }
 }
 
-fn parse(bytes: &[u8], limit: usize) -> Result<Value, PreparationError> {
+struct UniqueObject<'a>(Vec<(String, &'a RawValue)>);
+
+impl<'de> Deserialize<'de> for UniqueObject<'de> {
+    fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visitor;
+        impl<'de> de::Visitor<'de> for Visitor {
+            type Value = UniqueObject<'de>;
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a JSON object with unique, non-reserved keys")
+            }
+            fn visit_map<A: de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let mut keys = BTreeSet::new();
+                let mut values = Vec::new();
+                while let Some(key) = map.next_key::<String>()? {
+                    if matches!(
+                        key.as_str(),
+                        "$serde_json::private::Number" | "$serde_json::private::RawValue"
+                    ) || !keys.insert(key.clone())
+                    {
+                        return Err(de::Error::custom("duplicate or reserved JSON key"));
+                    }
+                    values.push((key, map.next_value()?));
+                }
+                Ok(UniqueObject(values))
+            }
+        }
+        deserializer.deserialize_map(Visitor)
+    }
+}
+
+fn parse(bytes: &[u8], limit: usize, scope: JsonScope) -> Result<Value, PreparationError> {
     if bytes.len() > limit {
         return Err(PreparationError::TooLarge);
     }
-    serde_json::from_slice::<UniqueJson>(bytes)
-        .map(|value| value.0)
-        .map_err(|_| PreparationError::InvalidDocument)
+    let raw: &RawValue =
+        serde_json::from_slice(bytes).map_err(|_| PreparationError::InvalidDocument)?;
+    parse_unique(raw, scope, 0)
+}
+
+fn parse_unique(raw: &RawValue, scope: JsonScope, depth: usize) -> Result<Value, PreparationError> {
+    if depth >= 128 {
+        return Err(PreparationError::InvalidDocument);
+    }
+    let token = raw.get();
+    match token.as_bytes().first() {
+        Some(b'{') => {
+            let UniqueObject(members) =
+                serde_json::from_str(token).map_err(|_| PreparationError::InvalidDocument)?;
+            let mut values = Map::new();
+            for (key, value) in members {
+                let value = parse_unique(value, scope.member(&key), depth + 1)?;
+                values.insert(key, value);
+            }
+            Ok(Value::Object(values))
+        }
+        Some(b'[') => {
+            let elements: Vec<&RawValue> =
+                serde_json::from_str(token).map_err(|_| PreparationError::InvalidDocument)?;
+            elements
+                .iter()
+                .map(|value| parse_unique(value, scope.element(), depth + 1))
+                .collect::<Result<Vec<_>, _>>()
+                .map(Value::Array)
+        }
+        Some(b'-' | b'0'..=b'9') if matches!(scope, JsonScope::Configuration) => {
+            if token.contains(['e', 'E'])
+                || token
+                    .split_once('.')
+                    .is_some_and(|(_, digits)| digits.len() > 28)
+            {
+                return Err(PreparationError::UnsupportedNumber);
+            }
+            let original =
+                Decimal::from_str_exact(token).map_err(|_| PreparationError::UnsupportedNumber)?;
+            let value: Value =
+                serde_json::from_str(token).map_err(|_| PreparationError::UnsupportedNumber)?;
+            let Value::Number(number) = &value else {
+                return Err(PreparationError::UnsupportedNumber);
+            };
+            let serialized = Decimal::from_str_exact(&number.to_string())
+                .map_err(|_| PreparationError::UnsupportedNumber)?;
+            if original != serialized {
+                return Err(PreparationError::UnsupportedNumber);
+            }
+            Ok(value)
+        }
+        _ => {
+            let value: Value =
+                serde_json::from_str(token).map_err(|_| PreparationError::InvalidDocument)?;
+            if value.is_number() && value.as_i64().is_none() && value.as_u64().is_none() {
+                return Err(PreparationError::InvalidDocument);
+            }
+            Ok(value)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -465,6 +534,130 @@ mod tests {
         include_bytes!("../../tests/fixtures/portable_rails/prepared-history-v2.json");
     const MANIFEST: &[u8] =
         include_bytes!("../../tests/fixtures/portable_rails/prepared-history-v2.manifest.json");
+
+    #[test]
+    fn preparation_preserves_actual_rails_taper_json_numbers() {
+        let bytes = include_bytes!("../../tests/fixtures/portable_rails/prepared-taper-v2.json");
+        let manifest =
+            include_bytes!("../../tests/fixtures/portable_rails/prepared-taper-v2.manifest.json");
+        let original: Value = serde_json::from_slice(bytes).unwrap();
+        let steps = &original["records"]["schedules"][0]["schedule_config"]["taper_steps"];
+        assert_eq!(steps[0]["amount"].as_f64(), Some(0.5));
+        assert_eq!(steps[1]["amount"].as_f64(), Some(1.0));
+        let prepared = prepare(bytes, manifest, "fixture secret").unwrap();
+        let restored = portable_crypto::decrypt(&prepared.bundle, "fixture secret").unwrap();
+        assert_eq!(
+            restored["records"]["schedules"][0]["schedule_config"],
+            original["records"]["schedules"][0]["schedule_config"]
+        );
+        assert!(
+            restored["records"]["schedules"][0]["schedule_config"]["taper_steps"][0]["amount"]
+                .is_number()
+        );
+    }
+
+    #[test]
+    fn preparation_config_numbers_remain_exact_and_scoped() {
+        let source = include_str!("../../tests/fixtures/portable_rails/prepared-taper-v2.json");
+        let manifest =
+            include_bytes!("../../tests/fixtures/portable_rails/prepared-taper-v2.manifest.json");
+        for token in ["0.1", "1.00", "-0.125", "9007199254740993"] {
+            let input = source.replacen("\"amount\": 0.5", &format!("\"amount\": {token}"), 1);
+            assert_ne!(input, source);
+            let prepared = prepare(input.as_bytes(), manifest, "fixture secret").unwrap();
+            let restored = portable_crypto::decrypt(&prepared.bundle, "fixture secret").unwrap();
+            let amount =
+                &restored["records"]["schedules"][0]["schedule_config"]["taper_steps"][0]["amount"];
+            assert!(amount.is_number());
+            assert_eq!(
+                Decimal::from_str_exact(&amount.to_string()).unwrap(),
+                Decimal::from_str_exact(token).unwrap()
+            );
+        }
+        for token in [
+            "0.12345678901234567890123456789".to_owned(),
+            "0.123456789123456789".to_owned(),
+            "0.00000000000000000000000000000".to_owned(),
+            "79228162514264337593543950336".to_owned(),
+            "0.5e0".to_owned(),
+            "1E0".to_owned(),
+            "1e-400".to_owned(),
+            "1e400".to_owned(),
+            "9".repeat(1024),
+        ] {
+            let input = source.replacen("\"amount\": 0.5", &format!("\"amount\": {token}"), 1);
+            assert_ne!(input, source);
+            assert_eq!(
+                prepare(input.as_bytes(), manifest, "fixture secret").err(),
+                Some(PreparationError::UnsupportedNumber),
+                "must reject unsupported number {token}"
+            );
+        }
+        let mut clinical: Value = serde_json::from_str(source).unwrap();
+        clinical["records"]["medications"][0]["dose_amount"] = json!(0.5);
+        assert_eq!(
+            prepare(
+                &serde_json::to_vec(&clinical).unwrap(),
+                manifest,
+                "fixture secret"
+            )
+            .err(),
+            Some(PreparationError::InvalidDocument)
+        );
+        for replacement in [
+            "\"amount\": 0.5, \"amount\": 1.0".to_owned(),
+            r#""amount": {"nested": {"key": 1, "\u006bey": 2}}"#.to_owned(),
+            "\"amount\": {\"$serde_json::private::Number\": \"0.5\"}".to_owned(),
+            "\"amount\": {\"$serde_json::private::RawValue\": \"0.5\"}".to_owned(),
+            format!("\"amount\": {}0{}", "[".repeat(150), "]".repeat(150)),
+        ] {
+            let malformed = source.replacen("\"amount\": 0.5", &replacement, 1);
+            assert_ne!(malformed, source);
+            assert_eq!(
+                prepare(malformed.as_bytes(), manifest, "fixture secret").err(),
+                Some(PreparationError::InvalidDocument)
+            );
+        }
+        for bytes in [
+            br#"{"records":{"schedules":{"schedule_config":{"amount":0.5}}}}"#.as_slice(),
+            br#"{"records":{"medications":[{"schedule_config":{"amount":0.5}}]}}"#,
+            br#"{"schedule_config":{"amount":0.5}}"#,
+        ] {
+            assert_eq!(
+                parse(bytes, PAYLOAD_LIMIT, JsonScope::Payload),
+                Err(PreparationError::InvalidDocument)
+            );
+        }
+        assert_eq!(
+            parse(source.as_bytes(), MANIFEST_LIMIT, JsonScope::Other),
+            Err(PreparationError::InvalidDocument)
+        );
+    }
+
+    #[test]
+    fn preparation_accepts_near_limit_nested_configuration() {
+        let mut payload: Value = serde_json::from_slice(PAYLOAD).unwrap();
+        let mut configuration = json!("");
+        for _ in 0..100 {
+            configuration = json!({"nested": configuration});
+        }
+        payload["records"]["schedules"][0]["schedule_config"] = configuration;
+        let padding_len = PAYLOAD_LIMIT - 16 * 1024 - serde_json::to_vec(&payload).unwrap().len();
+        let mut leaf = &mut payload["records"]["schedules"][0]["schedule_config"];
+        for _ in 0..100 {
+            leaf = &mut leaf["nested"];
+        }
+        *leaf = json!("x".repeat(padding_len));
+        let bytes = serde_json::to_vec(&payload).unwrap();
+        drop(payload);
+        assert_eq!(bytes.len(), PAYLOAD_LIMIT - 16 * 1024);
+        let decoded = parse(&bytes, PAYLOAD_LIMIT, JsonScope::Payload).unwrap();
+        let mut leaf = &decoded["records"]["schedules"][0]["schedule_config"];
+        for _ in 0..100 {
+            leaf = &leaf["nested"];
+        }
+        assert_eq!(leaf.as_str().unwrap().len(), padding_len);
+    }
 
     #[test]
     fn preparation_preserves_every_clinical_value_and_records_only_explicit_mapping() {

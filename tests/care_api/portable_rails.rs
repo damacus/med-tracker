@@ -64,6 +64,22 @@ fn portable_rails_source_hashes_match_recorded_provenance() {
 }
 
 #[tokio::test]
+async fn prepared_rails_serializer_taper_numbers_restore_and_replay() {
+    let prepared = med_tracker::models::clinical_transfer::prepare(
+        include_bytes!("../fixtures/portable_rails/prepared-taper-v2.json"),
+        include_bytes!("../fixtures/portable_rails/prepared-taper-v2.manifest.json"),
+        PASSPHRASE,
+    )
+    .unwrap();
+    let payload = portable_crypto::decrypt(&prepared.bundle, PASSPHRASE).unwrap();
+    restore_fixture(
+        &serde_json::to_string(&payload).unwrap(),
+        &serde_json::to_string(&prepared.bundle).unwrap(),
+    )
+    .await;
+}
+
+#[tokio::test]
 async fn prepared_rails_serializer_household_preserves_moved_stock_and_replays() {
     let prepared = med_tracker::models::clinical_transfer::prepare(
         include_bytes!("../fixtures/portable_rails/prepared-history-v2.json"),
