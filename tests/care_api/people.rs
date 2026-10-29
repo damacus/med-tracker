@@ -536,7 +536,7 @@ async fn people_fresh_key_replay_binds_raw_email_and_live_membership() {
 }
 
 #[tokio::test]
-async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
+async fn people_saved_create_and_update_replay_stored_digests() {
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;
     let fixture_household_id = app.fixture.household.id;
@@ -565,7 +565,7 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
     med_tracker::models::_entities::api_idempotency_keys::ActiveModel {
         household_id: sea_orm::Set(fixture_household_id),
         account_id: sea_orm::Set(fixture_account_id),
-        key: sea_orm::Set("synthetic-rails-person-create".to_owned()),
+        key: sea_orm::Set("synthetic-stored-person-create".to_owned()),
         request_method: sea_orm::Set("POST".to_owned()),
         request_path: sea_orm::Set(path.to_owned()),
         request_digest: sea_orm::Set(
@@ -587,7 +587,7 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
         .post(format!("{}{path}", app.origin))
         .bearer_auth(&token)
         .header("content-type", "application/json")
-        .header("idempotency-key", "synthetic-rails-person-create")
+        .header("idempotency-key", "synthetic-stored-person-create")
         .body(request.clone())
         .send()
         .await
@@ -607,7 +607,7 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
         .await
         .unwrap();
     let path = format!("/api/v1/households/{fixture_household_id}/people/{fixture_person_id}");
-    let request = r#"{"person":{"name":"Synthetic Rails renamed person"}}"#;
+    let request = r#"{"person":{"name":"Synthetic saved renamed person"}}"#;
     let updated = app
         .client
         .patch(format!("{}{path}", app.origin))
@@ -629,11 +629,11 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
     med_tracker::models::_entities::api_idempotency_keys::ActiveModel {
         household_id: sea_orm::Set(fixture_household_id),
         account_id: sea_orm::Set(fixture_account_id),
-        key: sea_orm::Set("synthetic-rails-person-update".to_owned()),
+        key: sea_orm::Set("synthetic-stored-person-update".to_owned()),
         request_method: sea_orm::Set("PATCH".to_owned()),
         request_path: sea_orm::Set(path.to_owned()),
         request_digest: sea_orm::Set(
-            { let params = json!({"person":{"name":"Synthetic Rails renamed person"},"household_id":fixture_household_id.to_string(),"id":fixture_person_id.to_string()}); let fingerprint = json!({"method":"PATCH","path":path,"params":params}); hex::encode(Sha256::digest(serde_json::to_vec(&fingerprint).unwrap())) },
+            { let mut fingerprint = json!({"method":"PATCH","path":path,"body":serde_json::from_str::<Value>(request).unwrap()}); fingerprint.sort_all_objects(); hex::encode(Sha256::digest(fingerprint.to_string().as_bytes())) },
         ),
         response_status: sea_orm::Set(200),
         response_body: sea_orm::Set(updated.clone()),
@@ -651,7 +651,7 @@ async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
         .patch(format!("{}{path}", app.origin))
         .bearer_auth(&token)
         .header("content-type", "application/json")
-        .header("idempotency-key", "synthetic-rails-person-update")
+        .header("idempotency-key", "synthetic-stored-person-update")
         .body(request)
         .send()
         .await

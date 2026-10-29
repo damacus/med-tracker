@@ -1,6 +1,5 @@
 mod collection;
 mod idempotency;
-mod rails_digest;
 pub use collection::{Pagination, collection};
 mod lifecycle;
 mod memberships;

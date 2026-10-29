@@ -155,35 +155,16 @@ async fn denied_attempts(app: &Application, request: &str) -> i64 {
     i64::try_from(query.count(&app.fixture.admin).await.unwrap()).unwrap()
 }
 
-fn saved_digest(method: &str, path: &str, body: &str, household: i64) -> String {
+fn saved_digest(method: &str, path: &str, body: &str) -> String {
     use sha2::{Digest, Sha256};
-    #[derive(serde::Serialize)]
-    struct SavedRequest<'a> {
-        method: &'a str,
-        path: &'a str,
-        params: Value,
-    }
-    let mut params = if body.is_empty() {
-        json!({})
+    let body = if body.is_empty() {
+        Value::Null
     } else {
         serde_json::from_str(body).unwrap()
     };
-    params["household_id"] = json!(household.to_string());
-    if let Some(id) = path
-        .rsplit('/')
-        .next()
-        .filter(|id| id.parse::<i64>().is_ok())
-    {
-        params["id"] = json!(id);
-    }
-    hex::encode(Sha256::digest(
-        serde_json::to_vec(&SavedRequest {
-            method,
-            path,
-            params,
-        })
-        .unwrap(),
-    ))
+    let mut fingerprint = json!({"method": method, "path": path, "body": body});
+    fingerprint.sort_all_objects();
+    hex::encode(Sha256::digest(fingerprint.to_string().as_bytes()))
 }
 
 #[tokio::test]
@@ -718,7 +699,7 @@ async fn household_settings_concurrent_key_retries_apply_once_and_conflict_on_ch
 }
 
 #[tokio::test]
-async fn household_administration_saved_rails_retries_preserve_effects() {
+async fn household_administration_saved_retries_preserve_effects() {
     let app = administration_app().await;
     let household_id = app.fixture.household.id;
     let token = app.token().await;
@@ -727,7 +708,7 @@ async fn household_administration_saved_rails_retries_preserve_effects() {
     let extra_grant = grant(&app, target.id, None, "parent").await;
     let grant_id = extra_grant.id;
     let cases=[
-        ("PATCH",format!("/api/v1/households/{household_id}/admin/settings"),json!({"household":{"name":"Synthetic Rails household"}}).to_string(),200),
+        ("PATCH",format!("/api/v1/households/{household_id}/admin/settings"),json!({"household":{"name":"Synthetic saved household"}}).to_string(),200),
         ("PATCH",format!("/api/v1/households/{household_id}/admin/memberships/{target_id}"),json!({"household_membership":{"role":"administrator"}}).to_string(),200),
         ("POST",format!("/api/v1/households/{household_id}/admin/person_access_grants"),json!({"person_access_grant":{"household_membership_id":target.id,"person_id":app.fixture.minor.id,"access_level":"manage","relationship_type":"parent"}}).to_string(),403),
         ("DELETE",format!("/api/v1/households/{household_id}/admin/person_access_grants/{grant_id}"),String::new(),204),
@@ -740,7 +721,7 @@ async fn household_administration_saved_rails_retries_preserve_effects() {
     for (method, path, body, status) in cases {
         let path = path.as_str();
         let body = body.as_str();
-        let digest = saved_digest(method, path, body, household_id);
+        let digest = saved_digest(method, path, body);
         let method = reqwest::Method::from_bytes(method.as_bytes()).unwrap();
         let original = app
             .client
@@ -763,7 +744,7 @@ async fn household_administration_saved_rails_retries_preserve_effects() {
             original.json().await.unwrap()
         };
         let key = format!(
-            "{}-synthetic-rails-admin-{status}-{path}",
+            "{}-synthetic-stored-admin-{status}-{path}",
             app.fixture.client_uuid
         );
         let now = chrono::Utc::now().naive_utc();

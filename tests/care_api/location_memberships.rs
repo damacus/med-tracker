@@ -257,7 +257,7 @@ async fn location_membership_keyed_requests_replay_and_conflict() {
 }
 
 #[tokio::test]
-async fn location_membership_replays_key_stored_by_rails_digest() {
+async fn location_membership_conflicts_key_stored_with_mismatched_digest() {
     let app = Application::new().await;
     let fixture_household_id = app.fixture.household.id;
     let fixture_person_id = app.fixture.account.person_id;
@@ -267,7 +267,7 @@ async fn location_membership_replays_key_stored_by_rails_digest() {
         "/api/v1/households/{fixture_household_id}/locations/{fixture_location_id}/location_memberships"
     );
     let payload = json!({"location_membership":{"person_id":fixture_person_id.to_string()}});
-    let rails_request = json!({
+    let foreign_request = json!({
         "method": "POST",
         "path": path,
         "params": {
@@ -276,17 +276,18 @@ async fn location_membership_replays_key_stored_by_rails_digest() {
             "location_id": fixture_location_id.to_string()
         }
     });
-    let rails_digest = hex::encode(Sha256::digest(serde_json::to_vec(&rails_request).unwrap()));
-    let stored_response = json!({"data":{"id":"99999","location_id":fixture_location_id.to_string(),"person_id":fixture_person_id.to_string()}});
+    let foreign_digest = hex::encode(Sha256::digest(
+        serde_json::to_vec(&foreign_request).unwrap(),
+    ));
     med_tracker::models::_entities::api_idempotency_keys::ActiveModel {
         household_id: Set(fixture_household_id),
         account_id: Set(app.fixture.account.id),
-        key: Set("rails-create-key".into()),
+        key: Set("mismatched-digest-key".into()),
         request_method: Set("POST".into()),
         request_path: Set(path.clone()),
-        request_digest: Set(rails_digest),
+        request_digest: Set(foreign_digest),
         response_status: Set(201),
-        response_body: Set(stored_response.clone()),
+        response_body: Set(json!({"data":{"id":"99999"}})),
         response_headers: Set(json!({})),
         expires_at: Set("2030-01-01T00:00:00".parse().unwrap()),
         created_at: Set(chrono::Utc::now().naive_utc()),
@@ -296,27 +297,27 @@ async fn location_membership_replays_key_stored_by_rails_digest() {
     .insert(&app.fixture.admin)
     .await
     .unwrap();
-    let replay = app
+    let conflict = app
         .client
         .post(collection_url(&app, &fixture_location_id.to_string()))
         .bearer_auth(&token)
-        .header("idempotency-key", "rails-create-key")
+        .header("idempotency-key", "mismatched-digest-key")
         .json(&payload)
         .send()
         .await
         .unwrap();
-    let replay_status = replay.status().as_u16();
-    let replayed = replay
+    let conflict_status = conflict.status().as_u16();
+    let replayed = conflict
         .headers()
         .get("idempotency-replayed")
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
-    let replay_body: Value = replay.json().await.unwrap();
+    let conflict_body: Value = conflict.json().await.unwrap();
     let rows = membership_count(&app).await;
     app.close().await;
-    assert_eq!(replay_status, 201);
-    assert_eq!(replayed.as_deref(), Some("true"));
-    assert_eq!(replay_body, stored_response);
+    assert_eq!(conflict_status, 409);
+    assert_eq!(replayed, None);
+    assert_eq!(conflict_body["error"]["code"], "idempotency_key_reused");
     assert_eq!(rows, 0);
 }
 
