@@ -4,7 +4,6 @@
   <p class="text-sm font-semibold uppercase tracking-widest shell-muted">Care, kept together</p>
   <h1 class="text-4xl font-semibold mt-3">MedTracker</h1>
   {% if auth_notice is defined and auth_notice %}<p role="status" class="mt-4">{{ auth_notice }}</p>{% endif %}
-  {% if signed_in %}
   <nav class="mt-6" aria-label="Account">
     <a class="btn btn-ghost" href="/profile">Profile</a>
     {% if pending_invitation %}<a class="btn btn-outline" href="{{ pending_invitation }}">Continue invitation</a>{% endif %}
@@ -35,12 +34,5 @@
     </div></form>
     {% endif %}
   </section>
-  {% else %}
-  <a class="btn btn-neutral mt-6" href="/login">Sign in</a>
-  <div class="card shell-card mt-8"><div class="card-body">
-    <h2 class="card-title">Your care, in one place</h2>
-    <p>Keep people, medicines and their care together.</p>
-  </div></div>
-  {% endif %}
 </div>
 {% endblock content %}

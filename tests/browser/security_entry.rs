@@ -9,15 +9,7 @@ use crate::harness::{self, named};
 
 async fn inspect_form(page: &Page, name: &str) {
     for appearance in ["light", "dark"] {
-        page.get_by_role(AriaRole::Button, named("Appearance"))
-            .click(None)
-            .await
-            .unwrap();
-        page.locator(format!("[data-appearance-choice='{appearance}']"))
-            .click(None)
-            .await
-            .unwrap();
-        page.keyboard().press("Escape", None).await.unwrap();
+        harness::device_appearance(page, appearance).await;
         for width in [1440, 390] {
             page.set_viewport_size(Viewport {
                 width,

@@ -16,6 +16,7 @@ async fn login_images_follow_viewport_and_selected_appearance() {
         Box::pin(async move {
             let page = &journey.page;
             page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+            harness::device_appearance(page, "light").await;
             page.evaluate::<(), ()>("() => localStorage.setItem('med-tracker-appearance', 'dark')", None).await.unwrap();
             page.reload(None).await.unwrap();
             let saved_source: String = page.evaluate(r#"async () => {
@@ -23,7 +24,8 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                 await image.decode();
                 return image.currentSrc;
             }"#, None::<&()>).await.unwrap();
-            assert!(saved_source.ends_with("login-med-illustration-dark-desktop.webp"));
+            assert!(saved_source.ends_with("login-med-illustration-light-desktop.webp"));
+            assert_eq!(page.locator("[data-appearance-choice], [data-dialog-open='appearance-dialog'], a[href$='/profile']").count().await.unwrap(), 0);
             let directory = std::path::Path::new("docs/screenshots/login-reference");
             std::fs::create_dir_all(directory).unwrap();
             let mut observations = Vec::new();
@@ -31,11 +33,7 @@ async fn login_images_follow_viewport_and_selected_appearance() {
             for (width, height) in [(1440, 1000), (768, 1000), (390, 844), (375, 844), (320, 844)] {
                 page.set_viewport_size(Viewport { width, height }).await.unwrap();
                 for appearance in ["light", "dark"] {
-                    page.get_by_role(AriaRole::Button, harness::named("Appearance"))
-                        .click(None).await.unwrap();
-                    page.locator(format!("[data-appearance-choice='{appearance}']"))
-                        .click(None).await.unwrap();
-                    page.keyboard().press("Escape", None).await.unwrap();
+                    harness::device_appearance(page, appearance).await;
                     let observation: Value = page.evaluate(r#"async () => {
                         const image = document.querySelector('[data-login-illustration] img');
                         if (image) await image.decode();
@@ -43,15 +41,11 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                         const form = document.querySelector('.login-form-panel')?.getBoundingClientRect();
                         const card = getComputedStyle(document.querySelector('.shell-card'));
                         const passkey = getComputedStyle(document.querySelector('[data-passkey-login]'));
-                        const appearanceButton = document.querySelector('[data-dialog-open="appearance-dialog"]');
-                        const appearanceBounds = appearanceButton.getBoundingClientRect();
                         const surface = document.querySelector('.login-surface').getBoundingClientRect();
                         const resend = document.querySelector('a[href="/verify-account-resend"]');
                         const resendBounds = resend.getBoundingClientRect();
                         return {
-                            appearanceAboveCard: appearanceBounds.bottom <= surface.top && Math.abs(appearanceBounds.right - surface.right) <= 1,
-                            appearanceTargetHeight: appearanceBounds.height,
-                            appearanceFocusRestored: document.activeElement === appearanceButton,
+                            appearanceControls: document.querySelectorAll('[data-dialog-open="appearance-dialog"], [data-appearance-choice]').length,
                             resendCentred: Math.abs((resendBounds.left + resendBounds.right) / 2 - (surface.left + surface.right) / 2) <= 1,
                             resendAlone: !resend.parentElement.querySelector('button'),
                             source: image?.currentSrc ?? '',
@@ -97,17 +91,12 @@ async fn login_images_follow_viewport_and_selected_appearance() {
                 assert!(observation["fieldHeight"].as_f64().unwrap() >= if width >= 768 { 56.0 } else { 48.0 });
                 assert!(observation["actionHeight"].as_f64().unwrap() >= if width >= 768 { 72.0 } else { 64.0 });
                 assert_eq!(observation["footerBelowCard"], true);
-                assert_eq!(observation["appearanceAboveCard"], true, "Appearance must sit above the card at {width}/{appearance}");
-                assert!(observation["appearanceTargetHeight"].as_f64().unwrap() >= 44.0);
-                assert_eq!(observation["appearanceFocusRestored"], true);
+                assert_eq!(observation["appearanceControls"], 0);
                 assert_eq!(observation["resendCentred"], true);
                 assert_eq!(observation["resendAlone"], true);
                 assert_eq!(observation[if width >= 768 { "desktop" } else { "stacked" }], true);
             }
             assert_no_violations(&audits);
-            page.get_by_role(AriaRole::Button, harness::named("Appearance")).click(None).await.unwrap();
-            page.locator("[data-appearance-choice='system']").click(None).await.unwrap();
-            page.keyboard().press("Escape", None).await.unwrap();
             let cdp = page.context().unwrap().new_cdp_session(page).await.unwrap();
             for appearance in ["dark", "light"] {
                 cdp.send("Emulation.setEmulatedMedia", Some(json!({"features":[{"name":"prefers-color-scheme","value":appearance}]}))).await.unwrap();
@@ -129,6 +118,24 @@ async fn login_images_follow_viewport_and_selected_appearance() {
             security.press("Enter", None).await.unwrap();
             expect(page.get_by_role(AriaRole::Heading, harness::named("Account security")))
                 .to_be_visible().await.unwrap();
+            assert_eq!(page.locator("[data-appearance-choice], [data-dialog-open='appearance-dialog']").count().await.unwrap(), 0);
+            page.goto(&format!("{}/households/choose", journey.origin), None).await.unwrap();
+            page.get_by_role(AriaRole::Button, harness::named("Open household: Synthetic household"))
+                .click(None).await.unwrap();
+            page.goto(&format!("{}/households/persistence-fixture/profile", journey.origin), None).await.unwrap();
+            expect(page.locator("html")).to_have_attribute("data-theme", "default-dark").await.unwrap();
+            page.locator("#appearance-dialog > summary").press("Enter", None).await.unwrap();
+            expect(page.locator("[data-appearance-choice='light']")).to_be_visible().await.unwrap();
+            page.locator("[data-appearance-choice='light']").press("Enter", None).await.unwrap();
+            expect(page.locator("html")).to_have_attribute("data-theme", "default-light").await.unwrap();
+            page.goto(&format!("{}/households/persistence-fixture/medications", journey.origin), None).await.unwrap();
+            expect(page.locator("html")).to_have_attribute("data-theme", "default-light").await.unwrap();
+            assert_eq!(page.locator("[data-appearance-choice], [data-dialog-open='appearance-dialog']").count().await.unwrap(), 0);
+            page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+            harness::device_appearance(page, "dark").await;
+            expect(page.locator("html")).to_have_attribute("data-theme", "neutral-dark").await.unwrap();
+            let saved: String = page.evaluate("() => localStorage.getItem('med-tracker-appearance')", None::<&()>).await.unwrap();
+            assert_eq!(saved, "light");
         })
     }).await;
 }

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ lang | default(value='en-GB') }}" data-allow-palette="{{ allow_palette | default(value=false) }}" data-theme="neutral-light">
+<html lang="{{ lang | default(value='en-GB') }}" data-allow-palette="{{ allow_palette | default(value=false) }}" data-appearance-mode="{% block appearance_mode %}saved{% endblock appearance_mode %}" data-theme="neutral-light">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -22,7 +22,6 @@
     <header class="shell-header">
       <div class="shell-width shell-header-inner">
         <a href="/" class="text-xl font-semibold" aria-label="{% if labels %}{{ labels.layouts.navigation.home_link }}{% else %}MedTracker home{% endif %}">MedTracker</a>
-        <button type="button" class="btn btn-ghost" data-dialog-open="appearance-dialog">{% if labels %}{{ labels.profiles.appearance.title }}{% else %}Appearance{% endif %}</button>
         <a class="link" href="/account/security">{% if labels %}{{ labels.profiles.account_security.title }}{% else %}Account security{% endif %}</a>
         {% if slug %}{% block search_trigger %}<button type="button" class="btn btn-outline" data-global-search-trigger aria-label="{% if labels %}{{ labels.global_search.open }}{% else %}Open global search{% endif %}" aria-controls="global_search_panel" aria-expanded="false">{% if labels %}{{ labels.global_search.open_short }}{% else %}Search{% endif %}</button>{% endblock search_trigger %}{% endif %}
       </div>
@@ -41,7 +40,7 @@
     {% include "components/app-navigation.html" %}
     <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% if canary_enabled | default(value=false) %}{% include "components/canary-notice.html" %}{% endif %}{% block content %}{% endblock content %}</main>
     {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · {% if labels %}{{ labels.layouts.navigation.care_tagline }}{% else %}Care, kept together.{% endif %}</div></footer>{% endblock footer %}
-    {% block appearance %}{% include "components/appearance.html" %}{% endblock appearance %}
+    {% block appearance %}{% endblock appearance %}
     {% if slug %}</div><div class="drawer-side app-drawer-side" inert><label for="app-drawer-toggle" class="drawer-overlay" aria-hidden="true"></label><div id="app-drawer" class="app-navigation-panel app-drawer" role="dialog" aria-modal="true" tabindex="-1"></div></div></div>{% endif %}
   </body>
 </html>

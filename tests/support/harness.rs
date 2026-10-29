@@ -329,6 +329,20 @@ where
     }
 }
 
+pub async fn device_appearance(page: &Page, appearance: &str) {
+    let cdp = page.context().unwrap().new_cdp_session(page).await.unwrap();
+    cdp.send(
+        "Emulation.setEmulatedMedia",
+        Some(serde_json::json!({"features":[{"name":"prefers-color-scheme","value":appearance}]})),
+    )
+    .await
+    .unwrap();
+    expect(page.locator("html"))
+        .to_have_attribute_regex("data-theme", &format!("-{appearance}$"))
+        .await
+        .unwrap();
+}
+
 pub fn named(name: &str) -> Option<GetByRoleOptions> {
     Some(GetByRoleOptions::default().name(name).exact(true))
 }
