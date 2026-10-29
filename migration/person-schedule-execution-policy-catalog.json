@@ -1,0 +1,14 @@
+{
+  "removed": [],
+  "changed": {
+    "policy:public.person_schedules.person_schedule_household": {
+      "check": "((origin_household_id = med_tracker.current_household_id()) AND (EXISTS ( SELECT 1\n   FROM household_memberships actor\n  WHERE ((actor.id = med_tracker.current_membership_id()) AND (actor.household_id = person_schedules.origin_household_id) AND ((actor.status)::text = 'active'::text) AND (actor.revoked_at IS NULL)))) AND (EXISTS ( SELECT 1\n   FROM household_memberships subject\n  WHERE ((subject.person_id = person_schedules.person_id) AND (subject.household_id = person_schedules.origin_household_id) AND ((subject.status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying])::text[])) AND (subject.revoked_at IS NULL)))) AND (EXISTS ( SELECT 1\n   FROM schedules execution\n  WHERE ((execution.id = person_schedules.origin_schedule_id) AND (execution.household_id = person_schedules.origin_household_id) AND (execution.person_id = person_schedules.person_id) AND (execution.execution_ended_at IS NULL)))))",
+      "command": "*",
+      "permissive": true,
+      "roles": [
+        "PUBLIC"
+      ],
+      "using": "((origin_household_id = med_tracker.current_household_id()) AND (EXISTS ( SELECT 1\n   FROM household_memberships actor\n  WHERE ((actor.id = med_tracker.current_membership_id()) AND (actor.household_id = person_schedules.origin_household_id) AND ((actor.status)::text = 'active'::text) AND (actor.revoked_at IS NULL)))) AND (EXISTS ( SELECT 1\n   FROM household_memberships subject\n  WHERE ((subject.person_id = person_schedules.person_id) AND (subject.household_id = person_schedules.origin_household_id) AND ((subject.status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying])::text[])) AND (subject.revoked_at IS NULL)))) AND (EXISTS ( SELECT 1\n   FROM schedules execution\n  WHERE ((execution.id = person_schedules.origin_schedule_id) AND (execution.household_id = person_schedules.origin_household_id) AND (execution.person_id = person_schedules.person_id) AND (execution.execution_ended_at IS NULL)))))"
+    }
+  }
+}
