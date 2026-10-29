@@ -314,7 +314,7 @@ require(row.try_get::<i32>("","pid")?==pid && row.try_get::<bool>("","scoped")?,
             )).await?;
             let before=effects(&app).await?;
             let response=withdraw(&app,&token,id).await?;
-            require(response.status().as_u16()==if fail_audit {500}else{200},"Global withdrawal must reach the expected commit or injected audit rollback")?;
+            require(response.status().as_u16()==if fail_audit {503}else{200},"Global withdrawal must reach the expected commit or injected audit rollback")?;
             let reached=app.fixture.admin.query_one_raw(app.fixture.admin.get_database_backend().build(
                 &Query::select().columns(["is_called", "last_value"]).from("synthetic_guardian_context_reached").to_owned())).await?
                 .ok_or_else(||DbErr::Custom("In-transaction context witness missing".into()))?;

@@ -1775,7 +1775,7 @@ async fn health_pdf_response_carries_no_bytes_or_audit_when_the_download_audit_f
         .await
         .unwrap();
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert_ne!(content_type, "application/pdf");
     assert!(
         !bytes.starts_with(b"%PDF-"),

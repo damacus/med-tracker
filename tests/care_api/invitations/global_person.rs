@@ -1465,7 +1465,7 @@ async fn acceptance_audit_failure_rolls_back_identity_and_membership_then_retry_
             "Failed acceptance must roll back Person/Account/credential changes")?;
         require(acceptance_effects(&app,&acceptance).await? == effects,
             "Failed acceptance must roll back membership, accepted state, versions, audits, changes and jobs")?;
-        require(status == 500 && body["error"]["code"] == "internal_error",
+        require(status == 503 && body["error"]["code"] == "service_unavailable",
             "Audit failure must return the existing generic server failure")?;
         app.fixture.admin.execute_unprepared(
             "DROP TRIGGER synthetic_global_join_audit ON public.security_audit_events"

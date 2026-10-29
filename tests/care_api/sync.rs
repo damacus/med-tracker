@@ -592,7 +592,7 @@ async fn sync_batch_version_failure_rolls_back_take_stock_and_key_with_failed_at
         .unwrap();
     let status = response.status().as_u16();
     let counts = sync_counts(&app).await;
-    let row = app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("is_called")).from("synthetic_sync_reached").to_owned()), "reached").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("controller")).eq(QueryExpr::val("api/v1/sync/batches"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("500")))).to_owned()), "attempts").to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap();
+    let row = app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("is_called")).from("synthetic_sync_reached").to_owned()), "reached").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("controller")).eq(QueryExpr::val("api/v1/sync/batches"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("503")))).to_owned()), "attempts").to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let attempts: i64 = row.try_get("", "attempts").unwrap();
     app.fixture
@@ -611,7 +611,7 @@ async fn sync_batch_version_failure_rolls_back_take_stock_and_key_with_failed_at
         .await
         .unwrap();
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert!(reached);
     assert_eq!(counts, ("10.00".to_owned(), vec![0, 0, 0, 0]));
     assert_eq!(attempts, 1);
@@ -3083,7 +3083,7 @@ async fn sync_review_cached_replay_preserves_read_unavailability() {
     app.close().await;
     assert_eq!(
         (status, reply["error"]["code"].clone()),
-        (500, json!("internal_error"))
+        (503, json!("service_unavailable"))
     );
     assert_eq!(
         (

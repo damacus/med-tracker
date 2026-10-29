@@ -697,10 +697,10 @@ async fn profile_audit_failure_hides_read_and_rolls_back_writes() {
             .iter()
             .map(|(method, response)| (method.as_str(), response.status))
             .collect::<Vec<_>>(),
-        [("get", 500), ("patch", 500), ("put", 500)]
+        [("get", 503), ("patch", 503), ("put", 503)]
     );
     for (_, response) in &replies {
-        assert_eq!(response.body["error"]["code"], "internal_error");
+        assert_eq!(response.body["error"]["code"], "service_unavailable");
         assert!(response.body.get("data").is_none());
         assert_wire(response);
     }

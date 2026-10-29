@@ -806,7 +806,7 @@ async fn profile_and_notification_apis_roll_back_mutations_when_request_audit_fa
             .send()
             .await
             .unwrap();
-        assert_eq!(response.status().as_u16(), 500);
+        assert_eq!(response.status().as_u16(), 503);
     }
     let current: Value = app
         .client

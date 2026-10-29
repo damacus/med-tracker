@@ -653,7 +653,7 @@ async fn household_settings_and_grant_audit_failure_roll_back_effects_and_keys()
 
     let statuses = (settings.status().as_u16(), grant.status().as_u16());
     app.close().await;
-    assert_eq!(statuses, (500, 500));
+    assert_eq!(statuses, (503, 503));
     assert!(reached);
     assert_eq!(counts, vec![0, 0, 0]);
     assert_eq!(version, 1);

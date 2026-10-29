@@ -1144,9 +1144,9 @@ async fn settings_audit_failure_hides_read_and_rolls_back_both_write_methods() {
     close_request(fixture, boot).await;
     assert_eq!(before, after);
     for (method, reply) in &replies {
-        assert_eq!(reply.status, 500, "{method}: {}", reply.body);
+        assert_eq!(reply.status, 503, "{method}: {}", reply.body);
         assert_wire(reply);
-        assert_eq!(reply.body["error"]["code"], "internal_error");
+        assert_eq!(reply.body["error"]["code"], "service_unavailable");
         assert!(reply.body.get("data").is_none());
     }
     for (method, reply) in replies {

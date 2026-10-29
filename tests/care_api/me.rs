@@ -250,9 +250,9 @@ async fn me_audit_failure_does_not_return_or_cache_personal_data() {
         .await
         .unwrap();
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert!(body.get("data").is_none());
-    assert_eq!(body["error"]["code"], "internal_error");
+    assert_eq!(body["error"]["code"], "service_unavailable");
     assert_eq!(
         cache_control.as_ref().map(|value| value.as_bytes()),
         Some(b"no-store".as_slice())

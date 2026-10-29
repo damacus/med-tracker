@@ -4058,10 +4058,10 @@ async fn person_owned_schedule_origin_attachment_preserves_database_failure_with
     let body = response.json::<Value>().await.unwrap();
     println!("origin attachment current guardian identity fault HTTP status: {status}");
     assert_eq!(
-        status, 500,
+        status, 503,
         "A real identity/database fault with current authority must remain observable: {body}"
     );
-    assert_eq!(body["error"]["code"], "internal_error");
+    assert_eq!(body["error"]["code"], "service_unavailable");
     assert_eq!(current_declaration(&app, origin.child).await, declaration);
     Application::assert_status(
         app.client
@@ -5566,8 +5566,8 @@ async fn person_owned_schedule_shared_command_audit_failure_rolls_back_canonical
         reached,
         "The fault must reach the audit after tentative canonical and safe-state writes"
     );
-    assert_eq!(status, 500);
-    assert_eq!(body["error"]["code"], "internal_error");
+    assert_eq!(status, 503);
+    assert_eq!(body["error"]["code"], "service_unavailable");
     assert!(
         !body
             .to_string()

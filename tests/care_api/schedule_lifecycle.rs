@@ -536,7 +536,7 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
             denied,
             malformed_denied
         ),
-        (200, 200, 500, 200, 403, 403)
+        (200, 200, 503, 200, 403, 403)
     );
     assert!(replayed && reached);
     assert_eq!(notes.as_deref(), Some("Synthetic lifecycle"));

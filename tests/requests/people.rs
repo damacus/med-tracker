@@ -1423,9 +1423,9 @@ async fn people_audit_insert_failure_rolls_back_every_route_without_private_data
     drop(server);
     close_request(fixture, boot).await;
     for (path, verb, response, after) in &replies {
-        assert_eq!(response.status, 500, "{verb} {path}");
+        assert_eq!(response.status, 503, "{verb} {path}");
         assert_eq!(
-            response.body["error"]["code"], "internal_error",
+            response.body["error"]["code"], "service_unavailable",
             "{verb} {path}"
         );
         assert!(response.body.get("data").is_none(), "{verb} {path}");
@@ -1467,8 +1467,8 @@ async fn people_listing_hides_data_when_restricted_household_read_fails() {
         .unwrap();
     drop(server);
     close_request(fixture, boot).await;
-    assert_eq!(response.status, 500);
-    assert_eq!(response.body["error"]["code"], "internal_error");
+    assert_eq!(response.status, 503);
+    assert_eq!(response.body["error"]["code"], "service_unavailable");
     assert!(response.body.get("data").is_none());
     assert_eq!(after, before);
     assert_wire(&response);

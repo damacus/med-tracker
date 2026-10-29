@@ -3300,7 +3300,7 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
         .send()
         .await
         .unwrap();
-    assert_eq!(rejected.status().as_u16(), 500);
+    assert_eq!(rejected.status().as_u16(), 503);
     assert_eq!(
         browser_push::reminders::deliver_account(&app.context, &scope, Utc::now())
             .await

@@ -522,11 +522,14 @@ async fn account_profile_audit_failure_rolls_back_the_name_change() -> TestResul
         .await?;
     drop(request);
     close_request(fixture, boot).await;
-    assert_eq!(failed.status_code(), 500);
+    assert_eq!(failed.status_code(), 503);
     assert_eq!(failed.header("cache-control"), "no-store");
     let failed_body: Value = failed.json();
-    assert_profile_schema("patch", 500, &failed_body);
-    assert_eq!(failed_body["error"]["message"], "Internal server error");
+    assert_profile_schema("patch", 503, &failed_body);
+    assert_eq!(
+        failed_body["error"]["message"],
+        "Service is temporarily unavailable"
+    );
     assert_eq!(refreshed.status_code(), 200);
     let refreshed: Value = refreshed.json();
     assert_eq!(refreshed["data"]["name"], Value::Null);
