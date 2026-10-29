@@ -13,8 +13,9 @@ impl MedicationId {
     }
 }
 
-#[derive(Clone, Copy)]
-pub(super) enum DoseCycle {
+#[derive(Clone, Copy, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DoseCycle {
     Daily,
     Weekly,
     Monthly,

@@ -1,6 +1,8 @@
 name: Loco Linux images
 
 on:
+  push:
+    branches: [main]
   pull_request:
     paths:
       - Dockerfile
@@ -16,12 +18,22 @@ on:
       - package-lock.json
       - rails/config/ai_medication_sources.yml
       - rails/config/medication_review_labels.yml
-      - scripts/*loco_image*.py
       - scripts/*loco_image*.mjs
       - mise.toml
       - .github/workflows/ci.yml
       - Taskfile.yml
       - .github/workflows/loco-images.yml
+      - .github/workflows/release-please.yml
+      - release-please-config.json
+  workflow_call:
+    inputs:
+      tag_name:
+        description: Exact release tag to build and publish
+        type: string
+        required: true
+      publish:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       publish:
@@ -33,7 +45,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: loco-images-${{ github.ref }}
+  group: loco-images-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -41,10 +53,13 @@ jobs:
     name: Image tool alignment
     runs-on: ubuntu-26.04
     timeout-minutes: 10
+    outputs:
+      release_version: ${{ steps.release.outputs.release_version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.tag_name || github.sha }}
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
           toolchain: stable
@@ -53,13 +68,19 @@ jobs:
         with:
           node-version: "26"
           check-latest: true
+      - name: Validate release source and version
+        id: release
+        env:
+          RELEASE_TAG: ${{ inputs.tag_name }}
+          RELEASE_REVISION: ${{ github.sha }}
+        run: node scripts/loco_image_release.mjs
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
       - name: Verify Task release binary
         run: echo "e1561194871b9c9fb3aa7c71d1cb2cbcd71eda417b62c511739823eef9f947b9  $(command -v task)" | sha256sum --check --strict
-      - run: task image:check
+      - run: task image:check image:release:check
         env:
           IMAGE_CI_NODE_VERSION: ${{ steps.node.outputs.node-version }}
 
@@ -80,6 +101,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.tag_name || github.sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "26"
       - name: Install verified Buildx release
         run: |
           case "$RUNNER_ARCH" in
@@ -152,6 +177,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          ref: ${{ inputs.tag_name || github.sha }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: checked-loco-amd64
@@ -229,10 +255,15 @@ jobs:
           done
 
   publish:
-    if: github.repository == 'damacus/med-tracker' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish
-    needs: checked_images
+    if: github.repository == 'damacus/med-tracker' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
+    needs: [checked_images, tooling]
     runs-on: ubuntu-26.04
     timeout-minutes: 20
+    concurrency:
+      group: loco-image-publish-${{ github.sha }}
+      cancel-in-progress: false
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
     permissions:
       contents: read
       packages: write
@@ -272,9 +303,11 @@ jobs:
           sudo install -m 0644 "$RUNNER_TEMP/docker-daemon.json" /etc/docker/daemon.json
           sudo systemctl restart docker
       - name: Publish tested images and assemble their manifest
+        id: publish
         env:
           IMAGE: ghcr.io/${{ github.repository }}-loco
           REVISION: ${{ github.sha }}
+          RELEASE_VERSION: ${{ needs.tooling.outputs.release_version }}
         run: |
           sources=()
           for arch in amd64 arm64; do
@@ -291,4 +324,58 @@ jobs:
             [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
             sources+=("$IMAGE@$digest")
           done
-          docker buildx imagetools create --tag "$IMAGE:sha-$REVISION" "${sources[@]}"
+          tags=(--tag "$IMAGE:sha-$REVISION")
+          if [ -n "$RELEASE_VERSION" ]; then
+            tags+=(--tag "$IMAGE:$RELEASE_VERSION")
+          fi
+          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
+          digest=$(docker buildx imagetools inspect "$IMAGE:sha-$REVISION" --format '{{.Manifest.Digest}}')
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          printf 'Source commit: %s\n\nImmutable image: %s@%s\n\nTag: sha-%s\n' "$REVISION" "$IMAGE" "$digest" "$REVISION" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$RELEASE_VERSION" ]; then
+            test "$(docker buildx imagetools inspect "$IMAGE:$RELEASE_VERSION" --format '{{.Manifest.Digest}}')" = "$digest"
+            printf 'Release tag: %s:%s\n' "$IMAGE" "$RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  beta:
+    name: Promote current main beta
+    needs: publish
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    concurrency:
+      group: loco-image-beta
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Install verified Buildx release
+        run: |
+          curl --fail --silent --show-error --location --proto =https --tlsv1.2 https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-amd64 --output "$RUNNER_TEMP/docker-buildx"
+          echo "e25d5cd675092bb5d1d03632fdc46cdf3fede7b514dc5f023a105e00d3ce5ad4  $RUNNER_TEMP/docker-buildx" | sha256sum --check --strict
+          directory="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
+          mkdir -p "$directory"
+          install -m 0755 "$RUNNER_TEMP/docker-buildx" "$directory/docker-buildx"
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Promote current main beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ghcr.io/${{ github.repository }}-loco
+          REVISION: ${{ github.sha }}
+          DIGEST: ${{ needs.publish.outputs.digest }}
+        run: |
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          [[ "$current" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid main revision' >&2; exit 1; }
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo 'Invalid image digest' >&2; exit 1; }
+          if [[ "$current" != "$REVISION" ]]; then
+            printf 'Beta unchanged: source %s is no longer current main (%s).\n' "$REVISION" "$current" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          docker buildx imagetools create --tag "$IMAGE:beta" "$IMAGE@$DIGEST"
+          test "$(docker buildx imagetools inspect "$IMAGE:beta" --format '{{.Manifest.Digest}}')" = "$DIGEST"
+          printf 'Beta updated: %s@%s (source %s).\n' "$IMAGE" "$DIGEST" "$REVISION" >> "$GITHUB_STEP_SUMMARY"

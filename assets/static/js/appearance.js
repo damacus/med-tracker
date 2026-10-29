@@ -14,8 +14,9 @@
   if (!palettes.has(palette)) palette = 'default';
   if (!appearances.has(appearance)) appearance = 'system';
   function apply() {
-    const dark = appearance === 'dark' || (appearance === 'system' && media.matches);
-    root.dataset.appearance = appearance;
+    const effectiveAppearance = root.dataset.appearanceMode === 'system' ? 'system' : appearance;
+    const dark = effectiveAppearance === 'dark' || (effectiveAppearance === 'system' && media.matches);
+    root.dataset.appearance = effectiveAppearance;
     root.dataset.theme = `${root.dataset.allowPalette === 'true' ? palette : 'neutral'}-${dark ? 'dark' : 'light'}`;
     root.classList.toggle('dark', dark);
     const meta = document.querySelector('meta[name="theme-color"]');

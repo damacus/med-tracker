@@ -48,6 +48,7 @@ impl BackgroundWorker<RefreshRun> for RefreshWorker {
     }
 
     async fn perform(&self, args: RefreshRun) -> loco_rs::Result<()> {
+        crate::models::canary::work(&self.ctx).await?;
         run(&self.ctx, args.run_id)
             .await
             .map_err(|_| loco_rs::Error::string("Medication review evidence refresh failed"))
@@ -66,6 +67,7 @@ impl Task for RefreshTask {
     }
 
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> loco_rs::Result<()> {
+        crate::models::canary::work(ctx).await?;
         let row = ctx.db.query_one_raw(Statement::from_string(DbBackend::Postgres,
             "INSERT INTO medication_review_evidence_refresh_runs (status,label_count,created_count,updated_count,unchanged_count,missing_count,change_summary,created_at,updated_at) VALUES (0,0,0,0,0,0,'{}'::jsonb,timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp())) RETURNING id"
         )).await?.ok_or_else(|| loco_rs::Error::string("Refresh run could not be queued"))?;

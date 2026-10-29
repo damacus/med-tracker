@@ -24,6 +24,9 @@ use crate::models::{
     errors::OperationError,
 };
 
+mod personal_history;
+pub(crate) use personal_history::{HistoryActor, deny_personal_history};
+
 #[derive(Debug, PartialEq)]
 pub enum AuthenticationError {
     Unauthenticated,
@@ -61,6 +64,18 @@ impl ValidatedPrincipal {
         }
         self.account_transaction(db, settings, write).await
     }
+
+    pub(crate) async fn personal_history_transaction(
+        &self,
+        db: &DatabaseConnection,
+        settings: Option<&serde_json::Value>,
+    ) -> Result<DatabaseTransaction, AuthenticationError> {
+        if !matches!(self.credential, Credential::OAuth { .. }) {
+            return Err(AuthenticationError::Forbidden);
+        }
+        self.account_transaction(db, settings, false).await
+    }
+
     pub(crate) async fn guardian_declaration_transaction(
         &self,
         db: &DatabaseConnection,

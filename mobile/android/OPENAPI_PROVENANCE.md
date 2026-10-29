@@ -2,8 +2,8 @@
 
 - Pinned OpenAPI source: docs/api/openapi.v1.yaml
 - Source revision: 9445f5680b8e63f06c6d4ec99d3b2d8e3859a7aa
-- Pinned OpenAPI SHA-256: 48e7f22733a679319022fbf77acee4db9028c11e124fe5047e18ad98c51b22a7
-- Derived generator-input SHA-256: 34f746ad88f959b3d0dfb66967b9ae09dc3137175fedff696074202421d33f71
+- Pinned OpenAPI SHA-256: 110c67cd862509b7b5df015242729e5599f3cd8bbc62c76c2e6bd8a1f943c44a
+- Derived generator-input SHA-256: 72fecbaf15d2f4d89be8a2d936594b6b16be4fd1be6300561745fc19d179f7a8
 - Generator input: -i /output/openapi-generator-input.yaml, derived from the exact canonical pin
 - Generator-input adapter: mobile/android/scripts/api-generator-input.fish
 - Single transformed schema: #/components/schemas/PortableImportUnprocessableResponse

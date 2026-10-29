@@ -19,11 +19,25 @@ assets/static/js/html5-qrcode.min.js
 !config/*.yaml
 !rails/
 rails/**
+!rails/Gemfile.lock
 !rails/config/
 rails/config/**
 !rails/config/ai_medication_sources.yml
 !rails/config/medication_review_labels.yml
+!rails/config/application.rb
 !rails/app/
+!rails/app/services/
+!rails/app/services/api/
+!rails/app/services/api/record_etag.rb
+!rails/app/services/portable_data/
+!rails/app/services/portable_data/export_record_serializer.rb
+!rails/app/services/portable_data/export_event_record_serializer.rb
+!rails/app/services/portable_data/dose_occurrence_serializer.rb
+!rails/app/services/portable_data/exporter.rb
+!rails/app/services/portable_data/encryptor.rb
+!rails/app/services/households/
+!rails/app/services/households/hosted_export_authorization.rb
+!rails/app/services/households/hosted_export.rb
 !rails/app/components/
 !rails/app/components/auth/
 !rails/app/components/auth/mt_logo.rb
@@ -45,6 +59,7 @@ scripts/__pycache__/
 !tests/**
 !examples/
 !examples/api-fixtures.rs
+!examples/prepare-clinical-transfer.rs
 
 !docs/
 !docs/api/

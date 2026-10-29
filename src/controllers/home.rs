@@ -21,10 +21,7 @@ pub async fn index(
         Session<SessionPgPool>,
         <Session<SessionPgPool> as FromRequestParts<AppContext>>::Rejection,
     >,
-    token: std::result::Result<CsrfToken, <CsrfToken as FromRequestParts<AppContext>>::Rejection>,
-    ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    let mut auth_notice = None;
     if let Ok(session) = session {
         match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
             Ok(principal) => match principal.active_household(&ctx.db).await {
@@ -34,14 +31,11 @@ pub async fn index(
                 Ok(None) => return redirect("/households/choose"),
                 Err(error) => return authentication_error(error),
             },
-            Err(AuthenticationError::Unauthenticated) => {
-                auth_notice = session.get::<String>("auth_notice");
-                session.remove("auth_notice");
-            }
+            Err(AuthenticationError::Unauthenticated) => {}
             Err(error) => return authentication_error(error),
         }
     }
-    render_home(view, false, Vec::new(), auth_notice, None, token.ok())
+    redirect("/login")
 }
 
 #[derive(serde::Deserialize)]
@@ -78,69 +72,38 @@ pub async fn choose(
     };
     let auth_notice = session.get::<String>("auth_notice");
     session.remove("auth_notice");
-    render_home(
+    render_chooser(
         view,
-        true,
         households,
         auth_notice,
         super::auth::pending_invitation_url(&session),
-        Some(token),
+        token,
     )
 }
 
-fn render_home(
+fn render_chooser(
     view: TeraView,
-    signed_in: bool,
     households: Vec<browser::BrowserHousehold>,
     auth_notice: Option<String>,
     pending_invitation: Option<String>,
-    token: Option<CsrfToken>,
+    token: CsrfToken,
 ) -> Response {
-    let authenticity_token = if signed_in {
-        match token
-            .as_ref()
-            .and_then(|token| token.authenticity_token().ok())
-        {
-            Some(value) => value,
-            None => return unavailable(),
-        }
-    } else {
-        String::new()
+    let Ok(authenticity_token) = token.authenticity_token() else {
+        return unavailable();
     };
     match format::render().view(
         &view,
         "home/index.html",
         data!({
-            "title": if signed_in { "Choose a household" } else { "Welcome" },
-            "allow_palette": signed_in,
-            "signed_in": signed_in,
+            "title": "Choose a household",
+            "allow_palette": true,
             "auth_notice": auth_notice,
             "pending_invitation": pending_invitation,
             "households": households,
-            "authenticity_token": authenticity_token,
-            "appearances": [
-                {"id": "light", "label": "Light"},
-                {"id": "dark", "label": "Dark"},
-                {"id": "system", "label": "System"}
-            ],
-            "palettes": [
-                {"id": "default", "label": "Command Centre"},
-                {"id": "serene-sage", "label": "Serene Sage"},
-                {"id": "modern-clinical", "label": "Modern Clinical"},
-                {"id": "warm-earth", "label": "Warm Earth"},
-                {"id": "deep-lavender", "label": "Deep Lavender"},
-                {"id": "forest-care", "label": "Forest Care"},
-                {"id": "sunset-support", "label": "Sunset Support"},
-                {"id": "tech-indigo", "label": "Tech Indigo"},
-                {"id": "soft-rose", "label": "Soft Rose"},
-                {"id": "minty-fresh", "label": "Minty Fresh"}
-            ]
+            "authenticity_token": authenticity_token
         }),
     ) {
-        Ok(response) => match token {
-            Some(token) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
-            None => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
-        },
+        Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(error) => error.into_response(),
     }
 }
@@ -187,13 +150,12 @@ pub async fn create(
         if !households.is_empty() {
             return forbidden();
         }
-        let mut response = render_home(
+        let mut response = render_chooser(
             view,
-            true,
             households,
             Some("Enter a household name of up to 100 characters.".to_owned()),
             super::auth::pending_invitation_url(&session),
-            Some(token),
+            token,
         );
         *response.status_mut() = StatusCode::UNPROCESSABLE_ENTITY;
         return response;

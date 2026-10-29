@@ -14,6 +14,47 @@ use sha2::Digest as _;
 
 type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
+#[tokio::test]
+async fn signed_out_root_redirects_to_login_without_profile_controls() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    let mut request = server(&boot);
+    request.save_cookies();
+    let root = request.get("/").await;
+    assert_eq!(root.status_code(), 303);
+    assert_eq!(root.header("location"), "/login");
+    assert_eq!(root.header("cache-control"), "no-store");
+    let login = request.get("/login").await;
+    assert_eq!(login.status_code(), 200);
+    assert!(!login.text().contains("appearance-dialog"));
+    assert!(!login.text().contains("data-appearance-choice"));
+    assert!(
+        !login
+            .text()
+            .contains("href=\"/households/persistence-fixture/profile\"")
+    );
+    let profile = request
+        .get(&format!("/households/{}/profile", fixture.household.slug))
+        .await;
+    assert_eq!(profile.status_code(), 303);
+    assert_eq!(profile.header("location"), "/login");
+    browser_session(&fixture, &mut request, &boot).await;
+    identity_session::Entity::update_many()
+        .col_expr(
+            identity_session::Column::ExpiresAt,
+            sea_orm::sea_query::Expr::value(chrono::Utc::now() - chrono::Duration::days(1)),
+        )
+        .filter(identity_session::Column::UserId.eq(fixture.account.id))
+        .exec(&fixture.admin)
+        .await?;
+    let expired = request.get("/").await;
+    assert_eq!(expired.status_code(), 303);
+    assert_eq!(expired.header("location"), "/login");
+    assert_eq!(expired.header("cache-control"), "no-store");
+    drop(request);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
 async fn boot_browser_fixture() -> (RequestFixture, BootResult) {
     boot_request_fixture_with(|config| {
         let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);

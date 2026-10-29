@@ -128,3 +128,52 @@ task docs:serve
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, development
 workflow, and coding standards.
+
+## Synthetic Loco canary
+
+The release binary includes `task canary-capabilities`, `task canary-seed` and
+`task canary-smoke`. Use `--environment production` with the dedicated canary
+configuration. Ordinary production `db seed` remains disabled. Mount the dedicated
+production YAML supplied by [HomeOps #4578](https://github.com/damacus/home-ops/pull/4578)
+at `/app/config/production.yaml`; it enables stubbed mail and omits `queue.reaper`.
+Enabling canary mode against the stock production configuration deliberately
+fails closed. The ordinary production queue reaper stays unchanged.
+
+Canary settings must explicitly enable the scope `medtracker-canary`, use the
+`medtracker_canary` database and a separate `medtracker_canary_control` database
+on `medtracker-canary-rw.medtracker-canary.svc.cluster.local`, and select an
+immutable image digest. Set `MEDTRACKER_CANARY_SMOKE_KEY` independently from
+session, signing and database credentials. The reset controller supplies
+`MEDTRACKER_CANARY_RUN_ID` and `MEDTRACKER_CANARY_EPOCH`. No SMTP delivery, push
+credentials, S3 configuration, provider sign-in or AI calls are permitted.
+
+The seed embeds synthetic fixtures, including `persistence@example.test` with
+password `password`, two selectable households, an unrelated household, an adult
+and a child with a guardian declaration, stock, treatments, a schedule, dose
+history and a reminder intent. It refuses populated or unrecognised databases.
+A completed matching-image seed is a no-op. The completion marker commits only
+with the entire graph. Stock currently requires a storage label in the app.
+
+HTTP requests require the matching ready image. During fresh verification only
+requests carrying the internal smoke key pass the gate; ordinary authentication
+and household permissions still apply. Read-only `/health` probes also pass
+during fresh verification so Kubernetes can mark the server ready for the smoke
+journey. Health remains unavailable when the control phase or heartbeat is unsafe.
+Workers and scheduled tasks remain paused until verification succeeds and the
+control phase is `ready`. Canary configuration must omit the optional queue reaper so
+it cannot reclaim a live waiting handler. After a worker dies, recover its
+Processing jobs with Loco's native requeue command only after confirming the old
+worker has stopped, or allow the next weekly reset to replace the queue.
+Ordinary production retains its existing reaper setting. Canary pages display a
+persistent synthetic-data warning, last completed reset, next reset and countdown
+in Europe/London time. The read-only `/canary/status` response contains only
+`phase`, `last_success` and `next_reset`.
+The smoke task signs in through the normal endpoint, checks both households,
+records a dose, checks stock and replay, and verifies unrelated-household denial.
+Set `MEDTRACKER_CANARY_SMOKE_URL` to
+`http://medtracker-canary.medtracker-canary.svc.cluster.local:5150`.
+
+Run `task test:canary` for disposable PostgreSQL coverage of the seed, control-only
+capability check, configuration refusals, full application boot and HTTP journey.
+This test is also part of `task ci`. These local checks do not authorise a rollout
+or prove live access through ingress or network policies.

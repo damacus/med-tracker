@@ -50,16 +50,10 @@ async fn administration_polish_overview_and_forms() {
         assert_eq!(page.locator(".admin-action-row").count().await.unwrap(),6);
         assert!(!page.locator("main").text_content().await.unwrap().unwrap().contains("private clinical sentinel"));
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Appearance")).click(None).await.unwrap();
-        page.locator("[data-appearance-choice=dark]").click(None).await.unwrap();
-        page.locator("#appearance-dialog [data-dialog-close]").click(None).await.unwrap();
+        harness::device_appearance(page, "dark").await;
         assert!(page.locator("html").get_attribute("data-theme").await.unwrap().unwrap().ends_with("-dark"));
         capture(page,"overview-dark-desktop").await;
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Appearance")).click(None).await.unwrap();
-        page.locator("[data-appearance-choice=system]").click(None).await.unwrap();
-        page.locator("#appearance-dialog [data-dialog-close]").click(None).await.unwrap();
+        harness::device_appearance(page, "light").await;
         page.locator("#expired-invitations a").click(None).await.unwrap();
         expect(page.locator("#invitation-form")).to_be_visible().await.unwrap();
         page.get_by_label("Email",true).fill("synthetic-invite@example.test",None).await.unwrap();

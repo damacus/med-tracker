@@ -50,15 +50,9 @@ async fn invitation_management_search_delivery_and_keyboard_actions() {
             capture(page,&format!("management-{width}")).await;
         }
         page.set_viewport_size(Viewport{width:1440,height:1000}).await.unwrap();
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Appearance")).click(None).await.unwrap();
-        page.locator("[data-appearance-choice=dark]").click(None).await.unwrap();
-        page.locator("#appearance-dialog [data-dialog-close]").click(None).await.unwrap();
+        harness::device_appearance(page, "dark").await;
         capture(page,"management-dark-1440").await;
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Appearance")).click(None).await.unwrap();
-        page.locator("[data-appearance-choice=system]").click(None).await.unwrap();
-        page.locator("#appearance-dialog [data-dialog-close]").click(None).await.unwrap();
+        harness::device_appearance(page, "light").await;
         page.set_viewport_size(Viewport{width:320,height:844}).await.unwrap();
         page.get_by_label("Email contains",true).fill("MAYA",None).await.unwrap();
         page.get_by_label("Household role",true).nth(1).select_option("member",None).await.unwrap();

@@ -133,7 +133,7 @@ test('dashboard reuses shared symbols without duplicating the profile sprite', (
 function boot(saved, dark = false, allowPalette = true, throws = false) {
   classes.clear();
   const listeners = {};
-  const root = { dataset: { allowPalette: String(allowPalette) }, classList: { toggle(name, value) { value ? classes.add(name) : classes.delete(name); }, add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, [Symbol.iterator]() { return classes.values(); } } };
+  const root = { dataset: { allowPalette: String(allowPalette), appearanceMode: allowPalette ? 'saved' : 'system' }, classList: { toggle(name, value) { value ? classes.add(name) : classes.delete(name); }, add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, [Symbol.iterator]() { return classes.values(); } } };
   const media = { matches: dark, addEventListener(name, fn) { listeners[name] = fn; } };
   const storage = new Map(Object.entries(saved));
   const document = { documentElement: root, querySelector() { return null; }, querySelectorAll() { return []; }, addEventListener(name, fn) { listeners[name] = fn; } };
@@ -152,10 +152,16 @@ test('saved palette and system appearance apply before document readiness', () =
   assert.equal(state.storage.get('med-tracker-theme'), 'warm-earth');
 });
 
-test('signed-out pages keep the saved palette but use neutral surfaces', () => {
+test('signed-out pages follow the device without changing saved preferences', () => {
   const state = boot({ 'med-tracker-theme': 'warm-earth', 'med-tracker-appearance': 'dark' }, false, false);
+  assert.equal(state.root.dataset.theme, 'neutral-light');
+  assert.equal(state.root.dataset.appearance, 'system');
+  state.media.matches = true;
+  state.listeners.change();
   assert.equal(state.root.dataset.theme, 'neutral-dark');
   assert.equal(state.storage.get('med-tracker-theme'), 'warm-earth');
+  assert.equal(state.storage.get('med-tracker-appearance'), 'dark');
+  assert.equal(boot(Object.fromEntries(state.storage), false).root.dataset.theme, 'warm-earth-dark');
 });
 
 test('storage restrictions and unknown values fall back without losing rendering', () => {
@@ -232,4 +238,11 @@ test("shared route selection preserves chooser Inventory and the most specific a
   ]) assert.equal(context.navigationSection(`${root}/${path}`, choices), expected, path);
   assert.equal(context.navigationSection("/households/foreign/add-medication", choices), undefined);
   assert.equal(context.navigationSection(`${root}/add-medication`, choices.filter(item => item.id !== "inventory")), undefined);
+});
+
+test('Appearance controls belong only to Profile settings', () => {
+  for (const file of ['assets/views/layouts/base.html', 'assets/views/auth/login.html']) {
+    assert.doesNotMatch(readFileSync(file, 'utf8'), /data-dialog-open="appearance-dialog"|include "components\/appearance.html"/);
+  }
+  assert.match(readFileSync('assets/views/profile/show.html', 'utf8'), /data-appearance-choice/);
 });

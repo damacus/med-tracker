@@ -24,6 +24,8 @@ mod household_settings;
 mod me_ui;
 #[path = "people.rs"]
 mod people;
+#[path = "personal_history.rs"]
+mod personal_history;
 #[path = "profile.rs"]
 mod profile;
 #[path = "request_trace.rs"]

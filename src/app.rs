@@ -83,6 +83,7 @@ impl Hooks for App {
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        crate::models::canary::configure(&ctx).await?;
         let rate_limit = crate::models::rate_limit::RateLimitState::from_settings(
             ctx.config.settings.as_ref(),
             &ctx.environment,
@@ -154,7 +155,7 @@ impl Hooks for App {
             .register(crate::models::care::invitations::delivery::InvitationMailWorker::build(ctx))
             .await?;
         queue
-            .register(loco_rs::mailer::MailerWorker::build(ctx))
+            .register(crate::models::canary::MailerWorker::build(ctx))
             .await?;
         queue
             .register(crate::models::profile::avatar::AvatarRetirementWorker::build(ctx))
@@ -175,6 +176,10 @@ impl Hooks for App {
                 rate_limit,
                 crate::controllers::api::rate_limit::boundary,
             ));
+        let router = router.layer(axum::middleware::from_fn_with_state(
+            ctx.clone(),
+            crate::models::canary::boundary,
+        ));
         let router = if ctx
             .config
             .server
@@ -193,6 +198,9 @@ impl Hooks for App {
     }
 
     fn register_tasks(tasks: &mut Tasks) {
+        tasks.register(crate::models::canary::CapabilitiesTask);
+        tasks.register(crate::models::canary::SeedTask);
+        tasks.register(crate::models::canary::SmokeTask);
         tasks.register(crate::models::nhs_dmd::ReconcileTask);
         tasks.register(crate::models::care::review_prompts::refresh::RefreshTask);
         tasks.register(crate::models::care::browser_push::scheduler::ReminderTask);

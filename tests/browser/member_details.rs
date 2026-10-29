@@ -60,15 +60,9 @@ async fn member_detail_history_and_management_keyboard_journey() {
         page.get_by_role(AriaRole::Link,named("Cancel")).press("Enter",None).await.unwrap();
         expect(page.get_by_role(AriaRole::Heading,named("Detail dependant"))).to_be_visible().await.unwrap();
         page.set_viewport_size(Viewport{width:1440,height:1000}).await.unwrap();
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Appearance")).click(None).await.unwrap();
-        page.locator("[data-appearance-choice=dark]").click(None).await.unwrap();
-        page.locator("#appearance-dialog [data-dialog-close]").click(None).await.unwrap();
+        harness::device_appearance(page, "dark").await;
         capture(page,"detail-dark-1440").await;
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Appearance")).click(None).await.unwrap();
-        page.locator("[data-appearance-choice=system]").click(None).await.unwrap();
-        page.locator("#appearance-dialog [data-dialog-close]").click(None).await.unwrap();
+        harness::device_appearance(page, "light").await;
         page.goto(&format!("{}/households/persistence-fixture/admin/memberships/74980",journey.origin),None).await.unwrap();
         page.set_viewport_size(Viewport{width:320,height:844}).await.unwrap();
         expect(page.locator(".member-history")).to_contain_text("No recorded membership activity.").await.unwrap();

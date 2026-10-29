@@ -85,6 +85,28 @@ self identity. Historical reads preserve original attribution and require a
 separate account-owned clinical-access audit, without inventing a household.
 These are implementation constraints, not evidence that the reader is complete.
 
+The browser reader uses `/profile/history`; account-bound first-party mobile
+OAuth uses `/api/v1/auth/profile/history` with the same narrow taken-dose reader.
+Both use bounded taken-time and ID pagination. Successful reads commit their
+account-owned audit before releasing records. Refused reads identify the actor
+only when the server has proved their identity; otherwise the refusal has no
+claimed actor. Do not retain additional session records solely to identify
+requests made after sign-out. This decision does not introduce the deferred
+download product described in ADR 0017.
+
+Refusals without a proved identity use the existing structured security logs,
+under the server-generated request trace. This includes anonymous browser
+requests, invalid credentials, rate limits and missing socket peers. Do not write
+anonymous refusals to the database audit ledger or log supplied credentials,
+query values or client request IDs. Keep the limiter's rejection and retry
+behaviour; do not add database work after throttling. These refusal logs do not
+have the clinical ledger's transactional or tamper-evident guarantees. Successful
+reads and refusals by callers whose identity has been proved use that ledger.
+For `AccountClinicalAccess` version events, the ledger envelope takes its outcome
+from `audit_context.outcome`. Security events retain `metadata.outcome`, and
+other version events retain their existing capture behaviour. The forward
+migration changes future entries without rewriting retained ledger history.
+
 ## Consequences
 
 Native authentication tables use restricted runtime grants and the native store's

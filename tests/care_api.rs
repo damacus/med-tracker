@@ -121,6 +121,8 @@ mod resource_credentials;
 mod review_prompts;
 #[path = "care_api/saved_status.rs"]
 mod saved_status;
+#[path = "care_api/schedule_contracts.rs"]
+mod schedule_contracts;
 #[path = "care_api/schedule_lifecycle.rs"]
 mod schedule_lifecycle;
 #[path = "care_api/schedule_scope.rs"]

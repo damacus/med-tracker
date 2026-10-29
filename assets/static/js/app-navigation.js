@@ -98,7 +98,6 @@
     if (!header || !template || !layout || !data?.labels || installed) return;
     const labels = data.labels;
     const searchTrigger = header?.querySelector('[data-global-search-trigger]');
-    const appearanceTrigger = header?.querySelector('[data-dialog-open="appearance-dialog"]');
     const securityLink = header?.querySelector('a[href="/account/security"]');
     const selected = data.selected_section;
     const menu = controls => {
@@ -318,11 +317,6 @@
     const account = dropdown(accountTriggers);
     const accountControls = [];
     for (const trigger of accountTriggers) trigger.setAttribute('aria-label', `${data.initials} ${data.name} ${labels.profile_menu.my_account}`);
-    if (appearanceTrigger) {
-      appearanceTrigger.className = 'min-w-0 whitespace-normal wrap-anywhere';
-      appearanceTrigger.addEventListener('click', () => account.close());
-      accountControls.push(appearanceTrigger);
-    }
     if (securityLink) {
       securityLink.className = 'min-w-0 whitespace-normal wrap-anywhere';
       accountControls.push(securityLink);

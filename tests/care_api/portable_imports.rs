@@ -11,6 +11,9 @@ const PASSPHRASE_HEADER: &str = "x-medtracker-portable-passphrase";
 #[path = "portable_imports/person_schedules.rs"]
 mod person_schedule_restore;
 
+#[path = "portable_rails.rs"]
+mod rails_compatibility;
+
 #[tokio::test]
 async fn portable_v3_rejects_legacy_person_location_links_before_any_writes() {
     let app = Application::new().await;

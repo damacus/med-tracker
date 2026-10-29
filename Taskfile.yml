@@ -50,11 +50,31 @@ includes:
     flatten: true
 
 tasks:
+  portable:prepare:
+    desc: Prepare an extracted household v2 payload and manifest for Rust v3 (passphrase on stdin)
+    requires: {vars: [PAYLOAD, MANIFEST, OUTPUT]}
+    cmds:
+      - task: host:portable:prepare
+        vars: {PAYLOAD: '{{.PAYLOAD}}', MANIFEST: '{{.MANIFEST}}', OUTPUT: '{{.OUTPUT}}'}
+  test:portable-rails-fixtures:
+    desc: Check synthetic portable fixtures against the read-only Rails serializers
+    cmds: [node --test scripts/test_portable_rails_fixture.mjs]
+  whitespace:
+    desc: Check staged, unstaged and untracked files without changing staging
+    cmds:
+      - 'fish --no-config scripts/check_whitespace.fish {{.BASE | default "HEAD" | shellQuote}}'
+  test:whitespace:
+    desc: Test the local whitespace check with disposable Git repositories
+    cmds: [node --test scripts/test_whitespace.mjs]
   image:check:
     desc: Detect release-image tool drift from application CI
     cmds:
       - node --test scripts/test_loco_image_tooling.mjs
+      - node --test scripts/test_loco_image_publication.mjs
       - node scripts/check_loco_image_tooling.mjs
+  image:release:check:
+    desc: Check release versions, exact source selection and publication wiring
+    cmds: [node --test scripts/test_loco_image_release.mjs]
   image:build:
     desc: Build the root Loco release image for the local architecture
     cmds:
@@ -65,7 +85,7 @@ tasks:
     env:
       LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
       LOCO_IMAGE_SUBNET: '{{.LOCO_IMAGE_SUBNET | default ""}}'
-    cmds: [python3 scripts/test_loco_image.py]
+    cmds: [node --test scripts/test_loco_image.mjs]
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]
@@ -118,5 +138,7 @@ tasks:
     cmds: [{task: "dev:up"}]
   test:
     cmds: [{task: "test:unit"}, {task: "test:integration"}, {task: "test:browser"}]
+  test:canary:
+    cmds: [{task: "host:test:canary"}]
   test:tooling:
     cmds: [node --test scripts/test_compose_tasks.mjs scripts/test_invitation_mail.mjs]

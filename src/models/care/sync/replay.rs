@@ -216,7 +216,7 @@ async fn authorize(
                 return Err(OperationError::Forbidden);
             }
             let (body, _) = dosages::read(tenant, &id.to_string()).await?;
-            if body["data"]["portable_id"].as_str() != portable {
+            if Some(body.data.portable_id.as_str()) != portable {
                 return Err(OperationError::Forbidden);
             }
         }

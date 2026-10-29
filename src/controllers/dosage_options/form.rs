@@ -62,18 +62,13 @@ pub(super) fn fields(draft: &Value, errors: &Value, names: &[&str]) -> Value {
     }).collect::<Vec<_>>())
 }
 
-pub(super) fn browser_hours_valid(
-    draft: &HashMap<String, String>,
-    existing: Option<&Value>,
-) -> bool {
+pub(super) fn browser_hours_valid(draft: &HashMap<String, String>, existing: Option<&str>) -> bool {
     let entered =
         forms::field(draft, "default_min_hours_between_doses").parse::<sea_orm::prelude::Decimal>();
     match entered {
         Ok(value) if value.fract().is_zero() => true,
         Ok(value) => {
-            existing
-                .and_then(Value::as_str)
-                .and_then(|stored| stored.parse::<sea_orm::prelude::Decimal>().ok())
+            existing.and_then(|stored| stored.parse::<sea_orm::prelude::Decimal>().ok())
                 == Some(value)
         }
         Err(_) => false,

@@ -32,6 +32,8 @@ remains v1. The retained Rails exporter emits v1/v2 and includes person-location
 links, so a Rails export is not proof of an unchanged, complete Rust import.
 [#2702](https://github.com/damacus/med-tracker/issues/2702) tracks the explicit
 collection compatibility and any required reviewed portable-data adaptation.
+See the [synthetic Rails compatibility evidence](clinical-portable-evidence.md)
+for the collection/field matrix, reproducible fixtures and remaining gaps.
 Do not change a format marker or silently discard clinical fields to bypass
 validation. There is no supported rollback to Rails or promised Rails importer
 for records created in Rust.
