@@ -1,7 +1,11 @@
 use super::*;
-use crate::models::entities::security_audit_event;
-use sea_orm::{ConnectionTrait, DbBackend, QueryResult, Statement};
+use crate::models::entities::{carer_relationship, grant, membership, security_audit_event};
+use sea_orm::sea_query::{Alias, Expr, Func, LockType, Query};
+use sea_orm::{
+    Condition, ConnectionTrait, DbBackend, EntityTrait, ExprTrait, QueryFilter, Statement,
+};
 use serde::Serialize;
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 pub struct Person {
@@ -11,41 +15,158 @@ pub struct Person {
     pub enabled: bool,
 }
 
-async fn grants(
-    tenant: &TenantTransaction,
-    lock: bool,
-) -> Result<Vec<QueryResult>, OperationError> {
-    let mut sql = "SELECT g.id AS grant_id,p.id,p.name,p.person_type,g.missed_dose_notifications_enabled AS enabled FROM person_access_grants g JOIN people p ON p.id=g.person_id JOIN household_memberships subject ON subject.person_id=p.id AND subject.household_id=g.household_id AND subject.status='active' AND subject.revoked_at IS NULL WHERE g.household_id=$1 AND g.household_membership_id=$2 AND g.person_id<>$3 AND g.access_level='manage' AND g.revoked_at IS NULL AND (g.expires_at IS NULL OR g.expires_at>timezone('UTC',clock_timestamp())) AND (g.carer_relationship_id IS NULL OR EXISTS(SELECT 1 FROM carer_relationships link WHERE link.id=g.carer_relationship_id AND link.household_id=g.household_id AND link.active AND (link.guardian_declaration_id IS NULL OR EXISTS(SELECT 1 FROM guardian_declarations declaration WHERE declaration.id=link.guardian_declaration_id AND declaration.withdrawn_at IS NULL AND declaration.superseded_at IS NULL)))) ORDER BY p.name,p.id,g.id".to_owned();
+struct GrantRow {
+    grant_id: i64,
+    person: person::Model,
+    enabled: bool,
+}
+
+fn linked_relationship_exists(actor_person_id: i64) -> sea_orm::sea_query::SelectStatement {
+    let link = Alias::new("link");
+    let declaration = Alias::new("declaration");
+    let live_declaration = Query::select()
+        .expr(1)
+        .from_as(
+            (Alias::new("public"), Alias::new("guardian_declarations")),
+            declaration.clone(),
+        )
+        .cond_where(
+            Condition::all()
+                .add(Expr::col((declaration.clone(), "id")).equals((
+                    link.clone(),
+                    carer_relationship::Column::GuardianDeclarationId,
+                )))
+                .add(Expr::col((declaration.clone(), "withdrawn_at")).is_null())
+                .add(Expr::col((declaration.clone(), "superseded_at")).is_null()),
+        )
+        .to_owned();
+    Query::select()
+        .expr(1)
+        .from_as(carer_relationship::Entity, link.clone())
+        .cond_where(
+            Condition::all()
+                .add(
+                    Expr::col((link.clone(), carer_relationship::Column::Id))
+                        .equals((grant::Entity, grant::Column::CarerRelationshipId)),
+                )
+                .add(
+                    Expr::col((link.clone(), carer_relationship::Column::HouseholdId))
+                        .equals((grant::Entity, grant::Column::HouseholdId)),
+                )
+                .add(
+                    Expr::col((link.clone(), carer_relationship::Column::PatientId))
+                        .equals((grant::Entity, grant::Column::PersonId)),
+                )
+                .add(
+                    Expr::col((link.clone(), carer_relationship::Column::CarerId))
+                        .eq(actor_person_id),
+                )
+                .add(Expr::col((link.clone(), carer_relationship::Column::Active)).eq(true))
+                .add(
+                    Condition::any()
+                        .add(
+                            Expr::col((
+                                link.clone(),
+                                carer_relationship::Column::GuardianDeclarationId,
+                            ))
+                            .is_null(),
+                        )
+                        .add(Expr::exists(live_declaration)),
+                ),
+        )
+        .to_owned()
+}
+
+fn active_subject_membership_exists() -> sea_orm::sea_query::SelectStatement {
+    let subject = Alias::new("subject");
+    Query::select()
+        .expr(1)
+        .from_as(membership::Entity, subject.clone())
+        .cond_where(
+            Condition::all()
+                .add(
+                    Expr::col((subject.clone(), membership::Column::PersonId))
+                        .equals((grant::Entity, grant::Column::PersonId)),
+                )
+                .add(
+                    Expr::col((subject.clone(), membership::Column::HouseholdId))
+                        .equals((grant::Entity, grant::Column::HouseholdId)),
+                )
+                .add(Expr::col((subject.clone(), membership::Column::Status)).eq("active"))
+                .add(Expr::col((subject.clone(), membership::Column::RevokedAt)).is_null()),
+        )
+        .to_owned()
+}
+
+async fn grants(tenant: &TenantTransaction, lock: bool) -> Result<Vec<GrantRow>, OperationError> {
+    let actor_person_id = tenant.membership().person_id;
+    let mut query = grant::Entity::find()
+        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
+        .filter(grant::Column::PersonId.ne(actor_person_id))
+        .filter(grant::Column::AccessLevel.eq("manage"))
+        .filter(grant::Column::RevokedAt.is_null())
+        .filter(
+            Condition::any()
+                .add(grant::Column::ExpiresAt.is_null())
+                .add(
+                    Expr::col((grant::Entity, grant::Column::ExpiresAt)).gt(Expr::from(
+                        Func::cust("pg_catalog.timezone").args(vec![
+                            Expr::val("UTC"),
+                            Expr::from(Func::cust("pg_catalog.clock_timestamp")),
+                        ]),
+                    )),
+                ),
+        )
+        .filter(
+            Condition::any()
+                .add(grant::Column::CarerRelationshipId.is_null())
+                .add(Expr::exists(linked_relationship_exists(actor_person_id))),
+        )
+        .filter(Expr::exists(active_subject_membership_exists()));
     if lock {
-        sql.push_str(" FOR UPDATE OF g");
+        query = query.lock(LockType::Update);
     }
-    Ok(tenant
-        .transaction()
-        .query_all_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            sql,
-            [
-                tenant.scope().household_id.into(),
-                tenant.membership().id.into(),
-                tenant.membership().person_id.into(),
-            ],
-        ))
-        .await?)
+    let rows = query.all(tenant.transaction()).await?;
+    let people: HashMap<i64, person::Model> = person::Entity::find()
+        .filter(person::Column::Id.is_in(rows.iter().map(|row| row.person_id)))
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .map(|model| (model.id, model))
+        .collect();
+    let mut grants = Vec::new();
+    for row in rows {
+        let person = people
+            .get(&row.person_id)
+            .ok_or(OperationError::Unavailable)?;
+        grants.push(GrantRow {
+            grant_id: row.id,
+            person: person.clone(),
+            enabled: row.missed_dose_notifications_enabled,
+        });
+    }
+    grants.sort_by(|left, right| {
+        left.person
+            .name
+            .cmp(&right.person.name)
+            .then(left.person.id.cmp(&right.person.id))
+            .then(left.grant_id.cmp(&right.grant_id))
+    });
+    Ok(grants)
 }
 
 pub async fn read(tenant: &TenantTransaction) -> Result<Vec<Person>, OperationError> {
     let mut people: Vec<Person> = Vec::new();
     for row in grants(tenant, false).await? {
-        let id = row.try_get::<i64>("", "id")?;
-        let enabled = row.try_get::<bool>("", "enabled")?;
-        if let Some(existing) = people.iter_mut().find(|person| person.id == id) {
-            existing.enabled |= enabled;
+        if let Some(existing) = people.iter_mut().find(|person| person.id == row.person.id) {
+            existing.enabled |= row.enabled;
         } else {
             people.push(Person {
-                id,
-                name: row.try_get("", "name")?,
-                adult: row.try_get::<i32>("", "person_type")? == 0,
-                enabled,
+                id: row.person.id,
+                name: row.person.name,
+                adult: row.person.person_type == 0,
+                enabled: row.enabled,
             });
         }
     }
@@ -80,17 +201,16 @@ pub async fn update(
     let mut changed_grants = Vec::new();
     let mut previous = Vec::new();
     for row in rows {
-        if row.try_get::<i32>("", "person_type")? != 0 {
+        if row.person.person_type != 0 {
             continue;
         }
-        let id = row.try_get::<i64>("", "id")?;
+        let id = row.person.id;
         adult_ids.push(id);
-        let enabled = row.try_get::<bool>("", "enabled")?;
-        if enabled {
+        if row.enabled {
             previous.push(id);
         }
-        if enabled != selected.contains(&id) {
-            changed_grants.push(row.try_get::<i64>("", "grant_id")?);
+        if row.enabled != selected.contains(&id) {
+            changed_grants.push(row.grant_id);
         }
     }
     if selected.iter().any(|id| !adult_ids.contains(id)) {
