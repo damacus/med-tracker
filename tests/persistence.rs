@@ -117,22 +117,34 @@ async fn capture_canonical_identity_catalogues_when_requested() {
             "legacy-schedule-prescriptions-catalog.json",
             "live-adoption-history-catalog.json",
             "frozen-adoption-history-catalog.json",
+            "restore-history-index-catalog.json",
         ] {
-            migration::Migrator::up(&db, Some(1)).await.unwrap();
-            let mut current = catalog(&db).await;
-            current.sort_all_objects();
-            let baseline = previous.as_object().unwrap();
-            let actual = current.as_object().unwrap();
-            let removed = baseline
-                .keys()
-                .filter(|key| !actual.contains_key(*key))
-                .cloned()
-                .collect::<Vec<_>>();
-            let changed = actual
-                .iter()
-                .filter(|(key, value)| baseline.get(*key) != Some(*value))
-                .map(|(key, value)| (key.clone(), value.clone()))
-                .collect::<serde_json::Map<_, _>>();
+            // Data-only migrations (for example backfills) leave the identity
+            // catalogue unchanged, so keep stepping until the next
+            // catalogue-changing migration lands.
+            let mut removed = Vec::new();
+            let mut changed = serde_json::Map::new();
+            for _ in 0..4 {
+                migration::Migrator::up(&db, Some(1)).await.unwrap();
+                let mut current = catalog(&db).await;
+                current.sort_all_objects();
+                let baseline = previous.as_object().unwrap();
+                let actual = current.as_object().unwrap();
+                removed = baseline
+                    .keys()
+                    .filter(|key| !actual.contains_key(*key))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                changed = actual
+                    .iter()
+                    .filter(|(key, value)| baseline.get(*key) != Some(*value))
+                    .map(|(key, value)| (key.clone(), value.clone()))
+                    .collect::<serde_json::Map<_, _>>();
+                previous = current;
+                if !changed.is_empty() || !removed.is_empty() {
+                    break;
+                }
+            }
             assert!(!changed.is_empty());
             std::fs::write(
                 output.join(file),
@@ -142,7 +154,6 @@ async fn capture_canonical_identity_catalogues_when_requested() {
                 .unwrap(),
             )
             .unwrap();
-            previous = current;
         }
         db.close().await.unwrap();
     })
@@ -234,6 +245,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             include_str!("../migration/legacy-schedule-prescriptions-catalog.json"),
             include_str!("../migration/live-adoption-history-catalog.json"),
             include_str!("../migration/frozen-adoption-history-catalog.json"),
+            include_str!("../migration/restore-history-index-catalog.json"),
         ] {
             let parsed: CanonicalIdentityCatalogue = serde_json::from_str(catalogue)?;
             expected.extend(parsed.changed);
@@ -260,7 +272,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             differences.join("\n")
         );
         let ledger = ledger_rows(&db).await;
-        assert_eq!(ledger.len(), 25);
+        assert_eq!(ledger.len(), 26);
         assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
         assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
         assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
@@ -270,7 +282,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         assert_eq!(ledger[17].0, "m20261028_000019_history_audit_outcome");
         assert_eq!(
             ledger.last().map(|row| row.0.as_str()),
-            Some("m20261029_000026_adoption_fact_backfill")
+            Some("m20261030_000027_restore_history_indexing")
         );
         migration::Migrator::up(&db, None).await.unwrap();
         assert_eq!(catalog(&db).await, before);

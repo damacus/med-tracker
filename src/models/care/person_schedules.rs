@@ -15,6 +15,7 @@ pub(crate) mod legacy;
 mod pauses;
 mod personal;
 mod view;
+pub(crate) use adoption_history::index_restored;
 pub(crate) use view::SharedPlan;
 pub(crate) mod projection;
 pub(crate) mod shared_commands;

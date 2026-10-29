@@ -296,6 +296,129 @@ pub(super) async fn capture_frozen(
     Ok(())
 }
 
+/// Restore-time capture for a take written onto an already-linked canonical
+/// source: mints the immutable fact bound to the source's current plan link
+/// and seeds the minimal safety index row. Takes on unlinked or ended sources
+/// return `false` untouched, and a take that already carries a fact is
+/// skipped so backup replay stays idempotent. The mint itself enforces the
+/// same household actor, clinical-authority, captured-actor and
+/// guardian-declaration predicates as adoption capture, and the source row is
+/// locked so revocation cannot slip past the check.
+pub(crate) async fn index_restored(
+    tenant: &TenantTransaction,
+    take: &medication_take::Model,
+    provenance: Option<&super::super::doses::CredentialProvenance>,
+) -> Result<bool, OperationError> {
+    let Some(schedule_id) = take.schedule_id else {
+        return Ok(false);
+    };
+    if take.person_medication_id.is_some() || take.household_id != tenant.scope().household_id {
+        return Ok(false);
+    }
+    let db = tenant.transaction();
+    let Some(source) = schedule::Entity::find_by_id(schedule_id)
+        .filter(schedule::Column::HouseholdId.eq(take.household_id))
+        .filter(schedule::Column::ExecutionEndedAt.is_null())
+        .filter(schedule::Column::PersonScheduleId.is_not_null())
+        .filter(schedule::Column::CanonicalOrigin.eq(true))
+        .lock_shared()
+        .one(db)
+        .await?
+    else {
+        return Ok(false);
+    };
+    let Some(plan) = source.person_schedule_id.clone() else {
+        return Ok(false);
+    };
+    if adoption_fact::Entity::find_by_id(take.id)
+        .one(db)
+        .await?
+        .is_some()
+    {
+        return Ok(false);
+    }
+    crate::models::access::require_person_access(
+        tenant,
+        source.person_id,
+        crate::models::access::PersonAccess::Manage,
+    )
+    .await?;
+    let declaration = if tenant.membership().person_id == source.person_id {
+        None
+    } else {
+        Some(
+            sharing::guardian(
+                db,
+                crate::models::ids::PersonId::from_database(source.person_id),
+            )
+            .await?
+            .ok_or(OperationError::Forbidden)?,
+        )
+    };
+    let original = version::Entity::find()
+        .filter(version::Column::ItemType.eq("MedicationTake"))
+        .filter(version::Column::ItemId.eq(take.id))
+        .filter(version::Column::Event.eq("create"))
+        .order_by_asc(version::Column::Id)
+        .one(db)
+        .await?
+        .ok_or_else(unavailable)?;
+    if !matches_audit(take, &original)? {
+        return Err(unavailable());
+    }
+    let mut fact = adoption_fact::Model {
+        medication_take_id: take.id,
+        person_schedule_id: Some(plan.clone()),
+        source_schedule_id: source.id,
+        source_portable_id: source.portable_id.clone(),
+        person_id: source.person_id,
+        household_id: source.household_id,
+        take_portable_id: take.portable_id.clone(),
+        original_version_id: original.id,
+        client_uuid: take.client_uuid.clone(),
+        taken_at: take.taken_at.ok_or_else(unavailable)?,
+        dose_amount: take
+            .dose_amount
+            .filter(|amount| *amount > sea_orm::prelude::Decimal::ZERO)
+            .ok_or_else(unavailable)?,
+        dose_unit: take.dose_unit.clone(),
+        taken_from_medication_id: take.taken_from_medication_id,
+        taken_from_location_id: take.taken_from_location_id,
+        take_created_at: take.created_at,
+        take_updated_at: take.updated_at,
+        fact_hash: Vec::new(),
+        captured_by_account_id: tenant.scope().actor.account_id,
+        captured_by_person_id: tenant.membership().person_id,
+        captured_by_membership_id: tenant.membership().id,
+        guardian_declaration_id: declaration,
+        request_id: tenant.scope().request_id.clone(),
+        authentication_method: provenance.map(|value| value.method.label().into()),
+        credential_reference: provenance.map(|value| value.reference.clone()),
+        captured_at: Utc::now().naive_utc(),
+    };
+    fact.fact_hash = fact_hash(db, &fact).await?;
+    // Only this restore path may mint evidence on an already-linked source:
+    // the insert policy and guard require the restoring take marker, so a
+    // linked source without it keeps the prospective-adoption-only binding
+    // and real fresh doses cannot gain late evidence.
+    db.query_one_raw(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DbBackend::Postgres,
+        "SELECT set_config('med_tracker.restoring_take_id', $1, true)",
+        [take.id.to_string().into()],
+    ))
+    .await?;
+    let minted = fact.into_active_model().insert(db).await;
+    db.query_one_raw(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DbBackend::Postgres,
+        "SELECT set_config('med_tracker.restoring_take_id', $1, true)",
+        [String::new().into()],
+    ))
+    .await?;
+    let fact = minted?;
+    CapturedHistory::bind(vec![fact]).seed(db, &plan).await?;
+    Ok(true)
+}
+
 impl CapturedHistory {
     pub(super) fn bind(facts: Vec<adoption_fact::Model>) -> Self {
         Self(facts)

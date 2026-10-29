@@ -310,7 +310,7 @@ pub(crate) async fn current(
         .is_some())
 }
 
-pub(super) async fn clinical_authority(
+pub(crate) async fn clinical_authority(
     db: &impl ConnectionTrait,
     subject: PersonId,
 ) -> Result<bool, OperationError> {

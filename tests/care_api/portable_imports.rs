@@ -8,6 +8,9 @@ use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 
 const PASSPHRASE: &str = "synthetic portable secret";
 const PASSPHRASE_HEADER: &str = "x-medtracker-portable-passphrase";
+#[path = "portable_imports/history_indexing.rs"]
+mod history_indexing;
+
 #[path = "portable_imports/person_schedules.rs"]
 mod person_schedule_restore;
 

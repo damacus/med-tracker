@@ -1849,3 +1849,44 @@ async fn legacy_departure_frozen_evidence_rejects_late_forged_and_unbound_writes
     manager.close().await;
     app.close().await;
 }
+
+#[tokio::test]
+async fn legacy_departure_frozen_receipt_rejects_row_level_replay() {
+    let app = Application::new().await;
+    let dependent = dependent_departure(&app).await;
+    let adopted = Application::assert_status(
+        adopt(&app, &dependent.token, &dependent.source.portable_id).await,
+        201,
+    )
+    .await;
+    let plan = adopted["data"]["id"].as_str().unwrap().to_owned();
+    let scope = tenant(&app, app.fixture.account.id, app.fixture.household.id).await;
+    assert_eq!(
+        administrations::Entity::find()
+            .filter(administrations::Column::MedicationTakeId.eq(dependent.take.id))
+            .count(scope.transaction())
+            .await
+            .unwrap(),
+        1,
+        "adoption seeds exactly one frozen receipt"
+    );
+    let replayed = administrations::ActiveModel {
+        person_schedule_id: Set(plan),
+        household_id: Set(dependent.take.household_id),
+        medication_take_id: Set(dependent.take.id),
+        taken_at: Set(dependent.take.taken_at.unwrap()),
+        occurrence_starts_on: Set(None),
+        occurrence_position: Set(None),
+        ..Default::default()
+    };
+    assert!(
+        administrations::Entity::insert(replayed)
+            .exec_without_returning(scope.transaction())
+            .await
+            .is_err(),
+        "a second frozen receipt for the same take must not replay"
+    );
+    scope.rollback().await.unwrap();
+    dependent.manager.close().await;
+    app.close().await;
+}
