@@ -383,8 +383,77 @@ async fn seeded_care_full_boot_gate_and_replay() {
         )
         .await
         .unwrap();
+        page.get_by_role(
+            playwright_rs::protocol::AriaRole::Button,
+            Some(
+                playwright_rs::protocol::GetByRoleOptions::default()
+                    .name("Dismiss warning")
+                    .exact(true),
+            ),
+        )
+        .press("Enter", None)
+        .await
+        .unwrap();
+        playwright_rs::expect(page.locator("[data-canary-notice]"))
+            .not()
+            .to_be_visible()
+            .await
+            .unwrap();
+        assert_eq!(
+            page.evaluate::<(), String>("() => document.activeElement.id", None)
+                .await
+                .unwrap(),
+            "main"
+        );
+        page.reload(None).await.unwrap();
+        playwright_rs::expect(page.locator("[data-canary-notice]"))
+            .not()
+            .to_be_visible()
+            .await
+            .unwrap();
+        page.goto(url.join("login").unwrap().as_ref(), None)
+            .await
+            .unwrap();
+        playwright_rs::expect(page.locator("[data-canary-notice]"))
+            .not()
+            .to_be_visible()
+            .await
+            .unwrap();
+        page.screenshot_to_file(
+            &std::path::Path::new("docs/screenshots/browser-journeys")
+                .join(format!("{name}-dismissed.png")),
+            playwright_rs::protocol::ScreenshotOptions::default(),
+        )
+        .await
+        .unwrap();
+        let fresh_tab = context.new_page().await.unwrap();
+        fresh_tab
+            .goto(url.join("__test/canary-notice").unwrap().as_ref(), None)
+            .await
+            .unwrap();
+        playwright_rs::expect(fresh_tab.locator("[data-canary-notice]"))
+            .to_be_visible()
+            .await
+            .unwrap();
         context.close().await.unwrap();
     }
+    let no_script = browser
+        .new_context_with_options(
+            playwright_rs::protocol::BrowserContextOptions::builder()
+                .javascript_enabled(false)
+                .build(),
+        )
+        .await
+        .unwrap();
+    let page = no_script.new_page().await.unwrap();
+    page.goto(url.join("__test/canary-notice").unwrap().as_ref(), None)
+        .await
+        .unwrap();
+    playwright_rs::expect(page.locator("[data-canary-notice]"))
+        .to_be_visible()
+        .await
+        .unwrap();
+    no_script.close().await.unwrap();
     browser.close().await.unwrap();
     serving.abort();
 
