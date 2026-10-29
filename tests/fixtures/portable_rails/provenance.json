@@ -6,6 +6,8 @@
     "rails/app/services/portable_data/dose_occurrence_serializer.rb": "238078f8e3180d01d51b2cfc3b8b42385eb022371b6d6f49fb3a8cfd393d5b97",
     "rails/app/services/portable_data/exporter.rb": "764ed9c0c09fb950503d5a859b1f503a26612a2e0d981a72f0b242a16ffc9657",
     "rails/app/services/portable_data/encryptor.rb": "047471cf4d99496895c5fff9e50dd3b438871f52c98465135f259f4a8f7548f6",
+    "rails/app/services/households/hosted_export_authorization.rb": "79f302baf161ef584ad5f09f9c639d456f59cecaeb906df63740032018a1101c",
+    "rails/app/services/households/hosted_export.rb": "5bfc651c9abffff06ace49b1ca46c45993640007d62cc48e5976a1b2862f2942",
     "rails/config/application.rb": "8a361e8163224ca80e2e9f276b572642460ddc3e3200e1a7f3b783906ef250bf",
     "rails/Gemfile.lock": "3a20f714612ce1e0e8186f2ae600b5075fa47ead9ed1a4376a49f66254e42290"
   },

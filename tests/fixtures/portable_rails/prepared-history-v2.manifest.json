@@ -1,0 +1,19 @@
+{
+  "format": "medtracker.household-export.v1",
+  "export_id": 2702,
+  "portable_format": "medtracker.portable.v2",
+  "record_counts": {
+    "people": 1,
+    "locations": 2,
+    "medications": 1,
+    "dosage_options": 1,
+    "schedules": 1,
+    "person_medications": 1,
+    "medication_takes": 1,
+    "notification_preferences": 1,
+    "health_events": 1,
+    "dose_occurrences": 1,
+    "medication_pause_periods": 1
+  },
+  "attachments": []
+}

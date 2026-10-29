@@ -36,7 +36,7 @@ rtk task test:integration TARGET=care_api FILTER=rails_serializer_
 
 To regenerate after reviewing a reference-source change, run
 `ruby tests/fixtures/portable_rails/generate.rb` with that same runtime.
-Encryption uses random salts/nonces, so regeneration changes ciphertext;
+Encryption uses random salts/nonces. Regeneration retains valid unchanged envelopes;
 `--check` decrypts the committed envelope and compares its plaintext instead.
 The passphrase is the deliberately public synthetic test value
 `synthetic portable secret`. Never use it for actual records.
@@ -44,7 +44,7 @@ The passphrase is the deliberately public synthetic test value
 The Rust acceptance module checks every recorded source hash during the existing
 API CI job, without requiring Ruby or Rails in CI. A source/configuration/lockfile
 change fails that check until the synthetic fixtures are reviewed and regenerated.
-The Docker build context explicitly allowlists those eight read-only inputs so
+The Docker build context explicitly allowlists those ten read-only inputs so
 the same check also runs through the container test tasks. The Ruby task above
 additionally reproduces the serializer output and decrypts the committed envelopes.
 
@@ -57,6 +57,12 @@ additionally reproduces the serializer output and decrypts the committed envelop
 | `historical-location-v2` | Household v2 with stock moved since a historical take | Decrypts successfully; dry-run reports the location mismatch and apply rejects without domain writes. This is a retained v1/v2 compatibility gap, not discarded or rewritten history. |
 
 Each row has a plaintext `.json` and Rails-produced `.encrypted.json`.
+The additional `prepared-history-v2` household fixture and HostedExport manifest
+exercise the explicit [preparation path](clinical-transfer-preparation.md), with
+different current and historical stock labels and all eleven collections. Its
+identities are separate from the rejection fixtures. Hosted manifests and archive
+entry serialization use the retained pure builders without running database
+selection or export authorisation.
 The fixtures contain two storage labels, fractional medication/dosage stock,
 one dependent adult, a schedule,
 routine assignment, a historical take, a closed pause with unavailable original
@@ -119,7 +125,10 @@ v3 export/import and obsolete-link rejection; they do not turn Rails v2 into v3.
 - A reviewed operator path for complete clinical transfer when Rails person-location
   links are non-empty, historical taken-from labels differ from current stock,
   or health events are absent from the chosen export. No
-  adapter, automatic data removal or ZIP restoration is delivered here.
+  automatic data removal or ZIP restoration is delivered here. The explicit
+  [household preparation path](clinical-transfer-preparation.md) now addresses
+  moved-stock history and included health events when obsolete links are empty;
+  it deliberately rejects nonempty obsolete links and attachments.
 - Database-backed Rails export selection, model validations, actual deployed Ruby/
   Rails dependency versions and every supported schedule/history variant. The
   in-memory fixture establishes serializer/envelope interoperability only.

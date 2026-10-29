@@ -35,6 +35,9 @@ rails/config/**
 !rails/app/services/portable_data/dose_occurrence_serializer.rb
 !rails/app/services/portable_data/exporter.rb
 !rails/app/services/portable_data/encryptor.rb
+!rails/app/services/households/
+!rails/app/services/households/hosted_export_authorization.rb
+!rails/app/services/households/hosted_export.rb
 !rails/app/components/
 !rails/app/components/auth/
 !rails/app/components/auth/mt_logo.rb
@@ -56,6 +59,7 @@ scripts/__pycache__/
 !tests/**
 !examples/
 !examples/api-fixtures.rs
+!examples/prepare-clinical-transfer.rs
 
 !docs/
 !docs/api/

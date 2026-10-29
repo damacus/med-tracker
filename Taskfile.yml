@@ -50,6 +50,12 @@ includes:
     flatten: true
 
 tasks:
+  portable:prepare:
+    desc: Prepare an extracted household v2 payload and manifest for Rust v3 (passphrase on stdin)
+    requires: {vars: [PAYLOAD, MANIFEST, OUTPUT]}
+    cmds:
+      - task: host:portable:prepare
+        vars: {PAYLOAD: '{{.PAYLOAD}}', MANIFEST: '{{.MANIFEST}}', OUTPUT: '{{.OUTPUT}}'}
   test:portable-rails-fixtures:
     desc: Check synthetic portable fixtures against the read-only Rails serializers
     cmds: [node --test scripts/test_portable_rails_fixture.mjs]
