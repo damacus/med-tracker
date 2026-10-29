@@ -5,24 +5,54 @@ import vm from "node:vm";
 
 const source = fs.readFileSync(new URL("../../assets/static/js/canary.js", import.meta.url), "utf8");
 const flush = () => new Promise(resolve => setImmediate(resolve));
-function fixture({missing = false, failed = false} = {}) {
+function fixture({missing = false, failed = false, storage = new Map(), blocked = false} = {}) {
   const fields = Object.fromEntries(["last", "next", "countdown"].map(key => [key, {textContent: "Loading"}]));
   let now = Date.parse("2026-10-24T03:00:00Z");
   const polls = [];
   const requests = [];
+  const dismiss = {addEventListener: (_event, callback) => { dismiss.click = callback; }};
+  const notice = {hidden: false, querySelector: selector => selector === '[data-canary-dismiss]' ? dismiss : fields[selector.match(/canary-(.*)\]/)[1]]};
   class Clock extends Date { static now() { return now; } }
   const context = {
-    document: {querySelector: () => missing ? null : {querySelector: selector => fields[selector.match(/canary-(.*)\]/)[1]]}},
+    document: {querySelector: () => missing ? null : notice, getElementById: () => null},
+    sessionStorage: {
+      getItem(key) { if (blocked) throw Error('blocked'); return storage.get(key); },
+      setItem(key, value) { if (blocked) throw Error('blocked'); storage.set(key, value); },
+    },
     Date: Clock, Intl, Number,
-    window: {setInterval: (callback, interval) => polls.push({callback, interval})},
+    window: {
+      setInterval: (callback, interval) => { polls.push({callback, interval}); return polls.length; },
+      clearInterval: id => { polls[id - 1].cleared = true; },
+    },
     fetch: async (url, options) => {
       requests.push({url, options});
       return {ok: !failed, json: async () => ({phase: "ready", last_success: "2026-10-24T03:00:00Z", next_reset: "2026-10-25T04:00:00Z"})};
     },
   };
   vm.runInNewContext(source, context);
-  return {fields, polls, requests, advance: value => {now = Date.parse(value);}};
+  return {fields, polls, requests, notice, dismiss, storage, advance: value => {now = Date.parse(value);}};
 }
+
+test('dismissal hides the warning and stops polling for the tab session', async () => {
+  const f = fixture(); await flush();
+  assert.equal(f.notice.hidden, false);
+  f.dismiss.click();
+  assert.equal(f.notice.hidden, true);
+  assert.equal(f.polls[0].cleared, true);
+  const reload = fixture({storage: f.storage}); await flush();
+  assert.equal(reload.notice.hidden, true);
+  assert.equal(reload.requests.length, 0);
+  assert.equal(reload.polls.length, 0);
+  assert.equal(fixture().notice.hidden, false);
+});
+
+test('storage restrictions still allow dismissal on the current page', async () => {
+  const f = fixture({blocked: true}); await flush();
+  f.dismiss.click();
+  assert.equal(f.notice.hidden, true);
+  assert.equal(f.polls[0].cleared, true);
+  assert.equal(fixture({blocked: true}).notice.hidden, false);
+});
 
 test("reset dates use London across the autumn clock change and countdown uses exact instants", async () => {
   const f = fixture(); await flush();

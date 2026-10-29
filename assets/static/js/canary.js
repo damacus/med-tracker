@@ -1,6 +1,20 @@
 (() => {
   const notice = document.querySelector("[data-canary-notice]");
   if (!notice) return;
+  const dismissalKey = "med-tracker-canary-dismissed";
+  try {
+    if (sessionStorage.getItem(dismissalKey) === "true") {
+      notice.hidden = true;
+      return;
+    }
+  } catch {}
+  let interval;
+  notice.querySelector("[data-canary-dismiss]").addEventListener("click", () => {
+    notice.hidden = true;
+    window.clearInterval(interval);
+    try { sessionStorage.setItem(dismissalKey, "true"); } catch {}
+    document.getElementById("main")?.focus({preventScroll: true});
+  });
   const last = notice.querySelector("[data-canary-last]");
   const next = notice.querySelector("[data-canary-next]");
   const countdown = notice.querySelector("[data-canary-countdown]");
@@ -22,6 +36,7 @@
       .map(([amount, unit]) => `${amount} ${unit}${amount === 1 ? "" : "s"}`).join(", ");
   };
   const refresh = async () => {
+    if (notice.hidden) return;
     try {
       const response = await fetch("/canary/status", {cache: "no-store", credentials: "same-origin"});
       if (!response.ok) throw new Error("Status unavailable");
@@ -36,5 +51,5 @@
     }
   };
   refresh();
-  window.setInterval(refresh, 30000);
+  interval = window.setInterval(refresh, 30000);
 })();
