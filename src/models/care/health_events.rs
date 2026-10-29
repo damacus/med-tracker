@@ -50,10 +50,10 @@ pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<(Value, String
 pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
     let number = page.page.unwrap_or(1);
-    let size = page.per_page.unwrap_or(20).min(100);
-    if number < 1 || size < 1 {
+    let size = page.per_page.unwrap_or(20);
+    if number < 1 || !(1..=100).contains(&size) {
         return Err(OperationError::Validation {
-            details: json!({"errors":{"page":["must be positive"]}}),
+            details: json!({"errors":{"page":["page must be positive and per_page must be between 1 and 100"]}}),
         });
     }
     let mut query = scope(tenant);

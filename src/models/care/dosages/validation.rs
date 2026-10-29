@@ -1,4 +1,5 @@
 use super::*;
+use crate::models::care::valid_identifier;
 
 #[derive(Clone)]
 pub(super) struct MedicationId(String);
@@ -200,21 +201,6 @@ pub(super) struct Attributes {
     pub(super) default_dose_cycle: Option<DoseCycle>,
     pub(super) current_supply: Option<Option<Decimal>>,
     pub(super) reorder_threshold: Option<Option<Decimal>>,
-}
-
-pub(crate) fn valid_identifier(value: &str) -> bool {
-    let numeric = value
-        .as_bytes()
-        .first()
-        .is_some_and(|byte| (b'1'..=b'9').contains(byte))
-        && value.bytes().all(|byte| byte.is_ascii_digit());
-    numeric
-        || (value.len() == 36
-            && value.bytes().enumerate().all(|(index, byte)| match index {
-                8 | 13 | 18 | 23 => byte == b'-',
-                19 => matches!(byte, b'8' | b'9' | b'a' | b'b' | b'A' | b'B'),
-                _ => byte.is_ascii_hexdigit(),
-            }))
 }
 
 pub(crate) fn parse_decimal(value: &Value) -> Option<Decimal> {
