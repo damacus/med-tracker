@@ -187,7 +187,7 @@ async fn rehash(app: &Application, fact: &mut facts::Model) {
     };
     let values: Vec<SimpleExpr> = vec![
         text(Some("live-adoption-v1".into())),
-        text(Some(fact.person_schedule_id.clone())),
+        text(fact.person_schedule_id.clone()),
         number(Some(fact.source_schedule_id)),
         text(Some(fact.source_portable_id.clone())),
         number(Some(fact.person_id)),
@@ -385,17 +385,18 @@ async fn live_adoption_receipt_checks_prospective_facts_and_global_original_befo
         .await
         .unwrap()
         .unwrap();
-    let plan = person_schedules::Entity::find_by_id(&reference.person_schedule_id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
+    let plan =
+        person_schedules::Entity::find_by_id(reference.person_schedule_id.as_deref().unwrap())
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
     let mut prospective = plan.into_active_model();
     prospective.id = Set(uuid::Uuid::new_v4().to_string());
     prospective.origin_schedule_id = Set(source.id);
     let prospective = prospective.insert(&app.fixture.admin).await.unwrap();
     let mut valid = reference;
-    valid.person_schedule_id = prospective.id;
+    valid.person_schedule_id = Some(prospective.id);
     valid.source_schedule_id = source.id;
     valid.source_portable_id = source.portable_id;
     valid.medication_take_id = actual.id;
@@ -414,7 +415,7 @@ async fn live_adoption_receipt_checks_prospective_facts_and_global_original_befo
             0 => forged.person_id = app.fixture.minor.id,
             1 => forged.household_id = app.fixture.household.id + 1,
             2 => forged.source_schedule_id += 1,
-            3 => forged.person_schedule_id = uuid::Uuid::new_v4().to_string(),
+            3 => forged.person_schedule_id = Some(uuid::Uuid::new_v4().to_string()),
             4 => forged.dose_amount += Decimal::ONE,
             5 => forged.original_version_id += 1,
             6 => forged.taken_at += chrono::Duration::microseconds(1),

@@ -1,12 +1,18 @@
 use super::*;
+use chrono::Timelike;
 use med_tracker::models::{
-    _entities::{legacy_schedule_prescriptions as frozen_rx, shared_schedule_states},
+    _entities::{
+        accounts, api_sessions, legacy_schedule_prescriptions as frozen_rx, locations,
+        shared_schedule_administrations as administrations,
+        shared_schedule_adoption_facts as adoption_facts, shared_schedule_states,
+    },
     access::{self, Actor, HouseholdScope, TenantTransaction},
 };
 use sea_orm::{
     QuerySelect,
     sea_query::{Expr, ExprTrait, Func, Query},
 };
+use sha2::{Digest, Sha256};
 
 async fn source(app: &Application) -> schedules::Model {
     let mut stock = app.fixture.medication.clone().into_active_model();
@@ -485,6 +491,74 @@ struct DependentDeparture {
     manager: Fixture,
     token: String,
     source: schedules::Model,
+    take: medication_takes::Model,
+}
+
+async fn dependent_take(
+    app: &Application,
+    household: i64,
+    account: &accounts::Model,
+    membership: &household_memberships::Model,
+    source: &schedules::Model,
+    stock: &medications::Model,
+) -> medication_takes::Model {
+    let taken_at = (chrono::Utc::now() - chrono::Duration::hours(1))
+        .naive_utc()
+        .with_nanosecond(0)
+        .unwrap();
+    let take = medication_takes::ActiveModel {
+        household_id: Set(household),
+        schedule_id: Set(Some(source.id)),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        client_uuid: Set(Some(uuid::Uuid::new_v4().to_string())),
+        dose_amount: Set(Some(Decimal::new(2, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        taken_at: Set(Some(taken_at)),
+        taken_from_medication_id: Set(Some(stock.id)),
+        created_at: Set(taken_at),
+        updated_at: Set(taken_at),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let snapshot = json!({
+        "id":take.id,"portable_id":take.portable_id,"client_uuid":take.client_uuid,
+        "household_id":household,"schedule_id":source.id,"person_medication_id":null,
+        "person_id":source.person_id,"medication_id":stock.id,"taken_from_medication_id":stock.id,
+        "taken_from_location_id":null,"dose_amount":"2","dose_unit":"tablet",
+        "taken_at":taken_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        "created_at":take.created_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        "updated_at":take.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string()
+    });
+    let changes: serde_json::Map<String, Value> = snapshot
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(key, value)| (key.clone(), json!([null, value])))
+        .collect();
+    let request = uuid::Uuid::new_v4().to_string();
+    versions::ActiveModel {
+        item_type: Set("MedicationTake".into()),
+        item_id: Set(take.id),
+        event: Set("create".into()),
+        object: Set(Some(snapshot.to_string())),
+        object_changes: Set(Some(Value::Object(changes).to_string())),
+        whodunnit: Set(Some(account.id.to_string())),
+        request_id: Set(Some(request.clone())),
+        household_id: Set(Some(household)),
+        actor_membership_id: Set(Some(membership.id)),
+        audit_context: Set(json!({"actor_account_id":account.id,"actor_person_id":account.person_id,
+            "actor_membership_id":membership.id,"household_id":household,"request_id":request,
+            "active_role":membership.role,"permissions_version":membership.permissions_version,"authentication_method":"api_session",
+            "session_reference":"api_session:synthetic"})),
+        created_at: Set(Some(taken_at)),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    take
 }
 
 async fn dependent_departure(app: &Application) -> DependentDeparture {
@@ -523,6 +597,15 @@ async fn dependent_departure(app: &Application) -> DependentDeparture {
     live.medication_id = Set(stock.id);
     live.portable_id = Set(uuid::Uuid::new_v4().to_string());
     let live = live.insert(&app.fixture.admin).await.unwrap();
+    let take = dependent_take(
+        app,
+        manager.household.id,
+        &manager.account,
+        &manager.membership,
+        &live,
+        &stock,
+    )
+    .await;
     let response = app
         .client
         .delete(format!(
@@ -542,6 +625,7 @@ async fn dependent_departure(app: &Application) -> DependentDeparture {
         manager,
         token,
         source: live,
+        take,
     }
 }
 
@@ -623,6 +707,50 @@ async fn legacy_departure_current_guardian_adopts_frozen_rx_without_former_sourc
         .unwrap();
     assert_eq!(audit.whodunnit, Some(app.fixture.account.id.to_string()));
     assert!(audit.audit_context["guardian_declaration_id"].is_number());
+    let facts = adoption_facts::Entity::find()
+        .filter(adoption_facts::Column::MedicationTakeId.eq(dependent.take.id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(
+        facts.len(),
+        1,
+        "Departure must capture immutable per-take evidence before authority ends"
+    );
+    assert_eq!(facts[0].person_schedule_id, None);
+    assert_eq!(facts[0].source_schedule_id, dependent.source.id);
+    assert_eq!(facts[0].guardian_declaration_id, None);
+    let entries = administrations::Entity::find()
+        .filter(administrations::Column::MedicationTakeId.eq(dependent.take.id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(
+        entries.len(),
+        1,
+        "Guardian adoption must index the prior take"
+    );
+    assert_eq!(
+        entries[0].person_schedule_id,
+        adopted["data"]["id"].as_str().unwrap()
+    );
+    assert_eq!(entries[0].household_id, dependent.manager.household.id);
+    assert_eq!(entries[0].taken_at, dependent.take.taken_at.unwrap());
+    assert!(entries[0].occurrence_starts_on.is_none() && entries[0].occurrence_position.is_none());
+    let state = shared_schedule_states::Entity::find_by_id(adopted["data"]["id"].as_str().unwrap())
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(state.latest_taken_at, dependent.take.taken_at);
+    assert_eq!(
+        medication_takes::Entity::find_by_id(dependent.take.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        dependent.take
+    );
     dependent.manager.close().await;
     app.close().await;
 }
@@ -727,6 +855,23 @@ async fn legacy_departure_rechecks_captured_guardian_after_actual_frozen_row_wai
             .await
             .unwrap(),
         0
+    );
+    assert_eq!(
+        adoption_facts::Entity::find()
+            .filter(adoption_facts::Column::MedicationTakeId.eq(dependent.take.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        administrations::Entity::find()
+            .filter(administrations::Column::MedicationTakeId.eq(dependent.take.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0,
+        "A revoked guardian must not index the frozen evidence"
     );
     dependent.manager.close().await;
     app.close().await;
@@ -1244,6 +1389,463 @@ async fn legacy_departure_manager_cannot_change_live_legacy_clinical_fields_but_
             .unwrap(),
         0
     );
+    manager.close().await;
+    app.close().await;
+}
+
+async fn receiving_session(
+    app: &Application,
+    account: i64,
+    member: i64,
+    permissions: i32,
+) -> String {
+    let token = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().naive_utc();
+    api_sessions::ActiveModel {
+        account_id: Set(account),
+        household_membership_id: Set(Some(member)),
+        access_token_digest: Set(hex::encode(Sha256::digest(token.as_bytes()))),
+        refresh_token_digest: Set(uuid::Uuid::new_v4().to_string()),
+        permissions_version: Set(permissions),
+        access_expires_at: Set(now + chrono::Duration::hours(1)),
+        refresh_expires_at: Set(now + chrono::Duration::days(1)),
+        last_used_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    token
+}
+
+async fn receiving_take(
+    app: &Application,
+    household: i64,
+    token: &str,
+    source: i64,
+    stock: i64,
+    when: chrono::DateTime<chrono::Utc>,
+) -> reqwest::Response {
+    app.client
+        .post(format!(
+            "{}/api/v1/households/{household}/medication_takes",
+            app.origin
+        ))
+        .bearer_auth(token)
+        .json(&json!({"medication_take":{"source_type":"schedule","source_id":source.to_string(),"taken_from_medication_id":stock,"dose_amount":"2","dose_unit":"tablet","taken_at":when.to_rfc3339(),"client_uuid":uuid::Uuid::new_v4().to_string()}}))
+        .send()
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn legacy_departure_frozen_take_evidence_indexes_at_protected_adoption_and_bounds_later_doses()
+ {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let mut live = source(&app).await.into_active_model();
+    live.schedule_type = Set(4);
+    live.min_hours_between_doses = Set(Some(4));
+    let live = live.update(&app.fixture.admin).await.unwrap();
+    let prior = chrono::Utc::now() - chrono::Duration::minutes(210);
+    let taken=Application::assert_status(app.client.post(format!("{}/api/v1/households/{}/medication_takes",app.origin,app.fixture.household.id))
+        .bearer_auth(&token).json(&json!({"medication_take":{"source_type":"schedule","source_id":live.id.to_string(),"dose_amount":"2","dose_unit":"tablet","taken_at":prior.to_rfc3339(),"client_uuid":uuid::Uuid::new_v4().to_string()}})).send().await.unwrap(),201).await;
+    let take = medication_takes::Entity::find_by_id(taken["data"]["id"].as_i64().unwrap())
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let stock = medications::Entity::find_by_id(live.medication_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let prior_audits = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("MedicationTake"))
+        .filter(versions::Column::ItemId.eq(take.id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let invitation = super::super::invitations::seed_acceptance(&app).await;
+    Application::assert_status(
+        app.client
+            .post(format!("{}/api/v1/invitations/accept", app.origin))
+            .bearer_auth(&invitation.bearer)
+            .json(&json!({"token":invitation.token,"sharing_consent":true}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let (manager, manager_token) = manager_token(&app).await;
+    remove(&app, &manager_token, app.fixture.membership.id).await;
+    let ended = schedules::Entity::find_by_id(live.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let facts = adoption_facts::Entity::find()
+        .filter(adoption_facts::Column::MedicationTakeId.eq(take.id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(
+        facts.len(),
+        1,
+        "The actual take must be captured while local authority exists"
+    );
+    assert_eq!(facts[0].person_schedule_id, None);
+    assert_eq!(facts[0].source_schedule_id, live.id);
+    assert_eq!(facts[0].household_id, app.fixture.household.id);
+    assert_eq!(facts[0].captured_by_account_id, manager.account.id);
+    let manager_membership = household_memberships::Entity::find()
+        .filter(household_memberships::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(household_memberships::Column::PersonId.eq(manager.account.person_id))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(facts[0].captured_by_membership_id, manager_membership.id);
+    assert!(!facts[0].fact_hash.is_empty());
+    let mut changed = stock.clone().into_active_model();
+    changed.name = Set(Some("Synthetic changed former product".into()));
+    changed.dmd_code = Set(Some("654321".into()));
+    changed.dose_unit = Set(Some("mg".into()));
+    let mutated = changed.update(&app.fixture.admin).await.unwrap();
+    let adopted =
+        Application::assert_status(adopt(&app, &token, &live.portable_id).await, 201).await;
+    let plan = adopted["data"]["id"].as_str().unwrap().to_string();
+    assert_eq!(
+        schedules::Entity::find_by_id(live.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        ended
+    );
+    assert_eq!(
+        medication_takes::Entity::find_by_id(take.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        take
+    );
+    assert_eq!(
+        medications::Entity::find_by_id(stock.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        mutated
+    );
+    assert_eq!(
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("MedicationTake"))
+            .filter(versions::Column::ItemId.eq(take.id))
+            .all(&app.fixture.admin)
+            .await
+            .unwrap(),
+        prior_audits
+    );
+    assert_eq!(
+        adoption_facts::Entity::find()
+            .filter(adoption_facts::Column::MedicationTakeId.eq(take.id))
+            .all(&app.fixture.admin)
+            .await
+            .unwrap(),
+        facts,
+        "Captured evidence is immutable and is never rebound"
+    );
+    let entries = administrations::Entity::find()
+        .filter(administrations::Column::MedicationTakeId.eq(take.id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(entries.len(), 1, "exactly one minimal prior safety entry");
+    assert_eq!(entries[0].person_schedule_id, plan);
+    assert_eq!(entries[0].household_id, app.fixture.household.id);
+    assert_eq!(entries[0].taken_at, take.taken_at.unwrap());
+    assert!(entries[0].occurrence_starts_on.is_none() && entries[0].occurrence_position.is_none());
+    let safe = shared_schedule_states::Entity::find_by_id(&plan)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(safe.latest_taken_at, take.taken_at);
+    let token_b = receiving_session(
+        &app,
+        invitation.inviter_account.id,
+        invitation.inviter_membership.id,
+        invitation.inviter_membership.permissions_version,
+    )
+    .await;
+    let now = chrono::Utc::now().naive_utc();
+    let location = locations::ActiveModel {
+        household_id: Set(invitation.target_household.id),
+        name: Set("Synthetic receiving storage".into()),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let mut local = stock.clone().into_active_model().reset_all();
+    local.id = sea_orm::NotSet;
+    local.household_id = Set(invitation.target_household.id);
+    local.location_id = Set(location.id);
+    local.created_by_membership_id = Set(Some(invitation.inviter_membership.id));
+    local.portable_id = Set(uuid::Uuid::new_v4().to_string());
+    let stock_b = local.insert(&app.fixture.admin).await.unwrap();
+    let bound = Application::assert_status(
+        app.client
+            .post(format!(
+                "{}/api/v1/households/{}/shared_schedules/{plan}/stock_binding",
+                app.origin, invitation.target_household.id
+            ))
+            .bearer_auth(&token_b)
+            .json(&json!({"medication_id":stock_b.id,"clinical_revision":1}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let source_b = bound["data"]["id"].as_i64().unwrap();
+    let denied = receiving_take(
+        &app,
+        invitation.target_household.id,
+        &token_b,
+        source_b,
+        stock_b.id,
+        chrono::Utc::now() + chrono::Duration::minutes(15),
+    )
+    .await;
+    assert_eq!(
+        denied.status().as_u16(),
+        422,
+        "A receiving dose inside the frozen prior dose's cooldown must be denied: {}",
+        denied.text().await.unwrap()
+    );
+    Application::assert_status(
+        receiving_take(
+            &app,
+            invitation.target_household.id,
+            &token_b,
+            source_b,
+            stock_b.id,
+            chrono::Utc::now() + chrono::Duration::minutes(55),
+        )
+        .await,
+        201,
+    )
+    .await;
+    manager.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn legacy_departure_frozen_evidence_rejects_late_forged_and_unbound_writes() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let mut live = source(&app).await.into_active_model();
+    live.schedule_type = Set(4);
+    let live = live.update(&app.fixture.admin).await.unwrap();
+    let taken = Application::assert_status(
+        app.client.post(format!("{}/api/v1/households/{}/medication_takes",app.origin,app.fixture.household.id))
+            .bearer_auth(&token)
+            .json(&json!({"medication_take":{"source_type":"schedule","source_id":live.id.to_string(),"dose_amount":"2","dose_unit":"tablet","taken_at":chrono::Utc::now().to_rfc3339(),"client_uuid":uuid::Uuid::new_v4().to_string()}}))
+            .send()
+            .await
+            .unwrap(),
+        201,
+    )
+    .await;
+    let take = medication_takes::Entity::find_by_id(taken["data"]["id"].as_i64().unwrap())
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let (manager, manager_token) = manager_token(&app).await;
+    remove(&app, &manager_token, app.fixture.membership.id).await;
+    let adopted =
+        Application::assert_status(adopt(&app, &token, &live.portable_id).await, 201).await;
+    let plan = adopted["data"]["id"].as_str().unwrap().to_string();
+    let original_version = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("MedicationTake"))
+        .filter(versions::Column::ItemId.eq(take.id))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let mut late_source = live.clone().into_active_model().reset_all();
+    late_source.id = sea_orm::NotSet;
+    late_source.portable_id = Set(uuid::Uuid::new_v4().to_string());
+    let late_source = late_source.insert(&app.fixture.admin).await.unwrap();
+    let late_take = dependent_take(
+        &app,
+        app.fixture.household.id,
+        &app.fixture.account,
+        &app.fixture.membership,
+        &late_source,
+        &app.fixture.medication,
+    )
+    .await;
+    let mut post_take = late_take.clone().into_active_model().reset_all();
+    post_take.id = sea_orm::NotSet;
+    post_take.schedule_id = Set(Some(live.id));
+    post_take.portable_id = Set(uuid::Uuid::new_v4().to_string());
+    post_take.client_uuid = Set(Some(uuid::Uuid::new_v4().to_string()));
+    let post_take = post_take.insert(&app.fixture.admin).await.unwrap();
+    let forged_fact = |scope: &TenantTransaction,
+                       evidence: &medication_takes::Model,
+                       source_row: &schedules::Model,
+                       dose: Decimal| {
+        adoption_facts::ActiveModel {
+            medication_take_id: Set(evidence.id),
+            person_schedule_id: Set(None),
+            source_schedule_id: Set(source_row.id),
+            source_portable_id: Set(source_row.portable_id.clone()),
+            person_id: Set(source_row.person_id),
+            household_id: Set(source_row.household_id),
+            take_portable_id: Set(evidence.portable_id.clone()),
+            original_version_id: Set(original_version.id),
+            client_uuid: Set(evidence.client_uuid.clone()),
+            taken_at: Set(evidence.taken_at.unwrap()),
+            dose_amount: Set(dose),
+            dose_unit: Set(evidence.dose_unit.clone()),
+            taken_from_medication_id: Set(evidence.taken_from_medication_id),
+            taken_from_location_id: Set(evidence.taken_from_location_id),
+            take_created_at: Set(evidence.created_at),
+            take_updated_at: Set(evidence.updated_at),
+            fact_hash: Set(vec![0; 32]),
+            captured_by_account_id: Set(scope.scope().actor.account_id),
+            captured_by_person_id: Set(scope.membership().person_id),
+            captured_by_membership_id: Set(scope.membership().id),
+            guardian_declaration_id: Set(None),
+            request_id: Set(scope.scope().request_id.clone()),
+            authentication_method: Set(Some("api_session".into())),
+            credential_reference: Set(Some("synthetic".into())),
+            captured_at: Set(chrono::Utc::now().naive_utc()),
+            ..Default::default()
+        }
+    };
+    for (evidence, source_row, dose) in [
+        (&late_take, &late_source, Decimal::new(2, 0)),
+        (&post_take, &live, Decimal::new(2, 0)),
+        (&late_take, &live, Decimal::new(99, 0)),
+    ] {
+        let scope = tenant(&app, manager.account.id, app.fixture.household.id).await;
+        assert!(
+            adoption_facts::Entity::insert(forged_fact(&scope, evidence, source_row, dose))
+                .exec_without_returning(scope.transaction())
+                .await
+                .is_err(),
+            "Late, unbound or forged frozen evidence must be denied"
+        );
+        scope.rollback().await.unwrap();
+    }
+    let other = app.fixture.foreign_household().await;
+    let mut member = app
+        .fixture
+        .membership
+        .clone()
+        .into_active_model()
+        .reset_all();
+    member.id = sea_orm::NotSet;
+    member.household_id = Set(other.household.id);
+    member.role = Set("owner".into());
+    member.insert(&app.fixture.admin).await.unwrap();
+    let scope = tenant(&app, app.fixture.account.id, other.household.id).await;
+    let foreign = adoption_facts::ActiveModel {
+        medication_take_id: Set(post_take.id),
+        person_schedule_id: Set(None),
+        source_schedule_id: Set(live.id),
+        source_portable_id: Set(live.portable_id.clone()),
+        person_id: Set(live.person_id),
+        household_id: Set(live.household_id),
+        take_portable_id: Set(post_take.portable_id.clone()),
+        original_version_id: Set(original_version.id),
+        client_uuid: Set(post_take.client_uuid.clone()),
+        taken_at: Set(post_take.taken_at.unwrap()),
+        dose_amount: Set(Decimal::new(2, 0)),
+        dose_unit: Set(post_take.dose_unit.clone()),
+        taken_from_medication_id: Set(post_take.taken_from_medication_id),
+        taken_from_location_id: Set(post_take.taken_from_location_id),
+        take_created_at: Set(post_take.created_at),
+        take_updated_at: Set(post_take.updated_at),
+        fact_hash: Set(vec![0; 32]),
+        captured_by_account_id: Set(scope.scope().actor.account_id),
+        captured_by_person_id: Set(scope.membership().person_id),
+        captured_by_membership_id: Set(scope.membership().id),
+        guardian_declaration_id: Set(None),
+        request_id: Set(scope.scope().request_id.clone()),
+        authentication_method: Set(Some("api_session".into())),
+        credential_reference: Set(Some("synthetic".into())),
+        captured_at: Set(chrono::Utc::now().naive_utc()),
+        ..Default::default()
+    };
+    assert!(
+        adoption_facts::Entity::insert(foreign)
+            .exec_without_returning(scope.transaction())
+            .await
+            .is_err(),
+        "An unrelated actor in another household must not mint frozen evidence"
+    );
+    scope.rollback().await.unwrap();
+    for (household, actor) in [
+        (app.fixture.household.id, manager.account.id),
+        (other.household.id, app.fixture.account.id),
+    ] {
+        let scope = tenant(&app, actor, household).await;
+        let entry = administrations::ActiveModel {
+            person_schedule_id: Set(plan.clone()),
+            household_id: Set(live.household_id),
+            medication_take_id: Set(late_take.id),
+            taken_at: Set(late_take.taken_at.unwrap()),
+            occurrence_starts_on: Set(None),
+            occurrence_position: Set(None),
+            ..Default::default()
+        };
+        assert!(
+            administrations::Entity::insert(entry)
+                .exec_without_returning(scope.transaction())
+                .await
+                .is_err(),
+            "A ledger row without bound frozen evidence must be denied"
+        );
+        scope.rollback().await.unwrap();
+    }
+    assert_eq!(
+        adoption_facts::Entity::find()
+            .filter(adoption_facts::Column::MedicationTakeId.eq(take.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        administrations::Entity::find()
+            .filter(administrations::Column::MedicationTakeId.eq(take.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        administrations::Entity::find()
+            .filter(administrations::Column::MedicationTakeId.is_in([late_take.id, post_take.id]))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    other.close().await;
     manager.close().await;
     app.close().await;
 }

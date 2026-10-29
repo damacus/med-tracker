@@ -1,7 +1,9 @@
 use super::*;
 use crate::models::{
     care::doses::CredentialProvenance,
-    entities::{account, legacy_prescription, pause_period, shared_schedule, version},
+    entities::{
+        account, adoption_fact, legacy_prescription, pause_period, shared_schedule, version,
+    },
     identity::resource::ValidatedPrincipal,
     ids::{AccountId, PersonId},
 };
@@ -84,6 +86,10 @@ pub(super) async fn freeze(
     })
     .exec_without_returning(db)
     .await?;
+    // Per-take evidence is captured while the source is still authoritative and
+    // row locks exist; facts stay bound to the immutable parent until adoption
+    // supplies the canonical plan through seed().
+    super::adoption_history::capture_frozen(tenant, row, None).await?;
     Ok(())
 }
 
@@ -247,6 +253,13 @@ pub(crate) async fn adopt(
         return Err(OperationError::Forbidden.into());
     }
     actor.current(db, principal, settings).await?;
+    let facts = adoption_fact::Entity::find()
+        .filter(adoption_fact::Column::SourceScheduleId.eq(frozen.schedule_id))
+        .all(db)
+        .await?;
+    adoption_history::CapturedHistory::bind(facts)
+        .seed(db, &canonical.id)
+        .await?;
     let state = shared_schedule::Entity::find_by_id(&canonical.id)
         .one(db)
         .await?

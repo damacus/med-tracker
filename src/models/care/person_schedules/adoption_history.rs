@@ -99,8 +99,15 @@ async fn fact_hash(
         ]))
     };
     let values: Vec<SimpleExpr> = vec![
-        text(Some("live-adoption-v1".into())),
-        text(Some(fact.person_schedule_id.clone())),
+        text(Some(
+            if fact.person_schedule_id.is_some() {
+                "live-adoption-v1"
+            } else {
+                "frozen-departure-v1"
+            }
+            .into(),
+        )),
+        text(fact.person_schedule_id.clone()),
         integer(Some(fact.source_schedule_id)),
         text(Some(fact.source_portable_id.clone())),
         integer(Some(fact.person_id)),
@@ -183,7 +190,7 @@ pub(super) async fn capture(
         }
         let mut fact = adoption_fact::Model {
             medication_take_id: take.id,
-            person_schedule_id: plan.id.clone(),
+            person_schedule_id: Some(plan.id.clone()),
             source_schedule_id: source.id,
             source_portable_id: source.portable_id.clone(),
             person_id: source.person_id,
@@ -218,16 +225,93 @@ pub(super) async fn capture(
     Ok(CapturedHistory(captured))
 }
 
+/// Frozen-departure capture: runs inside `legacy::freeze` while the departing
+/// household's management authority and row locks still exist. Takes whose
+/// original evidence cannot be verified are skipped rather than blocking a
+/// permitted operational departure; database errors still propagate.
+pub(super) async fn capture_frozen(
+    tenant: &TenantTransaction,
+    source: &schedule::Model,
+    provenance: Option<&super::super::doses::CredentialProvenance>,
+) -> Result<(), OperationError> {
+    let db = tenant.transaction();
+    let takes = medication_take::Entity::find()
+        .filter(medication_take::Column::HouseholdId.eq(source.household_id))
+        .filter(medication_take::Column::ScheduleId.eq(source.id))
+        .order_by_asc(medication_take::Column::Id)
+        .lock_shared()
+        .all(db)
+        .await?;
+    for take in takes {
+        let Some(original) = version::Entity::find()
+            .filter(version::Column::ItemType.eq("MedicationTake"))
+            .filter(version::Column::ItemId.eq(take.id))
+            .filter(version::Column::Event.eq("create"))
+            .order_by_asc(version::Column::Id)
+            .one(db)
+            .await?
+        else {
+            continue;
+        };
+        if !matches_audit(&take, &original).unwrap_or(false) {
+            continue;
+        }
+        let (Some(taken_at), Some(dose_amount)) = (
+            take.taken_at,
+            take.dose_amount
+                .filter(|amount| *amount > sea_orm::prelude::Decimal::ZERO),
+        ) else {
+            continue;
+        };
+        let mut fact = adoption_fact::Model {
+            medication_take_id: take.id,
+            person_schedule_id: None,
+            source_schedule_id: source.id,
+            source_portable_id: source.portable_id.clone(),
+            person_id: source.person_id,
+            household_id: source.household_id,
+            take_portable_id: take.portable_id,
+            original_version_id: original.id,
+            client_uuid: take.client_uuid,
+            taken_at,
+            dose_amount,
+            dose_unit: take.dose_unit,
+            taken_from_medication_id: take.taken_from_medication_id,
+            taken_from_location_id: take.taken_from_location_id,
+            take_created_at: take.created_at,
+            take_updated_at: take.updated_at,
+            fact_hash: Vec::new(),
+            captured_by_account_id: tenant.scope().actor.account_id,
+            captured_by_person_id: tenant.membership().person_id,
+            captured_by_membership_id: tenant.membership().id,
+            guardian_declaration_id: None,
+            request_id: tenant.scope().request_id.clone(),
+            authentication_method: provenance.map(|value| value.method.label().into()),
+            credential_reference: provenance.map(|value| value.reference.clone()),
+            captured_at: Utc::now().naive_utc(),
+        };
+        fact.fact_hash = fact_hash(db, &fact).await?;
+        fact.into_active_model().insert(db).await?;
+    }
+    Ok(())
+}
+
 impl CapturedHistory {
+    pub(super) fn bind(facts: Vec<adoption_fact::Model>) -> Self {
+        Self(facts)
+    }
+
+    /// Seeds the minimal safety index rows bound to `plan` and raises
+    /// `latest_taken_at`. Live facts carry the same plan id; frozen facts are
+    /// bound by the immutable parent's `adopted_person_schedule_id`.
     pub(super) async fn seed(
         self,
-        tenant: &TenantTransaction,
-        linked: &schedule::Model,
+        db: &DatabaseTransaction,
+        plan: &str,
     ) -> Result<(), OperationError> {
-        let db = tenant.transaction();
         for fact in &self.0 {
             shared_administration::Entity::insert(shared_administration::ActiveModel {
-                person_schedule_id: Set(fact.person_schedule_id.clone()),
+                person_schedule_id: Set(plan.to_owned()),
                 household_id: Set(fact.household_id),
                 medication_take_id: Set(fact.medication_take_id),
                 taken_at: Set(fact.taken_at),
@@ -239,20 +323,16 @@ impl CapturedHistory {
             .await?;
         }
         if let Some(latest) = self.0.iter().map(|fact| fact.taken_at).max() {
-            let state = shared_schedule::Entity::find_by_id(
-                linked
-                    .person_schedule_id
-                    .as_deref()
-                    .ok_or(OperationError::Unavailable)?,
-            )
-            .one(db)
-            .await?
-            .ok_or(OperationError::Unavailable)?;
-            if state.latest_taken_at.is_none_or(|current| current < latest) {
-                let mut state = state.into_active_model();
-                state.latest_taken_at = Set(Some(latest));
-                state.update(db).await?;
-            }
+            shared_schedule::Entity::update_many()
+                .col_expr(shared_schedule::Column::LatestTakenAt, Expr::val(latest))
+                .filter(shared_schedule::Column::Id.eq(plan))
+                .filter(
+                    sea_orm::Condition::any()
+                        .add(shared_schedule::Column::LatestTakenAt.is_null())
+                        .add(shared_schedule::Column::LatestTakenAt.lt(latest)),
+                )
+                .exec(db)
+                .await?;
         }
         Ok(())
     }

@@ -359,7 +359,15 @@ pub(crate) async fn save_execution(
     } else if linked.canonical_origin {
         projection::record_execution(db, &linked, None).await?;
     }
-    history.seed(tenant, &linked).await?;
+    history
+        .seed(
+            db,
+            linked
+                .person_schedule_id
+                .as_deref()
+                .ok_or(OperationError::Unavailable)?,
+        )
+        .await?;
     Ok(linked)
 }
 
@@ -374,13 +382,31 @@ pub(crate) async fn end_participation(
         .lock_exclusive()
         .all(tenant.transaction())
         .await?;
+    let retiring = sharing::clinical_authority(
+        tenant.transaction(),
+        crate::models::ids::PersonId::from_database(person_id),
+    )
+    .await?;
     for row in rows {
         let now = Utc::now().naive_utc();
         if row.person_schedule_id.is_none() {
             legacy::freeze(tenant, &row, now).await?;
         }
         let before = super::treatments::representation(&row).0["data"].clone();
+        let retired = row.retired_at;
         let mut ended = row.into_active_model();
+        if retiring {
+            ended.retired_at = Set(retired.or(Some(now)));
+            ended.updated_at = Set(now);
+            let ended = ended.update(tenant.transaction()).await?;
+            let mut closed = ended.into_active_model();
+            closed.execution_ended_at = Set(Some(now));
+            closed.active = Set(false);
+            closed.updated_at = Set(now);
+            let ended = closed.update(tenant.transaction()).await?;
+            super::treatments::persist(tenant, &ended, Some(before), "update", None).await?;
+            continue;
+        }
         ended.execution_ended_at = Set(Some(now));
         ended.active = Set(false);
         ended.updated_at = Set(now);
