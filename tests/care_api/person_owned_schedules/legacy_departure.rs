@@ -1850,6 +1850,347 @@ async fn legacy_departure_frozen_evidence_rejects_late_forged_and_unbound_writes
     app.close().await;
 }
 
+async fn internal_identity_source(app: &Application) -> (schedules::Model, medications::Model) {
+    let stock = medications::Entity::find_by_id(app.fixture.medication.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        stock.dmd_system.is_none() && stock.dmd_concept_class.is_none() && stock.dmd_code.is_none(),
+        "the internal-identity case needs a supported stock row with no dm+d facts"
+    );
+    assert_eq!(stock.dose_unit.as_deref(), Some("tablet"));
+    let mut source = super::super::legacy_pause::legacy_schedule(app)
+        .await
+        .into_active_model();
+    source.notes = Set(Some("Synthetic private legacy narrative".into()));
+    (source.update(&app.fixture.admin).await.unwrap(), stock)
+}
+
+#[tokio::test]
+async fn legacy_departure_internal_identity_without_catalogue_facts_preserves_rx_for_self_adoption()
+{
+    let app = Application::new().await;
+    let token = app.token().await;
+    let (live, stock) = internal_identity_source(&app).await;
+    let (manager, manager_token) = manager_token(&app).await;
+    remove(&app, &manager_token, app.fixture.membership.id).await;
+    let ended = schedules::Entity::find_by_id(live.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let frozen = frozen_rx::Entity::find_by_id(live.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(frozen.household_id, app.fixture.household.id);
+    assert_eq!(frozen.origin_stock_id, stock.id);
+    assert_eq!(frozen.origin_stock_portable_id, stock.portable_id);
+    assert_eq!(frozen.medicine_name, stock.name);
+    assert_eq!(frozen.dmd_system, None);
+    assert_eq!(frozen.dmd_concept_class, None);
+    assert_eq!(frozen.dmd_code, None);
+    assert_eq!(frozen.stock_unit.as_deref(), Some("tablet"));
+    assert_eq!(frozen.adopted_person_schedule_id, None);
+    let adopted =
+        Application::assert_status(adopt(&app, &token, &live.portable_id).await, 201).await;
+    let repeated =
+        Application::assert_status(adopt(&app, &token, &live.portable_id).await, 201).await;
+    assert_eq!(adopted, repeated);
+    assert_eq!(
+        adopted["data"]["medicine_name"],
+        stock.name.as_deref().unwrap()
+    );
+    assert_eq!(adopted["data"]["stock_unit"], "tablet");
+    assert_eq!(adopted["data"]["dose_amount"], "2");
+    assert_eq!(adopted["data"]["dmd_system"], Value::Null);
+    assert_eq!(adopted["data"]["dmd_code"], Value::Null);
+    assert_eq!(adopted["data"]["dmd_concept_class"], Value::Null);
+    for field in [
+        "notes",
+        "pause_reason",
+        "pause_note",
+        "origin_household_id",
+        "origin_stock_id",
+        "origin_stock_portable_id",
+        "origin_schedule_id",
+        "medication_id",
+        "location_id",
+    ] {
+        assert!(
+            adopted["data"].get(field).is_none(),
+            "Adoption cannot disclose {field}"
+        );
+    }
+    let plan = person_schedules::Entity::find_by_id(adopted["data"]["id"].as_str().unwrap())
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(plan.origin_household_id, app.fixture.household.id);
+    assert_eq!(plan.origin_schedule_id, live.id);
+    assert_eq!(plan.origin_stock_id, stock.id);
+    assert_eq!(plan.origin_stock_portable_id, stock.portable_id);
+    assert_eq!(plan.dmd_system, None);
+    assert_eq!(plan.dmd_concept_class, None);
+    assert_eq!(plan.dmd_code, None);
+    assert_eq!(plan.stock_unit.as_deref(), Some("tablet"));
+    assert_eq!(plan.notes, None);
+    assert_eq!(
+        frozen_rx::Entity::find_by_id(live.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .adopted_person_schedule_id
+            .as_deref(),
+        Some(plan.id.as_str())
+    );
+    // Retention binds no stock and moves none: the origin row, its supply and
+    // the ended source stay untouched and no dose/evidence rows appear.
+    assert_eq!(
+        medications::Entity::find_by_id(stock.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        stock
+    );
+    assert_eq!(
+        schedules::Entity::find_by_id(live.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        ended
+    );
+    assert_eq!(
+        medication_takes::Entity::find()
+            .filter(medication_takes::Column::ScheduleId.eq(live.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        adoption_facts::Entity::find()
+            .filter(adoption_facts::Column::SourceScheduleId.eq(live.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        administrations::Entity::find()
+            .filter(administrations::Column::PersonScheduleId.eq(plan.id.clone()))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("LegacyPrescriptionAdoption"))
+            .filter(versions::Column::ItemId.eq(live.person_id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    manager.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn legacy_departure_partial_catalogue_facts_deny_adoption_without_repair() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    // Partial or contradictory dm+d fields on an otherwise supported internal
+    // stock identity: missing members, blank members, an unrecognised system
+    // or an unsupported concept class must never be silently repaired into
+    // either a complete catalogue identity or an internal-only identity.
+    let variants: [(Option<&str>, Option<&str>, Option<&str>); 7] = [
+        (Some("https://dmd.nhs.uk"), Some("VMP"), None),
+        (Some("https://dmd.nhs.uk"), None, Some("123456")),
+        (None, Some("VMP"), Some("123456")),
+        (Some("https://dmd.nhs.uk"), Some("VMP"), Some("")),
+        (Some("synthetic-catalogue"), Some("VMP"), Some("123456")),
+        (Some("https://dmd.nhs.uk"), Some("VTM"), Some("123456")),
+        (Some("synthetic-catalogue"), None, None),
+    ];
+    let template = super::super::legacy_pause::legacy_schedule(&app).await;
+    let mut sources = Vec::new();
+    for (system, class, code) in variants {
+        let mut stock = app
+            .fixture
+            .medication
+            .clone()
+            .into_active_model()
+            .reset_all();
+        stock.id = sea_orm::NotSet;
+        stock.portable_id = Set(uuid::Uuid::new_v4().to_string());
+        stock.dmd_system = Set(system.map(str::to_owned));
+        stock.dmd_concept_class = Set(class.map(str::to_owned));
+        stock.dmd_code = Set(code.map(str::to_owned));
+        stock.dose_unit = Set(Some("tablet".into()));
+        let stock = stock.insert(&app.fixture.admin).await.unwrap();
+        let mut live = template.clone().into_active_model().reset_all();
+        live.id = sea_orm::NotSet;
+        live.portable_id = Set(uuid::Uuid::new_v4().to_string());
+        live.medication_id = Set(stock.id);
+        sources.push(live.insert(&app.fixture.admin).await.unwrap());
+    }
+    let (manager, manager_token) = manager_token(&app).await;
+    remove(&app, &manager_token, app.fixture.membership.id).await;
+    for live in sources {
+        let frozen = frozen_rx::Entity::find_by_id(live.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let ended = schedules::Entity::find_by_id(live.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        let response = adopt(&app, &token, &live.portable_id).await;
+        let status = response.status().as_u16();
+        let body = response.text().await.unwrap();
+        assert_eq!(status, 422, "{body}");
+        assert_eq!(
+            frozen_rx::Entity::find_by_id(live.id)
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .unwrap(),
+            frozen
+        );
+        assert_eq!(
+            schedules::Entity::find_by_id(live.id)
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .unwrap(),
+            ended
+        );
+        assert_eq!(
+            person_schedules::Entity::find()
+                .filter(person_schedules::Column::OriginScheduleId.eq(live.id))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+            0
+        );
+    }
+    assert_eq!(
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("LegacyPrescriptionAdoption"))
+            .filter(versions::Column::ItemId.eq(app.fixture.adult.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    manager.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn legacy_departure_internal_identity_foreign_stock_binding_stays_fail_closed() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let (live, stock) = internal_identity_source(&app).await;
+    let invitation = super::super::invitations::seed_acceptance(&app).await;
+    Application::assert_status(
+        app.client
+            .post(format!("{}/api/v1/invitations/accept", app.origin))
+            .bearer_auth(&invitation.bearer)
+            .json(&json!({"token":invitation.token,"sharing_consent":true}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let (manager, manager_token) = manager_token(&app).await;
+    remove(&app, &manager_token, app.fixture.membership.id).await;
+    let adopted =
+        Application::assert_status(adopt(&app, &token, &live.portable_id).await, 201).await;
+    let plan = adopted["data"]["id"].as_str().unwrap().to_string();
+    let token_b = receiving_session(
+        &app,
+        invitation.inviter_account.id,
+        invitation.inviter_membership.id,
+        invitation.inviter_membership.permissions_version,
+    )
+    .await;
+    let now = chrono::Utc::now().naive_utc();
+    let location = locations::ActiveModel {
+        household_id: Set(invitation.target_household.id),
+        name: Set("Synthetic receiving storage".into()),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let mut local = stock.clone().into_active_model().reset_all();
+    local.id = sea_orm::NotSet;
+    local.household_id = Set(invitation.target_household.id);
+    local.location_id = Set(location.id);
+    local.created_by_membership_id = Set(Some(invitation.inviter_membership.id));
+    local.portable_id = Set(uuid::Uuid::new_v4().to_string());
+    let different_internal = local.insert(&app.fixture.admin).await.unwrap();
+    let mut claimed = different_internal.clone().into_active_model().reset_all();
+    claimed.id = sea_orm::NotSet;
+    claimed.portable_id = Set(stock.portable_id.clone());
+    let claimed = claimed.insert(&app.fixture.admin).await.unwrap();
+    // A different internal stock identity — even one claiming the origin
+    // portable ID — is never equated to the retained prescription without
+    // complete matching catalogue facts.
+    for candidate in [different_internal.id, claimed.id] {
+        let response = app
+            .client
+            .post(format!(
+                "{}/api/v1/households/{}/shared_schedules/{plan}/stock_binding",
+                app.origin, invitation.target_household.id
+            ))
+            .bearer_auth(&token_b)
+            .json(&json!({"medication_id":candidate,"clinical_revision":1}))
+            .send()
+            .await
+            .unwrap();
+        let status = response.status().as_u16();
+        let body = response.text().await.unwrap();
+        assert_eq!(status, 422, "{body}");
+    }
+    assert_eq!(
+        schedules::Entity::find()
+            .filter(schedules::Column::HouseholdId.eq(invitation.target_household.id))
+            .filter(schedules::Column::PersonScheduleId.eq(plan.clone()))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("SharedStockBinding"))
+            .filter(versions::Column::HouseholdId.eq(invitation.target_household.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    manager.close().await;
+    app.close().await;
+}
+
 #[tokio::test]
 async fn legacy_departure_frozen_receipt_rejects_row_level_replay() {
     let app = Application::new().await;

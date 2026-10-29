@@ -274,13 +274,28 @@ fn validate(frozen: &legacy_prescription::Model) -> Result<(), OperationError> {
         stock_identity::ExactProductIdentity,
         treatment_command::{DoseCycle, ScheduleType},
     };
-    if ExactProductIdentity::from_parts(
-        frozen.dmd_system.as_deref(),
-        frozen.dmd_concept_class.as_deref(),
-        frozen.dmd_code.as_deref(),
-        frozen.stock_unit.as_deref(),
-    )
-    .is_none()
+    // Retention requires a supported identity. A complete dm+d product identity
+    // qualifies; under accepted Task1 same-row semantics the verified internal
+    // origin identity (household + stock id + portable id) with its unit also
+    // qualifies when the record carries no catalogue facts at all. Any present
+    // catalogue field must form the complete exact identity: partial or
+    // contradictory dm+d facts fail closed and are never silently repaired,
+    // inferred or downgraded to the internal-only path. Blank fields carry no
+    // fact, matching ExactProductIdentity treatment.
+    let absent = |field: Option<&str>| field.is_none_or(|value| value.trim().is_empty());
+    let internal_identity = absent(frozen.dmd_system.as_deref())
+        && absent(frozen.dmd_concept_class.as_deref())
+        && absent(frozen.dmd_code.as_deref())
+        && !frozen.origin_stock_portable_id.trim().is_empty()
+        && !absent(frozen.stock_unit.as_deref());
+    if !(internal_identity
+        || ExactProductIdentity::from_parts(
+            frozen.dmd_system.as_deref(),
+            frozen.dmd_concept_class.as_deref(),
+            frozen.dmd_code.as_deref(),
+            frozen.stock_unit.as_deref(),
+        )
+        .is_some())
         || frozen
             .dose_amount
             .is_none_or(|amount| amount <= sea_orm::prelude::Decimal::ZERO)
