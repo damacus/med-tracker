@@ -41,6 +41,9 @@ certify implementation acceptance.
 
 Root Rust builds need ICU 78 (`brew install icu4c@78` on macOS).
 Ubuntu 26.04 CI already provides ICU 78; Task commands supply its environment.
+Bare `cargo` invocations need `RUST_ICU_MAJOR_VERSION_NUMBER=78` and, on macOS
+where icu4c is keg-only, `RUST_ICU_LINK_SEARCH_DIR=$(brew --prefix icu4c@78)/lib`
+for commands that link.
 
 Use `task deps` once to resolve dependencies, `task build` to compile and `task ci`
 to verify Loco. Set `DATABASE_URL` to a dedicated PostgreSQL 18 database and run

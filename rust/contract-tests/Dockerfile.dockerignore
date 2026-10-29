@@ -21,11 +21,15 @@
 !rust/ui-preview/public/pkg/medtracker_ui_preview_bg.wasm
 !rust/contract-tests/
 !rust/contract-tests/**
+!assets/
+assets/**
+!assets/catalogue/
+assets/catalogue/**
+!assets/catalogue/ai_medication_sources.yml
 !rails/
 rails/**
 !rails/config/
 rails/config/**
-!rails/config/ai_medication_sources.yml
 !rails/config/nhs_dmd_curated_products.yml
 !rails/config/locales/
 !rails/config/locales/**

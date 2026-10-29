@@ -16,7 +16,7 @@ COPY rust/api rust/api
 COPY rust/web/src rust/web/src
 COPY rust/ui-preview/src rust/ui-preview/src
 COPY rust/ui-preview/public rust/ui-preview/public
-COPY rails/config/ai_medication_sources.yml rails/config/ai_medication_sources.yml
+COPY assets/catalogue/ai_medication_sources.yml assets/catalogue/ai_medication_sources.yml
 COPY rails/config/nhs_dmd_curated_products.yml rails/config/nhs_dmd_curated_products.yml
 COPY rails/config/locales rails/config/locales
 COPY rails/vendor/fonts rails/vendor/fonts
