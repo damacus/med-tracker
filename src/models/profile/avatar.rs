@@ -139,12 +139,9 @@ async fn delete_unretained(
             [key.into()],
         ))
         .await?
-        .ok_or(OperationError::Unavailable)?;
+        .ok_or_else(|| OperationError::unavailable("invariant"))?;
     if !retained.try_get::<bool>("", "retained")? {
-        storage
-            .delete(key)
-            .await
-            .map_err(|_| OperationError::Unavailable)?;
+        storage.delete(key).await?;
     }
     transaction.commit().await?;
     Ok(())
@@ -157,15 +154,15 @@ impl Storage {
             &["avatar_storage", "bucket"],
         )
         .map(str::to_owned)
-        .ok_or(OperationError::Unavailable)?;
+        .ok_or_else(|| OperationError::unavailable("storage"))?;
         ctx.storage
             .as_store(crate::models::storage::AVATAR_STORE)
-            .ok_or(OperationError::Unavailable)?;
+            .ok_or_else(|| OperationError::unavailable("storage"))?;
         let operator = ctx
             .shared_store
             .get::<crate::models::storage::Operators>()
             .and_then(|operators| operators.avatar)
-            .ok_or(OperationError::Unavailable)?;
+            .ok_or_else(|| OperationError::unavailable("storage"))?;
         Ok(Self { operator, bucket })
     }
 
@@ -178,7 +175,7 @@ impl Storage {
         }
         let operator =
             crate::models::storage::avatar_operator(ctx.config.settings.as_ref(), Some(bucket))
-                .ok_or(OperationError::Unavailable)?;
+                .ok_or_else(|| OperationError::unavailable("storage"))?;
         Ok(Self {
             operator,
             bucket: bucket.to_owned(),
@@ -193,27 +190,27 @@ impl Storage {
                 .content_type(image.content_type),
         )
         .await
-        .map_err(|_| OperationError::Unavailable)?
+        .map_err(OperationError::from)?
         .map(|_| ())
-        .map_err(|_| OperationError::Unavailable)
+        .map_err(OperationError::from)
     }
 
     pub async fn get(&self, key: &str) -> Result<Vec<u8>, OperationError> {
         const LIMIT: usize = 8 * 1024 * 1024;
         let reader = tokio::time::timeout(OPERATION_TIMEOUT, self.operator.reader(key))
             .await
-            .map_err(|_| OperationError::Unavailable)?
-            .map_err(|_| OperationError::Unavailable)?;
+            .map_err(OperationError::from)?
+            .map_err(OperationError::from)?;
         let mut stream = tokio::time::timeout(OPERATION_TIMEOUT, reader.into_bytes_stream(..))
             .await
-            .map_err(|_| OperationError::Unavailable)?
-            .map_err(|_| OperationError::Unavailable)?;
+            .map_err(OperationError::from)?
+            .map_err(OperationError::from)?;
         let mut bytes = Vec::new();
         let collect = async {
             while let Some(chunk) = stream.next().await {
-                let chunk = chunk.map_err(|_| OperationError::Unavailable)?;
+                let chunk = chunk.map_err(OperationError::from)?;
                 if bytes.len().saturating_add(chunk.len()) > LIMIT {
-                    return Err(OperationError::Unavailable);
+                    return Err(OperationError::unavailable("storage"));
                 }
                 bytes.extend_from_slice(&chunk);
             }
@@ -221,15 +218,15 @@ impl Storage {
         };
         tokio::time::timeout(OPERATION_TIMEOUT, collect)
             .await
-            .map_err(|_| OperationError::Unavailable)??;
+            .map_err(OperationError::from)??;
         Ok(bytes)
     }
 
     pub async fn delete(&self, key: &str) -> Result<(), OperationError> {
         tokio::time::timeout(OPERATION_TIMEOUT, self.operator.delete(key))
             .await
-            .map_err(|_| OperationError::Unavailable)?
-            .map_err(|_| OperationError::Unavailable)
+            .map_err(OperationError::from)?
+            .map_err(OperationError::from)
     }
 
     pub fn bucket(&self) -> &str {
@@ -361,12 +358,12 @@ pub async fn person_attachment(
     let blob = active_storage_blob::Entity::find_by_id(attached.blob_id)
         .one(tenant.transaction())
         .await?
-        .ok_or(OperationError::Unavailable)?;
+        .ok_or_else(|| OperationError::unavailable("invariant"))?;
     if !matches!(
         blob.service_name.as_str(),
         "s3" | "s3_with_persistent_mirror"
     ) {
-        return Err(OperationError::Unavailable);
+        return Err(OperationError::unavailable("storage"));
     }
     Ok(Some(Attachment {
         key: blob.key,
@@ -389,7 +386,7 @@ pub(crate) async fn account_attachment(
     row.map(|row| {
         let service_name: String = row.try_get("", "service_name")?;
         if !matches!(service_name.as_str(), "s3" | "s3_with_persistent_mirror") {
-            return Err(OperationError::Unavailable);
+            return Err(OperationError::unavailable("storage"));
         }
         Ok(Attachment {
             key: row.try_get("", "key")?,

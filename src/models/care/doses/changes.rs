@@ -40,6 +40,6 @@ pub(super) async fn record_change(
     }
     .insert(db)
     .await
-    .map_err(database_error)?;
+    .map_err(OperationError::from)?;
     Ok(())
 }

@@ -84,13 +84,13 @@ pub(super) async fn prepare(
         .in_tenant(household_id)
         .one(db)
         .await
-        .map_err(database_error)?
+        .map_err(OperationError::from)?
         .ok_or(OperationError::NotFound)?;
     let candidates = access::medication_scope(context.tenant)
         .filter(stock_candidate_condition(&original))
         .all(db)
         .await
-        .map_err(database_error)?;
+        .map_err(OperationError::from)?;
     let candidate_ids: HashSet<i64> = if access::can_manage_household(context.tenant) {
         candidates.iter().map(|value| value.id).collect()
     } else {
@@ -99,7 +99,7 @@ pub(super) async fn prepare(
             .filter(schedule::Column::PersonId.eq(source.person_id))
             .all(db)
             .await
-            .map_err(database_error)?
+            .map_err(OperationError::from)?
             .into_iter()
             .map(|value| value.medication_id);
         let assignment_ids = person_medication::Entity::find()
@@ -107,7 +107,7 @@ pub(super) async fn prepare(
             .filter(person_medication::Column::PersonId.eq(source.person_id))
             .all(db)
             .await
-            .map_err(database_error)?
+            .map_err(OperationError::from)?
             .into_iter()
             .map(|value| value.medication_id);
         schedule_ids

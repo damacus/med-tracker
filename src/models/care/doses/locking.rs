@@ -17,7 +17,7 @@ pub(super) async fn lock_row(
         [id.into()],
     ))
     .await
-    .map_err(database_error)?
+    .map_err(OperationError::from)?
     .ok_or(OperationError::NotFound)?;
     Ok(())
 }

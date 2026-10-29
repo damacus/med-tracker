@@ -28,6 +28,12 @@ use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
+pub(super) fn import_invalid(message: impl Into<String>) -> OperationError {
+    OperationError::Validation {
+        details: json!({"error": message.into()}),
+    }
+}
+
 pub(super) struct SyncRecord<'a> {
     pub record_type: &'a str,
     pub record_id: i64,
