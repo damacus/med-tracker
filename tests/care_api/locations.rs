@@ -579,14 +579,14 @@ async fn location_collection_api_is_scoped_paginated_and_validates_query() {
 }
 
 #[tokio::test]
-async fn location_saved_rails_retry_replays_without_new_effect() {
+async fn location_saved_retry_replays_without_new_effect() {
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;
     let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
     let path = format!("/api/v1/households/{fixture_household_id}/locations");
     let endpoint = format!("{}{path}", app.origin);
-    let request = r#"{"location":{"name":"Synthetic Rails cupboard","description":"Upstairs"}}"#;
+    let request = r#"{"location":{"name":"Synthetic saved cupboard","description":"Upstairs"}}"#;
     let created = app
         .client
         .post(&endpoint)
@@ -608,11 +608,11 @@ async fn location_saved_rails_retry_replays_without_new_effect() {
     med_tracker::models::_entities::api_idempotency_keys::ActiveModel {
         household_id: sea_orm::Set(fixture_household_id),
         account_id: sea_orm::Set(fixture_account_id),
-        key: sea_orm::Set("synthetic-rails-retry".to_owned()),
+        key: sea_orm::Set("synthetic-stored-retry".to_owned()),
         request_method: sea_orm::Set("POST".to_owned()),
         request_path: sea_orm::Set(path.to_owned()),
         request_digest: sea_orm::Set(
-            { let params = json!({"location":{"name":"Synthetic Rails cupboard","description":"Upstairs"},"household_id":fixture_household_id.to_string()}); let fingerprint = json!({"method":"POST","path":path,"params":params}); hex::encode(Sha256::digest(serde_json::to_vec(&fingerprint).unwrap())) },
+            { let mut fingerprint = json!({"method":"POST","path":path,"body":serde_json::from_str::<Value>(request).unwrap()}); fingerprint.sort_all_objects(); hex::encode(Sha256::digest(fingerprint.to_string().as_bytes())) },
         ),
         response_status: sea_orm::Set(201),
         response_body: sea_orm::Set(body.clone()),
@@ -630,7 +630,7 @@ async fn location_saved_rails_retry_replays_without_new_effect() {
         .post(&endpoint)
         .bearer_auth(&token)
         .header("content-type", "application/json")
-        .header("idempotency-key", "synthetic-rails-retry")
+        .header("idempotency-key", "synthetic-stored-retry")
         .body(request)
         .send()
         .await
@@ -660,7 +660,7 @@ async fn location_saved_rails_retry_replays_without_new_effect() {
                                     .eq(QueryExpr::val(fixture_household_id))
                                     .and(
                                         QueryExpr::col("name")
-                                            .eq(QueryExpr::val("Synthetic Rails cupboard")),
+                                            .eq(QueryExpr::val("Synthetic saved cupboard")),
                                     ),
                             )
                             .to_owned(),
