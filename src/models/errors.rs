@@ -36,6 +36,60 @@ impl From<sea_orm::DbErr> for OperationError {
     }
 }
 
+impl From<opendal::Error> for OperationError {
+    fn from(error: opendal::Error) -> Self {
+        let category = storage_error_category(&error);
+        tracing::error!(category, error_trace_id = %uuid::Uuid::new_v4(), "Storage operation failed");
+        Self::Unavailable
+    }
+}
+
+impl From<tokio::time::error::Elapsed> for OperationError {
+    fn from(_: tokio::time::error::Elapsed) -> Self {
+        tracing::error!(category = "timeout", error_trace_id = %uuid::Uuid::new_v4(), "Operation timed out");
+        Self::Unavailable
+    }
+}
+
+impl From<std::io::Error> for OperationError {
+    fn from(error: std::io::Error) -> Self {
+        let category = io_error_category(&error);
+        tracing::error!(category, error_trace_id = %uuid::Uuid::new_v4(), "I/O operation failed");
+        Self::Unavailable
+    }
+}
+
+impl OperationError {
+    /// Safe diagnostic for operational failures that carry no error value to
+    /// convert, such as an absent configured resource or a violated
+    /// persistence invariant.
+    pub(crate) fn unavailable(category: &'static str) -> Self {
+        tracing::error!(category, error_trace_id = %uuid::Uuid::new_v4(), "Operation dependency unavailable");
+        Self::Unavailable
+    }
+}
+
+fn storage_error_category(error: &opendal::Error) -> &'static str {
+    if error.is_temporary() {
+        return "transient";
+    }
+    match error.kind() {
+        opendal::ErrorKind::NotFound => "not_found",
+        opendal::ErrorKind::PermissionDenied => "permission",
+        opendal::ErrorKind::ConfigInvalid | opendal::ErrorKind::Unsupported => "configuration",
+        _ => "storage",
+    }
+}
+
+fn io_error_category(error: &std::io::Error) -> &'static str {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => "not_found",
+        std::io::ErrorKind::PermissionDenied => "permission",
+        std::io::ErrorKind::TimedOut => "timeout",
+        _ => "io",
+    }
+}
+
 fn database_error_category(error: &sea_orm::DbErr) -> &'static str {
     use sea_orm::{ConnAcquireErr, DbErr, RuntimeErr};
 
@@ -258,6 +312,103 @@ pub(crate) mod tests {
             assert!(!rendered.contains("TEST-CLINICAL"));
             assert!(!rendered.contains("TEST-SECRET"));
         }
+    }
+
+    #[test]
+    fn storage_errors_emit_safe_category_and_error_trace_id() {
+        let events = CapturedEvents::default();
+        let sentinel = "bucket=TEST-BUCKET;key=TEST-CLINICAL;credential=TEST-SECRET";
+        tracing::subscriber::with_default(events.clone(), || {
+            for error in [
+                opendal::Error::new(opendal::ErrorKind::Unexpected, sentinel),
+                opendal::Error::new(opendal::ErrorKind::NotFound, sentinel),
+                opendal::Error::new(opendal::ErrorKind::PermissionDenied, sentinel),
+                opendal::Error::new(opendal::ErrorKind::ConfigInvalid, sentinel),
+                opendal::Error::new(opendal::ErrorKind::RateLimited, sentinel).set_temporary(),
+            ] {
+                let operation_error = OperationError::from(error);
+                assert_eq!(operation_error, OperationError::Unavailable);
+                assert_eq!(
+                    operation_error.to_string(),
+                    "Operation temporarily unavailable"
+                );
+            }
+        });
+
+        let Ok(recorded) = events.0.lock() else {
+            panic!("captured event lock poisoned");
+        };
+        assert_eq!(recorded.len(), 5);
+        let mut trace_ids = std::collections::HashSet::new();
+        for (fields, category) in recorded.iter().zip([
+            "storage",
+            "not_found",
+            "permission",
+            "configuration",
+            "transient",
+        ]) {
+            assert_eq!(fields.len(), 3);
+            let category_field = fields.iter().find(|(name, _)| name == "category");
+            assert_eq!(
+                category_field.map(|(_, value)| value.as_str()),
+                Some(category)
+            );
+            let trace_id = fields.iter().find(|(name, _)| name == "error_trace_id");
+            let trace_id = trace_id
+                .map(|(_, value)| value.as_str())
+                .unwrap_or_default();
+            assert!(uuid::Uuid::parse_str(trace_id).is_ok());
+            assert!(trace_ids.insert(trace_id));
+            let message = fields.iter().find(|(name, _)| name == "message");
+            assert_eq!(
+                message.map(|(_, value)| value.as_str()),
+                Some("Storage operation failed")
+            );
+            let rendered = format!("{fields:?}");
+            assert!(!rendered.contains(sentinel));
+            assert!(!rendered.contains("TEST-CLINICAL"));
+            assert!(!rendered.contains("TEST-SECRET"));
+            assert!(!rendered.contains("TEST-BUCKET"));
+        }
+    }
+
+    #[tokio::test]
+    async fn timed_out_operations_emit_safe_category_and_error_trace_id() {
+        let elapsed = tokio::time::timeout(std::time::Duration::ZERO, std::future::pending::<()>())
+            .await
+            .unwrap_err();
+        let Ok((result, recorded)) = capture_operation(|| OperationError::from(elapsed)) else {
+            panic!("captured event lock poisoned");
+        };
+        assert_eq!(result, OperationError::Unavailable);
+        assert_eq!(recorded.len(), 1);
+        let fields = &recorded[0];
+        let category = fields.iter().find(|(name, _)| name == "category");
+        assert_eq!(category.map(|(_, value)| value.as_str()), Some("timeout"));
+        let trace_id = fields.iter().find(|(name, _)| name == "error_trace_id");
+        let trace_id = trace_id
+            .map(|(_, value)| value.as_str())
+            .unwrap_or_default();
+        assert!(uuid::Uuid::parse_str(trace_id).is_ok());
+    }
+
+    #[test]
+    fn unreported_failures_emit_safe_category_and_error_trace_id() {
+        let Ok((result, recorded)) = capture_operation(|| OperationError::unavailable("storage"))
+        else {
+            panic!("captured event lock poisoned");
+        };
+        assert_eq!(result, OperationError::Unavailable);
+        assert_eq!(recorded.len(), 1);
+        let fields = &recorded[0];
+        assert_eq!(fields.len(), 3);
+        let category = fields.iter().find(|(name, _)| name == "category");
+        assert_eq!(category.map(|(_, value)| value.as_str()), Some("storage"));
+        let trace_id = fields.iter().find(|(name, _)| name == "error_trace_id");
+        let trace_id = trace_id
+            .map(|(_, value)| value.as_str())
+            .unwrap_or_default();
+        assert!(uuid::Uuid::parse_str(trace_id).is_ok());
     }
 
     #[test]

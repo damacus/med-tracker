@@ -174,7 +174,7 @@ pub(super) async fn source(
             let value = query
                 .one(db)
                 .await
-                .map_err(database_error)?
+                .map_err(OperationError::from)?
                 .ok_or(OperationError::NotFound)?;
             if !allowed_person(db, context, value.person_id, false).await? {
                 return Err(OperationError::NotFound);
@@ -190,7 +190,7 @@ pub(super) async fn source(
             let value = query
                 .one(db)
                 .await
-                .map_err(database_error)?
+                .map_err(OperationError::from)?
                 .ok_or(OperationError::NotFound)?;
             if !allowed_person(db, context, value.person_id, false).await? {
                 return Err(OperationError::NotFound);

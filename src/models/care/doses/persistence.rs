@@ -24,7 +24,11 @@ pub(super) async fn insert_take(
         ..Default::default()
     };
     if client_uuid.is_none() {
-        return model.insert(db).await.map(Some).map_err(database_error);
+        return model
+            .insert(db)
+            .await
+            .map(Some)
+            .map_err(OperationError::from);
     }
     let statement = medication_take::Entity::insert(model)
         .on_conflict(
@@ -40,6 +44,6 @@ pub(super) async fn insert_take(
     match statement {
         Ok(row) => Ok(Some(row)),
         Err(sea_orm::DbErr::RecordNotInserted | sea_orm::DbErr::RecordNotFound(_)) => Ok(None),
-        Err(error) => Err(database_error(error)),
+        Err(error) => Err(error.into()),
     }
 }

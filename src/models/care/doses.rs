@@ -461,10 +461,6 @@ fn error(kind: ErrorKind, message: &str) -> OperationError {
         },
     }
 }
-fn database_error(_: sea_orm::DbErr) -> OperationError {
-    OperationError::Unavailable
-}
-
 enum TakeFailureCause {
     Paused,
     OutOfStock,

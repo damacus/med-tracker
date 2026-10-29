@@ -30,7 +30,7 @@ pub(super) async fn stock_version(
         household_id: Set(Some(context.membership().household_id)), actor_membership_id: Set(Some(context.membership().id)),
         audit_context: Set(domain_audit_context(context, request_id)),
         created_at: Set(Some(Utc::now().naive_utc())), ..Default::default()
-    }.insert(db).await.map_err(database_error)?;
+    }.insert(db).await.map_err(OperationError::from)?;
     Ok(())
 }
 
@@ -80,13 +80,13 @@ pub(super) async fn record_domain_audit(
     }
     .insert(db)
     .await
-    .map_err(database_error)?;
+    .map_err(OperationError::from)?;
     let person =
         crate::models::access::person_queries::household_participants(context.scope().household_id)
             .filter(crate::models::entities::person::Column::Id.eq(proposed.source.person_id))
             .one(db)
             .await
-            .map_err(database_error)?
+            .map_err(OperationError::from)?
             .ok_or(OperationError::NotFound)?;
     record_change(
         db,
