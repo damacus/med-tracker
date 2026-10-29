@@ -244,7 +244,7 @@ async fn shared_layout_fallback_and_permission_boundaries() {
             expect(fallback.locator(".app-sidebar a[href$='/dashboard']")).to_be_visible().await.unwrap();
             expect(fallback.locator(".app-sidebar a[href$='/profile']")).to_be_visible().await.unwrap();
             expect(fallback.locator(".app-sidebar form[action='/logout'] button")).to_be_visible().await.unwrap();
-            expect(fallback.get_by_role(AriaRole::Button,named("Appearance"))).to_be_visible().await.unwrap();
+            assert_eq!(fallback.locator("[data-dialog-open='appearance-dialog']").count().await.unwrap(), 0);
             capture(&fallback,"inventory-no-script-390").await;
             no_script.close().await.unwrap();
             page.route("**/profile/navigation",|route|async move {route.abort(None).await}).await.unwrap();

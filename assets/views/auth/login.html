@@ -1,10 +1,10 @@
 {% extends "layouts/base.html" %}
+{% block appearance_mode %}system{% endblock appearance_mode %}
 {% block header %}{% endblock header %}
 {% block main_class %}login-page{% endblock main_class %}
 {% block footer %}{% endblock footer %}
 {% block content %}
 <div class="login-content">
-  <button type="button" class="btn btn-ghost login-appearance" data-dialog-open="appearance-dialog">Appearance</button>
   <section class="card shell-card login-surface">
     <div class="login-brand">
       <div class="login-brand-name">
@@ -28,6 +28,7 @@
       </picture>
     </div>
     <div class="login-form-panel">
+      {% if auth_notice %}<p role="status">{{ auth_notice }}</p>{% endif %}
       {% if error %}<p role="alert" class="shell-error login-error">{{ error }}</p>{% endif %}
       <form method="post" action="/login" class="login-form">
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">

@@ -86,10 +86,13 @@ async fn retired() -> Response {
 
 async fn login(
     State(ctx): State<AppContext>,
+    session: Session<SessionPgPool>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    login_form(&ctx, &token, &view, None, StatusCode::OK).await
+    let notice = session.get::<String>("auth_notice");
+    session.remove("auth_notice");
+    login_form(&ctx, &token, &view, None, StatusCode::OK, notice).await
 }
 
 async fn login_form(
@@ -98,6 +101,7 @@ async fn login_form(
     view: &TeraView,
     error: Option<&str>,
     status: StatusCode,
+    notice: Option<String>,
 ) -> Response {
     let registration_open = match crate::models::identity::signup::registration_open(
         &ctx.db,
@@ -111,7 +115,7 @@ async fn login_form(
     let Ok(authenticity_token) = token.authenticity_token() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
-    let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}], "palettes":[], "authenticity_token":authenticity_token, "error":error, "registration_open":registration_open, "zitadel":crate::models::settings::text(ctx.config.settings.as_ref(), &["zitadel","issuer"]).is_some() });
+    let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "authenticity_token":authenticity_token, "error":error, "auth_notice":notice, "registration_open":registration_open, "zitadel":crate::models::settings::text(ctx.config.settings.as_ref(), &["zitadel","issuer"]).is_some() });
     match format::render().view(view, "auth/login.html", data) {
         Ok(response) => (
             status,
@@ -170,6 +174,7 @@ async fn sign_in(
             &view,
             Some("Too many sign-in attempts. Try again later."),
             StatusCode::TOO_MANY_REQUESTS,
+            None,
         )
         .await;
         if let Some(value) = response
@@ -234,6 +239,7 @@ async fn sign_in(
             &view,
             Some("Invalid email or password"),
             StatusCode::UNAUTHORIZED,
+            None,
         )
         .await
     } else {

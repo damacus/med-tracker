@@ -1,12 +1,9 @@
 use med_tracker::models::_entities::{medication_takes, schedules};
-use playwright_rs::{
-    expect,
-    protocol::{AriaRole, Viewport},
-};
+use playwright_rs::{expect, protocol::Viewport};
 use sea_orm::{ActiveModelTrait, Set};
 use serde_json::{Value, json};
 
-use crate::harness::{self, named};
+use crate::harness;
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
@@ -90,10 +87,7 @@ async fn report_clarity_distinguishes_empty_days_from_completed_days() {
             assert_eq!(display, json!({"periodLabels":true,"emptyMarkers":1,"completedBars":1,"emptyMeaning":true,"described":true}));
             for appearance in ["light", "dark"] {
                 page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
-                page.locator("[data-sidebar-account]").click(None).await.unwrap();
-                page.get_by_role(AriaRole::Button, named("Appearance")).click(None).await.unwrap();
-                page.locator(format!("[data-appearance-choice='{appearance}']")).click(None).await.unwrap();
-                page.keyboard().press("Escape", None).await.unwrap();
+                harness::device_appearance(page, appearance).await;
                 for (size, width, height) in [("desktop",1440,1000),("mobile",390,844)] {
                     page.set_viewport_size(Viewport { width, height }).await.unwrap();
                     if appearance == "light" {

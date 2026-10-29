@@ -157,15 +157,9 @@ async fn bulk_member_selection_confirmation_partial_retry_and_responsive_journey
         page.goto(&format!("{}/households/persistence-fixture/admin/users?q=Bulk%20Beta&lang=en",journey.origin),None).await.unwrap();
         page.set_viewport_size(Viewport{width:1440,height:1000}).await.unwrap();
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Appearance")).click(None).await.unwrap();
-        page.locator("[data-appearance-choice=dark]").click(None).await.unwrap();
-        page.locator("#appearance-dialog [data-dialog-close]").click(None).await.unwrap();
+        harness::device_appearance(page, "dark").await;
         capture(page,"selection-dark-1440").await;
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Appearance")).click(None).await.unwrap();
-        page.locator("[data-appearance-choice=system]").click(None).await.unwrap();
-        page.locator("#appearance-dialog [data-dialog-close]").click(None).await.unwrap();
+        harness::device_appearance(page, "light").await;
         page.set_viewport_size(Viewport{width:320,height:844}).await.unwrap();
         page.get_by_role(AriaRole::Button,named("Revoke selected")).press("Enter",None).await.unwrap();
         expect(page.locator("main")).to_contain_text("Select between 1 and 25").await.unwrap();

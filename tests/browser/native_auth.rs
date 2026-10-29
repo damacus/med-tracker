@@ -157,15 +157,7 @@ async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static 
                 .await
                 .unwrap();
             for appearance in ["light", "dark"] {
-                page.get_by_role(AriaRole::Button, named("Appearance"))
-                    .click(None)
-                    .await
-                    .unwrap();
-                page.locator(format!("[data-appearance-choice='{appearance}']"))
-                    .click(None)
-                    .await
-                    .unwrap();
-                page.keyboard().press("Escape", None).await.unwrap();
+                harness::device_appearance(page, appearance).await;
                 let paint: Value = page.evaluate(r#"async () => {
                     await Promise.allSettled(document.getAnimations().map(animation => animation.finished));
                     const button = document.querySelector('[data-passkey-login]');
