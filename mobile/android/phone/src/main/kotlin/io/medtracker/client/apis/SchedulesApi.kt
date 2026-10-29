@@ -222,6 +222,7 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return ScheduleResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -231,8 +232,8 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getSchedule(householdId: kotlin.Int, id: kotlin.String) : ScheduleResponse {
-        val localVarResponse = getScheduleWithHttpInfo(householdId = householdId, id = id)
+    fun getSchedule(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String? = null) : ScheduleResponse {
+        val localVarResponse = getScheduleWithHttpInfo(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as ScheduleResponse
@@ -255,14 +256,15 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return ApiResponse<ScheduleResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getScheduleWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<ScheduleResponse?> {
-        val localVariableConfig = getScheduleRequestConfig(householdId = householdId, id = id)
+    fun getScheduleWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : ApiResponse<ScheduleResponse?> {
+        val localVariableConfig = getScheduleRequestConfig(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return request<Unit, ScheduleResponse>(
             localVariableConfig
@@ -274,12 +276,14 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return RequestConfig
      */
-    fun getScheduleRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+    fun getScheduleRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifNoneMatch?.apply { localVariableHeaders["If-None-Match"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(

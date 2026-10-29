@@ -303,7 +303,7 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
+        "503":
           description: History or its access audit could not be committed; no records are released.
           content:
             application/json:

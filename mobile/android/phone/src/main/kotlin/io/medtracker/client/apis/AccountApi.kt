@@ -20,6 +20,8 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.AccountProfileResponse
+import io.medtracker.client.models.AdoptDepartedLegacySchedule201Response
+import io.medtracker.client.models.AdoptDepartedLegacyScheduleRequest
 import io.medtracker.client.models.AuthHouseholdCollectionResponse
 import io.medtracker.client.models.AuthSessionCollectionResponse
 import io.medtracker.client.models.ErrorEnvelope
@@ -29,6 +31,7 @@ import io.medtracker.client.models.GuardianDeclarationWithdrawalRequest
 import io.medtracker.client.models.InvitationAcceptanceRequest
 import io.medtracker.client.models.InvitationAcceptanceResponse
 import io.medtracker.client.models.ListPersonalSchedules200Response
+import io.medtracker.client.models.PersonalTakenDoseCollectionResponse
 import io.medtracker.client.models.RateLimitErrorEnvelope
 import io.medtracker.client.models.UpdateAccountProfileRequest
 import io.medtracker.client.models.UpdatePersonalSchedule200Response
@@ -125,6 +128,80 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/invitations/accept",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /auth/schedules/adopt
+     * Adopt an exact frozen prescription after household departure.
+     * Requires an account-bound first-party mobile credential and current self or eligible explicit guardian authority, rechecked after lock waits. Household management, app tokens and personal keys do not grant adoption. The prescription was frozen during an authorised operational departure; adoption does not read former household stock or revive its execution. Returns safe current prescription fields without private notes, pause narratives or former household/stock identifiers. Repeating adoption returns the same plan without another adoption audit or stock effect. A missing legacy origin timezone uses the configured application zone only at this authorised adoption, with adopted_application_zone provenance. 
+     * @param adoptDepartedLegacyScheduleRequest 
+     * @return AdoptDepartedLegacySchedule201Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun adoptDepartedLegacySchedule(adoptDepartedLegacyScheduleRequest: AdoptDepartedLegacyScheduleRequest) : AdoptDepartedLegacySchedule201Response {
+        val localVarResponse = adoptDepartedLegacyScheduleWithHttpInfo(adoptDepartedLegacyScheduleRequest = adoptDepartedLegacyScheduleRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as AdoptDepartedLegacySchedule201Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /auth/schedules/adopt
+     * Adopt an exact frozen prescription after household departure.
+     * Requires an account-bound first-party mobile credential and current self or eligible explicit guardian authority, rechecked after lock waits. Household management, app tokens and personal keys do not grant adoption. The prescription was frozen during an authorised operational departure; adoption does not read former household stock or revive its execution. Returns safe current prescription fields without private notes, pause narratives or former household/stock identifiers. Repeating adoption returns the same plan without another adoption audit or stock effect. A missing legacy origin timezone uses the configured application zone only at this authorised adoption, with adopted_application_zone provenance. 
+     * @param adoptDepartedLegacyScheduleRequest 
+     * @return ApiResponse<AdoptDepartedLegacySchedule201Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun adoptDepartedLegacyScheduleWithHttpInfo(adoptDepartedLegacyScheduleRequest: AdoptDepartedLegacyScheduleRequest) : ApiResponse<AdoptDepartedLegacySchedule201Response?> {
+        val localVariableConfig = adoptDepartedLegacyScheduleRequestConfig(adoptDepartedLegacyScheduleRequest = adoptDepartedLegacyScheduleRequest)
+
+        return request<AdoptDepartedLegacyScheduleRequest, AdoptDepartedLegacySchedule201Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation adoptDepartedLegacySchedule
+     *
+     * @param adoptDepartedLegacyScheduleRequest 
+     * @return RequestConfig
+     */
+    fun adoptDepartedLegacyScheduleRequestConfig(adoptDepartedLegacyScheduleRequest: AdoptDepartedLegacyScheduleRequest) : RequestConfig<AdoptDepartedLegacyScheduleRequest> {
+        val localVariableBody = adoptDepartedLegacyScheduleRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/auth/schedules/adopt",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -628,6 +705,90 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
         return RequestConfig(
             method = RequestMethod.GET,
             path = "/auth/schedules",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /auth/profile/history
+     * Read the authenticated person&#39;s own taken-dose history.
+     * Requires an account-bound first-party mobile OAuth credential with medtracker scope. Household sessions, app tokens, personal keys and integration grants cannot use this route. The subject comes from the authenticated account; person and household selectors are rejected. No household membership is required. Returns taken administrations across origin households, without stock details, locations or private narratives. Existing administration attribution is preserved. Results contain at most 25 records in descending taken_at, then ID order. Supply both cursor fields from next_cursor to read the next page. Timestamps are UTC. Each page rechecks current credentials and commits its access audit before releasing records. Refusals are audited, naming the actor only when the server has proved their identity. Successful reads and refusals by verified callers use the clinical ledger. Refusals without a proved identity use structured security logs without a claimed actor or database audit write. Rate-limit and unavailable-source refusals occur before authentication, keeping database work behind the rate limit. Every response is no-store. 
+     * @param beforeId  (optional)
+     * @param beforeTakenAt  (optional)
+     * @return PersonalTakenDoseCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listPersonalTakenDoses(beforeId: kotlin.Long? = null, beforeTakenAt: java.time.OffsetDateTime? = null) : PersonalTakenDoseCollectionResponse {
+        val localVarResponse = listPersonalTakenDosesWithHttpInfo(beforeId = beforeId, beforeTakenAt = beforeTakenAt)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as PersonalTakenDoseCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /auth/profile/history
+     * Read the authenticated person&#39;s own taken-dose history.
+     * Requires an account-bound first-party mobile OAuth credential with medtracker scope. Household sessions, app tokens, personal keys and integration grants cannot use this route. The subject comes from the authenticated account; person and household selectors are rejected. No household membership is required. Returns taken administrations across origin households, without stock details, locations or private narratives. Existing administration attribution is preserved. Results contain at most 25 records in descending taken_at, then ID order. Supply both cursor fields from next_cursor to read the next page. Timestamps are UTC. Each page rechecks current credentials and commits its access audit before releasing records. Refusals are audited, naming the actor only when the server has proved their identity. Successful reads and refusals by verified callers use the clinical ledger. Refusals without a proved identity use structured security logs without a claimed actor or database audit write. Rate-limit and unavailable-source refusals occur before authentication, keeping database work behind the rate limit. Every response is no-store. 
+     * @param beforeId  (optional)
+     * @param beforeTakenAt  (optional)
+     * @return ApiResponse<PersonalTakenDoseCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listPersonalTakenDosesWithHttpInfo(beforeId: kotlin.Long?, beforeTakenAt: java.time.OffsetDateTime?) : ApiResponse<PersonalTakenDoseCollectionResponse?> {
+        val localVariableConfig = listPersonalTakenDosesRequestConfig(beforeId = beforeId, beforeTakenAt = beforeTakenAt)
+
+        return request<Unit, PersonalTakenDoseCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listPersonalTakenDoses
+     *
+     * @param beforeId  (optional)
+     * @param beforeTakenAt  (optional)
+     * @return RequestConfig
+     */
+    fun listPersonalTakenDosesRequestConfig(beforeId: kotlin.Long?, beforeTakenAt: java.time.OffsetDateTime?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (beforeId != null) {
+                    put("before_id", listOf(beforeId.toString()))
+                }
+                if (beforeTakenAt != null) {
+                    put("before_taken_at", listOf(parseDateToQueryString(beforeTakenAt)))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/auth/profile/history",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

@@ -138,13 +138,14 @@ data class PersonalSchedule (
     /**
      * 
      *
-     * Values: captured_sharer_zone,adopted_application_zone,authorised_correction,unknown_default_open_api
+     * Values: captured_sharer_zone,adopted_application_zone,authorised_correction,preserved_origin_zone,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class TimezoneProvenance(val value: kotlin.String) {
         @Json(name = "captured_sharer_zone") captured_sharer_zone("captured_sharer_zone"),
         @Json(name = "adopted_application_zone") adopted_application_zone("adopted_application_zone"),
         @Json(name = "authorised_correction") authorised_correction("authorised_correction"),
+        @Json(name = "preserved_origin_zone") preserved_origin_zone("preserved_origin_zone"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**
