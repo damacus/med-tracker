@@ -257,9 +257,7 @@ async fn accept_validated(
                 .await?
                 .is_some();
             if consent.is_none() && participates_elsewhere {
-                return Err(
-                    crate::models::care::person_schedules::sharing::consent_required(),
-                );
+                return Err(crate::models::care::person_schedules::sharing::consent_required());
             }
             let existing = membership::Entity::find()
                 .in_tenant(invitation.household_id)

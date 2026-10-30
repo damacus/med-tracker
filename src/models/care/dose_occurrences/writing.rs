@@ -35,8 +35,7 @@ async fn source(
                 .await?
                 .ok_or(OperationError::NotFound)?;
             if locked {
-                super::super::person_schedules::projection::refresh_one(tenant, initial.id)
-                    .await?;
+                super::super::person_schedules::projection::refresh_one(tenant, initial.id).await?;
                 query
                     .lock_exclusive()
                     .one(tenant.transaction())

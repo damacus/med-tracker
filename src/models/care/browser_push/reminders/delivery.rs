@@ -218,9 +218,7 @@ async fn presend_authority(
     let revocable = |error: &OperationError| {
         matches!(
             error,
-            OperationError::Forbidden
-                | OperationError::NotFound
-                | OperationError::Unauthenticated
+            OperationError::Forbidden | OperationError::NotFound | OperationError::Unauthenticated
         )
     };
     // Gate on the recipient authority locks before refreshing projections:
@@ -274,8 +272,7 @@ async fn presend_authority(
         return Ok(Guard::Stale);
     }
     gate.commit().await?;
-    let projection_tenant =
-        access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    let projection_tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     if let Err(error) =
         crate::models::care::person_schedules::projection::refresh(&projection_tenant).await
     {
