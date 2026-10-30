@@ -4,8 +4,8 @@ use crate::models::{
     identity::resource::HistoryActor,
 };
 use sea_orm::{
-    ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, EntityTrait,
-    QueryFilter, QueryOrder, QuerySelect, Set,
+    ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, EntityTrait, QueryFilter,
+    QueryOrder, QuerySelect, Set,
     sea_query::{Expr, Func, Query},
 };
 use serde_json::json;
