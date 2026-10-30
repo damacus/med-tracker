@@ -47,12 +47,12 @@ pub(super) async fn decrement_stock(
     request_id: &str,
     proposed: &ProposedTake,
 ) -> Result<(), ApiError> {
-    lock_row(db, "medications", proposed.selected.id).await?;
+    lock_medication(db, proposed.selected.id).await?;
     let selected = medication::Entity::find_by_id(proposed.selected.id)
         .in_tenant(context.scope().household_id)
         .one(db)
         .await
-        .map_err(database_error)?
+        .map_err(OperationError::from)?
         .ok_or(OperationError::NotFound)?;
     let tracked = dosage::Entity::find()
         .in_tenant(context.scope().household_id)
@@ -60,7 +60,7 @@ pub(super) async fn decrement_stock(
         .filter(dosage::Column::CurrentSupply.is_not_null())
         .all(db)
         .await
-        .map_err(database_error)?;
+        .map_err(OperationError::from)?;
     if tracked.is_empty() {
         if let Some(supply) = selected.current_supply {
             let needed = quantity(proposed.amount, &proposed.unit);
@@ -75,7 +75,7 @@ pub(super) async fn decrement_stock(
             let mut update: medication::ActiveModel = selected.into();
             update.current_supply = Set(Some(supply - needed));
             update.updated_at = Set(Utc::now().naive_utc());
-            update.update(db).await.map_err(database_error)?;
+            update.update(db).await.map_err(OperationError::from)?;
             stock_version(
                 db,
                 context,
@@ -111,7 +111,7 @@ pub(super) async fn decrement_stock(
                 .in_tenant(context.scope().household_id)
                 .one(db)
                 .await
-                .map_err(database_error)?
+                .map_err(OperationError::from)?
                 .ok_or(OperationError::NotFound)?,
         )
     } else {
@@ -130,12 +130,12 @@ pub(super) async fn decrement_stock(
             "Selected location is unavailable for this medication.",
         )
     })?;
-    lock_row(db, "dosages", selected_option.id).await?;
+    lock_dosage(db, selected_option.id).await?;
     let selected_option = dosage::Entity::find_by_id(selected_option.id)
         .in_tenant(context.scope().household_id)
         .one(db)
         .await
-        .map_err(database_error)?
+        .map_err(OperationError::from)?
         .ok_or(OperationError::NotFound)?;
     let supply = selected_option
         .current_supply
@@ -152,7 +152,7 @@ pub(super) async fn decrement_stock(
     let mut update: dosage::ActiveModel = selected_option.into();
     update.current_supply = Set(Some(supply - needed));
     update.updated_at = Set(Utc::now().naive_utc());
-    update.update(db).await.map_err(database_error)?;
+    update.update(db).await.map_err(OperationError::from)?;
     stock_version(
         db,
         context,
@@ -185,7 +185,7 @@ pub(super) async fn decrement_stock(
         .filter(dosage::Column::CurrentSupply.is_not_null())
         .all(db)
         .await
-        .map_err(database_error)?
+        .map_err(OperationError::from)?
         .into_iter()
         .filter_map(|v| v.current_supply)
         .sum::<Decimal>();
@@ -198,7 +198,7 @@ pub(super) async fn decrement_stock(
     let mut inventory: medication::ActiveModel = selected.into();
     inventory.current_supply = Set(Some(total));
     inventory.updated_at = Set(Utc::now().naive_utc());
-    inventory.update(db).await.map_err(database_error)?;
+    inventory.update(db).await.map_err(OperationError::from)?;
     if let Some(previous) = previous {
         stock_version(
             db,

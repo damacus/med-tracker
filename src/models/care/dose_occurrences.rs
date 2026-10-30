@@ -10,9 +10,10 @@ mod projection;
 mod representation;
 mod scheduling;
 mod writing;
+use crate::models::identity::credentials::CredentialProvenance;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::{administration, doses},
+    care::{administration, doses, valid_identifier},
     entities::{
         api_change_event, dose_occurrence, household, medication_take, pause_period,
         person_medication, schedule,
@@ -23,7 +24,6 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use calendar::{config_times, cycle_bounds, date, local_midnight};
 pub(crate) use calendar::{scheduled_time_in_zone, with_dashboard_timezone};
 use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone, Utc};
-use doses::CredentialProvenance;
 use hmac::{Hmac, KeyInit, Mac};
 use identity::{Kind, Source};
 use input::ActionInput;
@@ -435,9 +435,6 @@ fn not_found() -> OperationError {
 }
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
-}
-fn valid_identifier(id: &str) -> bool {
-    id.parse::<i64>().is_ok_and(|id| id > 0) || Uuid::parse_str(id).is_ok()
 }
 fn parse_decimal(value: &Value) -> Option<sea_orm::prelude::Decimal> {
     sea_orm::prelude::Decimal::from_str(value.as_str()?).ok()

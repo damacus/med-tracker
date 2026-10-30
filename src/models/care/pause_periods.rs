@@ -6,11 +6,12 @@ pub(crate) use reading::period_values;
 mod writing;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::{administration, doses::CredentialProvenance},
+    care::administration,
     entities::{
         api_change_event, household, membership, pause_period, person, person_medication, schedule,
     },
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::Utc;
 pub use legacy::{

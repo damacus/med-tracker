@@ -300,7 +300,7 @@ async fn handle(
         )
         .await;
     }
-    if let Err(message) = care::portable_imports::write_records(
+    if let Err(error) = care::portable_imports::write_records(
         tenant.transaction(),
         &tenant,
         principal.provenance(),
@@ -322,7 +322,7 @@ async fn handle(
             tenant,
             principal.provenance(),
             audit(),
-            Err(response::Failure::validation(&message)),
+            Err(response::operation(error)),
             &request_id,
         )
         .await;

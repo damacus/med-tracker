@@ -19,8 +19,8 @@ pub(crate) use preflight::preflight;
 pub(crate) use writing::write_records;
 
 use crate::models::{
-    access::TenantTransaction, care::administration, care::doses::CredentialProvenance,
-    entities::api_change_event, errors::OperationError,
+    access::TenantTransaction, care::administration, entities::api_change_event,
+    errors::OperationError, identity::credentials::CredentialProvenance,
 };
 use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, Utc};
 use sea_orm::prelude::Decimal;
@@ -28,6 +28,12 @@ use sea_orm::{ActiveModelTrait, ConnectionTrait, DatabaseTransaction, DbBackend,
 use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
+
+pub(super) fn import_invalid(message: impl Into<String>) -> OperationError {
+    OperationError::Validation {
+        details: json!({"error": message.into()}),
+    }
+}
 
 pub(super) struct SyncRecord<'a> {
     pub record_type: &'a str,

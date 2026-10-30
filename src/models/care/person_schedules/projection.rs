@@ -329,7 +329,7 @@ pub(crate) struct BindStock {
 pub(crate) async fn bind(
     tenant: &TenantTransaction,
     command: BindStock,
-    provenance: &super::super::doses::CredentialProvenance,
+    provenance: &crate::models::identity::credentials::CredentialProvenance,
 ) -> Result<schedule::Model, OperationError> {
     super::super::sync::lock(tenant).await?;
     super::super::administration::authorize(tenant).await?;

@@ -1,8 +1,9 @@
 use super::*;
 use crate::models::{
     access,
-    care::{doses::CredentialProvenance, treatments},
+    care::treatments,
     entities::{api_change_event, dosage, household, membership, pause_period, version},
+    identity::credentials::CredentialProvenance,
     ids::AccountId,
 };
 use sea_orm::{

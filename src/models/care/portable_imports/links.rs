@@ -6,28 +6,27 @@ pub(super) async fn write_health_links(
     row: &Value,
     index: &ExistingIndex,
     event_id: i64,
-) -> Result<(), String> {
+) -> Result<(), OperationError> {
     db.execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "DELETE FROM health_event_medications WHERE household_id = $1 AND health_event_id = $2",
         [tenant.scope().household_id.into(), event_id.into()],
     ))
-    .await
-    .map_err(|_| "Health event medications could not be updated".to_owned())?;
+    .await?;
     let Some(medications) = row["medication_portable_ids"].as_array() else {
         return Ok(());
     };
     for medication in medications {
         let portable_id = medication
             .as_str()
-            .ok_or("Health event medication portable ID is invalid")?;
+            .ok_or_else(|| import_invalid("Health event medication portable ID is invalid"))?;
         let medication_id = index
             .get("medications", portable_id)
-            .ok_or("Health event medication is unavailable")?;
+            .ok_or_else(|| import_invalid("Health event medication is unavailable"))?;
         db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "INSERT INTO health_event_medications (household_id, health_event_id, medication_id, medication_name, created_at, updated_at) SELECT $1, $2, id, COALESCE(name, friendly_name, 'Medication'), NOW(), NOW() FROM medications WHERE household_id = $1 AND id = $3",
             [tenant.scope().household_id.into(), event_id.into(), medication_id.into()]))
-            .await.map_err(|_| "Health event medication could not be restored".to_owned())?;
+            .await?;
     }
     Ok(())
 }

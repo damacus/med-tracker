@@ -523,8 +523,8 @@ async fn stock_adjustment_portable_id_and_trusted_provenance_preserve_audit() {
     let snapshot = medications::read_stock_snapshot(&tenant, &fixture.medication_id.to_string())
         .await
         .unwrap();
-    let provenance = med_tracker::models::care::doses::CredentialProvenance {
-        method: med_tracker::models::care::doses::CredentialMethod::OauthGrant,
+    let provenance = med_tracker::models::identity::credentials::CredentialProvenance {
+        method: med_tracker::models::identity::credentials::CredentialMethod::OauthGrant,
         reference: "synthetic-validated-grant".into(),
     };
     let Command::AdjustStock(mut input) = command(&fixture, "12");

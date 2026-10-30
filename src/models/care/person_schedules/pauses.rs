@@ -8,7 +8,7 @@ pub(super) struct ResumeActor<'a> {
     pub(super) account: AccountId,
     pub(super) membership: Option<i64>,
     pub(super) request_id: &'a str,
-    pub(super) provenance: Option<&'a super::super::doses::CredentialProvenance>,
+    pub(super) provenance: Option<&'a crate::models::identity::credentials::CredentialProvenance>,
 }
 
 pub(super) async fn record_resume(

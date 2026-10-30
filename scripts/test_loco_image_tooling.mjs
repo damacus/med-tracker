@@ -37,8 +37,8 @@ function fixture(t) {
 }
 
 test("current image matches stable CI and application tools", (t) => {
-  const { root, rust, node } = fixture(t);
-  assert.match(check(root, rust, `v${node}`), /Image tools match app CI/);
+  const { root, rust } = fixture(t);
+  assert.match(check(root, rust), /Image tools match app CI/);
 });
 
 test("new stable Rust requires an image update", (t) => {
@@ -46,9 +46,9 @@ test("new stable Rust requires an image update", (t) => {
   assert.throws(() => check(root, "999.0.0"), /Rust/);
 });
 
-test("new Node patch requires an image update", (t) => {
+test("Node patch drift does not require an image update", (t) => {
   const { root, rust, node } = fixture(t);
-  assert.throws(() => check(root, rust, `v${node.split(".")[0]}.999.0`), /Node/);
+  assert.match(check(root, rust, `v${node.split(".")[0]}.999.0`), /Image tools match app CI/);
 });
 
 test("application Node upgrade requires an image update", (t) => {

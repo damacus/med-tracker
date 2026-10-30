@@ -12,12 +12,13 @@ pub mod settings;
 
 use crate::models::{
     access::{self, TenantTransaction},
-    care::{doses::CredentialProvenance, locations},
+    care::locations,
     entities::{
         account, carer_relationship, grant, household, household_invitation, membership, person,
         security_audit_event, version,
     },
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{

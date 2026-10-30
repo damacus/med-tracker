@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::care::doses::CredentialProvenance;
+use crate::models::identity::credentials::CredentialProvenance;
 use loco_rs::mailer::Email;
 use loco_rs::model::TenantQueryExt;
 

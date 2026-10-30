@@ -1,9 +1,10 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     authorization,
-    care::{administration, doses::CredentialProvenance, invitations, sync},
+    care::{administration, invitations, sync},
     entities::{account, carer_relationship, membership, person},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use loco_rs::model::TenantQueryExt;
 use sea_orm::sea_query::Expr;

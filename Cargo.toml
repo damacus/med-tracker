@@ -59,9 +59,7 @@ serde_urlencoded = "=0.7.1"
 url = "=2.5.8"
 pbkdf2 = "=0.13.0"
 
-web-push = { version = "=0.11.0", default-features = false, features = [
-    "hyper-client",
-] }
+web-push = { version = "=0.11.0", default-features = false }
 reqwest = { version = "=0.13.5", default-features = false, features = [
     "json",
     "rustls",
@@ -71,7 +69,7 @@ ulid = "=3.0.0"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 axum = { version = "0.8", features = ["multipart"] }
-axum_session = "=0.22.0"
+axum_session = "=0.22.1"
 axum_session_sqlx = { version = "=0.12.0", default-features = false, features = [
     "postgres",
     "tls-rustls",
@@ -112,12 +110,6 @@ base32 = "=0.5.1"
 iri-string = { version = "=0.7.14", default-features = false }
 loco-rs = { version = "=1.2.0", default-features = false, features = [
     "testing",
-] }
-aws-sdk-s3 = { version = "=1.156.0", default-features = false, features = [
-    "default-https-client",
-    "http-1x",
-    "rt-tokio",
-    "behavior-version-latest",
 ] }
 proptest = "=1.12.0"
 regex = "=1.13.1"

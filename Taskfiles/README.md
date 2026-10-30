@@ -107,6 +107,7 @@ rtk task test:browser FILTER=login
 rtk task test:tooling
 rtk task host:fmt
 rtk task host:lint
+rtk task host:deny
 rtk task host:test:integration TARGET=care_api FILTER=fixture
 ```
 

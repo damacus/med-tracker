@@ -7,11 +7,12 @@ mod removal;
 mod validation;
 mod writing;
 
-use crate::models::care::{administration, doses::CredentialProvenance};
+use crate::models::care::administration;
 use crate::models::{
     access::{self, TenantTransaction},
     entities::{api_change_event, dosage, medication},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::Utc;
 use sea_orm::prelude::Decimal;

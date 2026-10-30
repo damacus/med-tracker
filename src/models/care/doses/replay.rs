@@ -42,14 +42,14 @@ pub(super) async fn authorize_existing_take(
         schedule::Entity::find_by_id(id)
             .one(db)
             .await
-            .map_err(database_error)?
+            .map_err(OperationError::from)?
             .filter(|value| value.household_id == household_id)
             .map(|value| ("schedule", value.id, value.portable_id, value.person_id))
     } else if let Some(id) = take.person_medication_id {
         person_medication::Entity::find_by_id(id)
             .one(db)
             .await
-            .map_err(database_error)?
+            .map_err(OperationError::from)?
             .filter(|value| value.household_id == household_id)
             .map(|value| {
                 (
@@ -87,7 +87,7 @@ pub(super) async fn lock_client_uuid(
         [lock_id.into()],
     ))
     .await
-    .map_err(database_error)?;
+    .map_err(OperationError::from)?;
     Ok(())
 }
 
@@ -103,7 +103,7 @@ pub(super) async fn existing_take(
         )
         .all(db)
         .await
-        .map_err(database_error)?;
+        .map_err(OperationError::from)?;
     let mut matching = candidates.into_iter().filter(|record| {
         record
             .client_uuid

@@ -16,7 +16,7 @@ mod tokens;
 use super::administration;
 use crate::models::{
     access::TenantTransaction,
-    entities::{household_invitation, household_invitation_grant},
+    entities::{household_invitation, household_invitation_grant, invitation_mail_attempt},
     errors::OperationError,
 };
 use chrono::{NaiveDateTime, Utc};

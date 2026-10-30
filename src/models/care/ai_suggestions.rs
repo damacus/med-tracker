@@ -263,7 +263,7 @@ pub fn parse_identity(body: &[u8]) -> Option<Value> {
 
 fn source_config() -> Option<SourceConfig> {
     serde_yaml_ng::from_str(include_str!(
-        "../../../rails/config/ai_medication_sources.yml"
+        "../../../assets/catalogue/ai_medication_sources.yml"
     ))
     .ok()
 }

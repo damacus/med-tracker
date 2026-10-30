@@ -97,7 +97,7 @@ pub(crate) struct AcceptanceActor {
     pub account_id: i64,
     pub person_id: i64,
     pub email: String,
-    pub provenance: Option<crate::models::care::doses::CredentialProvenance>,
+    pub provenance: Option<crate::models::identity::credentials::CredentialProvenance>,
 }
 
 enum Principal<'a> {
@@ -111,7 +111,7 @@ impl Principal<'_> {
         transaction: &DatabaseTransaction,
         settings: Option<&serde_json::Value>,
     ) -> Result<AcceptanceActor, OperationError> {
-        use crate::models::care::doses::{CredentialMethod, CredentialProvenance};
+        use crate::models::identity::credentials::{CredentialMethod, CredentialProvenance};
         match self {
             Self::Api(principal) => {
                 let actor = principal

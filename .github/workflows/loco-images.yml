@@ -16,8 +16,6 @@ on:
       - config/production.yaml
       - package.json
       - package-lock.json
-      - rails/config/ai_medication_sources.yml
-      - rails/config/medication_review_labels.yml
       - scripts/*loco_image*.mjs
       - mise.toml
       - .github/workflows/ci.yml
@@ -81,8 +79,6 @@ jobs:
       - name: Verify Task release binary
         run: echo "e1561194871b9c9fb3aa7c71d1cb2cbcd71eda417b62c511739823eef9f947b9  $(command -v task)" | sha256sum --check --strict
       - run: task image:check image:release:check
-        env:
-          IMAGE_CI_NODE_VERSION: ${{ steps.node.outputs.node-version }}
 
   image:
     needs: tooling

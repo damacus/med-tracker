@@ -144,7 +144,7 @@ pub(super) async fn capture(
     tenant: &TenantTransaction,
     source: &schedule::Model,
     plan: &person_schedule::Model,
-    provenance: Option<&super::super::doses::CredentialProvenance>,
+    provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
 ) -> Result<CapturedHistory, OperationError> {
     if source.person_schedule_id.is_some() {
         return Ok(CapturedHistory(Vec::new()));
@@ -232,7 +232,7 @@ pub(super) async fn capture(
 pub(super) async fn capture_frozen(
     tenant: &TenantTransaction,
     source: &schedule::Model,
-    provenance: Option<&super::super::doses::CredentialProvenance>,
+    provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
 ) -> Result<(), OperationError> {
     let db = tenant.transaction();
     let takes = medication_take::Entity::find()
@@ -307,7 +307,7 @@ pub(super) async fn capture_frozen(
 pub(crate) async fn index_restored(
     tenant: &TenantTransaction,
     take: &medication_take::Model,
-    provenance: Option<&super::super::doses::CredentialProvenance>,
+    provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
 ) -> Result<bool, OperationError> {
     let Some(schedule_id) = take.schedule_id else {
         return Ok(false);

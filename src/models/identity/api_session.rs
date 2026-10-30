@@ -10,9 +10,9 @@ use sha2::{Digest, Sha256};
 use super::resource::{self, AuthenticationError};
 use crate::models::{
     access::{self, Actor, HouseholdScope},
-    care::doses::{CredentialMethod, CredentialProvenance},
     entities::{account, api_app_token, api_session, household, membership, person},
     errors::OperationError,
+    identity::credentials::{CredentialMethod, CredentialProvenance},
 };
 
 pub struct ApiSessionPrincipal(StoredPrincipal);

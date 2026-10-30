@@ -137,6 +137,10 @@ tasks:
     desc: Check direct dependencies of every active Rust workspace member
     cmds:
       - cargo machete --with-metadata --skip-target-dir ./Cargo.toml migration/Cargo.toml
+  deny:
+    desc: Check dependency licenses, duplicate versions and sources
+    cmds:
+      - cargo deny --workspace --locked --all-features check licenses bans sources
   lint:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -145,6 +149,7 @@ tasks:
     cmds:
       - cargo clippy --locked --all-targets -- -D warnings
       - task: machete
+      - task: deny
   lint:fix:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major

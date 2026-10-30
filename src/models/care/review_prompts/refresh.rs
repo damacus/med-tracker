@@ -170,7 +170,7 @@ async fn fetch_snapshot(ctx: &AppContext) -> Result<Value, OperationError> {
             serde_json::from_value(value.clone()).map_err(|_| OperationError::Unavailable)?
         }
         None => serde_yaml_ng::from_str(include_str!(
-            "../../../../rails/config/medication_review_labels.yml"
+            "../../../../assets/catalogue/medication_review_labels.yml"
         ))
         .map_err(|_| OperationError::Unavailable)?,
     };
@@ -279,7 +279,9 @@ async fn fetch_label_from(
                 .and_then(Value::as_array)
                 .filter(|results| !results.is_empty())
                 .ok_or(OperationError::Unavailable)?;
-            let mut label = select_label(results, term).clone();
+            let Some(mut label) = select_label(results, term).cloned() else {
+                continue;
+            };
             label["selection_term"] = json!(term);
             let updated = body
                 .get("meta")
@@ -293,7 +295,7 @@ async fn fetch_label_from(
     Err(OperationError::Unavailable)
 }
 
-fn select_label<'a>(results: &'a [Value], term: &str) -> &'a Value {
+fn select_label<'a>(results: &'a [Value], term: &str) -> Option<&'a Value> {
     let normalized_term = normalize(term);
     let candidates = results
         .iter()
@@ -318,7 +320,6 @@ fn select_label<'a>(results: &'a [Value], term: &str) -> &'a Value {
                 .copied()
                 .min_by_key(|label| substances(label).len())
         })
-        .unwrap_or(&results[0])
 }
 
 fn normalize(value: &str) -> String {
@@ -505,6 +506,9 @@ async fn import_claimed_snapshot(
         attributes.insert(id, row);
     }
     let transaction = ctx.db.begin().await?;
+    // SeaORM lock clauses express row-level SELECT locks (FOR UPDATE/FOR SHARE)
+    // but not statement-level LOCK TABLE modes; SHARE ROW EXCLUSIVE serialises
+    // the snapshot merge against concurrent refresh writers.
     transaction
         .execute_unprepared(
             "LOCK TABLE medication_review_evidence_records IN SHARE ROW EXCLUSIVE MODE",
@@ -668,9 +672,13 @@ mod tests {
             {"set_id":"other","openfda":{"product_type":["HUMAN OTC DRUG"],"substance_name":["acetaminophen"]}}
         ]);
         assert_eq!(
-            select_label(results.as_array().unwrap(), "ibuprofen")["set_id"],
+            select_label(results.as_array().unwrap(), "ibuprofen").unwrap()["set_id"],
             "one"
         );
+        let veterinary = json!([
+            {"set_id":"animal","openfda":{"product_type":["ANIMAL DRUG"],"substance_name":["ibuprofen"]}}
+        ]);
+        assert!(select_label(veterinary.as_array().unwrap(), "ibuprofen").is_none());
     }
 
     #[tokio::test]
@@ -682,6 +690,11 @@ mod tests {
                 ]}))
             }))
             .route("/malformed", get(|| async { Json(json!({"meta":{},"results":[]})) }))
+            .route("/veterinary", get(|| async {
+                Json(json!({"meta":{"last_updated":"2026-10-01"},"results":[
+                    {"set_id":"animal-only","version":"2","effective_time":"20261001","drug_interactions":["Synthetic warning"],"openfda":{"product_type":["ANIMAL DRUG"],"substance_name":["ibuprofen"]}}
+                ]}))
+            }))
             .route("/unavailable", get(|| async { StatusCode::SERVICE_UNAVAILABLE }));
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let origin = format!("http://{}", listener.local_addr().unwrap());
@@ -695,6 +708,11 @@ mod tests {
         assert_eq!(updated, "2026-10-01");
         assert!(
             fetch_label_from(&client, &format!("{origin}/malformed"), "ibuprofen", &[])
+                .await
+                .is_err()
+        );
+        assert!(
+            fetch_label_from(&client, &format!("{origin}/veterinary"), "ibuprofen", &[])
                 .await
                 .is_err()
         );

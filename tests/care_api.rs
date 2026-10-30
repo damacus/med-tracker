@@ -24,7 +24,7 @@ mod approved_sharing;
 #[path = "care_api/avatar.rs"]
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]
-mod avatar_storage;
+pub mod avatar_storage;
 #[path = "care_api/better_auth_feature_stores.rs"]
 mod better_auth_feature_stores;
 #[path = "care_api/better_auth_invitations.rs"]

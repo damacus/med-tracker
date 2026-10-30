@@ -1,7 +1,7 @@
 use super::{super::browser, ValidatedPrincipal};
 use crate::models::{
-    care::doses::{CredentialMethod, CredentialProvenance},
     errors::OperationError,
+    identity::credentials::{CredentialMethod, CredentialProvenance},
     ids::AccountId,
     profile::personal_history::{self, AccessOutcome},
 };

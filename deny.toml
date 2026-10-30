@@ -1,7 +1,72 @@
 [advisories]
+ignore = [
+  # Maintenance notice, no CVE. unsafe-libyaml is reached transitively via
+  # better-auth -> serde_yaml, loco-gen -> rrgen -> serde_yaml and loco-rs ->
+  # serde_yaml_ng. No safe upgrade exists; removal is bound to the upstream
+  # serde_yaml/serde_yaml_ng migration, not something this workspace can fix.
+  "RUSTSEC-2024-0449",
+  # Maintenance notice, no CVE. paste is reached transitively via
+  # better-auth-core -> rust_icu_sys. No safe upgrade exists; removal needs
+  # an upstream rust_icu_sys release.
+  "RUSTSEC-2024-0436",
+]
+# Deliberately NOT ignored, so `cargo deny check advisories` keeps reporting
+# two real vulnerabilities until the upstream chains are fixed:
+# - RUSTSEC-2023-0071 (rsa): Marvin Attack timing side-channel, patched = []
+#   upstream. Reached via better-auth -> jsonwebtoken and web-push ->
+#   jwt-simple -> superboring. docs/rust-security-review.md records the prior
+#   decision that VAPID/APNs use ES256 and RustCrypto RSA is not needed; the
+#   fresh Loco tree has not yet reapplied that backend selection.
+# - RUSTSEC-2026-0387 (crypto-bigint): constant-time violations fixed in
+#   0.7.6, but elliptic-curve 0.13 pins crypto-bigint ^0.5, so a lockfile
+#   update cannot reach the fix; it needs the ecdsa/k256/p256 -> jwt-simple /
+#   jsonwebtoken upstream chain.
 
 [bans]
 multiple-versions = "warn"
+
+[licenses]
+# OSI-approved licenses actually present in the root dependency tree (from
+# `cargo deny list`); any new license fails the check and must be reviewed.
+allow = [
+  "0BSD",
+  "Apache-2.0",
+  "BSD-1-Clause",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "ISC",
+  "MIT",
+  "MIT-0",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+
+[licenses.private]
+# Workspace members are publish = false; skip license enforcement for them
+# (covers the unlicensed `migration` member).
+ignore = true
+
+# Named exceptions keep copyleft scoped to the crates that need it; any new
+# copyleft dependency still fails the check.
+[[licenses.exceptions]]
+# r-efi is only compiled for UEFI targets behind cfg(target_env); it is never
+# linked into shipped Linux/macOS/Windows artifacts.
+allow = ["LGPL-2.1-or-later"]
+name = "r-efi"
+
+[[licenses.exceptions]]
+# self_cell is GPL-2.0-only via sghtmltopdf (HTML -> PDF). Flagged for owner
+# review: this records the existing dependency explicitly, it does not allow
+# GPL anywhere else; removing sghtmltopdf's self_cell usage or the PDF path
+# would let this exception go.
+allow = ["GPL-2.0-only"]
+name = "self_cell"
 
 [sources]
 unknown-registry = "deny"

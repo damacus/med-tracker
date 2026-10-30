@@ -811,6 +811,49 @@ async fn portable_id(app: &Application, table: &str, id: i64) -> String {
 }
 
 #[tokio::test]
+async fn portable_import_persistence_failure_is_unavailable_not_a_client_error() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let fault = format!("reject_import_{}", app.fixture.client_uuid.simple());
+    // SeaORM Schema/Query builders cannot define PostgreSQL trigger functions.
+    // The exclusive fault injection targets only the generated household.
+    app.fixture.admin.execute_unprepared(&format!(
+        "CREATE FUNCTION public.{fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+         IF NEW.household_id = {} THEN RAISE EXCEPTION 'synthetic import failure'; END IF; RETURN NEW; END $$;
+         CREATE TRIGGER {fault} BEFORE INSERT ON public.locations FOR EACH ROW EXECUTE FUNCTION public.{fault}()",
+        app.fixture.household.id
+    )).await.unwrap();
+    let before = import_effects(&app).await;
+    let bundle = portable_crypto::encrypt(&importable_payload(&app), PASSPHRASE).unwrap();
+    let fixture_imported_person_id = format!("imported-person-{}", app.fixture.client_uuid);
+    let response = app
+        .client
+        .post(import_url(&app, "portable_imports"))
+        .bearer_auth(&token)
+        .header(PASSPHRASE_HEADER, PASSPHRASE)
+        .json(&fresh_dependent_request(
+            bundle,
+            fixture_imported_person_id.as_str(),
+        ))
+        .send()
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let body: Value = response.json().await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON public.locations; DROP FUNCTION public.{fault}()"
+        ))
+        .await
+        .unwrap();
+    assert_eq!(status, 503, "{body}");
+    assert_eq!(body["error"]["code"], "service_unavailable", "{body}");
+    assert_eq!(import_effects(&app).await, before);
+    app.close().await;
+}
+
+#[tokio::test]
 async fn portable_import_applies_nullable_and_sparse_rows() {
     let app = Application::new().await;
     let fixture_imported_schedule_id = format!("imported-schedule-{}", app.fixture.client_uuid);

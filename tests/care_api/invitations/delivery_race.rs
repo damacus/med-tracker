@@ -134,7 +134,7 @@ async fn invitation_live_duplicate_cannot_suppress_a_committed_start() -> TestRe
     let first = InvitationMailWorker::build(&app.context);
     let first_mail = mail.clone();
     let first = tokio::spawn(async move { first.perform(first_mail).await });
-    waiting(&app, "%UPDATE invitation_mail_attempts SET started_at%").await?;
+    waiting(&app, "%invitation_mail_attempts%started_at%").await?;
     let duplicate = InvitationMailWorker::build(&app.context);
     let duplicate_mail = mail.clone();
     let duplicate = tokio::spawn(async move { duplicate.perform(duplicate_mail).await });

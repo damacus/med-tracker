@@ -7,7 +7,7 @@ pub(crate) async fn create_with_failure(
     command: &Take,
     request_id: &str,
 ) -> Result<(bool, medication_take::Model), TakeFailure> {
-    lock_row(db, "households", household_id).await?;
+    lock_household(db, household_id).await?;
     access::recheck(context.tenant).await?;
     let before = source(db, context, household_id, &command.source).await?;
     if before.person_schedule_id.is_some() {

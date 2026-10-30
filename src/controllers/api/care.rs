@@ -36,13 +36,13 @@ mod ui_capabilities;
 
 use crate::models::{
     access::TenantTransaction,
-    care::{
-        doses::{self, CredentialMethod, CredentialProvenance},
-        medications,
-    },
+    care::{doses, medications},
     entities::{medication_take, security_audit_event},
     errors::OperationError,
-    identity::resource::{self, AuthenticationError, ValidatedPrincipal},
+    identity::{
+        credentials::{CredentialMethod, CredentialProvenance},
+        resource::{self, AuthenticationError, ValidatedPrincipal},
+    },
 };
 use axum::{
     Extension, Json as AxumJson,

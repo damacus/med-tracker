@@ -250,9 +250,18 @@ pub(crate) async fn preflight(
                 continue;
             }
             if let Ok(fields) = mapped_row(kind, row, index, tenant)
-                && let Err(message) = verify_immutable(db, kind, &fields).await
+                && let Err(error) = verify_immutable(db, kind, &fields).await
             {
-                errors.push(format!("{kind}[{i}] {message}"));
+                match error {
+                    OperationError::Validation { details } => {
+                        let message = details
+                            .get("error")
+                            .and_then(Value::as_str)
+                            .unwrap_or("is invalid");
+                        errors.push(format!("{kind}[{i}] {message}"));
+                    }
+                    error => return Err(error),
+                }
             }
         }
     }
@@ -293,9 +302,18 @@ pub(crate) async fn preflight(
             .as_str()
             .filter(|id| index.get("medication_pause_periods", id).is_some())
             && let Ok(fields) = mapped_row("medication_pause_periods", row, index, tenant)
-            && let Err(message) = verify_pause(db, tenant, portable_id, &fields).await
+            && let Err(error) = verify_pause(db, tenant, portable_id, &fields).await
         {
-            errors.push(format!("medication_pause_periods[{i}] {message}"));
+            match error {
+                OperationError::Validation { details } => {
+                    let message = details
+                        .get("error")
+                        .and_then(Value::as_str)
+                        .unwrap_or("is invalid");
+                    errors.push(format!("medication_pause_periods[{i}] {message}"));
+                }
+                error => return Err(error),
+            }
         }
     }
     if plan.format.includes_extended_records() {

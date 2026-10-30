@@ -1,6 +1,6 @@
 use super::*;
 use crate::models::{
-    care::doses::CredentialProvenance,
+    identity::credentials::CredentialProvenance,
     entities::{
         account, adoption_fact, legacy_prescription, pause_period, shared_schedule, version,
     },

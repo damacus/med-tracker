@@ -1,3 +1,5 @@
+#[path = "support/request_trace_capture.rs"]
+mod capture;
 #[path = "support/clinical_fixture.rs"]
 mod clinical_fixture;
 #[path = "support/scenario.rs"]
@@ -410,6 +412,46 @@ async fn dose_take_audit_failure_rolls_back_stock_and_take() {
 }
 
 #[tokio::test]
+async fn dose_take_database_failure_emits_the_safe_diagnostic() {
+    use tracing::instrument::WithSubscriber;
+
+    let fixture = Fixture::new().await;
+    let function = format!("reject_dose_{}", fixture.client_uuid.simple());
+    // SeaORM Schema/Query builders cannot define PostgreSQL trigger functions.
+    // The exclusive fault injection targets only the generated household.
+    fixture.admin.execute_unprepared(&format!(
+        "CREATE FUNCTION public.{function}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+         IF NEW.household_id = {} THEN RAISE EXCEPTION 'synthetic take failure'; END IF; RETURN NEW; END $$;
+         CREATE TRIGGER {function} BEFORE INSERT ON medication_takes FOR EACH ROW EXECUTE FUNCTION public.{function}()",
+        fixture.household.id
+    )).await.unwrap();
+    let captured = capture::Captured::default();
+    let result = take(&fixture, command(&fixture))
+        .with_subscriber(captured.clone())
+        .await;
+    fixture
+        .admin
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {function} ON medication_takes; DROP FUNCTION public.{function}()"
+        ))
+        .await
+        .unwrap();
+    assert!(matches!(result, Err(OperationError::Unavailable)));
+    let events = captured.events();
+    let failures = events
+        .iter()
+        .filter(|event| event.contains("Database operation failed"))
+        .collect::<Vec<_>>();
+    assert_eq!(failures.len(), 1, "{events:?}");
+    let event = failures[0];
+    assert!(event.contains("category"), "{event}");
+    assert!(event.contains("error_trace_id"), "{event}");
+    assert!(!event.contains("synthetic take failure"), "{event}");
+    assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn dose_take_concurrent_uuid_has_one_clinical_effect() {
     let fixture = Fixture::new().await;
     let (first, second) = tokio::join!(
@@ -423,6 +465,32 @@ async fn dose_take_concurrent_uuid_has_one_clinical_effect() {
             | (Ok(Outcome::Replayed(_)), Ok(Outcome::Created(_)))
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_concurrent_stock_claims_deduct_once() {
+    let fixture = Fixture::new().await;
+    let mut stock = fixture.medication.clone().into_active_model();
+    stock.current_supply = Set(Some(Decimal::new(2, 0)));
+    stock.update(&fixture.admin).await.unwrap();
+    let mut second = take_input(&fixture);
+    second.client_uuid = Some(uuid::Uuid::new_v4().to_string());
+    let (first, second) = tokio::join!(
+        take(&fixture, command(&fixture)),
+        take(&fixture, Command::Take(second.validate().unwrap()))
+    );
+    assert!(matches!(
+        (&first, &second),
+        (
+            Ok(Outcome::Created(_)),
+            Err(OperationError::Validation { .. })
+        ) | (
+            Err(OperationError::Validation { .. }),
+            Ok(Outcome::Created(_))
+        )
+    ));
+    assert_eq!(fixture.effect().await, (1, "0.00".into(), 1, 1));
     fixture.close().await;
 }
 

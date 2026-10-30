@@ -103,7 +103,7 @@ pub(crate) async fn save_execution(
     row: schedule::Model,
     new_zone: Option<Tz>,
     configured_zone: Tz,
-    provenance: Option<&super::doses::CredentialProvenance>,
+    provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
 ) -> Result<schedule::Model, OperationError> {
     let db = tenant.transaction();
     if row.execution_ended_at.is_some() {

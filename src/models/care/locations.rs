@@ -1,6 +1,5 @@
 mod collection;
 mod idempotency;
-mod rails_digest;
 pub use collection::{Pagination, collection};
 mod lifecycle;
 mod memberships;
@@ -13,9 +12,9 @@ pub use memberships::{
 
 use crate::models::{
     access::{self, TenantTransaction},
-    care::doses::CredentialProvenance,
     entities::{api_change_event, household, location, version},
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::Utc;
 use loco_rs::model::TenantActiveModelExt;

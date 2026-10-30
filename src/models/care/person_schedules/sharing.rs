@@ -336,7 +336,7 @@ pub(crate) async fn withdraw(
     actor: AccountId,
     id: i64,
     request_id: &str,
-    provenance: &super::super::doses::CredentialProvenance,
+    provenance: &crate::models::identity::credentials::CredentialProvenance,
 ) -> Result<(), OperationError> {
     crate::models::access::verify_account(db, actor.get()).await?;
     let initial = sharing_approval::Entity::find_by_id(id)
@@ -468,7 +468,7 @@ pub(crate) async fn withdraw_declaration(
     actor: AccountId,
     declaration: i64,
     request_id: &str,
-    provenance: &super::super::doses::CredentialProvenance,
+    provenance: &crate::models::identity::credentials::CredentialProvenance,
 ) -> Result<(), OperationError> {
     let approvals = sharing_approval::Entity::find()
         .filter(sharing_approval::Column::GuardianDeclarationId.eq(declaration))

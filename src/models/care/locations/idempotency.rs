@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::{care::doses::CredentialMethod, entities::api_idempotency_key};
+use crate::models::{entities::api_idempotency_key, identity::credentials::CredentialMethod};
 use chrono::Duration;
 use loco_rs::model::TenantQueryExt;
 
@@ -35,9 +35,7 @@ pub async fn lookup(
     if saved.account_id == tenant.scope().actor.account_id
         && saved.request_method == method
         && saved.request_path == path
-        && (saved.request_digest == digest(method, path, body)
-            || rails_digest::digest(tenant, method, path, body).as_deref()
-                == Some(saved.request_digest.as_str()))
+        && saved.request_digest == digest(method, path, body)
     {
         Ok(KeyedResponse::Replay(Box::new(saved)))
     } else {

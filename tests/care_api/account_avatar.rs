@@ -131,13 +131,12 @@ async fn household_avatar_permissions_are_rechecked_after_waiting_for_old_key_lo
         );
         let storage =
             med_tracker::models::profile::avatar::Storage::configured(&boot.app_context).unwrap();
-        let objects = crate::avatar_storage::owned_client()
-            .list_objects_v2()
-            .bucket(storage.bucket())
-            .send()
-            .await
-            .unwrap();
-        assert_eq!(objects.key_count(), Some(1));
+        assert_eq!(
+            crate::avatar_storage::owned_operator(storage.bucket())
+                .key_count()
+                .await,
+            1
+        );
         drop(server);
         if let Some(queue) = boot.app_context.queue_provider.as_ref() {
             queue.shutdown().unwrap();
@@ -680,13 +679,12 @@ async fn account_avatar_audit_and_retirement_failures_roll_back_and_clean_orphan
             .add_header("authorization", format!("Bearer {token}"))
             .await;
         assert_eq!(retained.status_code(), 200);
-        let objects = crate::avatar_storage::owned_client()
-            .list_objects_v2()
-            .bucket(storage.bucket())
-            .send()
-            .await
-            .unwrap();
-        assert_eq!(objects.key_count(), Some(1));
+        assert_eq!(
+            crate::avatar_storage::owned_operator(storage.bucket())
+                .key_count()
+                .await,
+            1
+        );
         assert_eq!(
             avatar_audits(&app.fixture.admin, app.fixture.account.id)
                 .await

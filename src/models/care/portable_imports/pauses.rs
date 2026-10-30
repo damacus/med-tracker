@@ -5,7 +5,7 @@ pub(super) async fn verify_pause(
     tenant: &TenantTransaction,
     portable_id: &str,
     fields: &Map<String, Value>,
-) -> Result<bool, String> {
+) -> Result<bool, OperationError> {
     let sql = "SELECT period.imported_context, period.ended_at IS NULL AS is_open, (period.schedule_id IS NOT DISTINCT FROM incoming.schedule_id AND period.person_medication_id IS NOT DISTINCT FROM incoming.person_medication_id AND period.reason IS NOT DISTINCT FROM incoming.reason AND period.note IS NOT DISTINCT FROM incoming.note AND period.started_at IS NOT DISTINCT FROM incoming.started_at AND period.legacy_context IS NOT DISTINCT FROM incoming.legacy_context AND (period.ended_at IS NOT DISTINCT FROM incoming.ended_at OR (period.imported_context AND period.ended_at IS NULL)) AND COALESCE(recorded_person.portable_id, period.imported_actor_references->>'recorded_by_person_portable_id') IS NOT DISTINCT FROM incoming.imported_actor_references->>'recorded_by_person_portable_id' AND COALESCE(resumed_person.portable_id, period.imported_actor_references->>'resumed_by_person_portable_id') IS NOT DISTINCT FROM incoming.imported_actor_references->>'resumed_by_person_portable_id') AS same FROM medication_pause_periods period CROSS JOIN jsonb_populate_record(NULL::medication_pause_periods, $1::jsonb) incoming LEFT JOIN household_memberships recorded ON recorded.id = period.recorded_by_membership_id LEFT JOIN people recorded_person ON recorded_person.id = recorded.person_id LEFT JOIN household_memberships resumed ON resumed.id = period.resumed_by_membership_id LEFT JOIN people resumed_person ON resumed_person.id = resumed.person_id WHERE period.household_id = $2 AND period.portable_id = $3";
     let payload = Value::Object(fields.clone()).to_string();
     let row = db
@@ -18,21 +18,14 @@ pub(super) async fn verify_pause(
                 portable_id.into(),
             ],
         ))
-        .await
-        .map_err(|_| "Imported pause could not be checked".to_owned())?
-        .ok_or_else(|| "Imported pause is unavailable".to_owned())?;
-    let same: bool = row
-        .try_get("", "same")
-        .map_err(|_| "Imported pause could not be checked")?;
+        .await?
+        .ok_or_else(|| OperationError::unavailable("invariant"))?;
+    let same: bool = row.try_get("", "same")?;
     if !same {
-        return Err("conflicts with recorded history or actors".to_owned());
+        return Err(import_invalid("conflicts with recorded history or actors"));
     }
-    let imported: bool = row
-        .try_get("", "imported_context")
-        .map_err(|_| "Imported pause could not be checked")?;
-    let is_open: bool = row
-        .try_get("", "is_open")
-        .map_err(|_| "Imported pause could not be checked")?;
+    let imported: bool = row.try_get("", "imported_context")?;
+    let is_open: bool = row.try_get("", "is_open")?;
     Ok(imported && is_open && !fields["ended_at"].is_null())
 }
 
@@ -41,12 +34,14 @@ pub(super) async fn resume_pause(
     tenant: &TenantTransaction,
     portable_id: &str,
     ended_at: &Value,
-) -> Result<(), String> {
-    let ended = ended_at.as_str().ok_or("Pause end time is invalid")?;
+) -> Result<(), OperationError> {
+    let ended = ended_at
+        .as_str()
+        .ok_or_else(|| import_invalid("Pause end time is invalid"))?;
     db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE medication_pause_periods SET ended_at = $1::timestamptz, updated_at = NOW() WHERE household_id = $2 AND portable_id = $3 AND imported_context AND ended_at IS NULL",
         [ended.into(), tenant.scope().household_id.into(), portable_id.into()]))
-        .await.map_err(|_| "Imported pause could not be resumed".to_owned())?;
+        .await?;
     Ok(())
 }
 
@@ -57,7 +52,7 @@ pub(super) async fn reconcile_pauses(
     plan: &ImportPlan,
     index: &ExistingIndex,
     request_id: &str,
-) -> Result<(), String> {
+) -> Result<(), OperationError> {
     for (kind, source_type, foreign_key, record_type) in [
         ("schedules", "schedule", "schedule_id", "Schedule"),
         (
@@ -100,23 +95,16 @@ pub(super) async fn reconcile_pauses(
                     sql,
                     [tenant.scope().household_id.into(), ids.into()],
                 ))
-                .await
-                .map_err(|_| format!("{kind} pause state could not be restored"))?;
+                .await?;
             changed
                 .into_iter()
                 .map(|row| {
-                    let id: i64 = row
-                        .try_get("", "id")
-                        .map_err(|_| format!("{kind} pause state could not be restored"))?;
-                    let portable_id: String = row
-                        .try_get("", "portable_id")
-                        .map_err(|_| format!("{kind} pause state could not be restored"))?;
-                    let active: bool = row
-                        .try_get("", "active")
-                        .map_err(|_| format!("{kind} pause state could not be restored"))?;
+                    let id: i64 = row.try_get("", "id")?;
+                    let portable_id: String = row.try_get("", "portable_id")?;
+                    let active: bool = row.try_get("", "active")?;
                     Ok((id, portable_id, active))
                 })
-                .collect::<Result<Vec<_>, String>>()?
+                .collect::<Result<Vec<_>, OperationError>>()?
         };
         for (id, portable_id, active) in changed {
             administration::persistence::record_version_as(
@@ -128,8 +116,7 @@ pub(super) async fn reconcile_pauses(
                 json!({"active": active}),
                 Some(provenance),
             )
-            .await
-            .map_err(|_| format!("{kind} pause version could not be recorded"))?;
+            .await?;
             let person = plan
                 .rows(kind)
                 .iter()
@@ -148,8 +135,7 @@ pub(super) async fn reconcile_pauses(
                     person_portable_id: person,
                 },
             )
-            .await
-            .map_err(|_| format!("{kind} pause change could not be recorded"))?;
+            .await?;
         }
     }
     Ok(())
@@ -159,7 +145,7 @@ async fn reconcile_local_schedules(
     db: &DatabaseTransaction,
     household_id: i64,
     portable_ids: HashSet<String>,
-) -> Result<Vec<(i64, String, bool)>, String> {
+) -> Result<Vec<(i64, String, bool)>, OperationError> {
     use crate::models::entities::{pause_period, schedule};
     use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
     let sources = schedule::Entity::find()
@@ -168,9 +154,7 @@ async fn reconcile_local_schedules(
         .filter(schedule::Column::PersonScheduleId.is_null())
         .lock_exclusive()
         .all(db)
-        .await
-        .map_err(OperationError::from)
-        .map_err(|_| "Schedule pause state could not be restored".to_owned())?;
+        .await?;
     let open = pause_period::Entity::find()
         .select_only()
         .column(pause_period::Column::ScheduleId)
@@ -179,9 +163,7 @@ async fn reconcile_local_schedules(
         .filter(pause_period::Column::EndedAt.is_null())
         .into_tuple::<Option<i64>>()
         .all(db)
-        .await
-        .map_err(OperationError::from)
-        .map_err(|_| "Schedule pauses could not be checked".to_owned())?;
+        .await?;
     let open: HashSet<i64> = open.into_iter().flatten().collect();
     let mut changed = Vec::new();
     for source in sources {
@@ -192,11 +174,7 @@ async fn reconcile_local_schedules(
             let mut active: schedule::ActiveModel = source.into();
             active.active = Set(!paused);
             active.updated_at = Set(Utc::now().naive_utc());
-            active
-                .update(db)
-                .await
-                .map_err(OperationError::from)
-                .map_err(|_| "Schedule pause state could not be restored".to_owned())?;
+            active.update(db).await?;
             changed.push((id, portable_id, !paused));
         }
     }

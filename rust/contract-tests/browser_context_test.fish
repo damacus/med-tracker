@@ -12,7 +12,7 @@ end
 set -l workspace (pwd)
 set -l filter_fixture "$browser_context_test_dir/filter-fixture"
 set -l filter_export "$browser_context_test_dir/filter-export"
-set -l filter_required rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt rails/config/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml rails/config/locales/en.yml
+set -l filter_required rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt assets/catalogue/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml rails/config/locales/en.yml
 set -l filter_excluded rails/config/credentials/dummy.key rails/config/unrelated.yml rails/.env rails/app/unrelated.rb rails/log/generated.log
 for input in $filter_required $filter_excluded
     rtk proxy mkdir -p "$filter_fixture/"(dirname "$input")
@@ -38,11 +38,11 @@ set -l context_probe "$browser_context_test_dir/context.Dockerfile"
 set -l context_export "$browser_context_test_dir/export"
 rtk proxy cp rust/contract-tests/Dockerfile.dockerignore "$context_probe.dockerignore"
 or exit $status
-rtk proxy printf 'FROM scratch\nCOPY rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt /src/rails/vendor/fonts/\nCOPY rails/config/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml /src/rails/config/\nCOPY rails/config/locales /src/rails/config/locales\n' >"$context_probe"
+rtk proxy printf 'FROM scratch\nCOPY rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt /src/rails/vendor/fonts/\nCOPY rails/config/nhs_dmd_curated_products.yml /src/rails/config/\nCOPY assets/catalogue/ai_medication_sources.yml /src/assets/catalogue/\nCOPY rails/config/locales /src/rails/config/locales\n' >"$context_probe"
 or exit $status
 rtk proxy docker buildx build --progress plain --file "$context_probe" --output "type=local,dest=$context_export" "$workspace"
 or begin; echo 'Contract image effective context is missing required Rails font, licence or configuration inputs' >&2; exit 1; end
-set -l required_inputs rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt rails/config/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml (rtk proxy rg --files rails/config/locales)
+set -l required_inputs rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt assets/catalogue/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml (rtk proxy rg --files rails/config/locales)
 for input in $required_inputs
     test -f "$context_export/src/$input"
     or begin; echo "Contract image effective input missing: $input" >&2; exit 1; end

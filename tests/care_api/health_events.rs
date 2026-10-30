@@ -467,15 +467,20 @@ async fn health_events_collection_and_request_boundaries_follow_documented_contr
         .unwrap()
         .status()
         .as_u16();
-    let invalid_page = app
-        .client
-        .get(format!("{endpoint}?page=0"))
-        .bearer_auth(&token)
-        .send()
-        .await
-        .unwrap()
-        .status()
-        .as_u16();
+    let mut invalid_pages = Vec::new();
+    let mut invalid_codes = Vec::new();
+    for query in ["page=0", "per_page=101", "updated_since=invalid"] {
+        let rejected = app
+            .client
+            .get(format!("{endpoint}?{query}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        invalid_pages.push(rejected.status().as_u16());
+        let rejected_body: Value = rejected.json().await.unwrap_or(Value::Null);
+        invalid_codes.push(rejected_body["error"]["code"].clone());
+    }
     let _households_72002 = med_tracker::models::_entities::households::ActiveModel {
         created_by_account_id: sea_orm::Set(Some(fixture_account_id)),
         name: sea_orm::Set("Other synthetic household".to_owned()),
@@ -507,14 +512,17 @@ async fn health_events_collection_and_request_boundaries_follow_documented_contr
         .as_u16();
     app.close().await;
     assert_eq!(
-        (
-            unauthenticated,
-            collection_status,
-            malformed,
-            invalid_page,
-            foreign
-        ),
-        (401, 200, 400, 422, 403)
+        (unauthenticated, collection_status, malformed, foreign),
+        (401, 200, 400, 403)
+    );
+    assert_eq!(invalid_pages, [422, 422, 422]);
+    assert_eq!(
+        invalid_codes,
+        [
+            json!("unprocessable_content"),
+            json!("unprocessable_content"),
+            json!("unprocessable_content")
+        ]
     );
     assert_eq!(body["data"], json!([]));
     assert_eq!(body["meta"], json!({"page":1,"per_page":1,"total_count":0}));
@@ -829,10 +837,8 @@ async fn health_events_participation_allows_record_and_departure_hides_subject()
 async fn health_events_browser_role_matrix_preserves_view_record_manage_boundaries() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            health_events::browser,
-        },
+        care::health_events::browser,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     for (label, role, relationship, level, self_subject, can_create, can_manage) in [
         (
@@ -1065,10 +1071,8 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
 async fn health_events_browser_preserves_unselectable_links_and_audits_link_changes() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            health_events::browser,
-        },
+        care::health_events::browser,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;
@@ -1301,10 +1305,8 @@ async fn health_events_same_second_api_edits_reject_stale_content_etags() {
 async fn health_events_browser_unchanged_medication_set_keeps_revision_and_snapshots() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
-        care::{
-            doses::{CredentialMethod, CredentialProvenance},
-            health_events::browser,
-        },
+        care::health_events::browser,
+        identity::credentials::{CredentialMethod, CredentialProvenance},
     };
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;

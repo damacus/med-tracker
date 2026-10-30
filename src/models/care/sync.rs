@@ -16,7 +16,6 @@ mod sources;
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::doses::CredentialProvenance,
     care::{
         assignments, dosages, doses, locations, medications, orders, pause_periods, people,
         treatments,
@@ -27,6 +26,7 @@ use crate::models::{
         person_medication, review_prompt, schedule, security_audit_event,
     },
     errors::OperationError,
+    identity::credentials::CredentialProvenance,
 };
 use chrono::Utc;
 pub(crate) use input::Operation;

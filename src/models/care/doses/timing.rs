@@ -109,7 +109,7 @@ pub(super) async fn timing_allowed(
         .filter(person_medication::Column::RetiredAt.is_null())
         .all(db)
         .await
-        .map_err(database_error)?;
+        .map_err(OperationError::from)?;
     let schedules = schedule::Entity::find()
         .in_tenant(proposed.selected.household_id)
         .filter(schedule::Column::PersonId.eq(proposed.source.person_id))
@@ -118,7 +118,7 @@ pub(super) async fn timing_allowed(
         .filter(schedule::Column::RetiredAt.is_null())
         .all(db)
         .await
-        .map_err(database_error)?;
+        .map_err(OperationError::from)?;
     let related: Vec<Source> = assignments
         .into_iter()
         .map(source_from_assignment)
@@ -160,7 +160,7 @@ pub(super) async fn timing_allowed(
         .filter(condition)
         .all(db)
         .await
-        .map_err(database_error)?;
+        .map_err(OperationError::from)?;
     Ok(timing_block(&related, &takes, proposed.taken_at, proposed.zone)?.is_none())
 }
 
