@@ -1131,7 +1131,7 @@ async fn accept(app: &Application, access: &str, token: &str) -> Result<(u16, Va
         .client
         .post(format!("{}/api/v1/invitations/accept", app.origin))
         .bearer_auth(access)
-        .json(&json!({"token":token}))
+        .json(&json!({"token":token,"sharing_consent":true}))
         .send()
         .await
         .map_err(|_| DbErr::Custom("Invitation HTTP transport failed".to_owned()))?;
@@ -1509,12 +1509,22 @@ async fn invitation_fields_cannot_claim_an_existing_accountless_person() -> Resu
         let status = response.status().as_u16();
         let body: Value = response.json().await
             .map_err(|_| DbErr::Custom("Claim injection response was not JSON".to_owned()))?;
-        require(status == 200 && body["data"]["person_id"] == app.fixture.adult.id.to_string().as_str(),
-            "Valid invitation may join only the authenticated Account's existing Person")?;
+        require(status == 400 && body["error"]["request_id"].is_string(),
+            "Claim-injection person fields must be rejected under the frozen request schema")?;
         require(claim_target_state(&app,&acceptance).await? == original_target,
             "Matching identifiers or injected fields must preserve existing Person, participation, relationships and grants exactly")?;
         require(identity_state(&app,&acceptance).await? == identity,
             "Claim injection must not create or alter authentication identity")?;
+        let clean = app.client.post(format!("{}/api/v1/invitations/accept", app.origin))
+            .bearer_auth(access)
+            .json(&json!({"token":acceptance.token.as_str(),"sharing_consent":true}))
+            .send().await.map_err(|_| DbErr::Custom("Clean acceptance transport failed".to_owned()))?;
+        let clean_status = clean.status().as_u16();
+        let clean_body: Value = clean.json().await
+            .map_err(|_| DbErr::Custom("Clean acceptance response was not JSON".to_owned()))?;
+        require(clean_status == 200
+            && clean_body["data"]["person_id"] == app.fixture.adult.id.to_string().as_str(),
+            "Valid invitation may join only the authenticated Account's existing Person")?;
         Ok(())
     }.await;
     app.close().await;

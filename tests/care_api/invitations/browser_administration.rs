@@ -343,6 +343,7 @@ async fn invitation_acceptance_selects_only_the_current_session() -> Result<(), 
             "/invitations/accept",
             &[
                 ("token", acceptance.token.as_str()),
+                ("sharing_consent", "true"),
                 ("authenticity_token", &csrf),
             ],
         )
@@ -1086,8 +1087,8 @@ async fn acceptance_effect_counts(
         )
         .and_where(version_condition)
         .and_where(Expr::col(("a", "household_id")).eq(acceptance.target_household.id))
-        .and_where(Expr::col(("a", "actor_account_id")).eq(acceptance.inviter_account.id))
-        .and_where(Expr::col(("a", "actor_membership_id")).eq(acceptance.inviter_membership.id))
+        .and_where(Expr::col(("a", "actor_account_id")).eq(app.fixture.account.id))
+        .and_where(Expr::col(("a", "actor_membership_id")).is_null())
         .and_where(Expr::col(("a", "event_type")).eq("household_access.membership_created"))
         .and_where(
             Expr::expr(
@@ -1448,6 +1449,7 @@ async fn invitation_acceptance_recovery_chooser_switches_to_the_joined_household
             &[
                 ("token", acceptance.token.as_str()),
                 ("lang", "es"),
+                ("sharing_consent", "true"),
                 ("authenticity_token", &csrf),
             ],
         )
@@ -1575,7 +1577,7 @@ async fn invitation_acceptance_selection_failure_preserves_join_and_recovers()
         let (cookie, preview) = super::super::platform::form_page(&app, &cookie, &format!("/invitations/accept?token={generated_acceptance_token}&lang=es",generated_acceptance_token=acceptance.token)).await;
         let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
         app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION reject_c4_selection() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.active_household_id={generated_72002} THEN RAISE EXCEPTION 'synthetic session selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_c4_selection BEFORE UPDATE OF active_household_id ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_c4_selection()",generated_72002=acceptance.target_household.id)).await?;
-        let failed = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("authenticity_token", &csrf)]).await;
+        let failed = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("sharing_consent","true"),("authenticity_token", &csrf)]).await;
         assert!(!failed.status().is_success(), "selection must fail after join");
         let recovery = failed.text().await?;
         assert!(recovery.contains("Te has unido al hogar"), "honest translated recovery");
@@ -1586,12 +1588,12 @@ async fn invitation_acceptance_selection_failure_preserves_join_and_recovers()
         assert_eq!(committed.get(1), Some(&1), "attributed invitation update");
         assert_eq!(committed.get(2), Some(&1), "matching membership-created security audit");
         app.fixture.admin.execute_unprepared("DROP TRIGGER reject_c4_selection ON identity_sessions; DROP FUNCTION reject_c4_selection()").await?;
-        let retry = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("authenticity_token", &csrf)]).await;
+        let retry = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("sharing_consent","true"),("authenticity_token", &csrf)]).await;
         assert_eq!(retry.status(), reqwest::StatusCode::OK);
         assert_eq!(retry.url().path(), &format!("/households/{generated_target_slug}/dashboard",generated_target_slug=acceptance.target_slug));
         assert_eq!(acceptance_effect_counts(&app,&acceptance).await?, committed, "selection retry does not repeat acceptance effects");
         app.fixture.admin.execute_raw(app.fixture.admin.get_database_backend().build(&Query::update().table("household_memberships").value("status",Expr::val("revoked")).value("revoked_at",Expr::expr(Func::cust("now"))).and_where(Expr::col("household_id").eq(Expr::val(acceptance.target_household.id)).and(Expr::col("person_id").eq(Expr::val(app.fixture.adult.id)))).to_owned())).await?;
-        let denied = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("authenticity_token", &csrf)]).await;
+        let denied = super::super::platform::post_form(&app, &cookie, "/invitations/accept", &[("token", acceptance.token.as_str()),("lang", "es"),("sharing_consent","true"),("authenticity_token", &csrf)]).await;
         assert_eq!(denied.status(), reqwest::StatusCode::NOT_FOUND);
         let denied = denied.text().await?;
         assert!(denied.contains("Enlace de invitación no disponible"));

@@ -56,6 +56,19 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
     let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &med_tracker::models::access::HouseholdScope {
+            actor: med_tracker::models::access::Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: uuid::Uuid::new_v4().to_string(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
     med_tracker::models::_entities::schedules::Entity::update_many()
         .col_expr(
             med_tracker::models::_entities::schedules::Column::Active,
@@ -66,7 +79,7 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
             med_tracker::models::_entities::schedules::Column::HouseholdId
                 .eq(app.fixture.household.id),
         )
-        .exec(&app.fixture.admin)
+        .exec(tenant.transaction())
         .await
         .unwrap();
     let _medication_pause_periods_84999 =
@@ -83,9 +96,10 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
             updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
             ..Default::default()
         }
-        .insert(&app.fixture.admin)
+        .insert(tenant.transaction())
         .await
         .unwrap();
+    tenant.commit().await.unwrap();
     let collection = format!(
         "{}/api/v1/households/{fixture_household_id}/schedules?page=1&per_page=1",
         app.origin
@@ -610,6 +624,19 @@ async fn schedule_get_matches_documented_contract() {
     assert_eq!(etag_schema["required"], true);
     assert_eq!(etag_schema["schema"]["type"], "string");
 
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &med_tracker::models::access::HouseholdScope {
+            actor: med_tracker::models::access::Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: uuid::Uuid::new_v4().to_string(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
     med_tracker::models::_entities::schedules::Entity::update_many()
         .col_expr(
             med_tracker::models::_entities::schedules::Column::ScheduleConfig,
@@ -625,7 +652,7 @@ async fn schedule_get_matches_documented_contract() {
             med_tracker::models::_entities::schedules::Column::HouseholdId
                 .eq(app.fixture.household.id),
         )
-        .exec(&app.fixture.admin)
+        .exec(tenant.transaction())
         .await
         .unwrap();
     let _medication_pause_periods_84999 =
@@ -642,9 +669,10 @@ async fn schedule_get_matches_documented_contract() {
             updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
             ..Default::default()
         }
-        .insert(&app.fixture.admin)
+        .insert(tenant.transaction())
         .await
         .unwrap();
+    tenant.commit().await.unwrap();
     let read = app
         .client
         .get(format!(

@@ -99,7 +99,7 @@ async fn dose_outcomes_not_taken_replay_reopen_and_take_preserve_stock_and_histo
             .client
             .post(format!("{endpoint}/not_taken"))
             .bearer_auth(&token)
-            .header("idempotency-key", format!("synthetic-miss-{id}"))
+            .header("idempotency-key", format!("synthetic-miss-{source}-{id}"))
             .json(&body)
             .send()
             .await
@@ -116,7 +116,7 @@ async fn dose_outcomes_not_taken_replay_reopen_and_take_preserve_stock_and_histo
             .client
             .post(format!("{endpoint}/not_taken"))
             .bearer_auth(&token)
-            .header("idempotency-key", format!("synthetic-miss-{id}"))
+            .header("idempotency-key", format!("synthetic-miss-{source}-{id}"))
             .json(&body)
             .send()
             .await
@@ -189,7 +189,8 @@ async fn dose_outcomes_not_taken_replay_reopen_and_take_preserve_stock_and_histo
                 stale,
                 reopened_status
             ),
-            (200, 200, 200, 409, 200)
+            (200, 200, 200, 409, 200),
+            "source={source} list={list} first={first} replay={replay} reopened={reopened}"
         );
         assert_eq!(first, replay);
         assert_eq!(first["data"]["outcome"], "not_taken");

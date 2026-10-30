@@ -87,7 +87,7 @@ async fn guardian_storage_catalogue_and_restricted_mutations_preserve_provenance
                 AND has_column_privilege('med_tracker_app',c.oid,'withdrawn_at','UPDATE')
                 AND has_column_privilege('med_tracker_app',c.oid,'revision','UPDATE') AS exact_update_columns,
               (SELECT count(*) FROM pg_constraint f WHERE f.conrelid=c.oid AND f.contype='f' AND f.confdeltype='r')=7 AS retained_foreign_keys,
-              (SELECT count(*) FROM pg_policy WHERE polrelid=c.oid)=7 AS policies,
+              (SELECT count(*) FROM pg_policy WHERE polrelid=c.oid)=8 AS policies,
               EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_roles owner ON owner.oid=p.proowner
                 WHERE t.tgrelid=c.oid AND NOT t.tgisinternal AND t.tgname='guardian_declarations_one_way'
                 AND p.proname='guardian_declaration_one_way' AND owner.rolname='med_tracker_owner'

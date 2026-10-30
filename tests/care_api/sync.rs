@@ -1577,6 +1577,19 @@ async fn sync_delete_replay_requires_current_retired_state_for_each_source_kind(
         }
         match table {
             "schedules" => {
+                let tenant = med_tracker::models::access::begin(
+                    &app.fixture.runtime,
+                    &med_tracker::models::access::HouseholdScope {
+                        actor: med_tracker::models::access::Actor {
+                            account_id: app.fixture.account.id,
+                        },
+                        household_id: fixture_household_id,
+                        request_id: uuid::Uuid::new_v4().to_string(),
+                    },
+                    app.context.config.settings.as_ref(),
+                )
+                .await
+                .unwrap();
                 med_tracker::models::_entities::schedules::Entity::update_many()
                     .col_expr(
                         med_tracker::models::_entities::schedules::Column::RetiredAt,
@@ -1591,9 +1604,10 @@ async fn sync_delete_replay_requires_current_retired_state_for_each_source_kind(
                             .eq(fixture_household_id),
                     )
                     .filter(med_tracker::models::_entities::schedules::Column::Id.eq(id))
-                    .exec(&app.fixture.admin)
+                    .exec(tenant.transaction())
                     .await
                     .unwrap();
+                tenant.commit().await.unwrap();
             }
             "person_medications" => {
                 med_tracker::models::_entities::person_medications::Entity::update_many()

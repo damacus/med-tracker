@@ -371,7 +371,7 @@ async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() 
         let withdrawal_token=second_native_token(&app).await?;
         let before=effects(&app).await?;
         app.fixture.admin.execute_unprepared(
-            "CREATE FUNCTION public.synthetic_guardian_plan_audit_gate() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Schedule' AND NEW.event='create' THEN PERFORM pg_advisory_xact_lock(1746879441,93); END IF; RETURN NEW; END $$;
+            "CREATE FUNCTION public.synthetic_guardian_plan_audit_gate() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type IN ('Schedule','PersonSchedule') AND NEW.event='create' THEN PERFORM pg_advisory_xact_lock(1746879441,93); END IF; RETURN NEW; END $$;
              CREATE TRIGGER synthetic_guardian_plan_audit_gate BEFORE INSERT ON public.versions FOR EACH ROW EXECUTE FUNCTION public.synthetic_guardian_plan_audit_gate()"
         ).await?;
         let gate=app.fixture.admin.begin().await?;
@@ -407,10 +407,20 @@ async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() 
         let withdrawn=withdrawal.finish().await?;
         require(withdrawn.status().as_u16()==200,"Waiting withdrawal must commit after the authorised plan and audit")?;
         let version_ids=Query::select().column("id").from("versions")
-            .and_where(Expr::col("item_type").eq("Schedule"))
-            .and_where(Expr::col("item_id").eq(plan_id))
-            .and_where(Expr::col("event").eq("create")).to_owned();
+            .and_where(Expr::col("item_type").is_in(["Schedule","PersonSchedule","SharedPersonSchedule"]))
+            .and_where(Expr::col("item_id").is_in([plan_id,subject]))
+            .and_where(Expr::col("event").is_in(["create","update"])).to_owned();
         let plan_versions=versions::Entity::find().filter(versions::Column::Id.in_subquery(version_ids.clone()))
+            .count(&app.fixture.admin).await?;
+        let canonical_versions=versions::Entity::find()
+            .filter(versions::Column::ItemType.is_in(["PersonSchedule","SharedPersonSchedule"]))
+            .filter(versions::Column::ItemId.is_in([plan_id,subject]))
+            .filter(versions::Column::Event.eq("create"))
+            .count(&app.fixture.admin).await?;
+        let execution_versions=versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("Schedule"))
+            .filter(versions::Column::ItemId.eq(plan_id))
+            .filter(versions::Column::Event.eq("create"))
             .count(&app.fixture.admin).await?;
         let plan_ledger=audit_ledger_entries::Entity::find()
             .filter(audit_ledger_entries::Column::SourceTable.eq("versions"))
@@ -425,8 +435,8 @@ async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() 
             .filter(Expr::expr(Func::cust("jsonb_extract_path_text").args([
                 Expr::col(security_audit_events::Column::Metadata),Expr::val("status")])).eq("201"))
             .count(&app.fixture.admin).await?;
-        require(plans==1 && plan_versions==1 && plan_ledger==1 && account_fk_audits==1,
-            &format!("The authorised plan, version/ledger and real Account-FK request audit must remain committed after withdrawal: plans={plans}, plan_versions={plan_versions}, plan_ledger={plan_ledger}, account_fk_audits={account_fk_audits}"))?;
+        require(plans==1 && plan_versions==2 && plan_ledger==2 && canonical_versions==1 && execution_versions==1 && account_fk_audits==1,
+            &format!("The authorised plan, version/ledger and real Account-FK request audit must remain committed after withdrawal: plans={plans}, plan_versions={plan_versions}, plan_ledger={plan_ledger}, canonical_versions={canonical_versions}, execution_versions={execution_versions}, account_fk_audits={account_fk_audits}"))?;
         let state=declaration_state(&app,id).await?;
         require(state["withdrawn"]==true && state["withdrawals"]==1,"Concurrent withdrawal must commit exactly one terminal event")?;
         require(effects(&app).await?["people"]==before["people"],"Concurrent authority transition must not manufacture identities")?;

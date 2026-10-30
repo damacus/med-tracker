@@ -23,12 +23,32 @@ async fn legacy_manage_grant_cannot_edit_other_care_or_expose_manage_controls() 
             ..Default::default()
         }).exec(&app.fixture.admin).await?;
         let token = app.token().await;
-        let created = schedule(&app, &token, app.fixture.adult.id).await?;
-        require(created.status().as_u16() == 201, "Self-managed schedule prerequisite must succeed")?;
-        schedule_record::Entity::update_many()
-            .col_expr(schedule_record::Column::PersonId, sea_orm::sea_query::Expr::value(app.fixture.minor.id))
-            .filter(schedule_record::Column::HouseholdId.eq(app.fixture.household.id))
-            .exec(&app.fixture.admin).await?;
+        let mut person = dependent("Synthetic legacy other care", "minor");
+        person["initial_guardian_declaration"] = json!(true);
+        let created = create(&app, &token, &person, "synthetic-legacy-other-care").await?;
+        require(created.status().as_u16() == 201, "Temporary guardian declaration must create the dependent")?;
+        let dependent_body: Value = created.json().await
+            .map_err(|_| DbErr::Custom("Dependent creation response was not JSON".to_owned()))?;
+        let other = dependent_body["data"]["id"].as_i64()
+            .ok_or_else(|| DbErr::Custom("Dependent ID missing".to_owned()))?;
+        let created = schedule(&app, &token, other).await?;
+        require(created.status().as_u16() == 201, "Guardian prerequisite must create the other person's plan")?;
+        let declaration = app.fixture.admin
+            .query_one_raw(app.fixture.admin.get_database_backend().build(
+                &sea_orm::sea_query::Query::select().column("id").from("guardian_declarations")
+                    .and_where(sea_orm::sea_query::Expr::col("subject_person_id").eq(other))
+                    .and_where(sea_orm::sea_query::Expr::col("guardian_person_id").eq(app.fixture.adult.id))
+                    .to_owned()))
+            .await?
+            .ok_or_else(|| DbErr::Custom("Dependent declaration missing".to_owned()))?;
+        let declaration_id: i64 = declaration.try_get("", "id")?;
+        let withdrawn = app.client
+            .patch(format!("{}/api/v1/auth/guardian-declarations/{declaration_id}", app.origin))
+            .bearer_auth(&token)
+            .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+            .send().await
+            .map_err(|_| DbErr::Custom("Guardian withdrawal failed before response".to_owned()))?;
+        require(withdrawn.status().as_u16() == 200, "Temporary declaration withdrawal must succeed")?;
         let original_grants = grant::Entity::find().filter(grant::Column::HouseholdId.eq(app.fixture.household.id)).all(&app.fixture.admin).await?;
         let original_plans = schedule_record::Entity::find().filter(schedule_record::Column::HouseholdId.eq(app.fixture.household.id)).all(&app.fixture.admin).await?;
         let original_stock = app.fixture.effect().await;
