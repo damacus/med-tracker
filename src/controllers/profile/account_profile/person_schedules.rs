@@ -15,6 +15,7 @@ pub(super) async fn index(
     render(&ctx, &session, &headers, &token, &view, None, None).await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn save(
     State(ctx): State<AppContext>,
     session: Session<SessionPgPool>,
@@ -56,7 +57,7 @@ pub(super) async fn save(
                     .iter()
                     .find(|row| row.id == id.as_str())
                     .ok_or(OperationError::NotFound)?;
-                PersonalAction::Edit(edit_input(&draft, current)?)
+                PersonalAction::Edit(Box::new(edit_input(&draft, current)?))
             }
             _ => return Err(profile::validation("action", "is invalid")),
         };

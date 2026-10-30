@@ -227,11 +227,11 @@ pub(crate) async fn save_execution(
             });
         }
     }
-    if let Some(zone) = row.origin_time_zone.as_ref() {
-        if plan.origin_time_zone.clone().unwrap() != *zone {
-            plan.origin_time_zone = Set(zone.clone());
-            plan.timezone_provenance = Set("authorised_correction".into());
-        }
+    if let Some(zone) = row.origin_time_zone.as_ref()
+        && plan.origin_time_zone.clone().unwrap() != *zone
+    {
+        plan.origin_time_zone = Set(zone.clone());
+        plan.timezone_provenance = Set("authorised_correction".into());
     }
     plan.clinical_revision = Set(plan.clinical_revision.clone().unwrap() + 1);
     let resumed_at = if row.active

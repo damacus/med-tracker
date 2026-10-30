@@ -2681,7 +2681,7 @@ struct ExistingOrigin {
 
 async fn existing_origin(app: &Application) -> ExistingOrigin {
     let self_token = app.token().await;
-    let invitation = super::invitations::seed_acceptance(&app).await;
+    let invitation = super::invitations::seed_acceptance(app).await;
     let mut member = app
         .fixture
         .membership
@@ -2693,7 +2693,7 @@ async fn existing_origin(app: &Application) -> ExistingOrigin {
     member.role = Set("owner".into());
     let member = member.insert(&app.fixture.admin).await.unwrap();
     let token = session(
-        &app,
+        app,
         app.fixture.account.id,
         member.id,
         member.permissions_version,
@@ -3793,7 +3793,7 @@ async fn current_declaration(app: &Application, subject: i64) -> Option<i64> {
 
 async fn guardian_origin(app: &Application) -> GuardianOrigin {
     let token = app.token().await;
-    let child = dependent(&app, &token).await;
+    let child = dependent(app, &token).await;
     let created = Application::assert_status(app.client.post(format!(
         "{}/api/v1/households/{}/schedules", app.origin, app.fixture.household.id))
         .bearer_auth(&token).json(&json!({"schedule": {

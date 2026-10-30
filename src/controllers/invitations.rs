@@ -63,6 +63,7 @@ async fn index(
         .index(None, None)
         .await
 }
+#[allow(clippy::too_many_arguments)]
 async fn create(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,

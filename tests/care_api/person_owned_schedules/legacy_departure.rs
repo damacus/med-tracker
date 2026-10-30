@@ -1732,7 +1732,6 @@ async fn legacy_departure_frozen_evidence_rejects_late_forged_and_unbound_writes
             authentication_method: Set(Some("api_session".into())),
             credential_reference: Set(Some("synthetic".into())),
             captured_at: Set(chrono::Utc::now().naive_utc()),
-            ..Default::default()
         }
     };
     for (evidence, source_row, dose) in [
@@ -1788,7 +1787,6 @@ async fn legacy_departure_frozen_evidence_rejects_late_forged_and_unbound_writes
         authentication_method: Set(Some("api_session".into())),
         credential_reference: Set(Some("synthetic".into())),
         captured_at: Set(chrono::Utc::now().naive_utc()),
-        ..Default::default()
     };
     assert!(
         adoption_facts::Entity::insert(foreign)

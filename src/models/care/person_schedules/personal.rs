@@ -94,7 +94,7 @@ impl PersonalPlan {
 }
 
 pub(crate) enum PersonalAction {
-    Edit(treatments::ValidatedScheduleInput),
+    Edit(Box<treatments::ValidatedScheduleInput>),
     Pause,
     Resume,
     Retire,

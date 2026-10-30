@@ -459,7 +459,6 @@ async fn adoption_fact_backfill_indexes_pre_existing_linked_take_evidence_idempo
             person_id: Set(73001),
             person_schedule_id: Set(plan_id.clone()),
             approval_id: Set(None),
-            ..Default::default()
         }
         .insert(&db)
         .await

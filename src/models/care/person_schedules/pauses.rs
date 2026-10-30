@@ -65,7 +65,6 @@ pub(super) async fn record_resume(
         authentication_method: Set(method),
         session_reference: Set(reference),
         created_at: Set(Utc::now().naive_utc()),
-        ..Default::default()
     })
     .exec_without_returning(db)
     .await?;

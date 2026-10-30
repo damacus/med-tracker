@@ -382,11 +382,11 @@ pub(crate) fn amend_personal(
     if let Some(value) = input.schedule_config.as_ref() {
         row.schedule_config = value.clone();
     }
-    if let Some(value) = input.origin_time_zone {
-        if row.origin_time_zone != value.name() {
-            row.origin_time_zone = value.name().into();
-            row.timezone_provenance = "authorised_correction".into();
-        }
+    if let Some(value) = input.origin_time_zone
+        && row.origin_time_zone != value.name()
+    {
+        row.origin_time_zone = value.name().into();
+        row.timezone_provenance = "authorised_correction".into();
     }
     ScheduleFields {
         origin_time_zone: input.origin_time_zone,

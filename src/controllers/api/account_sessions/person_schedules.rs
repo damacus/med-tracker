@@ -149,7 +149,7 @@ pub(super) async fn update(
                 _ => return Err(crate::models::profile::validation("action", "is invalid")),
             }
         } else {
-            PersonalAction::Edit(treatments::parse_personal_input(&body)?)
+            PersonalAction::Edit(Box::new(treatments::parse_personal_input(&body)?))
         };
         Ok((id, revision, action))
     }

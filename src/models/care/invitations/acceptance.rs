@@ -252,10 +252,10 @@ async fn accept_validated(
                 .filter(sharing_approval::Column::PersonId.eq(subject))
                 .all(&transaction)
                 .await?;
-            if let Some(existing) = existing {
-                if !["active", "revoked"].contains(&existing.status.as_str()) {
-                    return Err(unavailable());
-                }
+            if let Some(existing) = existing
+                && !["active", "revoked"].contains(&existing.status.as_str())
+            {
+                return Err(unavailable());
             }
             for approval in prior
                 .into_iter()

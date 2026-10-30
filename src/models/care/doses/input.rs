@@ -125,14 +125,14 @@ pub(super) async fn prepare(
     } else {
         None
     };
-    if let Some(plan) = prescription.as_ref() {
-        if !plan.stock_matches(&original) {
-            return Err(error(
-                ErrorKind::Validation,
-                "Stock no longer matches the prescribed medicine",
-            )
-            .into());
-        }
+    if let Some(plan) = prescription.as_ref()
+        && !plan.stock_matches(&original)
+    {
+        return Err(error(
+            ErrorKind::Validation,
+            "Stock no longer matches the prescribed medicine",
+        )
+        .into());
     }
     let candidates = access::medication_scope(context.tenant)
         .filter(stock_candidate_condition(&original))
