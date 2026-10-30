@@ -38,6 +38,7 @@ import com.squareup.moshi.JsonClass
  * @param endDate 
  * @param active 
  * @param paused 
+ * @param pauseStartedAt 
  * @param canManage Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority.
  * @param notes 
  * @param updatedAt 
@@ -97,6 +98,9 @@ data class Schedule (
 
     @Json(name = "paused")
     val paused: kotlin.Boolean,
+
+    @Json(name = "pause_started_at")
+    val pauseStartedAt: java.time.OffsetDateTime?,
 
     /* Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority. */
     @Json(name = "can_manage")

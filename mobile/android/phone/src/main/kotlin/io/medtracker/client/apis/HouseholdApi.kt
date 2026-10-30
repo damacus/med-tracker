@@ -93,6 +93,11 @@ import io.medtracker.client.models.ScheduleCollectionResponse
 import io.medtracker.client.models.ScheduleCreateRequest
 import io.medtracker.client.models.ScheduleResponse
 import io.medtracker.client.models.ScheduleUpdateRequest
+import io.medtracker.client.models.SharedScheduleBindingResponse
+import io.medtracker.client.models.SharedScheduleCollectionResponse
+import io.medtracker.client.models.SharedScheduleMedicineRequest
+import io.medtracker.client.models.SharedScheduleResponse
+import io.medtracker.client.models.SharedScheduleStockBindingRequest
 import io.medtracker.client.models.StockRemovalCollectionResponse
 import io.medtracker.client.models.StockRemovalRequest
 import io.medtracker.client.models.StockRemovalResponse
@@ -275,6 +280,170 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/medications/{id}/adjust_inventory".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/shared_schedules/{id}/stock_binding
+     * Bind a shared plan to a household stock product for execution.
+     * Requires current self or captured guardian clinical authority for the plan&#39;s subject plus current Manage person access in the routed household. Sends the shared plan&#39;s clinical_revision (not an ETag) together with the stock medication id; a stale revision returns 409. Binding creates or retargets the household execution row that tracks doses against stock. Every accepted change writes a shared-clinical audit; an audit failure rolls the whole change back. 
+     * @param householdId 
+     * @param id 
+     * @param sharedScheduleStockBindingRequest 
+     * @return SharedScheduleBindingResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun bindSharedScheduleStock(householdId: kotlin.Int, id: java.util.UUID, sharedScheduleStockBindingRequest: SharedScheduleStockBindingRequest) : SharedScheduleBindingResponse {
+        val localVarResponse = bindSharedScheduleStockWithHttpInfo(householdId = householdId, id = id, sharedScheduleStockBindingRequest = sharedScheduleStockBindingRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as SharedScheduleBindingResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/shared_schedules/{id}/stock_binding
+     * Bind a shared plan to a household stock product for execution.
+     * Requires current self or captured guardian clinical authority for the plan&#39;s subject plus current Manage person access in the routed household. Sends the shared plan&#39;s clinical_revision (not an ETag) together with the stock medication id; a stale revision returns 409. Binding creates or retargets the household execution row that tracks doses against stock. Every accepted change writes a shared-clinical audit; an audit failure rolls the whole change back. 
+     * @param householdId 
+     * @param id 
+     * @param sharedScheduleStockBindingRequest 
+     * @return ApiResponse<SharedScheduleBindingResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun bindSharedScheduleStockWithHttpInfo(householdId: kotlin.Int, id: java.util.UUID, sharedScheduleStockBindingRequest: SharedScheduleStockBindingRequest) : ApiResponse<SharedScheduleBindingResponse?> {
+        val localVariableConfig = bindSharedScheduleStockRequestConfig(householdId = householdId, id = id, sharedScheduleStockBindingRequest = sharedScheduleStockBindingRequest)
+
+        return request<SharedScheduleStockBindingRequest, SharedScheduleBindingResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation bindSharedScheduleStock
+     *
+     * @param householdId 
+     * @param id 
+     * @param sharedScheduleStockBindingRequest 
+     * @return RequestConfig
+     */
+    fun bindSharedScheduleStockRequestConfig(householdId: kotlin.Int, id: java.util.UUID, sharedScheduleStockBindingRequest: SharedScheduleStockBindingRequest) : RequestConfig<SharedScheduleStockBindingRequest> {
+        val localVariableBody = sharedScheduleStockBindingRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/shared_schedules/{id}/stock_binding".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /households/{household_id}/shared_schedules/{id}/medicine
+     * Rebind a shared plan&#39;s medicine and prescribed dose.
+     * Requires current self or captured guardian clinical authority for the plan&#39;s subject plus current Manage person access in the routed household; a household membership or legacy person-access grant alone is not authority. Send the plan&#39;s opaque etag in If-Match and the stock medication&#39;s current ETag in medication_etag; either stale revision returns 409. The chosen medication must be a scoped stock product whose identity and dose unit match the prescribed unit; unknown fields, missing dose fields and unsupported units are rejected. Every accepted change writes a shared-clinical audit. 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param sharedScheduleMedicineRequest 
+     * @return SharedScheduleResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun changeSharedScheduleMedicine(householdId: kotlin.Int, id: java.util.UUID, ifMatch: kotlin.String, sharedScheduleMedicineRequest: SharedScheduleMedicineRequest) : SharedScheduleResponse {
+        val localVarResponse = changeSharedScheduleMedicineWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, sharedScheduleMedicineRequest = sharedScheduleMedicineRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as SharedScheduleResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /households/{household_id}/shared_schedules/{id}/medicine
+     * Rebind a shared plan&#39;s medicine and prescribed dose.
+     * Requires current self or captured guardian clinical authority for the plan&#39;s subject plus current Manage person access in the routed household; a household membership or legacy person-access grant alone is not authority. Send the plan&#39;s opaque etag in If-Match and the stock medication&#39;s current ETag in medication_etag; either stale revision returns 409. The chosen medication must be a scoped stock product whose identity and dose unit match the prescribed unit; unknown fields, missing dose fields and unsupported units are rejected. Every accepted change writes a shared-clinical audit. 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param sharedScheduleMedicineRequest 
+     * @return ApiResponse<SharedScheduleResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun changeSharedScheduleMedicineWithHttpInfo(householdId: kotlin.Int, id: java.util.UUID, ifMatch: kotlin.String, sharedScheduleMedicineRequest: SharedScheduleMedicineRequest) : ApiResponse<SharedScheduleResponse?> {
+        val localVariableConfig = changeSharedScheduleMedicineRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, sharedScheduleMedicineRequest = sharedScheduleMedicineRequest)
+
+        return request<SharedScheduleMedicineRequest, SharedScheduleResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation changeSharedScheduleMedicine
+     *
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param sharedScheduleMedicineRequest 
+     * @return RequestConfig
+     */
+    fun changeSharedScheduleMedicineRequestConfig(householdId: kotlin.Int, id: java.util.UUID, ifMatch: kotlin.String, sharedScheduleMedicineRequest: SharedScheduleMedicineRequest) : RequestConfig<SharedScheduleMedicineRequest> {
+        val localVariableBody = sharedScheduleMedicineRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/households/{household_id}/shared_schedules/{id}/medicine".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -5106,6 +5275,79 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.GET,
             path = "/households/{household_id}/schedules".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/shared_schedules
+     * Read the shared clinical plans visible in this household.
+     * Lists person-owned plans that an approved share makes visible to the routed household. Returns protected clinical fields and opaque revision ETags only; private notes, pause narratives and former household stock identifiers are never present. Online only; every read writes an access audit and a failed audit returns 503 without releasing the list. 
+     * @param householdId 
+     * @return SharedScheduleCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listSharedSchedules(householdId: kotlin.Int) : SharedScheduleCollectionResponse {
+        val localVarResponse = listSharedSchedulesWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as SharedScheduleCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/shared_schedules
+     * Read the shared clinical plans visible in this household.
+     * Lists person-owned plans that an approved share makes visible to the routed household. Returns protected clinical fields and opaque revision ETags only; private notes, pause narratives and former household stock identifiers are never present. Online only; every read writes an access audit and a failed audit returns 503 without releasing the list. 
+     * @param householdId 
+     * @return ApiResponse<SharedScheduleCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listSharedSchedulesWithHttpInfo(householdId: kotlin.Int) : ApiResponse<SharedScheduleCollectionResponse?> {
+        val localVariableConfig = listSharedSchedulesRequestConfig(householdId = householdId)
+
+        return request<Unit, SharedScheduleCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listSharedSchedules
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun listSharedSchedulesRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/shared_schedules".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

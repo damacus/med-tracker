@@ -20,6 +20,8 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.AdminWriteForbiddenErrorEnvelope
+import io.medtracker.client.models.DependentSharingAcceptanceRequest
+import io.medtracker.client.models.DependentSharingInvitationCreateRequest
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.HouseholdInvitationCollectionResponse
 import io.medtracker.client.models.HouseholdInvitationCreateRequest
@@ -51,6 +53,80 @@ open class InvitationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
         val defaultBasePath: String by lazy {
             System.getProperties().getProperty(ApiClient.baseUrlKey, "/api/v1")
         }
+    }
+
+    /**
+     * POST /invitations/dependent-sharing/accept
+     * Accept a dependent-sharing invitation as the subject&#39;s guardian.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The accepting account must hold a current captured guardian declaration for subject_person_id; authority is rechecked after the destination household lock is taken. Acceptance approves the subject&#39;s person-owned plan sharing with the destination household without making the guardian a member there, records an acceptance audit for the actual accepting account, and returns the created subject membership. sharing_consent must be the boolean true; an absent or false value returns 422. Repeating a still-active acceptance returns the same result without another write. 
+     * @param dependentSharingAcceptanceRequest 
+     * @return InvitationAcceptanceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun acceptDependentSharingInvitation(dependentSharingAcceptanceRequest: DependentSharingAcceptanceRequest) : InvitationAcceptanceResponse {
+        val localVarResponse = acceptDependentSharingInvitationWithHttpInfo(dependentSharingAcceptanceRequest = dependentSharingAcceptanceRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as InvitationAcceptanceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /invitations/dependent-sharing/accept
+     * Accept a dependent-sharing invitation as the subject&#39;s guardian.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The accepting account must hold a current captured guardian declaration for subject_person_id; authority is rechecked after the destination household lock is taken. Acceptance approves the subject&#39;s person-owned plan sharing with the destination household without making the guardian a member there, records an acceptance audit for the actual accepting account, and returns the created subject membership. sharing_consent must be the boolean true; an absent or false value returns 422. Repeating a still-active acceptance returns the same result without another write. 
+     * @param dependentSharingAcceptanceRequest 
+     * @return ApiResponse<InvitationAcceptanceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun acceptDependentSharingInvitationWithHttpInfo(dependentSharingAcceptanceRequest: DependentSharingAcceptanceRequest) : ApiResponse<InvitationAcceptanceResponse?> {
+        val localVariableConfig = acceptDependentSharingInvitationRequestConfig(dependentSharingAcceptanceRequest = dependentSharingAcceptanceRequest)
+
+        return request<DependentSharingAcceptanceRequest, InvitationAcceptanceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation acceptDependentSharingInvitation
+     *
+     * @param dependentSharingAcceptanceRequest 
+     * @return RequestConfig
+     */
+    fun acceptDependentSharingInvitationRequestConfig(dependentSharingAcceptanceRequest: DependentSharingAcceptanceRequest) : RequestConfig<DependentSharingAcceptanceRequest> {
+        val localVariableBody = dependentSharingAcceptanceRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/invitations/dependent-sharing/accept",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
     }
 
     /**
@@ -120,6 +196,87 @@ open class InvitationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/invitations/accept",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/admin/dependent_sharing_invitations
+     * Create a dependent-sharing invitation for a guardian recipient.
+     * Requires current household administrator authority. The household_invitation envelope must contain exactly the guardian recipient email; membership roles, dependent ids and relationship or access fields are not selectable here. Acceptance creates the subject&#39;s membership through the guardian&#39;s consent flow, not this call. No email is enqueued by this route. Replaying a stored Idempotency-Key returns the saved response without another write; a changed request returns 409. 
+     * @param householdId 
+     * @param dependentSharingInvitationCreateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
+     * @return HouseholdInvitationResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun createDependentSharingInvitation(householdId: kotlin.Int, dependentSharingInvitationCreateRequest: DependentSharingInvitationCreateRequest, idempotencyKey: kotlin.String? = null) : HouseholdInvitationResponse {
+        val localVarResponse = createDependentSharingInvitationWithHttpInfo(householdId = householdId, dependentSharingInvitationCreateRequest = dependentSharingInvitationCreateRequest, idempotencyKey = idempotencyKey)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdInvitationResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/admin/dependent_sharing_invitations
+     * Create a dependent-sharing invitation for a guardian recipient.
+     * Requires current household administrator authority. The household_invitation envelope must contain exactly the guardian recipient email; membership roles, dependent ids and relationship or access fields are not selectable here. Acceptance creates the subject&#39;s membership through the guardian&#39;s consent flow, not this call. No email is enqueued by this route. Replaying a stored Idempotency-Key returns the saved response without another write; a changed request returns 409. 
+     * @param householdId 
+     * @param dependentSharingInvitationCreateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
+     * @return ApiResponse<HouseholdInvitationResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun createDependentSharingInvitationWithHttpInfo(householdId: kotlin.Int, dependentSharingInvitationCreateRequest: DependentSharingInvitationCreateRequest, idempotencyKey: kotlin.String?) : ApiResponse<HouseholdInvitationResponse?> {
+        val localVariableConfig = createDependentSharingInvitationRequestConfig(householdId = householdId, dependentSharingInvitationCreateRequest = dependentSharingInvitationCreateRequest, idempotencyKey = idempotencyKey)
+
+        return request<DependentSharingInvitationCreateRequest, HouseholdInvitationResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation createDependentSharingInvitation
+     *
+     * @param householdId 
+     * @param dependentSharingInvitationCreateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
+     * @return RequestConfig
+     */
+    fun createDependentSharingInvitationRequestConfig(householdId: kotlin.Int, dependentSharingInvitationCreateRequest: DependentSharingInvitationCreateRequest, idempotencyKey: kotlin.String?) : RequestConfig<DependentSharingInvitationCreateRequest> {
+        val localVariableBody = dependentSharingInvitationCreateRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/admin/dependent_sharing_invitations".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
