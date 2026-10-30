@@ -141,7 +141,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * POST /invitations/accept
      * Accept an invitation matching the verified session account.
-     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household. When the accepting person already participates in another household, acceptance shares that person&#39;s canonical care record and requires sharing_consent&#x3D;true; absent or false consent then returns 422.
      * @param invitationAcceptanceRequest 
      * @return InvitationAcceptanceResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -173,7 +173,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * POST /invitations/accept
      * Accept an invitation matching the verified session account.
-     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household. When the accepting person already participates in another household, acceptance shares that person&#39;s canonical care record and requires sharing_consent&#x3D;true; absent or false consent then returns 422.
      * @param invitationAcceptanceRequest 
      * @return ApiResponse<InvitationAcceptanceResponse?>
      * @throws IllegalStateException If the request is not correctly configured
