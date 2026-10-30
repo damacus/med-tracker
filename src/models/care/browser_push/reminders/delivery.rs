@@ -151,6 +151,15 @@ async fn claim(
     let key: String = row.try_get("", "event_key")?;
     let kind: String = row.try_get("", "event_type")?;
     let metadata: serde_json::Value = row.try_get("", "event_metadata")?;
+    if let Some(legacy_key) = key.strip_prefix(&format!("browser:{}:", scope.actor.account_id)) {
+        let legacy = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$2 AND event_key=$3 LIMIT 1",
+            [scope.household_id.into(),kind.clone().into(),legacy_key.into()]
+        )).await?;
+        if legacy.is_some() {
+            return Ok(None);
+        }
+    }
     let intent = plans(&tenant, now)
         .await?
         .into_iter()
