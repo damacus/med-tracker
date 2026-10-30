@@ -1,6 +1,6 @@
 use super::*;
 use crate::models::entities::{api_change_event, shared_schedule, sharing_approval};
-use sea_orm::{ConnectionTrait, QueryOrder};
+use sea_orm::{ConnectionTrait, QueryOrder, TryIntoModel};
 
 pub(crate) async fn publish(
     db: &impl ConnectionTrait,
@@ -125,6 +125,60 @@ pub(super) async fn refresh_for(
         refresh_one(tenant, row.id).await?;
     }
     Ok(())
+}
+
+/// Read-side projection for paths that must not take the write locks
+/// `refresh_one` holds (household sync lock, shared state and source row
+/// FOR UPDATE). It applies the same canonical merge in memory — no
+/// `sync::lock`, no row locks, no persistence — so ordinary reads never
+/// wait on an exclusive source write lock. Denials stay fail-closed: a
+/// missing safe state or an ended approval still rejects, and a canonically
+/// retired source disappears exactly as a refreshed row would.
+pub(crate) async fn refresh_read(
+    tenant: &TenantTransaction,
+    initial: schedule::Model,
+) -> Result<schedule::Model, OperationError> {
+    let db = tenant.transaction();
+    let Some(plan) = initial.person_schedule_id.as_ref() else {
+        return Ok(initial);
+    };
+    let state = shared_schedule::Entity::find_by_id(plan)
+        .one(db)
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    let link = crate::models::entities::shared_execution::Entity::find_by_id(initial.id)
+        .one(db)
+        .await?;
+    let approval_id = initial
+        .sharing_approval_id
+        .or(link.as_ref().and_then(|link| link.approval_id));
+    if let Some(approval) = approval_id {
+        sharing_approval::Entity::find_by_id(approval)
+            .filter(sharing_approval::Column::EndedAt.is_null())
+            .one(db)
+            .await?
+            .ok_or(OperationError::Forbidden)?;
+    }
+    let mut next = initial.clone().into_active_model();
+    if initial.canonical_origin {
+        let canonical = person_schedule::Entity::find_by_id(plan)
+            .one(db)
+            .await?
+            .ok_or(OperationError::NotFound)?;
+        if canonical.clinical_revision != state.clinical_revision {
+            return Err(OperationError::Unavailable);
+        }
+        super::project_clinical(&canonical, &mut next);
+    } else {
+        project(&state, &mut next);
+    }
+    let merged = next
+        .try_into_model()
+        .map_err(|_| OperationError::Unavailable)?;
+    if merged.retired_at.is_some() || merged.execution_ended_at.is_some() {
+        return Err(OperationError::NotFound);
+    }
+    Ok(merged)
 }
 
 pub(crate) async fn refresh_one(

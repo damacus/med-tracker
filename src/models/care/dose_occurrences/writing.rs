@@ -34,13 +34,19 @@ async fn source(
                 .one(tenant.transaction())
                 .await?
                 .ok_or(OperationError::NotFound)?;
-            super::super::person_schedules::projection::refresh_one(tenant, initial.id).await?;
-            let query = if locked {
-                query.lock_exclusive()
-            } else {
+            if locked {
+                super::super::person_schedules::projection::refresh_one(tenant, initial.id)
+                    .await?;
                 query
-            };
-            query.one(tenant.transaction()).await?.map(Source::Schedule)
+                    .lock_exclusive()
+                    .one(tenant.transaction())
+                    .await?
+                    .map(Source::Schedule)
+            } else {
+                super::super::person_schedules::projection::refresh_read(tenant, initial)
+                    .await
+                    .map(|row| Some(Source::Schedule(row)))?
+            }
         }
         Kind::Assignment => {
             let query = person_medication::Entity::find()
