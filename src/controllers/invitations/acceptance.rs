@@ -165,14 +165,6 @@ pub(super) async fn accept(
                 );
             }
         };
-    let consent = match invitations::SharingConsent::parse(
-        form.sharing_consent.as_deref().map(|value| value == "true"),
-    ) {
-        Ok(consent) => consent,
-        Err(error) => {
-            return super::super::administration::presentation_error(&view, language, error);
-        }
-    };
     if dependent.is_none() && form.subject_person_id.is_some() {
         return super::super::administration::presentation_error(
             &view,
@@ -181,6 +173,14 @@ pub(super) async fn accept(
         );
     }
     let result = if dependent.is_some() {
+        let consent = match invitations::SharingConsent::parse(
+            form.sharing_consent.as_deref().map(|value| value == "true"),
+        ) {
+            Ok(consent) => consent,
+            Err(error) => {
+                return super::super::administration::presentation_error(&view, language, error);
+            }
+        };
         match form.subject_person_id.filter(|id| *id > 0) {
             Some(id) => {
                 invitations::acceptance::accept_dependent_browser(
@@ -197,6 +197,10 @@ pub(super) async fn accept(
             None => Err(OperationError::NotFound),
         }
     } else {
+        let consent = invitations::SharingConsent::parse(
+            form.sharing_consent.as_deref().map(|value| value == "true"),
+        )
+        .ok();
         invitations::accept_browser(
             &ctx.db,
             &principal,

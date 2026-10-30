@@ -50,13 +50,15 @@ pub(in crate::controllers::api::care) async fn accept(
             &request_id,
         ));
     }
-    let consent = match invitations::SharingConsent::parse(
-        body.get("sharing_consent").and_then(Value::as_bool),
-    ) {
-        Ok(consent) => consent,
-        Err(error) => return no_store(response::error(response::operation(error), &request_id)),
-    };
     let result = if dependent.is_some() {
+        let consent = match invitations::SharingConsent::parse(
+            body.get("sharing_consent").and_then(Value::as_bool),
+        ) {
+            Ok(consent) => consent,
+            Err(error) => {
+                return no_store(response::error(response::operation(error), &request_id));
+            }
+        };
         match body
             .get("subject_person_id")
             .and_then(Value::as_i64)
@@ -77,6 +79,10 @@ pub(in crate::controllers::api::care) async fn accept(
             None => Err(OperationError::NotFound),
         }
     } else {
+        let consent = invitations::SharingConsent::parse(
+            body.get("sharing_consent").and_then(Value::as_bool),
+        )
+        .ok();
         invitations::accept(
             &ctx.db,
             &principal,

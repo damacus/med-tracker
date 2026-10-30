@@ -1153,7 +1153,7 @@ paths:
       operationId: acceptHouseholdInvitation
       tags: [Account, Invitations]
       summary: Accept an invitation matching the verified session account.
-      description: Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+      description: Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household. When the accepting person already participates in another household, acceptance shares that person's canonical care record and requires sharing_consent=true; absent or false consent then returns 422.
       requestBody:
         required: true
         content:
@@ -7368,6 +7368,14 @@ components:
         token:
           type: string
           minLength: 1
+        sharing_consent:
+          type: boolean
+          description: >-
+            Explicit care-sharing attestation. Required when the accepting
+            person already participates in another household, because
+            acceptance shares the person's canonical care record; absent or
+            false then returns 422. A first-household acceptance needs no
+            consent.
     DependentSharingAcceptanceRequest:
       type: object
       additionalProperties: false

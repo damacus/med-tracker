@@ -91,12 +91,16 @@ impl SharingConsent {
         if accepted == Some(true) {
             Ok(Self(()))
         } else {
-            Err(super::super::guardian_declarations::validation(
-                "sharing_consent",
-                "must be explicitly accepted",
-            ))
+            Err(consent_required())
         }
     }
+}
+
+pub(crate) fn consent_required() -> OperationError {
+    super::super::guardian_declarations::validation(
+        "sharing_consent",
+        "must be explicitly accepted",
+    )
 }
 
 pub(crate) async fn guardian(

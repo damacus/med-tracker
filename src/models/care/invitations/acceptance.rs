@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::care::person_schedules::sharing::ConsentAuthority;
+use crate::models::care::person_schedules::sharing::{ConsentAuthority, SharingConsent};
 use crate::models::{
     entities::{household, membership, person},
     identity::api_session::ApiSessionPrincipal,
@@ -15,7 +15,7 @@ pub async fn accept(
     db: &DatabaseConnection,
     principal: &ApiSessionPrincipal,
     token: &str,
-    _consent: SharingConsent,
+    consent: Option<SharingConsent>,
     request_id: &str,
     settings: Option<&serde_json::Value>,
 ) -> Result<Value, OperationError> {
@@ -23,6 +23,7 @@ pub async fn accept(
         db,
         Principal::Api(principal),
         token,
+        consent,
         None,
         request_id,
         settings,
@@ -34,7 +35,7 @@ pub async fn accept_browser(
     db: &DatabaseConnection,
     principal: &BrowserPrincipal,
     token: &str,
-    _consent: SharingConsent,
+    consent: Option<SharingConsent>,
     request_id: &str,
     settings: Option<&serde_json::Value>,
 ) -> Result<Value, OperationError> {
@@ -42,6 +43,7 @@ pub async fn accept_browser(
         db,
         Principal::Browser(principal),
         token,
+        consent,
         None,
         request_id,
         settings,
@@ -53,7 +55,7 @@ pub(crate) async fn accept_dependent(
     db: &DatabaseConnection,
     principal: &ApiSessionPrincipal,
     token: &str,
-    _consent: SharingConsent,
+    consent: SharingConsent,
     subject: crate::models::ids::PersonId,
     request_id: &str,
     settings: Option<&serde_json::Value>,
@@ -62,6 +64,7 @@ pub(crate) async fn accept_dependent(
         db,
         Principal::Api(principal),
         token,
+        Some(consent),
         Some(subject),
         request_id,
         settings,
@@ -73,7 +76,7 @@ pub(crate) async fn accept_dependent_browser(
     db: &DatabaseConnection,
     principal: &BrowserPrincipal,
     token: &str,
-    _consent: SharingConsent,
+    consent: SharingConsent,
     subject: crate::models::ids::PersonId,
     request_id: &str,
     settings: Option<&serde_json::Value>,
@@ -82,6 +85,7 @@ pub(crate) async fn accept_dependent_browser(
         db,
         Principal::Browser(principal),
         token,
+        Some(consent),
         Some(subject),
         request_id,
         settings,
@@ -144,6 +148,7 @@ async fn accept_validated(
     db: &DatabaseConnection,
     principal: Principal<'_>,
     token: &str,
+    consent: Option<SharingConsent>,
     dependent: Option<crate::models::ids::PersonId>,
     request_id: &str,
     settings: Option<&serde_json::Value>,
@@ -241,6 +246,21 @@ async fn accept_validated(
                 .await?
                 .ok_or_else(unavailable)?;
             super::authority::authorize(&transaction, &inviter, &invitation).await?;
+            // Joining another household shares the person's canonical care
+            // record, so it requires an explicit care-sharing attestation.
+            // A first-household acceptance has nothing to share and needs no
+            // consent; dependent acceptances always carry the required marker.
+            let participates_elsewhere = membership::Entity::find()
+                .filter(membership::Column::PersonId.eq(subject))
+                .filter(membership::Column::HouseholdId.ne(invitation.household_id))
+                .one(&transaction)
+                .await?
+                .is_some();
+            if consent.is_none() && participates_elsewhere {
+                return Err(
+                    crate::models::care::person_schedules::sharing::consent_required(),
+                );
+            }
             let existing = membership::Entity::find()
                 .in_tenant(invitation.household_id)
                 .filter(membership::Column::PersonId.eq(subject))
