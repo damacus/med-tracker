@@ -215,9 +215,80 @@ async fn presend_authority(
     claim: &Claim,
     send_at: DateTime<Utc>,
 ) -> Result<Guard, OperationError> {
+    let revocable = |error: &OperationError| {
+        matches!(
+            error,
+            OperationError::Forbidden
+                | OperationError::NotFound
+                | OperationError::Unauthenticated
+        )
+    };
+    // Gate on the recipient authority locks before refreshing projections:
+    // any change queued behind these locks after the claim must be visible
+    // to the refresh, otherwise the send recheck decides on pre-claim
+    // clinical or pause state. The projection refresh stays in its own
+    // committed transaction so its write locks never overlap a
+    // lock-holding send transaction.
+    let gate = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    let gated = async {
+        gate.transaction()
+            .execute_unprepared("SET LOCAL lock_timeout = '5s'")
+            .await?;
+        account::Entity::find_by_id(scope.actor.account_id)
+            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+            .one(gate.transaction())
+            .await?
+            .ok_or(OperationError::Forbidden)?;
+        household::Entity::find_by_id(scope.household_id)
+            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+            .one(gate.transaction())
+            .await?
+            .ok_or(OperationError::Forbidden)?;
+        let owned = notification_delivery::Entity::find_by_id(id)
+            .filter(notification_delivery::Column::HouseholdId.eq(scope.household_id))
+            .filter(notification_delivery::Column::AccountId.eq(scope.actor.account_id))
+            .filter(notification_delivery::Column::Status.eq("sending"))
+            .filter(notification_delivery::Column::AttemptCount.eq(claim.attempt))
+            .filter(notification_delivery::Column::ClaimedAt.eq(claim.claimed_at))
+            .one(gate.transaction())
+            .await?
+            .is_some();
+        access::recheck(&gate).await?;
+        Ok::<_, OperationError>(owned)
+    }
+    .await;
+    let owned = match gated {
+        Ok(owned) => owned,
+        Err(error) => {
+            if revocable(&error)
+                && suppress(&gate, id, "recipient_revoked").await.is_ok()
+                && gate.commit().await.is_ok()
+            {
+                return Ok(Guard::Suppressed);
+            }
+            return Err(error);
+        }
+    };
+    if !owned {
+        gate.commit().await?;
+        return Ok(Guard::Stale);
+    }
+    gate.commit().await?;
     let projection_tenant =
         access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
-    crate::models::care::person_schedules::projection::refresh(&projection_tenant).await?;
+    if let Err(error) =
+        crate::models::care::person_schedules::projection::refresh(&projection_tenant).await
+    {
+        if revocable(&error) {
+            let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+            if suppress(&tenant, id, "recipient_revoked").await.is_ok()
+                && tenant.commit().await.is_ok()
+            {
+                return Ok(Guard::Suppressed);
+            }
+        }
+        return Err(error);
+    }
     projection_tenant.commit().await?;
     let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     let checked = async {
@@ -256,13 +327,7 @@ async fn presend_authority(
     let (subscription, owned) = match checked {
         Ok(values) => values,
         Err(error) => {
-            let revocable = matches!(
-                error,
-                OperationError::Forbidden
-                    | OperationError::NotFound
-                    | OperationError::Unauthenticated
-            );
-            if revocable
+            if revocable(&error)
                 && suppress(&tenant, id, "recipient_revoked").await.is_ok()
                 && tenant.commit().await.is_ok()
             {
