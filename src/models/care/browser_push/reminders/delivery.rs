@@ -206,6 +206,10 @@ async fn presend_authority(
     claim: &Claim,
     send_at: DateTime<Utc>,
 ) -> Result<Guard, OperationError> {
+    let projection_tenant =
+        access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    crate::models::care::person_schedules::projection::refresh(&projection_tenant).await?;
+    projection_tenant.commit().await?;
     let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     let checked = async {
         tenant
@@ -222,7 +226,6 @@ async fn presend_authority(
             .one(tenant.transaction())
             .await?
             .ok_or(OperationError::Forbidden)?;
-        crate::models::care::person_schedules::projection::refresh(&tenant).await?;
         let subscription = push_subscription::Entity::find_by_id(claim.subscription.id)
             .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
             .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
