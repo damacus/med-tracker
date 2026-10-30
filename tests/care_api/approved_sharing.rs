@@ -5618,3 +5618,56 @@ async fn person_owned_schedule_shared_command_audit_failure_rolls_back_canonical
     .await;
     app.close().await;
 }
+
+#[tokio::test]
+async fn person_owned_schedule_shared_command_documents_account_session_error_envelope() {
+    let app = Application::new().await;
+    let origin = guardian_origin(&app).await;
+    let endpoint = format!(
+        "{}/api/v1/auth/shared_schedules/{}",
+        app.origin, origin.plan
+    );
+    // The retained account-session error path materialises a missing If-Match
+    // and a stale clinical revision as internal_error, unlike the personal-plan
+    // twin's 422/409 taxonomy; the frozen contract documents that 500.
+    let missing_precondition = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&origin.token)
+        .json(&json!({"action": "pause"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(missing_precondition.status().as_u16(), 500);
+    let envelope: Value = missing_precondition.json().await.unwrap();
+    assert_eq!(envelope["error"]["code"], "internal_error");
+    assert!(
+        envelope["error"]["request_id"]
+            .as_str()
+            .is_some_and(|id| !id.is_empty())
+    );
+    let stale = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&origin.token)
+        .header(
+            "if-match",
+            format!("\"person-schedule:{}:99\"", origin.plan),
+        )
+        .json(&json!({"action": "pause"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(stale.status().as_u16(), 500);
+    assert_eq!(
+        stale.json::<Value>().await.unwrap()["error"]["code"],
+        "internal_error"
+    );
+    let operation = &contract::contract()["paths"]["/auth/shared_schedules/{id}"]["patch"];
+    assert_eq!(
+        operation["responses"]["500"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/ErrorEnvelope",
+        "the documented 500 must carry the shared error envelope"
+    );
+    app.close().await;
+}

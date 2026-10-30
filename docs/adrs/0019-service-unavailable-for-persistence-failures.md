@@ -56,8 +56,8 @@ Genuine server faults remain HTTP 500 `internal_error`. In particular:
   `CapabilitiesUnavailable`, `InvitationDeliveryUnavailable`) where the
   contract already distinguishes it.
 
-`docs/api/openapi.v1.yaml` documents `503` for every endpoint whose failure
-path can reach a changed mapper, via a generic
+`docs/api/openapi.v1.yaml` documents `503` for every exercised operation whose
+failure path can reach a changed mapper, via a generic
 `components.responses.ServiceUnavailable` or the existing specialised
 component. `500` stays documented only where a real 500 emitter remains
 reachable on that path.

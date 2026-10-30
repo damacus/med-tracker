@@ -99,11 +99,14 @@ fn schedule_audited_writes_declare_shared_unavailable_response() {
             "{method} {path} must declare its audited-write failure"
         );
     }
-    assert_eq!(
+    assert!(
         contract()["paths"]["/households/{household_id}/schedules/{id}"]["put"]["responses"]["500"]
-            ["$ref"],
-        "#/components/responses/InternalServerError",
-        "put /households/{{household_id}}/schedules/{{id}} keeps the shared internal-error declaration"
+            .is_null(),
+        "put /households/{{household_id}}/schedules/{{id}} must not declare an unreachable 500"
+    );
+    assert!(
+        contract()["components"]["responses"]["InternalServerError"].is_null(),
+        "No documented operation produces the internal-error envelope; keep the component removed"
     );
 }
 
