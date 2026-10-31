@@ -468,7 +468,7 @@ async fn birthday(app: &Application, subject: i64, tomorrow: bool) -> Result<(),
             Expr::val(0),
             Expr::val(0),
             Expr::val(0),
-            Expr::val(1),
+            Expr::val(2),
         ]))
     } else {
         birthday
