@@ -7,7 +7,7 @@ loco-rs = { git = "https://github.com/damacus/loco", rev = "5224bc58f9292a2f4713
 
 [package]
 name = "med-tracker"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 edition = "2024"
 rust-version = "1.94.1"
 publish = false
