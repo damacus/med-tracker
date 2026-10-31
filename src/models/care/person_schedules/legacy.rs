@@ -1,9 +1,9 @@
 use super::*;
 use crate::models::{
-    identity::credentials::CredentialProvenance,
     entities::{
         account, adoption_fact, legacy_prescription, pause_period, shared_schedule, version,
     },
+    identity::credentials::CredentialProvenance,
     identity::resource::ValidatedPrincipal,
     ids::{AccountId, PersonId},
 };

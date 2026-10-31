@@ -115,11 +115,13 @@ pub(crate) async fn write_records(
 ) -> Result<(), OperationError> {
     let conflicts = super::person_schedules::conflicts(db, tenant, plan, index).await?;
     if !conflicts.is_empty() {
-        return Err(import_invalid(conflicts
-            .into_iter()
-            .map(|conflict| conflict.to_string())
-            .collect::<Vec<_>>()
-            .join("; ")));
+        return Err(import_invalid(
+            conflicts
+                .into_iter()
+                .map(|conflict| conflict.to_string())
+                .collect::<Vec<_>>()
+                .join("; "),
+        ));
     }
     for kind in [
         "locations",
