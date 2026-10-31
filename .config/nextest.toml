@@ -280,6 +280,7 @@ binary(=migration_roles)
 | test(=mobile_snapshot::mobile_snapshot_uses_self_and_live_guardian_authority_instead_of_manage_grants)
 | test(=person_owned_schedules::legacy_departure::legacy_departure_frozen_take_evidence_indexes_at_protected_adoption_and_bounds_later_doses)
 | test(=person_owned_schedules::person_owned_schedule_approval_can_be_withdrawn_without_departure)
+| test(=guardian_declarations::live_authority::guardian_authority_stops_at_eighteenth_birthday_without_retyping)
 '''
 test-group = 'api-global'
 threads-required = "num-test-threads"
