@@ -201,10 +201,25 @@ async fn create_fields(
     };
     fields.assign(&mut active);
     let row = active.insert(tenant.transaction()).await?;
+    let actor =
+        crate::models::entities::account::Entity::find_by_id(tenant.scope().actor.account_id)
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::Unauthenticated)?;
+    let zone = crate::models::identity::time_zone::preferred(&actor.preferences, tenant.settings())
+        .map_err(|_| OperationError::Unavailable)?;
+    let row = super::person_schedules::save_execution(
+        tenant,
+        row,
+        Some(zone),
+        super::doses::app_zone(tenant.settings()),
+        provenance,
+    )
+    .await?;
     persist(tenant, &row, None, "create", provenance).await?;
     lifecycle::project(tenant, row).await
 }
-async fn persist(
+pub(super) async fn persist(
     tenant: &TenantTransaction,
     row: &schedule::Model,
     before: Option<Value>,
@@ -239,7 +254,7 @@ async fn persist(
     Ok(())
 }
 pub(crate) fn representation(row: &schedule::Model) -> (Value, String) {
-    let body = json!({"data":{"id":row.id,"portable_id":row.portable_id,"person_id":row.person_id,"medication_id":row.medication_id,"source_dosage_option_id":row.source_dosage_option_id,"active":row.active,"dose_amount":row.dose_amount.map(|value|medications::decimal_string(value.to_string())),"dose_unit":row.dose_unit,"frequency":row.frequency,"start_date":row.start_date,"end_date":row.end_date,"notes":row.notes,"max_daily_doses":row.max_daily_doses,"min_hours_between_doses":row.min_hours_between_doses.map(|value|format!("{value}.0")),"dose_cycle":row.dose_cycle.map(|value|match value{1=>"weekly",2=>"monthly",_=>"daily"}),"schedule_type":match row.schedule_type{1=>"multiple_daily",2=>"weekly",3=>"specific_dates",4=>"prn",5=>"tapering",6=>"every_other_day",_=>"daily"},"schedule_config":row.schedule_config,"updated_at":row.updated_at}});
+    let body = json!({"data":{"id":row.id,"portable_id":row.portable_id,"person_id":row.person_id,"person_schedule_id":row.person_schedule_id,"clinical_revision":row.clinical_revision,"origin_time_zone":row.origin_time_zone,"execution_ended_at":row.execution_ended_at,"retired_at":row.retired_at,"medication_id":row.medication_id,"source_dosage_option_id":row.source_dosage_option_id,"active":row.active,"dose_amount":row.dose_amount.map(|value|medications::decimal_string(value.to_string())),"dose_unit":row.dose_unit,"frequency":row.frequency,"start_date":row.start_date,"end_date":row.end_date,"notes":row.notes,"max_daily_doses":row.max_daily_doses,"min_hours_between_doses":row.min_hours_between_doses.map(|value|format!("{value}.0")),"dose_cycle":row.dose_cycle.map(|value|match value{1=>"weekly",2=>"monthly",_=>"daily"}),"schedule_type":match row.schedule_type{1=>"multiple_daily",2=>"weekly",3=>"specific_dates",4=>"prn",5=>"tapering",6=>"every_other_day",_=>"daily"},"schedule_config":row.schedule_config,"updated_at":row.updated_at}});
     use sha2::{Digest, Sha256};
     let mut sorted = body.clone();
     sorted.sort_all_objects();
@@ -264,7 +279,11 @@ fn storage_decimal(value: Decimal, integer: u32, fraction: u32) -> Option<Decima
 const UNITS: &[&str] = &[
     "tablet", "capsule", "gummy", "mg", "ml", "g", "mcg", "IU", "spray", "drop", "sachet", "pad",
 ];
+pub(super) fn supported_unit(unit: &str) -> bool {
+    UNITS.contains(&unit)
+}
 const FIELDS: &[&str] = &[
+    "origin_time_zone",
     "person_id",
     "medication_id",
     "source_dosage_option_id",
@@ -290,6 +309,7 @@ enum InputFailure {
 
 #[derive(Default)]
 pub(crate) struct ScheduleInput {
+    pub(crate) origin_time_zone: Option<chrono_tz::Tz>,
     pub(crate) person_id: Option<PersonId>,
     pub(crate) medication_id: Option<MedicationId>,
     pub(crate) source_dosage_option_id: Option<DosageOptionId>,
@@ -306,6 +326,170 @@ pub(crate) struct ScheduleInput {
     pub(crate) schedule_config: Option<Value>,
 }
 pub(crate) struct ValidatedScheduleInput(ScheduleInput);
+
+pub(crate) fn parse_personal_input(body: &Value) -> Result<ValidatedScheduleInput, OperationError> {
+    let attributes = input::attributes(body).map_err(failure)?;
+    input::parse_input(attributes).map_err(failure)?.validated()
+}
+
+pub(crate) fn amend_personal(
+    row: &mut crate::models::entities::person_schedule::Model,
+    input: &ValidatedScheduleInput,
+) -> Result<(), OperationError> {
+    let input = input.as_ref();
+    if input.person_id.is_some()
+        || input.medication_id.is_some()
+        || input.source_dosage_option_id.is_some()
+    {
+        return Err(failure(InputFailure::Invalid(
+            "schedule",
+            "personal edits cannot select household stock",
+        )));
+    }
+    if let Some(value) = input.dose_amount {
+        row.dose_amount = Some(value);
+    }
+    if let Some(value) = input.dose_unit.as_ref() {
+        row.dose_unit = Some(value.clone());
+    }
+    if let Some(value) = input.frequency.as_ref() {
+        row.frequency = Some(value.clone());
+    }
+    if let Some(value) = input.notes.as_ref() {
+        row.notes = Some(value.clone());
+    }
+    if let Some(value) = input.start_date {
+        row.start_date = Some(value);
+    }
+    if let Some(value) = input.end_date {
+        row.end_date = Some(value);
+    }
+    if let Some(value) = input.max_daily_doses {
+        row.max_daily_doses = Some(value);
+    }
+    if let Some(value) = input.min_hours_between_doses {
+        row.min_hours_between_doses = value;
+    }
+    if let Some(value) = input.dose_cycle {
+        row.dose_cycle = Some(value.database());
+    }
+    if let Some(value) = input.schedule_type {
+        row.schedule_type = value.database();
+    }
+    if let Some(value) = input.schedule_config.as_ref() {
+        row.schedule_config = value.clone();
+    }
+    if let Some(value) = input.origin_time_zone
+        && row.origin_time_zone != value.name()
+    {
+        row.origin_time_zone = value.name().into();
+        row.timezone_provenance = "authorised_correction".into();
+    }
+    ScheduleFields {
+        origin_time_zone: input.origin_time_zone,
+        person_id: Some(row.person_id),
+        medication_id: Some(row.origin_stock_id),
+        source_dosage_option_id: None,
+        dose_amount: row.dose_amount,
+        dose_unit: row.dose_unit.clone(),
+        frequency: row.frequency.clone(),
+        start_date: row.start_date,
+        end_date: row.end_date,
+        notes: row.notes.clone(),
+        max_daily_doses: row.max_daily_doses,
+        min_hours_between_doses: row.min_hours_between_doses,
+        dose_cycle: row.dose_cycle,
+        schedule_type: row.schedule_type,
+        schedule_config: row.schedule_config.clone(),
+    }
+    .validate()
+    .map_err(failure)
+}
+
+pub(crate) fn amend_shared(
+    row: &mut crate::models::entities::shared_schedule::Model,
+    input: &ValidatedScheduleInput,
+) -> Result<(), OperationError> {
+    let input = input.as_ref();
+    if input.person_id.is_some()
+        || input.medication_id.is_some()
+        || input.source_dosage_option_id.is_some()
+        || input.notes.is_some()
+    {
+        return Err(failure(InputFailure::Invalid(
+            "schedule",
+            "shared clinical edits cannot select inventory or private notes",
+        )));
+    }
+    if let Some(value) = input.dose_amount {
+        row.dose_amount = Some(value);
+    }
+    if let Some(value) = input.dose_unit.as_ref() {
+        row.dose_unit = Some(value.clone());
+    }
+    if let Some(value) = input.frequency.as_ref() {
+        row.frequency = Some(value.clone());
+    }
+    if let Some(value) = input.start_date {
+        row.start_date = Some(value);
+    }
+    if let Some(value) = input.end_date {
+        row.end_date = Some(value);
+    }
+    if let Some(value) = input.max_daily_doses {
+        row.max_daily_doses = Some(value);
+    }
+    if let Some(value) = input.min_hours_between_doses {
+        row.min_hours_between_doses = value;
+    }
+    if let Some(value) = input.dose_cycle {
+        row.dose_cycle = Some(value.database());
+    }
+    if let Some(value) = input.schedule_type {
+        row.schedule_type = value.database();
+    }
+    if let Some(value) = input.schedule_config.as_ref() {
+        row.schedule_config = value.clone();
+    }
+    if let Some(value) = input.origin_time_zone {
+        row.origin_time_zone = value.name().into();
+    }
+    ScheduleFields {
+        origin_time_zone: input.origin_time_zone,
+        person_id: Some(row.person_id),
+        medication_id: None,
+        source_dosage_option_id: None,
+        dose_amount: row.dose_amount,
+        dose_unit: row.dose_unit.clone(),
+        frequency: row.frequency.clone(),
+        start_date: row.start_date,
+        end_date: row.end_date,
+        notes: None,
+        max_daily_doses: row.max_daily_doses,
+        min_hours_between_doses: row.min_hours_between_doses,
+        dose_cycle: row.dose_cycle,
+        schedule_type: row.schedule_type,
+        schedule_config: row.schedule_config.clone(),
+    }
+    .validate_fields(false)
+    .map_err(failure)
+}
+
+pub(crate) fn prescribed_amount(value: &str) -> Result<Decimal, OperationError> {
+    let amount = Decimal::from_str(value).map_err(|_| {
+        failure(InputFailure::Invalid(
+            "dose_amount",
+            "must be a decimal string",
+        ))
+    })?;
+    if amount <= Decimal::ZERO || storage_decimal(amount, 8, 2).is_none() {
+        return Err(failure(InputFailure::Invalid(
+            "dose_amount",
+            "must fit two decimal places",
+        )));
+    }
+    Ok(amount)
+}
 
 impl ScheduleInput {
     pub(crate) fn validated(self) -> Result<ValidatedScheduleInput, OperationError> {
@@ -361,6 +545,7 @@ impl ValidatedScheduleInput {
 
 #[derive(PartialEq)]
 struct ScheduleFields {
+    origin_time_zone: Option<chrono_tz::Tz>,
     person_id: Option<i64>,
     medication_id: Option<i64>,
     source_dosage_option_id: Option<i64>,
@@ -380,6 +565,7 @@ struct ScheduleFields {
 impl ScheduleFields {
     fn new() -> Self {
         Self {
+            origin_time_zone: None,
             person_id: None,
             medication_id: None,
             source_dosage_option_id: None,
@@ -398,11 +584,15 @@ impl ScheduleFields {
     }
 
     fn validate(&self) -> Result<(), InputFailure> {
+        self.validate_fields(true)
+    }
+
+    fn validate_fields(&self, local_stock: bool) -> Result<(), InputFailure> {
         let mut errors = Map::new();
         if self.person_id.is_none() {
             errors.insert("person_id".to_owned(), json!(["can't be blank"]));
         }
-        if self.medication_id.is_none() {
+        if local_stock && self.medication_id.is_none() {
             errors.insert("medication_id".to_owned(), json!(["can't be blank"]));
         }
         if self.dose_amount.is_none() {
@@ -432,6 +622,9 @@ impl ScheduleFields {
     }
 
     fn assign(self, active: &mut schedule::ActiveModel) {
+        if let Some(zone) = self.origin_time_zone {
+            active.origin_time_zone = Set(Some(zone.name().into()));
+        }
         active.person_id = Set(self.person_id.unwrap());
         active.medication_id = Set(self.medication_id.unwrap());
         active.source_dosage_option_id = Set(self.source_dosage_option_id);

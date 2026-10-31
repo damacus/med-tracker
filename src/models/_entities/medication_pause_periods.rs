@@ -13,6 +13,9 @@ pub struct Model {
     pub id: i64,
     pub created_at: DateTime,
     pub ended_at: Option<DateTime>,
+    pub canonical_resume_id: Option<String>,
+    pub canonical_person_schedule_id: Option<String>,
+    pub canonical_pause_revision: Option<i64>,
     #[sea_orm(unique_key = "index_medication_pause_periods_on_id_and_household_id")]
     pub household_id: i64,
     #[sea_orm(column_type = "JsonBinary")]

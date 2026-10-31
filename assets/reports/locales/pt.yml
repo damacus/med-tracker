@@ -553,6 +553,16 @@ pt:
         existing_account: Já tem uma conta?
         sign_in: Inicie sessão
         to_accept: para aceitar este convite.
+        dependent_label: Dependente cujos cuidados serão partilhados
+        dependent_choose: Escolha um dependente
+        no_dependents: Não tem autoridade tutelar atual e válida sobre um dependente. Reveja as suas declarações antes de aceitar.
+        dependent_consent: Sou tutor declarado atualmente e aprovo partilhar os planos de cuidados atuais e futuros, as pausas e o estado de segurança da última dose deste dependente com este agregado. As notas privadas e o histórico detalhado permanecem privados. A retirada ou saída termina esta aprovação.
+        dependent_approved: Partilha de cuidados aprovada
+        dependent_approved_description: Os planos atuais e futuros do dependente escolhido são partilhados. Permanece nos seus agregados atuais e pode retirar a aprovação na sua conta.
+        return_profile: Voltar à sua conta
+        invite_guardian: Convidar um tutor a partilhar cuidados
+        invite_guardian_description: Um tutor declarado atualmente escolhe o dependente e aprova a partilha. O tutor permanece nos seus agregados atuais.
+        sharing_consent: Aprovo partilhar os meus planos de cuidados atuais e futuros, as pausas e o estado de segurança da última dose com este agregado. As notas privadas e o histórico detalhado permanecem privados. Ao sair, esta aprovação termina.
         invalid_title: Ligação do convite indisponível
         invalid_guidance: Esta ligação do convite é inválida ou expirou. Peça um novo convite a um gestor do agregado.
         recovery_title: Juntou-se ao agregado
@@ -615,6 +625,7 @@ pt:
           unavailable: Não foi possível alterar o convite. Verifique o estado e tente novamente.
         form:
           email: Email
+          guardian_email: Email do tutor
           role: Função do agregado
           relationship_type: Relação do dependente
           select_relationship_type: Selecione a relação
@@ -2271,6 +2282,19 @@ pt:
         metric_value: Horário
   profiles:
     personal:
+      plans: "Os meus planos de tratamento"
+      plans_description: "Os seus planos permanecem consigo quando sai de um agregado. As alterações só atualizam uma ligação atual a um agregado."
+      plans_empty: "Não foram registados planos de tratamento pessoais."
+      origin_zone: "Fuso horário do plano"
+      adoption_zone: "Este plano não tem um fuso horário registado. Ao guardar, é adotado o fuso horário da aplicação mostrado acima. Altere-o apenas para corrigir os horários do plano."
+      adopted_zone: "Este plano existente usa o fuso horário da aplicação no momento da sua adoção. Verifique-o antes de alterar os horários."
+      plan_times: "Horas das doses (HH:MM, separadas por vírgulas)"
+      save_plan: "Guardar plano"
+      retire_plan: "Terminar plano"
+      retire_confirmation: "Isto termina o plano. As doses registadas continuam disponíveis."
+      retired: "Este plano foi terminado."
+      invalid: "Verifique a dose, as datas, as horas e o nome do fuso horário e tente novamente."
+      stale: "Este plano foi alterado enquanto o formulário estava aberto. Reveja o plano atual antes de guardar."
       clinical_invalid: "Introduza um nome e uma data de nascimento válida. Os titulares de contas devem ter pelo menos 18 anos."
       description: "Gira a sua conta e a sua informação clínica."
       account_name: "Nome de apresentação da conta"

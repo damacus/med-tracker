@@ -1,0 +1,3082 @@
+{
+  "removed": [
+    "constraint:public.medication_pause_periods.chk_medication_pause_periods_resuming_actor"
+  ],
+  "changed": {
+    "column:public.household_invitations.dependent_sharing": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": "false",
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 12,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.medication_pause_periods.canonical_pause_revision": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 18,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.medication_pause_periods.canonical_person_schedule_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 17,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.medication_pause_periods.canonical_resume_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 19,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.person_household_approvals.approved_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 9,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.person_household_approvals.approved_by_account_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 5,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_household_approvals.approved_by_person_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 6,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_household_approvals.ended_at": {
+      "acl": [
+        "med_tracker_app=w/med_tracker_owner"
+      ],
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 10,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.person_household_approvals.guardian_declaration_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 7,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_household_approvals.household_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_household_approvals.id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "d",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_household_approvals.invitation_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 4,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_household_approvals.person_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_household_approvals.statement_version": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 8,
+      "storage": "p",
+      "type": "smallint"
+    },
+    "column:public.person_household_approvals_id_seq.is_called": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.person_household_approvals_id_seq.last_value": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_household_approvals_id_seq.log_cnt": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.person_schedules.pause_instance_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 35,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.schedules.canonical_origin": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": "false",
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 27,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.schedules.sharing_approval_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 26,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_administrations.household_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_administrations.id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "d",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_administrations.medication_take_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 4,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_administrations.occurrence_position": {
+      "acl": [
+        "med_tracker_app=w/med_tracker_owner"
+      ],
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 7,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.shared_schedule_administrations.occurrence_starts_on": {
+      "acl": [
+        "med_tracker_app=w/med_tracker_owner"
+      ],
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 6,
+      "storage": "p",
+      "type": "date"
+    },
+    "column:public.shared_schedule_administrations.person_schedule_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_administrations.taken_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 5,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_administrations_id_seq.is_called": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.shared_schedule_administrations_id_seq.last_value": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_administrations_id_seq.log_cnt": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_executions.approval_id": {
+      "acl": [
+        "med_tracker_app=w/med_tracker_owner"
+      ],
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 4,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_executions.household_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_executions.person_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_executions.person_schedule_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 6,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_executions.portable_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 5,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_executions.schedule_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_pause_closures.actor_account_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 7,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_pause_closures.actor_membership_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 9,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_pause_closures.actor_person_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 8,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_pause_closures.authentication_method": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 4,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_pause_closures.clinical_revision": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 6,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_pause_closures.created_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 12,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_pause_closures.ended_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 11,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_pause_closures.guardian_declaration_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 10,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_pause_closures.pause_instance_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_pause_closures.person_schedule_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_pause_closures.request_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_pause_closures.session_reference": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 5,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.active": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 15,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.shared_schedule_states.clinical_revision": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_states.created_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 21,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_states.dmd_code": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 6,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.dmd_concept_class": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 7,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.dmd_system": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 5,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.dose_amount": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 17,
+      "storage": "m",
+      "type": "numeric(10,2)"
+    },
+    "column:public.shared_schedule_states.dose_cycle": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 25,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.shared_schedule_states.dose_unit": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 9,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.end_date": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 24,
+      "storage": "p",
+      "type": "date"
+    },
+    "column:public.shared_schedule_states.frequency": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 10,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.last_closed_pause_instance_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 12,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.latest_taken_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 20,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_states.max_daily_doses": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 26,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.shared_schedule_states.medicine_name": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 4,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.min_hours_between_doses": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 27,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.shared_schedule_states.origin_time_zone": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 13,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.pause_instance_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 11,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.pause_started_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 18,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_states.person_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_states.retired_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 19,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_states.schedule_config": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 29,
+      "storage": "x",
+      "type": "jsonb"
+    },
+    "column:public.shared_schedule_states.schedule_type": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 28,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.shared_schedule_states.start_date": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 23,
+      "storage": "p",
+      "type": "date"
+    },
+    "column:public.shared_schedule_states.stock_default_known": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 14,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.shared_schedule_states.stock_dose_default": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 16,
+      "storage": "m",
+      "type": "numeric"
+    },
+    "column:public.shared_schedule_states.stock_unit": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 8,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_states.updated_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 22,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "constraint:public.household_invitations.household_invitations_dependent_sharing_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL dependent_sharing",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.medication_pause_periods.medication_pause_periods_check": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "CHECK ((((ended_at IS NULL) AND (resumed_by_membership_id IS NULL) AND (canonical_resume_id IS NULL)) OR ((ended_at IS NOT NULL) AND ((resumed_by_membership_id IS NOT NULL) OR (imported_context = true) OR (canonical_resume_id IS NOT NULL)))))",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.medication_pause_periods.pause_period_canonical_plan": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (canonical_person_schedule_id) REFERENCES shared_schedule_states(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.medication_pause_periods.pause_period_canonical_resume": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (canonical_resume_id) REFERENCES shared_schedule_pause_closures(pause_instance_id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_approved_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL approved_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_approved_by_account_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL approved_by_account_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_approved_by_person_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL approved_by_person_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_household_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL household_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_invitation_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL invitation_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_person_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_pkey": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "PRIMARY KEY (id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.person_household_approvals_statement_version_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL statement_version",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.sharing_approval_approved_by_account_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (approved_by_account_id) REFERENCES accounts(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.sharing_approval_approved_by_person_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (approved_by_person_id) REFERENCES people(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.sharing_approval_guardian_declaration_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (guardian_declaration_id) REFERENCES guardian_declarations(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.sharing_approval_household_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (household_id) REFERENCES households(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.sharing_approval_invitation_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (invitation_id) REFERENCES household_invitations(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.person_household_approvals.sharing_approval_person_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (person_id) REFERENCES people(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.schedules.schedule_sharing_approval": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (sharing_approval_id) REFERENCES person_household_approvals(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.schedules.schedules_canonical_origin_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL canonical_origin",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.schedules.shared_schedule_no_private_notes": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "CHECK (((sharing_approval_id IS NULL) OR (notes IS NULL)))",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_administration_plan": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (person_schedule_id) REFERENCES shared_schedule_states(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_administration_take": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (medication_take_id) REFERENCES medication_takes(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_schedule_administrations_household_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL household_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_schedule_administrations_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_schedule_administrations_medication_take_id_key": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "UNIQUE (medication_take_id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_schedule_administrations_medication_take_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL medication_take_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_schedule_administrations_person_schedule_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_schedule_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_schedule_administrations_pkey": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "PRIMARY KEY (id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_administrations.shared_schedule_administrations_taken_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL taken_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_execution_approval_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (approval_id) REFERENCES person_household_approvals(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_execution_household_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (household_id) REFERENCES households(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_execution_person_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (person_id) REFERENCES people(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_execution_person_schedule_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (person_schedule_id) REFERENCES shared_schedule_states(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_execution_schedule_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (schedule_id) REFERENCES schedules(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_schedule_executions_household_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL household_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_schedule_executions_person_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_schedule_executions_person_schedule_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_schedule_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_schedule_executions_pkey": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "PRIMARY KEY (schedule_id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_schedule_executions_portable_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL portable_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_executions.shared_schedule_executions_schedule_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL schedule_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.pause_closure_actor_account_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (actor_account_id) REFERENCES accounts(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.pause_closure_actor_membership_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (actor_membership_id) REFERENCES household_memberships(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.pause_closure_actor_person_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (actor_person_id) REFERENCES people(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.pause_closure_guardian_declaration_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (guardian_declaration_id) REFERENCES guardian_declarations(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.pause_closure_person_schedule_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (person_schedule_id) REFERENCES shared_schedule_states(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_actor_account_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL actor_account_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_actor_person_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL actor_person_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_clinical_revision_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL clinical_revision",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_created_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL created_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_ended_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL ended_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_pause_instance_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL pause_instance_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_person_schedule_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_schedule_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_pkey": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "PRIMARY KEY (pause_instance_id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_pause_closures.shared_schedule_pause_closures_request_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL request_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_canonical": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (id) REFERENCES person_schedules(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_active_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL active",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_clinical_revision_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL clinical_revision",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_created_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL created_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_origin_time_zone_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL origin_time_zone",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_person_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_pkey": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "PRIMARY KEY (id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_schedule_config_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL schedule_config",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_schedule_type_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL schedule_type",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_stock_default_known_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL stock_default_known",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_states.shared_schedule_states_updated_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL updated_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "function:med_tracker.shared_administration_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.shared_administration_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE previous_take text; previous_source text; previous_subject text; previous_schedule text;\n actual_take record; actual_source record; state public.shared_schedule_states%ROWTYPE;\n approval public.person_household_approvals%ROWTYPE; approval_epoch bigint;\n local_start timestamp; local_end timestamp; starts_at timestamp; ends_at timestamp; blocked boolean;\n effective jsonb; clinical_date date; effective_max numeric; effective_hours numeric; effective_unit text;\n original public.versions%ROWTYPE; original_fact jsonb; captured record;\nBEGIN\n IF TG_TABLE_SCHEMA<>'public' OR TG_OP<>'INSERT'\n  OR TG_TABLE_NAME NOT IN ('shared_schedule_administrations','shared_schedule_adoption_facts') THEN\n  RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n END IF;\n previous_take:=current_setting('med_tracker.sharing_take_id',true);\n previous_source:=current_setting('med_tracker.sharing_source_id',true);\n previous_subject:=current_setting('med_tracker.sharing_subject_id',true);\n previous_schedule:=current_setting('med_tracker.sharing_schedule_id',true);\n PERFORM set_config('med_tracker.sharing_take_id',NEW.medication_take_id::text,true);\n IF TG_TABLE_NAME='shared_schedule_adoption_facts' THEN\n  IF NEW.household_id<>med_tracker.current_household_id()\n   OR NOT med_tracker.sharing_household_actor(NEW.household_id,false) THEN\n   RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n  END IF;\n  SELECT take.* INTO actual_take FROM public.medication_takes take\n  WHERE take.id=NEW.medication_take_id AND take.household_id=NEW.household_id;\n  IF NOT FOUND OR actual_take.schedule_id IS NULL OR actual_take.person_medication_id IS NOT NULL THEN\n   RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n  END IF;\n  PERFORM set_config('med_tracker.sharing_source_id',actual_take.schedule_id::text,true);\n  SELECT source.* INTO actual_source FROM public.schedules source WHERE source.id=actual_take.schedule_id\n   AND source.household_id=NEW.household_id AND source.person_schedule_id IS NULL AND source.execution_ended_at IS NULL FOR SHARE;\n  IF NOT FOUND THEN RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501'; END IF;\n  PERFORM set_config('med_tracker.sharing_subject_id',actual_source.person_id::text,true);\n  IF NOT med_tracker.sharing_clinical_authority(actual_source.person_id)\n   OR NEW.captured_by_account_id<>med_tracker.current_account_id()\n   OR NEW.captured_by_membership_id<>med_tracker.current_membership_id()\n   OR NOT EXISTS(SELECT 1 FROM public.accounts actor WHERE actor.id=NEW.captured_by_account_id AND actor.person_id=NEW.captured_by_person_id)\n   OR (NEW.captured_by_person_id=actual_source.person_id AND NEW.guardian_declaration_id IS NOT NULL)\n   OR (NEW.captured_by_person_id<>actual_source.person_id AND NEW.guardian_declaration_id IS DISTINCT FROM med_tracker.sharing_guardian(actual_source.person_id))\n   OR NOT EXISTS(SELECT 1 FROM public.person_schedules plan WHERE plan.id=NEW.person_schedule_id\n    AND plan.origin_schedule_id=actual_source.id AND plan.origin_household_id=actual_source.household_id AND plan.person_id=actual_source.person_id)\n   OR (NEW.source_schedule_id,NEW.source_portable_id,NEW.person_id,NEW.household_id)\n    IS DISTINCT FROM (actual_source.id,actual_source.portable_id,actual_source.person_id,actual_source.household_id)\n   OR (NEW.medication_take_id,NEW.take_portable_id,NEW.client_uuid,NEW.taken_at,NEW.dose_amount,NEW.dose_unit,\n    NEW.taken_from_medication_id,NEW.taken_from_location_id,NEW.take_created_at,NEW.take_updated_at)\n    IS DISTINCT FROM (actual_take.id,actual_take.portable_id,actual_take.client_uuid,actual_take.taken_at,actual_take.dose_amount,actual_take.dose_unit,\n    actual_take.taken_from_medication_id,actual_take.taken_from_location_id,actual_take.created_at,actual_take.updated_at)\n   OR NEW.dose_amount<=0 OR NEW.fact_hash IS DISTINCT FROM med_tracker.adoption_fact_hash(NEW::public.shared_schedule_adoption_facts) THEN\n   RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n  END IF;\n  SELECT * INTO original FROM public.versions WHERE item_type='MedicationTake' AND item_id=actual_take.id AND event='create' ORDER BY id LIMIT 1;\n  IF NOT FOUND OR original.id<>NEW.original_version_id OR original.household_id IS DISTINCT FROM NEW.household_id\n   OR original.whodunnit IS DISTINCT FROM original.audit_context->>'actor_account_id'\n   OR original.actor_membership_id::text IS DISTINCT FROM original.audit_context->>'actor_membership_id'\n   OR original.household_id::text IS DISTINCT FROM original.audit_context->>'household_id'\n   OR original.request_id IS DISTINCT FROM original.audit_context->>'request_id' THEN\n   RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n  END IF;\n  IF original.object IS NOT NULL THEN original_fact:=original.object::jsonb;\n  ELSE SELECT jsonb_object_agg(change.key,change.value->1) INTO original_fact FROM jsonb_each(original.object_changes::jsonb) change\n   WHERE jsonb_typeof(change.value)='array' AND jsonb_array_length(change.value)=2 AND change.value->0='null'::jsonb; END IF;\n  IF (original_fact->>'id')::bigint IS DISTINCT FROM actual_take.id\n   OR original_fact->>'portable_id' IS DISTINCT FROM actual_take.portable_id\n   OR original_fact->>'client_uuid' IS DISTINCT FROM actual_take.client_uuid\n   OR (original_fact->>'household_id')::bigint IS DISTINCT FROM actual_take.household_id\n   OR (original_fact->>'schedule_id')::bigint IS DISTINCT FROM actual_take.schedule_id\n   OR (original_fact->>'person_medication_id')::bigint IS DISTINCT FROM actual_take.person_medication_id\n   OR (original_fact->>'taken_from_medication_id')::bigint IS DISTINCT FROM actual_take.taken_from_medication_id\n   OR (original_fact->>'taken_from_location_id')::bigint IS DISTINCT FROM actual_take.taken_from_location_id\n   OR (original_fact->>'dose_amount')::numeric IS DISTINCT FROM actual_take.dose_amount\n   OR original_fact->>'dose_unit' IS DISTINCT FROM actual_take.dose_unit\n   OR NOT med_tracker.adoption_audit_time_matches(original_fact->>'taken_at',actual_take.taken_at)\n   OR NOT med_tracker.adoption_audit_time_matches(original_fact->>'created_at',actual_take.created_at)\n   OR NOT med_tracker.adoption_audit_time_matches(original_fact->>'updated_at',actual_take.updated_at) THEN\n   RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n  END IF;\n  PERFORM set_config('med_tracker.sharing_schedule_id',COALESCE(previous_schedule,''),true);\n  PERFORM set_config('med_tracker.sharing_subject_id',COALESCE(previous_subject,''),true);\n  PERFORM set_config('med_tracker.sharing_source_id',COALESCE(previous_source,''),true);\n  PERFORM set_config('med_tracker.sharing_take_id',COALESCE(previous_take,''),true);\n  RETURN NEW;\n END IF;\n IF NEW.household_id<>med_tracker.current_household_id()\n  OR NOT med_tracker.sharing_household_actor(NEW.household_id,false)\n  OR NEW.occurrence_starts_on IS NOT NULL OR NEW.occurrence_position IS NOT NULL THEN\n  RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n END IF;\n SELECT take.* INTO actual_take\n FROM public.medication_takes take WHERE take.id=NEW.medication_take_id AND take.household_id=NEW.household_id;\n IF NOT FOUND OR actual_take.schedule_id IS NULL OR actual_take.taken_at IS NULL\n  OR actual_take.taken_at IS DISTINCT FROM NEW.taken_at OR actual_take.dose_amount IS NULL OR actual_take.dose_amount<=0 THEN\n  RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n END IF;\n PERFORM set_config('med_tracker.sharing_source_id',actual_take.schedule_id::text,true);\n SELECT fact.* INTO captured FROM public.shared_schedule_adoption_facts fact WHERE fact.medication_take_id=NEW.medication_take_id;\n IF FOUND THEN\n  SELECT source.* INTO actual_source FROM public.schedules source WHERE source.id=actual_take.schedule_id\n   AND source.household_id=NEW.household_id AND source.execution_ended_at IS NULL FOR SHARE;\n  IF NOT FOUND OR actual_source.person_schedule_id IS DISTINCT FROM NEW.person_schedule_id OR NOT actual_source.canonical_origin\n   OR captured.person_schedule_id IS DISTINCT FROM NEW.person_schedule_id\n   OR captured.source_schedule_id<>actual_source.id OR captured.source_portable_id<>actual_source.portable_id\n   OR captured.person_id<>actual_source.person_id OR captured.household_id<>NEW.household_id\n   OR captured.captured_by_account_id<>med_tracker.current_account_id()\n   OR captured.captured_by_membership_id<>med_tracker.current_membership_id()\n   OR captured.fact_hash IS DISTINCT FROM (SELECT med_tracker.adoption_fact_hash(fact)\n    FROM public.shared_schedule_adoption_facts fact WHERE fact.medication_take_id=NEW.medication_take_id)\n   OR (captured.medication_take_id,captured.take_portable_id,captured.client_uuid,captured.taken_at,captured.dose_amount,captured.dose_unit,\n    captured.taken_from_medication_id,captured.taken_from_location_id,captured.take_created_at,captured.take_updated_at)\n    IS DISTINCT FROM (actual_take.id,actual_take.portable_id,actual_take.client_uuid,actual_take.taken_at,actual_take.dose_amount,actual_take.dose_unit,\n    actual_take.taken_from_medication_id,actual_take.taken_from_location_id,actual_take.created_at,actual_take.updated_at) THEN\n   RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n  END IF;\n  PERFORM set_config('med_tracker.sharing_subject_id',actual_source.person_id::text,true);\n  SELECT * INTO state FROM public.shared_schedule_states WHERE id=NEW.person_schedule_id FOR UPDATE;\n  IF NOT FOUND OR state.person_id<>actual_source.person_id OR NOT med_tracker.sharing_clinical_authority(state.person_id)\n   OR (captured.captured_by_person_id=state.person_id AND captured.guardian_declaration_id IS NOT NULL)\n   OR (captured.captured_by_person_id<>state.person_id AND captured.guardian_declaration_id IS DISTINCT FROM med_tracker.sharing_guardian(state.person_id)) THEN\n   RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n  END IF;\n  SELECT link.approval_id INTO approval_epoch FROM public.shared_schedule_executions link\n   WHERE link.schedule_id=actual_source.id AND link.person_schedule_id=state.id AND link.household_id=NEW.household_id AND link.person_id=state.person_id;\n  IF NOT FOUND THEN RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501'; END IF;\n  IF approval_epoch IS NOT NULL THEN\n   SELECT * INTO approval FROM public.person_household_approvals WHERE id=approval_epoch\n    AND person_id=state.person_id AND household_id=NEW.household_id FOR SHARE;\n   IF NOT FOUND OR approval.ended_at IS NOT NULL OR NOT med_tracker.sharing_current_member(state.person_id) THEN\n    RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n   END IF;\n  ELSIF EXISTS(SELECT 1 FROM public.person_household_approvals prior WHERE prior.person_id=state.person_id AND prior.household_id=NEW.household_id) THEN\n   RAISE EXCEPTION 'Original administration evidence unavailable' USING ERRCODE='42501';\n  END IF;\n  PERFORM set_config('med_tracker.sharing_schedule_id',COALESCE(previous_schedule,''),true);\n  PERFORM set_config('med_tracker.sharing_subject_id',COALESCE(previous_subject,''),true);\n  PERFORM set_config('med_tracker.sharing_source_id',COALESCE(previous_source,''),true);\n  PERFORM set_config('med_tracker.sharing_take_id',COALESCE(previous_take,''),true);\n  RETURN NEW;\n END IF;\n SELECT source.id,source.person_id,source.person_schedule_id,source.sharing_approval_id,source.clinical_revision,source.dose_unit,source.canonical_origin INTO actual_source\n FROM public.schedules source WHERE source.id=actual_take.schedule_id AND source.household_id=NEW.household_id\n  AND source.execution_ended_at IS NULL AND source.active AND source.retired_at IS NULL;\n IF NOT FOUND OR actual_source.person_schedule_id IS DISTINCT FROM NEW.person_schedule_id THEN\n  RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n END IF;\n PERFORM set_config('med_tracker.sharing_subject_id',actual_source.person_id::text,true);\n SELECT * INTO state FROM public.shared_schedule_states WHERE id=NEW.person_schedule_id FOR UPDATE;\n IF NOT FOUND OR state.person_id<>actual_source.person_id OR NOT state.active OR state.retired_at IS NOT NULL\n  OR actual_source.clinical_revision IS DISTINCT FROM state.clinical_revision THEN\n  RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n END IF;\n clinical_date:=timezone(state.origin_time_zone,actual_take.taken_at AT TIME ZONE 'UTC')::date;\n effective:=state.schedule_config;\n IF state.schedule_type=5 THEN\n  SELECT step.value INTO effective FROM jsonb_array_elements(state.schedule_config->'taper_steps') WITH ORDINALITY step(value,position)\n  WHERE clinical_date BETWEEN (step.value->>'start_date')::date AND (step.value->>'end_date')::date ORDER BY step.position LIMIT 1;\n  IF NOT FOUND THEN RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501'; END IF;\n END IF;\n effective_unit:=COALESCE(effective->>'unit',effective->>'dose_unit',state.schedule_config->>'unit',state.schedule_config->>'dose_unit',state.dose_unit);\n effective_max:=COALESCE(trunc(COALESCE(effective->>'max_daily_doses',effective->>'max_doses',effective->>'max')::numeric),\n  trunc(COALESCE(state.schedule_config->>'max_daily_doses',state.schedule_config->>'max_doses',state.schedule_config->>'max')::numeric),state.max_daily_doses);\n effective_hours:=COALESCE(COALESCE(effective->>'min_hours_between_doses',effective->>'min_hours',effective->>'minimum_hours')::numeric,\n  COALESCE(state.schedule_config->>'min_hours_between_doses',state.schedule_config->>'min_hours',state.schedule_config->>'minimum_hours')::numeric,state.min_hours_between_doses);\n IF state.schedule_type=0 AND (SELECT count(*) FROM jsonb_array_elements(CASE WHEN jsonb_typeof(effective->'times')='array' THEN effective->'times' ELSE '[]'::jsonb END) item(value)\n  WHERE item.value<>'null'::jsonb AND item.value<>'\"\"'::jsonb)=1 THEN effective_hours:=NULL; END IF;\n IF actual_take.dose_unit IS DISTINCT FROM effective_unit OR clinical_date<state.start_date OR clinical_date>state.end_date THEN\n  RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n END IF;\n SELECT COALESCE(actual_source.sharing_approval_id,link.approval_id) INTO approval_epoch\n FROM (SELECT 1) seed LEFT JOIN public.shared_schedule_executions link ON link.schedule_id=actual_source.id;\n IF approval_epoch IS NOT NULL THEN\n  SELECT * INTO approval FROM public.person_household_approvals\n  WHERE id=approval_epoch AND household_id=NEW.household_id AND person_id=state.person_id FOR SHARE;\n  IF NOT FOUND OR approval.ended_at IS NOT NULL OR actual_take.taken_at<approval.approved_at\n   OR NOT med_tracker.sharing_current_member(state.person_id) THEN\n   RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n  END IF;\n ELSE\n  IF NOT actual_source.canonical_origin\n   OR NOT EXISTS(SELECT 1 FROM public.shared_schedule_executions link WHERE link.schedule_id=actual_source.id\n    AND link.person_schedule_id=state.id AND link.person_id=state.person_id AND link.household_id=NEW.household_id AND link.approval_id IS NULL)\n   OR EXISTS(SELECT 1 FROM public.person_household_approvals prior WHERE prior.person_id=state.person_id AND prior.household_id=NEW.household_id) THEN\n   RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n  END IF;\n END IF;\n IF NOT med_tracker.sharing_household_actor(NEW.household_id,false)\n  OR NOT EXISTS(SELECT 1 FROM public.schedules source WHERE source.id=actual_source.id\n   AND source.household_id=NEW.household_id AND source.person_schedule_id=state.id\n   AND source.execution_ended_at IS NULL AND source.active AND source.retired_at IS NULL\n   AND source.clinical_revision=state.clinical_revision) THEN\n  RAISE EXCEPTION 'Shared administration unavailable' USING ERRCODE='42501';\n END IF;\n local_start:=date_trunc(CASE state.dose_cycle WHEN 1 THEN 'week' WHEN 2 THEN 'month' ELSE 'day' END,\n  timezone(state.origin_time_zone,actual_take.taken_at AT TIME ZONE 'UTC'));\n local_end:=local_start+CASE state.dose_cycle WHEN 1 THEN interval '1 week' WHEN 2 THEN interval '1 month' ELSE interval '1 day' END;\n starts_at:=timezone('UTC',local_start AT TIME ZONE state.origin_time_zone);\n ends_at:=timezone('UTC',local_end AT TIME ZONE state.origin_time_zone);\n PERFORM set_config('med_tracker.sharing_schedule_id',state.id,true);\n SELECT (effective_max IS NOT NULL AND (SELECT count(*) FROM public.shared_schedule_administrations\n   WHERE person_schedule_id=state.id AND taken_at>=starts_at AND taken_at<ends_at)>=greatest(effective_max,0))\n  OR (effective_hours IS NOT NULL AND effective_hours>0 AND EXISTS(SELECT 1 FROM public.shared_schedule_administrations\n   WHERE person_schedule_id=state.id AND abs(extract(epoch FROM actual_take.taken_at-taken_at))<effective_hours*3600)) INTO blocked;\n PERFORM set_config('med_tracker.sharing_schedule_id',COALESCE(previous_schedule,''),true);\n PERFORM set_config('med_tracker.sharing_subject_id',COALESCE(previous_subject,''),true);\n PERFORM set_config('med_tracker.sharing_source_id',COALESCE(previous_source,''),true);\n PERFORM set_config('med_tracker.sharing_take_id',COALESCE(previous_take,''),true);\n IF COALESCE(blocked,false) THEN RETURN NULL; END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.shared_canonical_identity_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.shared_canonical_identity_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE allowed text[];\nBEGIN\n IF (NEW.id,NEW.person_id,NEW.origin_household_id,NEW.origin_schedule_id,NEW.created_at)\n  IS DISTINCT FROM (OLD.id,OLD.person_id,OLD.origin_household_id,OLD.origin_schedule_id,OLD.created_at) THEN\n  RAISE EXCEPTION 'Canonical origin identity is immutable' USING ERRCODE='42501';\n END IF;\n IF NULLIF(current_setting('med_tracker.sharing_clinical_plan_id',true),'') IS NOT NULL THEN\n  IF NOT med_tracker.sharing_clinical_command(OLD.id,OLD.person_id) OR NEW.clinical_revision<>OLD.clinical_revision+1 THEN\n   RAISE EXCEPTION 'Current captured clinical authority required' USING ERRCODE='42501';\n  END IF;\n  allowed:=ARRAY['clinical_revision','updated_at','active','retired_at','dose_amount','dose_unit','dose_cycle','frequency','start_date','end_date',\n   'max_daily_doses','min_hours_between_doses','schedule_type','schedule_config','origin_time_zone','timezone_provenance','pause_started_at','pause_instance_id',\n   'pause_reason','pause_note'];\n  IF NULLIF(current_setting('med_tracker.sharing_clinical_stock_id',true),'') IS NOT NULL THEN\n   IF NOT med_tracker.sharing_household_actor(med_tracker.current_household_id(),false)\n    OR NOT EXISTS(SELECT 1 FROM public.household_memberships subject WHERE subject.person_id=OLD.person_id\n     AND subject.household_id=med_tracker.current_household_id() AND subject.status='active' AND subject.revoked_at IS NULL)\n    OR NOT EXISTS(SELECT 1 FROM public.medications stock WHERE stock.id::text=current_setting('med_tracker.sharing_clinical_stock_id',true)\n     AND stock.household_id=med_tracker.current_household_id() AND stock.dmd_system='https://dmd.nhs.uk'\n     AND stock.dmd_concept_class IN ('VMP','AMP','VMPP','AMPP') AND length(trim(stock.dmd_code))>0\n     AND (NEW.medicine_name,NEW.dmd_system,NEW.dmd_code,NEW.dmd_concept_class,NEW.stock_unit)\n      IS NOT DISTINCT FROM (stock.name,stock.dmd_system,stock.dmd_code,stock.dmd_concept_class,stock.dose_unit)\n     AND NEW.dose_unit=stock.dose_unit AND NEW.dose_amount>0\n     AND ((NEW.stock_default_known AND NEW.stock_dose_default::double precision IS NOT DISTINCT FROM stock.dose_amount)\n      OR (NOT NEW.stock_default_known AND NEW.stock_dose_default IS NULL))) THEN\n    RAISE EXCEPTION 'Current local prescription stock required' USING ERRCODE='42501';\n   END IF;\n   allowed:=allowed||ARRAY['medicine_name','dmd_system','dmd_code','dmd_concept_class','stock_unit','stock_dose_default','stock_default_known'];\n  END IF;\n  IF (to_jsonb(NEW)-allowed) IS DISTINCT FROM (to_jsonb(OLD)-allowed)\n   OR ((NEW.pause_reason,NEW.pause_note) IS DISTINCT FROM (OLD.pause_reason,OLD.pause_note)\n    AND NOT (NEW.active<>OLD.active AND NEW.pause_reason IS NULL AND NEW.pause_note IS NULL))\n   OR (NEW.timezone_provenance IS DISTINCT FROM OLD.timezone_provenance\n    AND NOT (NEW.origin_time_zone<>OLD.origin_time_zone AND NEW.timezone_provenance='authorised_correction')) THEN\n   RAISE EXCEPTION 'Safe clinical fields only' USING ERRCODE='42501';\n  END IF;\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.shared_execution_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.shared_execution_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n IF NEW.canonical_origin AND (TG_OP='INSERT' OR NOT OLD.canonical_origin) THEN\n  IF (current_user='med_tracker_app' AND NOT med_tracker.sharing_clinical_authority(NEW.person_id))\n   OR NOT EXISTS(SELECT 1 FROM public.person_schedules canonical WHERE canonical.id=NEW.person_schedule_id\n    AND canonical.person_id=NEW.person_id AND canonical.origin_household_id=NEW.household_id AND canonical.origin_schedule_id=NEW.id) THEN\n   RAISE EXCEPTION 'Exact clinical origin association required' USING ERRCODE='42501';\n  END IF;\n END IF;\n IF TG_OP='UPDATE' THEN\n  IF NEW.id<>OLD.id OR NEW.portable_id<>OLD.portable_id OR NEW.person_id<>OLD.person_id OR NEW.household_id<>OLD.household_id\n   OR (OLD.person_schedule_id IS NOT NULL AND NEW.person_schedule_id IS DISTINCT FROM OLD.person_schedule_id)\n   OR NEW.sharing_approval_id IS DISTINCT FROM OLD.sharing_approval_id OR (OLD.canonical_origin AND NOT NEW.canonical_origin) THEN\n   RAISE EXCEPTION 'Execution identity is immutable' USING ERRCODE='42501';\n  END IF;\n  IF current_user='med_tracker_app' AND OLD.person_schedule_id IS NULL AND NEW.person_schedule_id IS NOT NULL\n   AND NOT med_tracker.sharing_clinical_authority(NEW.person_id) THEN\n   RAISE EXCEPTION 'Clinical association required' USING ERRCODE='42501';\n  END IF;\n  IF OLD.person_schedule_id IS NOT NULL AND OLD.execution_ended_at IS NOT NULL AND NEW IS DISTINCT FROM OLD THEN\n   RAISE EXCEPTION 'Ended execution is immutable' USING ERRCODE='42501';\n  END IF;\n  IF OLD.execution_ended_at IS NULL AND NEW.execution_ended_at IS NOT NULL THEN\n   IF NEW.active OR (to_jsonb(NEW)-ARRAY['execution_ended_at','active','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['execution_ended_at','active','updated_at'])\n    OR NOT (med_tracker.sharing_clinical_authority(OLD.person_id) OR med_tracker.sharing_household_actor(OLD.household_id,true)) THEN\n    RAISE EXCEPTION 'Only terminal closure is permitted' USING ERRCODE='42501';\n   END IF;\n   RETURN NEW;\n  END IF;\n END IF;\n IF NEW.person_schedule_id IS NOT NULL AND NOT med_tracker.sharing_clinical_authority(NEW.person_id) THEN\n  IF NOT EXISTS(SELECT 1 FROM public.shared_schedule_states state WHERE state.id=NEW.person_schedule_id\n   AND state.person_id=NEW.person_id\n   AND (NEW.active,NEW.retired_at,NEW.dose_amount,NEW.dose_unit,NEW.dose_cycle,NEW.frequency,NEW.start_date,NEW.end_date,\n    NEW.max_daily_doses,NEW.min_hours_between_doses,NEW.schedule_type,NEW.schedule_config,NEW.origin_time_zone,NEW.clinical_revision)\n    IS NOT DISTINCT FROM\n    (state.active,state.retired_at,state.dose_amount,state.dose_unit,state.dose_cycle,state.frequency,state.start_date,state.end_date,\n     state.max_daily_doses,state.min_hours_between_doses,state.schedule_type,state.schedule_config,state.origin_time_zone,state.clinical_revision))\n   OR (TG_OP='INSERT' AND (NEW.sharing_approval_id IS NULL OR NEW.notes IS NOT NULL OR NOT med_tracker.sharing_household_actor(NEW.household_id,true))) THEN\n   RAISE EXCEPTION 'Clinical authority required' USING ERRCODE='42501';\n  END IF;\n  IF TG_OP='UPDATE' AND (NEW.notes IS DISTINCT FROM OLD.notes OR NEW.created_at<>OLD.created_at\n   OR (NEW.medication_id<>OLD.medication_id AND NOT med_tracker.sharing_household_actor(NEW.household_id,true))) THEN\n   RAISE EXCEPTION 'Clinical authority required' USING ERRCODE='42501';\n  END IF;\n END IF;\n IF TG_OP='INSERT' THEN RETURN NEW; END IF;\n IF OLD.sharing_approval_id IS NOT NULL OR EXISTS(SELECT 1 FROM public.shared_schedule_executions link WHERE link.schedule_id=OLD.id) THEN\n  IF OLD.execution_ended_at IS NOT NULL AND NEW IS DISTINCT FROM OLD THEN\n   RAISE EXCEPTION 'Ended execution is immutable' USING ERRCODE='42501';\n  END IF;\n  IF OLD.sharing_approval_id::text=current_setting('med_tracker.sharing_withdrawal_approval_id',true)\n   OR EXISTS(SELECT 1 FROM public.shared_schedule_executions link WHERE link.schedule_id=OLD.id AND link.approval_id::text=current_setting('med_tracker.sharing_withdrawal_approval_id',true)) THEN\n   IF NOT med_tracker.sharing_clinical_authority(OLD.person_id) OR NEW.execution_ended_at IS NULL OR NEW.active\n    OR (to_jsonb(NEW)-ARRAY['execution_ended_at','active','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['execution_ended_at','active','updated_at']) THEN\n    RAISE EXCEPTION 'Only terminal closure is permitted' USING ERRCODE='42501';\n   END IF;\n  END IF;\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.shared_origin_attachment_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.shared_origin_attachment_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE previous_source text; actual record;\nBEGIN\n IF OLD.approval_id IS NOT NULL OR NEW.approval_id IS NULL\n  OR (to_jsonb(NEW)-'approval_id') IS DISTINCT FROM (to_jsonb(OLD)-'approval_id')\n  OR NEW.approval_id::text IS DISTINCT FROM current_setting('med_tracker.sharing_attachment_approval_id',true)\n  OR NOT med_tracker.sharing_attachment_authority(NEW.person_id,NEW.household_id) THEN\n  RAISE EXCEPTION 'Exact current origin consent required' USING ERRCODE='42501';\n END IF;\n previous_source:=current_setting('med_tracker.sharing_attachment_source_id',true);\n PERFORM set_config('med_tracker.sharing_attachment_source_id',NEW.schedule_id::text,true);\n SELECT source.id,source.portable_id,source.person_id,source.household_id,source.person_schedule_id,\n  source.canonical_origin,source.execution_ended_at INTO actual\n FROM public.schedules source WHERE source.id=NEW.schedule_id FOR SHARE;\n PERFORM set_config('med_tracker.sharing_attachment_source_id',COALESCE(previous_source,''),true);\n IF actual.id IS NULL OR NOT actual.canonical_origin OR actual.portable_id<>NEW.portable_id\n  OR actual.person_id<>NEW.person_id OR actual.household_id<>NEW.household_id\n  OR actual.person_schedule_id IS DISTINCT FROM NEW.person_schedule_id THEN\n  RAISE EXCEPTION 'Exact current origin consent required' USING ERRCODE='42501';\n END IF;\n IF actual.execution_ended_at IS NOT NULL THEN RETURN NULL; END IF;\n IF NOT med_tracker.sharing_attachment_authority(NEW.person_id,NEW.household_id) THEN\n  RAISE EXCEPTION 'Exact current origin consent required' USING ERRCODE='42501';\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.shared_pause_projection_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.shared_pause_projection_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n IF TG_OP='INSERT' THEN\n  IF NEW.canonical_resume_id IS NOT NULL OR NEW.canonical_person_schedule_id IS NOT NULL OR NEW.canonical_pause_revision IS NOT NULL THEN\n   RAISE EXCEPTION 'Existing owned interval proof required' USING ERRCODE='42501';\n  END IF;\n  IF EXISTS(SELECT 1 FROM public.schedules source WHERE source.id=NEW.schedule_id AND source.household_id=NEW.household_id\n   AND source.person_schedule_id IS NOT NULL AND NOT med_tracker.sharing_clinical_authority(source.person_id)) THEN\n   RAISE EXCEPTION 'Clinical authority required' USING ERRCODE='42501';\n  END IF;\n  RETURN NEW;\n END IF;\n IF OLD.canonical_person_schedule_id IS NOT NULL THEN\n  IF (to_jsonb(NEW)-ARRAY['canonical_resume_id','ended_at','resumed_by_membership_id','updated_at']) IS DISTINCT FROM\n   (to_jsonb(OLD)-ARRAY['canonical_resume_id','ended_at','resumed_by_membership_id','updated_at'])\n   OR EXISTS(SELECT 1 FROM public.schedules source WHERE source.id=OLD.schedule_id AND source.execution_ended_at IS NOT NULL) THEN\n   RAISE EXCEPTION 'Owned pause identity is immutable' USING ERRCODE='42501';\n  END IF;\n ELSIF NEW.canonical_person_schedule_id IS NOT NULL OR NEW.canonical_pause_revision IS NOT NULL THEN\n  IF OLD.ended_at IS NOT NULL OR (to_jsonb(NEW)-ARRAY['canonical_person_schedule_id','canonical_pause_revision']) IS DISTINCT FROM\n   (to_jsonb(OLD)-ARRAY['canonical_person_schedule_id','canonical_pause_revision'])\n   OR NOT EXISTS(SELECT 1 FROM public.schedules source JOIN public.shared_schedule_states state ON state.id=source.person_schedule_id\n    WHERE source.id=OLD.schedule_id AND source.household_id=OLD.household_id AND source.execution_ended_at IS NULL\n     AND state.id=NEW.canonical_person_schedule_id AND state.clinical_revision=NEW.canonical_pause_revision\n     AND NOT state.active AND state.pause_instance_id=OLD.portable_id AND state.pause_started_at=OLD.started_at\n     AND med_tracker.sharing_clinical_authority(source.person_id)) THEN\n   RAISE EXCEPTION 'Current clinical pause association required' USING ERRCODE='42501';\n  END IF;\n END IF;\n IF OLD.canonical_resume_id IS NOT NULL AND (NEW.canonical_resume_id,NEW.ended_at,NEW.resumed_by_membership_id)\n  IS DISTINCT FROM (OLD.canonical_resume_id,OLD.ended_at,OLD.resumed_by_membership_id) THEN\n  RAISE EXCEPTION 'Canonical pause closure is immutable' USING ERRCODE='42501';\n END IF;\n IF NEW.canonical_resume_id IS NOT NULL AND OLD.canonical_resume_id IS NULL THEN\n  IF (to_jsonb(NEW)-ARRAY['canonical_resume_id','ended_at','resumed_by_membership_id','updated_at']) IS DISTINCT FROM\n   (to_jsonb(OLD)-ARRAY['canonical_resume_id','ended_at','resumed_by_membership_id','updated_at'])\n   OR OLD.ended_at IS NOT NULL OR NOT EXISTS(SELECT 1 FROM public.shared_schedule_pause_closures closure\n    WHERE closure.pause_instance_id=NEW.canonical_resume_id AND closure.pause_instance_id=OLD.portable_id\n     AND closure.ended_at=NEW.ended_at AND NEW.resumed_by_membership_id IS NULL) THEN\n   RAISE EXCEPTION 'Owned pause closure proof required' USING ERRCODE='42501';\n  END IF;\n END IF;\n IF OLD.canonical_person_schedule_id IS NOT NULL AND NEW.canonical_resume_id IS NULL\n  AND (NEW.ended_at,NEW.resumed_by_membership_id) IS DISTINCT FROM (OLD.ended_at,OLD.resumed_by_membership_id)\n  AND NOT EXISTS(SELECT 1 FROM public.schedules source WHERE source.id=OLD.schedule_id AND med_tracker.sharing_clinical_authority(source.person_id)) THEN\n  RAISE EXCEPTION 'Clinical authority required' USING ERRCODE='42501';\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.shared_reminder_epoch_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.shared_reminder_epoch_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n IF TG_OP='DELETE' THEN\n  IF current_user='med_tracker_app' AND OLD.event_type IN ('dose_due','missed_dose','low_stock') THEN\n   RAISE EXCEPTION 'Reminder history is immutable' USING ERRCODE='42501';\n  END IF;\n  RETURN OLD;\n END IF;\n IF OLD.event_type IN ('dose_due','missed_dose','low_stock') OR NEW.event_type IN ('dose_due','missed_dose','low_stock') THEN\n  IF current_user='med_tracker_app' AND\n   (NEW.intended_at,NEW.expires_at) IS DISTINCT FROM (OLD.intended_at,OLD.expires_at) THEN\n   RAISE EXCEPTION 'Reminder content deadline is immutable' USING ERRCODE='42501';\n  END IF;\n  IF (NEW.id,NEW.household_id,NEW.person_id,NEW.event_key,NEW.event_type,NEW.created_at,\n   NEW.metadata->'account_id',NEW.metadata->'sharing_approval_id',NEW.metadata->'subject_membership_id',\n   NEW.metadata->'subject_permissions_version',NEW.metadata->'sources',NEW.metadata->'base_event_key')\n   IS DISTINCT FROM\n   (OLD.id,OLD.household_id,OLD.person_id,OLD.event_key,OLD.event_type,OLD.created_at,\n   OLD.metadata->'account_id',OLD.metadata->'sharing_approval_id',OLD.metadata->'subject_membership_id',\n   OLD.metadata->'subject_permissions_version',OLD.metadata->'sources',OLD.metadata->'base_event_key') THEN\n   RAISE EXCEPTION 'Reminder care proof is immutable' USING ERRCODE='42501';\n  END IF;\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.shared_schedule_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.shared_schedule_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n IF TG_OP='INSERT' OR (to_jsonb(NEW)-'latest_taken_at') IS DISTINCT FROM (to_jsonb(OLD)-'latest_taken_at') THEN\n  IF NOT med_tracker.sharing_clinical_authority(NEW.person_id) THEN\n   RAISE EXCEPTION 'Clinical authority required' USING ERRCODE='42501';\n  END IF;\n END IF;\n IF TG_OP='UPDATE' AND (NEW.id<>OLD.id OR NEW.person_id<>OLD.person_id\n  OR (OLD.latest_taken_at IS NOT NULL AND (NEW.latest_taken_at IS NULL OR NEW.latest_taken_at<OLD.latest_taken_at))) THEN\n  RAISE EXCEPTION 'Shared identity and safety state are immutable' USING ERRCODE='42501';\n END IF;\n IF NEW.pause_instance_id IS NOT NULL AND (NEW.active OR NEW.pause_started_at IS NULL) THEN\n  RAISE EXCEPTION 'Pause instance requires a current pause' USING ERRCODE='42501';\n END IF;\n IF TG_OP='UPDATE' THEN\n  IF OLD.pause_instance_id IS NOT NULL AND NEW.pause_instance_id IS NULL THEN\n   IF NOT NEW.active OR NEW.last_closed_pause_instance_id IS DISTINCT FROM OLD.pause_instance_id THEN\n    RAISE EXCEPTION 'Pause closure requires the actual prior instance' USING ERRCODE='42501';\n   END IF;\n  ELSIF NEW.last_closed_pause_instance_id IS DISTINCT FROM OLD.last_closed_pause_instance_id THEN\n   RAISE EXCEPTION 'Pause closure requires a resume' USING ERRCODE='42501';\n  END IF;\n END IF;\n IF TG_OP='UPDATE' AND NEW.latest_taken_at IS DISTINCT FROM OLD.latest_taken_at\n  AND NOT EXISTS(SELECT 1 FROM public.shared_schedule_administrations entry\n   WHERE entry.person_schedule_id=NEW.id AND entry.household_id=med_tracker.current_household_id() AND entry.taken_at=NEW.latest_taken_at) THEN\n  RAISE EXCEPTION 'Safety state requires an actual administration' USING ERRCODE='42501';\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_approval_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_approval_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n IF TG_OP='UPDATE' THEN\n  IF OLD.ended_at IS NOT NULL OR NEW.ended_at IS NULL\n   OR (to_jsonb(NEW)-'ended_at') IS DISTINCT FROM (to_jsonb(OLD)-'ended_at') THEN\n   RAISE EXCEPTION 'Sharing approval is terminal' USING ERRCODE='42501';\n  END IF;\n ELSE\n  IF NEW.statement_version<>1 OR NEW.ended_at IS NOT NULL\n   OR NOT med_tracker.sharing_clinical_authority(NEW.person_id)\n   OR (NEW.person_id<>NEW.approved_by_person_id AND NEW.guardian_declaration_id IS DISTINCT FROM med_tracker.sharing_guardian(NEW.person_id))\n   OR NOT EXISTS(SELECT 1 FROM public.household_invitations i\n    JOIN public.household_memberships inviter ON inviter.id=i.invited_by_membership_id AND inviter.household_id=i.household_id\n    JOIN public.accounts actor ON actor.id=NEW.approved_by_account_id\n    JOIN public.accounts issuer ON issuer.person_id=inviter.person_id\n    WHERE i.id=NEW.invitation_id AND i.household_id=NEW.household_id\n     AND lower(i.email)=lower(actor.email) AND actor.status=2 AND actor.active\n     AND issuer.status=2 AND issuer.active AND inviter.status='active' AND inviter.revoked_at IS NULL\n     AND inviter.role IN ('owner','administrator') AND i.revoked_at IS NULL\n     AND i.expires_at>timezone('UTC',clock_timestamp())\n     AND i.dependent_sharing=(NEW.person_id<>NEW.approved_by_person_id)) THEN\n   RAISE EXCEPTION 'Sharing consent unavailable' USING ERRCODE='42501';\n  END IF;\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_attachment_authority(p_subject bigint, p_household bigint)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_attachment_authority(p_subject bigint, p_household bigint)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT EXISTS(SELECT 1 FROM public.person_household_approvals approval\n JOIN public.accounts actor ON actor.id=approval.approved_by_account_id AND actor.id=med_tracker.current_account_id()\n JOIN public.household_invitations invitation ON invitation.id=approval.invitation_id\n WHERE approval.id::text=current_setting('med_tracker.sharing_attachment_approval_id',true)\n  AND approval.person_id=p_subject AND approval.household_id=p_household AND approval.ended_at IS NULL\n  AND approval.approved_by_person_id=actor.person_id AND actor.active AND actor.status=2\n  AND med_tracker.sharing_clinical_authority(p_subject)\n  AND ((actor.person_id=p_subject AND approval.guardian_declaration_id IS NULL)\n   OR (actor.person_id<>p_subject AND approval.guardian_declaration_id=med_tracker.sharing_guardian(p_subject)))\n  AND invitation.household_id=p_household AND invitation.accepted_at IS NOT NULL AND invitation.revoked_at IS NULL\n  AND invitation.expires_at>timezone('UTC',clock_timestamp())\n  AND invitation.token_digest=med_tracker.current_invitation_token_digest()\n  AND lower(invitation.email)=lower(actor.email)\n  AND invitation.dependent_sharing=(actor.person_id<>p_subject))\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_clinical_authority(p_subject bigint)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_clinical_authority(p_subject bigint)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT EXISTS(SELECT 1 FROM public.accounts a WHERE a.id=med_tracker.current_account_id()\n  AND a.person_id=p_subject AND a.status=2 AND a.active\n  AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=a.id AND l.deadline>clock_timestamp()))\n OR med_tracker.sharing_guardian(p_subject) IS NOT NULL\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_clinical_command(p_plan text, p_subject bigint)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_clinical_command(p_plan text, p_subject bigint)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT COALESCE(p_plan=current_setting('med_tracker.sharing_clinical_plan_id',true)\n AND med_tracker.sharing_clinical_authority(p_subject)\n AND ((current_setting('med_tracker.sharing_clinical_declaration_id',true)='self'\n  AND EXISTS(SELECT 1 FROM public.accounts actor WHERE actor.id=med_tracker.current_account_id() AND actor.person_id=p_subject AND actor.active AND actor.status=2))\n OR med_tracker.sharing_guardian(p_subject)::text=current_setting('med_tracker.sharing_clinical_declaration_id',true)),false)\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_current_member(p_subject bigint)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_current_member(p_subject bigint)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE previous_subject text; permitted boolean;\nBEGIN\n previous_subject:=current_setting('med_tracker.sharing_subject_id',true);\n PERFORM set_config('med_tracker.sharing_subject_id',p_subject::text,true);\n SELECT EXISTS(SELECT 1 FROM public.person_household_approvals approval\n JOIN public.household_memberships subject ON subject.person_id=approval.person_id AND subject.household_id=approval.household_id\n JOIN public.household_memberships actor ON actor.id=med_tracker.current_membership_id() AND actor.household_id=approval.household_id\n JOIN public.accounts account ON account.person_id=actor.person_id AND account.id=med_tracker.current_account_id()\n JOIN public.households h ON h.id=approval.household_id\n WHERE approval.person_id=p_subject AND approval.household_id=med_tracker.current_household_id() AND approval.ended_at IS NULL\n  AND subject.status='active' AND subject.revoked_at IS NULL AND actor.status='active' AND actor.revoked_at IS NULL\n  AND account.status=2 AND account.active AND h.status='active' AND h.lifecycle_state='active'\n  AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=account.id AND l.deadline>clock_timestamp())\n  AND (approval.guardian_declaration_id IS NULL OR (med_tracker.sharing_declaration_eligible(approval.guardian_declaration_id,p_subject) AND EXISTS(\n   SELECT 1 FROM public.guardian_declarations d\n   JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.active AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id\n   JOIN public.accounts approver ON approver.id=approval.approved_by_account_id AND approver.person_id=d.guardian_person_id\n   JOIN public.household_memberships gm ON gm.person_id=d.guardian_person_id AND gm.household_id=c.household_id\n   JOIN public.household_memberships sm ON sm.person_id=d.subject_person_id AND sm.household_id=c.household_id\n   WHERE d.id=approval.guardian_declaration_id AND d.guardian_person_id=approval.approved_by_person_id\n    AND d.subject_person_id=p_subject AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL\n    AND approver.status=2 AND approver.active\n    AND gm.status='active' AND gm.revoked_at IS NULL AND sm.status='active' AND sm.revoked_at IS NULL\n  )))) INTO permitted;\n PERFORM set_config('med_tracker.sharing_subject_id',COALESCE(previous_subject,''),true);\n RETURN permitted;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_declaration_eligible(p_declaration bigint, p_subject bigint)": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_declaration_eligible(p_declaration bigint, p_subject bigint)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT EXISTS(SELECT 1 FROM public.guardian_declarations d\n JOIN public.people guardian ON guardian.id=d.guardian_person_id\n JOIN public.people subject ON subject.id=d.subject_person_id\n JOIN public.accounts a ON a.person_id=guardian.id\n JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=guardian.id AND c.patient_id=subject.id AND c.active\n JOIN public.household_memberships gm ON gm.person_id=guardian.id AND gm.household_id=c.household_id\n JOIN public.household_memberships sm ON sm.person_id=subject.id AND sm.household_id=c.household_id\n JOIN public.households h ON h.id=c.household_id\n WHERE d.id=p_declaration AND d.subject_person_id=p_subject AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL\n AND a.status=2 AND a.active AND gm.status='active' AND gm.revoked_at IS NULL AND sm.status='active' AND sm.revoked_at IS NULL\n AND h.status='active' AND h.lifecycle_state='active'\n AND guardian.person_type=0 AND guardian.has_capacity\n AND (guardian.date_of_birth IS NULL OR guardian.date_of_birth<=med_tracker.guardian_recovery_earliest_date()-interval '18 years')\n AND NOT subject.has_capacity AND subject.date_of_birth IS NOT NULL\n AND ((subject.person_type=1 AND subject.date_of_birth>med_tracker.guardian_recovery_latest_date()-interval '18 years'\n  AND subject.date_of_birth<=med_tracker.guardian_recovery_earliest_date())\n OR (subject.person_type=2 AND subject.date_of_birth<=med_tracker.guardian_recovery_earliest_date()-interval '18 years')))\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_guardian(p_subject bigint)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_guardian(p_subject bigint)\n RETURNS bigint\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE previous_subject text; declaration bigint;\nBEGIN\n previous_subject:=current_setting('med_tracker.sharing_subject_id',true);\n PERFORM set_config('med_tracker.sharing_subject_id',p_subject::text,true);\n SELECT d.id INTO declaration FROM public.guardian_declarations d\n JOIN public.accounts a ON a.person_id=d.guardian_person_id\n JOIN public.people guardian ON guardian.id=a.person_id\n JOIN public.people subject ON subject.id=d.subject_person_id\n JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id\n  AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id AND c.active\n JOIN public.household_memberships gm ON gm.person_id=guardian.id AND gm.household_id=c.household_id\n JOIN public.household_memberships sm ON sm.person_id=subject.id AND sm.household_id=c.household_id\n JOIN public.households h ON h.id=c.household_id\n WHERE a.id=med_tracker.current_account_id() AND a.status=2 AND a.active\n  AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=a.id AND l.deadline>clock_timestamp())\n  AND d.subject_person_id=p_subject AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL\n  AND med_tracker.sharing_declaration_eligible(d.id,p_subject)\n  AND gm.status='active' AND gm.revoked_at IS NULL AND sm.status='active' AND sm.revoked_at IS NULL\n  AND h.status='active' AND h.lifecycle_state='active'\n  AND guardian.person_type=0 AND guardian.has_capacity\n  AND (guardian.date_of_birth IS NULL OR guardian.date_of_birth<=med_tracker.guardian_recovery_earliest_date()-interval '18 years')\n  AND NOT subject.has_capacity AND subject.date_of_birth IS NOT NULL\n  AND ((subject.person_type=1 AND subject.date_of_birth>med_tracker.guardian_recovery_latest_date()-interval '18 years'\n    AND subject.date_of_birth<=med_tracker.guardian_recovery_earliest_date())\n   OR (subject.person_type=2 AND subject.date_of_birth<=med_tracker.guardian_recovery_earliest_date()-interval '18 years'))\n ORDER BY d.id LIMIT 1;\n PERFORM set_config('med_tracker.sharing_subject_id',COALESCE(previous_subject,''),true);\n RETURN declaration;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_household_actor(p_household bigint, p_management boolean)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_household_actor(p_household bigint, p_management boolean)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT EXISTS(SELECT 1 FROM public.household_memberships member\n JOIN public.accounts actor ON actor.person_id=member.person_id\n JOIN public.households home ON home.id=member.household_id\n WHERE member.id=med_tracker.current_membership_id() AND actor.id=med_tracker.current_account_id()\n  AND member.household_id=p_household AND p_household=med_tracker.current_household_id()\n  AND member.status='active' AND member.revoked_at IS NULL AND actor.status=2 AND actor.active\n  AND home.status='active' AND home.lifecycle_state='active'\n  AND (NOT p_management OR member.role IN ('owner','administrator'))\n  AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=actor.id AND l.deadline>clock_timestamp()))\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_origin_execution(p_source bigint, p_plan text, p_subject bigint, p_household bigint, p_origin boolean)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_origin_execution(p_source bigint, p_plan text, p_subject bigint, p_household bigint, p_origin boolean)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT p_origin AND p_household=med_tracker.current_household_id()\n AND EXISTS(SELECT 1 FROM public.household_memberships subject WHERE subject.person_id=p_subject\n  AND subject.household_id=p_household AND subject.status='active' AND subject.revoked_at IS NULL)\n AND ((EXISTS(SELECT 1 FROM public.shared_schedule_executions link WHERE link.schedule_id=p_source\n   AND link.person_schedule_id=p_plan AND link.person_id=p_subject AND link.household_id=p_household AND link.approval_id IS NULL)\n  AND NOT EXISTS(SELECT 1 FROM public.person_household_approvals prior WHERE prior.person_id=p_subject AND prior.household_id=p_household))\n OR (NOT EXISTS(SELECT 1 FROM public.shared_schedule_executions link WHERE link.schedule_id=p_source)\n  AND med_tracker.sharing_clinical_authority(p_subject)\n  AND (med_tracker.sharing_current_member(p_subject)\n   OR NOT EXISTS(SELECT 1 FROM public.person_household_approvals prior WHERE prior.person_id=p_subject AND prior.household_id=p_household))))\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.sharing_origin_member(p_plan text, p_subject bigint)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.sharing_origin_member(p_plan text, p_subject bigint)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT EXISTS(SELECT 1 FROM public.schedules source JOIN public.household_memberships subject\n  ON subject.person_id=source.person_id AND subject.household_id=source.household_id\n  WHERE source.person_schedule_id=p_plan AND source.person_id=p_subject AND source.canonical_origin\n   AND EXISTS(SELECT 1 FROM public.shared_schedule_executions link WHERE link.schedule_id=source.id\n    AND link.approval_id IS NULL AND link.person_schedule_id=source.person_schedule_id\n    AND link.person_id=source.person_id AND link.household_id=source.household_id AND link.portable_id=source.portable_id)\n   AND NOT EXISTS(SELECT 1 FROM public.person_household_approvals prior WHERE prior.person_id=source.person_id AND prior.household_id=source.household_id)\n   AND source.household_id=med_tracker.current_household_id() AND source.execution_ended_at IS NULL\n   AND subject.status='active' AND subject.revoked_at IS NULL\n   AND med_tracker.sharing_household_actor(source.household_id,false))\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "index:public.person_household_approvals_pkey": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX person_household_approvals_pkey ON public.person_household_approvals USING btree (id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.schedules_person_execution": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX schedules_person_execution ON public.schedules USING btree (person_schedule_id, household_id) WHERE (execution_ended_at IS NULL)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.shared_administration_occurrence": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX shared_administration_occurrence ON public.shared_schedule_administrations USING btree (person_schedule_id, occurrence_starts_on, occurrence_position)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.shared_schedule_administrations_medication_take_id_key": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX shared_schedule_administrations_medication_take_id_key ON public.shared_schedule_administrations USING btree (medication_take_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.shared_schedule_administrations_pkey": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX shared_schedule_administrations_pkey ON public.shared_schedule_administrations USING btree (id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.shared_schedule_executions_pkey": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX shared_schedule_executions_pkey ON public.shared_schedule_executions USING btree (schedule_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.shared_schedule_pause_closures_pkey": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX shared_schedule_pause_closures_pkey ON public.shared_schedule_pause_closures USING btree (pause_instance_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.shared_schedule_states_pkey": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX shared_schedule_states_pkey ON public.shared_schedule_states USING btree (id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.sharing_invitation_once": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX sharing_invitation_once ON public.person_household_approvals USING btree (invitation_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.sharing_one_current_approval": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX sharing_one_current_approval ON public.person_household_approvals USING btree (person_id, household_id) WHERE (ended_at IS NULL)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "internal_trigger:public.accounts:public.person_household_approvals.sharing_approval_approved_by_account_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.accounts:public.person_household_approvals.sharing_approval_approved_by_account_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.accounts:public.shared_schedule_pause_closures.pause_closure_actor_account_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.accounts:public.shared_schedule_pause_closures.pause_closure_actor_account_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.guardian_declarations:public.person_household_approvals.sharing_approval_guardian_declaration_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.guardian_declarations:public.person_household_approvals.sharing_approval_guardian_declaration_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.guardian_declarations:public.shared_schedule_pause_closures.pause_closure_guardian_declaration_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.guardian_declarations:public.shared_schedule_pause_closures.pause_closure_guardian_declaration_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.household_invitations:public.person_household_approvals.sharing_approval_invitation_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.household_invitations:public.person_household_approvals.sharing_approval_invitation_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.household_memberships:public.shared_schedule_pause_closures.pause_closure_actor_membership_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.household_memberships:public.shared_schedule_pause_closures.pause_closure_actor_membership_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.households:public.person_household_approvals.sharing_approval_household_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.households:public.person_household_approvals.sharing_approval_household_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.households:public.shared_schedule_executions.shared_execution_household_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.households:public.shared_schedule_executions.shared_execution_household_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.medication_pause_periods:public.medication_pause_periods.pause_period_canonical_plan:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.medication_pause_periods:public.medication_pause_periods.pause_period_canonical_plan:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.medication_pause_periods:public.medication_pause_periods.pause_period_canonical_resume:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.medication_pause_periods:public.medication_pause_periods.pause_period_canonical_resume:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.medication_takes:public.shared_schedule_administrations.shared_administration_take:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.medication_takes:public.shared_schedule_administrations.shared_administration_take:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.people:public.person_household_approvals.sharing_approval_approved_by_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.people:public.person_household_approvals.sharing_approval_approved_by_person_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.people:public.person_household_approvals.sharing_approval_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.people:public.person_household_approvals.sharing_approval_person_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.people:public.shared_schedule_executions.shared_execution_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.people:public.shared_schedule_executions.shared_execution_person_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.people:public.shared_schedule_pause_closures.pause_closure_actor_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.people:public.shared_schedule_pause_closures.pause_closure_actor_person_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_approved_by_account_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_approved_by_account_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_approved_by_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_approved_by_person_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_guardian_declaration_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_guardian_declaration_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_household_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_household_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_invitation_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_invitation_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_household_approvals:public.person_household_approvals.sharing_approval_person_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.person_household_approvals:public.schedules.schedule_sharing_approval:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_household_approvals:public.schedules.schedule_sharing_approval:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.person_household_approvals:public.shared_schedule_executions.shared_execution_approval_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_household_approvals:public.shared_schedule_executions.shared_execution_approval_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.person_schedules:public.shared_schedule_states.shared_schedule_canonical:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_schedules:public.shared_schedule_states.shared_schedule_canonical:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.schedules:public.schedules.schedule_sharing_approval:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.schedules:public.schedules.schedule_sharing_approval:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.schedules:public.shared_schedule_executions.shared_execution_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.schedules:public.shared_schedule_executions.shared_execution_schedule_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.shared_schedule_administrations:public.shared_schedule_administrations.shared_administration_plan:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_administrations:public.shared_schedule_administrations.shared_administration_plan:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_administrations:public.shared_schedule_administrations.shared_administration_take:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_administrations:public.shared_schedule_administrations.shared_administration_take:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_approval_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_approval_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_household_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_household_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_person_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_person_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_person_schedule_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_executions:public.shared_schedule_executions.shared_execution_schedule_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.medication_pause_periods.pause_period_canonical_resume:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.medication_pause_periods.pause_period_canonical_resume:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_actor_account_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_actor_account_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_actor_membership_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_actor_membership_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_actor_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_actor_person_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_guardian_declaration_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_guardian_declaration_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_person_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_pause_closures:public.shared_schedule_pause_closures.pause_closure_person_schedule_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_states:public.medication_pause_periods.pause_period_canonical_plan:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_states:public.medication_pause_periods.pause_period_canonical_plan:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.shared_schedule_states:public.shared_schedule_administrations.shared_administration_plan:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_states:public.shared_schedule_administrations.shared_administration_plan:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.shared_schedule_states:public.shared_schedule_executions.shared_execution_person_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_states:public.shared_schedule_executions.shared_execution_person_schedule_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.shared_schedule_states:public.shared_schedule_pause_closures.pause_closure_person_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_states:public.shared_schedule_pause_closures.pause_closure_person_schedule_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.shared_schedule_states:public.shared_schedule_states.shared_schedule_canonical:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_states:public.shared_schedule_states.shared_schedule_canonical:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "policy:public.api_tombstones.sharing_withdrawal_tombstone": {
+      "check": "(((record_type)::text = 'Schedule'::text) AND ((action)::text = 'delete'::text) AND (household_membership_id IS NULL) AND (account_id = med_tracker.current_account_id()) AND ((metadata - ARRAY['record_type'::text, 'record_id'::text, 'portable_id'::text, 'person_portable_id'::text, 'approval_id'::text]) = '{}'::jsonb) AND ((metadata ->> 'record_type'::text) = 'Schedule'::text) AND ((metadata ->> 'portable_id'::text) = (record_portable_id)::text) AND (EXISTS ( SELECT 1\n   FROM ((shared_schedule_executions source\n     JOIN person_household_approvals approval ON ((approval.id = source.approval_id)))\n     JOIN people subject ON ((subject.id = source.person_id)))\n  WHERE (((source.approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)) AND (source.household_id = api_tombstones.household_id) AND ((source.portable_id)::text = (api_tombstones.record_portable_id)::text) AND ((source.schedule_id)::text = (api_tombstones.metadata ->> 'record_id'::text)) AND ((source.approval_id)::text = (api_tombstones.metadata ->> 'approval_id'::text)) AND ((subject.portable_id)::text = (api_tombstones.metadata ->> 'person_portable_id'::text)) AND (approval.ended_at IS NOT NULL) AND med_tracker.sharing_clinical_authority(source.person_id)))))",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null
+    },
+    "policy:public.carer_relationships.sharing_subject_relationships": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "(patient_id = (NULLIF(current_setting('med_tracker.sharing_subject_id'::text, true), ''::text))::bigint)"
+    },
+    "policy:public.guardian_declarations.sharing_subject_declarations": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "(subject_person_id = (NULLIF(current_setting('med_tracker.sharing_subject_id'::text, true), ''::text))::bigint)"
+    },
+    "policy:public.household_invitations.sharing_accepted_recipient": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app",
+        "med_tracker_owner"
+      ],
+      "using": "(((token_digest)::text = med_tracker.current_invitation_token_digest()) AND (accepted_at IS NOT NULL) AND (lower((email)::text) = ( SELECT lower(accounts.email) AS lower\n   FROM accounts\n  WHERE ((accounts.id = med_tracker.current_account_id()) AND (accounts.status = 2) AND accounts.active))))"
+    },
+    "policy:public.household_memberships.sharing_subject_memberships": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((person_id = (NULLIF(current_setting('med_tracker.sharing_subject_id'::text, true), ''::text))::bigint) OR (person_id = ( SELECT accounts.person_id\n   FROM accounts\n  WHERE (accounts.id = med_tracker.current_account_id()))) OR (person_id IN ( SELECT guardian_declarations.guardian_person_id\n   FROM guardian_declarations\n  WHERE (guardian_declarations.subject_person_id = (NULLIF(current_setting('med_tracker.sharing_subject_id'::text, true), ''::text))::bigint))))"
+    },
+    "policy:public.households.sharing_recording_house_owner": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((id = med_tracker.current_household_id()) AND (NULLIF(current_setting('med_tracker.sharing_take_id'::text, true), ''::text) IS NOT NULL) AND (EXISTS ( SELECT 1\n   FROM (household_memberships member\n     JOIN accounts actor ON ((actor.person_id = member.person_id)))\n  WHERE ((member.id = med_tracker.current_membership_id()) AND (member.household_id = households.id) AND (actor.id = med_tracker.current_account_id()) AND actor.active AND (actor.status = 2) AND ((member.status)::text = 'active'::text) AND (member.revoked_at IS NULL)))))"
+    },
+    "policy:public.households.sharing_subject_homes": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "(id IN ( SELECT household_memberships.household_id\n   FROM household_memberships\n  WHERE (household_memberships.person_id = (NULLIF(current_setting('med_tracker.sharing_subject_id'::text, true), ''::text))::bigint)))"
+    },
+    "policy:public.medication_takes.sharing_recording_take_owner": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((household_id = med_tracker.current_household_id()) AND ((id)::text = current_setting('med_tracker.sharing_take_id'::text, true)))"
+    },
+    "policy:public.people.sharing_guardian_subject": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "(med_tracker.sharing_guardian(id) IS NOT NULL)"
+    },
+    "policy:public.people.sharing_subject_people": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((id = (NULLIF(current_setting('med_tracker.sharing_subject_id'::text, true), ''::text))::bigint) OR (id = ( SELECT accounts.person_id\n   FROM accounts\n  WHERE (accounts.id = med_tracker.current_account_id()))) OR (id IN ( SELECT guardian_declarations.guardian_person_id\n   FROM guardian_declarations\n  WHERE (guardian_declarations.subject_person_id = (NULLIF(current_setting('med_tracker.sharing_subject_id'::text, true), ''::text))::bigint))))"
+    },
+    "policy:public.person_household_approvals.sharing_approval_end": {
+      "check": "(med_tracker.sharing_household_actor(household_id, true) OR med_tracker.sharing_clinical_authority(person_id))",
+      "command": "w",
+      "permissive": true,
+      "roles": [
+        "PUBLIC"
+      ],
+      "using": "(med_tracker.sharing_household_actor(household_id, true) OR med_tracker.sharing_clinical_authority(person_id))"
+    },
+    "policy:public.person_household_approvals.sharing_approval_insert": {
+      "check": "((household_id = med_tracker.current_household_id()) AND (approved_by_account_id = med_tracker.current_account_id()) AND (approved_by_person_id = ( SELECT accounts.person_id\n   FROM accounts\n  WHERE (accounts.id = med_tracker.current_account_id()))) AND med_tracker.sharing_clinical_authority(person_id))",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "PUBLIC"
+      ],
+      "using": null
+    },
+    "policy:public.person_household_approvals.sharing_approval_read": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "PUBLIC"
+      ],
+      "using": "(med_tracker.sharing_household_actor(household_id, false) OR med_tracker.sharing_clinical_authority(person_id))"
+    },
+    "policy:public.person_schedules.person_schedule_clinical_insert": {
+      "check": "med_tracker.sharing_clinical_authority(person_id)",
+      "command": "a",
+      "permissive": false,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null
+    },
+    "policy:public.person_schedules.person_schedule_clinical_update": {
+      "check": "med_tracker.sharing_clinical_authority(person_id)",
+      "command": "w",
+      "permissive": false,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "med_tracker.sharing_clinical_authority(person_id)"
+    },
+    "policy:public.person_schedules.sharing_clinical_command": {
+      "check": "med_tracker.sharing_clinical_command((id)::text, person_id)",
+      "command": "w",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "med_tracker.sharing_clinical_command((id)::text, person_id)"
+    },
+    "policy:public.person_schedules.sharing_clinical_command_scope": {
+      "check": "((NULLIF(current_setting('med_tracker.sharing_clinical_plan_id'::text, true), ''::text) IS NULL) OR med_tracker.sharing_clinical_command((id)::text, person_id))",
+      "command": "w",
+      "permissive": false,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "((NULLIF(current_setting('med_tracker.sharing_clinical_plan_id'::text, true), ''::text) IS NULL) OR med_tracker.sharing_clinical_command((id)::text, person_id))"
+    },
+    "policy:public.schedules.shared_schedule_current_execution": {
+      "check": "(((sharing_approval_id IS NULL) AND (person_schedule_id IS NULL)) OR med_tracker.sharing_origin_execution(id, (person_schedule_id)::text, person_id, household_id, canonical_origin) OR (execution_ended_at IS NOT NULL) OR (med_tracker.sharing_current_member(person_id) AND (EXISTS ( SELECT 1\n   FROM person_household_approvals approval\n  WHERE ((approval.ended_at IS NULL) AND ((approval.id = schedules.sharing_approval_id) OR (EXISTS ( SELECT 1\n           FROM shared_schedule_executions link\n          WHERE ((link.schedule_id = schedules.id) AND (link.approval_id = approval.id))))))))))",
+      "command": "*",
+      "permissive": false,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "(((sharing_approval_id IS NULL) AND (person_schedule_id IS NULL)) OR med_tracker.sharing_origin_execution(id, (person_schedule_id)::text, person_id, household_id, canonical_origin) OR (execution_ended_at IS NOT NULL) OR (med_tracker.sharing_current_member(person_id) AND (EXISTS ( SELECT 1\n   FROM person_household_approvals approval\n  WHERE ((approval.ended_at IS NULL) AND ((approval.id = schedules.sharing_approval_id) OR (EXISTS ( SELECT 1\n           FROM shared_schedule_executions link\n          WHERE ((link.schedule_id = schedules.id) AND (link.approval_id = approval.id))))))))) OR (med_tracker.sharing_clinical_authority(person_id) AND (((sharing_approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)) OR (EXISTS ( SELECT 1\n   FROM shared_schedule_executions link\n  WHERE ((link.schedule_id = schedules.id) AND ((link.approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true))))))))"
+    },
+    "policy:public.schedules.shared_schedule_withdrawal": {
+      "check": "(med_tracker.sharing_clinical_authority(person_id) AND (((sharing_approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)) OR (EXISTS ( SELECT 1\n   FROM shared_schedule_executions link\n  WHERE ((link.schedule_id = schedules.id) AND ((link.approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)))))))",
+      "command": "w",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "((execution_ended_at IS NULL) AND med_tracker.sharing_clinical_authority(person_id) AND (((sharing_approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)) OR (EXISTS ( SELECT 1\n   FROM shared_schedule_executions link\n  WHERE ((link.schedule_id = schedules.id) AND ((link.approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)))))))"
+    },
+    "policy:public.schedules.sharing_origin_attachment_source": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((id)::text = current_setting('med_tracker.sharing_attachment_source_id'::text, true))"
+    },
+    "policy:public.schedules.sharing_origin_attachment_source_lock": {
+      "check": "false",
+      "command": "w",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((id)::text = current_setting('med_tracker.sharing_attachment_source_id'::text, true))"
+    },
+    "policy:public.schedules.sharing_recording_source_owner": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((household_id = med_tracker.current_household_id()) AND ((id)::text = current_setting('med_tracker.sharing_source_id'::text, true)))"
+    },
+    "policy:public.schedules.sharing_withdrawal_exact_update": {
+      "check": "((NULLIF(current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true), ''::text) IS NULL) OR (med_tracker.sharing_clinical_authority(person_id) AND (((sharing_approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)) OR (EXISTS ( SELECT 1\n   FROM shared_schedule_executions link\n  WHERE ((link.schedule_id = schedules.id) AND ((link.approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true))))))))",
+      "command": "w",
+      "permissive": false,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "((NULLIF(current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true), ''::text) IS NULL) OR ((execution_ended_at IS NULL) AND med_tracker.sharing_clinical_authority(person_id) AND (((sharing_approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)) OR (EXISTS ( SELECT 1\n   FROM shared_schedule_executions link\n  WHERE ((link.schedule_id = schedules.id) AND ((link.approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true))))))))"
+    },
+    "policy:public.shared_schedule_administrations.shared_administration_local": {
+      "check": "((household_id = med_tracker.current_household_id()) AND (EXISTS ( SELECT 1\n   FROM (medication_takes take\n     JOIN schedules source ON ((source.id = take.schedule_id)))\n  WHERE ((take.id = shared_schedule_administrations.medication_take_id) AND (take.household_id = shared_schedule_administrations.household_id) AND ((source.person_schedule_id)::text = (shared_schedule_administrations.person_schedule_id)::text) AND (source.execution_ended_at IS NULL)))))",
+      "command": "*",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "(household_id = med_tracker.current_household_id())"
+    },
+    "policy:public.shared_schedule_administrations.shared_administration_safety_owner": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((person_schedule_id)::text = NULLIF(current_setting('med_tracker.sharing_schedule_id'::text, true), ''::text))"
+    },
+    "policy:public.shared_schedule_executions.shared_execution_identifier_insert": {
+      "check": "((household_id = med_tracker.current_household_id()) AND (EXISTS ( SELECT 1\n   FROM schedules source\n  WHERE ((source.id = shared_schedule_executions.schedule_id) AND ((source.portable_id)::text = (shared_schedule_executions.portable_id)::text) AND (source.household_id = shared_schedule_executions.household_id) AND (source.person_id = shared_schedule_executions.person_id) AND ((source.person_schedule_id)::text = (shared_schedule_executions.person_schedule_id)::text) AND (((shared_schedule_executions.approval_id IS NULL) AND source.canonical_origin AND (source.sharing_approval_id IS NULL) AND med_tracker.sharing_clinical_authority(source.person_id) AND (NOT (EXISTS ( SELECT 1\n           FROM person_household_approvals prior\n          WHERE ((prior.person_id = source.person_id) AND (prior.household_id = source.household_id)))))) OR ((source.execution_ended_at IS NULL) AND med_tracker.sharing_current_member(source.person_id) AND ((source.sharing_approval_id = shared_schedule_executions.approval_id) OR ((source.sharing_approval_id IS NULL) AND source.canonical_origin AND med_tracker.sharing_clinical_authority(source.person_id))) AND (EXISTS ( SELECT 1\n           FROM person_household_approvals approval\n          WHERE ((approval.id = shared_schedule_executions.approval_id) AND (approval.person_id = source.person_id) AND (approval.household_id = source.household_id) AND (approval.ended_at IS NULL))))))))))",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null
+    },
+    "policy:public.shared_schedule_executions.shared_execution_identifiers": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "(med_tracker.sharing_household_actor(household_id, false) OR (((approval_id)::text = current_setting('med_tracker.sharing_withdrawal_approval_id'::text, true)) AND med_tracker.sharing_clinical_authority(person_id)) OR med_tracker.sharing_attachment_authority(person_id, household_id))"
+    },
+    "policy:public.shared_schedule_executions.shared_execution_origin_attachment": {
+      "check": "(((approval_id)::text = current_setting('med_tracker.sharing_attachment_approval_id'::text, true)) AND med_tracker.sharing_attachment_authority(person_id, household_id))",
+      "command": "w",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "((approval_id IS NULL) AND med_tracker.sharing_attachment_authority(person_id, household_id))"
+    },
+    "policy:public.shared_schedule_executions.sharing_recording_link_owner": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((household_id = med_tracker.current_household_id()) AND ((schedule_id)::text = current_setting('med_tracker.sharing_source_id'::text, true)))"
+    },
+    "policy:public.shared_schedule_pause_closures.shared_pause_closure_actual_resume": {
+      "check": "((actor_account_id = med_tracker.current_account_id()) AND (EXISTS ( SELECT 1\n   FROM (accounts actor\n     JOIN shared_schedule_states state ON (((state.id)::text = (shared_schedule_pause_closures.person_schedule_id)::text)))\n  WHERE ((actor.id = shared_schedule_pause_closures.actor_account_id) AND (actor.person_id = shared_schedule_pause_closures.actor_person_id) AND med_tracker.sharing_clinical_authority(state.person_id) AND state.active AND (state.pause_instance_id IS NULL) AND ((state.last_closed_pause_instance_id)::text = (shared_schedule_pause_closures.pause_instance_id)::text) AND (state.clinical_revision = shared_schedule_pause_closures.clinical_revision) AND (state.updated_at = shared_schedule_pause_closures.ended_at) AND (((actor.person_id = state.person_id) AND (shared_schedule_pause_closures.guardian_declaration_id IS NULL)) OR ((actor.person_id <> state.person_id) AND (shared_schedule_pause_closures.guardian_declaration_id = med_tracker.sharing_guardian(state.person_id)))) AND ((shared_schedule_pause_closures.actor_membership_id IS NULL) OR (EXISTS ( SELECT 1\n           FROM household_memberships member\n          WHERE ((member.id = shared_schedule_pause_closures.actor_membership_id) AND (member.person_id = actor.person_id) AND (member.household_id = med_tracker.current_household_id()) AND ((member.status)::text = 'active'::text) AND (member.revoked_at IS NULL)))))))))",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null
+    },
+    "policy:public.shared_schedule_pause_closures.shared_pause_closure_owned_interval": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "(EXISTS ( SELECT 1\n   FROM ((medication_pause_periods period\n     JOIN schedules source ON (((source.id = period.schedule_id) AND (source.household_id = period.household_id))))\n     JOIN household_memberships subject ON (((subject.person_id = source.person_id) AND (subject.household_id = source.household_id))))\n  WHERE (((period.portable_id)::text = (shared_schedule_pause_closures.pause_instance_id)::text) AND ((source.person_schedule_id)::text = (shared_schedule_pause_closures.person_schedule_id)::text) AND ((period.canonical_person_schedule_id)::text = (shared_schedule_pause_closures.person_schedule_id)::text) AND (period.canonical_pause_revision < shared_schedule_pause_closures.clinical_revision) AND (source.household_id = med_tracker.current_household_id()) AND (source.execution_ended_at IS NULL) AND ((subject.status)::text = 'active'::text) AND (subject.revoked_at IS NULL) AND ((source.canonical_origin AND (EXISTS ( SELECT 1\n           FROM shared_schedule_executions link\n          WHERE ((link.schedule_id = source.id) AND (link.approval_id IS NULL) AND ((link.person_schedule_id)::text = (source.person_schedule_id)::text) AND (link.person_id = source.person_id) AND (link.household_id = source.household_id) AND ((link.portable_id)::text = (source.portable_id)::text)))) AND (NOT (EXISTS ( SELECT 1\n           FROM person_household_approvals prior\n          WHERE ((prior.person_id = source.person_id) AND (prior.household_id = source.household_id)))))) OR (EXISTS ( SELECT 1\n           FROM (shared_schedule_executions link\n             JOIN person_household_approvals approval ON ((approval.id = link.approval_id)))\n          WHERE ((link.schedule_id = source.id) AND ((link.person_schedule_id)::text = (source.person_schedule_id)::text) AND (link.person_id = source.person_id) AND (link.household_id = source.household_id) AND (approval.household_id = source.household_id) AND (approval.person_id = source.person_id) AND (approval.ended_at IS NULL) AND med_tracker.sharing_current_member(source.person_id))))) AND med_tracker.sharing_household_actor(source.household_id, false))))"
+    },
+    "policy:public.shared_schedule_states.shared_schedule_insert": {
+      "check": "med_tracker.sharing_clinical_authority(person_id)",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "PUBLIC"
+      ],
+      "using": null
+    },
+    "policy:public.shared_schedule_states.shared_schedule_read": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "PUBLIC"
+      ],
+      "using": "(med_tracker.sharing_clinical_authority(person_id) OR med_tracker.sharing_current_member(person_id) OR med_tracker.sharing_origin_member((id)::text, person_id))"
+    },
+    "policy:public.shared_schedule_states.shared_schedule_update": {
+      "check": "(med_tracker.sharing_clinical_authority(person_id) OR med_tracker.sharing_current_member(person_id) OR med_tracker.sharing_origin_member((id)::text, person_id))",
+      "command": "w",
+      "permissive": true,
+      "roles": [
+        "PUBLIC"
+      ],
+      "using": "(med_tracker.sharing_clinical_authority(person_id) OR med_tracker.sharing_current_member(person_id) OR med_tracker.sharing_origin_member((id)::text, person_id))"
+    },
+    "policy:public.versions.sharing_versions_append": {
+      "check": "true",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app",
+        "med_tracker_owner"
+      ],
+      "using": null
+    },
+    "policy:public.versions.sharing_versions_current_reader": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "(EXISTS ( SELECT 1\n   FROM accounts actor\n  WHERE ((actor.id = med_tracker.current_account_id()) AND actor.active AND (actor.status = 2) AND (NOT (EXISTS ( SELECT 1\n           FROM account_lockouts locked\n          WHERE ((locked.account_id = actor.id) AND (locked.deadline > clock_timestamp()))))) AND (((versions.household_id = med_tracker.current_household_id()) AND med_tracker.sharing_household_actor(versions.household_id, false)) OR (((versions.item_type)::text = ANY ((ARRAY['Account'::character varying, 'AuthenticationToken'::character varying, 'AccountClinicalAccess'::character varying])::text[])) AND (versions.item_id = actor.id)) OR (((versions.item_type)::text = 'Person'::text) AND (versions.item_id = actor.person_id)) OR (((versions.item_type)::text = 'PersonSchedule'::text) AND (EXISTS ( SELECT 1\n           FROM person_schedules plan\n          WHERE ((plan.origin_schedule_id = versions.item_id) AND (plan.person_id = actor.person_id))))) OR (((versions.item_type)::text = 'GuardianDeclaration'::text) AND (EXISTS ( SELECT 1\n           FROM guardian_declarations declaration\n          WHERE ((declaration.id = versions.item_id) AND (declaration.guardian_person_id = actor.person_id))))) OR (((versions.item_type)::text = 'PersonHouseholdApproval'::text) AND (EXISTS ( SELECT 1\n           FROM person_household_approvals approval\n          WHERE ((approval.id = versions.item_id) AND med_tracker.sharing_clinical_authority(approval.person_id))))) OR (((versions.item_type)::text = 'SharedPersonSchedule'::text) AND med_tracker.sharing_clinical_authority(versions.item_id))))))"
+    },
+    "policy:public.versions.sharing_versions_verifier": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_audit_verifier",
+        "med_tracker_owner"
+      ],
+      "using": "true"
+    },
+    "relation:public.person_household_approvals": {
+      "access_method": "heap",
+      "acl": [
+        "med_tracker_app=ar/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "force_rls": true,
+      "kind": "r",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "d",
+      "rls": true,
+      "tablespace": null
+    },
+    "relation:public.person_household_approvals_id_seq": {
+      "access_method": null,
+      "acl": [
+        "med_tracker_app=rU/med_tracker_owner",
+        "med_tracker_owner=rwU/med_tracker_owner"
+      ],
+      "force_rls": false,
+      "kind": "S",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "n",
+      "rls": false,
+      "tablespace": null
+    },
+    "relation:public.shared_schedule_administrations": {
+      "access_method": "heap",
+      "acl": [
+        "med_tracker_app=ar/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "force_rls": true,
+      "kind": "r",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "d",
+      "rls": true,
+      "tablespace": null
+    },
+    "relation:public.shared_schedule_administrations_id_seq": {
+      "access_method": null,
+      "acl": [
+        "med_tracker_app=rU/med_tracker_owner",
+        "med_tracker_owner=rwU/med_tracker_owner"
+      ],
+      "force_rls": false,
+      "kind": "S",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "n",
+      "rls": false,
+      "tablespace": null
+    },
+    "relation:public.shared_schedule_executions": {
+      "access_method": "heap",
+      "acl": [
+        "med_tracker_app=ar/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "force_rls": true,
+      "kind": "r",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "d",
+      "rls": true,
+      "tablespace": null
+    },
+    "relation:public.shared_schedule_pause_closures": {
+      "access_method": "heap",
+      "acl": [
+        "med_tracker_app=ar/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "force_rls": true,
+      "kind": "r",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "d",
+      "rls": true,
+      "tablespace": null
+    },
+    "relation:public.shared_schedule_states": {
+      "access_method": "heap",
+      "acl": [
+        "med_tracker_app=arw/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "force_rls": true,
+      "kind": "r",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "d",
+      "rls": true,
+      "tablespace": null
+    },
+    "relation:public.versions": {
+      "access_method": "heap",
+      "acl": [
+        "med_tracker_app=ar/med_tracker_owner",
+        "med_tracker_audit_verifier=r/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "force_rls": true,
+      "kind": "r",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "d",
+      "rls": true,
+      "tablespace": null
+    },
+    "sequence:public.person_household_approvals_id_seq": {
+      "cache": 1,
+      "cycle": false,
+      "increment": 1,
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "owned_by": "public.person_household_approvals.id",
+      "start": 1,
+      "type": "bigint"
+    },
+    "sequence:public.shared_schedule_administrations_id_seq": {
+      "cache": 1,
+      "cycle": false,
+      "increment": 1,
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "owned_by": "public.shared_schedule_administrations.id",
+      "start": 1,
+      "type": "bigint"
+    },
+    "trigger:public.medication_pause_periods.shared_pause_projection_guard": {
+      "definition": "CREATE TRIGGER shared_pause_projection_guard BEFORE INSERT OR UPDATE ON public.medication_pause_periods FOR EACH ROW EXECUTE FUNCTION med_tracker.shared_pause_projection_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.notification_events.shared_reminder_epoch_guard": {
+      "definition": "CREATE TRIGGER shared_reminder_epoch_guard BEFORE DELETE OR UPDATE ON public.notification_events FOR EACH ROW EXECUTE FUNCTION med_tracker.shared_reminder_epoch_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.person_household_approvals.sharing_approval_guard": {
+      "definition": "CREATE TRIGGER sharing_approval_guard BEFORE INSERT OR UPDATE ON public.person_household_approvals FOR EACH ROW EXECUTE FUNCTION med_tracker.sharing_approval_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.person_schedules.shared_canonical_identity_guard": {
+      "definition": "CREATE TRIGGER shared_canonical_identity_guard BEFORE UPDATE ON public.person_schedules FOR EACH ROW EXECUTE FUNCTION med_tracker.shared_canonical_identity_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.schedules.shared_execution_guard": {
+      "definition": "CREATE TRIGGER shared_execution_guard BEFORE INSERT OR UPDATE ON public.schedules FOR EACH ROW EXECUTE FUNCTION med_tracker.shared_execution_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.shared_schedule_administrations.shared_administration_guard": {
+      "definition": "CREATE TRIGGER shared_administration_guard BEFORE INSERT ON public.shared_schedule_administrations FOR EACH ROW EXECUTE FUNCTION med_tracker.shared_administration_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.shared_schedule_executions.shared_origin_attachment_guard": {
+      "definition": "CREATE TRIGGER shared_origin_attachment_guard BEFORE UPDATE ON public.shared_schedule_executions FOR EACH ROW EXECUTE FUNCTION med_tracker.shared_origin_attachment_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.shared_schedule_states.shared_schedule_guard": {
+      "definition": "CREATE TRIGGER shared_schedule_guard BEFORE INSERT OR UPDATE ON public.shared_schedule_states FOR EACH ROW EXECUTE FUNCTION med_tracker.shared_schedule_guard()",
+      "enabled": "O"
+    }
+  }
+}

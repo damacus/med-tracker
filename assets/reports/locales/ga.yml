@@ -329,6 +329,16 @@ ga:
         existing_account: An bhfuil cuntas agat cheana?
         sign_in: Sínigh isteach
         to_accept: chun glacadh leis an gcuireadh seo.
+        dependent_label: Cleithiúnaí a roinnfear a chúram
+        dependent_choose: Roghnaigh cleithiúnaí
+        no_dependents: Níl údarás caomhnóra incháilithe reatha agat do chleithiúnaí. Athbhreithnigh do dhearbhuithe sula nglacann tú leis.
+        dependent_consent: Is caomhnóir dearbhaithe reatha mé agus ceadaím pleananna cúraim reatha agus amach anseo an chleithiúnaí seo, stádas sosanna agus stádas sábháilteachta na dáileoige is déanaí a roinnt leis an teaghlach seo. Fanann nótaí príobháideacha agus stair mhionsonraithe príobháideach. Críochnaíonn an cead nuair a tharraingítear siar é nó nuair a fhágtar an teaghlach.
+        dependent_approved: Roinnt cúraim ceadaithe
+        dependent_approved_description: Roinntear pleananna reatha agus amach anseo an chleithiúnaí roghnaithe. Fanann tú sna teaghlaigh reatha agus is féidir an cead a tharraingt siar ó do chuntas.
+        return_profile: Fill ar do chuntas
+        invite_guardian: Tabhair cuireadh do chaomhnóir cúram a roinnt
+        invite_guardian_description: Roghnaíonn caomhnóir dearbhaithe reatha an cleithiúnaí agus ceadaíonn sé an roinnt. Fanann an caomhnóir sna teaghlaigh reatha.
+        sharing_consent: Ceadaím mo phleananna cúraim reatha agus amach anseo, stádas sosanna agus stádas sábháilteachta na dáileoige is déanaí a roinnt leis an teaghlach seo. Fanann nótaí príobháideacha agus stair mhionsonraithe príobháideach. Críochnaíonn an cead seo nuair a fhágann mé.
         invalid_title: Níl nasc an chuiridh ar fáil
         invalid_guidance: Tá nasc an chuiridh neamhbhailí nó imithe in éag. Iarr cuireadh nua ar bhainisteoir an teaghlaigh.
         recovery_title: Glacadh leat sa teaghlach
@@ -391,6 +401,7 @@ ga:
           unavailable: Níorbh fhéidir an cuireadh a athrú. Seiceáil a stádas agus bain triail eile as.
         form:
           email: Ríomhphost
+          guardian_email: Ríomhphost an chaomhnóra
           role: Ról teaghlaigh
           relationship_type: Gaol cleithiúnaí
           select_relationship_type: Roghnaigh gaol
@@ -1935,6 +1946,19 @@ ga:
     overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
   profiles:
     personal:
+      plans: "Mo phleananna cóireála"
+      plans_description: "Fanann do phleananna leat nuair a fhágann tú teaghlach. Ní nuashonraíonn athruithe ach nasc reatha le teaghlach."
+      plans_empty: "Níl aon phleananna cóireála pearsanta taifeadta."
+      origin_zone: "Crios ama an phlean"
+      adoption_zone: "Níl crios ama taifeadta don phlean seo. Úsáidfear crios ama an fheidhmchláir a thaispeántar thuas nuair a shábhálfar é. Ná hathraigh é ach chun amanna an phlean a cheartú."
+      adopted_zone: "Úsáideann an plean seo crios ama na haipe nuair a glacadh leis. Seiceáil é sula n-athraíonn tú na hamanna."
+      plan_times: "Amanna dáileoige (HH:MM, scartha le camóga)"
+      save_plan: "Sábháil an plean"
+      retire_plan: "Cuir deireadh leis an bplean"
+      retire_confirmation: "Cuireann sé seo deireadh leis an bplean. Beidh na dáileoga taifeadta ar fáil fós."
+      retired: "Tá deireadh curtha leis an bplean seo."
+      invalid: "Seiceáil an dáileog, na dátaí, na hamanna agus ainm an chreasa ama agus bain triail eile as."
+      stale: "Athraíodh an plean seo agus an fhoirm ar oscailt. Seiceáil an plean reatha sula sábhálann tú é."
       clinical_invalid: "Cuir isteach ainm agus dáta breithe bailí. Caithfidh sealbhóirí cuntais a bheith 18 mbliana d'aois ar a laghad."
       description: "Bainistigh do chuntas agus d'eolas cliniciúil."
       account_name: "Ainm taispeána an chuntais"

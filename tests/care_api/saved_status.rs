@@ -55,13 +55,13 @@ async fn saved_http_status_cannot_wrap_into_a_valid_replay_status() {
             .await
             .unwrap()
             .iter()
-            .filter(|event| event.metadata["status"] == 500)
+            .filter(|event| event.metadata["status"] == 503)
             .count();
         observed.push((status, replayed, attempts));
     }
     let effect = app.fixture.effect().await;
     app.close().await;
     assert_eq!(first, 422);
-    assert_eq!(observed, vec![(500, false, 1); 2]);
+    assert_eq!(observed, vec![(503, false, 1); 2]);
     assert_eq!(effect, (0, "10.00".into(), 0, 0));
 }

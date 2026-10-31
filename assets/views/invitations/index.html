@@ -24,6 +24,17 @@
     </form>
   </div></div>
   <h2 class="text-xl font-semibold mt-8">{{ invite.recent }}</h2>
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <h2 class="text-xl font-semibold">{{ invite_labels.acceptance.invite_guardian }}</h2>
+    <p>{{ invite_labels.acceptance.invite_guardian_description }}</p>
+    <form action="/households/{{ slug }}/admin/dependent-sharing-invitations" method="post" class="flex flex-col gap-4">
+      {% include "invitations/context.html" %}
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <label for="guardian-email" class="font-semibold">{{ invite.form.guardian_email }}</label>
+      <input id="guardian-email" name="email" type="email" class="input w-full" required>
+      <button class="btn btn-neutral" type="submit">{{ invite_labels.acceptance.invite_guardian }}</button>
+    </form>
+  </div></div>
   <form action="/households/{{ slug }}/admin/invitations" method="get" class="shell-panel grid gap-4 p-4 mt-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="{{ invite.filters.heading }}">
     {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
     <div><label for="invitation-search" class="label">{{ invite.filters.search }}</label><input id="invitation-search" name="q" type="search" class="input w-full" maxlength="254" value="{{ filters.q }}"></div>

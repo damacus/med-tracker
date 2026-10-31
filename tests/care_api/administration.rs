@@ -12,7 +12,7 @@ async fn administration_app() -> Application {
     app
 }
 
-async fn additional_member(app: &Application) -> household_memberships::Model {
+pub(super) async fn additional_member(app: &Application) -> household_memberships::Model {
     let actor = app.fixture.foreign_household().await;
     let now = chrono::Utc::now().naive_utc();
     let membership = household_memberships::ActiveModel {
@@ -634,7 +634,7 @@ async fn household_settings_and_grant_audit_failure_roll_back_effects_and_keys()
 
     let statuses = (settings.status().as_u16(), grant.status().as_u16());
     app.close().await;
-    assert_eq!(statuses, (500, 500));
+    assert_eq!(statuses, (503, 503));
     assert!(reached);
     assert_eq!(counts, vec![0, 0, 0]);
     assert_eq!(version, 1);

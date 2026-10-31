@@ -20,6 +20,8 @@ pub(super) fn row_value(
     row: &Occurrence,
     settings: Option<&serde_json::Value>,
 ) -> Value {
+    let source_settings = source.calendar_settings(settings);
+    let settings = source_settings.as_ref();
     let (outcome, reason, note, resolved_at, medication_take_id, etag) = match &row.record {
         Some(record) if row.legacy_take_id.is_some() => (
             "taken",

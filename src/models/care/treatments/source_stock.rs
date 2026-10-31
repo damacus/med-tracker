@@ -19,6 +19,32 @@ pub(super) async fn source_stock(
         return Ok(HashMap::new());
     }
     let household_id = context.scope().household_id;
+    let plans: HashMap<_, _> = crate::models::entities::person_schedule::Entity::find()
+        .filter(
+            crate::models::entities::person_schedule::Column::Id.is_in(
+                recordable_sources
+                    .iter()
+                    .filter_map(|source| source.person_schedule_id.clone()),
+            ),
+        )
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|plan| (plan.id.clone(), plan))
+        .collect();
+    let missing: Vec<_> = recordable_sources
+        .iter()
+        .filter_map(|source| source.person_schedule_id.as_ref())
+        .filter(|id| !plans.contains_key(*id))
+        .cloned()
+        .collect();
+    let shared_plans: HashMap<_, _> = crate::models::entities::shared_schedule::Entity::find()
+        .filter(crate::models::entities::shared_schedule::Column::Id.is_in(missing))
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|plan| (plan.id.clone(), plan))
+        .collect();
     let all_stock = access::can_manage_household(context);
     let mut linked_stock: HashMap<i64, HashSet<i64>> = HashMap::new();
     if !all_stock {
@@ -56,6 +82,29 @@ pub(super) async fn source_stock(
     }
     let mut identities = Condition::any();
     for source in &recordable_sources {
+        let prescribed = source.person_schedule_id.as_ref().and_then(|id| {
+            use crate::models::care::stock_identity::ExactProductIdentity;
+            if let Some(plan) = plans.get(id) {
+                ExactProductIdentity::from_parts(
+                    plan.dmd_system.as_deref(),
+                    plan.dmd_concept_class.as_deref(),
+                    plan.dmd_code.as_deref(),
+                    plan.stock_unit.as_deref(),
+                )
+            } else {
+                shared_plans.get(id).and_then(|plan| {
+                    ExactProductIdentity::from_parts(
+                        plan.dmd_system.as_deref(),
+                        plan.dmd_concept_class.as_deref(),
+                        plan.dmd_code.as_deref(),
+                        plan.stock_unit.as_deref(),
+                    )
+                })
+            }
+        });
+        if let Some(identity) = prescribed {
+            identities = identities.add(identity.condition());
+        }
         if let Some(original) = medications.get(&source.medication_id) {
             identities = identities.add(crate::models::care::doses::stock_candidate_condition(
                 original,
@@ -98,6 +147,40 @@ pub(super) async fn source_stock(
                 &candidates,
                 linked_stock.get(&source.person_id),
             );
+            let ids = if let Some(id) = source.person_schedule_id.as_ref() {
+                let matches = |candidate: &medication::Model| {
+                    if let Some(plan) = plans.get(id) {
+                        crate::models::care::person_schedules::stock_matches(plan, candidate)
+                    } else {
+                        shared_plans.get(id).is_some_and(|plan| {
+                            crate::models::care::person_schedules::projection::stock_matches(
+                                plan, candidate,
+                            )
+                        })
+                    }
+                };
+                if !matches(original) {
+                    return Some((source.id, Vec::new()));
+                }
+                candidates
+                    .iter()
+                    .filter(|candidate| {
+                        candidate.household_id == household_id
+                            && (all_stock
+                                || candidate.id == original.id
+                                || linked_stock
+                                    .get(&source.person_id)
+                                    .is_some_and(|ids| ids.contains(&candidate.id)))
+                            && candidate
+                                .current_supply
+                                .is_none_or(|supply| supply > sea_orm::prelude::Decimal::ZERO)
+                            && matches(candidate)
+                    })
+                    .map(|candidate| candidate.id)
+                    .collect()
+            } else {
+                ids
+            };
             Some((source.id, ids))
         })
         .collect())

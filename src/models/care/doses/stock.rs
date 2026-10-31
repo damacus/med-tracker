@@ -1,73 +1,7 @@
 use super::*;
 use loco_rs::model::TenantQueryExt;
 
-const NHS_DMD_SYSTEM: &str = "https://dmd.nhs.uk";
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum DmdProductClass {
-    Vmp,
-    Amp,
-    Vmpp,
-    Ampp,
-}
-
-impl DmdProductClass {
-    fn parse(value: &str) -> Option<Self> {
-        match value {
-            "VMP" => Some(Self::Vmp),
-            "AMP" => Some(Self::Amp),
-            "VMPP" => Some(Self::Vmpp),
-            "AMPP" => Some(Self::Ampp),
-            _ => None,
-        }
-    }
-
-    const fn as_str(self) -> &'static str {
-        match self {
-            Self::Vmp => "VMP",
-            Self::Amp => "AMP",
-            Self::Vmpp => "VMPP",
-            Self::Ampp => "AMPP",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct ExactProductIdentity<'a> {
-    class: DmdProductClass,
-    code: &'a str,
-    stock_unit: &'a str,
-}
-
-impl<'a> ExactProductIdentity<'a> {
-    fn from_stock(stock: &'a medication::Model) -> Option<Self> {
-        if stock.dmd_system.as_deref()? != NHS_DMD_SYSTEM {
-            return None;
-        }
-        let class = DmdProductClass::parse(stock.dmd_concept_class.as_deref()?)?;
-        let code = stock
-            .dmd_code
-            .as_deref()
-            .filter(|value| !value.trim().is_empty())?;
-        let stock_unit = stock
-            .dose_unit
-            .as_deref()
-            .filter(|value| !value.trim().is_empty())?;
-        Some(Self {
-            class,
-            code,
-            stock_unit,
-        })
-    }
-
-    fn condition(self) -> Condition {
-        Condition::all()
-            .add(medication::Column::DmdSystem.eq(NHS_DMD_SYSTEM))
-            .add(medication::Column::DmdConceptClass.eq(self.class.as_str()))
-            .add(medication::Column::DmdCode.eq(self.code))
-            .add(medication::Column::DoseUnit.eq(self.stock_unit))
-    }
-}
+use crate::models::care::stock_identity::ExactProductIdentity;
 
 pub(crate) fn same_stock_signature(left: &medication::Model, right: &medication::Model) -> bool {
     if left.household_id == right.household_id

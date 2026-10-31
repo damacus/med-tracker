@@ -127,7 +127,10 @@ pub(super) async fn timing_allowed(
                 .into_iter()
                 .map(source_from_schedule)
                 .filter(|source| {
-                    applies_on(source, local_date_in_zone(proposed.taken_at, proposed.zone))
+                    applies_on(
+                        source,
+                        local_date_in_zone(proposed.taken_at, source.zone.unwrap_or(proposed.zone)),
+                    )
                 }),
         )
         .collect();
@@ -168,6 +171,7 @@ fn timing_block(
     zone: chrono_tz::Tz,
 ) -> Result<Option<&'static str>, ApiError> {
     for mut source in related.iter().cloned() {
+        let zone = source.zone.unwrap_or(zone);
         effective_source(&mut source, local_date_in_zone(taken_at, zone));
         if let Some(max_doses) = source.max_daily_doses {
             let (start, end) = cycle_bounds(taken_at, source.dose_cycle, zone)?;
@@ -226,7 +230,10 @@ pub(crate) async fn dashboard_timing(
         .filter(|source| {
             source.active
                 && !source.retired
-                && applies_on(source, now.with_timezone(&zone).date_naive())
+                && applies_on(
+                    source,
+                    now.with_timezone(&source.zone.unwrap_or(zone)).date_naive(),
+                )
         })
         .collect();
     if !requires_timing_history(&sources, now.with_timezone(&zone).date_naive()) {
@@ -285,6 +292,8 @@ mod tests {
     fn test_source() -> Source {
         Source {
             kind: "schedule",
+            zone: None,
+            person_schedule_id: None,
             id: 1,
             active: true,
             retired: false,

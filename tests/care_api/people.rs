@@ -352,7 +352,7 @@ async fn people_audit_failure_rolls_back_person_participation_declaration_carer_
         .await
         .unwrap();
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert!(reached);
     assert_eq!((declarations, memberships), (0, 3));
     assert_eq!(counts, vec![0, 0, 0, 0, 1]);

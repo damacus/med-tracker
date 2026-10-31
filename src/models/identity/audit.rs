@@ -22,7 +22,7 @@ pub(super) async fn record(
     let now = chrono::Utc::now().naive_utc();
     let mut context = json!({"actor_account_id":grant.account_id,"actor_person_id":actor.person_id,"request_id":request_id});
     if grant.client_kind == "mobile" {
-        version::ActiveModel {
+        version::Entity::insert(version::ActiveModel {
             item_type: Set("Account".into()),
             item_id: Set(grant.account_id),
             event: Set(format!("mobile_oauth.{action}")),
@@ -34,8 +34,8 @@ pub(super) async fn record(
             audit_context: Set(context),
             created_at: Set(Some(now)),
             ..Default::default()
-        }
-        .insert(transaction)
+        })
+        .exec_without_returning(transaction)
         .await
         .map_err(|_| ExchangeError::Unavailable)?;
         return Ok(());

@@ -111,22 +111,40 @@ async fn capture_canonical_identity_catalogues_when_requested() {
             "guardian-recovery-catalog.json",
             "personal-history-catalog.json",
             "history-audit-outcome-catalog.json",
+            "person-schedules-catalog.json",
+            "person-schedule-execution-policy-catalog.json",
+            "approved-sharing-catalog.json",
+            "legacy-schedule-prescriptions-catalog.json",
+            "live-adoption-history-catalog.json",
+            "frozen-adoption-history-catalog.json",
+            "restore-history-index-catalog.json",
         ] {
-            migration::Migrator::up(&db, Some(1)).await.unwrap();
-            let mut current = catalog(&db).await;
-            current.sort_all_objects();
-            let baseline = previous.as_object().unwrap();
-            let actual = current.as_object().unwrap();
-            let removed = baseline
-                .keys()
-                .filter(|key| !actual.contains_key(*key))
-                .cloned()
-                .collect::<Vec<_>>();
-            let changed = actual
-                .iter()
-                .filter(|(key, value)| baseline.get(*key) != Some(*value))
-                .map(|(key, value)| (key.clone(), value.clone()))
-                .collect::<serde_json::Map<_, _>>();
+            // Data-only migrations (for example backfills) leave the identity
+            // catalogue unchanged, so keep stepping until the next
+            // catalogue-changing migration lands.
+            let mut removed = Vec::new();
+            let mut changed = serde_json::Map::new();
+            for _ in 0..4 {
+                migration::Migrator::up(&db, Some(1)).await.unwrap();
+                let mut current = catalog(&db).await;
+                current.sort_all_objects();
+                let baseline = previous.as_object().unwrap();
+                let actual = current.as_object().unwrap();
+                removed = baseline
+                    .keys()
+                    .filter(|key| !actual.contains_key(*key))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                changed = actual
+                    .iter()
+                    .filter(|(key, value)| baseline.get(*key) != Some(*value))
+                    .map(|(key, value)| (key.clone(), value.clone()))
+                    .collect::<serde_json::Map<_, _>>();
+                previous = current;
+                if !changed.is_empty() || !removed.is_empty() {
+                    break;
+                }
+            }
             assert!(!changed.is_empty());
             std::fs::write(
                 output.join(file),
@@ -136,7 +154,6 @@ async fn capture_canonical_identity_catalogues_when_requested() {
                 .unwrap(),
             )
             .unwrap();
-            previous = current;
         }
         db.close().await.unwrap();
     })
@@ -221,6 +238,21 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         assert!(history_outcome.removed.is_empty());
         assert_eq!(history_outcome.changed.len(), 1);
         expected.extend(history_outcome.changed);
+        for catalogue in [
+            include_str!("../migration/person-schedules-catalog.json"),
+            include_str!("../migration/person-schedule-execution-policy-catalog.json"),
+            include_str!("../migration/approved-sharing-catalog.json"),
+            include_str!("../migration/legacy-schedule-prescriptions-catalog.json"),
+            include_str!("../migration/live-adoption-history-catalog.json"),
+            include_str!("../migration/frozen-adoption-history-catalog.json"),
+            include_str!("../migration/restore-history-index-catalog.json"),
+        ] {
+            let parsed: CanonicalIdentityCatalogue = serde_json::from_str(catalogue)?;
+            expected.extend(parsed.changed);
+            for key in &parsed.removed {
+                expected.remove(key.as_str());
+            }
+        }
         let actual = before.as_object().unwrap();
         let differences: Vec<_> = expected
             .keys()
@@ -240,21 +272,282 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             differences.join("\n")
         );
         let ledger = ledger_rows(&db).await;
-        assert_eq!(ledger.len(), 18);
+        assert_eq!(ledger.len(), 26);
         assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
         assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
         assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
         assert_eq!(ledger[13].0, "m20261021_000014_member_directory_identity");
         assert_eq!(ledger[15].0, "m20261022_000017_guardian_recovery");
+        assert_eq!(ledger[16].0, "m20261027_000018_personal_history");
+        assert_eq!(ledger[17].0, "m20261028_000019_history_audit_outcome");
         assert_eq!(
             ledger.last().map(|row| row.0.as_str()),
-            Some("m20261028_000019_history_audit_outcome")
+            Some("m20261030_000027_restore_history_indexing")
         );
         migration::Migrator::up(&db, None).await.unwrap();
         assert_eq!(catalog(&db).await, before);
         assert_eq!(ledger_rows(&db).await, ledger);
         db.close().await.unwrap();
         Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn adoption_fact_backfill_indexes_pre_existing_linked_take_evidence_idempotently() {
+    schema_case(async {
+        use med_tracker::models::_entities::{
+            medication_takes, medications, person_schedules, schedules,
+            shared_schedule_adoption_facts, shared_schedule_administrations,
+            shared_schedule_executions, shared_schedule_states, versions,
+        };
+        use sea_orm::{
+            ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait,
+            QueryFilter, prelude::Decimal,
+        };
+        let db = restored_database().await;
+        // Apply through m20261029_000024_live_adoption_history, leaving the
+        // frozen-evidence and backfill migrations pending.
+        migration::Migrator::up(&db, Some(23)).await.unwrap();
+        fixtures::seed_persistence(&db).await;
+        fixtures::seed_care_doses(&db).await;
+        // SeaORM/SeaQuery cannot toggle validation triggers. These seed writes
+        // emulate pre-feature rows that runtime paths originally wrote under
+        // tenant authority, so the runtime guards are paused exactly around the
+        // fixture statements and restored before the pending migrations run.
+        db.execute_unprepared(
+            "ALTER TABLE public.schedules DISABLE TRIGGER shared_execution_guard;\
+             ALTER TABLE public.person_schedules DISABLE TRIGGER legacy_canonical_insert_guard;\
+             ALTER TABLE public.shared_schedule_states DISABLE TRIGGER shared_schedule_guard",
+        )
+        .await
+        .unwrap();
+        let stock = medications::Entity::find_by_id(80001)
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap();
+        let now = chrono::Utc::now().naive_utc();
+        let plan_id = uuid::Uuid::new_v4().to_string();
+        let source = schedules::ActiveModel {
+            household_id: Set(72001),
+            person_id: Set(73001),
+            medication_id: Set(80001),
+            active: Set(true),
+            start_date: Set(Some("2020-01-01".parse().unwrap())),
+            end_date: Set(Some("2099-12-31".parse().unwrap())),
+            dose_amount: Set(Some(Decimal::new(2, 0))),
+            dose_unit: Set(Some("tablet".into())),
+            schedule_type: Set(6),
+            schedule_config: Set(serde_json::json!({})),
+            portable_id: Set(uuid::Uuid::new_v4().to_string()),
+            person_schedule_id: Set(None),
+            canonical_origin: Set(true),
+            clinical_revision: Set(Some(1)),
+            origin_time_zone: Set(Some("Europe/London".into())),
+            created_at: Set(now - chrono::Duration::days(3)),
+            updated_at: Set(now - chrono::Duration::days(2)),
+            ..Default::default()
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+        let taken_at = now - chrono::Duration::days(1);
+        let take = medication_takes::ActiveModel {
+            household_id: Set(72001),
+            schedule_id: Set(Some(source.id)),
+            portable_id: Set(uuid::Uuid::new_v4().to_string()),
+            client_uuid: Set(Some(uuid::Uuid::new_v4().to_string())),
+            dose_amount: Set(Some(Decimal::new(2, 0))),
+            dose_unit: Set(Some("tablet".into())),
+            taken_at: Set(Some(taken_at)),
+            taken_from_medication_id: Set(Some(80001)),
+            created_at: Set(taken_at),
+            updated_at: Set(taken_at),
+            ..Default::default()
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+        let snapshot = serde_json::json!({
+            "id":take.id,"portable_id":take.portable_id,"client_uuid":take.client_uuid,
+            "household_id":72001,"schedule_id":source.id,"person_medication_id":null,
+            "person_id":73001,"medication_id":80001,"taken_from_medication_id":80001,
+            "taken_from_location_id":null,"dose_amount":"2","dose_unit":"tablet",
+            "taken_at":taken_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            "created_at":take.created_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            "updated_at":take.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string()
+        });
+        let changes: serde_json::Map<String, serde_json::Value> = snapshot
+            .as_object()
+            .unwrap()
+            .iter()
+            .map(|(key, value)| (key.clone(), serde_json::json!([null, value])))
+            .collect();
+        versions::ActiveModel {
+            item_type: Set("MedicationTake".into()),
+            item_id: Set(take.id),
+            event: Set("create".into()),
+            object: Set(Some(snapshot.to_string())),
+            object_changes: Set(Some(
+                serde_json::Value::Object(changes).to_string(),
+            )),
+            whodunnit: Set(Some("71001".into())),
+            request_id: Set(Some("seeded-take-request".into())),
+            household_id: Set(Some(72001)),
+            actor_membership_id: Set(Some(74001)),
+            audit_context: Set(serde_json::json!({"actor_account_id":71001,"actor_person_id":73001,"actor_membership_id":74001,"household_id":72001,"request_id":"seeded-take-request","active_role":"administrator","permissions_version":1,"authentication_method":"api_session","session_reference":"api_session:synthetic"})),
+            created_at: Set(Some(taken_at)),
+            ..Default::default()
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+        person_schedules::ActiveModel {
+            id: Set(plan_id.clone()),
+            person_id: Set(73001),
+            origin_household_id: Set(72001),
+            origin_schedule_id: Set(source.id),
+            origin_stock_id: Set(80001),
+            origin_stock_portable_id: Set(stock.portable_id.clone()),
+            medicine_name: Set(stock.name.clone()),
+            stock_unit: Set(stock.dose_unit.clone()),
+            stock_default_known: Set(true),
+            origin_time_zone: Set("Europe/London".into()),
+            timezone_provenance: Set("preserved_origin_zone".into()),
+            clinical_revision: Set(1),
+            active: Set(true),
+            dose_amount: Set(Some(Decimal::new(2, 0))),
+            dose_unit: Set(Some("tablet".into())),
+            start_date: Set(Some("2020-01-01".parse().unwrap())),
+            end_date: Set(Some("2099-12-31".parse().unwrap())),
+            schedule_type: Set(6),
+            schedule_config: Set(serde_json::json!({})),
+            created_at: Set(now - chrono::Duration::days(2)),
+            updated_at: Set(now - chrono::Duration::days(2)),
+            ..Default::default()
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+        shared_schedule_states::ActiveModel {
+            id: Set(plan_id.clone()),
+            person_id: Set(73001),
+            medicine_name: Set(stock.name.clone()),
+            stock_unit: Set(stock.dose_unit.clone()),
+            stock_default_known: Set(true),
+            origin_time_zone: Set("Europe/London".into()),
+            clinical_revision: Set(1),
+            active: Set(true),
+            dose_amount: Set(Some(Decimal::new(2, 0))),
+            dose_unit: Set(Some("tablet".into())),
+            start_date: Set(Some("2020-01-01".parse().unwrap())),
+            end_date: Set(Some("2099-12-31".parse().unwrap())),
+            schedule_type: Set(6),
+            schedule_config: Set(serde_json::json!({})),
+            created_at: Set(now - chrono::Duration::days(2)),
+            updated_at: Set(now - chrono::Duration::days(2)),
+            ..Default::default()
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+        shared_schedule_executions::ActiveModel {
+            schedule_id: Set(source.id),
+            portable_id: Set(source.portable_id.clone()),
+            household_id: Set(72001),
+            person_id: Set(73001),
+            person_schedule_id: Set(plan_id.clone()),
+            approval_id: Set(None),
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+        // The pre-feature link between the source and its canonical plan is
+        // restored while the runtime guards are still paused.
+        schedules::Entity::update_many()
+            .col_expr(
+                schedules::Column::PersonScheduleId,
+                sea_orm::sea_query::Expr::val(plan_id.clone()),
+            )
+            .filter(schedules::Column::Id.eq(source.id))
+            .exec(&db)
+            .await
+            .unwrap();
+        db.execute_unprepared(
+            "ALTER TABLE public.schedules ENABLE TRIGGER shared_execution_guard;\
+             ALTER TABLE public.person_schedules ENABLE TRIGGER legacy_canonical_insert_guard;\
+             ALTER TABLE public.shared_schedule_states ENABLE TRIGGER shared_schedule_guard",
+        )
+        .await
+        .unwrap();
+        let request = uuid::Uuid::new_v4().to_string();
+        versions::ActiveModel {
+            item_type: Set("PersonSchedule".into()),
+            item_id: Set(source.id),
+            event: Set("create".into()),
+            object: Set(None),
+            object_changes: Set(Some(
+                serde_json::json!({"id":[null,plan_id.clone()]}).to_string(),
+            )),
+            whodunnit: Set(Some("71001".into())),
+            request_id: Set(Some(request.clone())),
+            household_id: Set(Some(72001)),
+            actor_membership_id: Set(Some(74001)),
+            audit_context: Set(serde_json::json!({"actor_account_id":71001,"actor_person_id":73001,"actor_membership_id":74001,"household_id":72001,"request_id":request,"active_role":"administrator","permissions_version":1,"authentication_method":"api_session","session_reference":"api_session:synthetic-grant"})),
+            created_at: Set(Some(now - chrono::Duration::days(2))),
+            ..Default::default()
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+        migration::Migrator::up(&db, None).await.unwrap();
+        let facts = shared_schedule_adoption_facts::Entity::find()
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(facts.len(), 1, "The linked original take must be backfilled");
+        assert_eq!(facts[0].medication_take_id, take.id);
+        assert_eq!(facts[0].person_schedule_id, Some(plan_id.clone()));
+        assert_eq!(facts[0].source_schedule_id, source.id);
+        assert_eq!(facts[0].person_id, 73001);
+        assert_eq!(facts[0].household_id, 72001);
+        assert_eq!(facts[0].taken_at, take.taken_at.unwrap());
+        assert!(!facts[0].fact_hash.is_empty());
+        assert_eq!(facts[0].captured_by_account_id, 71001);
+        assert_eq!(facts[0].captured_by_membership_id, 74001);
+        assert_eq!(facts[0].request_id, request);
+        assert_eq!(facts[0].guardian_declaration_id, None);
+        let entries = shared_schedule_administrations::Entity::find()
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].person_schedule_id, plan_id);
+        assert_eq!(entries[0].medication_take_id, take.id);
+        assert_eq!(entries[0].taken_at, take.taken_at.unwrap());
+        let state = shared_schedule_states::Entity::find_by_id(&plan_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(state.latest_taken_at, take.taken_at);
+        migration::Migrator::up(&db, None).await.unwrap();
+        assert_eq!(
+            shared_schedule_adoption_facts::Entity::find()
+                .count(&db)
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            shared_schedule_administrations::Entity::find()
+                .count(&db)
+                .await
+                .unwrap(),
+            1
+        );
+        db.close().await.unwrap();
     })
     .await
 }

@@ -23,12 +23,32 @@ async fn legacy_manage_grant_cannot_edit_other_care_or_expose_manage_controls() 
             ..Default::default()
         }).exec(&app.fixture.admin).await?;
         let token = app.token().await;
-        let created = schedule(&app, &token, app.fixture.adult.id).await?;
-        require(created.status().as_u16() == 201, "Self-managed schedule prerequisite must succeed")?;
-        schedule_record::Entity::update_many()
-            .col_expr(schedule_record::Column::PersonId, sea_orm::sea_query::Expr::value(app.fixture.minor.id))
-            .filter(schedule_record::Column::HouseholdId.eq(app.fixture.household.id))
-            .exec(&app.fixture.admin).await?;
+        let mut person = dependent("Synthetic legacy other care", "minor");
+        person["initial_guardian_declaration"] = json!(true);
+        let created = create(&app, &token, &person, "synthetic-legacy-other-care").await?;
+        require(created.status().as_u16() == 201, "Temporary guardian declaration must create the dependent")?;
+        let dependent_body: Value = created.json().await
+            .map_err(|_| DbErr::Custom("Dependent creation response was not JSON".to_owned()))?;
+        let other = dependent_body["data"]["id"].as_i64()
+            .ok_or_else(|| DbErr::Custom("Dependent ID missing".to_owned()))?;
+        let created = schedule(&app, &token, other).await?;
+        require(created.status().as_u16() == 201, "Guardian prerequisite must create the other person's plan")?;
+        let declaration = app.fixture.admin
+            .query_one_raw(app.fixture.admin.get_database_backend().build(
+                &sea_orm::sea_query::Query::select().column("id").from("guardian_declarations")
+                    .and_where(sea_orm::sea_query::Expr::col("subject_person_id").eq(other))
+                    .and_where(sea_orm::sea_query::Expr::col("guardian_person_id").eq(app.fixture.adult.id))
+                    .to_owned()))
+            .await?
+            .ok_or_else(|| DbErr::Custom("Dependent declaration missing".to_owned()))?;
+        let declaration_id: i64 = declaration.try_get("", "id")?;
+        let withdrawn = app.client
+            .patch(format!("{}/api/v1/auth/guardian-declarations/{declaration_id}", app.origin))
+            .bearer_auth(&token)
+            .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+            .send().await
+            .map_err(|_| DbErr::Custom("Guardian withdrawal failed before response".to_owned()))?;
+        require(withdrawn.status().as_u16() == 200, "Temporary declaration withdrawal must succeed")?;
         let original_grants = grant::Entity::find().filter(grant::Column::HouseholdId.eq(app.fixture.household.id)).all(&app.fixture.admin).await?;
         let original_plans = schedule_record::Entity::find().filter(schedule_record::Column::HouseholdId.eq(app.fixture.household.id)).all(&app.fixture.admin).await?;
         let original_stock = app.fixture.effect().await;
@@ -297,6 +317,12 @@ async fn declared_guardian_manage_is_live_for_direct_and_aggregate_access() -> R
         require(response.status().as_u16()==201,&format!("Current guardian must create a dependent plan, received{}",response.status().as_u16()))?;
         let plan:Value=response.json().await.map_err(|_|DbErr::Custom("Guardian plan response was not JSON".into()))?;
         require(plan["data"]["can_manage"]==true,"Declaration-only guardian must see the same Manage permission as the write boundary")?;
+        require(plan["data"]["person_schedule_id"].as_str().is_some_and(|id|uuid::Uuid::parse_str(id).is_ok()),"Guardian creation must create canonical person linkage")?;
+        let plan_id=plan["data"]["id"].as_i64().ok_or_else(||DbErr::Custom("Guardian schedule ID missing".into()))?;
+        let edited=app.client.patch(format!("{}/api/v1/households/{household}/schedules/{plan_id}",app.origin)).bearer_auth(&token).json(&json!({"schedule":{"notes":"Current guardian clinical edit"}})).send().await.map_err(|_|DbErr::Custom("Guardian schedule edit failed".into()))?;
+        require(edited.status().as_u16()==200,"Current guardian must edit canonical clinical state")?;
+        let edited:Value=edited.json().await.map_err(|_|DbErr::Custom("Guardian edit response was not JSON".into()))?;
+        require(edited["data"]["clinical_revision"]==2 && edited["data"]["person_schedule_id"]==plan["data"]["person_schedule_id"],"Guardian edit must retain canonical identity and advance its revision")?;
         let assigned=app.client.post(format!("{}/api/v1/households/{household}/person_medications",app.origin))
             .bearer_auth(&token).json(&json!({"person_medication":{"person_id":person_id.to_string(),"medication_id":app.fixture.medication.id.to_string(),"administration_kind":"routine"}}))
             .send().await.map_err(|_|DbErr::Custom("Guardian assignment request failed".into()))?;
@@ -325,6 +351,8 @@ async fn declared_guardian_manage_is_live_for_direct_and_aggregate_access() -> R
             .map_err(|_|DbErr::Custom("Guardian withdrawal failed before response".into()))?;
         require(withdrawn.status().as_u16()==200,"Personal guardian withdrawal must succeed")?;
         let before=effects(&app).await?;
+        let denied_edit=app.client.patch(format!("{}/api/v1/households/{household}/schedules/{plan_id}",app.origin)).bearer_auth(&token).json(&json!({"schedule":{"notes":"Withdrawn guardian denied"}})).send().await.map_err(|_|DbErr::Custom("Withdrawn guardian edit failed".into()))?;
+        require(denied_edit.status().as_u16()==403,"Withdrawal must deny changes to an already linked canonical plan")?;
         let response=schedule(&app,&token,person_id).await?;
         require(response.status().as_u16()==403,"Withdrawn declaration must no longer authorise dependent plan writes")?;
         let manages=capabilities(&app,&token).await?;

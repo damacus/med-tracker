@@ -35,6 +35,7 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
     if page_number < 1 || !(1..=100).contains(&per_page) {
         return Err(failure(InputFailure::Invalid("pagination", "is invalid")));
     }
+    super::super::person_schedules::projection::refresh(tenant).await?;
     let mut query = access::schedule_scope(tenant);
     if let Some(value) = page.updated_since {
         let timestamp = chrono::DateTime::parse_from_rfc3339(&value)
@@ -75,7 +76,9 @@ async fn find(
     Ok(row)
 }
 pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<(Value, String), OperationError> {
-    project(tenant, find(tenant, id, false).await?).await
+    let initial = find(tenant, id, false).await?;
+    let row = super::super::person_schedules::projection::refresh_one(tenant, initial.id).await?;
+    project(tenant, row).await
 }
 pub(super) async fn project(
     tenant: &TenantTransaction,
@@ -101,7 +104,8 @@ pub async fn authorize_update(tenant: &TenantTransaction, id: &str) -> Result<()
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    let row = find(tenant, id, true).await?;
+    let initial = find(tenant, id, false).await?;
+    let row = super::super::person_schedules::projection::refresh_one(tenant, initial.id).await?;
     access::require_person_access(tenant, row.person_id, PersonAccess::Manage).await
 }
 pub async fn update(
@@ -183,12 +187,24 @@ async fn update_fields(
     fields.assign(&mut active);
     active.updated_at = Set(Utc::now().naive_utc());
     let row = active.update(tenant.transaction()).await?;
+    let row = super::super::person_schedules::save_execution(
+        tenant,
+        row,
+        None,
+        super::super::doses::app_zone(tenant.settings()),
+        provenance,
+    )
+    .await?;
     persist(tenant, &row, Some(snapshot), "update", provenance).await?;
     project(tenant, row).await
 }
 
 fn fields_from_record(row: &schedule::Model) -> ScheduleFields {
     ScheduleFields {
+        origin_time_zone: row
+            .origin_time_zone
+            .as_deref()
+            .and_then(|zone| zone.parse().ok()),
         person_id: Some(row.person_id),
         medication_id: Some(row.medication_id),
         source_dosage_option_id: row.source_dosage_option_id,

@@ -14,6 +14,7 @@ pub struct Model {
     pub accepted_at: Option<DateTime>,
     pub created_at: DateTime,
     pub email: String,
+    pub dependent_sharing: bool,
     pub expires_at: DateTime,
     #[sea_orm(unique_key = "index_household_invitations_on_id_and_household_id")]
     pub household_id: i64,

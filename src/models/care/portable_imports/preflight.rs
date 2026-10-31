@@ -37,6 +37,12 @@ pub(crate) async fn preflight(
     index: &ExistingIndex,
 ) -> Result<Preflight, OperationError> {
     let mut errors = plan.errors.clone();
+    errors.extend(
+        super::person_schedules::conflicts(db, tenant, plan, index)
+            .await?
+            .into_iter()
+            .map(|conflict| conflict.to_string()),
+    );
     let mut conflicts = Vec::new();
     for kind in BASE_TYPES.iter().chain(V2_TYPES) {
         for (index, row) in plan.rows(kind).iter().enumerate() {

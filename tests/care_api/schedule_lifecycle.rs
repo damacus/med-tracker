@@ -2,7 +2,7 @@ use super::contract::{assert_value, contract, resolve};
 use super::*;
 use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
-async fn create_schedule(app: &Application, token: &str) -> i64 {
+pub(super) async fn create_schedule(app: &Application, token: &str) -> i64 {
     let fixture_household_id = app.fixture.household.id;
     let fixture_person_id = app.fixture.account.person_id;
     let fixture_medication_id = app.fixture.medication.id;
@@ -11,6 +11,39 @@ async fn create_schedule(app: &Application, token: &str) -> i64 {
     response.json::<Value>().await.unwrap()["data"]["id"]
         .as_i64()
         .unwrap()
+}
+
+#[tokio::test]
+async fn person_owned_schedule_captures_canonical_identity_and_origin_zone() {
+    let app = Application::new().await;
+    let mut actor = app.fixture.account.clone().into_active_model();
+    actor.preferences = Set(json!({"time_zone":"Europe/London"}));
+    actor.update(&app.fixture.admin).await.unwrap();
+    let token = app.token().await;
+    let id = create_schedule(&app, &token).await;
+    let mut viewer = app.fixture.account.clone().into_active_model();
+    viewer.preferences = Set(json!({"time_zone":"Asia/Tokyo"}));
+    viewer.update(&app.fixture.admin).await.unwrap();
+    let response = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{}/schedules/{id}",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let body = response.json::<Value>().await.unwrap();
+    app.close().await;
+    assert!(
+        body["data"]["person_schedule_id"]
+            .as_str()
+            .is_some_and(|id| uuid::Uuid::parse_str(id).is_ok())
+    );
+    assert_eq!(body["data"]["origin_time_zone"], "Europe/London");
+    assert_eq!(body["data"]["clinical_revision"], 1);
 }
 
 #[tokio::test]
@@ -23,6 +56,19 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
     let foreign_household = app.fixture.seed_foreign_household(0).await;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &med_tracker::models::access::HouseholdScope {
+            actor: med_tracker::models::access::Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: uuid::Uuid::new_v4().to_string(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
     med_tracker::models::_entities::schedules::Entity::update_many()
         .col_expr(
             med_tracker::models::_entities::schedules::Column::Active,
@@ -33,7 +79,7 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
             med_tracker::models::_entities::schedules::Column::HouseholdId
                 .eq(app.fixture.household.id),
         )
-        .exec(&app.fixture.admin)
+        .exec(tenant.transaction())
         .await
         .unwrap();
     let _medication_pause_periods_84999 =
@@ -50,9 +96,10 @@ async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
             updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
             ..Default::default()
         }
-        .insert(&app.fixture.admin)
+        .insert(tenant.transaction())
         .await
         .unwrap();
+    tenant.commit().await.unwrap();
     let collection = format!(
         "{}/api/v1/households/{fixture_household_id}/schedules?page=1&per_page=1",
         app.origin
@@ -522,13 +569,13 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
             denied,
             malformed_denied
         ),
-        (200, 200, 500, 500, 200, 403, 403)
+        (200, 200, 503, 503, 200, 403, 403)
     );
     for (method, request_id, body) in [
         ("patch", &failed_request_id, &failed_body),
         ("put", &failed_put_request_id, &failed_put_body),
     ] {
-        super::schedule_contracts::assert_internal_error(
+        super::schedule_contracts::assert_unavailable(
             "/households/{household_id}/schedules/{id}",
             method,
             request_id,
@@ -577,6 +624,19 @@ async fn schedule_get_matches_documented_contract() {
     assert_eq!(etag_schema["required"], true);
     assert_eq!(etag_schema["schema"]["type"], "string");
 
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &med_tracker::models::access::HouseholdScope {
+            actor: med_tracker::models::access::Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: uuid::Uuid::new_v4().to_string(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
     med_tracker::models::_entities::schedules::Entity::update_many()
         .col_expr(
             med_tracker::models::_entities::schedules::Column::ScheduleConfig,
@@ -592,7 +652,7 @@ async fn schedule_get_matches_documented_contract() {
             med_tracker::models::_entities::schedules::Column::HouseholdId
                 .eq(app.fixture.household.id),
         )
-        .exec(&app.fixture.admin)
+        .exec(tenant.transaction())
         .await
         .unwrap();
     let _medication_pause_periods_84999 =
@@ -609,9 +669,10 @@ async fn schedule_get_matches_documented_contract() {
             updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
             ..Default::default()
         }
-        .insert(&app.fixture.admin)
+        .insert(tenant.transaction())
         .await
         .unwrap();
+    tenant.commit().await.unwrap();
     let read = app
         .client
         .get(format!(

@@ -29,12 +29,23 @@ async fn source(
             } else {
                 query.filter(schedule::Column::PortableId.eq(id))
             };
-            let query = if locked {
-                query.lock_exclusive()
-            } else {
+            let initial = query
+                .clone()
+                .one(tenant.transaction())
+                .await?
+                .ok_or(OperationError::NotFound)?;
+            if locked {
+                super::super::person_schedules::projection::refresh_one(tenant, initial.id).await?;
                 query
-            };
-            query.one(tenant.transaction()).await?.map(Source::Schedule)
+                    .lock_exclusive()
+                    .one(tenant.transaction())
+                    .await?
+                    .map(Source::Schedule)
+            } else {
+                super::super::person_schedules::projection::refresh_read(tenant, initial)
+                    .await
+                    .map(|row| Some(Source::Schedule(row)))?
+            }
         }
         Kind::Assignment => {
             let query = person_medication::Entity::find()
@@ -184,16 +195,12 @@ pub async fn change(
     let (kind, id) = source_path;
     authorize(tenant, kind, id, action).await?;
     let source = source(tenant, kind, id, true).await?;
+    let source_settings = source.calendar_settings(tenant.settings());
+    let settings = source_settings.as_ref();
     let fields = input.fields()?;
-    let mut row = find_row(
-        tenant.transaction(),
-        secret,
-        &source,
-        &fields.key,
-        tenant.settings(),
-    )
-    .await?
-    .ok_or_else(invalid_occurrence)?;
+    let mut row = find_row(tenant.transaction(), secret, &source, &fields.key, settings)
+        .await?
+        .ok_or_else(invalid_occurrence)?;
     let context = AuthContext { tenant, provenance };
     match fields.action {
         ActionInput::NotTaken(values) if action == "not_taken" => {
@@ -203,7 +210,7 @@ pub async fn change(
                 && record.reason == reason
                 && record.note == note
             {
-                let body = json!({"data":row_value(secret,&source,&row,tenant.settings())});
+                let body = json!({"data":row_value(secret,&source,&row,settings)});
                 return Ok(OccurrenceWritten {
                     row: record.clone(),
                     body,
@@ -218,7 +225,7 @@ pub async fn change(
             {
                 return Err(conflict("already_resolved"));
             }
-            if !actionable(&source, &row, tenant.settings()) {
+            if !actionable(&source, &row, settings) {
                 return Err(invalid_occurrence());
             }
             row.record = Some(
@@ -315,10 +322,10 @@ pub async fn change(
                 .as_ref()
                 .is_none_or(|record| record.outcome != "taken")
             {
-                if !actionable(&source, &row, tenant.settings()) {
+                if !actionable(&source, &row, settings) {
                     return Err(invalid_occurrence());
                 }
-                let day = local_date(taken_at, tenant.settings());
+                let day = local_date(taken_at, settings);
                 if day < row.window_start
                     || day > row.window_end
                     || (source.kind() == Kind::Assignment && taken_at < source.created_at())
@@ -330,7 +337,7 @@ pub async fn change(
             let outcome = doses::execute_attempt_in_timezone(
                 tenant,
                 attempt,
-                calendar::current_zone(tenant.settings()),
+                calendar::current_zone(settings),
                 provenance,
             )
             .await?;
@@ -362,7 +369,7 @@ pub async fn change(
         .as_ref()
         .map(record_etag)
         .ok_or(OperationError::Unavailable)?;
-    let body = json!({"data":row_value(secret,&source,&row,tenant.settings())});
+    let body = json!({"data":row_value(secret,&source,&row,settings)});
     let record = row.record.ok_or(OperationError::Unavailable)?;
     Ok(OccurrenceWritten {
         body,

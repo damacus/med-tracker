@@ -3300,7 +3300,7 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
         .send()
         .await
         .unwrap();
-    assert_eq!(rejected.status().as_u16(), 500);
+    assert_eq!(rejected.status().as_u16(), 503);
     assert_eq!(
         browser_push::reminders::deliver_account(&app.context, &scope, Utc::now())
             .await
@@ -4346,7 +4346,7 @@ async fn owner_connection(app: &Application) -> sea_orm::DatabaseConnection {
     app.fixture.admin.clone()
 }
 
-async fn seed_claimable_delivery(
+async fn seed_legacy_unproved_delivery(
     app: &Application,
     scope: &HouseholdScope,
     now: chrono::DateTime<Utc>,
@@ -4433,6 +4433,168 @@ async fn seed_claimable_delivery(
         .unwrap()
         .unwrap();
     delivery.try_get("", "id").unwrap()
+}
+
+async fn seed_claimable_delivery(
+    app: &Application,
+    scope: &HouseholdScope,
+    now: chrono::DateTime<Utc>,
+) -> i64 {
+    let original = app.context.shared_store.get::<Service>().unwrap();
+    app.context.shared_store.insert(Service {
+        public_key: original.public_key.clone(),
+        transport: Arc::new(ScriptedDelivery(
+            Mutex::new(vec![Delivery::Temporary(None)]),
+            Mutex::new(0),
+        )),
+    });
+    let result = browser_push::reminders::deliver_account(&app.context, scope, now).await;
+    app.context.shared_store.insert(Service {
+        public_key: original.public_key.clone(),
+        transport: original.transport.clone(),
+    });
+    assert_eq!(result.unwrap(), 0);
+    let pending = notification_deliveries::Entity::find()
+        .filter(notification_deliveries::Column::HouseholdId.eq(scope.household_id))
+        .filter(notification_deliveries::Column::AccountId.eq(scope.actor.account_id))
+        .filter(notification_deliveries::Column::Status.eq("pending"))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(pending.len(), 1);
+    notification_deliveries::Entity::update_many()
+        .col_expr(
+            notification_deliveries::Column::NextAttemptAt,
+            Expr::val(now.naive_utc()),
+        )
+        .filter(notification_deliveries::Column::Id.eq(pending[0].id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    pending[0].id
+}
+
+#[tokio::test]
+async fn browser_reminder_unproved_legacy_metadata_cannot_acquire_current_care() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-unproved-legacy").await;
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let id = seed_legacy_unproved_delivery(&app, &scope, now).await;
+    let before = notification_deliveries::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let sent = browser_push::reminders::drain_candidates(&app.context, &scope, now, &[id])
+        .await
+        .unwrap();
+    let after = notification_deliveries::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let event = med_tracker::models::_entities::notification_events::Entity::find_by_id(
+        before.notification_event_id,
+    )
+    .one(&app.fixture.admin)
+    .await
+    .unwrap()
+    .unwrap();
+    app.close().await;
+    assert_eq!(sent, 0);
+    assert_eq!(transport.0.lock().unwrap().len(), 0);
+    assert_eq!(after.status, "invalid");
+    assert_eq!(after.attempt_count, before.attempt_count);
+    assert!(
+        event.metadata.get("sources").is_none(),
+        "Old history must not be rewritten with new proof"
+    );
+}
+
+#[tokio::test]
+async fn browser_reminder_takes_safe_projection_locks_before_delivery_claim() {
+    use sea_orm::QuerySelect;
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-projection-before-claim").await;
+    let token = app.token().await;
+    let created=Application::assert_status(app.client.post(format!("{}/api/v1/households/{}/schedules",app.origin,scope.household_id))
+        .bearer_auth(&token).json(&json!({"schedule":{"person_id":app.fixture.adult.id.to_string(),
+            "medication_id":app.fixture.medication.id.to_string(),"dose_amount":"2","dose_unit":"tablet",
+            "start_date":(now.date_naive()-chrono::Duration::days(1)).to_string(),
+            "end_date":(now.date_naive()+chrono::Duration::days(1)).to_string(),
+            "schedule_type":"daily","schedule_config":{"times":[now.format("%H:%M").to_string()]}}}))
+        .send().await.unwrap(),201).await;
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let id = seed_claimable_delivery(&app, &scope, now).await;
+    let holder = app.fixture.admin.begin().await.unwrap();
+    med_tracker::models::_entities::shared_schedule_states::Entity::find_by_id(
+        created["data"]["person_schedule_id"].as_str().unwrap(),
+    )
+    .lock_exclusive()
+    .one(&holder)
+    .await
+    .unwrap()
+    .unwrap();
+    let pid = backend_pid(&holder).await;
+    let context = app.context.clone();
+    let sending = scope.clone();
+    let request = tokio::spawn(async move {
+        browser_push::reminders::drain_candidates(&context, &sending, now, &[id]).await
+    });
+    let mut witnessed = false;
+    for _ in 0..100 {
+        let waiting = app
+            .fixture
+            .admin
+            .query_one_raw(blocking_query(
+                &app,
+                Some("shared_schedule_states"),
+                Some(pid),
+                None,
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<bool>("", "waiting")
+            .unwrap();
+        if waiting {
+            witnessed = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    let probe = app.fixture.admin.begin().await.unwrap();
+    let delivery = notification_deliveries::Entity::find_by_id(id)
+        .lock_with_behavior(
+            sea_orm::sea_query::LockType::Update,
+            sea_orm::sea_query::LockBehavior::Nowait,
+        )
+        .one(&probe)
+        .await;
+    let delivery_unlocked = matches!(delivery, Ok(Some(_)));
+    probe.rollback().await.unwrap();
+    holder.rollback().await.unwrap();
+    let sent = request.await.unwrap().unwrap();
+    let calls = transport.0.lock().unwrap().len();
+    app.close().await;
+    assert!(
+        witnessed,
+        "Actual restricted reminder claim must wait on the held safe state"
+    );
+    assert_eq!(sent, 1);
+    assert_eq!(calls, 1);
+    assert!(
+        delivery_unlocked,
+        "Projection locking must precede delivery row locking"
+    );
 }
 
 #[tokio::test]

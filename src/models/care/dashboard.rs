@@ -24,6 +24,7 @@ pub async fn read(
     labels: &Value,
 ) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
+    super::person_schedules::projection::refresh(tenant).await?;
     let db = tenant.transaction();
     let household = tenant.scope().household_id;
     let people = access::person_queries::household_people(tenant.scope())
@@ -119,7 +120,13 @@ pub async fn read(
         .map(|record| {
             (
                 record.id,
-                doses::browser_schedule_preview(record.clone(), today),
+                doses::browser_schedule_preview(
+                    record.clone(),
+                    now.with_timezone(&crate::models::care::person_schedules::execution_zone(
+                        record, zone,
+                    ))
+                    .date_naive(),
+                ),
             )
         })
         .collect();

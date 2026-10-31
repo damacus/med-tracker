@@ -380,7 +380,10 @@ pub async fn browser_preview(
         return Err(OperationError::NotFound);
     }
     access::require_person_access(tenant, source.person_id, PersonAccess::Record).await?;
-    let mut preview = preview_source(source, taken_at.date_naive());
+    let source_date = taken_at
+        .with_timezone(&source.zone.unwrap_or(zone))
+        .date_naive();
+    let mut preview = preview_source(source, source_date);
     preview.available &= taken_at.with_timezone(&Utc) <= Utc::now() + Duration::hours(1);
     Ok(preview)
 }
@@ -436,6 +439,12 @@ struct TakeFailure {
 impl From<OperationError> for TakeFailure {
     fn from(error: OperationError) -> Self {
         Self { error, cause: None }
+    }
+}
+
+impl From<sea_orm::DbErr> for TakeFailure {
+    fn from(error: sea_orm::DbErr) -> Self {
+        OperationError::from(error).into()
     }
 }
 impl TakeFailure {

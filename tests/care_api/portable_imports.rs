@@ -8,6 +8,11 @@ use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 
 const PASSPHRASE: &str = "synthetic portable secret";
 const PASSPHRASE_HEADER: &str = "x-medtracker-portable-passphrase";
+#[path = "portable_imports/history_indexing.rs"]
+mod history_indexing;
+
+#[path = "portable_imports/person_schedules.rs"]
+mod person_schedule_restore;
 
 #[path = "portable_rails.rs"]
 mod rails_compatibility;
@@ -842,8 +847,8 @@ async fn portable_import_persistence_failure_is_unavailable_not_a_client_error()
         ))
         .await
         .unwrap();
-    assert_eq!(status, 500, "{body}");
-    assert_eq!(body["error"]["code"], "internal_error", "{body}");
+    assert_eq!(status, 503, "{body}");
+    assert_eq!(body["error"]["code"], "service_unavailable", "{body}");
     assert_eq!(import_effects(&app).await, before);
     app.close().await;
 }

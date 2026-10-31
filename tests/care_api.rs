@@ -19,6 +19,8 @@ mod audit_logs_browser;
 #[path = "care_api/canonical_identity.rs"]
 mod canonical_identity;
 
+#[path = "care_api/approved_sharing.rs"]
+mod approved_sharing;
 #[path = "care_api/avatar.rs"]
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]
@@ -97,6 +99,8 @@ mod people;
 mod person_carers;
 #[path = "care_api/person_medication_reorder.rs"]
 mod person_medication_reorder;
+#[path = "care_api/person_owned_schedules.rs"]
+mod person_owned_schedules;
 #[path = "care_api/platform.rs"]
 mod platform;
 #[path = "care_api/portable_export.rs"]
@@ -666,7 +670,7 @@ async fn failed_clinical_audit_rolls_back_effects_but_records_http_attempt() {
         .await
         .unwrap();
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert_eq!(body["error"]["request_id"], request_id);
     assert!(
         !body
@@ -678,7 +682,7 @@ async fn failed_clinical_audit_rolls_back_effects_but_records_http_attempt() {
     assert_eq!(attempts.len(), 1);
     assert_eq!(
         attempts[0].metadata["status"].to_string().trim_matches('"'),
-        "500"
+        "503"
     );
 }
 

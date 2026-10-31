@@ -212,6 +212,19 @@ async fn schedule_scope_retired_schedules_are_absent_from_current_reads_and_upda
     let fixture_household_id = app.fixture.household.id;
     let token = app.token().await;
     let id = create(&app, &token, "2026-10-06").await;
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &med_tracker::models::access::HouseholdScope {
+            actor: med_tracker::models::access::Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: uuid::Uuid::new_v4().to_string(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
     med_tracker::models::_entities::schedules::Entity::update_many()
         .col_expr(
             med_tracker::models::_entities::schedules::Column::RetiredAt,
@@ -226,9 +239,10 @@ async fn schedule_scope_retired_schedules_are_absent_from_current_reads_and_upda
             med_tracker::models::_entities::schedules::Column::HouseholdId
                 .eq(app.fixture.household.id),
         )
-        .exec(&app.fixture.admin)
+        .exec(tenant.transaction())
         .await
         .unwrap();
+    tenant.commit().await.unwrap();
     let collection = format!(
         "{}/api/v1/households/{fixture_household_id}/schedules",
         app.origin

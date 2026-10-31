@@ -4,6 +4,8 @@ use loco_rs::model::TenantQueryExt;
 #[derive(Clone)]
 pub(super) struct Source {
     pub(super) kind: &'static str,
+    pub(super) zone: Option<chrono_tz::Tz>,
+    pub(super) person_schedule_id: Option<String>,
     pub(super) id: i64,
     pub(super) active: bool,
     pub(super) retired: bool,
@@ -24,6 +26,8 @@ pub(super) struct Source {
 pub(super) fn source_from_assignment(value: person_medication::Model) -> Source {
     Source {
         kind: "person_medication",
+        zone: None,
+        person_schedule_id: None,
         id: value.id,
         active: value.active,
         retired: value.retired_at.is_some(),
@@ -45,6 +49,11 @@ pub(super) fn source_from_assignment(value: person_medication::Model) -> Source 
 pub(super) fn source_from_schedule(value: schedule::Model) -> Source {
     Source {
         kind: "schedule",
+        zone: value
+            .origin_time_zone
+            .as_ref()
+            .map(|_| crate::models::care::person_schedules::execution_zone(&value, chrono_tz::UTC)),
+        person_schedule_id: value.person_schedule_id,
         id: value.id,
         active: value.active,
         retired: value.retired_at.is_some(),
@@ -182,7 +191,9 @@ pub(super) async fn source(
             Ok(source_from_assignment(value))
         }
         DoseSource::Schedule(ScheduleId(id)) => {
-            let mut query = schedule::Entity::find().in_tenant(household_id);
+            let mut query = schedule::Entity::find()
+                .in_tenant(household_id)
+                .filter(schedule::Column::ExecutionEndedAt.is_null());
             query = match id {
                 SourceId::Database(id) => query.filter(schedule::Column::Id.eq(*id)),
                 SourceId::Portable(id) => query.filter(schedule::Column::PortableId.eq(id)),
@@ -208,6 +219,8 @@ mod tests {
     fn test_source() -> Source {
         Source {
             kind: "schedule",
+            zone: None,
+            person_schedule_id: None,
             id: 1,
             active: true,
             retired: false,

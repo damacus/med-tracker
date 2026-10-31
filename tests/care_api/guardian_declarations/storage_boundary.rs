@@ -87,7 +87,7 @@ async fn guardian_storage_catalogue_and_restricted_mutations_preserve_provenance
                 AND has_column_privilege('med_tracker_app',c.oid,'withdrawn_at','UPDATE')
                 AND has_column_privilege('med_tracker_app',c.oid,'revision','UPDATE') AS exact_update_columns,
               (SELECT count(*) FROM pg_constraint f WHERE f.conrelid=c.oid AND f.contype='f' AND f.confdeltype='r')=7 AS retained_foreign_keys,
-              (SELECT count(*) FROM pg_policy WHERE polrelid=c.oid)=7 AS policies,
+              (SELECT count(*) FROM pg_policy WHERE polrelid=c.oid)=8 AS policies,
               EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_roles owner ON owner.oid=p.proowner
                 WHERE t.tgrelid=c.oid AND NOT t.tgisinternal AND t.tgname='guardian_declarations_one_way'
                 AND p.proname='guardian_declaration_one_way' AND owner.rolname='med_tracker_owner'
@@ -314,7 +314,7 @@ require(row.try_get::<i32>("","pid")?==pid && row.try_get::<bool>("","scoped")?,
             )).await?;
             let before=effects(&app).await?;
             let response=withdraw(&app,&token,id).await?;
-            require(response.status().as_u16()==if fail_audit {500}else{200},"Global withdrawal must reach the expected commit or injected audit rollback")?;
+            require(response.status().as_u16()==if fail_audit {503}else{200},"Global withdrawal must reach the expected commit or injected audit rollback")?;
             let reached=app.fixture.admin.query_one_raw(app.fixture.admin.get_database_backend().build(
                 &Query::select().columns(["is_called", "last_value"]).from("synthetic_guardian_context_reached").to_owned())).await?
                 .ok_or_else(||DbErr::Custom("In-transaction context witness missing".into()))?;

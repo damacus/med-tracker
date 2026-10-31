@@ -29,6 +29,7 @@ mod reports;
 mod response;
 mod review_prompts;
 mod schedule_lifecycle;
+mod sharing;
 mod sync;
 mod treatments;
 mod ui_capabilities;
@@ -118,6 +119,10 @@ pub fn invitation_routes() -> Routes {
     Routes::new()
         .prefix("/api/v1")
         .add("/invitations/accept", post(invitations::accept))
+        .add(
+            "/invitations/dependent-sharing/accept",
+            post(invitations::accept).layer(Extension(invitations::DependentSharing)),
+        )
 }
 
 pub fn routes() -> Routes {
@@ -323,6 +328,15 @@ pub fn routes() -> Routes {
             "/{household_id}/schedules",
             get(schedule_lifecycle::index).post(treatments::create),
         )
+        .add("/{household_id}/shared_schedules", get(sharing::index))
+        .add(
+            "/{household_id}/shared_schedules/{id}/medicine",
+            patch(sharing::medicine),
+        )
+        .add(
+            "/{household_id}/shared_schedules/{id}/stock_binding",
+            post(sharing::bind),
+        )
         .add(
             "/{household_id}/schedules/{id}",
             get(schedule_lifecycle::show)
@@ -352,6 +366,10 @@ pub fn routes() -> Routes {
         .add(
             "/{household_id}/admin/invitations",
             get(invitations::index).post(invitations::create),
+        )
+        .add(
+            "/{household_id}/admin/dependent_sharing_invitations",
+            post(invitations::create).layer(Extension(invitations::DependentSharing)),
         )
         .add(
             "/{household_id}/admin/invitations/{id}",

@@ -20,16 +20,25 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.AccountProfileResponse
+import io.medtracker.client.models.AdoptDepartedLegacySchedule201Response
+import io.medtracker.client.models.AdoptDepartedLegacyScheduleRequest
 import io.medtracker.client.models.AuthHouseholdCollectionResponse
 import io.medtracker.client.models.AuthSessionCollectionResponse
+import io.medtracker.client.models.DependentSharingAcceptanceRequest
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.GuardianDeclarationCollectionResponse
 import io.medtracker.client.models.GuardianDeclarationResponse
 import io.medtracker.client.models.GuardianDeclarationWithdrawalRequest
 import io.medtracker.client.models.InvitationAcceptanceRequest
 import io.medtracker.client.models.InvitationAcceptanceResponse
+import io.medtracker.client.models.ListPersonalSchedules200Response
+import io.medtracker.client.models.PersonalTakenDoseCollectionResponse
 import io.medtracker.client.models.RateLimitErrorEnvelope
 import io.medtracker.client.models.UpdateAccountProfileRequest
+import io.medtracker.client.models.UpdatePersonalSchedule200Response
+import io.medtracker.client.models.UpdatePersonalScheduleRequest
+import io.medtracker.client.models.UpdateSharedSchedule200Response
+import io.medtracker.client.models.UpdateSharedScheduleRequest
 
 import com.squareup.moshi.Json
 
@@ -56,9 +65,83 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     }
 
     /**
+     * POST /invitations/dependent-sharing/accept
+     * Accept a dependent-sharing invitation as the subject&#39;s guardian.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The accepting account must hold a current captured guardian declaration for subject_person_id; authority is rechecked after the destination household lock is taken. Acceptance approves the subject&#39;s person-owned plan sharing with the destination household without making the guardian a member there, records an acceptance audit for the actual accepting account, and returns the created subject membership. sharing_consent must be the boolean true; an absent or false value returns 422. Repeating a still-active acceptance returns the same result without another write. 
+     * @param dependentSharingAcceptanceRequest 
+     * @return InvitationAcceptanceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun acceptDependentSharingInvitation(dependentSharingAcceptanceRequest: DependentSharingAcceptanceRequest) : InvitationAcceptanceResponse {
+        val localVarResponse = acceptDependentSharingInvitationWithHttpInfo(dependentSharingAcceptanceRequest = dependentSharingAcceptanceRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as InvitationAcceptanceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /invitations/dependent-sharing/accept
+     * Accept a dependent-sharing invitation as the subject&#39;s guardian.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The accepting account must hold a current captured guardian declaration for subject_person_id; authority is rechecked after the destination household lock is taken. Acceptance approves the subject&#39;s person-owned plan sharing with the destination household without making the guardian a member there, records an acceptance audit for the actual accepting account, and returns the created subject membership. sharing_consent must be the boolean true; an absent or false value returns 422. Repeating a still-active acceptance returns the same result without another write. 
+     * @param dependentSharingAcceptanceRequest 
+     * @return ApiResponse<InvitationAcceptanceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun acceptDependentSharingInvitationWithHttpInfo(dependentSharingAcceptanceRequest: DependentSharingAcceptanceRequest) : ApiResponse<InvitationAcceptanceResponse?> {
+        val localVariableConfig = acceptDependentSharingInvitationRequestConfig(dependentSharingAcceptanceRequest = dependentSharingAcceptanceRequest)
+
+        return request<DependentSharingAcceptanceRequest, InvitationAcceptanceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation acceptDependentSharingInvitation
+     *
+     * @param dependentSharingAcceptanceRequest 
+     * @return RequestConfig
+     */
+    fun acceptDependentSharingInvitationRequestConfig(dependentSharingAcceptanceRequest: DependentSharingAcceptanceRequest) : RequestConfig<DependentSharingAcceptanceRequest> {
+        val localVariableBody = dependentSharingAcceptanceRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/invitations/dependent-sharing/accept",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * POST /invitations/accept
      * Accept an invitation matching the verified session account.
-     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household. When the accepting person already participates in another household, acceptance shares that person&#39;s canonical care record and requires sharing_consent&#x3D;true; absent or false consent then returns 422.
      * @param invitationAcceptanceRequest 
      * @return InvitationAcceptanceResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -90,7 +173,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * POST /invitations/accept
      * Accept an invitation matching the verified session account.
-     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household. When the accepting person already participates in another household, acceptance shares that person&#39;s canonical care record and requires sharing_consent&#x3D;true; absent or false consent then returns 422.
      * @param invitationAcceptanceRequest 
      * @return ApiResponse<InvitationAcceptanceResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -122,6 +205,80 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/invitations/accept",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /auth/schedules/adopt
+     * Adopt an exact frozen prescription after household departure.
+     * Requires an account-bound first-party mobile credential and current self or eligible explicit guardian authority, rechecked after lock waits. Household management, app tokens and personal keys do not grant adoption. The prescription was frozen during an authorised operational departure; adoption does not read former household stock or revive its execution. Returns safe current prescription fields without private notes, pause narratives or former household/stock identifiers. Repeating adoption returns the same plan without another adoption audit or stock effect. A missing legacy origin timezone uses the configured application zone only at this authorised adoption, with adopted_application_zone provenance. 
+     * @param adoptDepartedLegacyScheduleRequest 
+     * @return AdoptDepartedLegacySchedule201Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun adoptDepartedLegacySchedule(adoptDepartedLegacyScheduleRequest: AdoptDepartedLegacyScheduleRequest) : AdoptDepartedLegacySchedule201Response {
+        val localVarResponse = adoptDepartedLegacyScheduleWithHttpInfo(adoptDepartedLegacyScheduleRequest = adoptDepartedLegacyScheduleRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as AdoptDepartedLegacySchedule201Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /auth/schedules/adopt
+     * Adopt an exact frozen prescription after household departure.
+     * Requires an account-bound first-party mobile credential and current self or eligible explicit guardian authority, rechecked after lock waits. Household management, app tokens and personal keys do not grant adoption. The prescription was frozen during an authorised operational departure; adoption does not read former household stock or revive its execution. Returns safe current prescription fields without private notes, pause narratives or former household/stock identifiers. Repeating adoption returns the same plan without another adoption audit or stock effect. A missing legacy origin timezone uses the configured application zone only at this authorised adoption, with adopted_application_zone provenance. 
+     * @param adoptDepartedLegacyScheduleRequest 
+     * @return ApiResponse<AdoptDepartedLegacySchedule201Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun adoptDepartedLegacyScheduleWithHttpInfo(adoptDepartedLegacyScheduleRequest: AdoptDepartedLegacyScheduleRequest) : ApiResponse<AdoptDepartedLegacySchedule201Response?> {
+        val localVariableConfig = adoptDepartedLegacyScheduleRequestConfig(adoptDepartedLegacyScheduleRequest = adoptDepartedLegacyScheduleRequest)
+
+        return request<AdoptDepartedLegacyScheduleRequest, AdoptDepartedLegacySchedule201Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation adoptDepartedLegacySchedule
+     *
+     * @param adoptDepartedLegacyScheduleRequest 
+     * @return RequestConfig
+     */
+    fun adoptDepartedLegacyScheduleRequestConfig(adoptDepartedLegacyScheduleRequest: AdoptDepartedLegacyScheduleRequest) : RequestConfig<AdoptDepartedLegacyScheduleRequest> {
+        val localVariableBody = adoptDepartedLegacyScheduleRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/auth/schedules/adopt",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -563,6 +720,160 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     }
 
     /**
+     * GET /auth/schedules
+     * Read the authenticated person&#39;s treatment plans.
+     * Requires account-bound first-party mobile OAuth with medtracker scope. Household sessions, app tokens, personal keys and integration grants are denied. No household participation is required. Returns prescribed clinical state and opaque revision ETags without household stock or other people&#39;s information. Existing sources are adopted at an authorised household write or departure using the configured application timezone, with explicit adopted_application_zone provenance. This is not historical zone recovery. 
+     * @return ListPersonalSchedules200Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listPersonalSchedules() : ListPersonalSchedules200Response {
+        val localVarResponse = listPersonalSchedulesWithHttpInfo()
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ListPersonalSchedules200Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /auth/schedules
+     * Read the authenticated person&#39;s treatment plans.
+     * Requires account-bound first-party mobile OAuth with medtracker scope. Household sessions, app tokens, personal keys and integration grants are denied. No household participation is required. Returns prescribed clinical state and opaque revision ETags without household stock or other people&#39;s information. Existing sources are adopted at an authorised household write or departure using the configured application timezone, with explicit adopted_application_zone provenance. This is not historical zone recovery. 
+     * @return ApiResponse<ListPersonalSchedules200Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listPersonalSchedulesWithHttpInfo() : ApiResponse<ListPersonalSchedules200Response?> {
+        val localVariableConfig = listPersonalSchedulesRequestConfig()
+
+        return request<Unit, ListPersonalSchedules200Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listPersonalSchedules
+     *
+     * @return RequestConfig
+     */
+    fun listPersonalSchedulesRequestConfig() : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/auth/schedules",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /auth/profile/history
+     * Read the authenticated person&#39;s own taken-dose history.
+     * Requires an account-bound first-party mobile OAuth credential with medtracker scope. Household sessions, app tokens, personal keys and integration grants cannot use this route. The subject comes from the authenticated account; person and household selectors are rejected. No household membership is required. Returns taken administrations across origin households, without stock details, locations or private narratives. Existing administration attribution is preserved. Results contain at most 25 records in descending taken_at, then ID order. Supply both cursor fields from next_cursor to read the next page. Timestamps are UTC. Each page rechecks current credentials and commits its access audit before releasing records. Refusals are audited, naming the actor only when the server has proved their identity. Successful reads and refusals by verified callers use the clinical ledger. Refusals without a proved identity use structured security logs without a claimed actor or database audit write. Rate-limit and unavailable-source refusals occur before authentication, keeping database work behind the rate limit. Every response is no-store. 
+     * @param beforeId  (optional)
+     * @param beforeTakenAt  (optional)
+     * @return PersonalTakenDoseCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listPersonalTakenDoses(beforeId: kotlin.Long? = null, beforeTakenAt: java.time.OffsetDateTime? = null) : PersonalTakenDoseCollectionResponse {
+        val localVarResponse = listPersonalTakenDosesWithHttpInfo(beforeId = beforeId, beforeTakenAt = beforeTakenAt)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as PersonalTakenDoseCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /auth/profile/history
+     * Read the authenticated person&#39;s own taken-dose history.
+     * Requires an account-bound first-party mobile OAuth credential with medtracker scope. Household sessions, app tokens, personal keys and integration grants cannot use this route. The subject comes from the authenticated account; person and household selectors are rejected. No household membership is required. Returns taken administrations across origin households, without stock details, locations or private narratives. Existing administration attribution is preserved. Results contain at most 25 records in descending taken_at, then ID order. Supply both cursor fields from next_cursor to read the next page. Timestamps are UTC. Each page rechecks current credentials and commits its access audit before releasing records. Refusals are audited, naming the actor only when the server has proved their identity. Successful reads and refusals by verified callers use the clinical ledger. Refusals without a proved identity use structured security logs without a claimed actor or database audit write. Rate-limit and unavailable-source refusals occur before authentication, keeping database work behind the rate limit. Every response is no-store. 
+     * @param beforeId  (optional)
+     * @param beforeTakenAt  (optional)
+     * @return ApiResponse<PersonalTakenDoseCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listPersonalTakenDosesWithHttpInfo(beforeId: kotlin.Long?, beforeTakenAt: java.time.OffsetDateTime?) : ApiResponse<PersonalTakenDoseCollectionResponse?> {
+        val localVariableConfig = listPersonalTakenDosesRequestConfig(beforeId = beforeId, beforeTakenAt = beforeTakenAt)
+
+        return request<Unit, PersonalTakenDoseCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listPersonalTakenDoses
+     *
+     * @param beforeId  (optional)
+     * @param beforeTakenAt  (optional)
+     * @return RequestConfig
+     */
+    fun listPersonalTakenDosesRequestConfig(beforeId: kotlin.Long?, beforeTakenAt: java.time.OffsetDateTime?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (beforeId != null) {
+                    put("before_id", listOf(beforeId.toString()))
+                }
+                if (beforeTakenAt != null) {
+                    put("before_taken_at", listOf(parseDateToQueryString(beforeTakenAt)))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/auth/profile/history",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /auth/sessions
      * List active API sessions for the current account.
      * Return only the caller&#39;s nonrevoked sessions in descending creation order. API-session and app-token credentials list API sessions, including devices whose access or refresh token has expired; mobile OAuth credentials list mobile grants within the configured login lifetime. Never expose access or refresh tokens or their digests. 
@@ -841,6 +1152,239 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/auth/profile",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /auth/schedules/{id}
+     * Edit, pause, resume or retire the authenticated person&#39;s plan.
+     * Uses the same account-bound OAuth restriction as the personal collection. Send the plan&#39;s opaque etag in If-Match. A stale revision returns 409. Clinical edits retain recorded dose facts. Only a current originating execution receives updates; departure is terminal even after membership restoration. Suspension retains the attachment but denies household access. Personal edits cannot select household inventory. Medicine selection remains an authorised household operation. Explicit origin_time_zone corrections change future recurrence and safety calculations; viewer zones are display-only. 
+     * @param id 
+     * @param ifMatch 
+     * @param updatePersonalScheduleRequest 
+     * @return UpdatePersonalSchedule200Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updatePersonalSchedule(id: java.util.UUID, ifMatch: kotlin.String, updatePersonalScheduleRequest: UpdatePersonalScheduleRequest) : UpdatePersonalSchedule200Response {
+        val localVarResponse = updatePersonalScheduleWithHttpInfo(id = id, ifMatch = ifMatch, updatePersonalScheduleRequest = updatePersonalScheduleRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as UpdatePersonalSchedule200Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /auth/schedules/{id}
+     * Edit, pause, resume or retire the authenticated person&#39;s plan.
+     * Uses the same account-bound OAuth restriction as the personal collection. Send the plan&#39;s opaque etag in If-Match. A stale revision returns 409. Clinical edits retain recorded dose facts. Only a current originating execution receives updates; departure is terminal even after membership restoration. Suspension retains the attachment but denies household access. Personal edits cannot select household inventory. Medicine selection remains an authorised household operation. Explicit origin_time_zone corrections change future recurrence and safety calculations; viewer zones are display-only. 
+     * @param id 
+     * @param ifMatch 
+     * @param updatePersonalScheduleRequest 
+     * @return ApiResponse<UpdatePersonalSchedule200Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updatePersonalScheduleWithHttpInfo(id: java.util.UUID, ifMatch: kotlin.String, updatePersonalScheduleRequest: UpdatePersonalScheduleRequest) : ApiResponse<UpdatePersonalSchedule200Response?> {
+        val localVariableConfig = updatePersonalScheduleRequestConfig(id = id, ifMatch = ifMatch, updatePersonalScheduleRequest = updatePersonalScheduleRequest)
+
+        return request<UpdatePersonalScheduleRequest, UpdatePersonalSchedule200Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updatePersonalSchedule
+     *
+     * @param id 
+     * @param ifMatch 
+     * @param updatePersonalScheduleRequest 
+     * @return RequestConfig
+     */
+    fun updatePersonalScheduleRequestConfig(id: java.util.UUID, ifMatch: kotlin.String, updatePersonalScheduleRequest: UpdatePersonalScheduleRequest) : RequestConfig<UpdatePersonalScheduleRequest> {
+        val localVariableBody = updatePersonalScheduleRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/auth/schedules/{id}".replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /auth/shared_schedules/{id}
+     * Edit, pause, resume or retire a shared subject&#39;s plan.
+     * Requires account-bound first-party mobile OAuth with medtracker scope and current self or captured guardian clinical authority for the subject, rechecked after lock waits. Household sessions, app tokens, personal keys and integration grants are denied; a household membership or legacy person-access grant alone is not clinical authority. Send the plan&#39;s opaque etag in If-Match. Only protected clinical fields are writable and returned; private notes, pause narratives and household stock identifiers are never exposed here, and medicine selection remains an authorised household operation. Every accepted change writes a shared-clinical audit; an audit failure rolls the whole change back. A malformed If-Match, body or action and a stale clinical revision are materialised by the shared account-session error path as 500 internal_error, unlike the personal-plan route&#39;s 422/409 taxonomy; a malformed or unknown plan id stays 404. 
+     * @param id 
+     * @param ifMatch 
+     * @param updateSharedScheduleRequest 
+     * @return UpdateSharedSchedule200Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateSharedSchedule(id: java.util.UUID, ifMatch: kotlin.String, updateSharedScheduleRequest: UpdateSharedScheduleRequest) : UpdateSharedSchedule200Response {
+        val localVarResponse = updateSharedScheduleWithHttpInfo(id = id, ifMatch = ifMatch, updateSharedScheduleRequest = updateSharedScheduleRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as UpdateSharedSchedule200Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /auth/shared_schedules/{id}
+     * Edit, pause, resume or retire a shared subject&#39;s plan.
+     * Requires account-bound first-party mobile OAuth with medtracker scope and current self or captured guardian clinical authority for the subject, rechecked after lock waits. Household sessions, app tokens, personal keys and integration grants are denied; a household membership or legacy person-access grant alone is not clinical authority. Send the plan&#39;s opaque etag in If-Match. Only protected clinical fields are writable and returned; private notes, pause narratives and household stock identifiers are never exposed here, and medicine selection remains an authorised household operation. Every accepted change writes a shared-clinical audit; an audit failure rolls the whole change back. A malformed If-Match, body or action and a stale clinical revision are materialised by the shared account-session error path as 500 internal_error, unlike the personal-plan route&#39;s 422/409 taxonomy; a malformed or unknown plan id stays 404. 
+     * @param id 
+     * @param ifMatch 
+     * @param updateSharedScheduleRequest 
+     * @return ApiResponse<UpdateSharedSchedule200Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateSharedScheduleWithHttpInfo(id: java.util.UUID, ifMatch: kotlin.String, updateSharedScheduleRequest: UpdateSharedScheduleRequest) : ApiResponse<UpdateSharedSchedule200Response?> {
+        val localVariableConfig = updateSharedScheduleRequestConfig(id = id, ifMatch = ifMatch, updateSharedScheduleRequest = updateSharedScheduleRequest)
+
+        return request<UpdateSharedScheduleRequest, UpdateSharedSchedule200Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateSharedSchedule
+     *
+     * @param id 
+     * @param ifMatch 
+     * @param updateSharedScheduleRequest 
+     * @return RequestConfig
+     */
+    fun updateSharedScheduleRequestConfig(id: java.util.UUID, ifMatch: kotlin.String, updateSharedScheduleRequest: UpdateSharedScheduleRequest) : RequestConfig<UpdateSharedScheduleRequest> {
+        val localVariableBody = updateSharedScheduleRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/auth/shared_schedules/{id}".replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * DELETE /auth/care-sharing/{id}
+     * End an approved household share for a subject&#39;s plans.
+     * Requires account-bound first-party mobile OAuth with medtracker scope. Household sessions, app tokens, personal keys and integration grants are denied. The account that approved the share, or its captured guardian for the subject, ends the approval identified by id; the plans stay person-owned and retain recorded dose facts. Repeating withdrawal after the approval has ended returns the same empty success without another audit. An id outside the account&#39;s clinical authority is hidden with 404 or denied with 403; every reachable error carries the standard envelope. 
+     * @param id 
+     * @return void
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun withdrawCareSharing(id: kotlin.Long) : Unit {
+        val localVarResponse = withdrawCareSharingWithHttpInfo(id = id)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> Unit
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /auth/care-sharing/{id}
+     * End an approved household share for a subject&#39;s plans.
+     * Requires account-bound first-party mobile OAuth with medtracker scope. Household sessions, app tokens, personal keys and integration grants are denied. The account that approved the share, or its captured guardian for the subject, ends the approval identified by id; the plans stay person-owned and retain recorded dose facts. Repeating withdrawal after the approval has ended returns the same empty success without another audit. An id outside the account&#39;s clinical authority is hidden with 404 or denied with 403; every reachable error carries the standard envelope. 
+     * @param id 
+     * @return ApiResponse<Unit?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Throws(IllegalStateException::class, IOException::class)
+    fun withdrawCareSharingWithHttpInfo(id: kotlin.Long) : ApiResponse<Unit?> {
+        val localVariableConfig = withdrawCareSharingRequestConfig(id = id)
+
+        return request<Unit, Unit>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation withdrawCareSharing
+     *
+     * @param id 
+     * @return RequestConfig
+     */
+    fun withdrawCareSharingRequestConfig(id: kotlin.Long) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/auth/care-sharing/{id}".replace("{"+"id"+"}", encodeURIComponent(id.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

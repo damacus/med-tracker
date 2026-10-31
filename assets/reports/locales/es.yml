@@ -551,6 +551,16 @@ es:
         existing_account: ¿Ya tienes una cuenta?
         sign_in: Inicia sesión
         to_accept: para aceptar esta invitación.
+        dependent_label: Persona dependiente cuya atención se compartirá
+        dependent_choose: Elija una persona dependiente
+        no_dependents: No tiene autoridad tutelar vigente y válida sobre una persona dependiente. Revise sus declaraciones antes de aceptar.
+        dependent_consent: Soy tutor declarado actualmente y apruebo compartir los planes de atención actuales y futuros, las pausas y el estado de seguridad de la última dosis de esta persona dependiente con este hogar. Las notas privadas y el historial detallado siguen siendo privados. La retirada o salida finaliza esta aprobación.
+        dependent_approved: Atención compartida aprobada
+        dependent_approved_description: Se comparten los planes actuales y futuros de la persona dependiente elegida. Usted permanece en sus hogares actuales y puede retirar la aprobación desde su cuenta.
+        return_profile: Volver a su cuenta
+        invite_guardian: Invitar a un tutor a compartir la atención
+        invite_guardian_description: Un tutor declarado actualmente elige la persona dependiente y aprueba compartir la atención. El tutor permanece en sus hogares actuales.
+        sharing_consent: Apruebo compartir mis planes de atención actuales y futuros, las pausas y el estado de seguridad de la última dosis con este hogar. Las notas privadas y el historial detallado siguen siendo privados. Al salir finaliza esta aprobación.
         invalid_title: Enlace de invitación no disponible
         invalid_guidance: Este enlace de invitación no es válido o ha caducado. Solicita una nueva invitación a un administrador del hogar.
         recovery_title: Te has unido al hogar
@@ -613,6 +623,7 @@ es:
           unavailable: No se pudo cambiar la invitación. Comprueba su estado e inténtalo de nuevo.
         form:
           email: Correo electrónico
+          guardian_email: Correo electrónico del tutor
           role: Rol del hogar
           relationship_type: Relación de la persona dependiente
           select_relationship_type: Selecciona una relación
@@ -1934,6 +1945,19 @@ es:
     overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
   profiles:
     personal:
+      plans: "Mis planes de tratamiento"
+      plans_description: "Tus planes permanecen contigo cuando dejas un hogar. Los cambios solo actualizan una conexión actual con un hogar."
+      plans_empty: "No se han registrado planes de tratamiento personales."
+      origin_zone: "Zona horaria del plan"
+      adoption_zone: "Este plan no tiene una zona horaria registrada. Al guardar se adopta la zona horaria de la aplicación que se muestra arriba. Cámbiala solo para corregir los horarios del plan."
+      adopted_zone: "Este plan existente usa la zona horaria de la aplicación en el momento de su adopción. Revísala antes de cambiar los horarios."
+      plan_times: "Horas de las dosis (HH:MM, separadas por comas)"
+      save_plan: "Guardar plan"
+      retire_plan: "Finalizar plan"
+      retire_confirmation: "Esto finaliza el plan. Las dosis registradas siguen disponibles."
+      retired: "Este plan ha finalizado."
+      invalid: "Revisa la dosis, las fechas, las horas y el nombre de la zona horaria e inténtalo de nuevo."
+      stale: "Este plan cambió mientras el formulario estaba abierto. Revisa el plan actual antes de guardar."
       clinical_invalid: "Introduce un nombre y una fecha de nacimiento válida. Los titulares de cuentas deben tener al menos 18 años."
       description: "Gestiona tu cuenta y tu información clínica."
       account_name: "Nombre visible de la cuenta"

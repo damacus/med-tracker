@@ -1,0 +1,8 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-xl mx-auto card bg-base-100 border border-base-300"><div class="card-body">
+  <h1 class="text-3xl font-semibold">{{ invitation_labels.dependent_approved }}</h1>
+  <p role="status">{{ invitation_labels.dependent_approved_description }}</p>
+  <a class="btn btn-neutral" href="/profile">{{ invitation_labels.return_profile }}</a>
+</div></section>
+{% endblock content %}

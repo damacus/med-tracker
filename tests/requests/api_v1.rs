@@ -2281,7 +2281,7 @@ pub mod account {
     }
 
     #[tokio::test]
-    async fn account_surface_lock_timeout_returns_internal_error_envelopes() {
+    async fn account_surface_lock_timeout_returns_service_unavailable_envelopes() {
         let (fixture, boot) = boot_request_fixture().await;
 
         let token = mobile_token(&fixture).await;
@@ -2339,15 +2339,18 @@ pub mod account {
             ("get", "/api/v1/auth/guardian-declarations", declarations),
             ("patch", "/api/v1/auth/guardian-declarations/1", withdrawal),
         ] {
-            assert_eq!(response.status_code(), 500, "{method} {path}");
+            assert_eq!(response.status_code(), 503, "{method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
             assert_eq!(response.header("cache-control"), "no-store");
             let request_id = response.header("x-request-id").to_str().unwrap().to_owned();
             assert!(!request_id.is_empty());
             let body: Value = response.json();
-            assert_eq!(body["error"]["code"], "internal_error", "{method} {path}");
+            assert_eq!(
+                body["error"]["code"], "service_unavailable",
+                "{method} {path}"
+            );
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(method, path, 500, &body);
+            assert_response_schema(method, path, 503, &body);
         }
     }
 }

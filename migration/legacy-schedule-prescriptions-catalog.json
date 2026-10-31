@@ -1,0 +1,929 @@
+{
+  "removed": [],
+  "changed": {
+    "column:public.legacy_schedule_prescriptions.active": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 20,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.legacy_schedule_prescriptions.adopted_person_schedule_id": {
+      "acl": [
+        "med_tracker_app=w/med_tracker_owner"
+      ],
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 19,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.captured_by_account_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 5,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.legacy_schedule_prescriptions.captured_by_membership_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 6,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.legacy_schedule_prescriptions.dmd_code": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 12,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.dmd_concept_class": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 13,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.dmd_system": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 11,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.dose_amount": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 24,
+      "storage": "m",
+      "type": "numeric(10,2)"
+    },
+    "column:public.legacy_schedule_prescriptions.dose_cycle": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 25,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.legacy_schedule_prescriptions.dose_unit": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 15,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.end_date": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 31,
+      "storage": "p",
+      "type": "date"
+    },
+    "column:public.legacy_schedule_prescriptions.frequency": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 16,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.frozen_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 35,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.legacy_schedule_prescriptions.household_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.legacy_schedule_prescriptions.max_daily_doses": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 26,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.legacy_schedule_prescriptions.medicine_name": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 10,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.min_hours_between_doses": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 27,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.legacy_schedule_prescriptions.origin_stock_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 4,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.legacy_schedule_prescriptions.origin_stock_portable_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 8,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.origin_time_zone": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 17,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.pause_instance_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 18,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.pause_started_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 33,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.legacy_schedule_prescriptions.person_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.legacy_schedule_prescriptions.request_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 9,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.retired_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 32,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.legacy_schedule_prescriptions.schedule_config": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 29,
+      "storage": "x",
+      "type": "jsonb"
+    },
+    "column:public.legacy_schedule_prescriptions.schedule_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.legacy_schedule_prescriptions.schedule_type": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 28,
+      "storage": "p",
+      "type": "integer"
+    },
+    "column:public.legacy_schedule_prescriptions.source_closed_active": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 22,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.legacy_schedule_prescriptions.source_created_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 34,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.legacy_schedule_prescriptions.source_ended_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 36,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.legacy_schedule_prescriptions.source_portable_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 7,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.legacy_schedule_prescriptions.start_date": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 30,
+      "storage": "p",
+      "type": "date"
+    },
+    "column:public.legacy_schedule_prescriptions.stock_default_known": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 21,
+      "storage": "p",
+      "type": "boolean"
+    },
+    "column:public.legacy_schedule_prescriptions.stock_dose_default": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 23,
+      "storage": "m",
+      "type": "numeric"
+    },
+    "column:public.legacy_schedule_prescriptions.stock_unit": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 14,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_adopted_canonical_identity": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (adopted_person_schedule_id, schedule_id, person_id, household_id) REFERENCES person_schedules(id, origin_schedule_id, person_id, origin_household_id) ON DELETE RESTRICT",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_frozen_source_closure": {
+      "deferrable": true,
+      "deferred": true,
+      "definition": "FOREIGN KEY (schedule_id, source_ended_at, source_closed_active) REFERENCES schedules(id, execution_ended_at, active) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescription_captured_by_membership_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL captured_by_membership_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_active_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL active",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_captured_by_account_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL captured_by_account_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_frozen_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL frozen_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_household_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL household_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_origin_stock_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL origin_stock_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_origin_stock_portable_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL origin_stock_portable_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_person_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_pkey": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "PRIMARY KEY (schedule_id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_request_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL request_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_schedule_config_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL schedule_config",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_schedule_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL schedule_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_schedule_type_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL schedule_type",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_source_closed_active_check": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "CHECK ((source_closed_active = false))",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_source_closed_active_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL source_closed_active",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_source_created_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL source_created_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_source_ended_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL source_ended_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_source_portable_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL source_portable_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.legacy_schedule_prescriptions.legacy_schedule_prescriptions_stock_default_known_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL stock_default_known",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.person_schedules.legacy_canonical_source_identity": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (origin_schedule_id, person_id, origin_household_id) REFERENCES schedules(id, person_id, household_id) ON DELETE RESTRICT",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "function:med_tracker.legacy_adoption_actor(p_subject bigint)": {
+      "acl": [
+        "med_tracker_app=X/med_tracker_owner",
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.legacy_adoption_actor(p_subject bigint)\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT med_tracker.sharing_clinical_authority(p_subject) AND\n ((current_setting('med_tracker.legacy_adoption_declaration_id',true)='self'\n   AND EXISTS(SELECT 1 FROM public.accounts actor WHERE actor.id=med_tracker.current_account_id()\n    AND actor.person_id=p_subject AND actor.active AND actor.status=2))\n OR med_tracker.sharing_guardian(p_subject)::text=current_setting('med_tracker.legacy_adoption_declaration_id',true))\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.legacy_canonical_insert_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.legacy_canonical_insert_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE frozen public.legacy_schedule_prescriptions%ROWTYPE;\nBEGIN\n SELECT * INTO frozen FROM public.legacy_schedule_prescriptions WHERE schedule_id=NEW.origin_schedule_id;\n IF NOT FOUND THEN\n  IF NULLIF(current_setting('med_tracker.legacy_adoption_source_id',true),'') IS NOT NULL THEN\n   RAISE EXCEPTION 'Exact protected prescription required' USING ERRCODE='42501';\n  END IF;\n  RETURN NEW;\n END IF;\n IF frozen.adopted_person_schedule_id IS NOT NULL OR NEW.clinical_revision<>1\n  OR frozen.schedule_id::text IS DISTINCT FROM current_setting('med_tracker.legacy_adoption_source_id',true)\n  OR NOT COALESCE(med_tracker.legacy_adoption_actor(frozen.person_id),false)\n  OR NEW.notes IS NOT NULL OR NEW.pause_reason IS NOT NULL OR NEW.pause_note IS NOT NULL\n  OR (NEW.person_id,NEW.origin_household_id,NEW.origin_schedule_id,NEW.origin_stock_id,NEW.origin_stock_portable_id,\n   NEW.medicine_name,NEW.dmd_system,NEW.dmd_code,NEW.dmd_concept_class,NEW.stock_unit,NEW.stock_dose_default,NEW.stock_default_known,\n   NEW.active,NEW.retired_at,NEW.dose_amount,NEW.dose_unit,NEW.dose_cycle,NEW.frequency,NEW.start_date,NEW.end_date,\n   NEW.max_daily_doses,NEW.min_hours_between_doses,NEW.schedule_type,NEW.schedule_config,NEW.pause_started_at,NEW.pause_instance_id,NEW.created_at)\n  IS DISTINCT FROM\n  (frozen.person_id,frozen.household_id,frozen.schedule_id,frozen.origin_stock_id,frozen.origin_stock_portable_id,\n   frozen.medicine_name,frozen.dmd_system,frozen.dmd_code,frozen.dmd_concept_class,frozen.stock_unit,frozen.stock_dose_default,frozen.stock_default_known,\n   frozen.active,frozen.retired_at,frozen.dose_amount,frozen.dose_unit,frozen.dose_cycle,frozen.frequency,frozen.start_date,frozen.end_date,\n   frozen.max_daily_doses,frozen.min_hours_between_doses,frozen.schedule_type,frozen.schedule_config,frozen.pause_started_at,frozen.pause_instance_id,frozen.source_created_at)\n  OR NEW.origin_time_zone IS DISTINCT FROM COALESCE(frozen.origin_time_zone,current_setting('med_tracker.legacy_adoption_zone',true))\n  OR NEW.timezone_provenance IS DISTINCT FROM (CASE WHEN frozen.origin_time_zone IS NULL THEN 'adopted_application_zone' ELSE 'preserved_origin_zone' END) THEN\n  RAISE EXCEPTION 'Frozen prescription must be adopted exactly' USING ERRCODE='42501';\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.legacy_prescription_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.legacy_prescription_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE source public.schedules%ROWTYPE; stock public.medications%ROWTYPE; pause record;\nBEGIN\n IF TG_OP='UPDATE' THEN\n  IF OLD.adopted_person_schedule_id IS NOT NULL OR NEW.adopted_person_schedule_id IS NULL\n   OR (to_jsonb(NEW)-'adopted_person_schedule_id') IS DISTINCT FROM (to_jsonb(OLD)-'adopted_person_schedule_id')\n   OR OLD.schedule_id::text IS DISTINCT FROM current_setting('med_tracker.legacy_adoption_source_id',true)\n   OR NOT COALESCE(med_tracker.legacy_adoption_actor(OLD.person_id),false)\n   OR NOT EXISTS(SELECT 1 FROM public.shared_schedule_states state WHERE state.id=NEW.adopted_person_schedule_id\n    AND state.person_id=OLD.person_id AND state.clinical_revision=1\n    AND state.origin_time_zone=COALESCE(OLD.origin_time_zone,current_setting('med_tracker.legacy_adoption_zone',true))\n    AND state.latest_taken_at IS NULL AND state.last_closed_pause_instance_id IS NULL\n    AND (state.active,state.retired_at,state.medicine_name,state.dmd_system,state.dmd_code,state.dmd_concept_class,\n     state.stock_unit,state.stock_dose_default,state.stock_default_known,state.dose_amount,state.dose_unit,state.dose_cycle,\n     state.frequency,state.start_date,state.end_date,state.max_daily_doses,state.min_hours_between_doses,\n     state.schedule_type,state.schedule_config,state.pause_started_at,state.pause_instance_id)\n    IS NOT DISTINCT FROM\n    (OLD.active,OLD.retired_at,OLD.medicine_name,OLD.dmd_system,OLD.dmd_code,OLD.dmd_concept_class,\n     OLD.stock_unit,OLD.stock_dose_default,OLD.stock_default_known,OLD.dose_amount,OLD.dose_unit,OLD.dose_cycle,\n     OLD.frequency,OLD.start_date,OLD.end_date,OLD.max_daily_doses,OLD.min_hours_between_doses,\n     OLD.schedule_type,OLD.schedule_config,OLD.pause_started_at,OLD.pause_instance_id)) THEN\n   RAISE EXCEPTION 'Exact protected prescription adoption required' USING ERRCODE='42501';\n  END IF;\n  RETURN NEW;\n END IF;\n IF NEW.adopted_person_schedule_id IS NOT NULL OR NEW.source_closed_active\n  OR NEW.source_ended_at<>NEW.frozen_at\n  OR NEW.captured_by_account_id<>med_tracker.current_account_id()\n  OR NEW.captured_by_membership_id<>med_tracker.current_membership_id()\n  OR NOT med_tracker.sharing_household_actor(NEW.household_id,true) THEN\n  RAISE EXCEPTION 'Current local management capture required' USING ERRCODE='42501';\n END IF;\n SELECT * INTO source FROM public.schedules WHERE id=NEW.schedule_id AND household_id=NEW.household_id FOR UPDATE;\n IF NOT FOUND OR source.person_schedule_id IS NOT NULL OR source.execution_ended_at IS NOT NULL\n  OR (NEW.source_portable_id,NEW.person_id,NEW.household_id,NEW.origin_stock_id,NEW.active,NEW.retired_at,\n   NEW.dose_amount,NEW.dose_unit,NEW.dose_cycle,NEW.frequency,NEW.start_date,NEW.end_date,\n   NEW.max_daily_doses,NEW.min_hours_between_doses,NEW.schedule_type,NEW.schedule_config,NEW.origin_time_zone,NEW.source_created_at)\n  IS DISTINCT FROM\n  (source.portable_id,source.person_id,source.household_id,source.medication_id,source.active,source.retired_at,\n   source.dose_amount,source.dose_unit,source.dose_cycle,source.frequency,source.start_date,source.end_date,\n   source.max_daily_doses,source.min_hours_between_doses,source.schedule_type,source.schedule_config,source.origin_time_zone,source.created_at) THEN\n  RAISE EXCEPTION 'Exact live legacy source required' USING ERRCODE='42501';\n END IF;\n SELECT * INTO stock FROM public.medications WHERE id=source.medication_id AND household_id=NEW.household_id FOR SHARE;\n IF NOT FOUND OR (NEW.origin_stock_portable_id,NEW.medicine_name,NEW.dmd_system,NEW.dmd_code,NEW.dmd_concept_class,NEW.stock_unit)\n  IS DISTINCT FROM (stock.portable_id,stock.name,stock.dmd_system,stock.dmd_code,stock.dmd_concept_class,stock.dose_unit)\n  OR NOT ((NEW.stock_default_known AND NEW.stock_dose_default::double precision IS NOT DISTINCT FROM stock.dose_amount)\n   OR (NOT NEW.stock_default_known AND NEW.stock_dose_default IS NULL AND stock.dose_amount IS NOT NULL)) THEN\n  RAISE EXCEPTION 'Exact local prescription stock required' USING ERRCODE='42501';\n END IF;\n IF (SELECT count(*) FROM public.medication_pause_periods WHERE schedule_id=source.id AND household_id=source.household_id AND ended_at IS NULL)>1 THEN\n  RAISE EXCEPTION 'Ambiguous current pause' USING ERRCODE='42501';\n END IF;\n SELECT portable_id,started_at INTO pause FROM public.medication_pause_periods\n WHERE schedule_id=source.id AND household_id=source.household_id AND ended_at IS NULL FOR SHARE;\n IF source.active THEN\n  IF NEW.pause_instance_id IS NOT NULL OR NEW.pause_started_at IS NOT NULL THEN\n   RAISE EXCEPTION 'Only actual current pause status may be captured' USING ERRCODE='42501';\n  END IF;\n ELSIF (NEW.pause_instance_id,NEW.pause_started_at) IS DISTINCT FROM (pause.portable_id,pause.started_at) THEN\n  RAISE EXCEPTION 'Exact current pause status required' USING ERRCODE='42501';\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.legacy_terminal_source_guard()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.legacy_terminal_source_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n IF OLD.execution_ended_at IS NOT NULL AND (TG_OP='DELETE' OR NEW IS DISTINCT FROM OLD) THEN\n  RAISE EXCEPTION 'Ended execution is immutable' USING ERRCODE='42501';\n END IF;\n IF TG_OP='DELETE' THEN RETURN OLD; END IF;\n IF current_user='med_tracker_app' AND OLD.person_schedule_id IS NULL AND OLD.execution_ended_at IS NULL\n  AND NOT COALESCE(med_tracker.sharing_clinical_authority(OLD.person_id),false)\n  AND (to_jsonb(NEW)-'updated_at') IS DISTINCT FROM (to_jsonb(OLD)-'updated_at') THEN\n  IF NEW.execution_ended_at IS NULL OR NEW.active\n   OR (to_jsonb(NEW)-ARRAY['execution_ended_at','active','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['execution_ended_at','active','updated_at']) THEN\n   RAISE EXCEPTION 'Clinical authority or exact terminal closure required' USING ERRCODE='42501';\n  END IF;\n END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "index:public.legacy_adopted_plan_once": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX legacy_adopted_plan_once ON public.legacy_schedule_prescriptions USING btree (adopted_person_schedule_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.legacy_canonical_origin_identity": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX legacy_canonical_origin_identity ON public.person_schedules USING btree (id, origin_schedule_id, person_id, origin_household_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.legacy_schedule_prescriptions_pkey": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX legacy_schedule_prescriptions_pkey ON public.legacy_schedule_prescriptions USING btree (schedule_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.legacy_source_closed_identity": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX legacy_source_closed_identity ON public.schedules USING btree (id, execution_ended_at, active)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "index:public.legacy_source_person_identity": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX legacy_source_person_identity ON public.schedules USING btree (id, person_id, household_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "internal_trigger:public.legacy_schedule_prescriptions:public.legacy_schedule_prescriptions.legacy_adopted_canonical_identity:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.legacy_schedule_prescriptions:public.legacy_schedule_prescriptions.legacy_adopted_canonical_identity:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.legacy_schedule_prescriptions:public.legacy_schedule_prescriptions.legacy_frozen_source_closure:17": {
+      "deferrable": true,
+      "deferred": true,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.legacy_schedule_prescriptions:public.legacy_schedule_prescriptions.legacy_frozen_source_closure:5": {
+      "deferrable": true,
+      "deferred": true,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.person_schedules:public.legacy_schedule_prescriptions.legacy_adopted_canonical_identity:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_schedules:public.legacy_schedule_prescriptions.legacy_adopted_canonical_identity:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.person_schedules:public.person_schedules.legacy_canonical_source_identity:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_schedules:public.person_schedules.legacy_canonical_source_identity:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.schedules:public.legacy_schedule_prescriptions.legacy_frozen_source_closure:17": {
+      "deferrable": true,
+      "deferred": true,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.schedules:public.legacy_schedule_prescriptions.legacy_frozen_source_closure:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.schedules:public.person_schedules.legacy_canonical_source_identity:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.schedules:public.person_schedules.legacy_canonical_source_identity:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_restrict_del\"()",
+      "type": 9
+    },
+    "policy:public.legacy_schedule_prescriptions.legacy_prescription_adopt": {
+      "check": "med_tracker.sharing_clinical_authority(person_id)",
+      "command": "w",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "med_tracker.sharing_clinical_authority(person_id)"
+    },
+    "policy:public.legacy_schedule_prescriptions.legacy_prescription_capture": {
+      "check": "med_tracker.sharing_household_actor(household_id, true)",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null
+    },
+    "policy:public.legacy_schedule_prescriptions.legacy_prescription_clinical_read": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "med_tracker.sharing_clinical_authority(person_id)"
+    },
+    "policy:public.person_schedules.legacy_prescription_canonical_insert": {
+      "check": "(med_tracker.legacy_adoption_actor(person_id) AND (EXISTS ( SELECT 1\n   FROM legacy_schedule_prescriptions frozen\n  WHERE ((frozen.schedule_id = person_schedules.origin_schedule_id) AND (frozen.person_id = person_schedules.person_id) AND (frozen.household_id = person_schedules.origin_household_id)))))",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null
+    },
+    "relation:public.legacy_schedule_prescriptions": {
+      "access_method": "heap",
+      "acl": [
+        "med_tracker_app=ar/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "force_rls": true,
+      "kind": "r",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "d",
+      "rls": true,
+      "tablespace": null
+    },
+    "trigger:public.legacy_schedule_prescriptions.legacy_prescription_guard": {
+      "definition": "CREATE TRIGGER legacy_prescription_guard BEFORE INSERT OR UPDATE ON public.legacy_schedule_prescriptions FOR EACH ROW EXECUTE FUNCTION med_tracker.legacy_prescription_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.person_schedules.legacy_canonical_insert_guard": {
+      "definition": "CREATE TRIGGER legacy_canonical_insert_guard BEFORE INSERT ON public.person_schedules FOR EACH ROW EXECUTE FUNCTION med_tracker.legacy_canonical_insert_guard()",
+      "enabled": "O"
+    },
+    "trigger:public.schedules.legacy_terminal_source_guard": {
+      "definition": "CREATE TRIGGER legacy_terminal_source_guard BEFORE DELETE OR UPDATE ON public.schedules FOR EACH ROW EXECUTE FUNCTION med_tracker.legacy_terminal_source_guard()",
+      "enabled": "O"
+    }
+  }
+}

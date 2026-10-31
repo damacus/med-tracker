@@ -10,6 +10,24 @@ pub(super) struct ProposedTake {
     pub(super) selected: medication::Model,
 }
 
+enum Prescription {
+    Private(crate::models::entities::person_schedule::Model),
+    Shared(crate::models::entities::shared_schedule::Model),
+}
+
+impl Prescription {
+    fn stock_matches(&self, stock: &medication::Model) -> bool {
+        match self {
+            Self::Private(plan) => {
+                crate::models::care::person_schedules::stock_matches(plan, stock)
+            }
+            Self::Shared(plan) => {
+                crate::models::care::person_schedules::projection::stock_matches(plan, stock)
+            }
+        }
+    }
+}
+
 pub(super) fn valid_numeric_10_2(amount: Decimal) -> bool {
     amount > Decimal::ZERO && amount.normalize().scale() <= 2 && amount < Decimal::from(100_000_000)
 }
@@ -49,7 +67,8 @@ pub(super) async fn prepare(
             cause: Some(TakeFailureCause::Paused),
         });
     }
-    let effective_date = local_date_in_zone(taken_at, context.zone);
+    let zone = source.zone.unwrap_or(context.zone);
+    let effective_date = local_date_in_zone(taken_at, zone);
     if !applies_on(&source, effective_date) {
         return Err(error(
             ErrorKind::Validation,
@@ -79,6 +98,7 @@ pub(super) async fn prepare(
     let unit = source
         .dose_unit
         .clone()
+        .filter(|unit| crate::models::care::treatments::supported_unit(unit))
         .ok_or_else(|| error(ErrorKind::Validation, "Invalid dose configured"))?;
     let original = medication::Entity::find_by_id(source.medication_id)
         .in_tenant(household_id)
@@ -86,6 +106,34 @@ pub(super) async fn prepare(
         .await
         .map_err(OperationError::from)?
         .ok_or(OperationError::NotFound)?;
+    let prescription = if let Some(id) = source.person_schedule_id.as_ref() {
+        Some(
+            if let Some(plan) = crate::models::entities::person_schedule::Entity::find_by_id(id)
+                .one(db)
+                .await?
+            {
+                Prescription::Private(plan)
+            } else {
+                Prescription::Shared(
+                    crate::models::entities::shared_schedule::Entity::find_by_id(id)
+                        .one(db)
+                        .await?
+                        .ok_or(OperationError::NotFound)?,
+                )
+            },
+        )
+    } else {
+        None
+    };
+    if let Some(plan) = prescription.as_ref()
+        && !plan.stock_matches(&original)
+    {
+        return Err(error(
+            ErrorKind::Validation,
+            "Stock no longer matches the prescribed medicine",
+        )
+        .into());
+    }
     let candidates = access::medication_scope(context.tenant)
         .filter(stock_candidate_condition(&original))
         .all(db)
@@ -120,6 +168,9 @@ pub(super) async fn prepare(
         .filter(|value| {
             candidate_ids.contains(&value.id)
                 && same_stock_signature(value, &original)
+                && prescription
+                    .as_ref()
+                    .is_none_or(|plan| plan.stock_matches(value))
                 && value
                     .current_supply
                     .is_none_or(|supply| supply > Decimal::ZERO)
@@ -166,7 +217,7 @@ pub(super) async fn prepare(
     Ok(ProposedTake {
         source,
         taken_at,
-        zone: context.zone,
+        zone,
         amount,
         unit,
         selected,

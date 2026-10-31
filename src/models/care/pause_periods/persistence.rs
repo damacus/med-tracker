@@ -54,6 +54,14 @@ pub(super) async fn set_source_active(
             model.active = Set(active);
             model.updated_at = Set(Utc::now().naive_utc());
             let row = model.update(db).await.map_err(database_error)?;
+            let row = crate::models::care::person_schedules::save_execution(
+                context.tenant,
+                row,
+                None,
+                crate::models::care::doses::app_zone(context.tenant.settings()),
+                context.provenance,
+            )
+            .await?;
             record_version(
                 context,
                 "Schedule",

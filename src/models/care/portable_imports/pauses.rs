@@ -81,22 +81,32 @@ pub(super) async fn reconcile_pauses(
         if portable_ids.is_empty() {
             continue;
         }
-        let ids = json!(portable_ids.into_iter().collect::<Vec<_>>()).to_string();
-        let table = table(kind);
-        let sql = format!(
-            "WITH desired AS (SELECT source.id, EXISTS (SELECT 1 FROM medication_pause_periods period WHERE period.household_id = source.household_id AND period.{foreign_key} = source.id AND period.ended_at IS NULL) AS paused FROM {table} source WHERE source.household_id = $1 AND source.portable_id IN (SELECT jsonb_array_elements_text($2::jsonb))) UPDATE {table} source SET active = NOT desired.paused, updated_at = NOW() FROM desired WHERE source.id = desired.id AND source.active IS DISTINCT FROM NOT desired.paused AND (source.retired_at IS NULL OR desired.paused) RETURNING source.id, source.portable_id, source.active"
-        );
-        let changed = db
-            .query_all_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                sql,
-                [tenant.scope().household_id.into(), ids.into()],
-            ))
-            .await?;
-        for row in changed {
-            let id: i64 = row.try_get("", "id")?;
-            let portable_id: String = row.try_get("", "portable_id")?;
-            let active: bool = row.try_get("", "active")?;
+        let changed = if kind == "schedules" {
+            reconcile_local_schedules(db, tenant.scope().household_id, portable_ids).await?
+        } else {
+            let ids = json!(portable_ids.into_iter().collect::<Vec<_>>()).to_string();
+            let table = table(kind);
+            let sql = format!(
+                "WITH desired AS (SELECT source.id, EXISTS (SELECT 1 FROM medication_pause_periods period WHERE period.household_id = source.household_id AND period.{foreign_key} = source.id AND period.ended_at IS NULL) AS paused FROM {table} source WHERE source.household_id = $1 AND source.portable_id IN (SELECT jsonb_array_elements_text($2::jsonb))) UPDATE {table} source SET active = NOT desired.paused, updated_at = NOW() FROM desired WHERE source.id = desired.id AND source.active IS DISTINCT FROM NOT desired.paused AND (source.retired_at IS NULL OR desired.paused) RETURNING source.id, source.portable_id, source.active"
+            );
+            let changed = db
+                .query_all_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    sql,
+                    [tenant.scope().household_id.into(), ids.into()],
+                ))
+                .await?;
+            changed
+                .into_iter()
+                .map(|row| {
+                    let id: i64 = row.try_get("", "id")?;
+                    let portable_id: String = row.try_get("", "portable_id")?;
+                    let active: bool = row.try_get("", "active")?;
+                    Ok((id, portable_id, active))
+                })
+                .collect::<Result<Vec<_>, OperationError>>()?
+        };
+        for (id, portable_id, active) in changed {
             administration::persistence::record_version_as(
                 tenant,
                 record_type,
@@ -129,4 +139,44 @@ pub(super) async fn reconcile_pauses(
         }
     }
     Ok(())
+}
+
+async fn reconcile_local_schedules(
+    db: &DatabaseTransaction,
+    household_id: i64,
+    portable_ids: HashSet<String>,
+) -> Result<Vec<(i64, String, bool)>, OperationError> {
+    use crate::models::entities::{pause_period, schedule};
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
+    let sources = schedule::Entity::find()
+        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .filter(schedule::Column::PortableId.is_in(portable_ids))
+        .filter(schedule::Column::PersonScheduleId.is_null())
+        .lock_exclusive()
+        .all(db)
+        .await?;
+    let open = pause_period::Entity::find()
+        .select_only()
+        .column(pause_period::Column::ScheduleId)
+        .filter(pause_period::Column::HouseholdId.eq(household_id))
+        .filter(pause_period::Column::ScheduleId.is_in(sources.iter().map(|row| row.id)))
+        .filter(pause_period::Column::EndedAt.is_null())
+        .into_tuple::<Option<i64>>()
+        .all(db)
+        .await?;
+    let open: HashSet<i64> = open.into_iter().flatten().collect();
+    let mut changed = Vec::new();
+    for source in sources {
+        let paused = open.contains(&source.id);
+        if source.active == paused && (source.retired_at.is_none() || paused) {
+            let id = source.id;
+            let portable_id = source.portable_id.clone();
+            let mut active: schedule::ActiveModel = source.into();
+            active.active = Set(!paused);
+            active.updated_at = Set(Utc::now().naive_utc());
+            active.update(db).await?;
+            changed.push((id, portable_id, !paused));
+        }
+    }
+    Ok(changed)
 }

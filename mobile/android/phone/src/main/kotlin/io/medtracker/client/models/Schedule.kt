@@ -38,6 +38,7 @@ import com.squareup.moshi.JsonClass
  * @param endDate 
  * @param active 
  * @param paused 
+ * @param pauseStartedAt 
  * @param canManage Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority.
  * @param notes 
  * @param updatedAt 
@@ -45,6 +46,9 @@ import com.squareup.moshi.JsonClass
  * @param minHoursBetweenDoses 
  * @param scheduleType 
  * @param scheduleConfig 
+ * @param personScheduleId Canonical person-owned plan identity; distinct from this household source ID. Null until an existing source is adopted.
+ * @param clinicalRevision 
+ * @param originTimeZone Stored named calendar and safety zone. New plans capture the creating sharer's zone; existing sources adopt the configured application zone once. Viewer zones do not redefine it.
  * @param currentPausePeriod 
  * @param canRecord Optional Rust browser projection of the current member's dose-recording permission. Dose submission checks permission again.
  * @param eligibleStockMedicationIds Optional Rust browser projection of scoped, matching stock sources with untracked or positive supply. Dose submission checks stock again.
@@ -95,6 +99,9 @@ data class Schedule (
     @Json(name = "paused")
     val paused: kotlin.Boolean,
 
+    @Json(name = "pause_started_at")
+    val pauseStartedAt: java.time.OffsetDateTime?,
+
     /* Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority. */
     @Json(name = "can_manage")
     val canManage: kotlin.Boolean,
@@ -116,6 +123,17 @@ data class Schedule (
 
     @Json(name = "schedule_config")
     val scheduleConfig: ScheduleConfig,
+
+    /* Canonical person-owned plan identity; distinct from this household source ID. Null until an existing source is adopted. */
+    @Json(name = "person_schedule_id")
+    val personScheduleId: java.util.UUID? = null,
+
+    @Json(name = "clinical_revision")
+    val clinicalRevision: kotlin.Long? = null,
+
+    /* Stored named calendar and safety zone. New plans capture the creating sharer's zone; existing sources adopt the configured application zone once. Viewer zones do not redefine it. */
+    @Json(name = "origin_time_zone")
+    val originTimeZone: kotlin.String? = null,
 
     @Json(name = "current_pause_period")
     val currentPausePeriod: NullableMedicationPausePeriod? = null,

@@ -531,7 +531,7 @@ async fn invitations_user_session_acceptance_replays_once_and_never_restores_rev
     let acceptance = seed_acceptance(&app).await;
     let access = &acceptance.bearer;
     let endpoint = format!("{}/api/v1/invitations/accept", app.origin);
-    let body = json!({"token":acceptance.token});
+    let body = json!({"token":acceptance.token,"sharing_consent":true});
     let first = app
         .client
         .post(&endpoint)
@@ -591,7 +591,7 @@ async fn invitations_expiry_and_current_inviter_authority_prevent_partial_accept
     let acceptance = seed_acceptance(&app).await;
     let access = &acceptance.bearer;
     let endpoint = format!("{}/api/v1/invitations/accept", app.origin);
-    let body = json!({"token":acceptance.token});
+    let body = json!({"token":acceptance.token,"sharing_consent":true});
     let mut invitation = acceptance.invitation.clone().into_active_model();
     invitation.expires_at = Set(chrono::Utc::now().naive_utc() - chrono::Duration::seconds(1));
     invitation.update(&app.fixture.admin).await.unwrap();
@@ -1010,7 +1010,7 @@ async fn parent_label_cannot_replace_inviter_household_authority() {
             .client
             .post(&endpoint)
             .bearer_auth(access)
-            .json(&json!({"token":acceptance.token}))
+            .json(&json!({"token":acceptance.token,"sharing_consent":true}))
             .send()
             .await
             .unwrap();
@@ -1033,7 +1033,7 @@ async fn parent_label_cannot_replace_inviter_household_authority() {
         .client
         .post(&endpoint)
         .bearer_auth(access)
-        .json(&json!({"token":acceptance.token}))
+        .json(&json!({"token":acceptance.token,"sharing_consent":true}))
         .send()
         .await
         .unwrap();

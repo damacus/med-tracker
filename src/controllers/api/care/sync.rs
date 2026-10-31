@@ -312,8 +312,12 @@ fn error_reply(error: OperationError, request_id: &str) -> (StatusCode, Value, O
             None,
         ),
         OperationError::Unavailable => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            error_body("internal_error", "Internal server error", request_id),
+            StatusCode::SERVICE_UNAVAILABLE,
+            error_body(
+                "service_unavailable",
+                "Service is temporarily unavailable",
+                request_id,
+            ),
             None,
         ),
     }

@@ -1,4 +1,6 @@
 use super::*;
+use crate::models::entities::schedule;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 pub(crate) async fn authorized(
     tenant: &TenantTransaction,
@@ -90,6 +92,36 @@ pub(crate) async fn authorized(
         })
     {
         return Ok(false);
+    }
+    // Every take restored onto a still-linked canonical source mints its
+    // immutable evidence and safety index; that application requires the
+    // current person/guardian clinical authority in addition to the household
+    // import permission checked above.
+    for row in plan.rows("medication_takes") {
+        if row["source_type"].as_str() != Some("schedule") {
+            continue;
+        }
+        let Some(schedule_id) = row["source_portable_id"]
+            .as_str()
+            .and_then(|id| index.get("schedules", id))
+        else {
+            continue;
+        };
+        if let Some(source) = schedule::Entity::find_by_id(schedule_id)
+            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .filter(schedule::Column::PersonScheduleId.is_not_null())
+            .filter(schedule::Column::CanonicalOrigin.eq(true))
+            .filter(schedule::Column::ExecutionEndedAt.is_null())
+            .one(tenant.transaction())
+            .await?
+            && !super::super::person_schedules::sharing::clinical_authority(
+                tenant.transaction(),
+                crate::models::ids::PersonId::from_database(source.person_id),
+            )
+            .await?
+        {
+            return Ok(false);
+        }
     }
     if manager {
         return Ok(true);

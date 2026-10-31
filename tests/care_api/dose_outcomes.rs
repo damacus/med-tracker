@@ -99,7 +99,7 @@ async fn dose_outcomes_not_taken_replay_reopen_and_take_preserve_stock_and_histo
             .client
             .post(format!("{endpoint}/not_taken"))
             .bearer_auth(&token)
-            .header("idempotency-key", format!("synthetic-miss-{id}"))
+            .header("idempotency-key", format!("synthetic-miss-{source}-{id}"))
             .json(&body)
             .send()
             .await
@@ -116,7 +116,7 @@ async fn dose_outcomes_not_taken_replay_reopen_and_take_preserve_stock_and_histo
             .client
             .post(format!("{endpoint}/not_taken"))
             .bearer_auth(&token)
-            .header("idempotency-key", format!("synthetic-miss-{id}"))
+            .header("idempotency-key", format!("synthetic-miss-{source}-{id}"))
             .json(&body)
             .send()
             .await
@@ -189,7 +189,8 @@ async fn dose_outcomes_not_taken_replay_reopen_and_take_preserve_stock_and_histo
                 stale,
                 reopened_status
             ),
-            (200, 200, 200, 409, 200)
+            (200, 200, 200, 409, 200),
+            "source={source} list={list} first={first} replay={replay} reopened={reopened}"
         );
         assert_eq!(first, replay);
         assert_eq!(first["data"]["outcome"], "not_taken");
@@ -312,7 +313,7 @@ async fn dose_outcomes_version_failure_rolls_back_decision_and_records_attempt()
         .unwrap()
         .status()
         .as_u16();
-    let row=app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("is_called")).from("synthetic_outcome_reached").to_owned()), "reached").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("medication_dose_occurrences").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id))).to_owned()), "records").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("versions").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("item_type").eq(QueryExpr::val("MedicationDoseOccurrence")))).to_owned()), "versions").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("api_change_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("record_type").eq(QueryExpr::val("MedicationDoseOccurrence")))).to_owned()), "changes").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("api_idempotency_keys").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("key").eq(QueryExpr::val("synthetic-outcome-rollback")))).to_owned()), "keys").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("500")))).to_owned()), "attempts").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("current_supply").cast_as("text")).from("medications").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("id").eq(QueryExpr::val(fixture_medication_id)))).to_owned()), "stock").to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("is_called")).from("synthetic_outcome_reached").to_owned()), "reached").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("medication_dose_occurrences").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id))).to_owned()), "records").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("versions").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("item_type").eq(QueryExpr::val("MedicationDoseOccurrence")))).to_owned()), "versions").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("api_change_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("record_type").eq(QueryExpr::val("MedicationDoseOccurrence")))).to_owned()), "changes").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("api_idempotency_keys").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("key").eq(QueryExpr::val("synthetic-outcome-rollback")))).to_owned()), "keys").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk)))).from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("503")))).to_owned()), "attempts").expr_as(QueryExpr::expr(Query::select().expr(QueryExpr::col("current_supply").cast_as("text")).from("medications").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("id").eq(QueryExpr::val(fixture_medication_id)))).to_owned()), "stock").to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let counts: Vec<i64> = ["records", "versions", "changes", "keys", "attempts"]
         .iter()
@@ -335,7 +336,7 @@ async fn dose_outcomes_version_failure_rolls_back_decision_and_records_attempt()
         .await
         .unwrap();
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert!(reached);
     assert_eq!(counts, vec![0, 0, 0, 0, 1]);
     assert_eq!(stock, "10.00");
@@ -1207,7 +1208,7 @@ async fn dose_outcomes_source_lookup_precedes_absent_signing_key() {
         .status()
         .as_u16();
     app.close().await;
-    assert_eq!((source, malformed, existing), (404, 404, 500));
+    assert_eq!((source, malformed, existing), (404, 404, 503));
 }
 
 #[tokio::test]

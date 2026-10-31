@@ -197,7 +197,7 @@ pub(super) fn valid_taper_step(value: &Value) -> bool {
         "amount" | "dose_amount" => {
             parse_decimal(value).is_some_and(|amount| amount > Decimal::ZERO)
         }
-        "unit" | "dose_unit" => value.as_str().is_some_and(|value| !value.is_empty()),
+        "unit" | "dose_unit" => value.as_str().is_some_and(supported_unit),
         "max_daily_doses" => value
             .as_i64()
             .is_some_and(|value| value > 0 && value <= i32::MAX as i64),
@@ -318,6 +318,18 @@ pub(super) fn parse_input(attributes: &Map<String, Value>) -> Result<ScheduleInp
         })
         .transpose()?;
     Ok(ScheduleInput {
+        origin_time_zone: attributes
+            .get("origin_time_zone")
+            .map(|value| {
+                value
+                    .as_str()
+                    .and_then(|value| value.parse().ok())
+                    .ok_or(InputFailure::Invalid(
+                        "origin_time_zone",
+                        "must be a named timezone",
+                    ))
+            })
+            .transpose()?,
         person_id,
         medication_id,
         source_dosage_option_id,

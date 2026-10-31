@@ -5,6 +5,7 @@ mod identity;
 mod links;
 mod mapping;
 mod pauses;
+mod person_schedules;
 mod preflight;
 mod validation;
 mod writing;

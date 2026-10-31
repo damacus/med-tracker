@@ -1,0 +1,985 @@
+{
+  "removed": [],
+  "changed": {
+    "column:public.shared_schedule_adoption_facts.authentication_method": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 15,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_adoption_facts.captured_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 23,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_adoption_facts.captured_by_account_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 6,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.captured_by_membership_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 8,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.captured_by_person_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 7,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.client_uuid": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 13,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_adoption_facts.credential_reference": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 16,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_adoption_facts.dose_amount": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 24,
+      "storage": "m",
+      "type": "numeric(10,2)"
+    },
+    "column:public.shared_schedule_adoption_facts.dose_unit": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 14,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_adoption_facts.fact_hash": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 25,
+      "storage": "x",
+      "type": "bytea"
+    },
+    "column:public.shared_schedule_adoption_facts.guardian_declaration_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 19,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.household_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 4,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.medication_take_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 1,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.original_version_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 5,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.person_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 3,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.person_schedule_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 9,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_adoption_facts.request_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 12,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_adoption_facts.source_portable_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 10,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_adoption_facts.source_schedule_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 2,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.take_created_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 21,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_adoption_facts.take_portable_id": {
+      "acl": null,
+      "collation": "pg_catalog.default",
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 11,
+      "storage": "x",
+      "type": "character varying"
+    },
+    "column:public.shared_schedule_adoption_facts.take_updated_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 22,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_adoption_facts.taken_at": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": true,
+      "options": null,
+      "position": 20,
+      "storage": "p",
+      "type": "timestamp without time zone"
+    },
+    "column:public.shared_schedule_adoption_facts.taken_from_location_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 18,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "column:public.shared_schedule_adoption_facts.taken_from_medication_id": {
+      "acl": null,
+      "collation": null,
+      "compression": "",
+      "default": null,
+      "generated": "",
+      "identity": "",
+      "not_null": false,
+      "options": null,
+      "position": 17,
+      "storage": "p",
+      "type": "bigint"
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_captured_by_account_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (captured_by_account_id) REFERENCES accounts(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_captured_by_membership_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (captured_by_membership_id) REFERENCES household_memberships(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_captured_by_person_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (captured_by_person_id) REFERENCES people(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_guardian_declaration_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (guardian_declaration_id) REFERENCES guardian_declarations(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_household_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (household_id) REFERENCES households(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_medication_take_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (medication_take_id) REFERENCES medication_takes(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_original_version_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (original_version_id) REFERENCES versions(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_person_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (person_id) REFERENCES people(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_person_schedule_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (person_schedule_id) REFERENCES person_schedules(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.adoption_fact_source_schedule_id": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "FOREIGN KEY (source_schedule_id) REFERENCES schedules(id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_fac_captured_by_membership_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL captured_by_membership_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_captured_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL captured_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_captured_by_account_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL captured_by_account_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_captured_by_person_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL captured_by_person_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_dose_amount_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL dose_amount",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_fact_hash_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL fact_hash",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_household_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL household_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_medication_take_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL medication_take_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_original_version_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL original_version_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_person_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_person_schedule_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL person_schedule_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_pkey": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "PRIMARY KEY (medication_take_id)",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": true,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_request_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL request_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_source_portable_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL source_portable_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_source_schedule_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL source_schedule_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_take_created_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL take_created_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_take_portable_id_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL take_portable_id",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_take_updated_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL take_updated_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "constraint:public.shared_schedule_adoption_facts.shared_schedule_adoption_facts_taken_at_not_null": {
+      "deferrable": false,
+      "deferred": false,
+      "definition": "NOT NULL taken_at",
+      "enforced": true,
+      "inherit_count": 0,
+      "local": true,
+      "no_inherit": false,
+      "validated": true
+    },
+    "function:med_tracker.adopted_take_immutable()": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.adopted_take_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n IF current_user='med_tracker_app' AND (TG_OP='DELETE' OR NEW IS DISTINCT FROM OLD)\n  AND EXISTS(SELECT 1 FROM public.shared_schedule_adoption_facts fact WHERE fact.medication_take_id=OLD.id) THEN\n  RAISE EXCEPTION 'Captured administration is immutable' USING ERRCODE='42501';\n END IF;\n IF TG_OP='DELETE' THEN RETURN OLD; END IF;\n RETURN NEW;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.adoption_audit_time_matches(encoded text, actual timestamp without time zone)": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.adoption_audit_time_matches(encoded text, actual timestamp without time zone)\n RETURNS boolean\n LANGUAGE plpgsql\n IMMUTABLE\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE decoded timestamp;\nBEGIN\n IF encoded IS NULL OR actual IS NULL THEN RETURN encoded IS NULL AND actual IS NULL; END IF;\n IF encoded~'(Z|[+-][0-9]{2}:[0-9]{2})$' THEN decoded:=timezone('UTC',encoded::timestamptz);\n ELSE decoded:=encoded::timestamp; END IF;\n RETURN decoded=actual OR (position('.' in encoded)=0 AND decoded=date_trunc('second',actual));\nEXCEPTION WHEN invalid_datetime_format OR datetime_field_overflow THEN RETURN false;\nEND $function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "function:med_tracker.adoption_fact_hash(fact shared_schedule_adoption_facts)": {
+      "acl": [
+        "med_tracker_owner=X/med_tracker_owner"
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION med_tracker.adoption_fact_hash(fact shared_schedule_adoption_facts)\n RETURNS bytea\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'pg_catalog'\nAS $function$\n SELECT sha256(convert_to(jsonb_build_array('live-adoption-v1',fact.person_schedule_id,\n  fact.source_schedule_id,fact.source_portable_id,fact.person_id,fact.household_id,\n  fact.medication_take_id,fact.take_portable_id,fact.original_version_id,fact.client_uuid,\n  to_char(fact.taken_at,'YYYY-MM-DD\"T\"HH24:MI:SS.US'),fact.dose_amount,fact.dose_unit,fact.taken_from_medication_id,\n  fact.taken_from_location_id,to_char(fact.take_created_at,'YYYY-MM-DD\"T\"HH24:MI:SS.US'),\n  to_char(fact.take_updated_at,'YYYY-MM-DD\"T\"HH24:MI:SS.US'))::text,'UTF8'))\n$function$\n",
+      "owner": "med_tracker_owner"
+    },
+    "index:public.shared_schedule_adoption_facts_pkey": {
+      "clustered": false,
+      "definition": "CREATE UNIQUE INDEX shared_schedule_adoption_facts_pkey ON public.shared_schedule_adoption_facts USING btree (medication_take_id)",
+      "live": true,
+      "options": null,
+      "owner": "med_tracker_owner",
+      "ready": true,
+      "replica_identity": false,
+      "tablespace": null,
+      "valid": true
+    },
+    "internal_trigger:public.accounts:public.shared_schedule_adoption_facts.adoption_fact_captured_by_account_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.accounts:public.shared_schedule_adoption_facts.adoption_fact_captured_by_account_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.guardian_declarations:public.shared_schedule_adoption_facts.adoption_fact_guardian_declaration_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.guardian_declarations:public.shared_schedule_adoption_facts.adoption_fact_guardian_declaration_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.household_memberships:public.shared_schedule_adoption_facts.adoption_fact_captured_by_membership_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.household_memberships:public.shared_schedule_adoption_facts.adoption_fact_captured_by_membership_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.households:public.shared_schedule_adoption_facts.adoption_fact_household_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.households:public.shared_schedule_adoption_facts.adoption_fact_household_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.medication_takes:public.shared_schedule_adoption_facts.adoption_fact_medication_take_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.medication_takes:public.shared_schedule_adoption_facts.adoption_fact_medication_take_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.people:public.shared_schedule_adoption_facts.adoption_fact_captured_by_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.people:public.shared_schedule_adoption_facts.adoption_fact_captured_by_person_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.people:public.shared_schedule_adoption_facts.adoption_fact_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.people:public.shared_schedule_adoption_facts.adoption_fact_person_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.person_schedules:public.shared_schedule_adoption_facts.adoption_fact_person_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.person_schedules:public.shared_schedule_adoption_facts.adoption_fact_person_schedule_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.schedules:public.shared_schedule_adoption_facts.adoption_fact_source_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.schedules:public.shared_schedule_adoption_facts.adoption_fact_source_schedule_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_captured_by_account_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_captured_by_account_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_captured_by_membership_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_captured_by_membership_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_captured_by_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_captured_by_person_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_guardian_declaration_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_guardian_declaration_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_household_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_household_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_medication_take_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_medication_take_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_original_version_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_original_version_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_person_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_person_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_person_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_person_schedule_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_source_schedule_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.shared_schedule_adoption_facts:public.shared_schedule_adoption_facts.adoption_fact_source_schedule_id:5": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_check_ins\"()",
+      "type": 5
+    },
+    "internal_trigger:public.versions:public.shared_schedule_adoption_facts.adoption_fact_original_version_id:17": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_upd\"()",
+      "type": 17
+    },
+    "internal_trigger:public.versions:public.shared_schedule_adoption_facts.adoption_fact_original_version_id:9": {
+      "deferrable": false,
+      "deferred": false,
+      "enabled": "O",
+      "function": "\"RI_FKey_noaction_del\"()",
+      "type": 9
+    },
+    "policy:public.shared_schedule_adoption_facts.adoption_fact_fixed_validator": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_owner"
+      ],
+      "using": "((household_id = med_tracker.current_household_id()) AND ((medication_take_id)::text = current_setting('med_tracker.sharing_take_id'::text, true)))"
+    },
+    "policy:public.shared_schedule_adoption_facts.adoption_fact_local_insert": {
+      "check": "((household_id = med_tracker.current_household_id()) AND med_tracker.sharing_clinical_authority(person_id) AND (EXISTS ( SELECT 1\n   FROM (schedules source\n     JOIN person_schedules plan ON (((plan.id)::text = (shared_schedule_adoption_facts.person_schedule_id)::text)))\n  WHERE ((source.id = shared_schedule_adoption_facts.source_schedule_id) AND (source.household_id = shared_schedule_adoption_facts.household_id) AND (source.person_id = shared_schedule_adoption_facts.person_id) AND (source.person_schedule_id IS NULL) AND (source.execution_ended_at IS NULL) AND (plan.origin_schedule_id = source.id) AND (plan.origin_household_id = source.household_id) AND (plan.person_id = source.person_id)))))",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null
+    },
+    "policy:public.shared_schedule_adoption_facts.adoption_fact_local_read": {
+      "check": null,
+      "command": "r",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": "((household_id = med_tracker.current_household_id()) AND med_tracker.sharing_household_actor(household_id, false))"
+    },
+    "relation:public.shared_schedule_adoption_facts": {
+      "access_method": "heap",
+      "acl": [
+        "med_tracker_app=ar/med_tracker_owner",
+        "med_tracker_owner=arwdDxtm/med_tracker_owner"
+      ],
+      "force_rls": true,
+      "kind": "r",
+      "options": null,
+      "owner": "med_tracker_owner",
+      "partition": false,
+      "partition_bound": null,
+      "partition_key": null,
+      "persistence": "p",
+      "replica_identity": "d",
+      "rls": true,
+      "tablespace": null
+    },
+    "trigger:public.medication_takes.adopted_take_immutable": {
+      "definition": "CREATE TRIGGER adopted_take_immutable BEFORE DELETE OR UPDATE ON public.medication_takes FOR EACH ROW EXECUTE FUNCTION med_tracker.adopted_take_immutable()",
+      "enabled": "O"
+    },
+    "trigger:public.shared_schedule_adoption_facts.adoption_fact_guard": {
+      "definition": "CREATE TRIGGER adoption_fact_guard BEFORE INSERT ON public.shared_schedule_adoption_facts FOR EACH ROW EXECUTE FUNCTION med_tracker.shared_administration_guard()",
+      "enabled": "O"
+    }
+  }
+}
