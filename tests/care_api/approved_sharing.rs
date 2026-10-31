@@ -3289,6 +3289,7 @@ async fn person_owned_schedule_origin_waits_for_effective_approval_before_source
             .patch(endpoint)
             .bearer_auth(care.token_a)
             .json(&json!({"schedule":{"dose_amount":"3"}}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
