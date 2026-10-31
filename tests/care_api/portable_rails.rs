@@ -142,6 +142,7 @@ async fn rails_serializer_obsolete_links_are_rejected_without_writes() {
                 bundle.clone(),
                 "synthetic-rails-person-linked-migration-v2",
             ))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap();
@@ -190,6 +191,7 @@ async fn rails_serializer_v2_historical_location_gap_is_reported_without_writes(
                     .as_str()
                     .unwrap(),
             ))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap();
@@ -229,6 +231,7 @@ async fn restore_fixture(payload: &str, envelope: &str) {
         .bearer_auth(&token)
         .header(PASSPHRASE_HEADER, PASSPHRASE)
         .json(&json!({"bundle": bundle}))
+        .timeout(std::time::Duration::from_secs(30))
         .send()
         .await
         .unwrap();
@@ -259,6 +262,7 @@ async fn restore_fixture(payload: &str, envelope: &str) {
             .bearer_auth(&token)
             .header(PASSPHRASE_HEADER, PASSPHRASE)
             .json(&request)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap();
