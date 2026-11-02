@@ -12,8 +12,8 @@ use loco_rs::{
     task::{Task, TaskInfo, Vars},
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter,
-    QueryOrder, QuerySelect, Set, Statement, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, ExprTrait,
+    QueryFilter, QueryOrder, QuerySelect, Set, Statement, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -317,10 +317,12 @@ pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
         )
         .filter(nhs_dmd_import::Column::Status.is_in([0, 1, 2, 3]))
         .filter(
-            nhs_dmd_import::Column::UpdatedAt.lt(
-                sea_orm::sea_query::Expr::current_timestamp().sub(
-                    sea_orm::sea_query::Expr::val("30 minutes")
-                        .cast_as(sea_orm::sea_query::Alias::new("interval")),
+            sea_orm::Condition::all().add(
+                sea_orm::sea_query::Expr::col(nhs_dmd_import::Column::UpdatedAt).lt(
+                    sea_orm::sea_query::Expr::current_timestamp().sub(
+                        sea_orm::sea_query::Expr::val("30 minutes")
+                            .cast_as(sea_orm::sea_query::Alias::new("interval")),
+                    ),
                 ),
             ),
         )
