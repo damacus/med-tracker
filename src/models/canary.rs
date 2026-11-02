@@ -105,8 +105,10 @@ pub(crate) async fn configure(ctx: &AppContext) -> Result<(), DbErr> {
         .min_connections(0)
         .connect_timeout(Duration::from_secs(3))
         .sqlx_logging(false);
+    let mut control_connection = Database::connect(options).await?;
+    crate::telemetry::db::install(&mut control_connection);
     ctx.shared_store.insert(Arc::new(Canary {
-        control: Database::connect(options).await?,
+        control: control_connection,
         image: text(ctx, "image")?.into(),
         smoke_key: text(ctx, "smoke_key")?.into(),
     }));
