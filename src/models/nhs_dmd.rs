@@ -290,7 +290,8 @@ async fn cleanup(
 }
 
 pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
-    ctx.db.execute_unprepared("UPDATE nhs_dmd_imports SET status=5,error_message='The import stopped making progress. Upload the release again.',completed_at=now(),updated_at=now() WHERE status IN (0,1,2,3) AND updated_at < now()-interval '30 minutes'").await?;
+    let stale_result = ctx.db.execute_unprepared("UPDATE nhs_dmd_imports SET status=5,error_message='The import stopped making progress. Upload the release again.',completed_at=now(),updated_at=now() WHERE status IN (0,1,2,3) AND updated_at < now()-interval '30 minutes'").await?;
+    let stale_failed_count = stale_result.rows_affected() as i64;
     let lease = ctx.db.begin().await?;
     let locked = lease
         .query_one_raw(Statement::from_string(
@@ -331,6 +332,7 @@ pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
     tracing::info!(
         event.name = "medtracker.import.reconciled",
         medtracker.import.requeued_count = requeued,
+        medtracker.import.stale_failed_count = stale_failed_count,
         "NHS dm+d reconcile finished"
     );
     Ok(())
@@ -353,5 +355,22 @@ impl Task for ReconcileTask {
                 .map_err(|_| loco_rs::Error::string("NHS catalogue reconciliation failed"))
         })
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ImportArgs;
+
+    #[test]
+    fn import_args_without_traceparent_deserialises() {
+        let args: ImportArgs = serde_json::from_str(r#"{"run_id": 42}"#).expect("legacy payload");
+        assert_eq!(args.run_id, 42);
+        assert!(args.traceparent.is_none());
+        let args: ImportArgs = serde_json::from_str(
+            r#"{"run_id": 42, "traceparent": "00-7fa01885bf8086b9a009c00c9ca89e1b-6dd454d737734ffa-01"}"#,
+        )
+        .expect("new payload");
+        assert!(args.traceparent.is_some());
     }
 }
