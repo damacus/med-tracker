@@ -479,7 +479,7 @@ async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_fa
     ] {
         let event = successful
             .iter()
-            .find(|event| event["medtracker.import.stage"] == phase)
+            .find(|event| event["medtracker.import.phase"] == phase)
             .unwrap_or_else(|| panic!("missing {phase} timing: {successful:?}"));
         assert_eq!(event["medtracker.outcome"], "success");
         assert!(event["medtracker.duration_ms"].is_number(), "{event:?}");
@@ -489,7 +489,7 @@ async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_fa
     for phase in ["extract", "total"] {
         let event = failed
             .iter()
-            .find(|event| event["medtracker.import.stage"] == phase)
+            .find(|event| event["medtracker.import.phase"] == phase)
             .unwrap_or_else(|| panic!("missing {phase} failure timing: {failed:?}"));
         assert_eq!(event["medtracker.outcome"], "failure");
         assert!(event["medtracker.duration_ms"].is_number());
