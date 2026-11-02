@@ -84,3 +84,4 @@ vendor/**/*
 /playwright-report/
 /test-results/
 /.task/
+.playwright-mcp/
