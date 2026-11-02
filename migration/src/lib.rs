@@ -20,6 +20,14 @@ pub mod m20261021_000016_invitation_mail_attempts;
 pub mod m20261022_000017_guardian_recovery;
 pub mod m20261027_000018_personal_history;
 pub mod m20261028_000019_history_audit_outcome;
+pub mod m20261028_000020_person_schedules;
+pub mod m20261028_000021_person_schedule_execution_policy;
+pub mod m20261028_000022_approved_sharing;
+pub mod m20261029_000023_legacy_schedule_prescriptions;
+pub mod m20261029_000024_live_adoption_history;
+pub mod m20261029_000025_frozen_adoption_history;
+pub mod m20261029_000026_adoption_fact_backfill;
+pub mod m20261030_000027_restore_history_indexing;
 mod native_authentication;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
@@ -48,6 +56,14 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261022_000017_guardian_recovery::Migration),
             Box::new(m20261027_000018_personal_history::Migration),
             Box::new(m20261028_000019_history_audit_outcome::Migration),
+            Box::new(m20261028_000020_person_schedules::Migration),
+            Box::new(m20261028_000021_person_schedule_execution_policy::Migration),
+            Box::new(m20261028_000022_approved_sharing::Migration),
+            Box::new(m20261029_000023_legacy_schedule_prescriptions::Migration),
+            Box::new(m20261029_000024_live_adoption_history::Migration),
+            Box::new(m20261029_000025_frozen_adoption_history::Migration),
+            Box::new(m20261029_000026_adoption_fact_backfill::Migration),
+            Box::new(m20261030_000027_restore_history_indexing::Migration),
         ]
     }
 }

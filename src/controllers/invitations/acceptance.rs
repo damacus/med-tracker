@@ -13,6 +13,8 @@ pub(super) struct Accept {
     token: String,
     authenticity_token: String,
     lang: Option<String>,
+    sharing_consent: Option<String>,
+    subject_person_id: Option<i64>,
 }
 
 pub(super) async fn preview(
@@ -45,16 +47,16 @@ pub(super) async fn preview(
             );
         }
     };
-    let signed_in =
+    let principal =
         match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
-            Ok(_) => true,
+            Ok(principal) => Some(principal),
             Err(AuthenticationError::Unauthenticated) => {
                 crate::controllers::auth::store_invitation_continuation(
                     &session,
                     &invitation.token,
                     invitation.explicit_language.then_some(invitation.language),
                 );
-                false
+                None
             }
             Err(error) => {
                 return super::super::administration::presentation_authentication_error(
@@ -64,7 +66,7 @@ pub(super) async fn preview(
                 );
             }
         };
-    if signed_in {
+    if principal.is_some() {
         crate::controllers::auth::store_invitation_continuation(
             &session,
             &invitation.token,
@@ -78,16 +80,50 @@ pub(super) async fn preview(
             OperationError::Unavailable,
         );
     };
-    let Some(data) = acceptance_data(
+    let Some(mut data) = acceptance_data(
         invitation.language,
         invitation.explicit_language,
         &invitation.token,
         details,
-        signed_in,
+        principal.is_some(),
         &authenticity_token,
     ) else {
         return unavailable();
     };
+    data["dependents"] = json!([]);
+    if data["invitation"]["dependent_sharing"] == true
+        && let Some(principal) = principal
+    {
+        let db = match principal.account_transaction(&ctx.db, false).await {
+            Ok(db) => db,
+            Err(error) => {
+                return super::super::administration::presentation_authentication_error(
+                    &view,
+                    invitation.language,
+                    error,
+                );
+            }
+        };
+        let dependents = match crate::models::care::person_schedules::sharing::dependents(
+            &db,
+            crate::models::ids::AccountId::from_database(principal.account_id()),
+        )
+        .await
+        {
+            Ok(dependents) => dependents,
+            Err(error) => {
+                return super::super::administration::presentation_error(
+                    &view,
+                    invitation.language,
+                    error,
+                );
+            }
+        };
+        data["dependents"] = json!(dependents);
+        if db.commit().await.is_err() {
+            return unavailable();
+        }
+    }
     match format::render().view(&view, "invitations/accept.html", data) {
         Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(error) => error.into_response(),
@@ -100,6 +136,7 @@ pub(super) async fn accept(
     (request, headers): (Option<Extension<LocoRequestId>>, axum::http::HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    dependent: Option<Extension<super::DependentSharing>>,
     AxumForm(form): AxumForm<Accept>,
 ) -> Response {
     if token.verify(&form.authenticity_token).is_err() {
@@ -128,15 +165,53 @@ pub(super) async fn accept(
                 );
             }
         };
-    let accepted = match invitations::accept_browser(
-        &ctx.db,
-        &principal,
-        &form.token,
-        &request_id(request),
-        ctx.config.settings.as_ref(),
-    )
-    .await
-    {
+    if dependent.is_none() && form.subject_person_id.is_some() {
+        return super::super::administration::presentation_error(
+            &view,
+            language,
+            OperationError::Forbidden,
+        );
+    }
+    let result = if dependent.is_some() {
+        let consent = match invitations::SharingConsent::parse(
+            form.sharing_consent.as_deref().map(|value| value == "true"),
+        ) {
+            Ok(consent) => consent,
+            Err(error) => {
+                return super::super::administration::presentation_error(&view, language, error);
+            }
+        };
+        match form.subject_person_id.filter(|id| *id > 0) {
+            Some(id) => {
+                invitations::acceptance::accept_dependent_browser(
+                    &ctx.db,
+                    &principal,
+                    &form.token,
+                    consent,
+                    crate::models::ids::PersonId::from_database(id),
+                    &request_id(request),
+                    ctx.config.settings.as_ref(),
+                )
+                .await
+            }
+            None => Err(OperationError::NotFound),
+        }
+    } else {
+        let consent = invitations::SharingConsent::parse(
+            form.sharing_consent.as_deref().map(|value| value == "true"),
+        )
+        .ok();
+        invitations::accept_browser(
+            &ctx.db,
+            &principal,
+            &form.token,
+            consent,
+            &request_id(request),
+            ctx.config.settings.as_ref(),
+        )
+        .await
+    };
+    let accepted = match result {
         Ok(value) => value,
         Err(OperationError::Validation { .. } | OperationError::NotFound) => {
             return invalid_link(&view, language, StatusCode::NOT_FOUND);
@@ -146,6 +221,21 @@ pub(super) async fn accept(
         }
     };
     session.remove("invitation_pending");
+    if dependent.is_some() {
+        let labels = match crate::models::care::report_pdf::translations(language) {
+            Ok(labels) => labels,
+            Err(_) => return unavailable(),
+        };
+        let mut data = crate::controllers::medications::rendering::appearance_context();
+        data["lang"] = json!(language);
+        data["labels"] = labels.clone();
+        data["invitation_labels"] = labels["admin"]["invitations"]["acceptance"].clone();
+        data["title"] = data["invitation_labels"]["dependent_approved"].clone();
+        return match format::render().view(&view, "invitations/shared.html", data) {
+            Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
+            Err(_) => unavailable(),
+        };
+    }
     let homes = match principal.households(&ctx.db).await {
         Ok(value) => value,
         Err(_) => {

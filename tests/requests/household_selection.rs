@@ -438,6 +438,7 @@ async fn verified_account_without_membership_accepts_invitation() -> TestResult 
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("token", invitation_token.as_str()),
+            ("sharing_consent", "true"),
             ("authenticity_token", csrf),
         ])
         .await;
@@ -463,6 +464,7 @@ async fn verified_account_without_membership_accepts_invitation() -> TestResult 
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("token", invitation_token.as_str()),
+            ("sharing_consent", "true"),
             ("authenticity_token", csrf),
         ])
         .await;
@@ -753,6 +755,7 @@ async fn account_only_invitation_rechecks_csrf_expiry_and_inviter_authority() ->
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("token", invitation_token.as_str()),
+            ("sharing_consent", "true"),
             ("authenticity_token", "invalid"),
         ])
         .await;
@@ -770,6 +773,7 @@ async fn account_only_invitation_rechecks_csrf_expiry_and_inviter_authority() ->
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("token", invitation_token.as_str()),
+            ("sharing_consent", "true"),
             ("authenticity_token", csrf),
         ])
         .await;
@@ -793,6 +797,7 @@ async fn account_only_invitation_rechecks_csrf_expiry_and_inviter_authority() ->
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("token", invitation_token.as_str()),
+            ("sharing_consent", "true"),
             ("authenticity_token", csrf),
         ])
         .await;

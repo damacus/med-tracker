@@ -283,7 +283,7 @@ async fn health_events_invalid_dates_hidden_links_and_audit_failure_are_atomic()
         .await
         .unwrap();
     app.close().await;
-    assert_eq!((status, link_failure), (500, 500));
+    assert_eq!((status, link_failure), (503, 503));
     assert_eq!(counts, vec![0, 0, 0, 0]);
 }
 

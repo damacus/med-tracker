@@ -117,6 +117,12 @@ mod tests {
         end: NaiveDate,
     ) -> schedule::Model {
         schedule::Model {
+            person_schedule_id: None,
+            sharing_approval_id: None,
+            canonical_origin: false,
+            clinical_revision: None,
+            origin_time_zone: None,
+            execution_ended_at: None,
             id: 1,
             household_id: 1,
             portable_id: "s1".to_string(),

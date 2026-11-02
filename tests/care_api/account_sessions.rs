@@ -425,7 +425,7 @@ async fn audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_
         .send()
         .await
         .unwrap();
-    assert_eq!(revoke.status().as_u16(), 500);
+    assert_eq!(revoke.status().as_u16(), 503);
     let logout = app
         .client
         .delete(format!("{}/api/v1/auth/logout", app.origin))
@@ -433,7 +433,7 @@ async fn audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_
         .send()
         .await
         .unwrap();
-    assert_eq!(logout.status().as_u16(), 500);
+    assert_eq!(logout.status().as_u16(), 503);
     app.fixture
         .admin
         .execute_unprepared(&format!(

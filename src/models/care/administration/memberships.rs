@@ -397,6 +397,10 @@ async fn change_record(
     let changed = state(&current) != state(&next)
         || (!mutation.revoke && current.revoked_at != next.revoked_at);
     if changed {
+        if current.status != "revoked" && next.status == "revoked" {
+            crate::models::care::person_schedules::end_participation(tenant, current.person_id)
+                .await?;
+        }
         let mut active: membership::ActiveModel = current.clone().into();
         active.role = Set(next.role);
         active.status = Set(next.status);
@@ -404,6 +408,10 @@ async fn change_record(
         active.revoked_at = Set(next.revoked_at);
         active.updated_at = Set(Utc::now().naive_utc());
         next = active.update(tenant.transaction()).await?;
+        if current.status == "suspended" && next.status == "active" {
+            crate::models::care::person_schedules::restore_participation(tenant, current.person_id)
+                .await?;
+        }
         persistence::bump(tenant, id).await?;
         next.permissions_version += 1;
     }

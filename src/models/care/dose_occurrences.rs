@@ -73,6 +73,8 @@ pub(crate) fn expected_schedule_doses_for_report(
     day: NaiveDate,
     settings: Option<&serde_json::Value>,
 ) -> i32 {
+    let source_settings = Source::Schedule(source.clone()).calendar_settings(settings);
+    let settings = source_settings.as_ref();
     if !source.active
         || source.retired_at.is_some()
         || schedule_as_needed(source)
@@ -107,11 +109,9 @@ fn report_pause_scope(
     household_id: i64,
     schedule_ids: &[i64],
     assignment_ids: &[i64],
-    scan_start: NaiveDate,
-    scan_end: NaiveDate,
-    settings: Option<&serde_json::Value>,
+    start: NaiveDateTime,
+    end: NaiveDateTime,
 ) -> Select<pause_period::Entity> {
-    let end = local_midnight(scan_end + Duration::days(1), settings);
     pause_period::Entity::find()
         .in_tenant(household_id)
         .filter(
@@ -131,7 +131,7 @@ fn report_pause_scope(
         .filter(
             Condition::any()
                 .add(pause_period::Column::EndedAt.is_null())
-                .add(pause_period::Column::EndedAt.gt(local_midnight(scan_start, settings))),
+                .add(pause_period::Column::EndedAt.gt(start)),
         )
 }
 
@@ -246,6 +246,22 @@ async fn projected_for_range(
             Source::Assignment(_) => None,
         })
         .collect();
+    let scan_start_time = sources
+        .iter()
+        .map(|source| {
+            let settings = source.calendar_settings(tenant.settings());
+            local_midnight(scan_start, settings.as_ref())
+        })
+        .min()
+        .unwrap_or_else(|| local_midnight(scan_start, tenant.settings()));
+    let scan_end_time = sources
+        .iter()
+        .map(|source| {
+            let settings = source.calendar_settings(tenant.settings());
+            local_midnight(scan_end + Duration::days(1), settings.as_ref())
+        })
+        .max()
+        .unwrap_or_else(|| local_midnight(scan_end + Duration::days(1), tenant.settings()));
     let assignment_ids: Vec<_> = sources
         .iter()
         .filter_map(|source| match source {
@@ -272,9 +288,8 @@ async fn projected_for_range(
         household_id,
         &schedule_ids,
         &assignment_ids,
-        scan_start,
-        scan_end,
-        tenant.settings(),
+        scan_start_time,
+        scan_end_time,
     )
     .all(db)
     .await?;
@@ -285,11 +300,8 @@ async fn projected_for_range(
                 .add(medication_take::Column::ScheduleId.is_in(schedule_ids))
                 .add(medication_take::Column::PersonMedicationId.is_in(assignment_ids)),
         )
-        .filter(medication_take::Column::TakenAt.gte(local_midnight(scan_start, tenant.settings())))
-        .filter(medication_take::Column::TakenAt.lt(local_midnight(
-            scan_end + Duration::days(1),
-            tenant.settings(),
-        )))
+        .filter(medication_take::Column::TakenAt.gte(scan_start_time))
+        .filter(medication_take::Column::TakenAt.lt(scan_end_time))
         .order_by_asc(medication_take::Column::TakenAt)
         .order_by_asc(medication_take::Column::Id)
         .all(db)
@@ -484,9 +496,15 @@ mod report_scope_tests {
     fn report_projection_queries_bound_pause_sources_and_linked_take_ids() {
         let first = NaiveDate::from_ymd_opt(2026, 7, 1).unwrap();
         let last = NaiveDate::from_ymd_opt(2026, 7, 7).unwrap();
-        let pauses = report_pause_scope(72001, &[83999], &[81001], first, last, None)
-            .build(DbBackend::Postgres)
-            .to_string();
+        let pauses = report_pause_scope(
+            72001,
+            &[83999],
+            &[81001],
+            local_midnight(first, None),
+            local_midnight(last + Duration::days(1), None),
+        )
+        .build(DbBackend::Postgres)
+        .to_string();
         let pause_where = pauses.split_once(" WHERE ").unwrap().1;
         assert!(pause_where.contains("\"schedule_id\" IN"), "{pause_where}");
         assert!(

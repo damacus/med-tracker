@@ -2,8 +2,8 @@ use super::now;
 use chrono::{Duration, NaiveDate};
 use med_tracker::models::{
     _entities::{
-        accounts, app_settings, carer_relationships, household_invitations, household_memberships,
-        identity_onboarding, people,
+        accounts, api_sessions, app_settings, carer_relationships, household_invitations,
+        household_memberships, identity_onboarding, medications, people,
     },
     access,
 };
@@ -13,6 +13,7 @@ use sea_orm::{
     ConnectionTrait, DatabaseConnection, DeriveIden, EntityTrait, ExprTrait,
     sea_query::{Expr, Func, Query},
 };
+use sha2::{Digest, Sha256};
 
 #[derive(DeriveIden)]
 enum GuardianDeclarations {
@@ -184,6 +185,156 @@ pub async fn seed_guardian_recovery(db: &DatabaseConnection, restore: bool) {
         .await
         .unwrap();
     }
+    fixture.commit().await.unwrap();
+}
+
+/// The dependent-sharing journey tokens and stored-session secrets used by
+/// `tests/browser/care_sharing.rs`.
+pub const DEPENDENT_SHARING_TOKEN: &str = "synthetic-dependent-share";
+pub const FOREIGN_SHARING_TOKEN: &str = "synthetic-foreign-share";
+pub const FOREIGN_BIND_TOKEN: &str = "synthetic-foreign-bind";
+pub const GUARDIAN_SESSION_TOKEN: &str = "synthetic-guardian-session";
+
+/// A current guardian declaration for the synthetic dependent adult plus the
+/// foreign household's dependent-sharing invitation, manager membership and
+/// stored API sessions. Declarations and carer links must run inside the real
+/// tenant transaction so the recovery guards see live account/membership GUCs.
+pub async fn seed_dependent_sharing(db: &DatabaseConnection) {
+    for (id, birthday) in [
+        (73003, NaiveDate::from_ymd_opt(1990, 1, 1)),
+        (73005, NaiveDate::from_ymd_opt(1982, 1, 1)),
+    ] {
+        people::ActiveModel {
+            id: Set(id),
+            date_of_birth: Set(birthday),
+            ..Default::default()
+        }
+        .update(db)
+        .await
+        .expect("person birth date");
+    }
+    household_memberships::ActiveModel {
+        id: Set(74002),
+        household_id: Set(72002),
+        person_id: Set(73005),
+        role: Set("owner".into()),
+        status: Set("active".into()),
+        permissions_version: Set(1),
+        joined_at: Set(now()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .expect("foreign manager membership");
+    for (id, name) in [
+        (80001, "Synthetic tablets"),
+        (80002, "Synthetic foreign medicine"),
+    ] {
+        medications::ActiveModel {
+            id: Set(id),
+            name: Set(Some(name.into())),
+            dmd_system: Set(Some("https://dmd.nhs.uk".into())),
+            dmd_concept_class: Set(Some("VMP".into())),
+            dmd_code: Set(Some("synthetic-sharing-product".into())),
+            dose_amount: Set(Some(2.0)),
+            dose_unit: Set(Some("tablet".into())),
+            ..Default::default()
+        }
+        .update(db)
+        .await
+        .expect("dm+d stock identity");
+    }
+    for (email, token) in [
+        ("persistence@example.test", DEPENDENT_SHARING_TOKEN),
+        ("foreign@example.test", FOREIGN_SHARING_TOKEN),
+    ] {
+        household_invitations::ActiveModel {
+            household_id: Set(72002),
+            email: Set(email.into()),
+            membership_role: Set("member".into()),
+            dependent_sharing: Set(true),
+            token_digest: Set(hex::encode(Sha256::digest(token.as_bytes()))),
+            invited_by_membership_id: Set(74002),
+            expires_at: Set(now() + Duration::days(7)),
+            created_at: Set(now()),
+            updated_at: Set(now()),
+            ..Default::default()
+        }
+        .insert(db)
+        .await
+        .expect("dependent sharing invitation");
+    }
+    for (account, membership, token, id) in [
+        (71002_i64, 74002_i64, FOREIGN_BIND_TOKEN, 77001_i64),
+        (71001, 74001, GUARDIAN_SESSION_TOKEN, 77002),
+    ] {
+        api_sessions::ActiveModel {
+            id: Set(id),
+            account_id: Set(account),
+            household_membership_id: Set(Some(membership)),
+            access_token_digest: Set(hex::encode(Sha256::digest(token.as_bytes()))),
+            refresh_token_digest: Set(hex::encode(Sha256::digest(
+                format!("{token}-refresh").as_bytes(),
+            ))),
+            access_expires_at: Set(now() + Duration::hours(1)),
+            refresh_expires_at: Set(now() + Duration::days(30)),
+            last_used_at: Set(now()),
+            permissions_version: Set(1),
+            created_at: Set(now()),
+            updated_at: Set(now()),
+            ..Default::default()
+        }
+        .insert(db)
+        .await
+        .expect("stored api session");
+    }
+    let scope = access::HouseholdScope {
+        actor: access::Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-browser-dependent-sharing".into(),
+    };
+    let fixture = access::begin(db, &scope, None).await.unwrap();
+    let tx = fixture.transaction();
+    let declaration = Query::insert()
+        .into_table(GuardianDeclarations::Table)
+        .columns([
+            GuardianDeclarations::SubjectPersonId,
+            GuardianDeclarations::GuardianPersonId,
+            GuardianDeclarations::OriginHouseholdId,
+            GuardianDeclarations::DeclaredByAccountId,
+            GuardianDeclarations::SubjectNameAtDeclaration,
+        ])
+        .values_panic([
+            73003_i64.into(),
+            73001_i64.into(),
+            72001_i64.into(),
+            71001_i64.into(),
+            "Synthetic dependent adult".into(),
+        ])
+        .returning_col(GuardianDeclarations::Id)
+        .to_owned();
+    let declaration_id: i64 = tx
+        .query_one(&declaration)
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "id")
+        .unwrap();
+    carer_relationships::ActiveModel {
+        carer_id: Set(73001),
+        patient_id: Set(73003),
+        household_id: Set(72001),
+        active: Set(true),
+        guardian_declaration_id: Set(Some(declaration_id)),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    }
+    .insert(tx)
+    .await
+    .unwrap();
     fixture.commit().await.unwrap();
 }
 

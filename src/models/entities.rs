@@ -92,6 +92,14 @@ pub mod invitation_mail_attempt {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+pub use super::_entities::legacy_schedule_prescriptions as legacy_prescription;
+pub use super::_entities::person_household_approvals as sharing_approval;
+pub use super::_entities::person_schedules as person_schedule;
+pub use super::_entities::shared_schedule_administrations as shared_administration;
+pub use super::_entities::shared_schedule_adoption_facts as adoption_fact;
+pub use super::_entities::shared_schedule_executions as shared_execution;
+pub use super::_entities::shared_schedule_pause_closures as shared_pause_closure;
+pub use super::_entities::shared_schedule_states as shared_schedule;
 pub use super::identity::better_auth::schema::{
     api_key as identity_api_key, passkey as identity_passkey, session as identity_session,
     verification as identity_verification,

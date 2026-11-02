@@ -632,7 +632,7 @@ async fn stock_order_audit_rejection_rolls_back_order_and_replay_ledger() {
     let unchanged: bool = row.try_get("", "unchanged").unwrap();
     let keys: i64 = row.try_get("", "keys").unwrap();
     let changes: i64 = row.try_get("", "changes").unwrap();
-    let attempts: i64 = app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk))), "n").from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("action")).eq(QueryExpr::val("mark_as_ordered"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("500"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("outcome")).eq(QueryExpr::val("failure")))).to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap().try_get("","n").unwrap();
+    let attempts: i64 = app.fixture.admin.query_one_raw({ let query = Query::select().expr_as(QueryExpr::expr(QueryFunc::count(sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk))), "n").from("security_audit_events").and_where(QueryExpr::col("household_id").eq(QueryExpr::val(fixture_household_id)).and(QueryExpr::col("event_type").eq(QueryExpr::val("api.request"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("action")).eq(QueryExpr::val("mark_as_ordered"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("status")).eq(QueryExpr::val("503"))).and(QueryExpr::col("metadata").binary(sea_orm::sea_query::extension::postgres::PgBinOper::CastJsonField, QueryExpr::val("outcome")).eq(QueryExpr::val("failure")))).to_owned(); app.fixture.admin.get_database_backend().build(&query) }).await.unwrap().unwrap().try_get("","n").unwrap();
     app.fixture
         .admin
         .execute_unprepared("DROP TRIGGER IF EXISTS reject_order_audit ON versions")
@@ -649,7 +649,7 @@ async fn stock_order_audit_rejection_rolls_back_order_and_replay_ledger() {
         .await
         .unwrap();
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert!(reached && unchanged);
     assert_eq!((keys, changes), (0, 0));
     assert_eq!(attempts, 1);

@@ -1,7 +1,9 @@
 use super::*;
 use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
-async fn legacy_schedule(app: &Application) -> med_tracker::models::_entities::schedules::Model {
+pub(super) async fn legacy_schedule(
+    app: &Application,
+) -> med_tracker::models::_entities::schedules::Model {
     let fixture_household_id = app.fixture.household.id;
     let fixture_person_id = app.fixture.account.person_id;
     let fixture_medication_id = app.fixture.medication.id;

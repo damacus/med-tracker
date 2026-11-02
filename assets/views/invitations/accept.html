@@ -7,17 +7,26 @@
     <h1 class="text-3xl font-semibold">{{ invitation_labels.title }}</h1>
     <p>{{ invitation_labels.invited_to_join }} <strong>{{ invitation.household_name }}</strong> {{ invitation_labels.as_role }} {{ role_label }}.</p>
     <p>{{ invitation_labels.invitation_for }} {{ invitation.email }}</p>
-    <form method="post" action="/invitations/accept" data-invitation-accept>
+    <form method="post" action="{% if invitation.dependent_sharing %}/invitations/dependent-sharing/accept{% else %}/invitations/accept{% endif %}" data-invitation-accept>
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="token" value="{{ invitation_token }}">
       {% if explicit_language %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+      {% if invitation.dependent_sharing %}
+      <label for="subject-person" class="label">{{ invitation_labels.dependent_label }}</label>
+      <select id="subject-person" name="subject_person_id" class="select w-full" required>
+        <option value="">{{ invitation_labels.dependent_choose }}</option>
+        {% for dependent in dependents %}<option value="{{ dependent.id }}">{{ dependent.name }}</option>{% endfor %}
+      </select>
+      {% if dependents | length == 0 %}<p role="alert">{{ invitation_labels.no_dependents }}</p>{% endif %}
+      {% endif %}
+      <label class="label items-start gap-3 whitespace-normal"><input class="checkbox" type="checkbox" name="sharing_consent" value="true" required><span>{% if invitation.dependent_sharing %}{{ invitation_labels.dependent_consent }}{% else %}{{ invitation_labels.sharing_consent }}{% endif %}</span></label>
       <button class="btn btn-neutral" type="submit">{{ invitation_labels.title }}</button>
     </form>
     {% else %}
     <h1 class="text-3xl font-semibold">{{ invitation_labels.account_title }}</h1>
     <p>{{ invitation_labels.invited_to_join }} <strong>{{ invitation.household_name }}</strong> {{ invitation_labels.as_role }} {{ role_label }}.</p>
     <p>{{ invitation_labels.existing_account }} <a class="link" href="/login">{{ invitation_labels.sign_in }}</a> {{ invitation_labels.to_accept }}</p>
-    {% include "auth/account_form.html" %}
+    {% if not invitation.dependent_sharing %}{% include "auth/account_form.html" %}{% endif %}
     {% endif %}
   </div>
 </section>

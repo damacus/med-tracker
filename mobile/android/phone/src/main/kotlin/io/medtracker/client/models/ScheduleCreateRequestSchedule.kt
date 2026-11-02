@@ -29,6 +29,7 @@ import com.squareup.moshi.JsonClass
  * @param doseUnit 
  * @param startDate 
  * @param endDate 
+ * @param originTimeZone Optional explicit named timezone correction; otherwise capture the creating sharer's validated preference.
  * @param sourceDosageOptionId 
  * @param frequency 
  * @param notes 
@@ -59,6 +60,10 @@ data class ScheduleCreateRequestSchedule (
 
     @Json(name = "end_date")
     val endDate: java.time.LocalDate,
+
+    /* Optional explicit named timezone correction; otherwise capture the creating sharer's validated preference. */
+    @Json(name = "origin_time_zone")
+    val originTimeZone: kotlin.String? = null,
 
     @Json(name = "source_dosage_option_id")
     val sourceDosageOptionId: kotlin.String? = null,

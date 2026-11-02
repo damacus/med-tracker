@@ -9,6 +9,9 @@ pub(super) async fn apply_input(
     existing: Option<&schedule::Model>,
 ) -> Result<Result<(), InputFailure>, ApiError> {
     let input = input.as_ref();
+    if let Some(zone) = input.origin_time_zone {
+        fields.origin_time_zone = Some(zone);
+    }
     if let Some(id) = input.person_id.as_ref() {
         let Some(person) = find_person(db, context, id.as_str()).await? else {
             return Ok(Err(InputFailure::NotFound));

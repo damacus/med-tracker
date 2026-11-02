@@ -82,7 +82,15 @@ pub(super) async fn apply(
         active.active = Set(false);
         active.retired_at = Set(Some(now));
         active.updated_at = Set(now);
-        active.update(tenant.transaction()).await?;
+        let row = active.update(tenant.transaction()).await?;
+        crate::models::care::person_schedules::save_execution(
+            tenant,
+            row,
+            None,
+            doses::app_zone(tenant.settings()),
+            Some(provenance),
+        )
+        .await?;
         (person_id, portable_id, clinical)
     } else {
         assignments::authorize_update(tenant, id).await?;

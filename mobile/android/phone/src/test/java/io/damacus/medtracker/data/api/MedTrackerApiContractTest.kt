@@ -2,6 +2,12 @@ package io.damacus.medtracker.data.api
 
 import io.damacus.medtracker.data.model.HouseholdSelection
 import io.damacus.medtracker.data.model.RecordDosePayload
+import io.medtracker.client.apis.AccountApi
+import io.medtracker.client.infrastructure.ClientException
+import io.medtracker.client.infrastructure.Serializer
+import io.medtracker.client.models.PersonalScheduleAttributes
+import io.medtracker.client.models.UpdatePersonalScheduleRequest
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -23,6 +29,38 @@ class MedTrackerApiContractTest {
     }
 
     @After fun tearDown() = server.shutdown()
+
+    @Test fun generatedPersonalPlanEditEmitsOnlySchedule() {
+        assertPersonalPlanWire(
+            """{"schedule":{"dose_amount":"3","origin_time_zone":"Europe/London"}}""",
+            UpdatePersonalScheduleRequest(schedule = PersonalScheduleAttributes(doseAmount = "3", originTimeZone = "Europe/London"))
+        )
+    }
+
+    @Test fun generatedPersonalPlanLifecycleEmitsOnlyAction() {
+        for (action in listOf(UpdatePersonalScheduleRequest.Action.pause, UpdatePersonalScheduleRequest.Action.resume, UpdatePersonalScheduleRequest.Action.retire)) {
+            assertPersonalPlanWire("""{"action":"${action.value}"}""", UpdatePersonalScheduleRequest(action = action))
+        }
+    }
+
+    private fun assertPersonalPlanWire(body: String, input: UpdatePersonalScheduleRequest) {
+        val adapter = Serializer.moshi.adapter(UpdatePersonalScheduleRequest::class.java)
+        assertEquals(input, adapter.fromJson(body))
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{\"error\":{}}"))
+        val client = AccountApi(server.url("/api/v1").toString(), OkHttpClient())
+        try {
+            client.updatePersonalSchedule(UUID.fromString("00000000-0000-4000-8000-000000000004"), "revision-seven", input)
+            throw AssertionError("Expected the stub authentication rejection")
+        } catch (expected: ClientException) {
+            assertEquals(401, expected.statusCode)
+        }
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/auth/schedules/00000000-0000-4000-8000-000000000004", request.path)
+        assertEquals("revision-seven", request.getHeader("If-Match"))
+        val json = Serializer.moshi.adapter(Any::class.java)
+        assertEquals(json.fromJson(body), json.fromJson(request.body.readUtf8()))
+    }
 
     @Test fun generatedAdapterListsHouseholdsWithTheAccountToken() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""

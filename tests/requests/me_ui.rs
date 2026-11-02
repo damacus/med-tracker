@@ -522,11 +522,11 @@ async fn ui_capabilities_rechecks_membership_and_hides_data_on_audit_failure() {
     assert_schema("ui_capabilities", 403, &denied.body);
     assert_eq!(effects_after_denial, effects_before_denial);
     assert_eq!(audits_after_denial, audits_before_denial);
-    assert_eq!(failed.status, 500);
+    assert_eq!(failed.status, 503);
     assert_eq!(failed.cache_control.as_deref(), Some("no-store"));
     assert_eq!(failed.content_type.as_deref(), Some("application/json"));
     assert!(!failed.request_id.is_empty());
-    assert_eq!(failed.body["error"]["code"], "internal_error");
+    assert_eq!(failed.body["error"]["code"], "service_unavailable");
     assert_eq!(failed.body["error"]["request_id"], failed.request_id);
     assert!(failed.body.get("data").is_none());
     assert_eq!(effects_after_fault, effects_before_fault);

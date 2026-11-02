@@ -35,6 +35,7 @@ pub struct InvitationInput {
     email: String,
     role: String,
     care_authority_requested: bool,
+    dependent_sharing: bool,
 }
 
 impl InvitationInput {
@@ -45,6 +46,8 @@ impl InvitationInput {
             .and_then(Value::as_str)
             .unwrap_or("member");
         let care_authority_requested = [
+            "person_id",
+            "subject_person_id",
             "dependent_ids",
             "dependent_ids[]",
             "relationship_type",
@@ -60,10 +63,20 @@ impl InvitationInput {
             email: email.into(),
             role: role.into(),
             care_authority_requested,
+            dependent_sharing: false,
         }
     }
 
-    pub(super) fn validated(self) -> Result<(String, String), OperationError> {
+    pub fn dependent(email: &str) -> Self {
+        Self {
+            email: email.into(),
+            role: "member".into(),
+            care_authority_requested: false,
+            dependent_sharing: true,
+        }
+    }
+
+    pub(super) fn validated(self) -> Result<(String, String, bool), OperationError> {
         if self.care_authority_requested {
             return Err(invalid(
                 "base",
@@ -74,6 +87,6 @@ impl InvitationInput {
         if !matches!(self.role.as_str(), "member" | "administrator") {
             return Err(invalid("membership_role", "is invalid"));
         }
-        Ok((email, self.role))
+        Ok((email, self.role, self.dependent_sharing))
     }
 }
