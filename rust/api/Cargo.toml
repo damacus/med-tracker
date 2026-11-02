@@ -55,7 +55,7 @@ uuid = { version = "1", features = ["v4"] }
 web-push = { version = "0.11", default-features = false }
 zip = "9.0.0"
 quick-xml = "0.42.0"
-webauthn-rs-core = "=0.5.5"
+webauthn-rs-core = "=0.6.2"
 serde_cbor_2 = "0.13"
 oxide-auth = { version = "0.6.1", default-features = false }
 cookie = { version = "0.18", features = ["private", "key-expansion"] }
