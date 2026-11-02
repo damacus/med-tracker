@@ -13,7 +13,7 @@ use std::time::Duration;
 use loco_rs::app::Hooks;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_sdk::trace::{BatchSpanProcessor, Sampler, SdkTracerProvider};
-use tracing_subscriber::{Layer, layer::SubscriberExt, registry, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, registry, util::SubscriberInitExt};
 
 use config::TelemetrySettings;
 use opentelemetry_otlp::{WithExportConfig, WithHttpConfig};
@@ -42,8 +42,7 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
             .expect("static filter directive is valid"),
     );
     let diagnostics = export::Diagnostics::new();
-    let json = json::layer(std::io::stdout, resource.clone())
-        .with_filter(export::DiagnosticsGate::new(diagnostics.clone()));
+    let json = json::layer(std::io::stdout, resource.clone(), diagnostics.clone());
     match build_provider(&settings, &resource, diagnostics) {
         Some(provider) => {
             let _ = TRACER_PROVIDER.set(provider.clone());
@@ -188,7 +187,7 @@ mod tests {
 
 #[cfg(test)]
 mod pipeline_tests {
-    use super::export::{Diagnostics, DiagnosticsGate, SanitizingExporter};
+    use super::export::{Diagnostics, SanitizingExporter};
     use super::json;
     use opentelemetry::trace::{Tracer, TracerProvider};
     use opentelemetry_sdk::{
@@ -198,7 +197,7 @@ mod pipeline_tests {
     use std::io::Write;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
-    use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, registry};
+    use tracing_subscriber::{EnvFilter, layer::SubscriberExt, registry};
 
     #[derive(Clone, Default)]
     struct Buffer(Arc<Mutex<Vec<u8>>>);
@@ -261,8 +260,7 @@ mod pipeline_tests {
             .build();
 
         let buffer = Buffer::default();
-        let json =
-            json::layer(buffer.clone(), resource()).with_filter(DiagnosticsGate::new(diagnostics));
+        let json = json::layer(buffer.clone(), resource(), diagnostics.clone());
         let filter = EnvFilter::new("info,opentelemetry=warn");
         let otel = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
         let subscriber = registry().with(json).with(otel).with(filter);
@@ -295,8 +293,7 @@ mod pipeline_tests {
     fn dropped_span_warnings_never_reach_output() {
         let diagnostics = Diagnostics::new();
         let buffer = Buffer::default();
-        let json = json::layer(buffer.clone(), resource())
-            .with_filter(DiagnosticsGate::new(diagnostics.clone()));
+        let json = json::layer(buffer.clone(), resource(), diagnostics.clone());
         let subscriber = registry().with(json);
         let _default = tracing::subscriber::set_default(subscriber);
         // Simulate SDK internal events at warn/error targets.

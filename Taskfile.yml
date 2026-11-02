@@ -41,6 +41,9 @@ includes:
   openspec:
     taskfile: Taskfiles/openspec.yml
     dir: .
+  telemetry:
+    taskfile: Taskfiles/telemetry.yml
+    dir: .
 
 tasks:
   portable:prepare:
@@ -134,6 +137,3 @@ tasks:
     cmds: [{task: "host:test:canary"}]
   test:tooling:
     cmds: [node --test scripts/test_compose_tasks.mjs scripts/test_invitation_mail.mjs]
-  telemetry:
-    taskfile: Taskfiles/telemetry.yml
-    dir: .
