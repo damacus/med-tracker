@@ -346,7 +346,10 @@ async fn fetch_source(
     } else {
         Url::parse(source_url).ok()?
     };
-    let mut response = client.get(request_url).send().await.ok()?;
+    let host = request_url.host_str().unwrap_or_default().to_owned();
+    let mut response = crate::telemetry::units::send(client.get(request_url), &host, "GET")
+        .await
+        .ok()?;
     if !response.status().is_success() {
         return None;
     }
@@ -402,6 +405,7 @@ async fn call_provider(config: &ProviderConfig, prompt: &str) -> Result<String, 
         }
     };
     let url = config.base.join(&path).map_err(|_| ())?;
+    let host = url.host_str().unwrap_or_default().to_owned();
     let mut request = client.post(url).json(&request);
     request = match config.provider {
         Provider::OpenAi | Provider::OpenRouter => request.bearer_auth(&config.key),
@@ -410,7 +414,9 @@ async fn call_provider(config: &ProviderConfig, prompt: &str) -> Result<String, 
             .header("anthropic-version", "2023-06-01"),
         Provider::Gemini => request.header("x-goog-api-key", &config.key),
     };
-    let response = request.send().await.map_err(|_| ())?;
+    let response = crate::telemetry::units::send(request, &host, "POST")
+        .await
+        .map_err(|_| ())?;
     if !response.status().is_success() {
         return Err(());
     }

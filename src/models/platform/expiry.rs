@@ -89,25 +89,29 @@ impl Task for SupportExpiryTask {
     }
 
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> loco_rs::Result<()> {
-        crate::models::canary::work(ctx).await?;
-        let run = expire_due(ctx)
-            .await
-            .map_err(|_| loco_rs::Error::string("Support expiry run failed"))?;
-        let outcome = if run.failed == 0 {
-            "success"
-        } else {
-            "partial"
-        };
-        tracing::info!(
-            event.name = "medtracker.support_access.expired",
-            medtracker.outcome = outcome,
-            medtracker.expired_count = run.expired,
-            medtracker.deferred_count = run.failed,
-            "Support expiry run finished"
-        );
-        if run.failed > 0 {
-            return Err(loco_rs::Error::string("Support expiry run incomplete"));
-        }
-        Ok(())
+        crate::telemetry::units::task("support-access-expire", async {
+            crate::models::canary::work(ctx).await?;
+            let run = expire_due(ctx)
+                .await
+                .map_err(|_| loco_rs::Error::string("Support expiry run failed"))?;
+            let outcome = if run.failed == 0 {
+                "success"
+            } else {
+                "partial"
+            };
+            tracing::info!(
+                event.name = "medtracker.support_access.expired",
+                medtracker.outcome = outcome,
+                medtracker.expired_count = run.expired,
+                medtracker.deferred_count = run.failed,
+                "Support expiry run finished"
+            );
+            if run.failed > 0 {
+                Err(loco_rs::Error::string("Support expiry run incomplete"))
+            } else {
+                Ok(())
+            }
+        })
+        .await
     }
 }

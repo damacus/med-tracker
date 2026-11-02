@@ -33,10 +33,13 @@ impl BackgroundWorker<ImportArgs> for ImportWorker {
         Self { ctx: ctx.clone() }
     }
     async fn perform(&self, args: ImportArgs) -> loco_rs::Result<()> {
-        crate::models::canary::work(&self.ctx).await?;
-        run(&self.ctx, args.run_id)
-            .await
-            .map_err(|_| loco_rs::Error::string("NHS catalogue import could not finish"))
+        crate::telemetry::units::job("import", async {
+            crate::models::canary::work(&self.ctx).await?;
+            run(&self.ctx, args.run_id)
+                .await
+                .map_err(|_| loco_rs::Error::string("NHS catalogue import could not finish"))
+        })
+        .await
     }
 }
 
@@ -279,9 +282,12 @@ impl Task for ReconcileTask {
         }
     }
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> loco_rs::Result<()> {
-        crate::models::canary::work(ctx).await?;
-        reconcile(ctx)
-            .await
-            .map_err(|_| loco_rs::Error::string("NHS catalogue reconciliation failed"))
+        crate::telemetry::units::task("nhs_dmd_reconcile", async {
+            crate::models::canary::work(ctx).await?;
+            reconcile(ctx)
+                .await
+                .map_err(|_| loco_rs::Error::string("NHS catalogue reconciliation failed"))
+        })
+        .await
     }
 }

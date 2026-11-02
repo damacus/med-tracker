@@ -26,11 +26,14 @@ impl ArchiveStore {
     }
 
     pub async fn put(&self, key: &str, bytes: Vec<u8>) -> Result<(), OperationError> {
+        use tracing::Instrument;
         tokio::time::timeout(
             OPERATION_TIMEOUT,
             self.operator
                 .write_with(key, bytes)
-                .content_type("application/zip"),
+                .content_type("application/zip")
+                .into_future()
+                .instrument(crate::telemetry::units::storage_span("put")),
         )
         .await
         .map_err(OperationError::from)?
@@ -39,10 +42,17 @@ impl ArchiveStore {
     }
 
     pub async fn get(&self, key: &str) -> Result<Vec<u8>, OperationError> {
-        let reader = tokio::time::timeout(OPERATION_TIMEOUT, self.operator.reader(key))
-            .await
-            .map_err(OperationError::from)?
-            .map_err(OperationError::from)?;
+        use tracing::Instrument;
+        let reader = tokio::time::timeout(
+            OPERATION_TIMEOUT,
+            self.operator
+                .reader(key)
+                .into_future()
+                .instrument(crate::telemetry::units::storage_span("get")),
+        )
+        .await
+        .map_err(OperationError::from)?
+        .map_err(OperationError::from)?;
         let mut stream = tokio::time::timeout(OPERATION_TIMEOUT, reader.into_bytes_stream(..))
             .await
             .map_err(OperationError::from)?
@@ -65,10 +75,17 @@ impl ArchiveStore {
     }
 
     pub async fn delete(&self, key: &str) -> Result<(), OperationError> {
-        tokio::time::timeout(OPERATION_TIMEOUT, self.operator.delete(key))
-            .await
-            .map_err(OperationError::from)?
-            .map_err(OperationError::from)
+        use tracing::Instrument;
+        tokio::time::timeout(
+            OPERATION_TIMEOUT,
+            self.operator
+                .delete(key)
+                .into_future()
+                .instrument(crate::telemetry::units::storage_span("delete")),
+        )
+        .await
+        .map_err(OperationError::from)?
+        .map_err(OperationError::from)
     }
 }
 

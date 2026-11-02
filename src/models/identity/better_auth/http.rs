@@ -63,6 +63,9 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
     };
     tracing::info!(event.name = "http.server.request", http.request.method = %method, http.route = route, http.response.status_code = response.status().as_u16(),
         medtracker.duration_ms = started.elapsed().as_secs_f64() * 1000.0,
+        medtracker.db.query_count = crate::telemetry::db::snapshot().map(|(count, _, _)| count),
+        medtracker.db.runtime_ms = crate::telemetry::db::snapshot().map(|(_, runtime, _)| runtime),
+        medtracker.db.failed_query_count = crate::telemetry::db::snapshot().map(|(_, _, failed)| failed),
         "HTTP request completed");
     response
 }

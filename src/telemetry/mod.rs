@@ -2,10 +2,12 @@
 //! privacy key rule, and bounded shutdown. Disabled unless configured.
 
 pub mod config;
+pub mod db;
 pub mod export;
 pub mod ids;
 pub mod json;
 pub mod keys;
+pub mod units;
 
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -62,6 +64,7 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
             );
         }
     }
+    units::install_panic_hook();
     true
 }
 
