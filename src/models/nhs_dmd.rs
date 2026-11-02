@@ -242,14 +242,19 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             import::fail_owned_run(&ctx.db, &row, error).await?;
         }
         Ok(()) => {
+            let finished = nhs_dmd_import::Entity::find_by_id(row.id)
+                .one(&ctx.db)
+                .await
+                .map_err(|_| OperationError::Unavailable)?
+                .unwrap_or_else(|| row.clone());
             tracing::info!(
                 event.name = "medtracker.import.completed",
-                medtracker.import.run_id = row.id,
+                medtracker.import.run_id = finished.id,
                 medtracker.import.trace_id = row.trace_id.as_deref(),
-                medtracker.import.created_count = row.created_count,
-                medtracker.import.updated_count = row.updated_count,
-                medtracker.import.imported_count = row.imported_count,
-                medtracker.import.skipped_count = row.skipped_count,
+                medtracker.import.created_count = finished.created_count,
+                medtracker.import.updated_count = finished.updated_count,
+                medtracker.import.imported_count = finished.imported_count,
+                medtracker.import.skipped_count = finished.skipped_count,
                 "NHS dm+d import completed"
             );
         }
@@ -291,8 +296,35 @@ async fn cleanup(
 }
 
 pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
-    let stale_result = ctx.db.execute_unprepared("UPDATE nhs_dmd_imports SET status=5,error_message='The import stopped making progress. Upload the release again.',completed_at=now(),updated_at=now() WHERE status IN (0,1,2,3) AND updated_at < now()-interval '30 minutes'").await?;
-    let stale_failed_count = stale_result.rows_affected() as i64;
+    let cutoff = Utc::now().naive_utc() - chrono::Duration::minutes(30);
+    let stale_marked = nhs_dmd_import::Entity::update_many()
+        .col_expr(nhs_dmd_import::Column::Status, sea_orm::sea_query::Expr::value(5))
+        .col_expr(
+            nhs_dmd_import::Column::ErrorMessage,
+            sea_orm::sea_query::Expr::value("The import stopped making progress. Upload the release again."),
+        )
+        .col_expr(
+            nhs_dmd_import::Column::CompletedAt,
+            sea_orm::sea_query::Expr::current_timestamp(),
+        )
+        .col_expr(
+            nhs_dmd_import::Column::UpdatedAt,
+            sea_orm::sea_query::Expr::current_timestamp(),
+        )
+        .filter(nhs_dmd_import::Column::Status.is_in([0, 1, 2, 3]))
+        .filter(nhs_dmd_import::Column::UpdatedAt.lt(cutoff))
+        .exec_with_returning(&ctx.db)
+        .await?;
+    let stale_failed_count = stale_marked.len() as i64;
+    for marked in &stale_marked {
+        tracing::warn!(
+            event.name = "medtracker.import.stale",
+            medtracker.import.run_id = marked.id,
+            medtracker.import.trace_id = marked.trace_id.as_deref(),
+            error.type = ImportFailureCategory::Stale.name(),
+            "NHS dm+d import marked stale"
+        );
+    }
     let lease = ctx.db.begin().await?;
     let locked = lease
         .query_one_raw(Statement::from_string(
@@ -313,13 +345,6 @@ pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
         .await?;
     let requeued = stale.len() as i64;
     for row in &stale {
-        tracing::warn!(
-            event.name = "medtracker.import.requeued",
-            medtracker.import.run_id = row.id,
-            medtracker.import.trace_id = row.trace_id.as_deref(),
-            error.type = ImportFailureCategory::Stale.name(),
-            "NHS dm+d import marked stale"
-        );
         ImportWorker::perform_later(
             ctx,
             ImportArgs {

@@ -6,6 +6,7 @@ mod account_preferences;
 mod account_profile;
 #[path = "administration_overview.rs"]
 mod administration_overview;
+mod nhs_dmd_admin;
 #[path = "avatar.rs"]
 mod avatar;
 #[path = "bulk_members.rs"]

@@ -1841,3 +1841,45 @@ fn nhs_dmd_reconciliation_is_scheduled_for_every_runtime() {
         );
     }
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn nhs_dmd_upload_stores_request_trace_and_worker_joins_it() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
+    let app = Application::new().await;
+    let trace_id = "0123456789abcdef0123456789abcdef";
+    let traceparent = format!("00-{trace_id}-0123456789abcdef-01");
+    // Simulate the request boundary: upload runs inside ids::hold so the
+    // enqueue path sees current_traceparent exactly as it does under
+    // request_trace::boundary.
+    let id = med_tracker::telemetry::ids::hold(
+        traceparent.clone(),
+        med_tracker::models::nhs_dmd::upload(&app.context, "release.zip", release()),
+    )
+    .await
+    .unwrap();
+    let row = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.trace_id.as_deref(), Some(trace_id));
+    // The queued args carry the same traceparent so the worker's job span
+    // joins this trace in either export mode.
+    let args = med_tracker::models::nhs_dmd::ImportArgs {
+        run_id: row.id,
+        traceparent: Some(traceparent),
+    };
+    let propagated = med_tracker::telemetry::units::job_with_parent(
+        "import",
+        args.traceparent.as_deref(),
+        async {
+            Ok::<String, loco_rs::Error>(
+                med_tracker::telemetry::ids::current_traceparent().expect("traceparent"),
+            )
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(propagated.split('-').nth(1), Some(trace_id));
+    app.close().await;
+}
