@@ -16,7 +16,11 @@ async fn platform_admin(fixture: &Scenario) {
     .unwrap();
 }
 
-fn import_row(trace_id: Option<&str>, status: i32, error: Option<&str>) -> nhs_dmd_imports::ActiveModel {
+fn import_row(
+    trace_id: Option<&str>,
+    status: i32,
+    error: Option<&str>,
+) -> nhs_dmd_imports::ActiveModel {
     let now = chrono::Utc::now().naive_utc();
     nhs_dmd_imports::ActiveModel {
         uploaded_filename: Set("release.zip".into()),
@@ -46,10 +50,14 @@ async fn nhs_dmd_admin_shows_trace_reference_only_for_failed_imports() {
     platform_admin(&fixture).await;
     install_browser_session(&mut request, &boot, fixture.account.id).await;
     let trace = "0123456789abcdef0123456789abcdef";
-    import_row(Some(trace), 5, Some("The import stopped making progress. Upload the release again."))
-        .insert(&fixture.admin)
-        .await
-        .unwrap();
+    import_row(
+        Some(trace),
+        5,
+        Some("The import stopped making progress. Upload the release again."),
+    )
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
     import_row(None, 4, None)
         .insert(&fixture.admin)
         .await

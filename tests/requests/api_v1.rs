@@ -6,8 +6,6 @@ mod account_preferences;
 mod account_profile;
 #[path = "administration_overview.rs"]
 mod administration_overview;
-mod nhs_dmd_admin;
-mod portable_import_stages;
 #[path = "avatar.rs"]
 mod avatar;
 #[path = "bulk_members.rs"]
@@ -24,10 +22,12 @@ mod household_selection;
 mod household_settings;
 #[path = "me_ui.rs"]
 mod me_ui;
+mod nhs_dmd_admin;
 #[path = "people.rs"]
 mod people;
 #[path = "personal_history.rs"]
 mod personal_history;
+mod portable_import_stages;
 #[path = "profile.rs"]
 mod profile;
 #[path = "request_trace.rs"]

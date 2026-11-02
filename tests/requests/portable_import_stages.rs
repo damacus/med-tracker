@@ -1,6 +1,6 @@
+use super::request_trace::capture;
 use super::*;
 use med_tracker::models::care::portable_crypto;
-use super::request_trace::capture;
 use tracing::instrument::WithSubscriber;
 
 const PASSPHRASE: &str = "synthetic portable secret";
@@ -82,12 +82,17 @@ async fn portable_import_validation_failure_logs_one_warn_and_keeps_body() {
 
     assert_eq!(status, 422, "{body}");
     assert_eq!(
-        stage_events.iter().filter(|event| event.contains("WARN")).count(),
+        stage_events
+            .iter()
+            .filter(|event| event.contains("WARN"))
+            .count(),
         1,
         "{stage_events:?}"
     );
     assert!(
-        stage_events.iter().any(|event| event.contains("error.type=\"validation\"")),
+        stage_events
+            .iter()
+            .any(|event| event.contains("error.type=\"validation\"")),
         "{stage_events:?}"
     );
     assert!(body.contains("error"), "{body}");
@@ -116,10 +121,9 @@ async fn portable_import_success_logs_every_stage_as_successful() {
     assert_eq!(status, 201, "{status}");
     for stage in ["decrypt", "validate", "authorise", "preflight", "apply"] {
         assert!(
-            stage_events
-                .iter()
-                .any(|event| event.contains(&format!("medtracker.import.stage=\"{stage}\""))
-                    && event.contains("medtracker.outcome=\"success\"")),
+            stage_events.iter().any(|event| event
+                .contains(&format!("medtracker.import.stage=\"{stage}\""))
+                && event.contains("medtracker.outcome=\"success\"")),
             "missing stage {stage}: {stage_events:?}"
         );
     }

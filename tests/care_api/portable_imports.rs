@@ -1296,23 +1296,30 @@ struct StageFields(serde_json::Map<String, serde_json::Value>);
 
 impl tracing::field::Visit for StageFields {
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.0.insert(field.name().to_owned(), serde_json::json!(value));
+        self.0
+            .insert(field.name().to_owned(), serde_json::json!(value));
     }
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.0.insert(field.name().to_owned(), serde_json::json!(value));
+        self.0
+            .insert(field.name().to_owned(), serde_json::json!(value));
     }
     fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
-        self.0.insert(field.name().to_owned(), serde_json::json!(value));
+        self.0
+            .insert(field.name().to_owned(), serde_json::json!(value));
     }
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        self.0.insert(field.name().to_owned(), serde_json::json!(value));
+        self.0
+            .insert(field.name().to_owned(), serde_json::json!(value));
     }
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.0.insert(field.name().to_owned(), serde_json::json!(value));
+        self.0
+            .insert(field.name().to_owned(), serde_json::json!(value));
     }
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        self.0
-            .insert(field.name().to_owned(), serde_json::json!(format!("{value:?}")));
+        self.0.insert(
+            field.name().to_owned(),
+            serde_json::json!(format!("{value:?}")),
+        );
     }
 }
 
@@ -1372,10 +1379,15 @@ async fn portable_import_validation_failure_logs_one_warn_and_keeps_body() {
 
     let warns: Vec<_> = captured
         .iter()
-        .filter(|event| event["level"] == "WARN"
-            && event["event.name"] == "medtracker.portable_import.stage")
+        .filter(|event| {
+            event["level"] == "WARN" && event["event.name"] == "medtracker.portable_import.stage"
+        })
         .collect();
-    assert_eq!(warns.len(), 1, "expected exactly one stage WARN: {captured:?}");
+    assert_eq!(
+        warns.len(),
+        1,
+        "expected exactly one stage WARN: {captured:?}"
+    );
     assert_eq!(warns[0]["medtracker.outcome"], "failure");
     assert!(
         ["validation", "crypto"].contains(&warns[0]["error.type"].as_str().unwrap()),
@@ -1384,14 +1396,37 @@ async fn portable_import_validation_failure_logs_one_warn_and_keeps_body() {
     );
     assert!([400, 422].contains(&status), "{status}: {body}");
     // Body shape unchanged: the same error envelope as before stage logging.
-    assert!(body["data"].is_object() || body["error"].is_object(), "{body}");
-    assert!(serde_json::to_string(&body).unwrap().find("portable_import").is_some()
-        || serde_json::to_string(&body).unwrap().find("format").is_some()
-        || serde_json::to_string(&body).unwrap().find("bundle").is_some()
-        || serde_json::to_string(&body).unwrap().find("records").is_some()
-        || serde_json::to_string(&body).unwrap().find("decrypted").is_some()
-        || serde_json::to_string(&body).unwrap().find("error").is_some(),
-        "{body}");
+    assert!(
+        body["data"].is_object() || body["error"].is_object(),
+        "{body}"
+    );
+    assert!(
+        serde_json::to_string(&body)
+            .unwrap()
+            .find("portable_import")
+            .is_some()
+            || serde_json::to_string(&body)
+                .unwrap()
+                .find("format")
+                .is_some()
+            || serde_json::to_string(&body)
+                .unwrap()
+                .find("bundle")
+                .is_some()
+            || serde_json::to_string(&body)
+                .unwrap()
+                .find("records")
+                .is_some()
+            || serde_json::to_string(&body)
+                .unwrap()
+                .find("decrypted")
+                .is_some()
+            || serde_json::to_string(&body)
+                .unwrap()
+                .find("error")
+                .is_some(),
+        "{body}"
+    );
 }
 
 #[tokio::test]
@@ -1422,10 +1457,11 @@ async fn portable_import_success_logs_every_stage_as_successful() {
 
     for stage in ["decrypt", "validate", "authorise", "preflight", "apply"] {
         assert!(
-            captured.iter().any(|event| event["event.name"]
-                == "medtracker.portable_import.stage"
-                && event["medtracker.import.stage"] == stage
-                && event["medtracker.outcome"] == "success"),
+            captured.iter().any(
+                |event| event["event.name"] == "medtracker.portable_import.stage"
+                    && event["medtracker.import.stage"] == stage
+                    && event["medtracker.outcome"] == "success"
+            ),
             "missing success stage {stage}: {captured:?}"
         );
     }

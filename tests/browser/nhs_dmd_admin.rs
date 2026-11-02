@@ -25,7 +25,7 @@ async fn nhs_dmd_failed_import_shows_trace_reference() {
         journey.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71001,'active',now(),now()); INSERT INTO nhs_dmd_imports(id,uploaded_filename,status,error_message,trace_id,total_records,processed_records,imported_count,created_count,updated_count,unchanged_count,skipped_count,skipped_expired_count,skipped_invalid_count,skipped_missing_name_count,created_at,updated_at) VALUES(92001,'release.zip',5,'The import stopped making progress. Upload the release again.','0123456789abcdef0123456789abcdef',0,0,0,0,0,0,0,0,0,0,now(),now())").await.unwrap();
         harness::sign_in(journey).await;
         page.goto(&format!("{}/admin/nhs-dmd",journey.origin),None).await.unwrap();
-        
+
         expect(page.locator(".alert-error")).to_contain_text("The import stopped making progress.").await.unwrap();
         expect(page.locator(".alert-error")).to_contain_text("Reference:").await.unwrap();
         expect(page.locator(".alert-error")).to_contain_text("0123456789abcdef0123456789abcdef").await.unwrap();
