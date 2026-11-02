@@ -108,11 +108,11 @@ mod tests {
         assert!(
             fields
                 .iter()
-                .any(|(name, value)| name == "category" && value == "execution")
+                .any(|(name, value)| name == "error.type" && value == "execution")
         );
         let trace = fields
             .iter()
-            .find(|(name, _)| name == "error_trace_id")
+            .find(|(name, _)| name == "medtracker.error_reference")
             .map(|(_, value)| value.as_str())
             .ok_or("Expected creator error trace ID")?;
         assert!(uuid::Uuid::parse_str(trace).is_ok());
