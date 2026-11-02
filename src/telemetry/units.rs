@@ -392,6 +392,40 @@ mod tests {
         assert!(!attrs.iter().any(|(_, v)| v.contains("Sentinel")));
         assert!(!attrs.iter().any(|(k, _)| k.contains("dropped_keys")));
     }
+
+    #[tokio::test]
+    async fn job_with_parent_joins_inbound_trace_when_export_enabled() {
+        let (exporter, provider, layer) = test_otel();
+        let subscriber = tracing_subscriber::registry().with(layer);
+        use tracing::instrument::WithSubscriber;
+        let inbound = "00-7fa01885bf8086b9a009c00c9ca89e1b-6dd454d737734ffa-01";
+        job_with_parent("import", Some(inbound), async {
+            Ok::<u8, loco_rs::Error>(1)
+        })
+        .with_subscriber(subscriber)
+        .await
+        .unwrap();
+        provider.force_flush().expect("flush");
+        let spans = exporter.get_finished_spans().expect("exported spans");
+        assert_eq!(
+            spans[0].span_context.trace_id().to_string(),
+            "7fa01885bf8086b9a009c00c9ca89e1b"
+        );
+    }
+
+    #[tokio::test]
+    async fn job_with_parent_joins_inbound_trace_when_export_disabled() {
+        let inbound = "00-7fa01885bf8086b9a009c00c9ca89e1b-6dd454d737734ffa-01";
+        let propagated = job_with_parent("import", Some(inbound), async {
+            Ok::<String, loco_rs::Error>(
+                super::super::ids::current_traceparent().expect("traceparent"),
+            )
+        })
+        .await
+        .unwrap();
+        let trace_id = propagated.split('-').nth(1).expect("trace id");
+        assert_eq!(trace_id, "7fa01885bf8086b9a009c00c9ca89e1b");
+    }
 }
 
 #[cfg(test)]

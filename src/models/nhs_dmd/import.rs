@@ -205,9 +205,11 @@ impl From<&str> for ImportFailure {
     }
 }
 
-impl From<sea_orm::DbErr> for ImportFailure {
-    fn from(_: sea_orm::DbErr) -> Self {
-        Self::new(ImportStage::Persist, ImportFailureCategory::Database)
+impl ImportFailure {
+    /// Maps a DbErr to the database category at an explicit stage so no
+    /// implicit conversion can mislabel a failures stage.
+    pub fn database(stage: ImportStage) -> impl Fn(sea_orm::DbErr) -> Self {
+        move |_| Self::new(stage, ImportFailureCategory::Database)
     }
 }
 
@@ -409,7 +411,7 @@ fn parse_ampp_names(
                     if in_ampp {
                         return Err(ImportFailure::new(
                             ImportStage::ParseAmpp,
-                            ImportFailureCategory::XmlInvalid,
+                            ImportFailureCategory::RecordInvalid,
                         ));
                     }
                     in_ampp = true;
@@ -513,7 +515,7 @@ fn parse_gtins(
                     if in_ampp {
                         return Err(ImportFailure::new(
                             ImportStage::ParseGtin,
-                            ImportFailureCategory::XmlInvalid,
+                            ImportFailureCategory::RecordInvalid,
                         ));
                     }
                     in_ampp = true;
@@ -526,7 +528,7 @@ fn parse_gtins(
                     if in_gtindata {
                         return Err(ImportFailure::new(
                             ImportStage::ParseGtin,
-                            ImportFailureCategory::XmlInvalid,
+                            ImportFailureCategory::RecordInvalid,
                         ));
                     }
                     in_gtindata = true;
@@ -1047,7 +1049,7 @@ async fn set_status(
         [status.into(), message.into(), run_id.into()],
     ))
     .await
-    .map_err(|error| ImportFailure::from(error.to_string()))?;
+    .map_err(ImportFailure::database(ImportStage::Finalise))?;
     if changed.rows_affected() == 1 {
         Ok(())
     } else {
@@ -1083,7 +1085,7 @@ async fn apply_progress(
         ],
     ))
     .await
-    .map_err(|error| ImportFailure::from(error.to_string()))?;
+    .map_err(ImportFailure::database(ImportStage::Persist))?;
     if changed.rows_affected() == 1 {
         Ok(())
     } else {
@@ -1102,7 +1104,7 @@ async fn touch_run(db: &impl ConnectionTrait, run_id: i64) -> Result<(), ImportF
             [run_id.into()],
         ))
         .await
-        .map_err(|error| ImportFailure::from(error.to_string()))?;
+        .map_err(ImportFailure::database(ImportStage::Finalise))?;
     if changed.rows_affected() == 1 {
         Ok(())
     } else {
@@ -1189,7 +1191,13 @@ async fn import_extracted(
     let supplementary = if let Some(files) = supplementary_files(dir) {
         tokio::task::spawn_blocking(move || parse_optional_supplementary(&files))
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?
+            .map_err(|_error| {
+                ImportFailure::with_summary(
+                    ImportStage::ParseSupplementary,
+                    ImportFailureCategory::Panicked,
+                    "The import worker failed unexpectedly. Upload the release again.",
+                )
+            })?
     } else {
         None
     };
@@ -1212,7 +1220,7 @@ async fn import_extracted(
     let transaction = db
         .begin()
         .await
-        .map_err(|error| ImportFailure::from(error.to_string()))?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     touch_run(&transaction, run_id).await?;
     persist_relationships(&transaction, &names).await?;
     if let Some(data) = supplementary {
@@ -1225,7 +1233,7 @@ async fn import_extracted(
     transaction
         .commit()
         .await
-        .map_err(|error| ImportFailure::from(error.to_string()))?;
+        .map_err(ImportFailure::database(ImportStage::Commit))?;
     committing.complete();
     Ok(())
 }
@@ -1263,7 +1271,7 @@ async fn persist_relationships(
     nhs_dmd_ampp_relationship::Entity::delete_many()
         .exec(transaction)
         .await
-        .map_err(|error| ImportFailure::from(error.to_string()))?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     let now = Utc::now().naive_utc();
     let rows: Vec<nhs_dmd_ampp_relationship::ActiveModel> = names
         .iter()
@@ -1285,7 +1293,7 @@ async fn persist_relationships(
         nhs_dmd_ampp_relationship::Entity::insert_many(chunk.to_vec())
             .exec(transaction)
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
     }
     Ok(())
 }
@@ -1298,7 +1306,7 @@ async fn persist_gtins(
     let existing: Vec<nhs_dmd_barcode::Model> = nhs_dmd_barcode::Entity::find()
         .all(transaction)
         .await
-        .map_err(|error| ImportFailure::from(error.to_string()))?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     let by_gtin: HashMap<String, nhs_dmd_barcode::Model> = existing
         .into_iter()
         .map(|row| (row.gtin.clone(), row))
@@ -1371,7 +1379,7 @@ async fn persist_gtins(
             )
             .exec_without_returning(transaction)
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
     }
     Ok(())
 }
@@ -1387,7 +1395,7 @@ async fn persist_supplementary(
             .filter(nhs_dmd_trade_family_group::Column::Code.eq(code))
             .one(transaction)
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
         let row = match existing {
             Some(existing) if existing.name == *name => existing,
             Some(existing) => {
@@ -1397,7 +1405,7 @@ async fn persist_supplementary(
                 active
                     .update(transaction)
                     .await
-                    .map_err(|error| ImportFailure::from(error.to_string()))?
+                    .map_err(ImportFailure::database(ImportStage::Persist))?
             }
             None => nhs_dmd_trade_family_group::ActiveModel {
                 code: Set(code.clone()),
@@ -1408,7 +1416,7 @@ async fn persist_supplementary(
             }
             .insert(transaction)
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?,
+            .map_err(ImportFailure::database(ImportStage::Persist))?,
         };
         group_ids.insert(code.clone(), row.id);
     }
@@ -1422,7 +1430,7 @@ async fn persist_supplementary(
             .filter(nhs_dmd_trade_family::Column::Code.eq(code))
             .one(transaction)
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
         let row = match existing {
             Some(existing)
                 if existing.name == *name && existing.trade_family_group_id == group_id =>
@@ -1437,7 +1445,7 @@ async fn persist_supplementary(
                 active
                     .update(transaction)
                     .await
-                    .map_err(|error| ImportFailure::from(error.to_string()))?
+                    .map_err(ImportFailure::database(ImportStage::Persist))?
             }
             None => nhs_dmd_trade_family::ActiveModel {
                 code: Set(code.clone()),
@@ -1449,14 +1457,14 @@ async fn persist_supplementary(
             }
             .insert(transaction)
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?,
+            .map_err(ImportFailure::database(ImportStage::Persist))?,
         };
         family_ids.insert(code.clone(), row.id);
     }
     nhs_dmd_amp_trade_family::Entity::delete_many()
         .exec(transaction)
         .await
-        .map_err(|error| ImportFailure::from(error.to_string()))?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     for (amp_code, family_code) in &data.memberships {
         let Some(family_id) = family_ids.get(family_code) else {
             continue;
@@ -1470,14 +1478,14 @@ async fn persist_supplementary(
         }
         .insert(transaction)
         .await
-        .map_err(|error| ImportFailure::from(error.to_string()))?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     }
     if let Some(released_on) = data.released_on {
         let exists = nhs_dmd_supplementary_release::Entity::find()
             .filter(nhs_dmd_supplementary_release::Column::ReleasedOn.eq(released_on))
             .one(transaction)
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
         if exists.is_none() {
             nhs_dmd_supplementary_release::ActiveModel {
                 released_on: Set(released_on),
@@ -1487,7 +1495,7 @@ async fn persist_supplementary(
             }
             .insert(transaction)
             .await
-            .map_err(|error| ImportFailure::from(error.to_string()))?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
         }
     }
     Ok(())
@@ -1515,7 +1523,7 @@ async fn finalize(
         ],
     ))
     .await
-    .map_err(|error| ImportFailure::from(error.to_string()))?;
+    .map_err(ImportFailure::database(ImportStage::Commit))?;
     if changed.rows_affected() == 1 {
         Ok(())
     } else {
@@ -1596,11 +1604,14 @@ mod tests {
     async fn blocking_work_failure_survives_activity_failure() {
         let error = blocking_with_activity(&DatabaseConnection::default(), 1, |activity| {
             let _ = activity.send(());
-            Err::<(), _>("Specific release parsing failure".to_owned())
+            Err::<(), _>(ImportFailure::from("Specific release parsing failure"))
         })
         .await
         .unwrap_err();
-        assert_eq!(error, "Specific release parsing failure");
+        assert_eq!(
+            error.summary(),
+            ImportFailure::from("Specific release parsing failure").summary()
+        );
     }
 
     #[tokio::test]
@@ -1611,7 +1622,7 @@ mod tests {
         })
         .await
         .unwrap_err();
-        assert!(error.contains("Disconnected"));
+        assert!(!error.summary().is_empty());
     }
 
     #[tokio::test]
@@ -1659,8 +1670,11 @@ mod tests {
                 result
             };
             assert_eq!(
-                finish_work(1, phase, work, drain).await.unwrap_err(),
-                expected
+                finish_work(1, phase, work, drain)
+                    .await
+                    .unwrap_err()
+                    .summary(),
+                ImportFailure::from(expected).summary()
             );
         }
     }
@@ -1677,7 +1691,7 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert_eq!(error, "Import worker panicked");
+        assert_eq!(error.summary(), ImportFailureCategory::Panicked.summary());
     }
 
     #[test]
@@ -2025,5 +2039,37 @@ mod tests {
         assert!(
             matches!(&records[0], GtinParsed::Record { gtin, display, .. } if gtin == "5016298210989" && display == "Scanner imported tablets")
         );
+    }
+
+    #[test]
+    fn failure_categories_store_fixed_summaries_without_error_text() {
+        let sentinel = "ClinicalPanicSentinel-9f8e";
+        let categories = [
+            ImportFailureCategory::ArchiveInvalid,
+            ImportFailureCategory::XmlInvalid,
+            ImportFailureCategory::RecordInvalid,
+            ImportFailureCategory::Storage,
+            ImportFailureCategory::Database,
+            ImportFailureCategory::Timeout,
+            ImportFailureCategory::Cancelled,
+            ImportFailureCategory::Panicked,
+            ImportFailureCategory::Inactive,
+            ImportFailureCategory::ActivityUnreported,
+            ImportFailureCategory::Stale,
+        ];
+        for category in categories {
+            let summary = category.summary();
+            assert!(!summary.is_empty());
+            assert!(summary.len() < 160);
+            assert!(!summary.contains(sentinel));
+        }
+        let raw = format!("XML parse failed near sentinel {sentinel} in <ampp>");
+        let failure = ImportFailure::from(raw);
+        assert!(!failure.summary().contains(sentinel));
+        assert!(!failure.to_string().contains(sentinel));
+        let mapped =
+            ImportFailure::database(ImportStage::Count)(sea_orm::DbErr::Custom("x".into()));
+        assert_eq!(mapped.category.name(), "database");
+        assert_eq!(mapped.stage.name(), "count");
     }
 }
