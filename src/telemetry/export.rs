@@ -191,6 +191,40 @@ impl<E: SpanExporter> SpanExporter for SanitizingExporter<E> {
         self.inner.set_resource(&resource);
     }
 }
+impl Diagnostics {
+    /// Counts a suppressed OTel SDK internal diagnostic event. Called by the
+    /// log-layer filter for every denied `opentelemetry*` event; `name` is the
+    /// event metadata name (e.g. `BatchSpanProcessor.SpansDropped`).
+    pub fn sdk_event(&self, name: &str) {
+        let Ok(mut state) = self.state.lock() else {
+            return;
+        };
+        if !state.failing {
+            // Internal errors before any observed export failure still open a
+            // failure window only via the exporter wrapper; count them here.
+        }
+        if name.contains("SpansDropped") || name.contains("SpanDroppingStarted") {
+            state.dropped_spans += 1;
+        }
+    }
+
+    /// Suppressed diagnostic count, included on the rate-limited warning.
+    pub fn suppressed(&self) -> u64 {
+        self.state.lock().map(|s| s.suppressed).unwrap_or(0)
+    }
+
+    /// Dropped-span notification count since the last reset.
+    pub fn dropped_spans(&self) -> u64 {
+        self.state.lock().map(|s| s.dropped_spans).unwrap_or(0)
+    }
+
+    /// Adds to the suppressed counter (used by the gate filter).
+    pub fn suppress_one(&self) {
+        if let Ok(mut state) = self.state.lock() {
+            state.suppressed += 1;
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -391,41 +425,6 @@ mod tests {
             batch: Vec<SpanData>,
         ) -> impl std::future::Future<Output = OTelSdkResult> + Send {
             self.0.export(batch)
-        }
-    }
-}
-
-impl Diagnostics {
-    /// Counts a suppressed OTel SDK internal diagnostic event. Called by the
-    /// log-layer filter for every denied `opentelemetry*` event; `name` is the
-    /// event metadata name (e.g. `BatchSpanProcessor.SpansDropped`).
-    pub fn sdk_event(&self, name: &str) {
-        let Ok(mut state) = self.state.lock() else {
-            return;
-        };
-        if !state.failing {
-            // Internal errors before any observed export failure still open a
-            // failure window only via the exporter wrapper; count them here.
-        }
-        if name.contains("SpansDropped") || name.contains("SpanDroppingStarted") {
-            state.dropped_spans += 1;
-        }
-    }
-
-    /// Suppressed diagnostic count, included on the rate-limited warning.
-    pub fn suppressed(&self) -> u64 {
-        self.state.lock().map(|s| s.suppressed).unwrap_or(0)
-    }
-
-    /// Dropped-span notification count since the last reset.
-    pub fn dropped_spans(&self) -> u64 {
-        self.state.lock().map(|s| s.dropped_spans).unwrap_or(0)
-    }
-
-    /// Adds to the suppressed counter (used by the gate filter).
-    pub fn suppress_one(&self) {
-        if let Ok(mut state) = self.state.lock() {
-            state.suppressed += 1;
         }
     }
 }
