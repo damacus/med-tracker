@@ -1426,6 +1426,7 @@ async fn person_owned_schedule_clinical_update_waits_for_safe_state_before_sourc
             .patch(endpoint)
             .bearer_auth(token)
             .json(&json!({"schedule":{"dose_amount":"3"}}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -2472,6 +2473,7 @@ async fn person_owned_schedule_guardian_replay_rechecks_declaration_after_destin
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&body)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -2821,11 +2823,15 @@ async fn origin_attachment_wait_change(change: OriginWaitChange) {
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&json!({"token":token,"sharing_consent":true}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
     });
     wait_for_owned_blocker(&app, holder).await;
+    if matches!(change, OriginWaitChange::RevokeCredential) {
+        tokio::time::sleep(std::time::Duration::from_secs(6)).await;
+    }
     match change {
         OriginWaitChange::RevokeCredential => {
             let affected =
@@ -3662,6 +3668,7 @@ async fn person_owned_schedule_acceptance_rechecks_api_session_after_invitation_
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&body)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -4048,6 +4055,7 @@ async fn person_owned_schedule_origin_attachment_preserves_database_failure_with
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&json!({"token":token,"subject_person_id":subject,"sharing_consent":true}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -4203,6 +4211,7 @@ async fn person_owned_schedule_origin_attachment_rechecks_guardian_eligibility_a
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&json!({"token":token,"subject_person_id":subject,"sharing_consent":true}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -5445,6 +5454,7 @@ async fn person_owned_schedule_shared_command_rechecks_captured_guardian_after_s
             .bearer_auth(token)
             .header("if-match", etag)
             .json(&json!({"schedule":{"dose_amount":"3"}}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
