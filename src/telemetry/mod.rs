@@ -13,7 +13,7 @@ use std::time::Duration;
 use loco_rs::app::Hooks;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_sdk::trace::{BatchSpanProcessor, Sampler, SdkTracerProvider};
-use tracing_subscriber::{layer::SubscriberExt, registry, util::SubscriberInitExt};
+use tracing_subscriber::{Layer, layer::SubscriberExt, registry, util::SubscriberInitExt};
 
 use config::TelemetrySettings;
 use opentelemetry_otlp::{WithExportConfig, WithHttpConfig};
@@ -41,12 +41,14 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
             .parse()
             .expect("static filter directive is valid"),
     );
-    let json = json::layer(std::io::stdout, resource.clone());
-    match build_provider(&settings, &resource) {
+    let diagnostics = export::Diagnostics::new();
+    let json = json::layer(std::io::stdout, resource.clone())
+        .with_filter(export::DiagnosticsGate::new(diagnostics.clone()));
+    match build_provider(&settings, &resource, diagnostics) {
         Some(provider) => {
             let _ = TRACER_PROVIDER.set(provider.clone());
             let otel = tracing_opentelemetry::layer().with_tracer(provider.tracer("medtracker"));
-            registry().with(json).with(otel).with(filter).init();
+            let _ = registry().with(json).with(otel).with(filter).try_init();
             let host = settings.endpoint_host().unwrap_or_default();
             tracing::info!(
                 event.name = "medtracker.telemetry.export",
@@ -55,7 +57,7 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
             );
         }
         None => {
-            registry().with(json).with(filter).init();
+            let _ = registry().with(json).with(filter).try_init();
             tracing::info!(
                 event.name = "medtracker.telemetry.export",
                 "Telemetry export disabled"
@@ -68,6 +70,27 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
 fn build_provider(
     settings: &TelemetrySettings,
     resource: &json::Resource,
+    diagnostics: std::sync::Arc<export::Diagnostics>,
+) -> Option<SdkTracerProvider> {
+    // The reqwest blocking exporter client must be constructed off the async
+    // context: building it inside a Tokio runtime can panic.
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        if matches!(
+            handle.runtime_flavor(),
+            tokio::runtime::RuntimeFlavor::MultiThread
+        ) {
+            return tokio::task::block_in_place(|| {
+                build_provider_inner(settings, resource, diagnostics)
+            });
+        }
+    }
+    build_provider_inner(settings, resource, diagnostics)
+}
+
+fn build_provider_inner(
+    settings: &TelemetrySettings,
+    resource: &json::Resource,
+    diagnostics: std::sync::Arc<export::Diagnostics>,
 ) -> Option<SdkTracerProvider> {
     let mut attributes = vec![
         opentelemetry::KeyValue::new("service.version", resource.service_version.clone()),
@@ -94,7 +117,7 @@ fn build_provider(
             );
         })
         .ok()?;
-    let exporter = export::SanitizingExporter::new(exporter, export::Diagnostics::new());
+    let exporter = export::SanitizingExporter::new(exporter, diagnostics);
     let batch = opentelemetry_sdk::trace::BatchConfigBuilder::default()
         .with_max_queue_size(2048)
         .with_scheduled_delay(Duration::from_secs(5))
@@ -142,7 +165,7 @@ pub fn build_version() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{TelemetrySettings, build_provider, json::Resource};
+    use super::{TelemetrySettings, build_provider, export, json::Resource};
 
     fn resource() -> Resource {
         Resource {
@@ -155,10 +178,132 @@ mod tests {
     #[test]
     fn unconfigured_settings_create_no_provider() {
         let settings = TelemetrySettings::from_settings(None);
-        assert!(build_provider(&settings, &resource()).is_none());
+        assert!(build_provider(&settings, &resource(), export::Diagnostics::new()).is_none());
         let settings = TelemetrySettings::from_settings(Some(&serde_json::json!({
             "telemetry": {"otlp_endpoint": "", "otlp_traces_endpoint": ""}
         })));
-        assert!(build_provider(&settings, &resource()).is_none());
+        assert!(build_provider(&settings, &resource(), export::Diagnostics::new()).is_none());
+    }
+}
+
+#[cfg(test)]
+mod pipeline_tests {
+    use super::export::{Diagnostics, DiagnosticsGate, SanitizingExporter};
+    use super::json;
+    use opentelemetry::trace::{Tracer, TracerProvider};
+    use opentelemetry_sdk::{
+        error::{OTelSdkError, OTelSdkResult},
+        trace::{BatchSpanProcessor, Sampler, SdkTracerProvider, SpanData, SpanExporter},
+    };
+    use std::io::Write;
+    use std::sync::{Arc, Mutex};
+    use std::time::Duration;
+    use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, registry};
+
+    #[derive(Clone, Default)]
+    struct Buffer(Arc<Mutex<Vec<u8>>>);
+    impl Buffer {
+        fn text(&self) -> String {
+            String::from_utf8_lossy(&self.0.lock().expect("buffer")).to_string()
+        }
+    }
+    struct BufferWriter(Arc<Mutex<Vec<u8>>>);
+    impl Write for BufferWriter {
+        fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().expect("buffer").extend_from_slice(b);
+            Ok(b.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for Buffer {
+        type Writer = BufferWriter;
+        fn make_writer(&'a self) -> Self::Writer {
+            BufferWriter(self.0.clone())
+        }
+    }
+
+    #[derive(Debug)]
+    struct AlwaysFails;
+    impl SpanExporter for AlwaysFails {
+        fn export(
+            &self,
+            _: Vec<SpanData>,
+        ) -> impl std::future::Future<Output = OTelSdkResult> + Send {
+            async { Err(OTelSdkError::InternalFailure("endpoint down".into())) }
+        }
+    }
+
+    fn resource() -> json::Resource {
+        json::Resource {
+            service_version: "test".into(),
+            environment: "test".into(),
+            instance_id: String::new(),
+        }
+    }
+
+    fn emit_span(provider: &SdkTracerProvider) {
+        use opentelemetry::trace::Span as _;
+        let tracer = provider.tracer("test");
+        let mut span = tracer.start("GET /health");
+        span.end();
+    }
+
+    #[test]
+    fn failing_pipeline_emits_one_warn_no_errors_and_recovers() {
+        let diagnostics = Diagnostics::new();
+        let exporter = SanitizingExporter::new(AlwaysFails, diagnostics.clone());
+        let processor = BatchSpanProcessor::builder(exporter).build();
+        let provider = SdkTracerProvider::builder()
+            .with_span_processor(processor)
+            .with_sampler(Sampler::AlwaysOn)
+            .build();
+
+        let buffer = Buffer::default();
+        let json =
+            json::layer(buffer.clone(), resource()).with_filter(DiagnosticsGate::new(diagnostics));
+        let filter = EnvFilter::new("info,opentelemetry=warn");
+        let otel = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
+        let subscriber = registry().with(json).with(otel).with(filter);
+        let _ = tracing::subscriber::set_global_default(subscriber);
+
+        for _ in 0..3 {
+            emit_span(&provider);
+            let _ = provider.force_flush();
+        }
+        // Shutdown while failing: still no extra lines.
+        let _ = provider.shutdown_with_timeout(Duration::from_millis(250));
+
+        let output = buffer.text();
+        let warnings = output
+            .lines()
+            .filter(|l| l.contains("medtracker.telemetry.export_failed"))
+            .count();
+        assert_eq!(warnings, 1, "{output}");
+        assert!(
+            !output.lines().any(|l| l.contains("\"severity_number\":1")
+                && l.contains('7')
+                && l.contains("ERROR")),
+            "ERROR line present: {output}"
+        );
+        assert!(!output.contains("BatchSpanProcessor"), "{output}");
+        assert!(!output.contains("endpoint down"), "{output}");
+    }
+
+    #[test]
+    fn dropped_span_warnings_never_reach_output() {
+        let diagnostics = Diagnostics::new();
+        let buffer = Buffer::default();
+        let json = json::layer(buffer.clone(), resource())
+            .with_filter(DiagnosticsGate::new(diagnostics.clone()));
+        let subscriber = registry().with(json);
+        let _default = tracing::subscriber::set_default(subscriber);
+        // Simulate SDK internal events at warn/error targets.
+        tracing::warn!(name: "BatchSpanProcessor.SpansDropped", target: "opentelemetry_sdk", name = "BatchSpanProcessor.SpansDropped", "dropped");
+        tracing::error!(name: "BatchSpanProcessor.ExportError", target: "opentelemetry_sdk", name = "BatchSpanProcessor.ExportError", "failed");
+        assert_eq!(diagnostics.dropped_spans(), 1);
+        assert_eq!(diagnostics.suppressed(), 2);
+        assert!(buffer.text().is_empty(), "{}", buffer.text());
     }
 }

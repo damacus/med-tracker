@@ -25,6 +25,7 @@ pub struct Diagnostics {
 struct DiagnosticsState {
     failing: bool,
     suppressed: u64,
+    dropped_spans: u64,
     last_warning: Option<Instant>,
 }
 
@@ -84,10 +85,12 @@ impl Diagnostics {
                 "Telemetry export recovered"
             );
         } else if emit_failure {
+            let dropped = self.dropped_spans();
             tracing::warn!(
                 event.name = "medtracker.telemetry.export_failed",
                 error.type = error_type,
                 medtracker.telemetry.suppressed_count = suppressed,
+                medtracker.telemetry.dropped_spans = dropped,
                 "Telemetry export failed"
             );
         }
@@ -388,6 +391,82 @@ mod tests {
             batch: Vec<SpanData>,
         ) -> impl std::future::Future<Output = OTelSdkResult> + Send {
             self.0.export(batch)
+        }
+    }
+}
+
+impl Diagnostics {
+    /// Counts a suppressed OTel SDK internal diagnostic event. Called by the
+    /// log-layer filter for every denied `opentelemetry*` event; `name` is the
+    /// event metadata name (e.g. `BatchSpanProcessor.SpansDropped`).
+    pub fn sdk_event(&self, name: &str) {
+        let Ok(mut state) = self.state.lock() else {
+            return;
+        };
+        if !state.failing {
+            // Internal errors before any observed export failure still open a
+            // failure window only via the exporter wrapper; count them here.
+        }
+        if name.contains("SpansDropped") || name.contains("SpanDroppingStarted") {
+            state.dropped_spans += 1;
+        }
+    }
+
+    /// Suppressed diagnostic count, included on the rate-limited warning.
+    pub fn suppressed(&self) -> u64 {
+        self.state.lock().map(|s| s.suppressed).unwrap_or(0)
+    }
+
+    /// Dropped-span notification count since the last reset.
+    pub fn dropped_spans(&self) -> u64 {
+        self.state.lock().map(|s| s.dropped_spans).unwrap_or(0)
+    }
+
+    /// Adds to the suppressed counter (used by the gate filter).
+    pub fn suppress_one(&self) {
+        if let Ok(mut state) = self.state.lock() {
+            state.suppressed += 1;
+        }
+    }
+}
+
+/// Per-layer filter that denies every OTel SDK internal diagnostic event
+/// (`opentelemetry*` targets) while feeding the shared diagnostics limiter.
+/// The curated `medtracker.telemetry.*` events come from the exporter wrapper,
+/// so SDK lines never reach the log output.
+pub struct DiagnosticsGate {
+    diagnostics: Arc<Diagnostics>,
+}
+
+impl DiagnosticsGate {
+    pub fn new(diagnostics: Arc<Diagnostics>) -> Self {
+        Self { diagnostics }
+    }
+}
+
+impl<S> tracing_subscriber::layer::Filter<S> for DiagnosticsGate {
+    fn enabled(
+        &self,
+        meta: &tracing::Metadata<'_>,
+        _ctx: &tracing_subscriber::layer::Context<'_, S>,
+    ) -> bool {
+        if !meta.target().starts_with("opentelemetry") {
+            return true;
+        }
+        self.diagnostics.sdk_event(meta.name());
+        self.diagnostics.suppress_one();
+        false
+    }
+
+    fn callsite_enabled(
+        &self,
+        meta: &'static tracing::Metadata<'static>,
+    ) -> tracing::subscriber::Interest {
+        if meta.target().starts_with("opentelemetry") {
+            // `sometimes` keeps `enabled` invoked so we can count the event.
+            tracing::subscriber::Interest::sometimes()
+        } else {
+            tracing::subscriber::Interest::always()
         }
     }
 }

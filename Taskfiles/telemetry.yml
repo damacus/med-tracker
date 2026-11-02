@@ -1,0 +1,19 @@
+---
+version: "3"
+
+tasks:
+  telemetry:up:
+    desc: Start Postgres and the opt-in VictoriaTraces telemetry profile
+    cmds:
+      - docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p medtracker-telemetry --profile telemetry up -d postgres victoriatraces
+
+  telemetry:down:
+    desc: Stop the telemetry profile and remove its volumes
+    cmds:
+      - docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p medtracker-telemetry down --volumes
+
+  telemetry:bench:
+    desc: Manual p50/p95 request-latency bench with export off vs VictoriaTraces
+    deps: [telemetry:up]
+    cmds:
+      - "{{.ROOT_DIR}}/scripts/telemetry_bench.sh {{.REQUESTS | default 300}}"
