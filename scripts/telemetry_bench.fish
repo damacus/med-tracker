@@ -36,7 +36,7 @@ function bench --argument-names label
     set -l logfile /tmp/bench-$label.log
     set -l times /tmp/bench-$label.times
     /usr/bin/env $argv[2..-1] ./target/release/med-tracker start --environment development >$logfile 2>&1 &
-    set -l pid $last_pid
+    set -l pid (pgrep -nf "med-tracker start --environment development")
     set -l ready 0
     for i in (seq 120)
         curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:$port/_health" 2>/dev/null; and set ready 1; and break

@@ -120,6 +120,14 @@ async fn request_trace_correlates_booted_completion_without_private_input()
                 .any(|event| event.contains(trace) && event.contains(method))
         );
     }
+    let failed_completion = completed
+        .iter()
+        .find(|event| event.contains(failed_trace))
+        .expect("failed request completion");
+    assert!(failed_completion.contains("medtracker.db.query_count"));
+    assert!(failed_completion.contains("medtracker.db.failed_query_count"));
+    assert!(!failed_completion.contains("medtracker.db.query_count=0"));
+    assert!(!failed_completion.contains("medtracker.db.failed_query_count=0"));
     let database_events = events
         .iter()
         .filter(|event| event.contains("Database operation failed"))

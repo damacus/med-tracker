@@ -87,6 +87,8 @@ impl Hooks for App {
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        let mut ctx = ctx;
+        crate::telemetry::db::install(&mut ctx.db);
         crate::models::canary::configure(&ctx).await?;
         let rate_limit = crate::models::rate_limit::RateLimitState::from_settings(
             ctx.config.settings.as_ref(),

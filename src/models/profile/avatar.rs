@@ -105,13 +105,16 @@ impl BackgroundWorker<RetiredAvatar> for AvatarRetirementWorker {
     }
 
     async fn perform(&self, retired: RetiredAvatar) -> loco_rs::Result<()> {
-        crate::models::canary::work(&self.ctx).await?;
-        let storage = Storage::configured(&self.ctx)
-            .and_then(|storage| storage.at_bucket(&self.ctx, &retired.bucket))
-            .map_err(|_| Error::string("Avatar storage unavailable"))?;
-        delete_unretained(&self.ctx, &storage, &retired.key)
-            .await
-            .map_err(|_| Error::string("Avatar retirement failed"))
+        crate::telemetry::units::job("avatar-retirement", async {
+            crate::models::canary::work(&self.ctx).await?;
+            let storage = Storage::configured(&self.ctx)
+                .and_then(|storage| storage.at_bucket(&self.ctx, &retired.bucket))
+                .map_err(|_| Error::string("Avatar storage unavailable"))?;
+            delete_unretained(&self.ctx, &storage, &retired.key)
+                .await
+                .map_err(|_| Error::string("Avatar retirement failed"))
+        })
+        .await
     }
 }
 

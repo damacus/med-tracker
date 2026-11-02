@@ -37,6 +37,9 @@ pub async fn boundary(request: Request, next: Next) -> Response {
         "error.type" = tracing::field::Empty,
         trace_id = tracing::field::Empty,
         span_id = tracing::field::Empty,
+        medtracker.db.query_count = tracing::field::Empty,
+        medtracker.db.runtime_ms = tracing::field::Empty,
+        medtracker.db.failed_query_count = tracing::field::Empty,
     );
     if let Some(parent) = ids::remote_parent(traceparent.as_deref()) {
         let _ = span.set_parent(parent);
@@ -55,7 +58,9 @@ pub async fn boundary(request: Request, next: Next) -> Response {
         span.record("span_id", ids::new_span_id().as_str());
         generated
     };
-    let mut response = next.run(request).instrument(span.clone()).await;
+    let mut response =
+        crate::telemetry::db::scope(async { next.run(request).instrument(span.clone()).await })
+            .await;
     let status = i64::from(response.status().as_u16());
     span.record("http.response.status_code", status);
     span.set_attribute("http.response.status_code", status);
