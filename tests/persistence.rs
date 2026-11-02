@@ -122,6 +122,7 @@ async fn capture_canonical_identity_catalogues_when_requested() {
             "shared-execution-approval-policy-catalog.json",
             "shared-schedule-current-execution-policy-catalog.json",
             "guardian-authority-plan-cache-catalog.json",
+            "guardian-authority-join-order-catalog.json",
         ] {
             // Data-only migrations (for example backfills) leave the identity
             // catalogue unchanged, so keep stepping until the next
@@ -260,6 +261,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             include_str!("../migration/shared-execution-approval-policy-catalog.json"),
             include_str!("../migration/shared-schedule-current-execution-policy-catalog.json"),
             include_str!("../migration/guardian-authority-plan-cache-catalog.json"),
+            include_str!("../migration/guardian-authority-join-order-catalog.json"),
         ] {
             let parsed: CanonicalIdentityCatalogue = serde_json::from_str(catalogue)?;
             expected.extend(parsed.changed);
@@ -286,7 +288,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             differences.join("\n")
         );
         let ledger = ledger_rows(&db).await;
-        assert_eq!(ledger.len(), 30);
+        assert_eq!(ledger.len(), 31);
         assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
         assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
         assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
@@ -296,7 +298,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         assert_eq!(ledger[17].0, "m20261028_000019_history_audit_outcome");
         assert_eq!(
             ledger.last().map(|row| row.0.as_str()),
-            Some("m20261102_000031_guardian_authority_plan_cache")
+            Some("m20261102_000032_guardian_authority_join_order")
         );
         migration::Migrator::up(&db, None).await.unwrap();
         assert_eq!(catalog(&db).await, before);
