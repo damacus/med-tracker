@@ -44,7 +44,17 @@ impl Subscriber for Captured {
         Id::from_u64(u64::try_from(state.spans.len()).expect("span count"))
     }
 
-    fn record(&self, _: &Id, _: &Record<'_>) {}
+    fn record(&self, id: &Id, values: &Record<'_>) {
+        let mut fields = Fields::default();
+        values.record(&mut fields);
+        let mut state = self.0.lock().expect("trace capture lock");
+        if let Some(span) = state
+            .spans
+            .get_mut(usize::try_from(id.into_u64() - 1).expect("span index"))
+        {
+            span.push_str(&fields.0);
+        }
+    }
 
     fn record_follows_from(&self, _: &Id, _: &Id) {}
 

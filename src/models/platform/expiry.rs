@@ -67,7 +67,7 @@ async fn expire_due(ctx: &AppContext) -> Result<ExpiryRun, OperationError> {
                 Err(_) => {
                     run.failed += 1;
                     tracing::warn!(
-                        reason = "support_expiry_failed",
+                        medtracker.reason = "support_expiry_failed",
                         "Support expiry deferred an item until the next run"
                     );
                 }
@@ -99,10 +99,10 @@ impl Task for SupportExpiryTask {
             "partial"
         };
         tracing::info!(
-            event_type = "support_access_session.expired",
-            outcome,
-            processed_count = run.expired,
-            deferred_count = run.failed,
+            event.name = "medtracker.support_access.expired",
+            medtracker.outcome = outcome,
+            medtracker.expired_count = run.expired,
+            medtracker.deferred_count = run.failed,
             "Support expiry run finished"
         );
         if run.failed > 0 {

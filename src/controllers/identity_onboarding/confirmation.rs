@@ -106,13 +106,13 @@ pub(super) async fn confirm(
         }
         Ok(response) => {
             tracing::warn!(
-                status = response.status,
+                medtracker.identity.status_code = response.status,
                 "Account confirmation rejected by framework"
             );
             super::rendering::redirect("/login")
         }
         Err(error) => {
-            tracing::warn!(status = ?error.status_code(), error = %error, "Account confirmation failed");
+            tracing::warn!(medtracker.identity.status_code = ?error.status_code(), error.type = "identity_request", "Account confirmation failed");
             super::rendering::redirect("/login")
         }
     }

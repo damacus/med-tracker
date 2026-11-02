@@ -52,10 +52,11 @@ impl Drop for ImportPhaseTimer {
         let duration_ms = self.started.elapsed().as_secs_f64() * 1000.0;
         let outcome = if self.succeeded { "success" } else { "failure" };
         tracing::info!(
-            run_id = self.run_id,
-            phase = self.phase,
-            duration_ms,
-            outcome,
+            medtracker.import.run_id = self.run_id,
+            medtracker.import.phase = self.phase,
+            medtracker.duration_ms = duration_ms,
+            medtracker.outcome = outcome,
+            event.name = "medtracker.import.timing",
             "nhs_dmd_import_timing"
         );
     }
@@ -519,8 +520,8 @@ fn parse_supplementary(files: &SupplementaryFiles) -> Result<Option<TradeFamilyD
 fn parse_optional_supplementary(files: &SupplementaryFiles) -> Option<TradeFamilyData> {
     match parse_supplementary(files) {
         Ok(data) => data,
-        Err(error) => {
-            tracing::warn!(error = %error, "NHS dm+d supplementary metadata could not be read");
+        Err(_error) => {
+            tracing::warn!(error.type = "supplementary_metadata", "NHS dm+d supplementary metadata could not be read");
             None
         }
     }
@@ -756,9 +757,9 @@ async fn finish_work<T>(
     });
     if result.is_err() && liveness.is_err() {
         tracing::warn!(
-            run_id,
-            phase,
-            secondary_failure = "activity_reporting",
+            medtracker.import.run_id = run_id,
+            medtracker.import.phase = phase,
+            medtracker.secondary_failure = "activity_reporting",
             "NHS import activity reporting also failed"
         );
     }

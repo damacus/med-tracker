@@ -400,8 +400,8 @@ impl AccountPage<'_> {
                 response,
             )
                 .into_response(),
-            Err(error) => {
-                tracing::warn!(error = %error, "Account profile rendering failed");
+            Err(_error) => {
+                tracing::warn!(error.type = "render", "Account profile rendering failed");
                 unavailable()
             }
         }

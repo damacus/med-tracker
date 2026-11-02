@@ -31,7 +31,7 @@ impl std::error::Error for OperationError {}
 impl From<sea_orm::DbErr> for OperationError {
     fn from(error: sea_orm::DbErr) -> Self {
         let category = database_error_category(&error);
-        tracing::error!(category, error_trace_id = %uuid::Uuid::new_v4(), "Database operation failed");
+        tracing::error!(error.type = category, medtracker.error_reference = %uuid::Uuid::new_v4(), "Database operation failed");
         Self::Unavailable
     }
 }
@@ -39,14 +39,14 @@ impl From<sea_orm::DbErr> for OperationError {
 impl From<opendal::Error> for OperationError {
     fn from(error: opendal::Error) -> Self {
         let category = storage_error_category(&error);
-        tracing::error!(category, error_trace_id = %uuid::Uuid::new_v4(), "Storage operation failed");
+        tracing::error!(error.type = category, medtracker.error_reference = %uuid::Uuid::new_v4(), "Storage operation failed");
         Self::Unavailable
     }
 }
 
 impl From<tokio::time::error::Elapsed> for OperationError {
     fn from(_: tokio::time::error::Elapsed) -> Self {
-        tracing::error!(category = "timeout", error_trace_id = %uuid::Uuid::new_v4(), "Operation timed out");
+        tracing::error!(error.type = "timeout", medtracker.error_reference = %uuid::Uuid::new_v4(), "Operation timed out");
         Self::Unavailable
     }
 }
@@ -54,7 +54,7 @@ impl From<tokio::time::error::Elapsed> for OperationError {
 impl From<std::io::Error> for OperationError {
     fn from(error: std::io::Error) -> Self {
         let category = io_error_category(&error);
-        tracing::error!(category, error_trace_id = %uuid::Uuid::new_v4(), "I/O operation failed");
+        tracing::error!(error.type = category, medtracker.error_reference = %uuid::Uuid::new_v4(), "I/O operation failed");
         Self::Unavailable
     }
 }
@@ -64,7 +64,7 @@ impl OperationError {
     /// convert, such as an absent configured resource or a violated
     /// persistence invariant.
     pub(crate) fn unavailable(category: &'static str) -> Self {
-        tracing::error!(category, error_trace_id = %uuid::Uuid::new_v4(), "Operation dependency unavailable");
+        tracing::error!(error.type = category, medtracker.error_reference = %uuid::Uuid::new_v4(), "Operation dependency unavailable");
         Self::Unavailable
     }
 }
@@ -291,12 +291,11 @@ pub(crate) mod tests {
             "timeout",
         ]) {
             assert_eq!(fields.len(), 3);
-            let category_field = fields.iter().find(|(name, _)| name == "category");
+            let category_field = fields.iter().find(|(name, _)| name == "error.type");
             assert_eq!(
-                category_field.map(|(_, value)| value.as_str()),
-                Some(category)
+                category_field.map(|(_, value)| value.as_str()),                Some(category)
             );
-            let trace_id = fields.iter().find(|(name, _)| name == "error_trace_id");
+            let trace_id = fields.iter().find(|(name, _)| name == "medtracker.error_reference");
             let trace_id = trace_id
                 .map(|(_, value)| value.as_str())
                 .unwrap_or_default();
@@ -348,12 +347,11 @@ pub(crate) mod tests {
             "transient",
         ]) {
             assert_eq!(fields.len(), 3);
-            let category_field = fields.iter().find(|(name, _)| name == "category");
+            let category_field = fields.iter().find(|(name, _)| name == "error.type");
             assert_eq!(
-                category_field.map(|(_, value)| value.as_str()),
-                Some(category)
+                category_field.map(|(_, value)| value.as_str()),                Some(category)
             );
-            let trace_id = fields.iter().find(|(name, _)| name == "error_trace_id");
+            let trace_id = fields.iter().find(|(name, _)| name == "medtracker.error_reference");
             let trace_id = trace_id
                 .map(|(_, value)| value.as_str())
                 .unwrap_or_default();
@@ -383,9 +381,9 @@ pub(crate) mod tests {
         assert_eq!(result, OperationError::Unavailable);
         assert_eq!(recorded.len(), 1);
         let fields = &recorded[0];
-        let category = fields.iter().find(|(name, _)| name == "category");
+        let category = fields.iter().find(|(name, _)| name == "error.type");
         assert_eq!(category.map(|(_, value)| value.as_str()), Some("timeout"));
-        let trace_id = fields.iter().find(|(name, _)| name == "error_trace_id");
+        let trace_id = fields.iter().find(|(name, _)| name == "medtracker.error_reference");
         let trace_id = trace_id
             .map(|(_, value)| value.as_str())
             .unwrap_or_default();
@@ -402,9 +400,9 @@ pub(crate) mod tests {
         assert_eq!(recorded.len(), 1);
         let fields = &recorded[0];
         assert_eq!(fields.len(), 3);
-        let category = fields.iter().find(|(name, _)| name == "category");
+        let category = fields.iter().find(|(name, _)| name == "error.type");
         assert_eq!(category.map(|(_, value)| value.as_str()), Some("storage"));
-        let trace_id = fields.iter().find(|(name, _)| name == "error_trace_id");
+        let trace_id = fields.iter().find(|(name, _)| name == "medtracker.error_reference");
         let trace_id = trace_id
             .map(|(_, value)| value.as_str())
             .unwrap_or_default();

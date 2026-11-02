@@ -108,8 +108,8 @@ async fn read(
     data["next_page"] = json!(next);
     match format::render().view(view, "profile/history.html", data) {
         Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
-        Err(error) => {
-            tracing::warn!(error = %error, "Personal history rendering failed");
+        Err(_error) => {
+            tracing::warn!(error.type = "render", "Personal history rendering failed");
             unavailable()
         }
     }

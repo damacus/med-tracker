@@ -4,6 +4,14 @@ logger:
   level: info
   format: compact
 settings:
+  telemetry:
+    otlp_endpoint: <%= get_env(name="OTEL_EXPORTER_OTLP_ENDPOINT", default="") %>
+    otlp_traces_endpoint: <%= get_env(name="OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", default="") %>
+    otlp_metrics_endpoint: <%= get_env(name="OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", default="") %>
+    otlp_headers: <%= get_env(name="OTEL_EXPORTER_OTLP_HEADERS", default="") %>
+    otlp_timeout_ms: <%= get_env(name="OTEL_EXPORTER_OTLP_TIMEOUT", default="10000") %>
+    trace_sample_ratio: <%= get_env(name="MEDTRACKER_OTEL_TRACE_SAMPLE_RATIO", default="1.0") %>
+    service_instance_id: <%= get_env(name="OTEL_SERVICE_INSTANCE_ID", default="") %>
   public_origin: <%= get_env(name="MEDTRACKER_PUBLIC_ORIGIN", default="") %>
   time_zone: <%= get_env(name="TZ", default="UTC") %>
   registration:
