@@ -3,42 +3,60 @@
 /// Maximum length in bytes for a string attribute value.
 pub const VALUE_CAP: usize = 256;
 
-/// Allowed attribute key families: a fixed set of OpenTelemetry
-/// semantic-convention prefixes plus any `medtracker.*` key. `request_id`,
-/// `trace_id` and `span_id` are reserved framework correlation fields emitted
-/// by the request span and log envelope.
+/// Allowed attribute keys: a fixed set of exact OpenTelemetry
+/// semantic-convention names plus the `medtracker.*` prefix. Anything else —
+/// including free-form families such as `url.full`, `client.address`,
+/// `user_agent.original`, `db.query.text`, `exception.message` or
+/// `http.request.header.*` — is dropped so private request and clinical data
+/// can never reach telemetry. `request_id`, `trace_id` and `span_id` are
+/// reserved framework correlation fields emitted by the request span and log
+/// envelope; `otel.name`, `otel.kind` and `otel.status_code` are consumed by
+/// the export layer itself.
 const ALLOWED: &[&str] = &[
     "event.name",
     "error.type",
-    "exception.",
-    "http.",
-    "url.",
-    "uri.",
-    "server.",
-    "client.",
-    "network.",
-    "user_agent.",
-    "db.",
-    "messaging.",
-    "code.",
-    "process.",
-    "service.",
-    "deployment.",
-    "telemetry.sdk.",
-    "host.",
-    "cloud.",
-    "container.",
-    "k8s.",
-    "otel.",
+    "exception.type",
+    "http.request.method",
+    "http.route",
+    "http.response.status_code",
+    "url.scheme",
+    "server.address",
+    "server.port",
+    "network.protocol.name",
+    "network.protocol.version",
+    "db.system.name",
+    "db.operation.name",
+    "db.collection.name",
+    "db.response.status_code",
+    "messaging.system",
+    "messaging.operation.type",
+    "messaging.operation.name",
+    "messaging.destination.name",
+    "code.function.name",
+    "code.file.path",
+    "code.line.number",
+    "service.name",
+    "service.namespace",
+    "service.version",
+    "service.instance.id",
+    "deployment.environment.name",
+    "telemetry.sdk.name",
+    "telemetry.sdk.language",
+    "telemetry.sdk.version",
+    "host.name",
+    "k8s.pod.name",
+    "k8s.namespace.name",
+    "otel.name",
+    "otel.kind",
+    "otel.status_code",
     "request_id",
     "trace_id",
     "span_id",
-    "medtracker.",
 ];
 
 /// Returns true when `key` conforms to the generic telemetry key rule.
 pub fn allowed(key: &str) -> bool {
-    ALLOWED.iter().any(|prefix| key.starts_with(prefix))
+    key.starts_with("medtracker.") || ALLOWED.contains(&key)
 }
 
 /// Truncates `value` to at most [`VALUE_CAP`] bytes on a UTF-8 boundary.
@@ -113,6 +131,20 @@ mod tests {
             "route",
             "status",
             "duration_ms",
+            "url.full",
+            "url.query",
+            "url.path",
+            "client.address",
+            "network.peer.address",
+            "user_agent.original",
+            "db.query.text",
+            "exception.message",
+            "exception.stacktrace",
+            "http.request.header.cookie",
+            "http.request.header.authorization",
+            "otel.status_description",
+            "uri.path",
+            "uri.query",
         ] {
             assert!(!allowed(key), "{key}");
         }

@@ -16,4 +16,4 @@ tasks:
     desc: Manual p50/p95 request-latency bench with export off vs VictoriaTraces
     deps: [up]
     cmds:
-      - "{{.ROOT_DIR}}/scripts/telemetry_bench.sh {{.REQUESTS | default 300}}"
+      - "{{.ROOT_DIR}}/scripts/telemetry_bench.fish {{.REQUESTS | default 300}}"

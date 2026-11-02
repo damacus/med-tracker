@@ -11,7 +11,6 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use loco_rs::app::Hooks;
-use opentelemetry::trace::TracerProvider;
 use opentelemetry_sdk::trace::{BatchSpanProcessor, Sampler, SdkTracerProvider};
 use tracing_subscriber::{layer::SubscriberExt, registry, util::SubscriberInitExt};
 
@@ -46,7 +45,7 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
     match build_provider(&settings, &resource, diagnostics) {
         Some(provider) => {
             let _ = TRACER_PROVIDER.set(provider.clone());
-            let otel = tracing_opentelemetry::layer().with_tracer(provider.tracer("medtracker"));
+            let otel = otel_layer(&provider, "medtracker");
             let _ = registry().with(json).with(otel).with(filter).try_init();
             let host = settings.endpoint_host().unwrap_or_default();
             tracing::info!(
@@ -224,10 +223,16 @@ mod pipeline_tests {
     }
 
     #[derive(Debug)]
-    struct AlwaysFails;
-    impl SpanExporter for AlwaysFails {
+    struct Toggleable {
+        fail: Arc<std::sync::atomic::AtomicBool>,
+    }
+    impl SpanExporter for Toggleable {
         async fn export(&self, _: Vec<SpanData>) -> OTelSdkResult {
-            Err(OTelSdkError::InternalFailure("endpoint down".into()))
+            if self.fail.load(std::sync::atomic::Ordering::Relaxed) {
+                Err(OTelSdkError::InternalFailure("endpoint down".into()))
+            } else {
+                Ok(())
+            }
         }
     }
 
@@ -249,7 +254,9 @@ mod pipeline_tests {
     #[test]
     fn failing_pipeline_emits_one_warn_no_errors_and_recovers() {
         let diagnostics = Diagnostics::new();
-        let exporter = SanitizingExporter::new(AlwaysFails, diagnostics.clone());
+        let fail = Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let exporter =
+            SanitizingExporter::new(Toggleable { fail: fail.clone() }, diagnostics.clone());
         let processor = BatchSpanProcessor::builder(exporter).build();
         let provider = SdkTracerProvider::builder()
             .with_span_processor(processor)
@@ -259,7 +266,7 @@ mod pipeline_tests {
         let buffer = Buffer::default();
         let json = json::layer(buffer.clone(), resource(), diagnostics.clone());
         let filter = EnvFilter::new("info,opentelemetry=warn");
-        let otel = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
+        let otel = crate::telemetry::otel_layer(&provider, "test");
         let subscriber = registry().with(json).with(otel).with(filter);
         let _ = tracing::subscriber::set_global_default(subscriber);
 
@@ -267,7 +274,11 @@ mod pipeline_tests {
             emit_span(&provider);
             let _ = provider.force_flush();
         }
-        // Shutdown while failing: still no extra lines.
+        // Recovery: a successful export emits one INFO line.
+        fail.store(false, std::sync::atomic::Ordering::Relaxed);
+        emit_span(&provider);
+        let _ = provider.force_flush();
+        // Shutdown while failing earlier: still no extra lines.
         let _ = provider.shutdown_with_timeout(Duration::from_millis(250));
 
         let output = buffer.text();
@@ -277,12 +288,20 @@ mod pipeline_tests {
             .count();
         assert_eq!(warnings, 1, "{output}");
         assert!(
-            !output.lines().any(|l| l.contains("\"severity_number\":1")
-                && l.contains('7')
-                && l.contains("ERROR")),
+            !output.contains("\"severity_text\":\"ERROR\""),
             "ERROR line present: {output}"
         );
+        assert!(
+            output
+                .lines()
+                .any(|l| l.contains("medtracker.telemetry.export_recovered")),
+            "no recovery line: {output}"
+        );
         assert!(!output.contains("BatchSpanProcessor"), "{output}");
+        assert!(
+            !output.contains("medtracker.telemetry.dropped_keys"),
+            "ordinary telemetry must not produce dropped_keys: {output}"
+        );
         assert!(!output.contains("endpoint down"), "{output}");
     }
 
@@ -300,4 +319,24 @@ mod pipeline_tests {
         assert_eq!(diagnostics.suppressed(), 2);
         assert!(buffer.text().is_empty(), "{}", buffer.text());
     }
+}
+
+/// The OpenTelemetry tracing layer used by `init` and tests: location, thread,
+/// inactivity and level/target metadata attributes are disabled so ordinary
+/// telemetry never produces `medtracker.telemetry.dropped_keys` noise.
+pub(crate) fn otel_layer<S>(
+    provider: &SdkTracerProvider,
+    name: &'static str,
+) -> tracing_opentelemetry::OpenTelemetryLayer<S, opentelemetry_sdk::trace::Tracer>
+where
+    S: tracing::Subscriber + for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>,
+{
+    use opentelemetry::trace::TracerProvider;
+    tracing_opentelemetry::layer()
+        .with_tracer(provider.tracer(name))
+        .with_location(false)
+        .with_threads(false)
+        .with_tracked_inactivity(false)
+        .with_level(false)
+        .with_target(false)
 }
