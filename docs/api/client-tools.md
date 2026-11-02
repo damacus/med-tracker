@@ -69,7 +69,7 @@ developer keychain.
 
 Password login and the custom refresh command are retired. App tokens have a
 fixed configured expiry, defaulting to 12 calendar months; replace an expired
-token through MedTracker. Interactive phone sign-in uses Rodauth browser login.
+token through MedTracker. Interactive phone sign-in uses the application's browser login.
 
 The tools never print token material. API errors show the server `code`,
 `message`, `request_id`, and `retry_after` value when present.
@@ -159,9 +159,9 @@ task client-tools:clippy
 task client-tools:test
 ```
 
-Rails gates still apply for repository changes:
+Application gates still apply for repository changes:
 
-```bash
-task rails:rubocop
-task rails:test
+```fish
+task lint
+task ci
 ```

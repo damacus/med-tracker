@@ -4,12 +4,8 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 #[command(name = "medtracker")]
 #[command(about = "Operate MedTracker through the hosted API")]
 pub struct Cli {
-    #[arg(
-        long,
-        env = "MEDTRACKER_BASE_URL",
-        default_value = "http://localhost:3000"
-    )]
-    pub base_url: String,
+    #[arg(long, env = "MEDTRACKER_BASE_URL")]
+    pub base_url: Option<String>,
     #[arg(long, env = "MEDTRACKER_PROFILE", default_value = "default")]
     pub profile: String,
     #[arg(long, value_enum, default_value_t = OutputFormat::Table)]

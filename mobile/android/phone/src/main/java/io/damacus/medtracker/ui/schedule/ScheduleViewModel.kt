@@ -10,6 +10,9 @@ import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.ScheduleDto
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,11 +20,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ScheduleUiState(
+    val sessionRevision: String? = null,
     val isLoading: Boolean = false,
     val schedules: List<ScheduleDto> = emptyList(),
     val errorMessage: String? = null,
     val successMessage: String? = null
-)
+) {
+    fun forSession(session: AppSession): ScheduleUiState =
+        if (sessionRevision == session.revision) this else ScheduleUiState(sessionRevision = session.revision)
+}
 
 class ScheduleViewModel(
     private val sessionManager: SessionManager,
@@ -30,20 +37,21 @@ class ScheduleViewModel(
 
     private val _uiState = MutableStateFlow(ScheduleUiState())
     val uiState: StateFlow<ScheduleUiState> = _uiState.asStateFlow()
+    private var sessionWork: Job = SupervisorJob(viewModelScope.coroutineContext[Job])
     private val sessionObservation: AutoCloseable
 
     init {
         sessionObservation = sessionManager.observeSession { session ->
-            if (session.isLoggedIn) {
-                loadSchedules(session)
-            } else {
-                _uiState.value = ScheduleUiState()
-            }
+            sessionWork.cancel()
+            sessionWork = SupervisorJob(viewModelScope.coroutineContext[Job])
+            _uiState.value = ScheduleUiState(sessionRevision = session.revision)
+            loadSchedules(session)
         }
     }
 
     override fun onCleared() {
         sessionObservation.close()
+        sessionWork.cancel()
         super.onCleared()
     }
 
@@ -55,17 +63,19 @@ class ScheduleViewModel(
         val token = session.accessToken ?: return
         val householdId = session.household?.id ?: return
 
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true) }
             when (val result = apiClient.getSchedules(session.serverUrl, token, householdId)) {
                 is ApiResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false, schedules = result.data) }
+                    updateForSession(session, work) { it.copy(isLoading = false, schedules = result.data) }
                 }
                 is ApiResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = result.message) }
                 }
                 is ApiResult.NetworkError -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Network error loading schedules") }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error loading schedules") }
                 }
             }
         }
@@ -76,24 +86,26 @@ class ScheduleViewModel(
         val token = session.accessToken ?: return
         val householdId = session.household?.id ?: return
 
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true) }
             when (val result = apiClient.createSchedule(session.serverUrl, token, householdId, payload)) {
                 is ApiResult.Success -> {
-                    _uiState.update { current ->
+                    updateForSession(session, work) { current ->
                         current.copy(
                             isLoading = false,
                             schedules = current.schedules + result.data,
                             successMessage = "Schedule created"
                         )
                     }
-                    onComplete()
+                    if (isCurrentSession(session, work)) onComplete()
                 }
                 is ApiResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = result.message) }
                 }
                 is ApiResult.NetworkError -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Network error creating schedule") }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error creating schedule") }
                 }
             }
         }
@@ -105,8 +117,10 @@ class ScheduleViewModel(
         val token = session.accessToken ?: return
         val householdId = session.household?.id ?: return
 
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true) }
             val call = if (schedule.paused) {
                 apiClient.resumeSchedule(session.serverUrl, token, householdId, scheduleId)
             } else {
@@ -114,7 +128,7 @@ class ScheduleViewModel(
             }
             when (call) {
                 is ApiResult.Success -> {
-                    _uiState.update { current ->
+                    updateForSession(session, work) { current ->
                         current.copy(
                             isLoading = false,
                             schedules = current.schedules.map { if (it.id == scheduleId) call.data else it },
@@ -123,12 +137,21 @@ class ScheduleViewModel(
                     }
                 }
                 is ApiResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = call.message) }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = call.message) }
                 }
                 is ApiResult.NetworkError -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Network error updating schedule") }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error updating schedule") }
                 }
             }
+        }
+    }
+
+    private fun isCurrentSession(session: AppSession, work: Job): Boolean =
+        work.isActive && sessionManager.sessionState.value.revision == session.revision
+
+    private fun updateForSession(session: AppSession, work: Job, update: (ScheduleUiState) -> ScheduleUiState) {
+        _uiState.update { current ->
+            if (isCurrentSession(session, work) && current.sessionRevision == session.revision) update(current) else current
         }
     }
 

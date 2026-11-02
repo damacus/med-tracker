@@ -8,15 +8,74 @@ use crate::args::{
     AuthCommand, BackupCommand, Cli, Command, HouseholdsCommand, PortableCommand, ResourceCommand,
     SyncCommand,
 };
-use crate::config::save_profile;
+use crate::config::{ProfileConfig, load_profile, save_profile};
 use crate::output::{format_api_error, print_value};
-use crate::secrets::{delete_access_token, load_access_token, store_access_token};
+use crate::secrets::{SavedCredential, delete_access_token, load_access_token, store_access_token};
 
 pub async fn run(cli: Cli) -> Result<()> {
-    let token = load_access_token(&cli.profile)?;
-    let client = ApiClient::new(&cli.base_url, token).map_err(format_api_error)?;
+    let saved = profile_for_command(&cli, || load_profile(&cli.profile))?;
+    let token = if matches!(
+        cli.command,
+        Command::Auth {
+            command: AuthCommand::Login(_)
+        }
+    ) {
+        None
+    } else if let Ok(token) = std::env::var("MEDTRACKER_TOKEN") {
+        Some(Credential::Explicit(token))
+    } else {
+        load_access_token(&cli.profile)?.map(Credential::Saved)
+    };
+    run_with_profile(cli, saved, token).await
+}
+
+fn profile_for_command(
+    cli: &Cli,
+    load: impl FnOnce() -> Result<Option<ProfileConfig>>,
+) -> Result<Option<ProfileConfig>> {
+    if cli.base_url.is_some()
+        && matches!(
+            cli.command,
+            Command::Auth {
+                command: AuthCommand::Login(_)
+            }
+        )
+    {
+        return Ok(None);
+    }
+    load()
+}
+
+enum Credential {
+    Saved(SavedCredential),
+    Explicit(String),
+}
+
+async fn run_with_profile(
+    cli: Cli,
+    saved: Option<ProfileConfig>,
+    token: Option<Credential>,
+) -> Result<()> {
+    let base_url = cli
+        .base_url
+        .as_deref()
+        .or_else(|| saved.as_ref().map(|config| config.base_url.as_str()))
+        .unwrap_or("http://localhost:3000");
+    let token = match token {
+        Some(Credential::Saved(credential)) => {
+            anyhow::ensure!(
+                ApiClient::same_origin(base_url, &credential.origin).map_err(format_api_error)?,
+                "saved token belongs to another server; select its profile or log in with auth login --token"
+            );
+            Some(credential.token)
+        }
+        Some(Credential::Explicit(token)) => Some(token),
+        None => None,
+    };
+    let has_token = token.is_some();
+    let client = ApiClient::new(base_url, token).map_err(format_api_error)?;
     let profile = cli.profile.clone();
-    let base_url = cli.base_url.clone();
+    let base_url = base_url.to_owned();
     let output = cli.output;
 
     match cli.command {
@@ -27,7 +86,9 @@ pub async fn run(cli: Cli) -> Result<()> {
                 .map_err(format_api_error)?;
             print_value(&value, output)?;
         }
-        Command::Auth { command } => run_auth(command, &profile, &base_url, &client).await?,
+        Command::Auth { command } => {
+            run_auth(command, &profile, &base_url, &client, has_token).await?;
+        }
         Command::Households { command } => match command {
             HouseholdsCommand::List => {
                 let value = client.households().await.map_err(format_api_error)?;
@@ -71,13 +132,15 @@ async fn run_auth(
     profile: &str,
     base_url: &str,
     client: &ApiClient,
+    has_token: bool,
 ) -> Result<()> {
     match command {
         AuthCommand::Login(args) => {
             let authenticated =
                 ApiClient::new(base_url, Some(args.token.clone())).map_err(format_api_error)?;
             authenticated.households().await.map_err(format_api_error)?;
-            store_access_token(profile, &args.token)?;
+            let credential = SavedCredential::new(base_url, &args.token)?;
+            store_access_token(profile, &credential)?;
             let path = save_profile(profile, base_url)?;
             println!("authenticated profile={profile} config={}", path.display());
         }
@@ -87,7 +150,7 @@ async fn run_auth(
             println!("logged out profile={profile}");
         }
         AuthCommand::Status => {
-            if load_access_token(profile)?.is_some() {
+            if has_token {
                 println!("authenticated profile={profile}");
             } else {
                 println!("not authenticated profile={profile}");
@@ -199,4 +262,139 @@ fn read_passphrase(enabled: bool) -> Result<Option<String>> {
         .context("failed to read passphrase from stdin")?;
 
     Ok(Some(passphrase.trim_end_matches(['\r', '\n']).to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ProfileConfig;
+    use clap::Parser;
+    use wiremock::matchers::{header, method};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[test]
+    fn explicit_login_bypasses_corrupt_or_missing_config() -> Result<()> {
+        let cli = Cli::try_parse_from([
+            "medtracker",
+            "--base-url",
+            "https://new.example",
+            "auth",
+            "login",
+            "--token",
+            "synthetic",
+        ])?;
+        let saved = profile_for_command(&cli, || anyhow::bail!("corrupt profile config"))?;
+        assert!(saved.is_none());
+        let saved = profile_for_command(&cli, || Ok(None))?;
+        assert!(saved.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn mutable_profile_config_cannot_rebind_saved_credential() -> Result<()> {
+        let destination = MockServer::start().await;
+        let cli = Cli::try_parse_from(["medtracker", "capabilities"])?;
+        let credential = SavedCredential::new("https://trusted.example", "synthetic-token")?;
+        let result = run_with_profile(
+            cli,
+            Some(ProfileConfig {
+                base_url: destination.uri(),
+            }),
+            Some(Credential::Saved(credential)),
+        )
+        .await;
+        let error = result.err().context("mismatched credential was accepted")?;
+        assert!(error.to_string().contains("log in"), "{error}");
+        assert!(
+            destination
+                .received_requests()
+                .await
+                .context("capture disabled")?
+                .is_empty()
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn saved_profile_capabilities_uses_bound_server() -> Result<()> {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(header("authorization", "Bearer synthetic-token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let cli = Cli::try_parse_from(["medtracker", "capabilities"])?;
+        run_with_profile(
+            cli,
+            Some(ProfileConfig {
+                base_url: server.uri(),
+            }),
+            Some(Credential::Saved(SavedCredential::new(
+                &server.uri(),
+                "synthetic-token",
+            )?)),
+        )
+        .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn saved_profile_allows_same_origin_override() -> Result<()> {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(header("authorization", "Bearer synthetic-token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let cli = Cli::try_parse_from(["medtracker", "--base-url", &server.uri(), "capabilities"])?;
+        run_with_profile(
+            cli,
+            Some(ProfileConfig {
+                base_url: "https://stale-config.example/saved-prefix".into(),
+            }),
+            Some(Credential::Saved(SavedCredential::new(
+                &server.uri(),
+                "synthetic-token",
+            )?)),
+        )
+        .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn credential_origin_rejects_cross_origin_even_without_config_before_capabilities()
+    -> Result<()> {
+        let server = MockServer::start().await;
+        for saved in [
+            None,
+            Some(ProfileConfig {
+                base_url: "https://saved.example".into(),
+            }),
+        ] {
+            let cli =
+                Cli::try_parse_from(["medtracker", "--base-url", &server.uri(), "capabilities"])?;
+            let error = run_with_profile(
+                cli,
+                saved,
+                Some(Credential::Saved(SavedCredential::new(
+                    "https://trusted.example",
+                    "synthetic-token",
+                )?)),
+            )
+            .await
+            .err()
+            .context("unbound token was accepted")?;
+            assert!(error.to_string().contains("log in"), "{error}");
+            assert!(
+                server
+                    .received_requests()
+                    .await
+                    .context("capture disabled")?
+                    .is_empty()
+            );
+        }
+        Ok(())
+    }
 }

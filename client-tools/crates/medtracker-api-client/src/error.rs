@@ -15,6 +15,8 @@ pub struct ErrorBody {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
+    #[error("invalid HTTP server origin")]
+    InvalidServerOrigin,
     #[error("invalid request header")]
     InvalidRequestHeader,
     #[error("invalid base URL: {0}")]

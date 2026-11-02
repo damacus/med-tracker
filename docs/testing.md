@@ -120,14 +120,4 @@ MedTracker follows Red-Green-Refactor:
 For a manual screen-reader and keyboard pass over browser journeys, use the
 [manual accessibility smoke-test checklist](accessibility-smoke-test.md).
 
-## Reference Rails suite
-
-The read-only Rails reference under `rails/` retains its own `task rails:*`
-commands for reference inspection when needed:
-
-```shell
-task rails:test
-task rails:rubocop
-```
-
 Test fixture users use the password `password`.

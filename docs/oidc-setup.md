@@ -28,7 +28,7 @@ callback rejection and household access against the intended provider. A working
 web login does not prove the complete mobile authorisation journey. Never put
 the confidential provider secret in a mobile client.
 
-The remaining sections describe the separate Rails reference application. Their
+The remaining sections describe the archived Rails application. Their
 `OIDC_*` variables and `/auth/oidc/callback` route do not configure Loco.
 
 ## Rails reference
@@ -143,7 +143,7 @@ set -x OIDC_REDIRECT_URI "https://med-tracker.localhost/auth/oidc/callback"
 set -x OIDC_ISSUER_URL "https://identity.example.com"
 set -x OIDC_CLIENT_ID "your-client-id"
 set -x OIDC_CLIENT_SECRET "your-client-secret"
-task rails:dev:portless
+task dev
 ```
 
 The issuer must be reachable from the MedTracker container. A host-only

@@ -29,6 +29,6 @@ These are accepted direction, not evidence that pending application work passes.
 
 Use Fish/RTK and Task entry points. Apply TDD to executable changes.
 No broad lint suppressions, including tests or generated entities.
-Keep Rails read-only; no legacy data/credential import, parity or reverse migration.
+Rails is archived in git history; no legacy data/credential import, parity or reverse migration.
 Never reset or silently adopt a populated database. Preserve API/MCP contracts
 except explicit access/location changes documented in OpenAPI, clients and ADRs.

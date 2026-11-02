@@ -39,11 +39,10 @@ The development stack routes outgoing messages to its Mailpit service
 automatically. Local SMTP variables are not required. Start MedTracker with:
 
 ```fish
-task rails:dev:portless
+task dev
 ```
 
-Development email links currently use the Rails development mailer origin,
-`http://localhost:3000`. Mail delivery can still be inspected in Mailpit, but
+Development email links use the configured development origin. Mail delivery can still be inspected in Mailpit, but
 those links do not use the Portless origin.
 
 ## Kubernetes

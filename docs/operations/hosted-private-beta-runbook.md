@@ -1,5 +1,10 @@
 # Hosted Private Beta Runbook
 
+> [!NOTE]
+> This document describes the archived Rails application or deployment. Its
+> `task rails:*`, `bin/rails` and `bundle exec` commands no longer exist in this
+> repository; the Rails source lives in git history.
+
 This runbook covers the hosted private beta target: one Rails application and one
 PostgreSQL database serving multiple independent households. The beta must remain
 closed until the hosted hardening audit is green.

@@ -4,33 +4,71 @@ use std::sync::Arc;
 
 const SERVICE: &str = "medtracker-cli";
 
-pub fn load_access_token(profile: &str) -> Result<Option<String>> {
-    if let Ok(token) = std::env::var("MEDTRACKER_TOKEN") {
-        return Ok(Some(token));
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct SavedCredential {
+    version: u8,
+    pub origin: String,
+    pub token: String,
+}
+
+impl SavedCredential {
+    pub fn new(base_url: &str, token: &str) -> Result<Self> {
+        Ok(Self {
+            version: 1,
+            origin: medtracker_api_client::ApiClient::server_origin(base_url)
+                .map_err(crate::output::format_api_error)?,
+            token: token.to_owned(),
+        })
     }
 
+    fn decode(value: &str) -> Result<Self> {
+        let invalid = || {
+            anyhow::anyhow!(
+                "invalid or legacy saved credential; log in again with auth login --token"
+            )
+        };
+        let credential: Self = serde_json::from_str(value).map_err(|_| invalid())?;
+        let origin = medtracker_api_client::ApiClient::server_origin(&credential.origin)
+            .map_err(|_| invalid())?;
+        anyhow::ensure!(
+            credential.version == 1 && credential.origin == origin && !credential.token.is_empty(),
+            "{}",
+            invalid()
+        );
+        Ok(credential)
+    }
+}
+
+pub fn load_access_token(profile: &str) -> Result<Option<SavedCredential>> {
     let store = native_store().context("failed to open OS keychain entry")?;
     load_access_token_from_store(store.as_ref(), profile)
 }
 
-fn load_access_token_from_store(store: &CredentialStore, profile: &str) -> Result<Option<String>> {
+fn load_access_token_from_store(
+    store: &CredentialStore,
+    profile: &str,
+) -> Result<Option<SavedCredential>> {
     let entry = entry(store, profile)?;
-
     match entry.get_password() {
-        Ok(token) => Ok(Some(token)),
+        Ok(value) => SavedCredential::decode(&value).map(Some),
         Err(keyring_core::Error::NoEntry) => Ok(None),
         Err(error) => Err(error).context("failed to read token from OS keychain"),
     }
 }
 
-pub fn store_access_token(profile: &str, token: &str) -> Result<()> {
+pub fn store_access_token(profile: &str, credential: &SavedCredential) -> Result<()> {
     let store = native_store().context("failed to open OS keychain entry")?;
-    store_access_token_in_store(store.as_ref(), profile, token)
+    store_access_token_in_store(store.as_ref(), profile, credential)
 }
 
-fn store_access_token_in_store(store: &CredentialStore, profile: &str, token: &str) -> Result<()> {
+fn store_access_token_in_store(
+    store: &CredentialStore,
+    profile: &str,
+    credential: &SavedCredential,
+) -> Result<()> {
+    let value = serde_json::to_string(credential).context("failed to encode saved credential")?;
     entry(store, profile)?
-        .set_password(token)
+        .set_password(&value)
         .context("failed to store token in OS keychain")
 }
 
@@ -92,31 +130,60 @@ mod tests {
     use keyring_core::mock::Store;
 
     use super::{
-        SERVICE, delete_access_token_from_store, load_access_token_from_store,
+        SERVICE, SavedCredential, delete_access_token_from_store, load_access_token_from_store,
         store_access_token_in_store,
     };
     #[cfg(target_os = "linux")]
     use super::{delete_access_token, load_access_token, store_access_token};
 
     #[test]
+    fn legacy_and_malformed_credentials_require_login() -> anyhow::Result<()> {
+        let store = Store::new()?;
+        let entry = store.build(SERVICE, "home:access_token", None)?;
+        for value in [
+            "legacy-synthetic-token",
+            "{",
+            r#"{"version":2,"origin":"https://example.com","token":"synthetic"}"#,
+            r#"{"version":1,"token":"synthetic"}"#,
+            r#"{"version":1,"origin":"file:///tmp","token":"synthetic"}"#,
+            r#"{"version":1,"origin":"https://example.com","token":""}"#,
+        ] {
+            entry.set_password(value)?;
+            let result = load_access_token_from_store(store.as_ref(), "home");
+            assert!(
+                result.is_err(),
+                "unbound or malformed credential was accepted"
+            );
+            let error = result
+                .err()
+                .ok_or_else(|| anyhow::anyhow!("expected rejection"))?;
+            assert!(error.to_string().contains("log in"));
+            assert!(!format!("{error:?}").contains("synthetic"));
+            assert_eq!(entry.get_password()?, value);
+        }
+        Ok(())
+    }
+
+    #[test]
     fn existing_profile_entry_is_read_updated_and_deleted_without_changing_its_identity()
     -> anyhow::Result<()> {
         let store = Store::new()?;
         let existing = store.build(SERVICE, "home:access_token", None)?;
-        existing.set_password("existing-token")?;
+        let initial = SavedCredential::new("https://EXAMPLE.com:443/path", "existing-token")?;
+        assert_eq!(initial.origin, "https://example.com");
+        existing.set_password(&serde_json::to_string(&initial)?)?;
 
-        assert_eq!(
-            load_access_token_from_store(store.as_ref(), "home")?,
-            Some(String::from("existing-token"))
-        );
-        assert_eq!(load_access_token_from_store(store.as_ref(), "work")?, None);
+        assert!(load_access_token_from_store(store.as_ref(), "home")? == Some(initial));
+        assert!(load_access_token_from_store(store.as_ref(), "work")?.is_none());
 
-        store_access_token_in_store(store.as_ref(), "home", "updated-token")?;
-        assert_eq!(existing.get_password()?, "updated-token");
+        let updated = SavedCredential::new("https://other.example", "updated-token")?;
+        store_access_token_in_store(store.as_ref(), "home", &updated)?;
+        assert!(SavedCredential::decode(&existing.get_password()?)? == updated);
+        assert!(load_access_token_from_store(store.as_ref(), "home")? == Some(updated));
 
         delete_access_token_from_store(store.as_ref(), "home")?;
         delete_access_token_from_store(store.as_ref(), "home")?;
-        assert_eq!(load_access_token_from_store(store.as_ref(), "home")?, None);
+        assert!(load_access_token_from_store(store.as_ref(), "home")?.is_none());
         assert!(matches!(
             existing.get_password(),
             Err(keyring_core::Error::NoEntry)
@@ -129,6 +196,8 @@ mod tests {
     {
         let store = Store::new()?;
         let entry = store.build(SERVICE, "home:access_token", None)?;
+        let original = SavedCredential::new("https://original.example", "original-token")?;
+        entry.set_password(&serde_json::to_string(&original)?)?;
         let credential = entry
             .as_any()
             .downcast_ref::<keyring_core::mock::Cred>()
@@ -150,14 +219,20 @@ mod tests {
             String::from("credential"),
             String::from("synthetic failure"),
         ));
-        let write = store_access_token_in_store(store.as_ref(), "home", "synthetic-token")
-            .err()
-            .ok_or_else(|| anyhow::anyhow!("write unexpectedly succeeded"))?;
+        let write = store_access_token_in_store(
+            store.as_ref(),
+            "home",
+            &SavedCredential::new("https://new.example", "synthetic-token")?,
+        )
+        .err()
+        .ok_or_else(|| anyhow::anyhow!("write unexpectedly succeeded"))?;
         assert!(
             write
                 .to_string()
                 .contains("failed to store token in OS keychain")
         );
+
+        assert!(load_access_token_from_store(store.as_ref(), "home")? == Some(original));
 
         credential.set_error(keyring_core::Error::Invalid(
             String::from("credential"),
@@ -204,17 +279,24 @@ mod tests {
         seed.stdin
             .take()
             .ok_or_else(|| anyhow::anyhow!("secret-tool stdin was unavailable"))?
-            .write_all(b"synthetic-before")?;
+            .write_all(
+                serde_json::to_string(&SavedCredential::new(
+                    "https://example.com",
+                    "synthetic-before",
+                )?)?
+                .as_bytes(),
+            )?;
         anyhow::ensure!(
             seed.wait()?.success(),
             "secret-tool could not seed the private store"
         );
 
         assert_eq!(
-            load_access_token(profile)?.as_deref(),
-            Some("synthetic-before")
+            load_access_token(profile)?.map(|credential| credential.token),
+            Some("synthetic-before".to_owned())
         );
-        store_access_token(profile, "synthetic-after")?;
+        let updated = SavedCredential::new("https://other.example", "synthetic-after")?;
+        store_access_token(profile, &updated)?;
         let lookup = Command::new("secret-tool")
             .args(["lookup", "service", SERVICE, "username", username])
             .output()?;
@@ -222,11 +304,13 @@ mod tests {
             lookup.status.success(),
             "secret-tool could not read the updated item"
         );
-        assert_eq!(lookup.stdout, b"synthetic-after");
+        assert!(
+            SavedCredential::decode(std::str::from_utf8(&lookup.stdout)?.trim_end())? == updated
+        );
 
         delete_access_token(profile)?;
         delete_access_token(profile)?;
-        assert_eq!(load_access_token(profile)?, None);
+        assert!(load_access_token(profile)?.is_none());
         let missing = Command::new("secret-tool")
             .args(["lookup", "service", SERVICE, "username", username])
             .output()?;

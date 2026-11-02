@@ -1,5 +1,10 @@
 # Audit Evidence Operations
 
+> [!NOTE]
+> This document describes the archived Rails application or deployment. Its
+> `task rails:*`, `bin/rails` and `bundle exec` commands no longer exist in this
+> repository; the Rails source lives in git history.
+
 ## Production gate
 
 Do not enable WORM delivery until the records manager/DPO has approved the retention schedule, the bucket is versioned with Object Lock at creation time, encryption and expected owner are confirmed, governance mode has been exercised, and the exporter/verifier credentials have been proven unable to delete objects, shorten retention, bypass governance, read clinical tables, or modify ledger history. Record a representative concurrent-write load test and a ten-year database/object-store capacity estimate using measured event volume and payload sizes before approval.
