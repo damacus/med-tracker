@@ -75,11 +75,15 @@ async fn change(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
+    #[cfg(debug_assertions)]
+    crate::models::access::diagnostic_phase(&tenant, "pause_controller_begin_end").await;
     let action = if id.is_some() { "resume" } else { "create" };
     let savepoint = match tenant.transaction().begin().await {
         Ok(value) => value,
         Err(_) => return response::error(response::unavailable(), &request_id),
     };
+    #[cfg(debug_assertions)]
+    crate::models::access::diagnostic_phase(&tenant, "pause_controller_process_start").await;
     let result = process(
         &tenant,
         &principal,
@@ -90,6 +94,8 @@ async fn change(
         method,
     )
     .await;
+    #[cfg(debug_assertions)]
+    crate::models::access::diagnostic_phase(&tenant, "pause_controller_process_end").await;
     let restored = if result.is_ok() {
         savepoint.commit().await
     } else {
@@ -98,6 +104,8 @@ async fn change(
     if restored.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
+    #[cfg(debug_assertions)]
+    crate::models::access::diagnostic_phase(&tenant, "pause_controller_complete_start").await;
     complete(
         tenant,
         &principal,

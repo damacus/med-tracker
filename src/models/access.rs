@@ -68,6 +68,49 @@ impl TenantTransaction {
     }
 }
 
+#[cfg(debug_assertions)]
+pub(crate) async fn diagnostic_phase(tenant: &TenantTransaction, phase: &'static str) {
+    let Some(tag) = tenant
+        .settings()
+        .and_then(|settings| settings.get("temporary_backend_diagnostic"))
+        .and_then(serde_json::Value::as_str)
+    else {
+        return;
+    };
+    use sea_orm::sea_query::{Func, Query};
+    let query = Query::select()
+        .expr_as(Func::cust("pg_backend_pid"), "pid")
+        .expr_as(
+            Func::cust("current_setting").arg(Expr::val("application_name")),
+            "name",
+        )
+        .to_owned();
+    let result = tenant
+        .transaction()
+        .query_one_raw(tenant.transaction().get_database_backend().build(&query))
+        .await
+        .ok()
+        .flatten()
+        .and_then(|row| {
+            Some((
+                row.try_get::<i32>("", "pid").ok()?,
+                row.try_get::<String>("", "name").ok()?,
+            ))
+        });
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    match result {
+        Some((pid, name)) if name == tag => eprintln!(
+            "backend diagnostic phase={phase} pid={pid} utc={} elapsed_ms={}",
+            chrono::Utc::now().to_rfc3339(),
+            START
+                .get_or_init(std::time::Instant::now)
+                .elapsed()
+                .as_millis()
+        ),
+        _ => eprintln!("backend diagnostic phase={phase} tag_mismatch_or_query_error"),
+    }
+}
+
 pub async fn begin(
     db: &DatabaseConnection,
     scope: &HouseholdScope,

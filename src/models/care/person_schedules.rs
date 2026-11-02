@@ -267,6 +267,8 @@ pub(crate) async fn save_execution(
     };
     plan.updated_at = Set(resumed_at.unwrap_or_else(|| Utc::now().naive_utc()));
     #[cfg(debug_assertions)]
+    crate::models::access::diagnostic_phase(tenant, "plan_write_start").await;
+    #[cfg(debug_assertions)]
     eprintln!(
         "execution diagnostic plan write start {:?}",
         diagnostic_start.elapsed()
@@ -276,6 +278,8 @@ pub(crate) async fn save_execution(
     } else {
         plan.insert(db).await
     };
+    #[cfg(debug_assertions)]
+    crate::models::access::diagnostic_phase(tenant, "plan_write_end").await;
     #[cfg(debug_assertions)]
     eprintln!(
         "execution diagnostic plan write end {:?}",
@@ -410,11 +414,15 @@ pub(crate) async fn save_execution(
     linked.clinical_revision = Set(Some(plan.clinical_revision));
     linked.origin_time_zone = Set(Some(plan.origin_time_zone));
     #[cfg(debug_assertions)]
+    crate::models::access::diagnostic_phase(tenant, "schedule_link_start").await;
+    #[cfg(debug_assertions)]
     eprintln!(
         "execution diagnostic schedule link start {:?}",
         diagnostic_start.elapsed()
     );
     let linked = linked.update(db).await;
+    #[cfg(debug_assertions)]
+    crate::models::access::diagnostic_phase(tenant, "schedule_link_end").await;
     #[cfg(debug_assertions)]
     eprintln!(
         "execution diagnostic schedule link end {:?}",
