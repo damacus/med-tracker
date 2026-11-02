@@ -4,7 +4,7 @@
 # opt-in VictoriaTraces compose profile. Budget: p95 increase <= max(1ms, 5%).
 set -eu
 REQUESTS="${1:-300}"
-PORT="${BENCH_PORT:-5515}"
+PORT="${BENCH_PORT:-5150}"
 PROJECT=medtracker-telemetry
 DB_PORT=$(docker compose -p "$PROJECT" port postgres 5432 | cut -d: -f2)
 VT_PORT=$(docker compose -p "$PROJECT" port victoriatraces 10428 | cut -d: -f2)
@@ -24,8 +24,8 @@ bench() {
         curl -fsS -o /dev/null -w '%{time_total}\n' "http://127.0.0.1:$PORT/_health" >> "/tmp/bench-$label.times"
     done
     kill -INT "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
-    awk '{a[NR]=$1} END{n=NR; asort(a); printf "%s p50=%.2fms p95=%.2fms\n", "'"$label"'", a[int(n*0.5)+1]*1000, a[int(n*0.95)+1]*1000}' "/tmp/bench-$label.times"
+    sort -n "/tmp/bench-$label.times" | awk -v label="$label" '{a[NR]=$1} END{n=NR; printf "%s p50=%.2fms p95=%.2fms\n", label, a[int(n*0.5)+1]*1000, a[int(n*0.95)+1]*1000}'
 }
 
 bench off OTEL_EXPORTER_OTLP_ENDPOINT=
-bench on "OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:$VT_PORT"
+bench on "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:$VT_PORT/insert/opentelemetry/v1/traces"
