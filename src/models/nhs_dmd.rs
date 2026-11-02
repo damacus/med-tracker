@@ -296,7 +296,6 @@ async fn cleanup(
 }
 
 pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
-    let cutoff = Utc::now().naive_utc() - chrono::Duration::minutes(30);
     let stale_marked = nhs_dmd_import::Entity::update_many()
         .col_expr(
             nhs_dmd_import::Column::Status,
@@ -317,7 +316,14 @@ pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
             sea_orm::sea_query::Expr::current_timestamp(),
         )
         .filter(nhs_dmd_import::Column::Status.is_in([0, 1, 2, 3]))
-        .filter(nhs_dmd_import::Column::UpdatedAt.lt(cutoff))
+        .filter(
+            nhs_dmd_import::Column::UpdatedAt.lt(
+                sea_orm::sea_query::Expr::current_timestamp().sub(
+                    sea_orm::sea_query::Expr::val("30 minutes")
+                        .cast_as(sea_orm::sea_query::Alias::new("interval")),
+                ),
+            ),
+        )
         .exec_with_returning(&ctx.db)
         .await?;
     let stale_failed_count = stale_marked.len() as i64;
