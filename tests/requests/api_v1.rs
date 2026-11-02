@@ -7,6 +7,7 @@ mod account_profile;
 #[path = "administration_overview.rs"]
 mod administration_overview;
 mod nhs_dmd_admin;
+mod portable_import_stages;
 #[path = "avatar.rs"]
 mod avatar;
 #[path = "bulk_members.rs"]

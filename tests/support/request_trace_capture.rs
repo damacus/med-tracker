@@ -59,7 +59,7 @@ impl Subscriber for Captured {
     fn record_follows_from(&self, _: &Id, _: &Id) {}
 
     fn event(&self, event: &Event<'_>) {
-        let mut fields = Fields::default();
+        let mut fields = Fields(event.metadata().level().to_string());
         event.record(&mut fields);
         let mut state = self.0.lock().expect("trace capture lock");
         for index in &state.entered {
