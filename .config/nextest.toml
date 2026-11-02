@@ -28,6 +28,13 @@ filter = 'binary(=shared_api) | binary(=care_api) | binary(=care_doses) | binary
 setup = 'api-fixtures'
 
 [[profile.api.overrides]]
+filter = 'test(=approved_sharing::temporary_fresh_pool_schedule_jit_diagnostic)'
+test-group = 'api-global'
+threads-required = 'num-test-threads'
+success-output = 'final'
+priority = -100
+
+[[profile.api.overrides]]
 filter = '''
 binary(=migration_roles)
 | test(=fixture_acceptance::scenario_seed_rolls_back_identity_if_membership_insert_fails)

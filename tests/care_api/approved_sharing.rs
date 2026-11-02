@@ -2359,6 +2359,261 @@ async fn dependent(app: &Application, token: &str) -> i64 {
 }
 
 #[tokio::test]
+async fn temporary_fresh_pool_schedule_jit_diagnostic() {
+    use med_tracker::models::_entities::people;
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let child = dependent(&app, &token).await;
+    let now = chrono::Utc::now().naive_utc();
+    for _ in 0..15 {
+        let rows = (0..200).map(|_| people::ActiveModel {
+            name: Set("Synthetic unrelated person".into()),
+            date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(1985, 2, 3)),
+            has_capacity: Set(true),
+            person_type: Set(0),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        });
+        people::Entity::insert_many(rows)
+            .exec(&app.fixture.admin)
+            .await
+            .unwrap();
+    }
+    let generator = Application::new().await;
+    for _ in 0..60 {
+        let invitation = super::invitations::seed_acceptance(&generator).await;
+        let response = generator
+            .client
+            .post(format!("{}/api/v1/invitations/accept", generator.origin))
+            .bearer_auth(invitation.bearer)
+            .json(&json!({"token": invitation.token, "sharing_consent": true}))
+            .send()
+            .await
+            .unwrap();
+        Application::assert_status(response, 200).await;
+    }
+    generator.close().await;
+    // SeaORM SchemaManager and SeaQuery provide no PostgreSQL ANALYZE maintenance
+    // or ALTER ROLE settings builder. This temporary owned-database diagnostic
+    // uses those commands directly; the generated role name is validated below.
+    app.fixture.admin.execute_unprepared("ANALYZE people; ANALYZE guardian_declarations; ANALYZE carer_relationships; ANALYZE household_memberships; ANALYZE accounts").await.unwrap();
+    let role = url::Url::parse(&app.fixture.runtime_uri)
+        .unwrap()
+        .username()
+        .to_owned();
+    assert!(
+        role.starts_with("api_runtime_")
+            && role
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+    );
+    let role_query = Query::select()
+        .expr_as(
+            Func::cust("array_to_string")
+                .arg(Expr::col("rolconfig"))
+                .arg(Expr::val(",")),
+            "config",
+        )
+        .from(("pg_catalog", "pg_roles"))
+        .and_where(Expr::col("rolname").eq(role.clone()))
+        .to_owned();
+    let role_config = app
+        .fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&role_query))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<Option<String>>("", "config")
+        .unwrap();
+    assert!(
+        !role_config
+            .as_deref()
+            .unwrap_or("")
+            .split(',')
+            .any(|entry| entry.starts_with("jit="))
+    );
+    let probe = sea_orm::Database::connect(&app.fixture.runtime_uri)
+        .await
+        .unwrap();
+    let availability_query = Query::select()
+        .expr_as(Func::cust("current_setting").arg(Expr::val("jit")), "jit")
+        .expr_as(Func::cust("pg_jit_available"), "available")
+        .to_owned();
+    let availability = probe
+        .query_one_raw(probe.get_database_backend().build(&availability_query))
+        .await
+        .unwrap()
+        .unwrap();
+    let probe_jit: String = availability.try_get("", "jit").unwrap();
+    let available: bool = availability.try_get("", "available").unwrap();
+    eprintln!("separate provider probe jit={probe_jit} available={available}");
+    probe.close().await.unwrap();
+    if !available || probe_jit != "on" {
+        app.close().await;
+        eprintln!("JIT comparison unavailable on this runner");
+        return;
+    }
+    let mut failures = Vec::new();
+    for mode in ["default", "off", "off", "default"] {
+        let statement = if mode == "off" {
+            format!("ALTER ROLE {role} SET jit = off")
+        } else {
+            format!("ALTER ROLE {role} RESET jit")
+        };
+        if app
+            .fixture
+            .admin
+            .execute_unprepared(&statement)
+            .await
+            .is_err()
+        {
+            failures.push(format!("{mode}: role setting failed"));
+            continue;
+        }
+        let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {
+            Ok(listener) => listener,
+            Err(_) => {
+                failures.push(format!("{mode}: listener failed"));
+                continue;
+            }
+        };
+        let origin = match listener.local_addr() {
+            Ok(address) => format!("http://{address}"),
+            Err(_) => {
+                failures.push(format!("{mode}: listener address failed"));
+                continue;
+            }
+        };
+        let boot = match med_tracker::app::App::boot(
+            StartMode::ServerOnly,
+            &Environment::Test,
+            app.context.config.clone(),
+        )
+        .await
+        {
+            Ok(boot) => boot,
+            Err(_) => {
+                failures.push(format!("{mode}: boot failed"));
+                continue;
+            }
+        };
+        let context = boot.app_context;
+        let settings_query = Query::select()
+            .expr_as(Func::cust("current_setting").arg(Expr::val("jit")), "jit")
+            .expr_as(
+                Func::cust("current_setting").arg(Expr::val("jit_above_cost")),
+                "above_cost",
+            )
+            .expr_as(
+                Func::cust("current_setting").arg(Expr::val("jit_inline_above_cost")),
+                "inline_cost",
+            )
+            .expr_as(
+                Func::cust("current_setting").arg(Expr::val("jit_optimize_above_cost")),
+                "optimize_cost",
+            )
+            .to_owned();
+        let settings = context
+            .db
+            .query_one_raw(context.db.get_database_backend().build(&settings_query))
+            .await;
+        match settings {
+            Ok(Some(row)) => {
+                let settings = ["jit", "above_cost", "inline_cost", "optimize_cost"]
+                    .map(|key| row.try_get::<String>("", key));
+                match settings {
+                    [Ok(jit), Ok(above), Ok(inline), Ok(optimize)] => {
+                        eprintln!(
+                            "pool {mode} jit={jit} above={above} inline={inline} optimize={optimize}"
+                        );
+                        if jit != if mode == "off" { "off" } else { "on" } {
+                            failures.push(format!("{mode}: unexpected pool setting"));
+                        }
+                    }
+                    _ => failures.push(format!("{mode}: settings decode failed")),
+                }
+            }
+            _ => failures.push(format!("{mode}: settings query failed")),
+        }
+        let Some(router) = boot.router else {
+            failures.push(format!("{mode}: router missing"));
+            if let Some(queue) = context.queue_provider.as_ref()
+                && queue.shutdown().is_err()
+            {
+                failures.push(format!("{mode}: queue shutdown failed"));
+            }
+            if context.db.close().await.is_err() {
+                failures.push(format!("{mode}: database close failed"));
+            }
+            continue;
+        };
+        let server = tokio::spawn(async move {
+            axum::serve(
+                listener,
+                router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+            )
+            .await
+        });
+        for phase in ["cold", "warm"] {
+            eprintln!("pool {mode} {phase} start");
+            let start = std::time::Instant::now();
+            let response = app.client.post(format!("{origin}/api/v1/households/{}/schedules", app.fixture.household.id))
+                .bearer_auth(&token).json(&json!({"schedule": {
+                    "person_id": child.to_string(), "medication_id": app.fixture.medication.id.to_string(),
+                    "dose_amount": "2", "dose_unit": "tablet", "start_date": "2026-01-01",
+                    "end_date": "2027-01-01", "schedule_type": "prn", "schedule_config": {}
+                }})).send().await;
+            match response {
+                Ok(response) => {
+                    let status = response.status().as_u16();
+                    let body = response.bytes().await;
+                    eprintln!(
+                        "pool {mode} {phase} status={status} body_ok={} elapsed_ms={}",
+                        body.is_ok(),
+                        start.elapsed().as_millis()
+                    );
+                    if status != 201 || body.is_err() {
+                        failures.push(format!("{mode} {phase}: response failed"));
+                    }
+                }
+                Err(error) => {
+                    eprintln!(
+                        "pool {mode} {phase} timeout={} elapsed_ms={}",
+                        error.is_timeout(),
+                        start.elapsed().as_millis()
+                    );
+                    failures.push(format!("{mode} {phase}: request failed"));
+                }
+            }
+        }
+        server.abort();
+        let _ = server.await;
+        if let Some(queue) = context.queue_provider.as_ref()
+            && queue.shutdown().is_err()
+        {
+            failures.push(format!("{mode}: queue shutdown failed"));
+        }
+        if context.db.close().await.is_err() {
+            failures.push(format!("{mode}: database close failed"));
+        }
+    }
+    if app
+        .fixture
+        .admin
+        .execute_unprepared(&format!("ALTER ROLE {role} RESET jit"))
+        .await
+        .is_err()
+    {
+        failures.push("role reset failed".to_owned());
+    }
+    app.close().await;
+    assert!(failures.is_empty(), "diagnostic failures: {failures:?}");
+}
+
+#[tokio::test]
 async fn canonical_execution_rejects_current_and_ended_prior_approvals() {
     use med_tracker::models::_entities::shared_schedule_executions;
     use med_tracker::models::access::{Actor, HouseholdScope};
