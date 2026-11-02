@@ -9,10 +9,13 @@ use med_tracker::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
 };
 use sea_orm::{
-    QuerySelect,
+    QueryOrder, QuerySelect,
     sea_query::{Expr, ExprTrait, Func, Query},
 };
 use sha2::{Digest, Sha256};
+
+#[path = "legacy_departure/completeness.rs"]
+mod completeness;
 
 async fn source(app: &Application) -> schedules::Model {
     let mut stock = app.fixture.medication.clone().into_active_model();
@@ -627,6 +630,274 @@ async fn dependent_departure(app: &Application) -> DependentDeparture {
         source: live,
         take,
     }
+}
+
+#[tokio::test]
+async fn legacy_departure_skips_invalid_original_take_audit_and_denies_protected_adoption() {
+    let app = Application::new().await;
+    let departure =
+        frozen_evidence_departure(&app, FrozenEvidenceVariant::MismatchedOriginal).await;
+    assert_eq!(
+        adoption_facts::Entity::find()
+            .filter(adoption_facts::Column::SourceScheduleId.eq(departure.source.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0,
+        "Departure must skip unverifiable frozen evidence"
+    );
+    assert_rejected_frozen_adoption(&app, &departure).await;
+    departure.manager.close().await;
+    app.close().await;
+}
+
+#[derive(Clone, Copy)]
+enum FrozenEvidenceVariant {
+    MismatchedOriginal,
+    MissingOriginal,
+    MalformedOriginal,
+    MixedValidAndSkipped,
+}
+
+struct FrozenEvidenceDeparture {
+    manager: Fixture,
+    token: String,
+    source: schedules::Model,
+    takes: Vec<medication_takes::Model>,
+    stock_after_doses: medications::Model,
+}
+
+async fn frozen_evidence_departure(
+    app: &Application,
+    variant: FrozenEvidenceVariant,
+) -> FrozenEvidenceDeparture {
+    let token = app.token().await;
+    let mut source = source(app).await.into_active_model();
+    source.schedule_type = Set(4);
+    let source = source.update(&app.fixture.admin).await.unwrap();
+    let take_count = match variant {
+        FrozenEvidenceVariant::MixedValidAndSkipped => 2,
+        _ => 1,
+    };
+    for index in 0..take_count {
+        Application::assert_status(
+            app.client
+                .post(format!(
+                    "{}/api/v1/households/{}/medication_takes",
+                    app.origin, app.fixture.household.id
+                ))
+                .bearer_auth(&token)
+                .json(&json!({"medication_take":{"source_type":"schedule","source_id":source.id.to_string(),"dose_amount":"2","dose_unit":"tablet","taken_at":(chrono::Utc::now()-chrono::Duration::hours((take_count-index) as i64)).to_rfc3339(),"client_uuid":uuid::Uuid::new_v4().to_string()}}))
+                .send()
+                .await
+                .unwrap(),
+            201,
+        )
+        .await;
+    }
+    let takes = medication_takes::Entity::find()
+        .filter(medication_takes::Column::ScheduleId.eq(source.id))
+        .order_by_asc(medication_takes::Column::Id)
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(takes.len(), take_count);
+
+    let mismatched_take_index = match variant {
+        FrozenEvidenceVariant::MixedValidAndSkipped => 1,
+        _ => 0,
+    };
+    let take = &takes[mismatched_take_index];
+    let original = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("MedicationTake"))
+        .filter(versions::Column::ItemId.eq(take.id))
+        .filter(versions::Column::Event.eq("create"))
+        .order_by_asc(versions::Column::Id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    match variant {
+        FrozenEvidenceVariant::MismatchedOriginal | FrozenEvidenceVariant::MixedValidAndSkipped => {
+            let mut mismatched: Value =
+                serde_json::from_str(original.object.as_ref().unwrap()).unwrap();
+            mismatched["dose_amount"] = json!("900");
+            let mut original = original.into_active_model();
+            original.object = Set(Some(mismatched.to_string()));
+            original.update(&app.fixture.admin).await.unwrap();
+        }
+        FrozenEvidenceVariant::MalformedOriginal => {
+            let mut malformed = original.into_active_model();
+            malformed.object = Set(Some("not-json".into()));
+            malformed.update(&app.fixture.admin).await.unwrap();
+        }
+        FrozenEvidenceVariant::MissingOriginal => {
+            let removed = versions::Entity::delete_by_id(original.id)
+                .exec(&app.fixture.admin)
+                .await
+                .unwrap();
+            assert_eq!(removed.rows_affected, 1, "Remove the original create audit");
+        }
+    }
+
+    let takes_after_audit_change = medication_takes::Entity::find()
+        .filter(medication_takes::Column::ScheduleId.eq(source.id))
+        .order_by_asc(medication_takes::Column::Id)
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let stock_after_doses = medications::Entity::find_by_id(source.medication_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let (manager, manager_token) = manager_token(app).await;
+    remove(app, &manager_token, app.fixture.membership.id).await;
+
+    FrozenEvidenceDeparture {
+        manager,
+        token,
+        source,
+        takes: takes_after_audit_change,
+        stock_after_doses,
+    }
+}
+
+async fn assert_rejected_frozen_adoption(app: &Application, departure: &FrozenEvidenceDeparture) {
+    let frozen = frozen_rx::Entity::find_by_id(departure.source.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(frozen.adopted_person_schedule_id, None);
+    let facts_before = adoption_facts::Entity::find()
+        .filter(adoption_facts::Column::SourceScheduleId.eq(departure.source.id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+
+    let response = adopt(app, &departure.token, &departure.source.portable_id).await;
+    let status = response.status().as_u16();
+    let body = response.text().await.unwrap();
+    assert_eq!(status, 422, "{body}");
+    assert_eq!(
+        frozen_rx::Entity::find_by_id(departure.source.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        frozen,
+        "Rejected adoption must not bind the frozen prescription"
+    );
+    assert_eq!(
+        person_schedules::Entity::find()
+            .filter(person_schedules::Column::OriginScheduleId.eq(departure.source.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0,
+        "Rejected adoption must not create a canonical plan"
+    );
+    for take in &departure.takes {
+        assert_eq!(
+            administrations::Entity::find()
+                .filter(administrations::Column::MedicationTakeId.eq(take.id))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+            0,
+            "Rejected adoption must not write a safety index entry"
+        );
+    }
+    assert_eq!(
+        adoption_facts::Entity::find()
+            .filter(adoption_facts::Column::SourceScheduleId.eq(departure.source.id))
+            .all(&app.fixture.admin)
+            .await
+            .unwrap(),
+        facts_before,
+        "Rejected adoption must not change captured evidence"
+    );
+    assert_eq!(
+        versions::Entity::find()
+            .filter(versions::Column::ItemType.eq("LegacyPrescriptionAdoption"))
+            .filter(versions::Column::ItemId.eq(departure.source.person_id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0,
+        "Rejected adoption must not write an adoption audit"
+    );
+    assert_eq!(
+        medication_takes::Entity::find()
+            .filter(medication_takes::Column::ScheduleId.eq(departure.source.id))
+            .order_by_asc(medication_takes::Column::Id)
+            .all(&app.fixture.admin)
+            .await
+            .unwrap(),
+        departure.takes,
+        "Departure and rejected adoption must not alter take rows"
+    );
+    assert_eq!(
+        medications::Entity::find_by_id(departure.stock_after_doses.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap(),
+        departure.stock_after_doses,
+        "Departure and rejected adoption must not alter post-dose stock"
+    );
+}
+
+#[tokio::test]
+async fn legacy_departure_frozen_evidence_variants_missing_original_audit_deny_adoption() {
+    let app = Application::new().await;
+    let departure = frozen_evidence_departure(&app, FrozenEvidenceVariant::MissingOriginal).await;
+    assert_eq!(
+        adoption_facts::Entity::find()
+            .filter(adoption_facts::Column::SourceScheduleId.eq(departure.source.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_rejected_frozen_adoption(&app, &departure).await;
+    departure.manager.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn legacy_departure_frozen_evidence_variants_malformed_original_audit_deny_adoption() {
+    let app = Application::new().await;
+    let departure = frozen_evidence_departure(&app, FrozenEvidenceVariant::MalformedOriginal).await;
+    assert_eq!(
+        adoption_facts::Entity::find()
+            .filter(adoption_facts::Column::SourceScheduleId.eq(departure.source.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_rejected_frozen_adoption(&app, &departure).await;
+    departure.manager.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn legacy_departure_frozen_evidence_variants_mixed_valid_and_skipped_doses_deny_adoption() {
+    let app = Application::new().await;
+    let departure =
+        frozen_evidence_departure(&app, FrozenEvidenceVariant::MixedValidAndSkipped).await;
+    let facts = adoption_facts::Entity::find()
+        .filter(adoption_facts::Column::SourceScheduleId.eq(departure.source.id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(facts.len(), 1, "One valid dose should be captured");
+    assert_eq!(facts[0].medication_take_id, departure.takes[0].id);
+    assert_rejected_frozen_adoption(&app, &departure).await;
+    departure.manager.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
