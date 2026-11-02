@@ -47,6 +47,10 @@ COPY . .
 COPY --from=frontend /app/assets/ assets/
 
 FROM dependencies AS build
+ARG MEDTRACKER_VERSION=""
+ARG MEDTRACKER_COMMIT=""
+ENV MEDTRACKER_VERSION=$MEDTRACKER_VERSION \
+    MEDTRACKER_COMMIT=$MEDTRACKER_COMMIT
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY migration/ migration/
 COPY src/ src/

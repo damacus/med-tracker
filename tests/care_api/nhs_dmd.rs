@@ -49,8 +49,8 @@ impl Visit for ImportTimingFields {
 
 impl Subscriber for ImportTimingEvents {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        metadata.fields().field("duration_ms").is_some()
-            || metadata.fields().field("secondary_failure").is_some()
+        metadata.fields().field("medtracker.duration_ms").is_some()
+            || metadata.fields().field("medtracker.secondary_failure").is_some()
     }
 
     fn new_span(&self, _: &Attributes<'_>) -> Id {
@@ -69,7 +69,7 @@ impl Subscriber for ImportTimingEvents {
             if pending.as_ref().is_some_and(|pause| {
                 fields
                     .0
-                    .get("phase")
+                    .get("medtracker.import.phase")
                     .is_some_and(|phase| phase == pause.phase)
             }) {
                 pending.take()
@@ -118,7 +118,7 @@ impl ImportTimingEvents {
             .lock()
             .unwrap()
             .iter()
-            .filter(|event| event["run_id"] == run_id)
+            .filter(|event| event["medtracker.import.run_id"] == run_id)
             .cloned()
             .collect()
     }
@@ -360,8 +360,8 @@ async fn nhs_dmd_parser_failures_survive_progress_failure() {
         assert!(failed.archive_key.is_none());
         let captured = events.for_run(id);
         assert!(
-            captured.iter().any(|event| event["phase"] == phase
-                && event["secondary_failure"] == "activity_reporting")
+            captured.iter().any(|event| event["medtracker.import.phase"] == phase
+                && event["medtracker.secondary_failure"] == "activity_reporting")
         );
         assert!(
             !serde_json::to_string(&captured)
@@ -474,20 +474,20 @@ async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_fa
     ] {
         let event = successful
             .iter()
-            .find(|event| event["phase"] == phase)
+            .find(|event| event["medtracker.import.phase"] == phase)
             .unwrap_or_else(|| panic!("missing {phase} timing: {successful:?}"));
-        assert_eq!(event["outcome"], "success");
-        assert!(event["duration_ms"].is_number(), "{event:?}");
-        assert!(event["duration_ms"].as_f64().unwrap() >= 0.0);
+        assert_eq!(event["medtracker.outcome"], "success");
+        assert!(event["medtracker.duration_ms"].is_number(), "{event:?}");
+        assert!(event["medtracker.duration_ms"].as_f64().unwrap() >= 0.0);
     }
     let failed = timings.for_run(failure);
     for phase in ["extract", "total"] {
         let event = failed
             .iter()
-            .find(|event| event["phase"] == phase)
+            .find(|event| event["medtracker.import.phase"] == phase)
             .unwrap_or_else(|| panic!("missing {phase} failure timing: {failed:?}"));
-        assert_eq!(event["outcome"], "failure");
-        assert!(event["duration_ms"].is_number());
+        assert_eq!(event["medtracker.outcome"], "failure");
+        assert!(event["medtracker.duration_ms"].is_number());
     }
     assert_eq!(failed.len(), 2, "{failed:?}");
 }

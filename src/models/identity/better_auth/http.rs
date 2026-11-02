@@ -61,8 +61,8 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
     } else {
         next.run(request).await
     };
-    tracing::info!(method = %method, route, status = response.status().as_u16(),
-        duration_ms = started.elapsed().as_secs_f64() * 1000.0,
+    tracing::info!(event.name = "http.server.request", http.request.method = %method, http.route = route, http.response.status_code = response.status().as_u16(),
+        medtracker.duration_ms = started.elapsed().as_secs_f64() * 1000.0,
         "HTTP request completed");
     response
 }

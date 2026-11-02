@@ -50,9 +50,9 @@ pub(crate) async fn deny_personal_history(
 ) -> Result<(), OperationError> {
     let Some(actor) = actor else {
         tracing::info!(
-            event_type = "personal_history_denied",
-            outcome = "denied",
-            reason = "unproved_identity",
+            event.name = "medtracker.personal_history.denied",
+            medtracker.outcome = "denied",
+            medtracker.reason = "unproved_identity",
             "Personal history read denied without authenticated identity"
         );
         return Ok(());

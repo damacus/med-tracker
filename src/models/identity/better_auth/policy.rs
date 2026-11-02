@@ -147,7 +147,7 @@ pub(super) fn database_error(error: DbErr) -> AuthError {
         DbErr::Query(_) => "query",
         _ => "persistence",
     };
-    tracing::error!(category, "Identity persistence operation failed");
+    tracing::error!(error.type = category, "Identity persistence operation failed");
     AuthError::internal("Identity persistence unavailable")
 }
 

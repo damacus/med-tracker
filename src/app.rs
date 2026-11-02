@@ -25,7 +25,11 @@ impl Hooks for App {
     }
 
     fn app_version() -> String {
-        env!("CARGO_PKG_VERSION").to_string()
+        crate::telemetry::build_version()
+    }
+
+    fn init_logger(ctx: &AppContext) -> Result<bool> {
+        Ok(crate::telemetry::init::<Self>(ctx))
     }
 
     async fn boot(
@@ -215,5 +219,9 @@ impl Hooks for App {
 
     async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         crate::models::seed::seed(ctx, base).await
+    }
+
+    async fn on_shutdown(_ctx: &AppContext) {
+        crate::telemetry::shutdown().await;
     }
 }

@@ -156,7 +156,7 @@ pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbEr
         if after != before - sea_orm::prelude::Decimal::new(2, 0) {
             return Err(invalid());
         }
-        tracing::info!(attempt, "Synthetic canary dose and stock replay passed");
+        tracing::info!(medtracker.attempt = attempt, "Synthetic canary dose and stock replay passed");
     }
     let response = client
         .get(

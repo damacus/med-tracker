@@ -4,6 +4,14 @@ logger:
   level: info
   format: compact
 settings:
+  telemetry:
+    otlp_endpoint: ""
+    otlp_traces_endpoint: ""
+    otlp_metrics_endpoint: ""
+    otlp_headers: ""
+    otlp_timeout_ms: 10000
+    trace_sample_ratio: 1.0
+    service_instance_id: ""
   public_origin: <%= get_env(name="MEDTRACKER_PUBLIC_ORIGIN", default="") %>
   time_zone: <%= get_env(name="TZ", default="UTC") %>
   registration:
