@@ -8,10 +8,14 @@ Blocking bugs: <https://github.com/damacus/med-tracker/issues/2994> and
 This plan resumes the work of
 `docs/plans/2026-10-28-person-owned-schedules-2684.md` (the binding
 specification: ADRs 0013–0017, the spec's Global Constraints, and the settled
-decisions recorded in the 29 October handoff). That plan's SDD workspace at
-`.superpowers/sdd/2026-10-28-person-owned-schedules-2684/` is preserved
-read-only; its ledger `progress.md` and its `Ruling:` entries remain
-authoritative history.
+decisions recorded in the 29 October handoff). The `Ruling:` entries from
+that plan's SDD ledger `progress.md` remain authoritative history and are
+committed at
+`docs/plans/2026-10-28-person-owned-schedules-2684-rulings.md`. The SDD
+workspace itself
+(`.superpowers/sdd/2026-10-28-person-owned-schedules-2684/`) is local run
+state on the delivery checkout, preserved read-only; the committed rulings
+file is the accessible record.
 
 ## Resume state (verified 29 October)
 
