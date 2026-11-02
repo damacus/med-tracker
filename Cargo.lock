@@ -7204,9 +7204,9 @@ dependencies = [
 
 [[package]]
 name = "sghtmltopdf"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "417c8f746bdd1f7a28a9b8560a7b5199b7be26f1bf1f62f7ce6d48131c87e933"
+checksum = "36f18c15a75d87a49337aee4c4d622eab76b134752c318bb39369ff02e8d8de6"
 dependencies = [
  "base64 0.22.1",
  "clap",

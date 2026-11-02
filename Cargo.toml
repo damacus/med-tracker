@@ -95,7 +95,7 @@ time = "=0.3.55"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing = "=0.1.44"
 slug = "=0.1.6"
-sghtmltopdf = { version = "=0.6.1", default-features = false, features = [
+sghtmltopdf = { version = "=0.7.0", default-features = false, features = [
     "cli",
 ] }
 serde_yaml_ng = "=0.10.0"
