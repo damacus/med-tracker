@@ -85,6 +85,9 @@ async fn process(
         return Ok(saved);
     }
     let attributes = if dependent {
+        body.as_object()
+            .filter(|values| values.len() == 1 && values.contains_key("household_invitation"))
+            .ok_or_else(|| response::Failure::bad_request("Invalid request body"))?;
         let values = body
             .get("household_invitation")
             .and_then(Value::as_object)
