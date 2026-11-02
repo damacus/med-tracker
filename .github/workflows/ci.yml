@@ -152,46 +152,6 @@ jobs:
         with:
           shared-key: loco-tests-v1
           cache-bin: false
-      - name: Install temporary diagnostic tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y age fish
-      - name: Prepare temporary encrypted PostgreSQL diagnostics
-        shell: fish --no-config {0}
-        env:
-          PG_DIAGNOSTIC_CONTAINER: ${{ job.services.postgres.id }}
-        run: |
-          test "$GITHUB_ACTIONS" = true; or exit 1
-          string match -rq '^[0-9a-f]{64}$' "$PG_DIAGNOSTIC_CONTAINER"; or exit 1
-          set -l service_image (docker inspect --format '{{.Config.Image}}' "$PG_DIAGNOSTIC_CONTAINER"); or exit 1
-          test "$service_image" = postgres:18-alpine; or exit 1
-          age --version; or exit 1
-          mkdir -m 700 "$RUNNER_TEMP/pgss-ci"; or exit 1
-          docker exec "$PG_DIAGNOSTIC_CONTAINER" psql -U medtracker -d postgres -X -v ON_ERROR_STOP=1 \
-            -c "ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements'" \
-            -c "ALTER SYSTEM SET compute_query_id = 'on'" \
-            -c "ALTER SYSTEM SET pg_stat_statements.track = 'all'" \
-            -c "ALTER SYSTEM SET pg_stat_statements.track_planning = 'on'" \
-            -c "ALTER SYSTEM SET pg_stat_statements.track_utility = 'off'" \
-            -c "ALTER SYSTEM SET pg_stat_statements.max = '20000'"; or exit 1
-          docker restart "$PG_DIAGNOSTIC_CONTAINER" >/dev/null; or exit 1
-          set -l ready 0
-          for attempt in (seq 1 60)
-            if docker exec "$PG_DIAGNOSTIC_CONTAINER" pg_isready -U medtracker -d postgres >/dev/null
-              set ready 1
-              break
-            end
-            sleep 1
-          end
-          test "$ready" -eq 1; or exit 1
-          docker exec "$PG_DIAGNOSTIC_CONTAINER" psql -U medtracker -d postgres -X -v ON_ERROR_STOP=1 \
-            -c "CREATE SCHEMA diagnostic_ci" \
-            -c "REVOKE ALL ON SCHEMA diagnostic_ci FROM PUBLIC" \
-            -c "CREATE EXTENSION pg_stat_statements WITH SCHEMA diagnostic_ci" \
-            -c "CREATE TABLE diagnostic_ci.capture_baseline AS SELECT dealloc,stats_reset FROM diagnostic_ci.pg_stat_statements_info" \
-            -c "CREATE TABLE diagnostic_ci.capture_test_hashes (fingerprint text PRIMARY KEY)"; or exit 1
-          set -l settings_ok (docker exec "$PG_DIAGNOSTIC_CONTAINER" psql -U medtracker -d postgres -X -v ON_ERROR_STOP=1 -At -c "SELECT current_setting('shared_preload_libraries') = 'pg_stat_statements' AND current_setting('compute_query_id') = 'on' AND current_setting('pg_stat_statements.track') = 'all' AND current_setting('pg_stat_statements.track_planning') = 'on' AND current_setting('pg_stat_statements.track_utility') = 'off' AND current_setting('pg_stat_statements.max') = '20000'"); or exit 1
-          test "$settings_ok" = t; or exit 1
       - name: Start RustFS and provision reference database
         run: |
           docker compose -f compose.yaml --env-file /dev/null -p mtloco-ci --profile fixture-storage up -d --wait rustfs
@@ -200,53 +160,7 @@ jobs:
           echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
           task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
           psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "CREATE DATABASE medtracker_reference"
-      - name: Run integration tests with encrypted diagnostics
-        shell: fish --no-config {0}
-        env:
-          MEDTRACKER_PGSS_DIAGNOSTIC: "1"
-          MEDTRACKER_PGSS_RECIPIENT: age159yqhdt9zl9vgpju97px50zy4fmklqacsk4lau0dptqc9yrntp4q92lyuh
-        run: |
-          set -gx MEDTRACKER_PGSS_DIR "$RUNNER_TEMP/pgss-ci"
-          task host:diagnostic:build; or exit $status
-          set -l target_dir (cargo metadata --locked --no-deps --format-version 1 | jq -r .target_directory)
-          test -x "$target_dir/debug/examples/api-fixtures"; or exit 1
-          "$target_dir/debug/examples/api-fixtures" diagnostic-sample >/dev/null 2>&1 &
-          set -l sampler $last_pid
-          for attempt in (seq 1 30)
-            if test -f "$MEDTRACKER_PGSS_DIR/sampler.ready"; break; end
-            if not kill -0 "$sampler" 2>/dev/null
-              wait "$sampler"
-              echo 'Diagnostic sampler could not start' >&2
-              exit 1
-            end
-            sleep 1
-          end
-          if not test -f "$MEDTRACKER_PGSS_DIR/sampler.ready"
-            touch "$MEDTRACKER_PGSS_DIR/stop"
-            wait "$sampler"
-            echo 'Diagnostic sampler did not become ready' >&2
-            exit 1
-          end
-          task host:test:integration
-          set -l test_status $status
-          touch "$MEDTRACKER_PGSS_DIR/stop"
-          wait "$sampler"
-          set -l sample_status $status
-          set -l capture_status 0
-          if test "$sample_status" -ne 0; or not test -s "$MEDTRACKER_PGSS_DIR/activity.age"; or not test -s "$MEDTRACKER_PGSS_DIR/statement-stats.age"; or not test -s "$MEDTRACKER_PGSS_DIR/inventory.age"; or not test -f "$MEDTRACKER_PGSS_DIR/snapshot.ok"
-            echo 'Encrypted diagnostic capture failed or is incomplete' >&2
-            set capture_status 1
-          end
-          if test "$test_status" -ne 0; exit "$test_status"; end
-          exit "$capture_status"
-      - name: Preserve encrypted diagnostic capture
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: pgss-ci-encrypted
-          path: ${{ runner.temp }}/pgss-ci/*.age
-          if-no-files-found: error
-          retention-days: 1
+      - run: task host:test:integration
 
   loco_browser:
     name: Browser journeys

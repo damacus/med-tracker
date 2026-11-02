@@ -2359,6 +2359,161 @@ async fn dependent(app: &Application, token: &str) -> i64 {
 }
 
 #[tokio::test]
+async fn guardian_authority_remains_live_on_reused_connection_after_withdrawal() {
+    use med_tracker::models::access::{Actor, HouseholdScope};
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database};
+
+    async fn caller_state(tx: &sea_orm::DatabaseTransaction) -> (i32, String, String, String) {
+        let query = Query::select()
+            .expr_as(Func::cust("pg_backend_pid"), "pid")
+            .expr_as(
+                Func::cust("current_setting").arg("plan_cache_mode"),
+                "plan_cache",
+            )
+            .expr_as(
+                Func::cust("current_setting").arg("join_collapse_limit"),
+                "join_collapse",
+            )
+            .expr_as(
+                Func::cust("current_setting")
+                    .arg("med_tracker.sharing_subject_id")
+                    .arg(true),
+                "subject",
+            )
+            .to_owned();
+        let row = tx
+            .query_one_raw(tx.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .unwrap();
+        (
+            row.try_get("", "pid").unwrap(),
+            row.try_get("", "plan_cache").unwrap(),
+            row.try_get("", "join_collapse").unwrap(),
+            row.try_get::<Option<String>>("", "subject")
+                .unwrap()
+                .unwrap_or_default(),
+        )
+    }
+
+    async fn guardian(tx: &sea_orm::DatabaseTransaction, subject: i64) -> Option<i64> {
+        let query = Query::select()
+            .expr_as(
+                Func::cust("med_tracker.sharing_guardian").arg(subject),
+                "guardian",
+            )
+            .to_owned();
+        tx.query_one_raw(tx.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get("", "guardian")
+            .unwrap()
+    }
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let subject = dependent(&app, &token).await;
+    let foreign = app.fixture.foreign_household().await;
+    let scope_a = HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let scope_b = HouseholdScope {
+        actor: Actor {
+            account_id: foreign.account.id,
+        },
+        household_id: foreign.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let mut options = ConnectOptions::new(app.fixture.runtime_uri.clone());
+    options.min_connections(1).max_connections(1);
+    let pool = Database::connect(options).await.unwrap();
+    let mut backend = None;
+    let mut declaration = None;
+    for (scope, authorised) in [(&scope_a, true), (&scope_b, false), (&scope_a, true)] {
+        let tenant =
+            med_tracker::models::access::begin(&pool, scope, app.context.config.settings.as_ref())
+                .await
+                .unwrap();
+        let tx = tenant.transaction();
+        let marker = Query::select()
+            .expr(
+                Func::cust("set_config")
+                    .arg("med_tracker.sharing_subject_id")
+                    .arg("0")
+                    .arg(true),
+            )
+            .to_owned();
+        tx.query_one_raw(tx.get_database_backend().build(&marker))
+            .await
+            .unwrap();
+        let before = caller_state(tx).await;
+        if let Some(pid) = backend {
+            assert_eq!(before.0, pid);
+        } else {
+            backend = Some(before.0);
+        }
+        assert_eq!(before.3, "0");
+        let result = guardian(tx, subject).await;
+        if authorised {
+            let id = result.expect("current guardian must be authorised");
+            if let Some(expected) = declaration {
+                assert_eq!(id, expected);
+            } else {
+                declaration = Some(id);
+            }
+            assert_eq!(guardian(tx, subject).await, Some(id));
+        } else {
+            assert_eq!(result, None);
+        }
+        assert_eq!(caller_state(tx).await, before);
+        tenant.rollback().await.unwrap();
+    }
+    let response = app
+        .client
+        .patch(format!(
+            "{}/api/v1/auth/guardian-declarations/{}",
+            app.origin,
+            declaration.unwrap()
+        ))
+        .bearer_auth(token)
+        .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+        .send()
+        .await
+        .unwrap();
+    let body = Application::assert_status(response, 200).await;
+    assert!(body["data"]["withdrawn_at"].as_str().is_some());
+    let tenant =
+        med_tracker::models::access::begin(&pool, &scope_a, app.context.config.settings.as_ref())
+            .await
+            .unwrap();
+    let tx = tenant.transaction();
+    let marker = Query::select()
+        .expr(
+            Func::cust("set_config")
+                .arg("med_tracker.sharing_subject_id")
+                .arg("0")
+                .arg(true),
+        )
+        .to_owned();
+    tx.query_one_raw(tx.get_database_backend().build(&marker))
+        .await
+        .unwrap();
+    let before = caller_state(tx).await;
+    assert_eq!(Some(before.0), backend);
+    assert_eq!(before.3, "0");
+    assert_eq!(guardian(tx, subject).await, None);
+    assert_eq!(caller_state(tx).await, before);
+    tenant.rollback().await.unwrap();
+    pool.close().await.unwrap();
+    app.close().await;
+}
+
+#[tokio::test]
 async fn shared_schedule_visibility_accepts_direct_and_linked_current_approvals() {
     use med_tracker::models::_entities::shared_schedule_executions;
     use med_tracker::models::access::{Actor, HouseholdScope};
