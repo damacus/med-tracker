@@ -229,11 +229,11 @@ pub(super) async fn capture(
 /// household's management authority and row locks still exist. Takes whose
 /// original evidence cannot be verified are skipped rather than blocking a
 /// permitted operational departure; database errors still propagate.
-pub(super) async fn capture_frozen(
+pub(super) async fn prepare_frozen(
     tenant: &TenantTransaction,
     source: &schedule::Model,
     provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
-) -> Result<(), OperationError> {
+) -> Result<(bool, Vec<adoption_fact::Model>), OperationError> {
     let db = tenant.transaction();
     let takes = medication_take::Entity::find()
         .filter(medication_take::Column::HouseholdId.eq(source.household_id))
@@ -242,6 +242,8 @@ pub(super) async fn capture_frozen(
         .lock_shared()
         .all(db)
         .await?;
+    let mut complete = true;
+    let mut facts = Vec::with_capacity(takes.len());
     for take in takes {
         let Some(original) = version::Entity::find()
             .filter(version::Column::ItemType.eq("MedicationTake"))
@@ -251,9 +253,11 @@ pub(super) async fn capture_frozen(
             .one(db)
             .await?
         else {
+            complete = false;
             continue;
         };
         if !matches_audit(&take, &original).unwrap_or(false) {
+            complete = false;
             continue;
         }
         let (Some(taken_at), Some(dose_amount)) = (
@@ -261,6 +265,7 @@ pub(super) async fn capture_frozen(
             take.dose_amount
                 .filter(|amount| *amount > sea_orm::prelude::Decimal::ZERO),
         ) else {
+            complete = false;
             continue;
         };
         let mut fact = adoption_fact::Model {
@@ -291,6 +296,16 @@ pub(super) async fn capture_frozen(
             captured_at: Utc::now().naive_utc(),
         };
         fact.fact_hash = fact_hash(db, &fact).await?;
+        facts.push(fact);
+    }
+    Ok((complete, facts))
+}
+
+pub(super) async fn persist_frozen(
+    db: &DatabaseTransaction,
+    facts: Vec<adoption_fact::Model>,
+) -> Result<(), OperationError> {
+    for fact in facts {
         fact.into_active_model().insert(db).await?;
     }
     Ok(())

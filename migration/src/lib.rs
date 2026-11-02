@@ -28,6 +28,7 @@ pub mod m20261029_000024_live_adoption_history;
 pub mod m20261029_000025_frozen_adoption_history;
 pub mod m20261029_000026_adoption_fact_backfill;
 pub mod m20261030_000027_restore_history_indexing;
+pub mod m20261102_000028_frozen_capture_completeness;
 mod native_authentication;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
@@ -64,6 +65,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261029_000025_frozen_adoption_history::Migration),
             Box::new(m20261029_000026_adoption_fact_backfill::Migration),
             Box::new(m20261030_000027_restore_history_indexing::Migration),
+            Box::new(m20261102_000028_frozen_capture_completeness::Migration),
         ]
     }
 }

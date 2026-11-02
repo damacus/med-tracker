@@ -118,6 +118,7 @@ async fn capture_canonical_identity_catalogues_when_requested() {
             "live-adoption-history-catalog.json",
             "frozen-adoption-history-catalog.json",
             "restore-history-index-catalog.json",
+            "frozen-capture-completeness-catalog.json",
         ] {
             // Data-only migrations (for example backfills) leave the identity
             // catalogue unchanged, so keep stepping until the next
@@ -225,6 +226,12 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         let before = catalog(&db).await;
         assert!(before.get("relation:public.accounts").is_some());
         assert!(before.get("relation:public.audit_ledger_entries").is_some());
+        let source_fk =
+            &before["constraint:public.medication_takes.fk_medication_takes_schedule_id_household"];
+        assert_eq!(source_fk["deferrable"], false);
+        assert_eq!(source_fk["deferred"], false);
+        assert_eq!(source_fk["enforced"], true);
+        assert_eq!(source_fk["validated"], true);
         let mut expected: serde_json::Map<String, serde_json::Value> =
             serde_json::from_str(include_str!("../migration/catalog.json"))?;
         apply_guardian_recovery_catalogue(&mut expected)?;
@@ -246,6 +253,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             include_str!("../migration/live-adoption-history-catalog.json"),
             include_str!("../migration/frozen-adoption-history-catalog.json"),
             include_str!("../migration/restore-history-index-catalog.json"),
+            include_str!("../migration/frozen-capture-completeness-catalog.json"),
         ] {
             let parsed: CanonicalIdentityCatalogue = serde_json::from_str(catalogue)?;
             expected.extend(parsed.changed);
@@ -272,7 +280,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             differences.join("\n")
         );
         let ledger = ledger_rows(&db).await;
-        assert_eq!(ledger.len(), 26);
+        assert_eq!(ledger.len(), 27);
         assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
         assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
         assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
@@ -282,7 +290,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         assert_eq!(ledger[17].0, "m20261028_000019_history_audit_outcome");
         assert_eq!(
             ledger.last().map(|row| row.0.as_str()),
-            Some("m20261030_000027_restore_history_indexing")
+            Some("m20261102_000028_frozen_capture_completeness")
         );
         migration::Migrator::up(&db, None).await.unwrap();
         assert_eq!(catalog(&db).await, before);

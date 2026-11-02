@@ -40,6 +40,7 @@ pub struct Model {
     pub captured_by_membership_id: i64,
     pub request_id: String,
     pub adopted_person_schedule_id: Option<String>,
+    pub capture_complete: Option<bool>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

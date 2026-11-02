@@ -9,7 +9,7 @@ use crate::models::{
 };
 use sea_orm::{
     ConnectionTrait, QueryOrder,
-    sea_query::{Expr, Func, Query},
+    sea_query::{Alias, Expr, Func, Query},
 };
 
 pub(super) async fn freeze(
@@ -42,6 +42,8 @@ pub(super) async fn freeze(
         return Err(OperationError::Unavailable);
     }
     crate::models::care::administration::authorize(tenant).await?;
+    let (capture_complete, facts) =
+        super::adoption_history::prepare_frozen(tenant, row, None).await?;
     let pause = (!row.active).then(|| pauses.first()).flatten();
     let stock_default = stock
         .dose_amount
@@ -83,13 +85,14 @@ pub(super) async fn freeze(
         captured_by_membership_id: Set(tenant.membership().id),
         request_id: Set(tenant.scope().request_id.clone()),
         adopted_person_schedule_id: Set(None),
+        capture_complete: Set(Some(capture_complete)),
     })
     .exec_without_returning(db)
     .await?;
     // Per-take evidence is captured while the source is still authoritative and
     // row locks exist; facts stay bound to the immutable parent until adoption
     // supplies the canonical plan through seed().
-    super::adoption_history::capture_frozen(tenant, row, None).await?;
+    super::adoption_history::persist_frozen(db, facts).await?;
     Ok(())
 }
 
@@ -194,6 +197,24 @@ pub(crate) async fn adopt(
     }
     if frozen.person_id != actor.subject.get() || frozen.source_portable_id != portable_id {
         return Err(OperationError::Forbidden.into());
+    }
+    let proof = Query::select()
+        .expr_as(
+            Func::cust("frozen_adoption_ready").arg(Expr::val(frozen.schedule_id)),
+            Alias::new("ready"),
+        )
+        .to_owned();
+    let ready = db
+        .query_one_raw(db.get_database_backend().build(&proof))
+        .await?
+        .ok_or(OperationError::Unavailable)?
+        .try_get::<bool>("", "ready")?;
+    if !ready {
+        return Err(crate::models::profile::validation(
+            "history",
+            "Original administration evidence is unavailable",
+        )
+        .into());
     }
     if let Some(id) = frozen.adopted_person_schedule_id.as_ref() {
         let state = shared_schedule::Entity::find_by_id(id)
