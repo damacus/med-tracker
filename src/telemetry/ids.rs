@@ -6,6 +6,7 @@ use opentelemetry::{
     trace::TraceContextExt,
     trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState},
 };
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// Parses a W3C `traceparent` header value
 /// (`version-trace_id-span_id-flags`) into a remote parent [`Context`].
@@ -115,4 +116,64 @@ mod tests {
         );
         assert_eq!(new_span_id().len(), 16);
     }
+}
+
+tokio::task_local! {
+    static TRACEPARENT: String;
+}
+
+/// Attaches a span to its trace: joins a valid inbound `traceparent` (in
+/// either mode) and falls back to generated W3C-format IDs recorded on the
+/// span when no valid OTel context exists. Returns the trace ID.
+pub fn attach(span: &tracing::Span, inbound: Option<&str>) -> String {
+    if let Some(parent) = remote_parent(inbound) {
+        let _ = span.set_parent(parent);
+    }
+    let span_context = span.context();
+    let otel_context = span_context.span().span_context().clone();
+    if otel_context.is_valid() {
+        otel_context.trace_id().to_string()
+    } else {
+        let generated = trace_id_from(inbound).unwrap_or_else(new_trace_id);
+        span.record("trace_id", generated.as_str());
+        span.record("span_id", new_span_id().as_str());
+        generated
+    }
+}
+
+/// Stores the active traceparent for the current unit of work so
+/// `current_traceparent` works even when export is disabled.
+pub async fn hold<F: std::future::Future>(traceparent: String, future: F) -> F::Output {
+    TRACEPARENT.scope(traceparent, future).await
+}
+
+/// Composes an outbound `traceparent` for propagating the active trace to
+/// another unit of work. Uses the live OTel context when valid; otherwise
+/// joins the same trace ID with a fresh propagation span ID.
+pub fn outbound_traceparent(span: &tracing::Span, trace_id: &str) -> String {
+    let context = span.context().span().span_context().clone();
+    let flags = "01";
+    let span_id = if context.is_valid() {
+        context.span_id().to_string()
+    } else {
+        new_span_id()
+    };
+    format!("00-{trace_id}-{span_id}-{flags}")
+}
+
+/// The current spans W3C `traceparent` value, in either export mode.
+pub fn current_traceparent() -> Option<String> {
+    if let Ok(value) = TRACEPARENT.try_with(|value| value.clone()) {
+        return Some(value);
+    }
+    let span_context = tracing::Span::current().context();
+    let context = span_context.span().span_context().clone();
+    context.is_valid().then(|| {
+        let flags = if context.trace_flags().is_sampled() {
+            "01"
+        } else {
+            "00"
+        };
+        format!("00-{}-{}-{flags}", context.trace_id(), context.span_id())
+    })
 }

@@ -4,7 +4,6 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use opentelemetry::trace::TraceContextExt;
 use tracing::Instrument;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -41,26 +40,13 @@ pub async fn boundary(request: Request, next: Next) -> Response {
         medtracker.db.runtime_ms = tracing::field::Empty,
         medtracker.db.failed_query_count = tracing::field::Empty,
     );
-    if let Some(parent) = ids::remote_parent(traceparent.as_deref()) {
-        let _ = span.set_parent(parent);
-    }
-    // When the OTel layer is installed the SDK context carries the real
-    // identifiers; otherwise generate W3C-format IDs on the span so log
-    // records remain correlatable with no export at all.
-    let span_context = span.context();
-    let otel_context = span_context.span().span_context().clone();
-    let trace_id = if otel_context.is_valid() {
-        otel_context.trace_id().to_string()
-    } else {
-        let generated =
-            ids::trace_id_from(traceparent.as_deref()).unwrap_or_else(ids::new_trace_id);
-        span.record("trace_id", generated.as_str());
-        span.record("span_id", ids::new_span_id().as_str());
-        generated
-    };
-    let mut response =
-        crate::telemetry::db::scope(async { next.run(request).instrument(span.clone()).await })
-            .await;
+    let trace_id = ids::attach(&span, traceparent.as_deref());
+    let outbound = ids::outbound_traceparent(&span, &trace_id);
+    let mut response = ids::hold(
+        outbound,
+        crate::telemetry::db::scope(async { next.run(request).instrument(span.clone()).await }),
+    )
+    .await;
     let status = i64::from(response.status().as_u16());
     span.record("http.response.status_code", status);
     span.set_attribute("http.response.status_code", status);

@@ -5,6 +5,7 @@ pub mod storage;
 use crate::models::{entities::nhs_dmd_import, errors::OperationError};
 use async_trait::async_trait;
 use chrono::Utc;
+use import::{ImportFailure, ImportFailureCategory, ImportStage};
 use loco_rs::{
     app::AppContext,
     bgworker::BackgroundWorker,
@@ -21,6 +22,8 @@ use std::io::Write;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ImportArgs {
     pub run_id: i64,
+    #[serde(default)]
+    pub traceparent: Option<String>,
 }
 
 pub struct ImportWorker {
@@ -33,7 +36,8 @@ impl BackgroundWorker<ImportArgs> for ImportWorker {
         Self { ctx: ctx.clone() }
     }
     async fn perform(&self, args: ImportArgs) -> loco_rs::Result<()> {
-        crate::telemetry::units::job("import", async {
+        let traceparent = args.traceparent.clone();
+        crate::telemetry::units::job_with_parent("import", traceparent.as_deref(), async {
             crate::models::canary::work(&self.ctx).await?;
             run(&self.ctx, args.run_id)
                 .await
@@ -89,6 +93,8 @@ pub async fn upload(
         skipped_expired_count: Set(0),
         skipped_invalid_count: Set(0),
         skipped_missing_name_count: Set(0),
+        trace_id: Set(crate::telemetry::ids::current_traceparent()
+            .and_then(|value| crate::telemetry::ids::trace_id_from(Some(&value)))),
         ..Default::default()
     }
     .insert(&ctx.db)
@@ -112,9 +118,15 @@ pub async fn upload(
             );
         }
     };
-    if ImportWorker::perform_later(ctx, ImportArgs { run_id: row.id })
-        .await
-        .is_err()
+    if ImportWorker::perform_later(
+        ctx,
+        ImportArgs {
+            run_id: row.id,
+            traceparent: crate::telemetry::ids::current_traceparent(),
+        },
+    )
+    .await
+    .is_err()
     {
         import::fail_run(
             &ctx.db,
@@ -158,7 +170,11 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             import::fail_owned_run(
                 &ctx.db,
                 &row,
-                "The release archive is missing. Upload the release again.",
+                &ImportFailure::with_summary(
+                    ImportStage::Extract,
+                    ImportFailureCategory::ArchiveInvalid,
+                    "The release archive is missing. Upload the release again.",
+                ),
             )
             .await?;
         }
@@ -170,7 +186,7 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             import::fail_owned_run(
                 &ctx.db,
                 &row,
-                "Archive storage is unavailable. Upload the release again.",
+                &ImportFailure::new(ImportStage::Extract, ImportFailureCategory::Storage),
             )
             .await?;
             return Err(error);
@@ -187,7 +203,11 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             import::fail_owned_run(
                 &ctx.db,
                 &row,
-                "The release archive could not be read. Upload the release again.",
+                &ImportFailure::with_summary(
+                    ImportStage::Extract,
+                    ImportFailureCategory::Storage,
+                    "The release archive could not be read. Upload the release again.",
+                ),
             )
             .await?;
             cleanup(ctx, &store, &row).await?;
@@ -203,10 +223,35 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             .map_err(|_| OperationError::Unavailable)?;
         import::run_import(ctx.db.clone(), id, file.path().to_path_buf()).await
     } else {
-        Err("Archive integrity verification failed".into())
+        Err(crate::models::nhs_dmd::import::ImportFailure::new(
+            crate::models::nhs_dmd::import::ImportStage::Extract,
+            crate::models::nhs_dmd::import::ImportFailureCategory::ArchiveInvalid,
+        ))
     };
-    if let Err(error) = result {
-        import::fail_owned_run(&ctx.db, &row, &error).await?;
+    match &result {
+        Err(error) => {
+            tracing::error!(
+                event.name = "medtracker.import.failed",
+                medtracker.import.run_id = row.id,
+                medtracker.import.stage = error.stage.name(),
+                error.type = error.category.name(),
+                medtracker.import.trace_id = row.trace_id.as_deref(),
+                "NHS dm+d import failed"
+            );
+            import::fail_owned_run(&ctx.db, &row, error).await?;
+        }
+        Ok(()) => {
+            tracing::info!(
+                event.name = "medtracker.import.completed",
+                medtracker.import.run_id = row.id,
+                medtracker.import.trace_id = row.trace_id.as_deref(),
+                medtracker.import.created_count = row.created_count,
+                medtracker.import.updated_count = row.updated_count,
+                medtracker.import.imported_count = row.imported_count,
+                medtracker.import.skipped_count = row.skipped_count,
+                "NHS dm+d import completed"
+            );
+        }
     }
     cleanup(ctx, &store, &row).await?;
     lease.commit().await?;
@@ -264,11 +309,30 @@ pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
         .filter(nhs_dmd_import::Column::Status.gte(4))
         .all(&ctx.db)
         .await?;
-    for row in stale {
-        ImportWorker::perform_later(ctx, ImportArgs { run_id: row.id })
-            .await
-            .map_err(|_| OperationError::Unavailable)?;
+    let requeued = stale.len() as i64;
+    for row in &stale {
+        tracing::warn!(
+            event.name = "medtracker.import.requeued",
+            medtracker.import.run_id = row.id,
+            medtracker.import.trace_id = row.trace_id.as_deref(),
+            error.type = ImportFailureCategory::Stale.name(),
+            "NHS dm+d import marked stale"
+        );
+        ImportWorker::perform_later(
+            ctx,
+            ImportArgs {
+                run_id: row.id,
+                traceparent: None,
+            },
+        )
+        .await
+        .map_err(|_| OperationError::Unavailable)?;
     }
+    tracing::info!(
+        event.name = "medtracker.import.reconciled",
+        medtracker.import.requeued_count = requeued,
+        "NHS dm+d reconcile finished"
+    );
     Ok(())
 }
 
