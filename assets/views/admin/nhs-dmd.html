@@ -17,7 +17,7 @@
     <article class="card card-body border border-base-300" aria-labelledby="import-{{ import.id }}"><h3 id="import-{{ import.id }}" class="card-title break-all">{{ import.filename }}</h3>
       <p role="status">{{ import.status }} · {{ import.processed }} / {{ import.total }} processed</p>
       <p>{{ import.created }} new · {{ import.updated }} updated · {{ import.unchanged }} unchanged · {{ import.skipped }} skipped</p>
-      {% if import.error %}<p role="alert" class="alert alert-error">{{ import.error }}</p>{% endif %}
+      {% if import.error %}<p role="alert" class="alert alert-error">{{ import.error }}{% if import.reference %} Reference: <code>{{ import.reference }}</code>{% endif %}</p>{% endif %}
       {% if import.active %}<p>The import is running in the background. Refresh to see its latest progress.</p>{% endif %}
     </article>
   {% else %}<p>No imports yet.</p>{% endfor %}</div>

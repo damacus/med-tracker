@@ -35,6 +35,20 @@ where
     F: Future<Output = Result<T, E>>,
     E: ErrorCategory,
 {
+    job_with_parent(name, None, future).await
+}
+
+/// A background job whose span joins the caller's trace when a valid
+/// inbound `traceparent` is supplied, in either export mode.
+pub async fn job_with_parent<F, T, E>(
+    name: &'static str,
+    traceparent: Option<&str>,
+    future: F,
+) -> Result<T, E>
+where
+    F: Future<Output = Result<T, E>>,
+    E: ErrorCategory,
+{
     let span = tracing::info_span!(
         "job",
         otel.name = format!("job {name}"),
@@ -47,9 +61,14 @@ where
         medtracker.db.runtime_ms = tracing::field::Empty,
         medtracker.db.failed_query_count = tracing::field::Empty,
         error.type = tracing::field::Empty,
+        trace_id = tracing::field::Empty,
+        span_id = tracing::field::Empty,
     );
+    let trace_id = super::ids::attach(&span, traceparent);
+    let outbound = super::ids::outbound_traceparent(&span, &trace_id);
     use tracing::Instrument;
-    let result = super::db::scope(future.instrument(span.clone())).await;
+    let result =
+        super::ids::hold(outbound, super::db::scope(future.instrument(span.clone()))).await;
     match &result {
         Ok(_) => {
             span.record("medtracker.outcome", "success");
@@ -90,9 +109,14 @@ where
         medtracker.db.runtime_ms = tracing::field::Empty,
         medtracker.db.failed_query_count = tracing::field::Empty,
         error.type = tracing::field::Empty,
+        trace_id = tracing::field::Empty,
+        span_id = tracing::field::Empty,
     );
+    let trace_id = super::ids::attach(&span, None);
+    let outbound = super::ids::outbound_traceparent(&span, &trace_id);
     use tracing::Instrument;
-    let result = super::db::scope(future.instrument(span.clone())).await;
+    let result =
+        super::ids::hold(outbound, super::db::scope(future.instrument(span.clone()))).await;
     match &result {
         Ok(_) => {
             span.record("medtracker.outcome", "success");
