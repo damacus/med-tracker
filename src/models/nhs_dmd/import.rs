@@ -1677,7 +1677,7 @@ mod tests {
                     .await
                     .unwrap_err()
                     .summary(),
-                ImportFailure::from(expected).summary()
+                expected
             );
         }
     }
