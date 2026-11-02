@@ -22,9 +22,6 @@ includes:
   frontend:
     taskfile: Taskfiles/frontend.yml
     dir: .
-  rails:
-    taskfile: rails/Taskfile.yml
-    dir: rails
   client-tools:
     taskfile: client-tools/Taskfile.yml
     dir: client-tools
@@ -44,10 +41,6 @@ includes:
   openspec:
     taskfile: Taskfiles/openspec.yml
     dir: .
-  agents:
-    taskfile: Taskfiles/agents.yml
-    dir: .
-    flatten: true
 
 tasks:
   portable:prepare:

@@ -32,10 +32,10 @@ together without handing control of it to a hosted service.
 
 ## Migration checkout
 
-This branch makes Loco 1.2 the root Rust application and retains Rails under
-`rails/` as read-only reference code. The foundation currently exposes
-`/up`, framework database readiness at `/_health`, and a Tera landing page.
-The accepted fresh Rust architecture is recorded in
+This branch makes Loco 1.2 the root Rust application. The Rails application and
+the earlier Axum port are archived in git history. The foundation currently
+exposes `/up`, framework database readiness at `/_health`, and a Tera landing
+page. The accepted fresh Rust architecture is recorded in
 [ADRs 0013–0016](docs/design.md#accepted-rust-direction). These decisions do not
 certify implementation acceptance.
 
@@ -55,31 +55,17 @@ application uses its restricted runtime role. Existing database adoption is not
 supported. `task release-image` remains guarded. Do not point foundation
 verification at a live database. See [database setup](docs/testing.md#loco-database-setup).
 
-## Try the Rails self-hosted beta
+## Try MedTracker locally
 
 We are looking for technically confident self-hosters to run MedTracker and try
 the journey from household setup to recording doses. Tell us where the app is
 confusing or unreliable.
 
-For a private local evaluation:
-
-```shell
-git clone https://github.com/damacus/med-tracker.git
-cd med-tracker
-npm install -g portless
-portless trust
-task rails:dev:portless
-task rails:dev:seed
-```
-
-Open <https://med-tracker.localhost>. Development seed data contains sample
-accounts with known passwords, so never expose a seeded development instance
-to a public or shared network.
-
-Read the [self-hosting guide](https://damacus.github.io/med-tracker/self-hosting/)
-before starting, and use the
-[deployment guide](https://damacus.github.io/med-tracker/deployment/) for a
-production-style installation.
+For a private local evaluation, follow the
+[technical quick start](docs/quick-start.md): prepare a PostgreSQL 18 database,
+apply the schema with `task db:prepare`, then run `task dev`. Development seed
+data contains sample accounts with known passwords, so never expose a seeded
+development instance to a public or shared network.
 
 ## Share feedback
 
