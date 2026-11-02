@@ -4,9 +4,9 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use opentelemetry::trace::TraceContextExt;
 use tracing::Instrument;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
-use opentelemetry::trace::TraceContextExt;
 
 use crate::telemetry::ids;
 
@@ -49,8 +49,8 @@ pub async fn boundary(request: Request, next: Next) -> Response {
     let trace_id = if otel_context.is_valid() {
         otel_context.trace_id().to_string()
     } else {
-        let generated = ids::trace_id_from(traceparent.as_deref())
-            .unwrap_or_else(ids::new_trace_id);
+        let generated =
+            ids::trace_id_from(traceparent.as_deref()).unwrap_or_else(ids::new_trace_id);
         span.record("trace_id", generated.as_str());
         span.record("span_id", ids::new_span_id().as_str());
         generated
@@ -162,8 +162,7 @@ mod inbound_tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
-    async fn malformed_traceparent_gets_a_fresh_trace()
-    -> Result<(), Box<dyn std::error::Error>> {
+    async fn malformed_traceparent_gets_a_fresh_trace() -> Result<(), Box<dyn std::error::Error>> {
         let router = Router::new()
             .route("/fresh", get(|| async { StatusCode::OK }))
             .layer(axum::middleware::from_fn(boundary));
@@ -188,9 +187,7 @@ mod exported_span_tests {
     use super::boundary;
     use axum::{Router, http::StatusCode, routing::get};
     use opentelemetry::trace::TracerProvider;
-    use opentelemetry_sdk::trace::{
-        InMemorySpanExporter, Sampler, SdkTracerProvider,
-    };
+    use opentelemetry_sdk::trace::{InMemorySpanExporter, Sampler, SdkTracerProvider};
     use tracing::instrument::WithSubscriber;
     use tracing_subscriber::{layer::SubscriberExt, registry};
 
@@ -207,12 +204,7 @@ mod exported_span_tests {
         let router = Router::new()
             .route(
                 "/private",
-                get(|| async {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "ClinicalBodySentinel",
-                    )
-                }),
+                get(|| async { (StatusCode::INTERNAL_SERVER_ERROR, "ClinicalBodySentinel") }),
             )
             .layer(axum::middleware::from_fn(boundary));
         let server = loco_rs::TestServer::builder()

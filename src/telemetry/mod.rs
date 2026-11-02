@@ -71,10 +71,7 @@ fn build_provider(
 ) -> Option<SdkTracerProvider> {
     let mut attributes = vec![
         opentelemetry::KeyValue::new("service.version", resource.service_version.clone()),
-        opentelemetry::KeyValue::new(
-            "deployment.environment.name",
-            resource.environment.clone(),
-        ),
+        opentelemetry::KeyValue::new("deployment.environment.name", resource.environment.clone()),
     ];
     if !resource.instance_id.is_empty() {
         attributes.push(opentelemetry::KeyValue::new(

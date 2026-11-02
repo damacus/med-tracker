@@ -293,9 +293,12 @@ pub(crate) mod tests {
             assert_eq!(fields.len(), 3);
             let category_field = fields.iter().find(|(name, _)| name == "error.type");
             assert_eq!(
-                category_field.map(|(_, value)| value.as_str()),                Some(category)
+                category_field.map(|(_, value)| value.as_str()),
+                Some(category)
             );
-            let trace_id = fields.iter().find(|(name, _)| name == "medtracker.error_reference");
+            let trace_id = fields
+                .iter()
+                .find(|(name, _)| name == "medtracker.error_reference");
             let trace_id = trace_id
                 .map(|(_, value)| value.as_str())
                 .unwrap_or_default();
@@ -349,9 +352,12 @@ pub(crate) mod tests {
             assert_eq!(fields.len(), 3);
             let category_field = fields.iter().find(|(name, _)| name == "error.type");
             assert_eq!(
-                category_field.map(|(_, value)| value.as_str()),                Some(category)
+                category_field.map(|(_, value)| value.as_str()),
+                Some(category)
             );
-            let trace_id = fields.iter().find(|(name, _)| name == "medtracker.error_reference");
+            let trace_id = fields
+                .iter()
+                .find(|(name, _)| name == "medtracker.error_reference");
             let trace_id = trace_id
                 .map(|(_, value)| value.as_str())
                 .unwrap_or_default();
@@ -383,7 +389,9 @@ pub(crate) mod tests {
         let fields = &recorded[0];
         let category = fields.iter().find(|(name, _)| name == "error.type");
         assert_eq!(category.map(|(_, value)| value.as_str()), Some("timeout"));
-        let trace_id = fields.iter().find(|(name, _)| name == "medtracker.error_reference");
+        let trace_id = fields
+            .iter()
+            .find(|(name, _)| name == "medtracker.error_reference");
         let trace_id = trace_id
             .map(|(_, value)| value.as_str())
             .unwrap_or_default();
@@ -402,7 +410,9 @@ pub(crate) mod tests {
         assert_eq!(fields.len(), 3);
         let category = fields.iter().find(|(name, _)| name == "error.type");
         assert_eq!(category.map(|(_, value)| value.as_str()), Some("storage"));
-        let trace_id = fields.iter().find(|(name, _)| name == "medtracker.error_reference");
+        let trace_id = fields
+            .iter()
+            .find(|(name, _)| name == "medtracker.error_reference");
         let trace_id = trace_id
             .map(|(_, value)| value.as_str())
             .unwrap_or_default();

@@ -68,7 +68,10 @@ impl TelemetrySettings {
         if self.otlp_endpoint.is_empty() {
             return None;
         }
-        Some(format!("{}/v1/traces", self.otlp_endpoint.trim_end_matches('/')))
+        Some(format!(
+            "{}/v1/traces",
+            self.otlp_endpoint.trim_end_matches('/')
+        ))
     }
 
     /// Parsed `k=v` header pairs. Malformed entries are ignored.
@@ -114,7 +117,10 @@ mod tests {
             "otlp_endpoint": "http://collector:4318",
             "otlp_traces_endpoint": "http://traces:4318/custom",
         }})));
-        assert_eq!(parsed.traces_endpoint().as_deref(), Some("http://traces:4318/custom"));
+        assert_eq!(
+            parsed.traces_endpoint().as_deref(),
+            Some("http://traces:4318/custom")
+        );
         assert_eq!(parsed.endpoint_host().as_deref(), Some("traces"));
     }
 
@@ -149,7 +155,10 @@ mod tests {
             "otlp_headers": "authorization=Bearer x, bad, x-scope=canary",
         }})));
         let headers = parsed.headers();
-        assert_eq!(headers.get("authorization").map(String::as_str), Some("Bearer x"));
+        assert_eq!(
+            headers.get("authorization").map(String::as_str),
+            Some("Bearer x")
+        );
         assert_eq!(headers.get("x-scope").map(String::as_str), Some("canary"));
         assert_eq!(headers.len(), 2);
     }
