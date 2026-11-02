@@ -6,19 +6,13 @@ Only the current main revision can update `beta`; reruns of older commits retain
 their own image without changing beta. Its run summary records the source commit and immutable digest
 to deploy. Manual publication from main remains available. The existing Rails
 publisher was removed with the Rails archive.
-Root Loco is the fresh Rust application; use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md)
-for its image, configuration, database and recovery guidance. There is no separate
-rehearsal or runtime evidence dossier before the owner's normal version upgrade.
+Root Loco is the fresh Rust application; use the [fresh Rust installation notes](operations/loco-cutover-runbook.md)
+for its image, configuration, new database and fresh-account requirements. Rust
+portable import/export is supported within its documented limits. These notes do
+not define a live cutover or require a full Rails export.
 
 The Rails Compose and operator commands below describe the archived application. They
 are not the Rust rollout procedure.
-
-There is no supported rollback from 0.6 to Rails. A full Rails export at the
-transition is an operator action, not an automatic import or a claim that an
-export has already happened. Any retained Rails site contains only its
-pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
-returning to the old site would not carry those records back. These notes do
-not promise that Rails can import that export or provide a lossless switchback.
 
 ## Loco authentication secrets
 
@@ -72,12 +66,11 @@ rollback design. Start with a new empty PostgreSQL 18 database and fresh Rust
 credentials. Historical passkeys are not imported, regardless of algorithm.
 Do not reset existing databases or assume Rails can consume Rust-created data.
 
-Use the [fresh Rust rollout notes](operations/loco-cutover-runbook.md) for the
-normal image/version upgrade, writer ownership, configuration and stop/recovery
-boundaries. The owner observes runtime behaviour during release; no standalone
-rehearsal, final evidence dossier or duplicate application-acceptance project is
-required. Keep normal tests/CI for changed deliverables and fix concrete defects.
-Deployment remains a separate owner action.
+Use the [fresh Rust installation notes](operations/loco-cutover-runbook.md) for
+the image, fresh database, new accounts and configuration requirements. The
+documented portable-data contract covers supported imports and exports; it does
+not promise complete Rails-export restoration. There is no planned live cutover
+or mandatory full Rails export. Deployment remains a separate owner action.
 
 The owner has accepted the delivered Slice 7 worker/notification scope and waived
 extra process stop/restart and SIGTERM rehearsals. Native/offline work, new export

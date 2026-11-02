@@ -81,9 +81,9 @@ published. The workflow summary records the verified multi-platform digest for
 the deployment controller to use. A version tag alone does not prove the image
 has finished building; wait for the publication job to succeed.
 
-The existing Rails image publisher remains separate. Publishing an image does
-not deploy it. Builds run independently for each main push, so a queued push is
-not displaced by the next commit. Publication uses a separate concurrency group
+PR #3028 removed the Rails application and its separate image publisher.
+Publishing an image does not deploy it. Builds run independently for each main
+push, so a queued push is not displaced by the next commit. Publication uses a separate concurrency group
 per full source SHA, with cancellation disabled. Main and release-please builds
 of the same commit cannot overwrite the SHA tags while the other publisher is
 recovering their digests. Different commits can publish independently. A separate Actions
@@ -99,14 +99,14 @@ the main commit observed before the change.
 
 ## Creating the 0.6 release candidate
 
-Release-please uses the root Rust package, not `rails/lib/med_tracker/version.rb`.
+Release-please uses the root Rust package.
 The one-time `release-as: 0.6.0-rc.1` setting selects the first candidate and
 `prerelease: true` marks the GitHub release as a prerelease. The manifest records
 the last released version; do not advance it manually to request a release.
 
 1. Merge the release configuration and workflow change through the normal review
    process. Release-please updates its pending release PR to `0.6.0-rc.1`, including
-   the Cargo files, changelog and manifest. Check that it leaves Rails untouched.
+   the Cargo files, changelog and manifest.
 2. Review and merge that generated release PR. Release-please creates
    `v0.6.0-rc.1`, then calls the checked Rust image publisher. Both architectures,
    the production boot checks and native scheduler acceptance must pass before
@@ -120,12 +120,12 @@ the last released version; do not advance it manually to request a release.
    retaining `prerelease: true`. For the stable release, select `0.6.0` and set
    `prerelease: false`. Do not reuse a candidate tag for changed source.
 
-For the first RC transfer, provision a separate Rust installation with a fresh
-database and new accounts, retaining Rails until the transferred household has
-been checked. Clinical transfer uses the export, dry-run and import APIs and
-remains subject to [the compatibility work in #2702](https://github.com/damacus/med-tracker/issues/2702).
-The release workflow does not export or import live data. A successful image
-build does not establish Rails-export compatibility or authorise a traffic switch.
+The image workflow builds and publishes images only. It does not provision a
+database or accounts, export or import clinical records, or change traffic. A
+0.6 installation uses a new empty database and fresh accounts. Use the supported
+portable-data contract when import or export is needed; its Rails compatibility
+limits remain documented in [#2702](https://github.com/damacus/med-tracker/issues/2702).
+This issue does not define a cutover plan or gate image publication.
 
 `task image:check` compares the image's pinned Rust compiler with the compiler
 selected by the application's stable CI policy, its Node version with `mise.toml`
