@@ -23,13 +23,18 @@ import com.squareup.moshi.JsonClass
  * 
  *
  * @param token 
+ * @param sharingConsent Explicit care-sharing attestation. Required when the accepting person already participates in another household, because acceptance shares the person's canonical care record; absent or false then returns 422. A first-household acceptance needs no consent.
  */
 
 
 data class InvitationAcceptanceRequest (
 
     @Json(name = "token")
-    val token: kotlin.String
+    val token: kotlin.String,
+
+    /* Explicit care-sharing attestation. Required when the accepting person already participates in another household, because acceptance shares the person's canonical care record; absent or false then returns 422. A first-household acceptance needs no consent. */
+    @Json(name = "sharing_consent")
+    val sharingConsent: kotlin.Boolean? = null
 
 ) {
 

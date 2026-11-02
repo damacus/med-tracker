@@ -1,5 +1,10 @@
 # Upload Storage Backup and Restore
 
+> [!NOTE]
+> This document describes the archived Rails application or deployment. Its
+> `task rails:*`, `bin/rails` and `bundle exec` commands no longer exist in this
+> repository; the Rails source lives in git history.
+
 Production supports durable Disk and S3-compatible storage. The selected
 backend and any active migration determine the recovery set. S3 is optional.
 

@@ -25,6 +25,7 @@
         {% if record.min_hours_between_doses %}<dt class="font-semibold">Minimum hours between doses</dt><dd>{{ record.min_hours_between_doses }}</dd>{% endif %}
         {% if record.notes %}<dt class="font-semibold">Notes</dt><dd>{{ record.notes }}</dd>{% endif %}
         {% if record.schedule_config is defined %}
+          {% if record.origin_time_zone %}<dt class="font-semibold">{{ labels.profiles.personal.origin_zone }}</dt><dd>{{ record.origin_time_zone }}</dd>{% endif %}
           {% if record.schedule_config.times is defined %}<dt class="font-semibold">Times</dt><dd>{{ record.schedule_config.times | join(sep=", ") }}</dd>{% endif %}
           {% if record.schedule_config.weekdays is defined %}<dt class="font-semibold">Weekdays</dt><dd>{{ record.schedule_config.weekdays | join(sep=", ") }}</dd>{% endif %}
           {% if record.schedule_config.dates is defined %}<dt class="font-semibold">Specific dates</dt><dd>{{ record.schedule_config.dates | join(sep=", ") }}</dd>{% endif %}

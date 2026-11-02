@@ -76,10 +76,13 @@ async fn request_trace_correlates_booted_completion_without_private_input()
     let second_trace = second.header("x-medtracker-trace-id");
     let first_trace = first_trace.to_str()?;
     let second_trace = second_trace.to_str()?;
-    assert_eq!(failed.status_code(), 500);
+    assert_eq!(failed.status_code(), 503);
     let failed_body: Value = failed.json();
-    assert_eq!(failed_body["error"]["code"], "internal_error");
-    assert_eq!(failed_body["error"]["message"], "Internal server error");
+    assert_eq!(failed_body["error"]["code"], "service_unavailable");
+    assert_eq!(
+        failed_body["error"]["message"],
+        "Service is temporarily unavailable"
+    );
     assert_eq!(
         failed.header("x-request-id"),
         "ClinicalDatabaseHeaderSentinel"

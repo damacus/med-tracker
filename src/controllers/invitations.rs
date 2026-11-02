@@ -20,16 +20,28 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("/households")
         .add("/{slug}/admin/invitations", get(index).post(create))
+        .add(
+            "/{slug}/admin/dependent-sharing-invitations",
+            post(create).layer(Extension(DependentSharing)),
+        )
         .add("/{slug}/admin/invitations/{id}/resend", post(resend))
         .add("/{slug}/admin/invitations/{id}/cancel", post(cancel))
 }
 
 pub fn acceptance_routes() -> Routes {
-    Routes::new().add(
-        "/invitations/accept",
-        get(acceptance::preview).post(acceptance::accept),
-    )
+    Routes::new()
+        .add(
+            "/invitations/accept",
+            get(acceptance::preview).post(acceptance::accept),
+        )
+        .add(
+            "/invitations/dependent-sharing/accept",
+            post(acceptance::accept).layer(Extension(DependentSharing)),
+        )
 }
+
+#[derive(Clone)]
+pub(super) struct DependentSharing;
 
 async fn index(
     State(ctx): State<AppContext>,
@@ -51,6 +63,7 @@ async fn index(
         .index(None, None)
         .await
 }
+#[allow(clippy::too_many_arguments)]
 async fn create(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
@@ -58,6 +71,7 @@ async fn create(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    dependent: Option<Extension<DependentSharing>>,
     AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
     let query = match form_context(&draft) {
@@ -71,7 +85,14 @@ async fn create(
     };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
         .with_query(query)
-        .save(page::Change::Create, draft)
+        .save(
+            if dependent.is_some() {
+                page::Change::CreateDependent
+            } else {
+                page::Change::Create
+            },
+            draft,
+        )
         .await
 }
 async fn resend(

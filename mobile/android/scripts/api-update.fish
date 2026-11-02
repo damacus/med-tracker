@@ -14,15 +14,18 @@ function cleanup --on-event fish_exit
 end
 
 cp -p "$repo_root/docs/api/openapi.v1.yaml" "$android_root/openapi.v1.yaml"
-docker run --rm --user (id -u):(id -g) -v "$android_root:/android:ro" -v "$temporary_root:/output" $image generate -i /android/openapi.v1.yaml -g kotlin -c /android/openapi-generator-config.yaml --global-property apiDocs=false,modelDocs=false -o /output/release --ignore-file-override /android/openapi-generator-release.ignore
+fish --no-config "$script_dir/api-generator-input.fish" --source "$android_root/openapi.v1.yaml" --output "$temporary_root/openapi-generator-input.yaml"
+or exit 1
+set -l derived_checksum (shasum -a 256 "$temporary_root/openapi-generator-input.yaml" | string split -m1 ' ')[1]
+docker run --rm --user (id -u):(id -g) -v "$android_root:/android:ro" -v "$temporary_root:/output" $image generate -i /output/openapi-generator-input.yaml -g kotlin -c /android/openapi-generator-config.yaml --global-property apiDocs=false,modelDocs=false -o /output/release --ignore-file-override /android/openapi-generator-release.ignore
 or exit 1
 rm -rf "$release_output"
 mkdir -p (dirname "$release_output")
 cp -R "$temporary_root/release/src/main/kotlin/io/medtracker/client" "$release_output"
-printf '%s\n' '# Android OpenAPI generated-client provenance' '' '- Pinned OpenAPI source: docs/api/openapi.v1.yaml' "- Source revision: $source_revision" "- Pinned OpenAPI SHA-256: $source_checksum" "- Generator image: $image" '- Generator: OpenAPI Generator 7.20.0' '- Release generator configuration: mobile/android/openapi-generator-config.yaml plus openapi-generator-release.ignore' '- Release-safe generated Kotlin artifacts: mobile/android/phone/src/main/kotlin/io/medtracker/client' > "$android_root/OPENAPI_PROVENANCE.md"
+printf '%s\n' '# Android OpenAPI generated-client provenance' '' '- Pinned OpenAPI source: docs/api/openapi.v1.yaml' "- Source revision: $source_revision" "- Pinned OpenAPI SHA-256: $source_checksum" "- Derived generator-input SHA-256: $derived_checksum" '- Generator input: -i /output/openapi-generator-input.yaml, derived from the exact canonical pin' '- Generator-input adapter: mobile/android/scripts/api-generator-input.fish' '- Single transformed schema: #/components/schemas/PortableImportUnprocessableResponse' '- Transformation: closed oneOf becomes the previous flat optional typed data/error fields for Kotlin okhttp4/Moshi generation only' '- Validation limitation: Android retains its previous permissive decoder; the canonical server and Swift contract remain strict. The derived input is not validation-equivalent or byte-identical to the canonical source.' "- Generator image: $image" '- Generator: OpenAPI Generator 7.20.0' '- Release generator configuration: mobile/android/openapi-generator-config.yaml plus openapi-generator-release.ignore' '- Release-safe generated Kotlin artifacts: mobile/android/phone/src/main/kotlin/io/medtracker/client' > "$android_root/OPENAPI_PROVENANCE.md"
 
 begin
-    for path in openapi.v1.yaml openapi-generator-config.yaml openapi-generator-release.ignore (find phone/src/main/kotlin/io/medtracker/client -type f | sort)
+    for path in openapi.v1.yaml openapi-generator-config.yaml openapi-generator-release.ignore scripts/api-generator-input.fish (find phone/src/main/kotlin/io/medtracker/client -type f | sort)
         shasum -a 256 "$path"
     end
 end > "$android_root/import-manifest.sha256"

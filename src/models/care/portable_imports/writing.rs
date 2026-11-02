@@ -1,4 +1,5 @@
 use super::*;
+use sea_orm::EntityTrait;
 
 async fn upsert(
     db: &DatabaseTransaction,
@@ -112,6 +113,16 @@ pub(crate) async fn write_records(
     request_id: &str,
     declarations: &mut PreparedDeclarations,
 ) -> Result<(), OperationError> {
+    let conflicts = super::person_schedules::conflicts(db, tenant, plan, index).await?;
+    if !conflicts.is_empty() {
+        return Err(import_invalid(
+            conflicts
+                .into_iter()
+                .map(|conflict| conflict.to_string())
+                .collect::<Vec<_>>()
+                .join("; "),
+        ));
+    }
     for kind in [
         "locations",
         "people",
@@ -140,6 +151,12 @@ pub(crate) async fn write_records(
             let fields = mapped_row(kind, row, index, tenant).map_err(import_invalid)?;
             if existed && matches!(kind, "medication_takes" | "dose_occurrences") {
                 verify_immutable(db, kind, &fields).await?;
+                if kind == "medication_takes" {
+                    let id = index
+                        .get(kind, &portable_id)
+                        .ok_or_else(|| OperationError::unavailable("invariant"))?;
+                    index_restored_take(db, tenant, provenance, id).await?;
+                }
                 continue;
             }
             let id = if !existed && kind == "people" {
@@ -209,12 +226,41 @@ pub(crate) async fn write_records(
                 },
             )
             .await?;
+            if kind == "medication_takes" {
+                index_restored_take(db, tenant, provenance, id).await?;
+            }
         }
         if kind == "medication_pause_periods" && plan.format.includes_extended_records() {
             reconcile_pauses(db, tenant, provenance, plan, index, request_id).await?;
         }
     }
     Ok(())
+}
+
+/// After a take row is applied, mint its immutable restore receipt and seed
+/// the minimal safety index when its source is a still-linked canonical
+/// person-owned schedule. Runs inside the same transaction as the upsert so a
+/// rejected receipt rolls the whole import back; unlinked, ended or
+/// non-canonical sources leave the row as ordinary restored history.
+async fn index_restored_take(
+    db: &DatabaseTransaction,
+    tenant: &TenantTransaction,
+    provenance: &CredentialProvenance,
+    take_id: i64,
+) -> Result<(), OperationError> {
+    let take = crate::models::entities::medication_take::Entity::find_by_id(take_id)
+        .one(db)
+        .await?
+        .ok_or_else(|| OperationError::unavailable("invariant"))?;
+    crate::models::care::person_schedules::index_restored(tenant, &take, Some(provenance))
+        .await
+        .map(|_| ())
+        .map_err(|error| match error {
+            OperationError::Forbidden => {
+                import_invalid("medication_takes history requires current clinical authority")
+            }
+            error => error,
+        })
 }
 
 pub(super) async fn verify_immutable(

@@ -7,7 +7,7 @@ MedTracker records two audit sources:
 - `versions` contains PaperTrail create, update, and destroy evidence, including `object_changes`.
 - `security_audit_events` contains authentication, authorization, support access, import/export, API, MCP, and other security events.
 
-Both sources use the same versioned envelope. It identifies the event, outcome, time, household, affected entity, actor account/user/membership, active role, permissions version, authentication method, opaque session reference, request and trace identifiers, IP address, Pundit policy/query, support session, source row, redacted metadata, and retention decision. Secrets, bearer tokens, cookies, passwords, OIDC tokens, and raw session identifiers are not permitted in the envelope.
+Both sources use the same versioned envelope. It identifies the event, outcome, time, household, affected entity, actor account/user/membership, active role, permissions version, authentication method, opaque session reference, request and trace identifiers, IP address, authorization policy/query, support session, source row, redacted metadata, and retention decision. Secrets, bearer tokens, cookies, passwords, OIDC tokens, and raw session identifiers are not permitted in the envelope.
 
 The web and API controllers establish and clear the request context explicitly.
 Background work is identified as system activity. It is not represented as
@@ -75,9 +75,7 @@ permissions each time it runs.
 
 Run:
 
-```fish
-task rails:audit:verify
-```
+The `task rails:audit:verify` command belonged to the archived Rails application.
 
 Inputs are supplied as environment variables:
 
@@ -100,9 +98,7 @@ verification reject time filters rather than reporting a valid partial result.
 
 Run:
 
-```fish
-task rails:audit:export
-```
+The `task rails:audit:export` command belonged to the archived Rails application.
 
 Set `OUTPUT`, optional `HOUSEHOLD_ID`, `FROM`, `TO`, and `FHIR=true` as
 required. The export contains deterministic native NDJSON and a signed

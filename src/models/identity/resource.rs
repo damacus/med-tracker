@@ -53,6 +53,18 @@ enum Credential {
 }
 
 impl ValidatedPrincipal {
+    pub(crate) async fn personal_plan_transaction(
+        &self,
+        db: &DatabaseConnection,
+        settings: Option<&serde_json::Value>,
+        write: bool,
+    ) -> Result<DatabaseTransaction, AuthenticationError> {
+        if !matches!(self.credential, Credential::OAuth { .. }) {
+            return Err(AuthenticationError::Forbidden);
+        }
+        self.account_transaction(db, settings, write).await
+    }
+
     pub(crate) async fn personal_history_transaction(
         &self,
         db: &DatabaseConnection,
@@ -132,6 +144,74 @@ impl ValidatedPrincipal {
 
     pub fn account_id(&self) -> i64 {
         self.account_id
+    }
+
+    pub(crate) async fn revalidate_account(
+        &self,
+        transaction: &DatabaseTransaction,
+        settings: Option<&serde_json::Value>,
+    ) -> Result<(), AuthenticationError> {
+        access::verify_account(transaction, self.account_id)
+            .await
+            .map_err(operation_error)?;
+        match &self.credential {
+            Credential::OAuth {
+                authorization,
+                grant_id,
+            } => {
+                let row = validate(transaction, authorization, true, settings).await?;
+                if row.id != *grant_id || row.account_id != self.account_id {
+                    return Err(AuthenticationError::Unauthenticated);
+                }
+            }
+            Credential::Stored(principal) => {
+                let actor = principal.revalidate_locked(transaction, settings).await?;
+                if actor.account_id != self.account_id {
+                    return Err(AuthenticationError::Unauthenticated);
+                }
+            }
+            Credential::PersonalKey(_) => return Err(AuthenticationError::Forbidden),
+        }
+        Ok(())
+    }
+
+    pub(crate) async fn revalidate_household(
+        &self,
+        tenant: &TenantTransaction,
+    ) -> Result<(), AuthenticationError> {
+        access::recheck(tenant).await.map_err(operation_error)?;
+        match &self.credential {
+            Credential::PersonalKey(principal) => principal.revalidate(tenant).await,
+            Credential::OAuth {
+                authorization,
+                grant_id,
+            } => {
+                let row = validate(
+                    tenant.transaction(),
+                    authorization,
+                    false,
+                    tenant.settings(),
+                )
+                .await?;
+                if row.id == *grant_id && row.account_id == self.account_id {
+                    Ok(())
+                } else {
+                    Err(AuthenticationError::Unauthenticated)
+                }
+            }
+            Credential::Stored(principal) => {
+                let actor = principal
+                    .revalidate(tenant.transaction(), tenant.settings())
+                    .await?;
+                if actor.account_id != self.account_id {
+                    Err(AuthenticationError::Unauthenticated)
+                } else if actor.household_id != tenant.scope().household_id {
+                    Err(AuthenticationError::Forbidden)
+                } else {
+                    Ok(())
+                }
+            }
+        }
     }
 
     pub fn provenance(&self) -> &CredentialProvenance {

@@ -32,6 +32,24 @@ fn optional_header(
 }
 
 impl ApiClient {
+    #[doc = "# Errors\nThe URL is invalid or has no HTTP server origin."]
+    pub fn server_origin(base_url: &str) -> Result<String, ApiError> {
+        let parsed = Url::parse(base_url)?;
+        if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none() {
+            return Err(ApiError::InvalidServerOrigin);
+        }
+        Ok(parsed.origin().ascii_serialization())
+    }
+
+    #[doc = "# Errors\nEither URL cannot be parsed.\nCompares normalised HTTP server origins without paths."]
+    pub fn same_origin(left: &str, right: &str) -> Result<bool, ApiError> {
+        let left = Url::parse(left)?;
+        let right = Url::parse(right)?;
+        Ok(matches!(left.scheme(), "http" | "https")
+            && matches!(right.scheme(), "http" | "https")
+            && left.origin() == right.origin())
+    }
+
     #[doc = "# Errors\nThe base URL is invalid or the HTTP client cannot be built."]
     pub fn new(base_url: impl AsRef<str>, bearer_token: Option<String>) -> Result<Self, ApiError> {
         let mut parsed = Url::parse(base_url.as_ref())?;
@@ -40,6 +58,7 @@ impl ApiClient {
         }
 
         let http = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(5))
             .user_agent(USER_AGENT)
@@ -190,6 +209,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn server_origin_normalises_host_and_default_port() -> Result<(), ApiError> {
+        assert!(ApiClient::same_origin(
+            "https://EXAMPLE.com:443/prefix/",
+            "https://example.com"
+        )?);
+        for other in [
+            "http://example.com",
+            "https://example.com:444",
+            "https://other.example",
+            "file:///tmp/config",
+        ] {
+            assert!(!ApiClient::same_origin("https://example.com", other)?);
+        }
+        assert!(ApiClient::same_origin("https://example.com", "invalid").is_err());
+        Ok(())
+    }
+
+    #[test]
     fn guardian_import_passphrase_header_is_sensitive() -> Result<(), Box<dyn std::error::Error>> {
         let secret = "synthetic-sensitive-portable-password";
         let request = optional_header(
@@ -234,6 +271,46 @@ mod tests {
     }
     use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn portable_redirects_never_forward_passphrase_or_bundle()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for status in [307, 308] {
+            let source = MockServer::start().await;
+            let destination = MockServer::start().await;
+            Mock::given(method("POST"))
+                .respond_with(
+                    ResponseTemplate::new(200).set_body_json(serde_json::json!({"data": {}})),
+                )
+                .mount(&destination)
+                .await;
+            Mock::given(method("POST"))
+                .respond_with(ResponseTemplate::new(status)
+                    .insert_header("Location", destination.uri())
+                    .set_body_json(serde_json::json!({"error": {"code": "redirect", "message": "API moved", "request_id": "synthetic-redirect"}})))
+                .mount(&source).await;
+            let result = ApiClient::new(source.uri(), Some("synthetic-token".into()))?
+                .portable_import(
+                    "1",
+                    serde_json::json!({"bundle": "synthetic-private-bundle"}),
+                    Some("synthetic-passphrase".into()),
+                    crate::PortableImportMode::Apply,
+                )
+                .await;
+            assert!(
+                destination
+                    .received_requests()
+                    .await
+                    .ok_or("capture disabled")?
+                    .is_empty(),
+                "redirect {status} forwarded sensitive request"
+            );
+            assert!(
+                matches!(result, Err(ApiError::Server { status: actual, .. }) if actual == status)
+            );
+        }
+        Ok(())
+    }
 
     #[tokio::test]
     async fn get_json_sends_bearer_and_decodes_data() -> Result<(), Box<dyn std::error::Error>> {

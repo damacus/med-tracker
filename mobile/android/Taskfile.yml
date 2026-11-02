@@ -100,7 +100,14 @@ tasks:
     dir: "{{.TASKFILE_DIR}}"
     desc: Verify the pinned Android OpenAPI client has no drift
     cmds:
+      - task: api:test
       - ./scripts/api-check.fish
+
+  api:test:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Verify the scoped Android generator-input adaptation
+    cmds:
+      - fish --no-config ./scripts/test-api-generator-input.fish
 
   api:update:
     dir: "{{.TASKFILE_DIR}}"

@@ -102,9 +102,9 @@ pub(super) fn authentication(error: AuthenticationError) -> Failure {
 
 pub(super) fn unavailable() -> Failure {
     Failure {
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-        code: "internal_error".into(),
-        message: "Internal server error".into(),
+        status: StatusCode::SERVICE_UNAVAILABLE,
+        code: "service_unavailable".into(),
+        message: "Service is temporarily unavailable".into(),
         details: None,
         authenticate: None,
     }
@@ -194,4 +194,27 @@ pub(super) fn success(
         );
     }
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn unavailable_maps_to_service_unavailable_envelope() {
+        for failure in [
+            operation(OperationError::Unavailable),
+            authentication(AuthenticationError::Unavailable),
+            unavailable(),
+        ] {
+            let response = error(failure, "request-id");
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+            let bytes = axum::body::to_bytes(response.into_body(), 4096)
+                .await
+                .expect("error envelope body");
+            let body: Value = serde_json::from_slice(&bytes).expect("error envelope JSON");
+            assert_eq!(body["error"]["code"], "service_unavailable");
+            assert_eq!(body["error"]["request_id"], "request-id");
+        }
+    }
 }

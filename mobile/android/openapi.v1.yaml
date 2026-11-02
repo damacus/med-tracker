@@ -191,8 +191,8 @@ paths:
           $ref: "#/components/responses/AccountForbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          description: Account data could not be read.
+        "503":
+          description: Account data is temporarily unavailable.
           content:
             application/json:
               schema:
@@ -255,12 +255,332 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
+        "503":
           description: The profile and its audit could not be committed.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/profile/history:
+    get:
+      operationId: listPersonalTakenDoses
+      tags: [Account, Account profiles]
+      summary: Read the authenticated person's own taken-dose history.
+      description: |
+        Requires an account-bound first-party mobile OAuth credential with medtracker
+        scope. Household sessions, app tokens, personal keys and integration grants
+        cannot use this route. The subject comes from the authenticated account;
+        person and household selectors are rejected. No household membership is required.
+        Returns taken administrations across origin households, without stock details,
+        locations or private narratives. Existing administration attribution is preserved.
+        Results contain at most 25 records in descending taken_at, then ID order.
+        Supply both cursor fields from next_cursor to read the next page. Timestamps
+        are UTC. Each page rechecks current credentials and commits its access audit
+        before releasing records. Refusals are audited, naming the actor only when
+        the server has proved their identity. Successful reads and refusals by
+        verified callers use the clinical ledger. Refusals without a proved identity
+        use structured security logs without a claimed actor or database audit write.
+        Rate-limit and unavailable-source refusals occur before authentication,
+        keeping database work behind the rate limit. Every response is no-store.
+      parameters:
+        - name: before_id
+          in: query
+          schema: {type: integer, format: int64, minimum: 1}
+        - name: before_taken_at
+          in: query
+          schema: {type: string, format: date-time}
+      responses:
+        "200":
+          description: Own taken-dose records and the next exclusive cursor, or null at the end.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PersonalTakenDoseCollectionResponse"}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          description: History or its access audit could not be committed; no records are released.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /auth/schedules:
+    get:
+      operationId: listPersonalSchedules
+      tags: [Account]
+      summary: Read the authenticated person's treatment plans.
+      description: |
+        Requires account-bound first-party mobile OAuth with medtracker scope.
+        Household sessions, app tokens, personal keys and integration grants are
+        denied. No household participation is required. Returns prescribed clinical
+        state and opaque revision ETags without household stock or other people's
+        information. Existing sources are adopted at an authorised household write
+        or departure using the configured application timezone, with explicit
+        adopted_application_zone provenance. This is not historical zone recovery.
+      responses:
+        "200":
+          description: Personal treatment plans, including retired plans.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PersonalSchedule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /auth/schedules/adopt:
+    post:
+      operationId: adoptDepartedLegacySchedule
+      tags: [Account]
+      summary: Adopt an exact frozen prescription after household departure.
+      description: |
+        Requires an account-bound first-party mobile credential and current self
+        or eligible explicit guardian authority, rechecked after lock waits.
+        Household management, app tokens and personal keys do not grant adoption.
+        The prescription was frozen during an authorised operational departure;
+        adoption does not read former household stock or revive its execution.
+        Returns safe current prescription fields without private notes, pause
+        narratives or former household/stock identifiers. Repeating adoption
+        returns the same plan without another adoption audit or stock effect.
+        A missing legacy origin timezone uses the configured application zone
+        only at this authorised adoption, with adopted_application_zone provenance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [source_portable_id]
+              properties:
+                source_portable_id: {type: string, format: uuid}
+      responses:
+        "201":
+          description: Exact protected prescription adopted, or the existing adoption returned.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/SafeAdoptedSchedule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /auth/schedules/{id}:
+    patch:
+      operationId: updatePersonalSchedule
+      tags: [Account]
+      summary: Edit, pause, resume or retire the authenticated person's plan.
+      description: |
+        Uses the same account-bound OAuth restriction as the personal collection.
+        Send the plan's opaque etag in If-Match. A stale revision returns 409.
+        Clinical edits retain recorded dose facts. Only a current originating
+        execution receives updates; departure is terminal even after membership
+        restoration. Suspension retains the attachment but denies household access.
+        Personal edits cannot select household inventory. Medicine selection remains
+        an authorised household operation. Explicit origin_time_zone corrections
+        change future recurrence and safety calculations; viewer zones are display-only.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              maxProperties: 1
+              description: Send exactly one property, either schedule or action.
+              properties:
+                schedule:
+                  $ref: "#/components/schemas/PersonalScheduleAttributes"
+                action: {type: string, enum: [pause, resume, retire]}
+      responses:
+        "200":
+          description: Current personal plan and revision ETag.
+          headers:
+            ETag:
+              $ref: "#/components/headers/etag"
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PersonalSchedule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /auth/care-sharing/{id}:
+    delete:
+      operationId: withdrawCareSharing
+      tags: [Account]
+      summary: End an approved household share for a subject's plans.
+      description: |
+        Requires account-bound first-party mobile OAuth with medtracker scope.
+        Household sessions, app tokens, personal keys and integration grants are
+        denied. The account that approved the share, or its captured guardian for
+        the subject, ends the approval identified by id; the plans stay
+        person-owned and retain recorded dose facts. Repeating withdrawal after
+        the approval has ended returns the same empty success without another
+        audit. An id outside the account's clinical authority is hidden with 404
+        or denied with 403; every reachable error carries the standard envelope.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        "204":
+          description: Sharing approval ended, or it had already ended.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+        "400":
+          description: The id path parameter is not a positive integer; extraction fails before authentication.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /auth/shared_schedules/{id}:
+    patch:
+      operationId: updateSharedSchedule
+      tags: [Account]
+      summary: Edit, pause, resume or retire a shared subject's plan.
+      description: |
+        Requires account-bound first-party mobile OAuth with medtracker scope and
+        current self or captured guardian clinical authority for the subject,
+        rechecked after lock waits. Household sessions, app tokens, personal keys
+        and integration grants are denied; a household membership or legacy
+        person-access grant alone is not clinical authority. Send the plan's
+        opaque etag in If-Match. Only protected clinical fields are writable and
+        returned; private notes, pause narratives and household stock identifiers
+        are never exposed here, and medicine selection remains an authorised
+        household operation. Every accepted change writes a shared-clinical
+        audit; an audit failure rolls the whole change back. A malformed
+        If-Match, body or action and a stale clinical revision are materialised
+        by the shared account-session error path as 500 internal_error, unlike
+        the personal-plan route's 422/409 taxonomy; a malformed or unknown plan
+        id stays 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              maxProperties: 1
+              description: Send exactly one property, either schedule or action.
+              properties:
+                schedule:
+                  $ref: "#/components/schemas/SharedScheduleAttributes"
+                action: {type: string, enum: [pause, resume, retire]}
+      responses:
+        "200":
+          description: Current safe shared plan and revision ETag.
+          headers:
+            ETag:
+              $ref: "#/components/headers/etag"
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/SharedSchedule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: Malformed If-Match, body or action input or a stale clinical revision returns internal_error through the shared account-session error path.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /auth/guardian-declarations:
     get:
       operationId: listOwnGuardianDeclarations
@@ -302,7 +622,7 @@ paths:
           $ref: "#/components/responses/GuardianDeclarationInvalid"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
+        "503":
           $ref: "#/components/responses/GuardianDeclarationUnavailable"
   /auth/guardian-declarations/{id}:
     patch:
@@ -358,7 +678,7 @@ paths:
           $ref: "#/components/responses/GuardianDeclarationInvalid"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
+        "503":
           $ref: "#/components/responses/GuardianDeclarationUnavailable"
   /auth/profile/avatar:
     get:
@@ -382,14 +702,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          description: Account authority could not be checked.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
         "503":
-          description: Avatar storage is temporarily unavailable.
+          description: Avatar storage or account authority is temporarily unavailable.
           content:
             application/json:
               schema:
@@ -426,14 +740,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          description: Account authority could not be checked.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
         "503":
-          description: Avatar storage, metadata or audit is temporarily unavailable.
+          description: Avatar storage, metadata, audit or account authority is temporarily unavailable.
           content:
             application/json:
               schema:
@@ -452,14 +760,8 @@ paths:
           $ref: "#/components/responses/AccountForbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          description: Account authority could not be checked.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
         "503":
-          description: Avatar metadata or audit is temporarily unavailable.
+          description: Avatar metadata, audit or account authority is temporarily unavailable.
           content:
             application/json:
               schema:
@@ -535,6 +837,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /auth/logout:
     delete:
       operationId: logoutSession
@@ -551,6 +855,8 @@ paths:
           description: Credential revoked.
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/me:
     get:
       operationId: getCurrentProfile
@@ -582,6 +888,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/people:
     get:
       operationId: listPeople
@@ -613,8 +921,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     post:
       operationId: createPerson
       tags:
@@ -673,8 +981,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/people/{id}:
     get:
       operationId: getPerson
@@ -756,8 +1064,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     put:
       operationId: updatePersonWithPut
       tags:
@@ -803,8 +1111,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/admin/invitations/{id}/resend:
     post:
       operationId: resendHouseholdInvitation
@@ -845,7 +1153,7 @@ paths:
       operationId: acceptHouseholdInvitation
       tags: [Account, Invitations]
       summary: Accept an invitation matching the verified session account.
-      description: Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+      description: Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household. When the accepting person already participates in another household, acceptance shares that person's canonical care record and requires sharing_consent=true; absent or false consent then returns 422.
       requestBody:
         required: true
         content:
@@ -876,6 +1184,58 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /invitations/dependent-sharing/accept:
+    post:
+      operationId: acceptDependentSharingInvitation
+      tags: [Account, Invitations]
+      summary: Accept a dependent-sharing invitation as the subject's guardian.
+      description: |
+        Requires a user API session. Household app tokens and delegated OAuth
+        grants cannot accept invitations. The accepting account must hold a
+        current captured guardian declaration for subject_person_id; authority
+        is rechecked after the destination household lock is taken. Acceptance
+        approves the subject's person-owned plan sharing with the destination
+        household without making the guardian a member there, records an
+        acceptance audit for the actual accepting account, and returns the
+        created subject membership. sharing_consent must be the boolean true;
+        an absent or false value returns 422. Repeating a still-active
+        acceptance returns the same result without another write.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DependentSharingAcceptanceRequest"
+      responses:
+        "200":
+          description: Accepted dependent membership or a still-active prior acceptance. IDs are strings.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationAcceptanceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Consent was not explicitly accepted, or the invitation is unavailable, including expiry, revocation, mismatched identity or an ineligible subject. No partial person, membership, approval or grants persist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/profile/avatar:
     get:
       operationId: downloadCurrentAvatar
@@ -1016,8 +1376,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     patch:
       operationId: updateHouseholdProfile
       tags: [Household, People]
@@ -1060,8 +1420,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     put:
       operationId: updateHouseholdProfileWithPut
       tags: [Household, People]
@@ -1104,8 +1464,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/reports/health_history:
     get:
       operationId: getHealthHistoryReport
@@ -1450,6 +1810,8 @@ paths:
           $ref: "#/components/responses/PreconditionRequired"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     put:
       operationId: updateMedicationReviewPromptWithPut
       tags: [Household, Medication reviews]
@@ -1648,6 +2010,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/locations:
     get:
       operationId: listLocations
@@ -1717,6 +2081,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/locations/{id}:
     get:
       operationId: getLocation
@@ -1995,6 +2361,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     post:
       operationId: createMedication
       tags:
@@ -2284,6 +2652,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/medications/{id}/mark_as_received:
     patch:
       operationId: markMedicationAsReceived
@@ -2566,6 +2936,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/health_events/{id}:
     get:
       operationId: getHealthEvent
@@ -2752,6 +3124,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/medication_pause_periods/{id}/resume:
     post:
       operationId: resumeMedicationPausePeriod
@@ -2835,6 +3209,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/schedules/{schedule_id}/dose_occurrences/not_taken:
     post:
       operationId: recordScheduleDoseNotTaken
@@ -2882,6 +3258,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/schedules/{schedule_id}/dose_occurrences/reopen:
     patch:
       operationId: reopenScheduleDoseOccurrence
@@ -3266,6 +3644,152 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /households/{household_id}/shared_schedules:
+    get:
+      operationId: listSharedSchedules
+      tags:
+        - Household
+        - Schedules
+      summary: Read the shared clinical plans visible in this household.
+      description: |
+        Lists person-owned plans that an approved share makes visible to the
+        routed household. Returns protected clinical fields and opaque revision
+        ETags only; private notes, pause narratives and former household stock
+        identifiers are never present. Online only; every read writes an access
+        audit and a failed audit returns 503 without releasing the list.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+      responses:
+        "200":
+          description: Shared clinical plans visible to this household.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedScheduleCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /households/{household_id}/shared_schedules/{id}/medicine:
+    patch:
+      operationId: changeSharedScheduleMedicine
+      tags:
+        - Household
+        - Schedules
+      summary: Rebind a shared plan's medicine and prescribed dose.
+      description: |
+        Requires current self or captured guardian clinical authority for the
+        plan's subject plus current Manage person access in the routed
+        household; a household membership or legacy person-access grant alone
+        is not authority. Send the plan's opaque etag in If-Match and the stock
+        medication's current ETag in medication_etag; either stale revision
+        returns 409. The chosen medication must be a scoped stock product whose
+        identity and dose unit match the prescribed unit; unknown fields,
+        missing dose fields and unsupported units are rejected. Every accepted
+        change writes a shared-clinical audit.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SharedScheduleMedicineRequest"
+      responses:
+        "200":
+          description: Current safe shared plan and revision ETag.
+          headers:
+            ETag:
+              $ref: "#/components/headers/etag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedScheduleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /households/{household_id}/shared_schedules/{id}/stock_binding:
+    post:
+      operationId: bindSharedScheduleStock
+      tags:
+        - Household
+        - Schedules
+      summary: Bind a shared plan to a household stock product for execution.
+      description: |
+        Requires current self or captured guardian clinical authority for the
+        plan's subject plus current Manage person access in the routed
+        household. Sends the shared plan's clinical_revision (not an ETag)
+        together with the stock medication id; a stale revision returns 409.
+        Binding creates or retargets the household execution row that tracks
+        doses against stock. Every accepted change writes a shared-clinical
+        audit; an audit failure rolls the whole change back.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SharedScheduleStockBindingRequest"
+      responses:
+        "200":
+          description: The household execution row bound to the shared plan.
+          headers:
+            ETag:
+              $ref: "#/components/headers/etag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedScheduleBindingResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/schedules/{id}:
     get:
       operationId: getSchedule
@@ -3276,6 +3800,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/resource_id"
+        - $ref: "#/components/parameters/if_none_match"
       responses:
         "200":
           description: Schedule resource.
@@ -3286,6 +3811,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleResponse"
+        "304":
+          description: Schedule has not changed since the supplied ETag.
+          headers:
+            ETag:
+              $ref: "#/components/headers/etag"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3336,6 +3866,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     put:
       operationId: replaceSchedule
       tags:
@@ -3376,6 +3908,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/schedules/{id}/pause:
     patch:
       operationId: pauseSchedule
@@ -3505,6 +4039,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/person_medications/{id}:
     get:
       operationId: getPersonMedication
@@ -3795,6 +4331,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/notification_preference:
     get:
       operationId: getNotificationPreference
@@ -3862,6 +4400,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     put:
       operationId: replaceNotificationPreference
       tags:
@@ -3985,6 +4525,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     delete:
       operationId: deletePushSubscription
       tags:
@@ -4414,6 +4956,8 @@ paths:
           $ref: "#/components/responses/PreconditionRequired"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/admin/settings:
     get:
       operationId: getHouseholdAdminSettings
@@ -4441,8 +4985,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     patch:
       operationId: updateHouseholdAdminSettings
       tags:
@@ -4480,8 +5024,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     put:
       operationId: replaceHouseholdAdminSettings
       tags:
@@ -4519,8 +5063,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/admin/memberships:
     get:
       operationId: listMemberships
@@ -4707,6 +5251,54 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/admin/dependent_sharing_invitations:
+    post:
+      operationId: createDependentSharingInvitation
+      tags:
+        - Household administration
+        - Invitations
+      summary: Create a dependent-sharing invitation for a guardian recipient.
+      description: |
+        Requires current household administrator authority. The
+        household_invitation envelope must contain exactly the guardian
+        recipient email; membership roles, dependent ids and relationship or
+        access fields are not selectable here. Acceptance creates the subject's
+        membership through the guardian's consent flow, not this call. No email
+        is enqueued by this route. Replaying a stored Idempotency-Key returns
+        the saved response without another write; a changed request returns
+        409.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - $ref: "#/components/parameters/idempotency_key"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DependentSharingInvitationCreateRequest"
+      responses:
+        "201":
+          description: Dependent-sharing invitation created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdInvitationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminWriteForbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/admin/invitations/{id}:
     delete:
       operationId: deleteInvitation
@@ -4793,6 +5385,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/admin/person_access_grants/{id}:
     delete:
       operationId: deletePersonAccessGrant
@@ -4883,6 +5477,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/admin/app_tokens/{id}:
     delete:
       operationId: deleteAppToken
@@ -4909,6 +5505,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/admin/audit_logs:
     get:
       operationId: listAuditLogs
@@ -5202,8 +5800,8 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
-    InternalServerError:
-      description: An internal failure prevented the request from completing.
+    ServiceUnavailable:
+      description: The service is temporarily unavailable; no change is committed and the request can be retried.
       content:
         application/json:
           schema:
@@ -5239,6 +5837,39 @@ components:
           schema:
             $ref: "#/components/schemas/RateLimitErrorEnvelope"
   schemas:
+    PersonalTakenDose:
+      type: object
+      additionalProperties: false
+      required: [id, taken_at, dose_amount, dose_unit, medicine]
+      properties:
+        id: {type: integer, format: int64}
+        taken_at: {type: string, format: date-time}
+        dose_amount: {type: string, nullable: true, description: Exact decimal amount.}
+        dose_unit: {type: string, nullable: true}
+        medicine: {type: string, nullable: true}
+    PersonalHistoryCursor:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required: [id, taken_at]
+      properties:
+        id: {type: integer, format: int64, minimum: 1}
+        taken_at: {type: string, format: date-time}
+    PersonalTakenDoseCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 25
+          items: {$ref: "#/components/schemas/PersonalTakenDose"}
+        meta:
+          type: object
+          additionalProperties: false
+          required: [next_cursor]
+          properties:
+            next_cursor: {$ref: "#/components/schemas/PersonalHistoryCursor"}
     GuardianDeclarationIdentifier:
       type: string
       pattern: '^[1-9][0-9]*$'
@@ -5620,6 +6251,24 @@ components:
       properties:
         household_invitation:
           $ref: "#/components/schemas/HouseholdInvitationAttributes"
+    DependentSharingInvitationCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - household_invitation
+      properties:
+        household_invitation:
+          type: object
+          description: Exactly the guardian recipient email may be selected; roles, dependent ids and relationship or access fields are rejected with 400.
+          additionalProperties: false
+          required:
+            - email
+          minProperties: 1
+          maxProperties: 1
+          properties:
+            email:
+              type: string
+              format: email
     PersonAccessGrant:
       type: object
       additionalProperties: false
@@ -6719,6 +7368,30 @@ components:
         token:
           type: string
           minLength: 1
+        sharing_consent:
+          type: boolean
+          description: >-
+            Explicit care-sharing attestation. Required when the accepting
+            person already participates in another household, because
+            acceptance shares the person's canonical care record; absent or
+            false then returns 422. A first-household acceptance needs no
+            consent.
+    DependentSharingAcceptanceRequest:
+      type: object
+      additionalProperties: false
+      required: [token, subject_person_id, sharing_consent]
+      properties:
+        token:
+          type: string
+          minLength: 1
+        subject_person_id:
+          type: integer
+          format: int64
+          minimum: 1
+        sharing_consent:
+          type: boolean
+          enum: [true]
+          description: Consent must be explicitly true; absent or false returns 422.
     AcceptedInvitationMembership:
       type: object
       additionalProperties: false
@@ -8170,6 +8843,92 @@ components:
         effective_time:
           type: string
           enum: [server_acceptance]
+    SafeAdoptedSchedule:
+      type: object
+      additionalProperties: false
+      required: [id, person_id, clinical_revision, etag, medicine_name, dmd_system, dmd_code, dmd_concept_class, stock_unit, origin_time_zone, active, retired_at, pause_started_at, latest_taken_at, dose_amount, dose_unit, dose_cycle, frequency, start_date, end_date, max_daily_doses, min_hours_between_doses, schedule_type, schedule_config]
+      properties:
+        id: {type: string, format: uuid}
+        person_id: {type: integer, format: int64}
+        clinical_revision: {type: integer, format: int64, minimum: 1}
+        etag: {type: string}
+        medicine_name: {type: string, nullable: true}
+        dmd_system: {type: string, nullable: true}
+        dmd_code: {type: string, nullable: true}
+        dmd_concept_class: {type: string, nullable: true}
+        stock_unit: {type: string, nullable: true}
+        origin_time_zone: {type: string}
+        active: {type: boolean}
+        retired_at: {type: string, format: date-time, nullable: true}
+        pause_started_at: {type: string, format: date-time, nullable: true}
+        latest_taken_at: {type: string, format: date-time, nullable: true}
+        dose_amount: {type: string, nullable: true}
+        dose_unit: {type: string, nullable: true}
+        dose_cycle: {type: string, nullable: true, enum: [daily, weekly, monthly]}
+        frequency: {type: string, nullable: true}
+        start_date: {type: string, format: date, nullable: true}
+        end_date: {type: string, format: date, nullable: true}
+        max_daily_doses: {type: integer, nullable: true}
+        min_hours_between_doses: {type: string, nullable: true}
+        schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+        schedule_config:
+          $ref: "#/components/schemas/ScheduleConfig"
+    PersonalSchedule:
+      type: object
+      additionalProperties: false
+      required: [id, clinical_revision, etag, origin_time_zone, timezone_provenance, medicine_name, dmd_system, dmd_code, dmd_concept_class, stock_unit, active, retired_at, dose_amount, dose_unit, frequency, start_date, end_date, notes, max_daily_doses, min_hours_between_doses, dose_cycle, schedule_type, schedule_config, pause_started_at, pause_reason, pause_note]
+      properties:
+        id: {type: string, format: uuid}
+        clinical_revision: {type: integer, format: int64, minimum: 1}
+        etag: {type: string, description: Opaque revision token for If-Match.}
+        origin_time_zone: {type: string}
+        timezone_provenance:
+          type: string
+          enum: [captured_sharer_zone, adopted_application_zone, authorised_correction, preserved_origin_zone]
+        medicine_name: {type: string, nullable: true}
+        dmd_system: {type: string, nullable: true}
+        dmd_code: {type: string, nullable: true}
+        dmd_concept_class: {type: string, nullable: true}
+        stock_unit: {type: string, nullable: true}
+        active: {type: boolean}
+        retired_at: {type: string, format: date-time, nullable: true}
+        dose_amount: {type: string, nullable: true}
+        dose_unit: {type: string, nullable: true}
+        frequency: {type: string, nullable: true}
+        start_date: {type: string, format: date, nullable: true}
+        end_date: {type: string, format: date, nullable: true}
+        notes: {type: string, nullable: true}
+        max_daily_doses: {type: integer, nullable: true, minimum: 1}
+        min_hours_between_doses: {type: string, nullable: true}
+        dose_cycle: {type: string, nullable: true, enum: [daily, weekly, monthly]}
+        schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+        schedule_config:
+          $ref: "#/components/schemas/ScheduleConfig"
+        pause_started_at: {type: string, format: date-time, nullable: true}
+        pause_reason: {type: string, nullable: true}
+        pause_note: {type: string, nullable: true}
+    PersonalScheduleAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        origin_time_zone: {type: string}
+        dose_amount:
+          $ref: "#/components/schemas/DecimalValue"
+        dose_unit: {type: string}
+        frequency: {type: string}
+        start_date:
+          $ref: "#/components/schemas/Date"
+        end_date:
+          $ref: "#/components/schemas/Date"
+        notes: {type: string}
+        max_daily_doses: {type: integer, minimum: 1}
+        min_hours_between_doses:
+          $ref: "#/components/schemas/NullableDecimalValue"
+        dose_cycle: {type: string, enum: [daily, weekly, monthly]}
+        schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+        schedule_config:
+          $ref: "#/components/schemas/ScheduleConfig"
     Schedule:
       type: object
       additionalProperties: false
@@ -8190,12 +8949,27 @@ components:
         - end_date
         - active
         - paused
+        - pause_started_at
         - can_manage
         - notes
         - updated_at
         - max_daily_doses
         - min_hours_between_doses
       properties:
+        person_schedule_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Canonical person-owned plan identity; distinct from this household source ID. Null until an existing source is adopted.
+        clinical_revision:
+          type: integer
+          format: int64
+          nullable: true
+          minimum: 1
+        origin_time_zone:
+          type: string
+          nullable: true
+          description: Stored named calendar and safety zone. New plans capture the creating sharer's zone; existing sources adopt the configured application zone once. Viewer zones do not redefine it.
         current_pause_period:
           $ref: "#/components/schemas/NullableMedicationPausePeriod"
         id:
@@ -8233,6 +9007,8 @@ components:
           type: boolean
         paused:
           type: boolean
+        pause_started_at:
+          $ref: "#/components/schemas/NullableTimestamp"
         can_manage:
           type: boolean
           description: Current canonical self or eligible declaration-backed guardian authority; checked again on writes. Legacy person-access grants confer no authority.
@@ -8465,6 +9241,9 @@ components:
             - start_date
             - end_date
           properties:
+            origin_time_zone:
+              type: string
+              description: Optional explicit named timezone correction; otherwise capture the creating sharer's validated preference.
             person_id:
               $ref: "#/components/schemas/ResourceIdentifier"
             medication_id:
@@ -8521,6 +9300,9 @@ components:
       additionalProperties: false
       minProperties: 1
       properties:
+        origin_time_zone:
+          type: string
+          description: Explicit authorised correction to the stored named calendar and safety zone.
         person_id:
           $ref: "#/components/schemas/ResourceIdentifier"
         medication_id:
@@ -8563,6 +9345,146 @@ components:
             - every_other_day
         schedule_config:
           $ref: "#/components/schemas/ScheduleConfig"
+    SharedSchedule:
+      type: object
+      description: The protected clinical view of a person-owned plan shared by approval; identical wire shape to an adopted plan.
+      additionalProperties: false
+      required: [id, person_id, clinical_revision, etag, medicine_name, dmd_system, dmd_code, dmd_concept_class, stock_unit, origin_time_zone, active, retired_at, pause_started_at, latest_taken_at, dose_amount, dose_unit, dose_cycle, frequency, start_date, end_date, max_daily_doses, min_hours_between_doses, schedule_type, schedule_config]
+      properties:
+        id: {type: string, format: uuid}
+        person_id: {type: integer, format: int64}
+        clinical_revision: {type: integer, format: int64, minimum: 1}
+        etag: {type: string}
+        medicine_name: {type: string, nullable: true}
+        dmd_system: {type: string, nullable: true}
+        dmd_code: {type: string, nullable: true}
+        dmd_concept_class: {type: string, nullable: true}
+        stock_unit: {type: string, nullable: true}
+        origin_time_zone: {type: string}
+        active: {type: boolean}
+        retired_at: {type: string, format: date-time, nullable: true}
+        pause_started_at: {type: string, format: date-time, nullable: true}
+        latest_taken_at: {type: string, format: date-time, nullable: true}
+        dose_amount: {type: string, nullable: true}
+        dose_unit: {type: string, nullable: true}
+        dose_cycle: {type: string, nullable: true, enum: [daily, weekly, monthly]}
+        frequency: {type: string, nullable: true}
+        start_date: {type: string, format: date, nullable: true}
+        end_date: {type: string, format: date, nullable: true}
+        max_daily_doses: {type: integer, nullable: true}
+        min_hours_between_doses: {type: string, nullable: true}
+        schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+        schedule_config:
+          $ref: "#/components/schemas/ScheduleConfig"
+    SharedScheduleAttributes:
+      type: object
+      description: Only protected clinical fields are writable on a shared plan. Notes, person selection and household stock or dosage-option fields are rejected.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        origin_time_zone: {type: string}
+        dose_amount:
+          $ref: "#/components/schemas/DecimalValue"
+        dose_unit: {type: string}
+        frequency: {type: string}
+        start_date:
+          $ref: "#/components/schemas/Date"
+        end_date:
+          $ref: "#/components/schemas/Date"
+        max_daily_doses: {type: integer, minimum: 1}
+        min_hours_between_doses:
+          $ref: "#/components/schemas/NullableDecimalValue"
+        dose_cycle: {type: string, enum: [daily, weekly, monthly]}
+        schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+        schedule_config:
+          $ref: "#/components/schemas/ScheduleConfig"
+    SharedScheduleResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/SharedSchedule"
+    SharedScheduleCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SharedSchedule"
+    SharedScheduleMedicineRequest:
+      type: object
+      additionalProperties: false
+      required: [medication_id, medication_etag, dose_amount, dose_unit]
+      properties:
+        medication_id: {type: integer, format: int64, minimum: 1}
+        medication_etag:
+          type: string
+          minLength: 1
+          description: The stock medication's current ETag; a stale value returns 409.
+        dose_amount:
+          $ref: "#/components/schemas/DecimalValue"
+        dose_unit:
+          type: string
+          enum: [tablet, capsule, gummy, mg, ml, g, mcg, IU, spray, drop, sachet, pad]
+    SharedScheduleStockBindingRequest:
+      type: object
+      additionalProperties: false
+      required: [medication_id, clinical_revision]
+      properties:
+        medication_id: {type: integer, format: int64, minimum: 1}
+        clinical_revision:
+          type: integer
+          format: int64
+          minimum: 1
+          description: The shared plan's current clinical_revision; a stale value returns 409.
+    SharedScheduleBinding:
+      type: object
+      description: The household execution row bound to a shared person-owned plan. Timestamp fields serialize as local ISO-8601 times without a zone offset.
+      additionalProperties: false
+      required: [id, portable_id, person_id, person_schedule_id, clinical_revision, origin_time_zone, execution_ended_at, retired_at, medication_id, source_dosage_option_id, active, dose_amount, dose_unit, frequency, start_date, end_date, notes, max_daily_doses, min_hours_between_doses, dose_cycle, schedule_type, schedule_config, updated_at]
+      properties:
+        id:
+          $ref: "#/components/schemas/NumericId"
+        portable_id:
+          $ref: "#/components/schemas/PortableId"
+        person_id:
+          $ref: "#/components/schemas/NumericId"
+        person_schedule_id:
+          $ref: "#/components/schemas/NullablePortableId"
+        clinical_revision: {type: integer, format: int64, minimum: 1, nullable: true}
+        origin_time_zone: {type: string, nullable: true}
+        execution_ended_at: {type: string, nullable: true}
+        retired_at: {type: string, nullable: true}
+        medication_id:
+          $ref: "#/components/schemas/NumericId"
+        source_dosage_option_id:
+          $ref: "#/components/schemas/NullableNumericId"
+        active: {type: boolean}
+        dose_amount:
+          $ref: "#/components/schemas/NullableDecimalValue"
+        dose_unit: {type: string, nullable: true}
+        frequency: {type: string, nullable: true}
+        start_date: {type: string, format: date, nullable: true}
+        end_date: {type: string, format: date, nullable: true}
+        notes: {type: string, nullable: true}
+        max_daily_doses: {type: integer, nullable: true, minimum: 1}
+        min_hours_between_doses:
+          $ref: "#/components/schemas/NullableDecimalValue"
+        dose_cycle: {type: string, nullable: true, enum: [daily, weekly, monthly]}
+        schedule_type: {type: string, enum: [daily, multiple_daily, weekly, specific_dates, prn, tapering, every_other_day]}
+        schedule_config:
+          $ref: "#/components/schemas/ScheduleConfig"
+        updated_at: {type: string}
+    SharedScheduleBindingResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/SharedScheduleBinding"
     ScheduleConfig:
       type: object
       additionalProperties: false
@@ -10259,18 +11181,9 @@ components:
         data:
           $ref: "#/components/schemas/PortableImportResult"
     PortableImportUnprocessableResponse:
-      type: object
-      additionalProperties: false
-      minProperties: 1
-      properties:
-        data:
-          $ref: "#/components/schemas/PortableImportResult"
-        error:
-          $ref: "#/components/schemas/Error"
-      not:
-        required:
-          - data
-          - error
+      oneOf:
+        - $ref: "#/components/schemas/PortableImportResultResponse"
+        - $ref: "#/components/schemas/ErrorEnvelope"
     PortableImportResult:
       type: object
       additionalProperties: false

@@ -20,7 +20,7 @@ async fn create_authorized(
     acceptance_url: Option<&url::Url>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
-    let (email, role) = input.validated()?;
+    let (email, role, dependent_sharing) = input.validated()?;
     if household_invitation::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(household_invitation::Column::Email.eq(&email))
@@ -37,6 +37,7 @@ async fn create_authorized(
     let row = household_invitation::ActiveModel {
         household_id: Set(tenant.scope().household_id),
         email: Set(email.clone()),
+        dependent_sharing: Set(dependent_sharing),
         membership_role: Set(role),
         token_digest: Set(digest),
         invited_by_membership_id: Set(tenant.membership().id),

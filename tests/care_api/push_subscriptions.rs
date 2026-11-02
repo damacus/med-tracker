@@ -363,10 +363,10 @@ async fn push_subscription_failed_database_write_preserves_attempt_audit() {
     let subscriptions = owned_count(&app).await;
     let rejected_claims = endpoint_count(&app, &[&endpoint]).await;
     let leaked = secret_audit_count(&app, &endpoint).await;
-    let attempts = attempts(&app, &request_id, "500").await;
+    let attempts = attempts(&app, &request_id, "503").await;
     let effect = app.fixture.effect().await;
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert_eq!(rejected_claims, 0);
     assert_eq!(leaked, 0);
     assert_eq!((subscriptions, attempts), (0, 1));

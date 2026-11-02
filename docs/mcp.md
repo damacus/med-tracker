@@ -11,7 +11,7 @@ it does not support writes.
 ## Prerequisites
 
 - A running MedTracker deployment reachable over HTTPS. Local development uses
-  `https://med-tracker.localhost` through `task rails:dev:portless`.
+  `https://med-tracker.localhost` through `task dev`.
 - A MedTracker account with active access to the household you want the client
   to read.
 - Access to complete multi-factor authentication when your account policy
@@ -236,7 +236,7 @@ MCP access is tenant-scoped by the bearer credential's household membership.
 The endpoint rejects revoked credentials, expired API sessions, locked-out
 accounts, inactive users, inactive memberships, and stale API credentials.
 
-Tools use the same Pundit policy scopes as the API and never receive the raw
+Tools use the same authorization policy scopes as the API and never receive the raw
 bearer token. Every authenticated MCP request writes a `SecurityAuditEvent` with
 `event_type: mcp.request`, request ID, IP address, household, actor account,
 actor membership, JSON-RPC method, outcome, and HTTP status.

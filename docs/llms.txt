@@ -10,12 +10,11 @@
 
 ## Stack
 
-- Ruby 4.0.6 and Rails 8.1.3
-- PostgreSQL 18
-- Hotwire, Phlex, RubyUI, and Tailwind CSS
-- Rodauth passwords, passkeys, TOTP, recovery codes, and optional OIDC
-- Pundit authorization
-- RSpec, Capybara, and Playwright
+- Rust (stable) with Loco 1.2 (Axum)
+- PostgreSQL 18 with row-level security, accessed through SeaORM
+- Tera templates with DaisyUI and Tailwind CSS
+- Better Auth: passwords, passkeys, TOTP, recovery codes, optional OIDC
+- cargo-nextest, Rust Playwright, node:test
 - Zensical documentation
 
 Use Task commands for development, tests, linting, security checks, and docs.
@@ -23,12 +22,12 @@ Use Task commands for development, tests, linting, security checks, and docs.
 ## Architecture
 
 - Server-side domain logic is authoritative.
-- Phlex components render HTML. Turbo and Stimulus handle browser updates.
+- Tera templates render server-side HTML.
 - Core care records belong to a household and are protected by row-level
-  security and Pundit policies.
-- Household roles live on `HouseholdMembership`.
-- `PersonAccessGrant` gives a member view, record, or manage access to one
-  person.
+  security and the application's authorization layer.
+- Household roles live on household membership records.
+- Members receive delegated access to a person through explicit grants and
+  guardian declarations.
 - Critical authentication, medication, and administrative actions are audited.
 - `/api/v1` uses bearer sessions, portable IDs, idempotent writes, sync feeds,
   transactional batches, encrypted portability, and protected FHIR reads.
@@ -37,14 +36,13 @@ Use Task commands for development, tests, linting, security checks, and docs.
 
 - `Account`: authentication identity and credentials.
 - `Household`: tenant and care boundary.
-- `HouseholdMembership`: links an account to a household as owner,
+- Household membership: links an account to a household as owner,
   administrator, or member.
 - `Person`: the health and care identity.
-- `User`: application profile linked to a person. It does not hold a role.
-- `PersonAccessGrant`: delegated access to one person.
+- Delegated access grants: member access to one person, by scope.
 - `Medication`: stock held at one location.
-- `Dosage`: reusable dose option for a medication.
-- `Schedule`: fixed or recurring medication plan.
+- `DosageOption`: reusable dose option for a medication.
+- `PersonSchedule`: fixed or recurring medication plan.
 - `PersonMedication`: routine or as-needed medication without a fixed schedule.
 - `MedicationTake`: immutable administration event with a dose snapshot.
 - `HealthEvent`: dated health record for a person.
@@ -55,59 +53,44 @@ adults do not have capacity to manage their own medication.
 
 ## Source map
 
-- Routes: `config/routes.rb`
+- Controllers: `src/controllers/`
+- Domain models: `src/models/`; generated SeaORM entities: `src/models/_entities/`
+- Migrations: `migration/`
+- Views and static assets: `assets/`
 - API contract: `docs/api/openapi.v1.yaml`
-- Dashboard: `app/controllers/dashboard_controller.rb`
-- Policies: `app/policies/`
-- Household and access models: `app/models/household.rb`,
-  `app/models/household_membership.rb`, `app/models/person_access_grant.rb`
-- Care models: `app/models/person.rb`, `app/models/medication.rb`,
-  `app/models/dosage.rb`, `app/models/schedule.rb`,
-  `app/models/person_medication.rb`, `app/models/medication_take.rb`
-- MCP server: `app/mcp/med_tracker_mcp/`
+- MCP server and CLI: `client-tools/crates/`
 - Architecture: `docs/design.md`
 - Database map: `docs/database-relationships.md`
 - Household access: `docs/user-management.md`
 
-## Production seeding
+## Database setup and seeding
 
-The first-owner bootstrap uses:
-
-- command: `rails med_tracker:bootstrap_admin`
-- task: `lib/tasks/admin_bootstrap.rake`
-- service: `app/services/admin/bootstrap_service.rb`
-- variables: `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, and `ADMIN_DOB`
-
-It refuses to run when any active household owner already exists.
-
-Production `rails db:seed` loads reference data and then invitations from
-`db/seeds/users.yml`. Invitation entries use `membership_role` with
-`administrator` or `member`. Set `HOUSEHOLD_ID` or `HOUSEHOLD_SLUG`; otherwise
-the seed selects the oldest household.
-
-See `docs/kubernetes-user-seeding.md` before running either command in a
-cluster.
+- `task db:migrate MIGRATION_DATABASE_URL=...` installs the complete schema in
+  an empty PostgreSQL 18 database.
+- `task db:prepare SEED_DATABASE_URL=...` also loads synthetic development
+  fixtures; `task db:seed` loads fixtures only.
+- Seeding refuses populated application databases; existing Rails data and
+  credentials are never imported. See `docs/kubernetes-user-seeding.md` for the
+  archived deployment's seeding notes.
 
 ## Common workflows
 
-- Start development: `task dev:portless`, then `task dev:seed`
-- Test preflight: `task test:preflight`
-- Full test suite: `task test`
-- Browser tests: `task playwright`
-- Ruby lint: `task rubocop`
-- Security scan: `task brakeman`
+- Start development: `task dev`
+- Unit and static checks: `task test:unit`
+- API and database tests: `task test:integration`
+- Browser journeys: `task test:browser`
+- Full gate: `task ci`
 - Documentation: `task docs:serve` or `task docs:build`
 
 ## Change checks
 
-- Access changes: review policies, household grant tests, and
+- Access changes: review authorization policies, household access tests, and
   `docs/user-management.md`.
 - Medication changes: review schedule, person-medication, dose, stock, and
   audit behavior.
-- Seed changes: review `db/seeds/`, the bootstrap task, and
-  `docs/kubernetes-user-seeding.md`.
-- API changes: update `docs/api/openapi.v1.yaml` and its public contract specs.
-- Visible UI changes: verify the real browser flow at desktop and mobile sizes.
+- API changes: update `docs/api/openapi.v1.yaml` and its contract tests.
+- Visible UI changes: verify the real browser flow at desktop and mobile sizes
+  and capture screenshots under `docs/screenshots/`.
 
 ## Documentation
 

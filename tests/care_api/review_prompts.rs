@@ -1588,7 +1588,7 @@ async fn failed_review_audit_rolls_back_mutation_and_keeps_the_lease() {
     let stored_token: String = stored.try_get("", "token").unwrap();
     app.fixture.admin.execute_unprepared("DROP TRIGGER synthetic_review_audit_failure ON security_audit_events; DROP FUNCTION synthetic_fail_review_audit()").await.unwrap();
     app.close().await;
-    assert_eq!(failed.status().as_u16(), 500);
+    assert_eq!(failed.status().as_u16(), 503);
     assert_eq!(note, None);
     assert_eq!(stored_token, lease);
 }

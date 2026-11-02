@@ -342,6 +342,13 @@ async fn account_only_invitation_opens_dashboard_at_desktop_and_mobile_sizes() {
                 )
                 .await
                 .unwrap();
+                page.get_by_label(
+                    "I approve sharing my current and future care plans, pause status and latest dose safety status with this household. Private notes and detailed history stay private. Leaving ends this approval.",
+                    true,
+                )
+                .check(None)
+                .await
+                .unwrap();
                 page.get_by_role(AriaRole::Button, named("Accept invitation"))
                     .press("Enter", None)
                     .await

@@ -5,22 +5,22 @@ use med_tracker::models::entities::{
     medication_take, person_medication, schedule, version,
 };
 use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use sha2::{Digest as _, Sha256};
 
 async fn location_deletion_state(app: &Application) -> Value {
     let db = &app.fixture.admin;
     json!({
-        "medications": medication::Entity::find().filter(medication::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "dosages": dosage::Entity::find().filter(dosage::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "assignments": person_medication::Entity::find().filter(person_medication::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "schedules": schedule::Entity::find().filter(schedule::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "takes": medication_take::Entity::find().filter(medication_take::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "locations": location::Entity::find().filter(location::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "memberships": location_membership::Entity::find().filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "versions": version::Entity::find().filter(version::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "tombstones": api_tombstone::Entity::find().filter(api_tombstone::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
-        "changes": api_change_event::Entity::find().filter(api_change_event::Column::HouseholdId.eq(app.fixture.household.id)).all(db).await.unwrap(),
+        "medications": medication::Entity::find().filter(medication::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(medication::Column::Id).all(db).await.unwrap(),
+        "dosages": dosage::Entity::find().filter(dosage::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(dosage::Column::Id).all(db).await.unwrap(),
+        "assignments": person_medication::Entity::find().filter(person_medication::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(person_medication::Column::Id).all(db).await.unwrap(),
+        "schedules": schedule::Entity::find().filter(schedule::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(schedule::Column::Id).all(db).await.unwrap(),
+        "takes": medication_take::Entity::find().filter(medication_take::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(medication_take::Column::Id).all(db).await.unwrap(),
+        "locations": location::Entity::find().filter(location::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(location::Column::Id).all(db).await.unwrap(),
+        "memberships": location_membership::Entity::find().filter(location_membership::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(location_membership::Column::Id).all(db).await.unwrap(),
+        "versions": version::Entity::find().filter(version::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(version::Column::Id).all(db).await.unwrap(),
+        "tombstones": api_tombstone::Entity::find().filter(api_tombstone::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(api_tombstone::Column::Id).all(db).await.unwrap(),
+        "changes": api_change_event::Entity::find().filter(api_change_event::Column::HouseholdId.eq(app.fixture.household.id)).order_by_asc(api_change_event::Column::Id).all(db).await.unwrap(),
     })
 }
 

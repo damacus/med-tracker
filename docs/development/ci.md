@@ -6,7 +6,7 @@ conditional jobs or matrix shard names.
 
 | Changed inputs | Mandatory validation |
 | --- | --- |
-| Rails implementation, dependencies and runtime configuration | Security scans, RuboCop, RSpec including both browser shards, production-image smoke |
+| Loco application code, dependencies and runtime configuration | Formatting, Clippy, unit/integration/browser tests, dependency and security gates |
 | Android implementation and build configuration | Android tests, lint, assemblies, release checks and pinned API drift |
 | Published documentation and site configuration | Documentation build |
 | Markdown and plans | Changed-file Markdown syntax and whitespace |

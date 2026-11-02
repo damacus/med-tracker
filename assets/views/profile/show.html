@@ -40,6 +40,7 @@
           <button class="btn justify-self-start" type="submit">{{ labels.people.form.save }}</button>
         </form>
         <a class="link" href="/profile/history">{{ labels.profiles.personal.history }}</a>
+        <a class="link" href="/profile/schedules">{{ labels.profiles.personal.plans }}</a>
         <form id="profile-clinical-form" method="post" action="{{ profile_path }}" class="grid gap-3 mt-4" data-profile-form data-profile-form-region>
           <h4 class="font-semibold">{{ labels.profiles.personal.clinical }}</h4>
           <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="clinical">

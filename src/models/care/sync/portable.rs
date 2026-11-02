@@ -197,6 +197,7 @@ async fn scoped_payload(
     format: PortableFormat,
     include_health_events: bool,
 ) -> Result<AppliedBatch, OperationError> {
+    super::super::person_schedules::projection::refresh(tenant).await?;
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
     let people = if exporting && !access::can_manage_household(tenant) {

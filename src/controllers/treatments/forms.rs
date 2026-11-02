@@ -14,6 +14,7 @@ pub(super) fn defaults(record: Option<&Value>) -> HashMap<String, String> {
     if let Some(record) = record {
         for field in [
             "medication_id",
+            "origin_time_zone",
             "source_dosage_option_id",
             "dose_amount",
             "dose_unit",
@@ -200,6 +201,13 @@ pub(crate) fn body(
                 .ok_or_else(|| invalid("schedule_type", "is invalid"))?;
             Ok(FormInput::Schedule(
                 treatments::ScheduleInput {
+                    origin_time_zone: browser_forms::optional(draft, "origin_time_zone")
+                        .map(|value| {
+                            value.parse().map_err(|_| {
+                                invalid("origin_time_zone", "must be a named timezone")
+                            })
+                        })
+                        .transpose()?,
                     person_id: Some(person_id),
                     medication_id,
                     source_dosage_option_id,

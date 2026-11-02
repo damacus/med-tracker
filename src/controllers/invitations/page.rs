@@ -3,6 +3,7 @@ use super::*;
 #[derive(Clone, Copy)]
 pub(super) enum Change {
     Create,
+    CreateDependent,
     Resend(i64),
     Cancel(i64),
 }
@@ -36,7 +37,7 @@ impl Notice {
 impl Change {
     fn notice(self) -> Notice {
         match self {
-            Self::Create => Notice::Created,
+            Self::Create | Self::CreateDependent => Notice::Created,
             Self::Resend(_) => Notice::Resent,
             Self::Cancel(_) => Notice::Cancelled,
         }
@@ -255,9 +256,25 @@ impl<'a> Page<'a> {
             }
         };
         let result = match change {
-            Change::Create => invitations::create(
+            Change::Create | Change::CreateDependent => invitations::create(
                 &tenant,
-                attributes(&draft),
+                if matches!(change, Change::CreateDependent)
+                    && !draft.iter().any(|(name, _)| {
+                        matches!(
+                            name.as_str(),
+                            "person_id"
+                                | "dependent_ids"
+                                | "dependent_ids[]"
+                                | "subject_person_id"
+                                | "relationship_type"
+                                | "access_level"
+                        )
+                    })
+                {
+                    invitations::InvitationInput::dependent(field(&draft, "email"))
+                } else {
+                    attributes(&draft)
+                },
                 Some(&target),
                 Some(principal.provenance()),
             )
@@ -323,7 +340,8 @@ impl<'a> Page<'a> {
                     );
                 }
                 self.index(
-                    matches!(change, Change::Create).then_some(draft.as_slice()),
+                    matches!(change, Change::Create | Change::CreateDependent)
+                        .then_some(draft.as_slice()),
                     Some(&error),
                 )
                 .await
@@ -336,7 +354,12 @@ fn attributes(draft: &[(String, String)]) -> invitations::InvitationInput {
     let care_authority_requested = draft.iter().any(|(name, _)| {
         matches!(
             name.as_str(),
-            "dependent_ids" | "dependent_ids[]" | "relationship_type" | "access_level"
+            "person_id"
+                | "subject_person_id"
+                | "dependent_ids"
+                | "dependent_ids[]"
+                | "relationship_type"
+                | "access_level"
         )
     });
     invitations::InvitationInput::from_form(

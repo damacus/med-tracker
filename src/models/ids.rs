@@ -33,6 +33,18 @@ impl HouseholdId {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub(crate) struct PersonId(i64);
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+pub(crate) struct MedicationId(i64);
+
+impl MedicationId {
+    pub(crate) const fn from_database(value: i64) -> Self {
+        Self(value)
+    }
+    pub(crate) const fn get(self) -> i64 {
+        self.0
+    }
+}
+
 impl PersonId {
     pub(crate) const fn from_database(value: i64) -> Self {
         Self(value)

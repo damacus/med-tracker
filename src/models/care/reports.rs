@@ -861,6 +861,14 @@ pub async fn ordinary_history(
     generated_at: DateTime<Utc>,
     zone: Tz,
 ) -> Result<OrdinaryHistoryReport, OperationError> {
+    super::person_schedules::projection::refresh(tenant).await?;
+    let current = access::people_with_access(tenant, PersonAccess::View).await?;
+    if people
+        .iter()
+        .any(|person| !current.iter().any(|visible| visible.id == person.id))
+    {
+        return Err(OperationError::Forbidden);
+    }
     let ids: Vec<i64> = people.iter().map(|row| row.id).collect();
     let names: HashMap<i64, &str> = people
         .iter()

@@ -1,5 +1,10 @@
 # Kubernetes User Seeding
 
+> [!NOTE]
+> This document describes the archived Rails application or deployment. Its
+> `task rails:*`, `bin/rails` and `bundle exec` commands no longer exist in this
+> repository; the Rails source lives in git history.
+
 Use one-off Kubernetes Jobs to create the first household owner and invite
 initial household members. Use the same application image and runtime settings
 as the deployed MedTracker release.

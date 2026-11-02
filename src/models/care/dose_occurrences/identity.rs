@@ -21,6 +21,15 @@ pub(super) enum Source {
 }
 
 impl Source {
+    pub(super) fn calendar_settings(&self, settings: Option<&Value>) -> Option<Value> {
+        let mut settings = settings.cloned().unwrap_or_else(|| json!({}));
+        if let Self::Schedule(row) = self
+            && let Some(zone) = row.origin_time_zone.as_ref()
+        {
+            settings["schedule_origin_time_zone"] = json!(zone);
+        }
+        Some(settings)
+    }
     pub(super) fn kind(&self) -> Kind {
         match self {
             Self::Schedule(_) => Kind::Schedule,

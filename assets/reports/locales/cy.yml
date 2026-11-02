@@ -546,6 +546,16 @@ cy:
         existing_account: Oes gennych gyfrif eisoes?
         sign_in: Mewngofnodwch
         to_accept: i dderbyn y gwahoddiad hwn.
+        dependent_label: Dibynnydd y bydd ei ofal yn cael ei rannu
+        dependent_choose: Dewiswch ddibynnydd
+        no_dependents: Nid oes gennych awdurdod gwarcheidwad cymwys cyfredol dros ddibynnydd. Adolygwch eich datganiadau cyn derbyn.
+        dependent_consent: Rwy’n warcheidwad datganedig cyfredol ac yn cymeradwyo rhannu cynlluniau gofal presennol ac yn y dyfodol, statws seibiant a statws diogelwch y dos diweddaraf y dibynnydd hwn gyda’r aelwyd hon. Mae nodiadau preifat a hanes manwl yn aros yn breifat. Mae tynnu’n ôl neu adael yn dod â’r gymeradwyaeth i ben.
+        dependent_approved: Cymeradwywyd rhannu gofal
+        dependent_approved_description: Rhennir cynlluniau presennol ac yn y dyfodol y dibynnydd a ddewiswyd. Rydych yn aros yn eich aelwydydd presennol a gallwch dynnu’r gymeradwyaeth yn ôl o’ch cyfrif.
+        return_profile: Dychwelyd i’ch cyfrif
+        invite_guardian: Gwahodd gwarcheidwad i rannu gofal
+        invite_guardian_description: Mae gwarcheidwad datganedig cyfredol yn dewis y dibynnydd ac yn cymeradwyo rhannu. Mae’r gwarcheidwad yn aros yn ei aelwydydd presennol.
+        sharing_consent: Rwy’n cymeradwyo rhannu fy nghynlluniau gofal presennol ac yn y dyfodol, statws seibiant a statws diogelwch y dos diweddaraf gyda’r aelwyd hon. Mae nodiadau preifat a hanes manwl yn aros yn breifat. Mae gadael yn dod â’r gymeradwyaeth hon i ben.
         invalid_title: Nid yw dolen y gwahoddiad ar gael
         invalid_guidance: Mae dolen y gwahoddiad yn annilys neu wedi dod i ben. Gofynnwch i reolwr y cartref am wahoddiad newydd.
         recovery_title: Wedi ymuno â'r cartref
@@ -608,6 +618,7 @@ cy:
           unavailable: Ni ellid newid y gwahoddiad. Gwiriwch ei statws a rhowch gynnig arall arni.
         form:
           email: E-bost
+          guardian_email: E-bost y gwarcheidwad
           role: Rôl aelwyd
           relationship_type: Perthynas ddibynnydd
           select_relationship_type: Dewiswch berthynas
@@ -1962,6 +1973,19 @@ cy:
     overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
     personal:
+      plans: "Fy nghynlluniau triniaeth"
+      plans_description: "Mae eich cynlluniau'n aros gyda chi pan fyddwch yn gadael cartref. Dim ond cysylltiad cartref cyfredol sy'n cael ei ddiweddaru gan newidiadau."
+      plans_empty: "Nid oes cynlluniau triniaeth personol wedi'u cofnodi."
+      origin_zone: "Cylchfa amser y cynllun"
+      adoption_zone: "Nid oes cylchfa amser wedi'i chofnodi ar gyfer y cynllun hwn. Bydd cadw yn defnyddio cylchfa amser y rhaglen a ddangosir uchod. Newidiwch hi dim ond i gywiro amseriad y cynllun."
+      adopted_zone: "Mae'r cynllun presennol hwn yn defnyddio cylchfa amser y rhaglen pan gafodd ei fabwysiadu. Gwiriwch hi cyn newid yr amseroedd."
+      plan_times: "Amseroedd dos (HH:MM, wedi'u gwahanu gan atalnodau)"
+      save_plan: "Cadw'r cynllun"
+      retire_plan: "Dod â'r cynllun i ben"
+      retire_confirmation: "Mae hyn yn dod â'r cynllun i ben. Mae dosau a gofnodwyd yn parhau i fod ar gael."
+      retired: "Mae'r cynllun hwn wedi dod i ben."
+      invalid: "Gwiriwch y dos, dyddiadau, amseroedd ac enw'r gylchfa amser, yna ceisiwch eto."
+      stale: "Newidiodd y cynllun hwn tra oedd y ffurflen ar agor. Adolygwch y cynllun cyfredol cyn cadw."
       clinical_invalid: "Rhowch enw a dyddiad geni dilys. Rhaid i ddeiliaid cyfrif fod yn 18 oed neu'n hŷn."
       description: "Rheolwch eich cyfrif a'ch gwybodaeth glinigol."
       account_name: "Enw arddangos y cyfrif"

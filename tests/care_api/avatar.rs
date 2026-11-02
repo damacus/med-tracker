@@ -1103,7 +1103,7 @@ async fn profile_avatar_api_updates_s3_primary_mirror_without_purging_unmigrated
         .send()
         .await
         .unwrap();
-    assert_eq!(replacement.status().as_u16(), 500);
+    assert_eq!(replacement.status().as_u16(), 503);
     assert_eq!(
         app.client
             .delete(&endpoint)
@@ -1113,7 +1113,7 @@ async fn profile_avatar_api_updates_s3_primary_mirror_without_purging_unmigrated
             .unwrap()
             .status()
             .as_u16(),
-        500
+        503
     );
     let query = Query::select()
         .expr_as(Func::count(Expr::col("account_id")), "count")

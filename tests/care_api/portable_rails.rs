@@ -2,67 +2,6 @@ use super::*;
 use sea_orm::prelude::Decimal;
 use std::str::FromStr;
 
-#[test]
-fn portable_rails_source_hashes_match_recorded_provenance() {
-    use sha2::{Digest, Sha256};
-
-    let provenance: Value =
-        serde_json::from_str(include_str!("../fixtures/portable_rails/provenance.json")).unwrap();
-    let sources: [(&str, &[u8]); 10] = [
-        (
-            "rails/app/services/households/hosted_export_authorization.rb",
-            include_bytes!("../../rails/app/services/households/hosted_export_authorization.rb"),
-        ),
-        (
-            "rails/app/services/households/hosted_export.rb",
-            include_bytes!("../../rails/app/services/households/hosted_export.rb"),
-        ),
-        (
-            "rails/app/services/api/record_etag.rb",
-            include_bytes!("../../rails/app/services/api/record_etag.rb"),
-        ),
-        (
-            "rails/app/services/portable_data/export_record_serializer.rb",
-            include_bytes!("../../rails/app/services/portable_data/export_record_serializer.rb"),
-        ),
-        (
-            "rails/app/services/portable_data/export_event_record_serializer.rb",
-            include_bytes!(
-                "../../rails/app/services/portable_data/export_event_record_serializer.rb"
-            ),
-        ),
-        (
-            "rails/app/services/portable_data/dose_occurrence_serializer.rb",
-            include_bytes!("../../rails/app/services/portable_data/dose_occurrence_serializer.rb"),
-        ),
-        (
-            "rails/app/services/portable_data/exporter.rb",
-            include_bytes!("../../rails/app/services/portable_data/exporter.rb"),
-        ),
-        (
-            "rails/app/services/portable_data/encryptor.rb",
-            include_bytes!("../../rails/app/services/portable_data/encryptor.rb"),
-        ),
-        (
-            "rails/config/application.rb",
-            include_bytes!("../../rails/config/application.rb"),
-        ),
-        (
-            "rails/Gemfile.lock",
-            include_bytes!("../../rails/Gemfile.lock"),
-        ),
-    ];
-    let recorded = provenance["source_files_sha256"].as_object().unwrap();
-    assert_eq!(recorded.len(), sources.len());
-    for (path, source) in sources {
-        assert_eq!(
-            recorded.get(path).and_then(Value::as_str),
-            Some(hex::encode(Sha256::digest(source)).as_str()),
-            "Retained source changed: {path}; review and regenerate the synthetic Rails fixtures"
-        );
-    }
-}
-
 #[tokio::test]
 async fn prepared_rails_serializer_taper_numbers_restore_and_replay() {
     let prepared = med_tracker::models::clinical_transfer::prepare(
@@ -142,6 +81,7 @@ async fn rails_serializer_obsolete_links_are_rejected_without_writes() {
                 bundle.clone(),
                 "synthetic-rails-person-linked-migration-v2",
             ))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap();
@@ -190,6 +130,7 @@ async fn rails_serializer_v2_historical_location_gap_is_reported_without_writes(
                     .as_str()
                     .unwrap(),
             ))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap();
@@ -229,6 +170,7 @@ async fn restore_fixture(payload: &str, envelope: &str) {
         .bearer_auth(&token)
         .header(PASSPHRASE_HEADER, PASSPHRASE)
         .json(&json!({"bundle": bundle}))
+        .timeout(std::time::Duration::from_secs(30))
         .send()
         .await
         .unwrap();
@@ -259,6 +201,7 @@ async fn restore_fixture(payload: &str, envelope: &str) {
             .bearer_auth(&token)
             .header(PASSPHRASE_HEADER, PASSPHRASE)
             .json(&request)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap();

@@ -1,10 +1,14 @@
 use super::{Service, audit};
+mod authority;
 mod cleanup;
 mod delivery;
+use crate::models::_entities::{
+    notification_deliveries as notification_delivery, notification_events as notification_event,
+};
 use crate::models::{
     access::{self, HouseholdScope, TenantTransaction},
     care::{dose_occurrences, push_subscriptions},
-    entities::{account, household, medication},
+    entities::{account, household, medication, push_subscription},
     errors::OperationError,
     notification_preferences,
 };
@@ -13,7 +17,10 @@ pub(crate) use cleanup::terminal_cleanup;
 pub use delivery::{drain_candidates, drain_pending};
 use loco_rs::app::AppContext;
 use loco_rs::model::TenantQueryExt;
-use sea_orm::{ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, EntityTrait, QueryFilter, Set,
+    sea_query::{Alias, Expr, ExprTrait, Func, JoinType, Query},
+};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
@@ -23,6 +30,8 @@ struct Intent {
     person_id: i64,
     key: String,
     legacy_key: String,
+    base_key: String,
+    epoch: authority::Epoch,
     payload: Value,
     intended_at: DateTime<Utc>,
     expires_at: DateTime<Utc>,
@@ -181,10 +190,24 @@ async fn plans(
             };
             let stamp = intended_at.format("%Y-%m-%dT%H:%M:%SZ").to_string();
             let legacy_key = format!("dose-due:{}:{stamp}", subject_id);
+            let Some(epoch) = authority::capture(
+                tenant,
+                subject_id,
+                due.iter()
+                    .map(|occurrence| (occurrence.source_type, occurrence.source_id))
+                    .collect(),
+            )
+            .await?
+            else {
+                continue;
+            };
+            let base_key = format!("browser:{}:{legacy_key}", owner.id);
             intents.push(Intent {
                 kind: "dose_due",
                 person_id: subject_id,
-                key: format!("browser:{}:{legacy_key}", owner.id),
+                key: format!("{base_key}:care:{}",epoch.identity()?),
+                base_key,
+                epoch,
                 legacy_key,
                 payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}),
                 intended_at,
@@ -224,10 +247,22 @@ async fn plans(
                 };
                 format!("{} may have missed a dose.", subject.name)
             };
+            let Some(epoch) = authority::capture(
+                tenant,
+                occurrence.person_id,
+                vec![(occurrence.source_type, occurrence.source_id)],
+            )
+            .await?
+            else {
+                continue;
+            };
+            let base_key = format!("browser:{}:{legacy_key}", owner.id);
             intents.push(Intent {
                 kind: "missed_dose",
                 person_id: occurrence.person_id,
-                key: format!("browser:{}:{legacy_key}", owner.id),
+                key: format!("{base_key}:care:{}",epoch.identity()?),
+                base_key,
+                epoch,
                 legacy_key,
                 payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}),
                 intended_at: scheduled.with_timezone(&Utc) + chrono::Duration::minutes(30),
@@ -236,16 +271,54 @@ async fn plans(
         }
     }
     if preference.low_stock_enabled {
-        let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT e.event_key,e.created_at FROM notification_events e JOIN medications m ON m.household_id=e.household_id AND m.id=(e.metadata->>'medication_id')::bigint WHERE e.household_id=$1 AND e.person_id=$2 AND e.event_type='browser_low_stock_pending' AND (e.metadata->>'account_id')::bigint=$3 AND e.created_at>$4 AND e.created_at<=$5 AND m.current_supply<=m.reorder_threshold AND (EXISTS(SELECT 1 FROM person_medications pm WHERE pm.household_id=e.household_id AND pm.person_id=e.person_id AND pm.medication_id=m.id AND pm.active) OR EXISTS(SELECT 1 FROM schedules s WHERE s.household_id=e.household_id AND s.person_id=e.person_id AND s.medication_id=m.id AND s.active))",
-            [tenant.scope().household_id.into(),person.id.into(),owner.id.into(),(now-chrono::Duration::hours(24)).naive_utc().into(),now.naive_utc().into()])).await?;
+        let field = |name| {
+            Expr::expr(Func::cust("jsonb_extract_path_text").args([
+                Expr::col((Alias::new("e"), Alias::new("metadata"))),
+                Expr::val(name),
+            ]))
+            .cast_as(Alias::new("bigint"))
+        };
+        let query = Query::select()
+            .columns([("e", "event_key"), ("e", "created_at")])
+            .column(("m", "id"))
+            .from_as(Alias::new("notification_events"), Alias::new("e"))
+            .join_as(
+                JoinType::InnerJoin,
+                Alias::new("medications"),
+                Alias::new("m"),
+                Expr::col(("m", "household_id"))
+                    .eq(Expr::col(("e", "household_id")))
+                    .and(Expr::col(("m", "id")).eq(field("medication_id"))),
+            )
+            .and_where(Expr::col(("e", "household_id")).eq(tenant.scope().household_id))
+            .and_where(Expr::col(("e", "person_id")).eq(person.id))
+            .and_where(Expr::col(("e", "event_type")).eq("browser_low_stock_pending"))
+            .and_where(field("account_id").eq(owner.id))
+            .and_where(
+                Expr::col(("e", "created_at")).gt((now - chrono::Duration::hours(24)).naive_utc()),
+            )
+            .and_where(Expr::col(("e", "created_at")).lte(now.naive_utc()))
+            .and_where(
+                Expr::col(("m", "current_supply")).lte(Expr::col(("m", "reorder_threshold"))),
+            )
+            .to_owned();
+        let rows = tenant
+            .transaction()
+            .query_all_raw(tenant.transaction().get_database_backend().build(&query))
+            .await?;
         for row in rows {
             let legacy_key: String = row.try_get("", "event_key")?;
             let intended_at = DateTime::<Utc>::from_naive_utc_and_offset(
                 row.try_get::<NaiveDateTime>("", "created_at")?,
                 Utc,
             );
-            intents.push(Intent { kind: "low_stock", person_id: person.id, key: format!("browser:{}:{legacy_key}",owner.id), legacy_key, payload: json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}), intended_at, expires_at: intended_at + chrono::Duration::hours(24) });
+            let Some(epoch) =
+                authority::for_medication(tenant, person.id, row.try_get("", "id")?).await?
+            else {
+                continue;
+            };
+            let base_key = format!("browser:{}:{legacy_key}", owner.id);
+            intents.push(Intent { kind: "low_stock", person_id: person.id, key: format!("{base_key}:care:{}",epoch.identity()?), base_key,epoch,legacy_key, payload: json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}), intended_at, expires_at: intended_at + chrono::Duration::hours(24) });
         }
     }
     Ok(intents)
@@ -259,25 +332,89 @@ async fn reserve(
 ) -> Result<Option<i64>, OperationError> {
     let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     push_subscriptions::lock_account(&tenant).await?;
-    if !plans(&tenant, now.max(Utc::now()))
+    crate::models::care::person_schedules::projection::refresh(&tenant).await?;
+    if !plans(&tenant, std::cmp::max(now, Utc::now()))
         .await?
         .iter()
-        .any(|current| current.key == intent.key)
+        .any(|current| current.key == intent.key && current.epoch == intent.epoch)
     {
         return Ok(None);
     }
-    let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,intended_at,expires_at,created_at,updated_at) SELECT $1,$2,$3,$4,$5,$7,$8,timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()) WHERE NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6) ON CONFLICT DO NOTHING RETURNING id",
-        [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),json!({"account_id":scope.actor.account_id,"delivery_status":"pending"}).into(),intent.legacy_key.clone().into(),intent.intended_at.naive_utc().into(),intent.expires_at.naive_utc().into()]
-    )).await?;
-    let Some(row) = row else {
-        return Ok(None);
-    };
-    let id: i64 = row.try_get("", "id")?;
-    tenant.transaction().execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "INSERT INTO notification_deliveries(notification_event_id,subscription_id,household_id,account_id,next_attempt_at) SELECT $1,id,$2,$3,$4 FROM push_subscriptions WHERE account_id=$3",
-            [id.into(),scope.household_id.into(),scope.actor.account_id.into(),intent.intended_at.naive_utc().into()]
-        )).await?;
+    let base = Expr::expr(Func::cust("jsonb_extract_path_text").args([
+        Expr::col(notification_event::Column::Metadata),
+        Expr::val("base_event_key"),
+    ]));
+    let previous = notification_event::Entity::find()
+        .filter(notification_event::Column::HouseholdId.eq(scope.household_id))
+        .filter(notification_event::Column::PersonId.eq(intent.person_id))
+        .filter(notification_event::Column::EventType.eq(intent.kind))
+        .filter(
+            Condition::any()
+                .add(notification_event::Column::EventKey.eq(&intent.key))
+                .add(notification_event::Column::EventKey.eq(&intent.base_key))
+                .add(notification_event::Column::EventKey.eq(&intent.legacy_key))
+                .add(base.eq(&intent.base_key)),
+        )
+        .all(tenant.transaction())
+        .await?;
+    for event in previous {
+        if event.event_key == intent.key || event.sent_at.is_some() {
+            return Ok(None);
+        }
+        if notification_delivery::Entity::find()
+            .filter(notification_delivery::Column::NotificationEventId.eq(event.id))
+            .filter(notification_delivery::Column::Status.is_in([
+                "sending",
+                "accepted",
+                "uncertain",
+            ]))
+            .one(tenant.transaction())
+            .await?
+            .is_some()
+        {
+            return Ok(None);
+        }
+    }
+    let mut metadata = intent.epoch.metadata(scope.actor.account_id)?;
+    metadata["base_event_key"] = json!(intent.base_key);
+    let stamp = Utc::now().naive_utc();
+    let event = notification_event::ActiveModel {
+        household_id: Set(scope.household_id),
+        person_id: Set(Some(intent.person_id)),
+        event_type: Set(intent.kind.into()),
+        event_key: Set(intent.key.clone()),
+        metadata: Set(metadata),
+        intended_at: Set(Some(intent.intended_at.naive_utc())),
+        expires_at: Set(Some(intent.expires_at.naive_utc())),
+        created_at: Set(stamp),
+        updated_at: Set(stamp),
+        ..Default::default()
+    }
+    .insert(tenant.transaction())
+    .await?;
+    let id = event.id;
+    let subscriptions = push_subscription::Entity::find()
+        .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
+        .all(tenant.transaction())
+        .await?;
+    if !subscriptions.is_empty() {
+        notification_delivery::Entity::insert_many(subscriptions.into_iter().map(|subscription| {
+            notification_delivery::ActiveModel {
+                notification_event_id: Set(id),
+                subscription_id: Set(Some(subscription.id)),
+                household_id: Set(scope.household_id),
+                account_id: Set(scope.actor.account_id),
+                status: Set("pending".into()),
+                attempt_count: Set(0),
+                next_attempt_at: Set(intent.intended_at.naive_utc()),
+                created_at: Set(stamp),
+                updated_at: Set(stamp),
+                ..Default::default()
+            }
+        }))
+        .exec_without_returning(tenant.transaction())
+        .await?;
+    }
     audit(
         &tenant,
         "reminder.requested",
@@ -304,6 +441,7 @@ pub async fn deliver_account(
         return Ok(0);
     };
     let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    crate::models::care::person_schedules::projection::refresh(&tenant).await?;
     let intents = plans(&tenant, now).await?;
     tenant.commit().await?;
     let mut delivered = 0;

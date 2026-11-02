@@ -23,6 +23,7 @@ import com.squareup.moshi.JsonClass
 /**
  * Updates merge supplied fields. A supplied person_id must identify the current person; a different visible person is rejected. Dose amounts must fit two decimal places. Minimum hours are decimal strings representing a positive whole number because storage uses integer hours.
  *
+ * @param originTimeZone Explicit authorised correction to the stored named calendar and safety zone.
  * @param personId 
  * @param medicationId 
  * @param sourceDosageOptionId 
@@ -41,6 +42,10 @@ import com.squareup.moshi.JsonClass
 
 
 data class ScheduleAttributes (
+
+    /* Explicit authorised correction to the stored named calendar and safety zone. */
+    @Json(name = "origin_time_zone")
+    val originTimeZone: kotlin.String? = null,
 
     @Json(name = "person_id")
     val personId: kotlin.String? = null,

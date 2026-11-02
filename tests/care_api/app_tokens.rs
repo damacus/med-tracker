@@ -341,11 +341,11 @@ async fn app_tokens_failed_receipt_does_not_issue_a_credential() {
         .await
         .unwrap();
     app.close().await;
-    assert_eq!(status, 500);
+    assert_eq!(status, 503);
     assert!(tokens.is_empty());
     assert!(receipts.is_empty());
     assert!(audits.is_empty());
-    assert_eq!(revoke.status().as_u16(), 500);
+    assert_eq!(revoke.status().as_u16(), 503);
     assert!(revoked_row.revoked_at.is_none());
     assert!(revoke_audits.is_empty());
     assert_eq!(still_authenticated.status().as_u16(), 200);

@@ -46,7 +46,7 @@ Supported read scopes use SMART v2 syntax, including `patient/*.rs` and
 resource-specific forms such as `patient/MedicationRequest.rs`. `user/*.rs` is
 also available. A SMART scope never replaces MedTracker authorization: FHIR
 queries remain restricted by the bound household membership, person grants,
-account state, and Pundit policy scopes.
+account state, and authorization policy scopes.
 
 ## Security and audit behavior
 

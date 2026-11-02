@@ -7,6 +7,7 @@ fn database_error(_: sea_orm::DbErr) -> OperationError {
 
 pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, OperationError> {
     lock(tenant).await?;
+    super::super::person_schedules::projection::refresh(tenant).await?;
     let since = chrono::DateTime::parse_from_rfc3339(cursor)
         .map_err(|_| OperationError::Validation {
             details: json!({"error":"cursor must be ISO8601"}),
@@ -277,6 +278,7 @@ pub async fn snapshot(
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
     lock(tenant).await?;
+    super::super::person_schedules::projection::refresh(tenant).await?;
     let mut payload = super::portable::payload(tenant, zone).await?;
     payload.body["cursor"] = json!(Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Micros, true));
     payload.body = json!({"data":payload.body});

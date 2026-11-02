@@ -1,5 +1,10 @@
 # Handoff: contract-test stack landed on main (2026-10-11)
 
+> [!NOTE]
+> This document describes the archived Rails application or deployment. Its
+> `task rails:*`, `bin/rails` and `bundle exec` commands no longer exist in this
+> repository; the Rails source lives in git history.
+
 ## What shipped
 
 A 10-PR stacked-PR chain (#2489, #2506, #2508, #2514–#2520) merged atomically

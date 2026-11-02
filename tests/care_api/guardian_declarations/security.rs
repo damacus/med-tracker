@@ -341,9 +341,9 @@ async fn guardian_withdrawal_reached_version_and_ledger_failures_rollback_and_re
             let before=state(&app,id).await?;
             let clinical=effects(&app).await?;
             let failed=withdrawal(&app,&token,id).await?;
-            require(failed.status().as_u16()==500 && no_store(&failed),"Reached audit failure must safely deny withdrawal")?;
+            require(failed.status().as_u16()==503 && no_store(&failed),"Reached audit failure must safely deny withdrawal")?;
             let body:Value=failed.json().await.map_err(|_|DbErr::Custom("Audit failure response must be JSON".into()))?;
-            require(body["error"]["code"]=="internal_error" && !body.to_string().contains("synthetic guardian audit failure"),"Audit failure must not disclose raw database detail")?;
+            require(body["error"]["code"]=="service_unavailable" && !body.to_string().contains("synthetic guardian audit failure"),"Audit failure must not disclose raw database detail")?;
             let reached=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
                 "SELECT is_called AS reached FROM public.synthetic_guardian_withdrawal_reached")).await?
                 .ok_or_else(||DbErr::Custom("Audit reached marker missing".into()))?.try_get::<bool>("","reached")?;

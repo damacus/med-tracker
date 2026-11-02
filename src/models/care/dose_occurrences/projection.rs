@@ -50,6 +50,8 @@ pub(super) async fn projected(
     end: NaiveDate,
     settings: Option<&serde_json::Value>,
 ) -> Result<Vec<Occurrence>, ApiError> {
+    let source_settings = source.calendar_settings(settings);
+    let settings = source_settings.as_ref();
     let (scan_start, scan_end) = scan_bounds(source, start, end);
     let mut query = dose_occurrence::Entity::find()
         .in_tenant(match source {
@@ -143,6 +145,8 @@ pub(super) fn projected_loaded(
     takes: &[medication_take::Model],
     settings: Option<&serde_json::Value>,
 ) -> Vec<Occurrence> {
+    let source_settings = source.calendar_settings(settings);
+    let settings = source_settings.as_ref();
     let mut rows: BTreeMap<(NaiveDate, i32), Occurrence> = BTreeMap::new();
     let mut day = scan_start;
     while day <= scan_end {
@@ -295,6 +299,12 @@ mod tests {
         end: NaiveDate,
     ) -> schedule::Model {
         schedule::Model {
+            person_schedule_id: None,
+            sharing_approval_id: None,
+            canonical_origin: false,
+            clinical_revision: None,
+            origin_time_zone: None,
+            execution_ended_at: None,
             id: 1,
             household_id: 1,
             portable_id: "s1".to_string(),

@@ -1,5 +1,10 @@
 # Home-Ops Portable Storage Handoff
 
+> [!NOTE]
+> This document describes the archived Rails application or deployment. Its
+> `task rails:*`, `bin/rails` and `bundle exec` commands no longer exist in this
+> repository; the Rails source lives in git history.
+
 This handoff is bounded to deployment inputs and maintenance gates for the
 portable-storage application contract. It does not authorize a production
 migration, volume removal, web/worker split, or source deletion.

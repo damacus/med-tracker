@@ -1,10 +1,10 @@
 use super::contract::{assert_value, contract, resolve};
 use super::*;
 
-pub(super) fn assert_internal_error(path: &str, method: &str, request_id: &str, body: &Value) {
+pub(super) fn assert_unavailable(path: &str, method: &str, request_id: &str, body: &Value) {
     let response = resolve(
         contract(),
-        &contract()["paths"][path][method]["responses"]["500"],
+        &contract()["paths"][path][method]["responses"]["503"],
     );
     assert_value(
         contract(),
@@ -18,8 +18,8 @@ pub(super) fn assert_internal_error(path: &str, method: &str, request_id: &str, 
     assert_eq!(
         body,
         &json!({"error": {
-            "code": "internal_error",
-            "message": "Internal server error",
+            "code": "service_unavailable",
+            "message": "Service is temporarily unavailable",
             "request_id": request_id
         }})
     );
@@ -87,18 +87,27 @@ async fn schedule_conditional_get_matches_documented_empty_304_and_etag() {
 }
 
 #[test]
-fn schedule_audited_writes_declare_shared_internal_error_response() {
+fn schedule_audited_writes_declare_shared_unavailable_response() {
     for (path, method) in [
         ("/households/{household_id}/schedules", "post"),
         ("/households/{household_id}/schedules/{id}", "patch"),
         ("/households/{household_id}/schedules/{id}", "put"),
     ] {
         assert_eq!(
-            contract()["paths"][path][method]["responses"]["500"]["$ref"],
-            "#/components/responses/InternalServerError",
+            contract()["paths"][path][method]["responses"]["503"]["$ref"],
+            "#/components/responses/ServiceUnavailable",
             "{method} {path} must declare its audited-write failure"
         );
     }
+    assert!(
+        contract()["paths"]["/households/{household_id}/schedules/{id}"]["put"]["responses"]["500"]
+            .is_null(),
+        "put /households/{{household_id}}/schedules/{{id}} must not declare an unreachable 500"
+    );
+    assert!(
+        contract()["components"]["responses"]["InternalServerError"].is_null(),
+        "No documented operation produces the internal-error envelope; keep the component removed"
+    );
 }
 
 #[tokio::test]

@@ -531,7 +531,7 @@ async fn invitations_user_session_acceptance_replays_once_and_never_restores_rev
     let acceptance = seed_acceptance(&app).await;
     let access = &acceptance.bearer;
     let endpoint = format!("{}/api/v1/invitations/accept", app.origin);
-    let body = json!({"token":acceptance.token});
+    let body = json!({"token":acceptance.token,"sharing_consent":true});
     let first = app
         .client
         .post(&endpoint)
@@ -591,7 +591,7 @@ async fn invitations_expiry_and_current_inviter_authority_prevent_partial_accept
     let acceptance = seed_acceptance(&app).await;
     let access = &acceptance.bearer;
     let endpoint = format!("{}/api/v1/invitations/accept", app.origin);
-    let body = json!({"token":acceptance.token});
+    let body = json!({"token":acceptance.token,"sharing_consent":true});
     let mut invitation = acceptance.invitation.clone().into_active_model();
     invitation.expires_at = Set(chrono::Utc::now().naive_utc() - chrono::Duration::seconds(1));
     invitation.update(&app.fixture.admin).await.unwrap();
@@ -766,6 +766,108 @@ async fn invitations_mail_committed_job_has_durable_attempt_and_provider_receipt
     assert!(created["data"]["id"].as_i64().is_some());
     assert_eq!(count, 1);
     assert_eq!(grants, 0);
+}
+
+#[tokio::test]
+async fn dependent_invitation_rejects_extra_outer_field_without_effects() {
+    let app = Application::new().await;
+    let household_id = app.fixture.household.id;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/{household_id}/admin/dependent_sharing_invitations",
+        app.origin
+    );
+    let before = invitation_effects(&app, household_id).await;
+    let response = app.client.post(&endpoint).bearer_auth(&token)
+        .header("idempotency-key", uuid::Uuid::new_v4().to_string())
+        .json(&json!({"household_invitation":{"email":"guardian@example.test"},"access_level":"manage"}))
+        .send().await.unwrap();
+    let status = response.status().as_u16();
+    let after = invitation_effects(&app, household_id).await;
+    app.close().await;
+    assert_eq!(status, 400);
+    assert_eq!(before, after);
+}
+
+#[tokio::test]
+async fn dependent_invitation_validates_envelope_and_replays_valid_request() {
+    let app = Application::new().await;
+    let household_id = app.fixture.household.id;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/{household_id}/admin/dependent_sharing_invitations",
+        app.origin
+    );
+    let before = invitation_effects(&app, household_id).await;
+    for body in [
+        json!(null),
+        json!([]),
+        json!({}),
+        json!({"household_invitation": null}),
+        json!({"household_invitation": []}),
+        json!({"household_invitation": {"email":"guardian@example.test","role":"member"}}),
+    ] {
+        let response = app
+            .client
+            .post(&endpoint)
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 400);
+    }
+    for body in [
+        json!({"household_invitation": {"email": null}}),
+        json!({"household_invitation": {"email": 42}}),
+    ] {
+        let response = app
+            .client
+            .post(&endpoint)
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 422);
+    }
+    assert_eq!(before, invitation_effects(&app, household_id).await);
+    let key = uuid::Uuid::new_v4().to_string();
+    let body = json!({"household_invitation":{"email":"guardian@example.test"}});
+    let first = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .header("idempotency-key", &key)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(first.status().as_u16(), 201);
+    let after = invitation_effects(&app, household_id).await;
+    let replay = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .header("idempotency-key", &key)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replay.status().as_u16(), 201);
+    assert!(replay.headers().contains_key("idempotency-replayed"));
+    let changed = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .header("idempotency-key", &key)
+        .json(&json!({"household_invitation":{"email":"guardian@example.test"},"extra":true}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(changed.status().as_u16(), 409);
+    assert_eq!(after, invitation_effects(&app, household_id).await);
+    app.close().await;
 }
 
 #[tokio::test]
@@ -1010,7 +1112,7 @@ async fn parent_label_cannot_replace_inviter_household_authority() {
             .client
             .post(&endpoint)
             .bearer_auth(access)
-            .json(&json!({"token":acceptance.token}))
+            .json(&json!({"token":acceptance.token,"sharing_consent":true}))
             .send()
             .await
             .unwrap();
@@ -1033,7 +1135,7 @@ async fn parent_label_cannot_replace_inviter_household_authority() {
         .client
         .post(&endpoint)
         .bearer_auth(access)
-        .json(&json!({"token":acceptance.token}))
+        .json(&json!({"token":acceptance.token,"sharing_consent":true}))
         .send()
         .await
         .unwrap();
