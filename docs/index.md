@@ -71,7 +71,7 @@ or unredacted logs publicly.
 - [Production Upload Storage](adrs/0008-production-upload-storage.md): understand optional Disk and S3 modes, topology, and migration boundaries.
 - [Upload Storage Backup and Restore](operations/upload-storage-backup-and-restore.md): record and verify backend-aware recovery sets.
 - [Home-Ops Portable Storage Handoff](operations/home-ops-portable-storage-handoff.md): apply the deployment inputs and maintenance gates safely.
-- [Fresh Rust rollout](operations/loco-cutover-runbook.md): configure a new installation and understand stop/recovery boundaries.
+- [Fresh Rust installation](operations/loco-cutover-runbook.md): configure the image, new database, fresh accounts and supported portable-data paths.
 
 ---
 

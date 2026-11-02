@@ -1,107 +1,84 @@
-# Fresh Rust rollout notes
+# Fresh Rust installation notes
 
-Root Loco uses PostgreSQL 18 and a new empty database. Follow
-[ADR 0016](../adrs/0016-fresh-rust-without-legacy-compatibility.md): Rails is
-read-only reference; there is no Rails schema adoption, credential/auth-record
-conversion or reverse migration. Clinical data transfer uses portable export/import;
-complete Rails-export compatibility remains tracked in
-[#2702](https://github.com/damacus/med-tracker/issues/2702). Never reset or silently adopt an existing
-database.
+Root Loco uses PostgreSQL 18. Install it against a new, empty database and
+create fresh accounts. Follow [ADR 0016](../adrs/0016-fresh-rust-without-legacy-compatibility.md):
+PR #3028 removed the Rails application from the current tree; its files remain
+in Git history. There is no Rails schema adoption, credential conversion or
+reverse migration. These notes describe fresh
+installation requirements. They do not define a cutover, live-data transfer or
+Rails recovery plan, and they do not authorise a release or deployment.
 
-The owner applies the image/version upgrade through the deployment's normal
-controller. There is no separate rehearsal, runtime evidence dossier or final
-acceptance project. Observe normal startup and application behaviour during the
-release, and fix concrete defects through the normal engineering workflow.
-This document does not authorise a rollout, shutdown, data change or deployment.
+Rust supports versioned encrypted portable export and import under the
+[portable-data contract](../api/portable-data.md). Frozen synthetic Rails
+fixtures cover selected serializer examples only; they do not establish
+database-backed export selection or completeness for all Rails records. The
+known v1/v2 limitations and remaining compatibility evidence are tracked under
+[#2702](https://github.com/damacus/med-tracker/issues/2702). That work does not
+require planning or performing a Rails cutover for this release.
 
 ## Image and configuration
 
-- Root-Loco server, worker and scheduler images now have native `linux/amd64`
-  and `linux/arm64` build and smoke-check coverage. Follow
-  [Loco Linux images](loco-images.md) to publish the tested images through the
-  main-branch automatic or manual workflow. The separate Rails publisher does not produce
-  the Loco image. Publication is not deployment.
-- Use the selected version or immutable image reference in the existing deployment
+- Root-Loco server, worker and scheduler images have native `linux/amd64` and
+  `linux/arm64` build and smoke-check coverage. Follow
+  [Loco Linux images](loco-images.md) for the current image workflow. It builds
+  and checks the Loco images; PR #3028 archived Rails and removed its separate
+  image publisher. Publication is not deployment.
+- Use the selected version or immutable image reference in the installation's
   configuration. Keep server and worker versions compatible with the schema.
-  No final root-Loco image reference is supplied by this guide.
-- Use [`config/production.yaml`](../../config/production.yaml) as the Rust settings
-  reference. Set the public origin with `MEDTRACKER_PUBLIC_HOST`, `PORT` and the
-  appropriate `BINDING`; keep production secure cookies enabled. Provision a
-  persistent `AUTH_SESSION_SECRET` and 64-byte Base64 `MEDTRACKER_SESSION_KEY` through the secret store,
-  shared across replicas. Do not use fixture keys or copy Rails credentials.
-- Keep setup credentials separate from the restricted runtime `DATABASE_URL`.
-  The runtime login inherits `med_tracker_app`, has no owner-role membership or
-  superuser/`BYPASSRLS` privileges, and serves both application and queue access.
-  Keep production automatic migration, truncation and recreation disabled.
+  This guide does not select a release version or image digest.
+- Use [`config/production.yaml`](../../config/production.yaml) as the Rust
+  settings reference. Set the public origin with `MEDTRACKER_PUBLIC_HOST`,
+  `PORT` and the appropriate `BINDING`; keep production secure cookies enabled.
+  Provision a persistent `AUTH_SESSION_SECRET` and 64-byte Base64
+  `MEDTRACKER_SESSION_KEY` through the secret store, shared across replicas. Do
+  not use fixture keys or copy Rails credentials.
+- Keep setup credentials separate from the restricted runtime
+  `DATABASE_URL`. The runtime login inherits `med_tracker_app`, has no
+  owner-role membership or superuser/`BYPASSRLS` privileges, and serves both
+  application and queue access. Keep production automatic migration,
+  truncation and recreation disabled.
 - Configure private storage consistently across replicas: avatars use
-  `ACTIVE_STORAGE_S3_*`; dm+d uses `S3_ENDPOINT`, `S3_BUCKET`, `AWS_REGION`
-  and its access/secret keys. Keep secrets in the deployment secret store and
+  `ACTIVE_STORAGE_S3_*`; dm+d uses `S3_ENDPOINT`, `S3_BUCKET`, `AWS_REGION` and
+  its access/secret keys. Keep secrets in the deployment secret store and
   preserve existing objects. Configure enabled mail/push delivery and the
   registration, session/token lifetime, timezone and dose-signing settings.
 - The root `worker` Task starts a worker **and** scheduler. The `scheduler` Task
   is another scheduler entry point. Choose one scheduler owner; avoid starting
-  both unintentionally. Current schedules cover support expiry, dm+d,
-  browser reminders and medication-review refresh.
+  both unintentionally. Current schedules cover support expiry, dm+d, browser
+  reminders and medication-review refresh.
 
-## Rollout
+## Fresh installation
 
-The owner chooses the environment, version and time and uses the deployment's
-existing upgrade path. If Flux owns the deployment, change its declared
-configuration through the normal GitOps flow; do not bypass it with an invented
-Helm or kubectl procedure.
-
-1. Confirm the intended fresh Rust database and storage configuration. Initial
-   schema installation uses root `db:migrate` with a separate
+1. Provision a new, empty PostgreSQL 18 database and the required storage.
+   Stop if the target is populated or its ownership is unclear. Initial schema
+   installation uses root `db:migrate` with a separate
    `MIGRATION_DATABASE_URL`; see [database setup](../testing.md#loco-database-setup).
-   Stop if the target is populated or unclear. `db:seed`/`db:prepare` load
-   synthetic fixtures for development/test, not production users.
-2. Keep retained Rails/reference databases and secrets separate. Where an existing
-   public service is being replaced, stop or isolate its web, worker and scheduler
-   writers as part of the owner's normal switch. Do not point them at the Rust
-   database, import their queue or migrate their credentials.
-3. Apply the approved image/configuration upgrade. Start the intended server,
-   worker and single scheduler through the existing controller. Observe normal
-   startup, sign-in and medication operations while releasing. Existing tests and
-   CI remain the normal checks for the deliverables being changed; do not create
-   a second release-acceptance exercise.
+   `db:seed` and `db:prepare` load synthetic fixtures for development and test,
+   not production users.
+2. Configure the selected Loco image, runtime settings, restricted database
+   credentials, storage and mail/push services. Create new Better Auth accounts;
+   existing Rails credentials and sessions do not authenticate to Rust.
+3. Use the installation's normal controller to run the server, worker and one
+   scheduler against that database. Observe startup and ordinary sign-in and
+   care operations as part of the owner's release process.
+4. Where portable transfer is needed, use only the currently supported
+   encrypted import/export contract and its documented limits. A frozen fixture
+   or successful Rust-native round trip does not prove that every Rails export
+   can be restored. Unknown-completeness retained prescription snapshots remain
+   blocked from adoption and fresh dose recording under PR #3029; no recovery
+   procedure is promised.
 
-There is no supported rollback from 0.6 to Rails. A full Rails export at the
-transition is an operator action, not an automatic import or a claim that an
-export has already happened. Any retained Rails site contains only its
-pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
-returning to the old site would not carry those records back. These notes do
-not promise that Rails can import that export or provide a lossless switchback.
+## Related scope
 
-## Stop and recovery
+Account-owned dose-history reading is delivered (#2982; first-release history
+issue [#2685](https://github.com/damacus/med-tracker/issues/2685) is closed).
+Person-owned shared treatment plans and cross-household sharing remain
+unfinished under [#2684](https://github.com/damacus/med-tracker/issues/2684) and
+[#2976](https://github.com/damacus/med-tracker/issues/2976). Household
+administration does not grant permission to change a person's plan.
 
-If the release fails, the owner uses the same deployment controller to stop the
-Rust rollout or redeploy a compatible Rust image. Stop the Rust web, worker and scheduler writers
-before any separately approved database recovery. Preserve the Rust database,
-queue, objects and audit history; do not reset them to make startup pass.
-
-Reverting an image is safe only when it is compatible with the current Rust
-schema and configuration. If data recovery is needed, use an approved
-Rust-compatible backup/target and the owner's explicit data-loss decision.
-Do not restore over active writers or assume a Kubernetes/Helm version rollback
-reverses database changes. Rails cannot read Rust-created data through a reverse
-migration, and automatic saved-state Rails restoration is not part of this plan.
-
-## Existing scope decisions
-
-The owner accepted [Slice 7](https://github.com/damacus/med-tracker/issues/2654)
-for its delivered queue, mail, push, notification, import, refresh, expiry and
-scheduling behaviour. Additional speculative acceptance, per-worker stop/restart
-and SIGTERM rehearsals are waived. Retain current permissions, atomic mail,
-replay and duplicate safety; fix concrete defects if they emerge.
-
-Native delivery, browser offline work, new export products/workers
-([#2699](https://github.com/damacus/med-tracker/issues/2699)), canary/demo jobs
-([#1780](https://github.com/damacus/med-tracker/issues/1780)), and optional
-FHIR/SMART/MCP/provider work remain deferred. Preserve retained Rust restore/sync
-and public API contracts. Physical notification checks
-([#2559](https://github.com/damacus/med-tracker/issues/2559)) remain deferred until
-after deployment; provider acceptance does not prove display. Broader mail/SMTP
-capture remains [#2844](https://github.com/damacus/med-tracker/issues/2844)/
-[#2845](https://github.com/damacus/med-tracker/issues/2845), and physical scanner
-camera checking remains [#2524](https://github.com/damacus/med-tracker/issues/2524).
-These are their existing scope decisions, not new release gates.
+Physical phone-camera acceptance remains follow-up fix-forward work under
+[#2524](https://github.com/damacus/med-tracker/issues/2524). Simulated camera
+input does not prove a physical phone camera works. Optional medication
+locations remain paused for the owner's UI audit. These notes do not turn those
+items or Rails-export completeness into a deployment or recovery gate.
