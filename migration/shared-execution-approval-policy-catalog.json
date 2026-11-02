@@ -1,0 +1,14 @@
+{
+  "removed": [],
+  "changed": {
+    "policy:public.shared_schedule_executions.shared_execution_identifier_insert": {
+      "check": "((household_id = med_tracker.current_household_id()) AND (EXISTS ( SELECT 1\n   FROM schedules source\n  WHERE ((source.id = shared_schedule_executions.schedule_id) AND ((source.portable_id)::text = (shared_schedule_executions.portable_id)::text) AND (source.household_id = shared_schedule_executions.household_id) AND (source.person_id = shared_schedule_executions.person_id) AND ((source.person_schedule_id)::text = (shared_schedule_executions.person_schedule_id)::text) AND (((shared_schedule_executions.approval_id IS NULL) AND source.canonical_origin AND (source.sharing_approval_id IS NULL) AND med_tracker.sharing_clinical_authority(source.person_id) AND (NOT (EXISTS ( SELECT 1\n           FROM person_household_approvals prior\n          WHERE ((prior.person_id = source.person_id) AND (prior.household_id = source.household_id))\n         OFFSET 0)))) OR ((source.execution_ended_at IS NULL) AND med_tracker.sharing_current_member(source.person_id) AND ((source.sharing_approval_id = shared_schedule_executions.approval_id) OR ((source.sharing_approval_id IS NULL) AND source.canonical_origin AND med_tracker.sharing_clinical_authority(source.person_id))) AND (EXISTS ( SELECT 1\n           FROM person_household_approvals approval\n          WHERE ((approval.id = shared_schedule_executions.approval_id) AND (approval.person_id = source.person_id) AND (approval.household_id = source.household_id) AND (approval.ended_at IS NULL))))))))))",
+      "command": "a",
+      "permissive": true,
+      "roles": [
+        "med_tracker_app"
+      ],
+      "using": null
+    }
+  }
+}

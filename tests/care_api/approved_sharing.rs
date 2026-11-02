@@ -2359,6 +2359,139 @@ async fn dependent(app: &Application, token: &str) -> i64 {
 }
 
 #[tokio::test]
+async fn canonical_execution_rejects_current_and_ended_prior_approvals() {
+    use med_tracker::models::_entities::shared_schedule_executions;
+    use med_tracker::models::access::{Actor, HouseholdScope};
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let child = dependent(&app, &token).await;
+    let response = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/{}/schedules",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(token)
+        .json(&json!({"schedule": {
+            "person_id": child.to_string(), "medication_id": app.fixture.medication.id.to_string(),
+            "dose_amount": "2", "dose_unit": "tablet", "start_date": "2026-01-01",
+            "end_date": "2027-01-01", "schedule_type": "prn", "schedule_config": {}
+        }}))
+        .send()
+        .await
+        .unwrap();
+    let created = Application::assert_status(response, 201).await;
+    let id = created["data"]["id"].as_i64().unwrap();
+    let execution = shared_schedule_executions::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    shared_schedule_executions::Entity::delete_by_id(id)
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let scope = HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    execution
+        .clone()
+        .into_active_model()
+        .reset_all()
+        .insert(tenant.transaction())
+        .await
+        .unwrap();
+    tenant.rollback().await.unwrap();
+
+    let now = chrono::Utc::now().naive_utc();
+    let invitation = household_invitations::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        email: Set(app.fixture.account.email.clone()),
+        membership_role: Set("member".into()),
+        token_digest: Set(uuid::Uuid::new_v4().to_string()),
+        invited_by_membership_id: Set(app.fixture.membership.id),
+        dependent_sharing: Set(true),
+        expires_at: Set(now + chrono::Duration::days(1)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let declaration = current_declaration(&app, child).await.unwrap();
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let approval = person_household_approvals::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(child),
+        invitation_id: Set(invitation.id),
+        approved_by_account_id: Set(app.fixture.account.id),
+        approved_by_person_id: Set(app.fixture.adult.id),
+        guardian_declaration_id: Set(Some(declaration)),
+        statement_version: Set(1),
+        approved_at: Set(now),
+        ..Default::default()
+    }
+    .insert(tenant.transaction())
+    .await
+    .unwrap();
+    tenant.commit().await.unwrap();
+    for status in ["current", "ended"] {
+        if status == "ended" {
+            let tenant = med_tracker::models::access::begin(
+                &app.fixture.runtime,
+                &scope,
+                app.context.config.settings.as_ref(),
+            )
+            .await
+            .unwrap();
+            let mut ended = approval.clone().into_active_model();
+            ended.ended_at = Set(Some(now));
+            ended.update(tenant.transaction()).await.unwrap();
+            tenant.commit().await.unwrap();
+        }
+        let tenant = med_tracker::models::access::begin(
+            &app.fixture.runtime,
+            &scope,
+            app.context.config.settings.as_ref(),
+        )
+        .await
+        .unwrap();
+        let result = execution
+            .clone()
+            .into_active_model()
+            .reset_all()
+            .insert(tenant.transaction())
+            .await;
+        let error = result.unwrap_err().to_string();
+        assert!(
+            error.contains("row-level security policy"),
+            "{status} prior approval must deny canonical execution: {error}"
+        );
+        tenant.rollback().await.unwrap();
+    }
+    app.close().await;
+}
+
+#[tokio::test]
 async fn person_owned_schedule_guardian_outside_destination_approves_without_joining() {
     let app = Application::new().await;
     let token = app.token().await;

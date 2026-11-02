@@ -1021,14 +1021,21 @@ async fn portable_import_accepts_derived_occurrence_window_ends() {
         }
     });
     let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
-    let response = app
+    let response = match app
         .client
         .post(import_url(&app, "portable_imports/dry_run"))
         .bearer_auth(&token)
         .header(PASSPHRASE_HEADER, PASSPHRASE)
         .json(&json!({"bundle": bundle}))
         .send()
-        .await;
+        .await
+    {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            response.bytes().await.map(|body| (status, body))
+        }
+        Err(error) => Err(error),
+    };
     for chunk in unrelated.chunks(200) {
         rows::people::Entity::delete_many()
             .filter(rows::people::Column::PortableId.is_in(chunk.iter().cloned()))
@@ -1036,10 +1043,9 @@ async fn portable_import_accepts_derived_occurrence_window_ends() {
             .await
             .unwrap();
     }
-    let response = response.unwrap();
-    let status = response.status().as_u16();
-    let body: Value = response.json().await.unwrap();
     app.close().await;
+    let (status, body) = response.unwrap();
+    let body: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(status, 200, "dry-run body: {body}");
     assert_eq!(
         body["data"]["errors"].as_array().unwrap().len(),
