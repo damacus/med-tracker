@@ -298,10 +298,15 @@ async fn cleanup(
 pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
     let cutoff = Utc::now().naive_utc() - chrono::Duration::minutes(30);
     let stale_marked = nhs_dmd_import::Entity::update_many()
-        .col_expr(nhs_dmd_import::Column::Status, sea_orm::sea_query::Expr::value(5))
+        .col_expr(
+            nhs_dmd_import::Column::Status,
+            sea_orm::sea_query::Expr::value(5),
+        )
         .col_expr(
             nhs_dmd_import::Column::ErrorMessage,
-            sea_orm::sea_query::Expr::value("The import stopped making progress. Upload the release again."),
+            sea_orm::sea_query::Expr::value(
+                "The import stopped making progress. Upload the release again.",
+            ),
         )
         .col_expr(
             nhs_dmd_import::Column::CompletedAt,
