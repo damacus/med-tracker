@@ -114,10 +114,9 @@ fn sanitize_attributes(attributes: &mut Vec<KeyValue>, dropped: &mut Vec<String>
         let key = attribute.key.as_str();
         if keys::allowed(key) {
             let value = match &attribute.value {
-                opentelemetry::Value::String(text) => KeyValue::new(
-                    attribute.key.clone(),
-                    keys::cap(text.as_str()).to_owned(),
-                ),
+                opentelemetry::Value::String(text) => {
+                    KeyValue::new(attribute.key.clone(), keys::cap(text.as_str()).to_owned())
+                }
                 _ => attribute,
             };
             kept.push(value);
@@ -179,14 +178,13 @@ impl<E: SpanExporter> SpanExporter for SanitizingExporter<E> {
     }
 
     fn set_resource(&mut self, resource: &Resource) {
-        let mut attributes: Vec<KeyValue> = resource.iter().map(|(k, v)| {
-            KeyValue::new(k.clone(), v.clone())
-        }).collect();
+        let mut attributes: Vec<KeyValue> = resource
+            .iter()
+            .map(|(k, v)| KeyValue::new(k.clone(), v.clone()))
+            .collect();
         let mut dropped = Vec::new();
         sanitize_attributes(&mut attributes, &mut dropped);
-        let resource = Resource::builder()
-            .with_attributes(attributes)
-            .build();
+        let resource = Resource::builder().with_attributes(attributes).build();
         self.inner.set_resource(&resource);
     }
 }
@@ -194,10 +192,13 @@ impl<E: SpanExporter> SpanExporter for SanitizingExporter<E> {
 #[cfg(test)]
 mod tests {
     use super::{Diagnostics, SanitizingExporter, sanitize_span};
-    use opentelemetry::{KeyValue, SpanId, TraceId, trace::{SpanContext, SpanKind, Status, TraceFlags, TraceState}};
+    use opentelemetry::{
+        KeyValue, SpanId, TraceId,
+        trace::{SpanContext, SpanKind, Status, TraceFlags, TraceState},
+    };
     use opentelemetry_sdk::{
         error::{OTelSdkError, OTelSdkResult},
-        trace::{SpanData, SpanEvents, SpanLinks, SpanExporter},
+        trace::{SpanData, SpanEvents, SpanExporter, SpanLinks},
     };
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, SystemTime};
@@ -327,10 +328,11 @@ mod tests {
             }
             let mut body = Body(None);
             event.record(&mut body);
-            self.0
-                .lock()
-                .expect("event names")
-                .push(format!("{}:{}", event.metadata().level(), body.0.unwrap_or_default()));
+            self.0.lock().expect("event names").push(format!(
+                "{}:{}",
+                event.metadata().level(),
+                body.0.unwrap_or_default()
+            ));
         }
 
         fn enter(&self, _: &tracing::span::Id) {}

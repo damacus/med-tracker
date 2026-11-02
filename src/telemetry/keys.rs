@@ -83,7 +83,7 @@ pub fn safe_span_name(name: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{allowed, cap, partition, safe_span_name, VALUE_CAP};
+    use super::{VALUE_CAP, allowed, cap, partition, safe_span_name};
 
     #[test]
     fn key_rule_admits_semconv_and_medtracker_keys() {
@@ -104,7 +104,16 @@ mod tests {
         ] {
             assert!(allowed(key), "{key}");
         }
-        for key in ["category", "error_trace_id", "error", "password", "method", "route", "status", "duration_ms"] {
+        for key in [
+            "category",
+            "error_trace_id",
+            "error",
+            "password",
+            "method",
+            "route",
+            "status",
+            "duration_ms",
+        ] {
             assert!(!allowed(key), "{key}");
         }
     }
@@ -134,8 +143,14 @@ mod tests {
     #[test]
     fn unsafe_span_names_are_replaced() {
         assert_eq!(safe_span_name("GET /health"), "GET /health");
-        assert_eq!(safe_span_name("task nhs_dmd_reconcile"), "task nhs_dmd_reconcile");
-        assert_eq!(safe_span_name("GET /Clinical\x1bSentinel"), "medtracker.redacted");
+        assert_eq!(
+            safe_span_name("task nhs_dmd_reconcile"),
+            "task nhs_dmd_reconcile"
+        );
+        assert_eq!(
+            safe_span_name("GET /Clinical\x1bSentinel"),
+            "medtracker.redacted"
+        );
         assert_eq!(safe_span_name(""), "medtracker.redacted");
         assert_eq!(safe_span_name(&"x".repeat(200)), "medtracker.redacted");
     }

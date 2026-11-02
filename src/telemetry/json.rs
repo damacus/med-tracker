@@ -3,9 +3,9 @@
 
 use std::io::Write;
 
+use opentelemetry::trace::TraceContextExt;
 use serde_json::{Map, Value, json};
 use tracing::{Event, Subscriber, field::Visit, span};
-use opentelemetry::trace::TraceContextExt;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{Layer, layer::Context, registry::LookupSpan};
 
@@ -35,7 +35,11 @@ struct FieldVisitor {
 impl FieldVisitor {
     fn push(&mut self, name: &str, value: Value) {
         if name == "message" {
-            self.fields.body = value.as_str().map(|s| keys::cap(s).to_owned()).map(Value::String).and_then(|v| v.as_str().map(str::to_owned));
+            self.fields.body = value
+                .as_str()
+                .map(|s| keys::cap(s).to_owned())
+                .map(Value::String)
+                .and_then(|v| v.as_str().map(str::to_owned));
             return;
         }
         if keys::allowed(name) {
@@ -140,12 +144,7 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     W: for<'writer> tracing_subscriber::fmt::MakeWriter<'writer> + Send + Sync + 'static,
 {
-    fn on_new_span(
-        &self,
-        attributes: &span::Attributes<'_>,
-        id: &span::Id,
-        ctx: Context<'_, S>,
-    ) {
+    fn on_new_span(&self, attributes: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         let mut visitor = FieldVisitor::default();
         attributes.record(&mut visitor);
         if let Some(span) = ctx.span(id) {
@@ -293,7 +292,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::{Resource, layer};
@@ -356,7 +354,14 @@ mod tests {
     fn emits_exact_otel_log_shape_without_ansi() {
         let buffer = Buffer::default();
         emit(&buffer, || {
-            tracing::info!(event.name = "http.server.request", http.request.method = "GET", http.route = "/health", http.response.status_code = 200_u16, medtracker.duration_ms = 0.13, "HTTP request completed");
+            tracing::info!(
+                event.name = "http.server.request",
+                http.request.method = "GET",
+                http.route = "/health",
+                http.response.status_code = 200_u16,
+                medtracker.duration_ms = 0.13,
+                "HTTP request completed"
+            );
         });
         let raw = buffer.raw();
         assert!(!raw.contains('\x1b'), "ANSI escape present: {raw}");
@@ -380,7 +385,10 @@ mod tests {
         assert_eq!(record["resource"]["service.version"], "0.1.0+abcdef0");
         assert_eq!(record["resource"]["deployment.environment.name"], "test");
         assert!(record["resource"].get("service.instance.id").is_none());
-        assert_eq!(record["scope"]["name"], "med_tracker::telemetry::json::tests");
+        assert_eq!(
+            record["scope"]["name"],
+            "med_tracker::telemetry::json::tests"
+        );
         let attributes = &record["attributes"];
         assert_eq!(attributes["event.name"], "http.server.request");
         assert_eq!(attributes["http.request.method"], "GET");
@@ -388,16 +396,21 @@ mod tests {
         assert_eq!(attributes["http.response.status_code"], 200);
         assert!((attributes["medtracker.duration_ms"].as_f64().unwrap() - 0.13).abs() < 1e-9);
         let timestamp = record["timestamp"].as_str().unwrap();
-        assert!(timestamp.ends_with('Z') && timestamp.contains('.'), "{timestamp}");
+        assert!(
+            timestamp.ends_with('Z') && timestamp.contains('.'),
+            "{timestamp}"
+        );
     }
 
     #[test]
     fn span_fields_merge_with_innermost_winning() {
         let buffer = Buffer::default();
         emit(&buffer, || {
-            let outer = tracing::info_span!("outer", http.route = "/outer", medtracker.depth = 1_u64);
+            let outer =
+                tracing::info_span!("outer", http.route = "/outer", medtracker.depth = 1_u64);
             let _outer = outer.enter();
-            let inner = tracing::info_span!("inner", http.route = "/inner", medtracker.extra = true);
+            let inner =
+                tracing::info_span!("inner", http.route = "/inner", medtracker.extra = true);
             let _inner = inner.enter();
             tracing::info!(http.route = "/event", "merged");
         });
@@ -441,7 +454,11 @@ mod tests {
     fn recorded_trace_identifiers_lift_into_the_envelope() {
         let buffer = Buffer::default();
         emit(&buffer, || {
-            let span = tracing::info_span!("request", trace_id = tracing::field::Empty, span_id = tracing::field::Empty);
+            let span = tracing::info_span!(
+                "request",
+                trace_id = tracing::field::Empty,
+                span_id = tracing::field::Empty
+            );
             span.record("trace_id", "4bf92f3577b34da6a3ce929d0e0e4736");
             span.record("span_id", "00f067aa0ba902b7");
             let _entered = span.enter();

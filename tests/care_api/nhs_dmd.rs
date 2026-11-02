@@ -50,7 +50,10 @@ impl Visit for ImportTimingFields {
 impl Subscriber for ImportTimingEvents {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         metadata.fields().field("medtracker.duration_ms").is_some()
-            || metadata.fields().field("medtracker.secondary_failure").is_some()
+            || metadata
+                .fields()
+                .field("medtracker.secondary_failure")
+                .is_some()
     }
 
     fn new_span(&self, _: &Attributes<'_>) -> Id {
@@ -360,8 +363,10 @@ async fn nhs_dmd_parser_failures_survive_progress_failure() {
         assert!(failed.archive_key.is_none());
         let captured = events.for_run(id);
         assert!(
-            captured.iter().any(|event| event["medtracker.import.phase"] == phase
-                && event["medtracker.secondary_failure"] == "activity_reporting")
+            captured
+                .iter()
+                .any(|event| event["medtracker.import.phase"] == phase
+                    && event["medtracker.secondary_failure"] == "activity_reporting")
         );
         assert!(
             !serde_json::to_string(&captured)

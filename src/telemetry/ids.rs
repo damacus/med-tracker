@@ -2,8 +2,8 @@
 //! generation used when telemetry export is disabled.
 
 use opentelemetry::{
-    trace::TraceContextExt,
     Context,
+    trace::TraceContextExt,
     trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState},
 };
 
@@ -33,7 +33,9 @@ pub fn remote_parent(header: Option<&str>) -> Option<Context> {
         true,
         TraceState::default(),
     );
-    context.is_valid().then(|| Context::new().with_remote_span_context(context))
+    context
+        .is_valid()
+        .then(|| Context::new().with_remote_span_context(context))
 }
 
 /// Extracts just the trace ID from a `traceparent` value, for log
@@ -94,7 +96,9 @@ mod tests {
     #[test]
     fn trace_id_extraction_matches_parser() {
         assert_eq!(
-            trace_id_from(Some("00-4BF92F3577B34DA6A3CE929D0E0E4736-00f067aa0ba902b7-00")),
+            trace_id_from(Some(
+                "00-4BF92F3577B34DA6A3CE929D0E0E4736-00f067aa0ba902b7-00"
+            )),
             Some("4bf92f3577b34da6a3ce929d0e0e4736".to_owned())
         );
         assert!(trace_id_from(Some("bad")).is_none());
@@ -104,7 +108,11 @@ mod tests {
     fn generated_ids_have_w3c_shape() {
         let trace = new_trace_id();
         assert_eq!(trace.len(), 32);
-        assert!(trace.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert!(
+            trace
+                .chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        );
         assert_eq!(new_span_id().len(), 16);
     }
 }
