@@ -105,6 +105,10 @@ pub(crate) async fn save_execution(
     configured_zone: Tz,
     provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
 ) -> Result<schedule::Model, OperationError> {
+    #[cfg(debug_assertions)]
+    let diagnostic_start = std::time::Instant::now();
+    #[cfg(debug_assertions)]
+    eprintln!("execution diagnostic start");
     let db = tenant.transaction();
     if row.execution_ended_at.is_some() {
         return Err(OperationError::NotFound);
@@ -165,10 +169,20 @@ pub(crate) async fn save_execution(
         || (row.sharing_approval_id.is_none()
             && plan.origin_stock_id.clone().unwrap() != row.medication_id)
     {
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "execution diagnostic stock lookup start {:?}",
+            diagnostic_start.elapsed()
+        );
         let stock = medication::Entity::find_by_id(row.medication_id)
             .one(db)
-            .await?
-            .ok_or(OperationError::NotFound)?;
+            .await;
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "execution diagnostic stock lookup end {:?}",
+            diagnostic_start.elapsed()
+        );
+        let stock = stock?.ok_or(OperationError::NotFound)?;
         let default = stock
             .dose_amount
             .and_then(|amount| amount.to_string().parse::<sea_orm::prelude::Decimal>().ok());
@@ -252,71 +266,113 @@ pub(crate) async fn save_execution(
         None
     };
     plan.updated_at = Set(resumed_at.unwrap_or_else(|| Utc::now().naive_utc()));
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic plan write start {:?}",
+        diagnostic_start.elapsed()
+    );
     let plan = if row.person_schedule_id.is_some() {
-        plan.update(db).await?
+        plan.update(db).await
     } else {
-        plan.insert(db).await?
+        plan.insert(db).await
     };
-    projection::publish(db, &plan).await?;
-    if let Some(before) = shared_before {
-        let after = crate::models::entities::shared_schedule::Entity::find_by_id(&plan.id)
-            .one(db)
-            .await?
-            .ok_or(OperationError::NotFound)?;
-        let declaration = if tenant.membership().person_id == plan.person_id {
-            None
-        } else {
-            Some(
-                sharing::guardian(
-                    db,
-                    crate::models::ids::PersonId::from_database(plan.person_id),
-                )
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic plan write end {:?}",
+        diagnostic_start.elapsed()
+    );
+    let plan = plan?;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic safe projection start {:?}",
+        diagnostic_start.elapsed()
+    );
+    let published = projection::publish(db, &plan).await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic safe projection end {:?}",
+        diagnostic_start.elapsed()
+    );
+    published?;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic audit start {:?}",
+        diagnostic_start.elapsed()
+    );
+    let audited: Result<(), OperationError> = async {
+        if let Some(before) = shared_before {
+            let after = crate::models::entities::shared_schedule::Entity::find_by_id(&plan.id)
+                .one(db)
                 .await?
-                .ok_or(OperationError::Forbidden)?,
-            )
-        };
-        let mut context = crate::models::audit_context::household(tenant, provenance);
-        context["person_schedule_id"] = serde_json::json!(plan.id);
-        context["subject_person_id"] = serde_json::json!(plan.person_id);
-        context["clinical_revision"] = serde_json::json!(plan.clinical_revision);
-        context["guardian_declaration_id"] = serde_json::json!(declaration);
-        context["policy_class"] = serde_json::json!("SharedPersonScheduleClinical");
-        crate::models::entities::version::Entity::insert(
-            crate::models::entities::version::ActiveModel {
-                item_type: Set("SharedPersonSchedule".into()),
-                item_id: Set(plan.person_id),
-                event: Set("update".into()),
-                object_changes: Set(Some(view::clinical_changes(&before, &after)?.to_string())),
-                whodunnit: Set(Some(tenant.scope().actor.account_id.to_string())),
-                household_id: Set(Some(tenant.scope().household_id)),
-                actor_membership_id: Set(Some(tenant.membership().id)),
-                request_id: Set(Some(tenant.scope().request_id.clone())),
-                created_at: Set(Some(plan.updated_at)),
-                audit_context: Set(context),
-                ..Default::default()
-            },
-        )
-        .exec_without_returning(db)
-        .await?;
-    } else {
-        super::administration::persistence::record_version_as(
-            tenant,
-            "PersonSchedule",
-            plan.origin_schedule_id,
-            if previous.is_some() {
-                "update"
+                .ok_or(OperationError::NotFound)?;
+            let declaration = if tenant.membership().person_id == plan.person_id {
+                None
             } else {
-                "create"
-            },
-            previous
-                .as_ref()
-                .map(|previous| serde_json::json!(previous)),
-            serde_json::json!(&plan),
-            provenance,
-        )
-        .await?;
+                Some(
+                    sharing::guardian(
+                        db,
+                        crate::models::ids::PersonId::from_database(plan.person_id),
+                    )
+                    .await?
+                    .ok_or(OperationError::Forbidden)?,
+                )
+            };
+            let mut context = crate::models::audit_context::household(tenant, provenance);
+            context["person_schedule_id"] = serde_json::json!(plan.id);
+            context["subject_person_id"] = serde_json::json!(plan.person_id);
+            context["clinical_revision"] = serde_json::json!(plan.clinical_revision);
+            context["guardian_declaration_id"] = serde_json::json!(declaration);
+            context["policy_class"] = serde_json::json!("SharedPersonScheduleClinical");
+            crate::models::entities::version::Entity::insert(
+                crate::models::entities::version::ActiveModel {
+                    item_type: Set("SharedPersonSchedule".into()),
+                    item_id: Set(plan.person_id),
+                    event: Set("update".into()),
+                    object_changes: Set(Some(view::clinical_changes(&before, &after)?.to_string())),
+                    whodunnit: Set(Some(tenant.scope().actor.account_id.to_string())),
+                    household_id: Set(Some(tenant.scope().household_id)),
+                    actor_membership_id: Set(Some(tenant.membership().id)),
+                    request_id: Set(Some(tenant.scope().request_id.clone())),
+                    created_at: Set(Some(plan.updated_at)),
+                    audit_context: Set(context),
+                    ..Default::default()
+                },
+            )
+            .exec_without_returning(db)
+            .await?;
+        } else {
+            super::administration::persistence::record_version_as(
+                tenant,
+                "PersonSchedule",
+                plan.origin_schedule_id,
+                if previous.is_some() {
+                    "update"
+                } else {
+                    "create"
+                },
+                previous
+                    .as_ref()
+                    .map(|previous| serde_json::json!(previous)),
+                serde_json::json!(&plan),
+                provenance,
+            )
+            .await?;
+        }
+        Ok(())
     }
-    pauses::record_resume(
+    .await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic audit end {:?}",
+        diagnostic_start.elapsed()
+    );
+    audited?;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic pause resume start {:?}",
+        diagnostic_start.elapsed()
+    );
+    let resumed = pauses::record_resume(
         db,
         previous
             .as_ref()
@@ -329,38 +385,137 @@ pub(crate) async fn save_execution(
             provenance,
         },
     )
-    .await?;
-    let history = adoption_history::capture(tenant, &row, &plan, provenance).await?;
+    .await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic pause resume end {:?}",
+        diagnostic_start.elapsed()
+    );
+    resumed?;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic history capture start {:?}",
+        diagnostic_start.elapsed()
+    );
+    let history = adoption_history::capture(tenant, &row, &plan, provenance).await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic history capture end {:?}",
+        diagnostic_start.elapsed()
+    );
+    let history = history?;
     let mut linked = row.into_active_model();
     linked.canonical_origin = Set(plan.origin_schedule_id == linked.id.clone().unwrap());
     linked.person_schedule_id = Set(Some(plan.id));
     linked.clinical_revision = Set(Some(plan.clinical_revision));
     linked.origin_time_zone = Set(Some(plan.origin_time_zone));
-    let linked = linked.update(db).await?;
-    pauses::associate_start(db, &linked).await?;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic schedule link start {:?}",
+        diagnostic_start.elapsed()
+    );
+    let linked = linked.update(db).await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic schedule link end {:?}",
+        diagnostic_start.elapsed()
+    );
+    let linked = linked?;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic pause association start {:?}",
+        diagnostic_start.elapsed()
+    );
+    let associated = pauses::associate_start(db, &linked).await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic pause association end {:?}",
+        diagnostic_start.elapsed()
+    );
+    associated?;
     use crate::models::entities::sharing_approval;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic current approval start {:?}",
+        diagnostic_start.elapsed()
+    );
     let approval = sharing_approval::Entity::find()
         .filter(sharing_approval::Column::HouseholdId.eq(linked.household_id))
         .filter(sharing_approval::Column::PersonId.eq(linked.person_id))
         .filter(sharing_approval::Column::EndedAt.is_null())
         .lock_shared()
         .one(db)
-        .await?;
-    crate::models::access::recheck(tenant).await?;
+        .await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic current approval end {:?}",
+        diagnostic_start.elapsed()
+    );
+    let approval = approval?;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic recheck start {:?}",
+        diagnostic_start.elapsed()
+    );
+    let rechecked = crate::models::access::recheck(tenant).await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic recheck end {:?}",
+        diagnostic_start.elapsed()
+    );
+    rechecked?;
     if let Some(approval) = approval {
-        projection::record_execution(db, &linked, Some(approval.id)).await?;
-    } else if sharing_approval::Entity::find()
-        .filter(sharing_approval::Column::HouseholdId.eq(linked.household_id))
-        .filter(sharing_approval::Column::PersonId.eq(linked.person_id))
-        .one(db)
-        .await?
-        .is_some()
-    {
-        return Err(OperationError::Forbidden);
-    } else if linked.canonical_origin {
-        projection::record_execution(db, &linked, None).await?;
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "execution diagnostic approved link start {:?}",
+            diagnostic_start.elapsed()
+        );
+        let recorded = projection::record_execution(db, &linked, Some(approval.id)).await;
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "execution diagnostic approved link end {:?}",
+            diagnostic_start.elapsed()
+        );
+        recorded?;
+    } else {
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "execution diagnostic prior approval start {:?}",
+            diagnostic_start.elapsed()
+        );
+        let prior = sharing_approval::Entity::find()
+            .filter(sharing_approval::Column::HouseholdId.eq(linked.household_id))
+            .filter(sharing_approval::Column::PersonId.eq(linked.person_id))
+            .one(db)
+            .await;
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "execution diagnostic prior approval end {:?}",
+            diagnostic_start.elapsed()
+        );
+        if prior?.is_some() {
+            return Err(OperationError::Forbidden);
+        } else if linked.canonical_origin {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "execution diagnostic origin link start {:?}",
+                diagnostic_start.elapsed()
+            );
+            let recorded = projection::record_execution(db, &linked, None).await;
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "execution diagnostic origin link end {:?}",
+                diagnostic_start.elapsed()
+            );
+            recorded?;
+        }
     }
-    history
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic history seed start {:?}",
+        diagnostic_start.elapsed()
+    );
+    let seeded = history
         .seed(
             db,
             linked
@@ -368,7 +523,13 @@ pub(crate) async fn save_execution(
                 .as_deref()
                 .ok_or(OperationError::Unavailable)?,
         )
-        .await?;
+        .await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "execution diagnostic history seed end {:?}",
+        diagnostic_start.elapsed()
+    );
+    seeded?;
     Ok(linked)
 }
 
