@@ -73,15 +73,15 @@ fn build_provider(
 ) -> Option<SdkTracerProvider> {
     // The reqwest blocking exporter client must be constructed off the async
     // context: building it inside a Tokio runtime can panic.
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        if matches!(
+    if let Ok(handle) = tokio::runtime::Handle::try_current()
+        && matches!(
             handle.runtime_flavor(),
             tokio::runtime::RuntimeFlavor::MultiThread
-        ) {
-            return tokio::task::block_in_place(|| {
-                build_provider_inner(settings, resource, diagnostics)
-            });
-        }
+        )
+    {
+        return tokio::task::block_in_place(|| {
+            build_provider_inner(settings, resource, diagnostics)
+        });
     }
     build_provider_inner(settings, resource, diagnostics)
 }
@@ -226,11 +226,8 @@ mod pipeline_tests {
     #[derive(Debug)]
     struct AlwaysFails;
     impl SpanExporter for AlwaysFails {
-        fn export(
-            &self,
-            _: Vec<SpanData>,
-        ) -> impl std::future::Future<Output = OTelSdkResult> + Send {
-            async { Err(OTelSdkError::InternalFailure("endpoint down".into())) }
+        async fn export(&self, _: Vec<SpanData>) -> OTelSdkResult {
+            Err(OTelSdkError::InternalFailure("endpoint down".into()))
         }
     }
 
