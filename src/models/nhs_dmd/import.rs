@@ -409,9 +409,10 @@ fn parse_ampp_names(
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
                 if tag == "AMPP" {
                     if in_ampp {
-                        return Err(ImportFailure::new(
+                        return Err(ImportFailure::with_summary(
                             ImportStage::ParseAmpp,
                             ImportFailureCategory::RecordInvalid,
+                            "Nested AMPP record in release XML",
                         ));
                     }
                     in_ampp = true;
@@ -513,9 +514,10 @@ fn parse_gtins(
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
                 if tag == "AMPP" {
                     if in_ampp {
-                        return Err(ImportFailure::new(
+                        return Err(ImportFailure::with_summary(
                             ImportStage::ParseGtin,
                             ImportFailureCategory::RecordInvalid,
+                            "Nested AMPP record in GTIN XML",
                         ));
                     }
                     in_ampp = true;
@@ -526,9 +528,10 @@ fn parse_gtins(
                     amppid.clear();
                 } else if tag == "GTINDATA" && in_ampp {
                     if in_gtindata {
-                        return Err(ImportFailure::new(
+                        return Err(ImportFailure::with_summary(
                             ImportStage::ParseGtin,
                             ImportFailureCategory::RecordInvalid,
+                            "Nested GTINDATA record in GTIN XML",
                         ));
                     }
                     in_gtindata = true;

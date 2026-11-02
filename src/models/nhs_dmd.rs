@@ -223,9 +223,10 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             .map_err(|_| OperationError::Unavailable)?;
         import::run_import(ctx.db.clone(), id, file.path().to_path_buf()).await
     } else {
-        Err(crate::models::nhs_dmd::import::ImportFailure::new(
+        Err(crate::models::nhs_dmd::import::ImportFailure::with_summary(
             crate::models::nhs_dmd::import::ImportStage::Extract,
             crate::models::nhs_dmd::import::ImportFailureCategory::ArchiveInvalid,
+            "Archive integrity verification failed",
         ))
     };
     match &result {
