@@ -81,7 +81,7 @@ The authority for one household membership to access one person.
 - Access levels are `view`, `record`, and `manage`.
 - A grant may expire or be revoked.
 - A grant may be owned by a `CarerRelationship` or exist independently.
-- Person-scoped Pundit decisions authorize from active grants, not from
+- Person-scoped authorization decisions authorize from active grants, not from
   relationship labels.
 - Medication and inventory policies also recognize household `owner` and
   `administrator` governance and the narrow creator-owned, unlinked medication

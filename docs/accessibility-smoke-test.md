@@ -9,13 +9,11 @@ and system specs.
 Run the deterministic accessibility/responsive journey matrix locally with:
 
 ```fish
-task rails:test:preflight
-task rails:playwright TEST_FILE=spec/system/mobile_ui_audit_spec.rb
-task rails:playwright TEST_FILE=spec/system/mobile_overflow_spec.rb
+task test:browser
 ```
 
 The existing blocking Playwright system job discovers these examples because
-it enumerates every `spec/**/*_spec.rb` file and runs the `browser` tag. No
+it runs the Rust browser journeys. No
 workflow or task change is required when extending the harness.
 
 ## Supported test combinations

@@ -207,7 +207,8 @@ Run the application-owned canary once in one pod:
 
 ```console
 kubectl -n "$NAMESPACE" exec "deploy/$DEPLOYMENT" -c app -- \
-  bin/rails observability:canary
+  # archived Rails command; run the equivalent observability check
+  # in the Loco deployment task
 ```
 
 The task creates a new opaque workflow, enqueues one no-argument job, and

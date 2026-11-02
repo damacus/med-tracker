@@ -1,5 +1,10 @@
 # Design system and theming
 
+> [!NOTE]
+> This document describes the archived Rails application or deployment. Its
+> `task rails:*`, `bin/rails` and `bundle exec` commands no longer exist in this
+> repository; the Rails source lives in git history.
+
 MedTracker combines local RubyUI components with a small Material 3 layer.
 Phlex views render both component families. Tailwind CSS maps the design tokens
 to utility classes.

@@ -3,8 +3,7 @@
 Loco uses Better Auth's native authentication store and plugins. Open **Account
 security** to manage passwords, passkeys, authenticator enrolment and sessions.
 Authentication starts fresh; there is no migration of Rails passwords, tokens,
-passkeys or authenticator enrolments. The Rails application under `rails/` is a
-separate reference and does not share Loco sessions.
+passkeys or authenticator enrolments. The archived Rails application is a separate reference and does not share Loco sessions.
 
 ## Choose your methods
 
