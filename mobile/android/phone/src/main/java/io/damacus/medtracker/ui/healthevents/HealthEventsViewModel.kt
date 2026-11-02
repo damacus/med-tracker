@@ -9,6 +9,9 @@ import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.data.model.HealthEventDto
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +24,10 @@ data class HealthEventsUiState(
     val events: List<HealthEventDto> = emptyList(),
     val errorMessage: String? = null,
     val actionSuccessMessage: String? = null
-)
+) {
+    fun forSession(session: AppSession): HealthEventsUiState =
+        if (sessionRevision == session.revision) this else HealthEventsUiState(sessionRevision = session.revision)
+}
 
 class HealthEventsViewModel(
     private val sessionManager: SessionManager,
@@ -30,10 +36,13 @@ class HealthEventsViewModel(
 
     private val _uiState = MutableStateFlow(HealthEventsUiState())
     val uiState: StateFlow<HealthEventsUiState> = _uiState.asStateFlow()
+    private var sessionWork: Job = SupervisorJob(viewModelScope.coroutineContext[Job])
     private val sessionObservation: AutoCloseable
 
     init {
         sessionObservation = sessionManager.observeSession { session ->
+            sessionWork.cancel()
+            sessionWork = SupervisorJob(viewModelScope.coroutineContext[Job])
             _uiState.value = HealthEventsUiState(sessionRevision = session.revision)
             loadHealthEvents(session)
         }
@@ -41,6 +50,7 @@ class HealthEventsViewModel(
 
     override fun onCleared() {
         sessionObservation.close()
+        sessionWork.cancel()
         super.onCleared()
     }
 
@@ -48,18 +58,20 @@ class HealthEventsViewModel(
         val householdId = session.household?.id ?: return
         val token = session.accessToken ?: return
 
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        val work = sessionWork
+        updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
 
-        viewModelScope.launch {
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
             when (val res = apiClient.getHealthEvents(session.serverUrl, token, householdId)) {
                 is ApiResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false, events = res.data) }
+                    updateForSession(session, work) { it.copy(isLoading = false, events = res.data) }
                 }
                 is ApiResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = res.message) }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = res.message) }
                 }
                 is ApiResult.NetworkError -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Network error loading health events") }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error loading health events") }
                 }
             }
         }
@@ -70,19 +82,30 @@ class HealthEventsViewModel(
         val householdId = session.household?.id ?: return
         val token = session.accessToken ?: return
 
-        viewModelScope.launch {
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
             when (val res = apiClient.createHealthEvent(session.serverUrl, token, householdId, personId, title, notes)) {
                 is ApiResult.Success -> {
-                    _uiState.update { it.copy(events = listOf(res.data) + it.events, actionSuccessMessage = "Logged health event") }
-                    onSuccess()
+                    updateForSession(session, work) { it.copy(events = listOf(res.data) + it.events, actionSuccessMessage = "Logged health event") }
+                    if (isCurrentSession(session, work)) onSuccess()
                 }
                 is ApiResult.Error -> {
-                    _uiState.update { it.copy(errorMessage = res.message) }
+                    updateForSession(session, work) { it.copy(errorMessage = res.message) }
                 }
                 is ApiResult.NetworkError -> {
-                    _uiState.update { it.copy(errorMessage = "Network error creating health event") }
+                    updateForSession(session, work) { it.copy(errorMessage = "Network error creating health event") }
                 }
             }
+        }
+    }
+
+    private fun isCurrentSession(session: AppSession, work: Job): Boolean =
+        work.isActive && sessionManager.sessionState.value.revision == session.revision
+
+    private fun updateForSession(session: AppSession, work: Job, update: (HealthEventsUiState) -> HealthEventsUiState) {
+        _uiState.update { current ->
+            if (isCurrentSession(session, work) && current.sessionRevision == session.revision) update(current) else current
         }
     }
 

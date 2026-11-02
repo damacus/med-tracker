@@ -1,5 +1,10 @@
 # Pre-0.5 database upgrade
 
+> [!NOTE]
+> This document describes the archived Rails application or deployment. Its
+> `task rails:*`, `bin/rails` and `bundle exec` commands no longer exist in this
+> repository; the Rails source lives in git history.
+
 MedTracker 0.5 adds PostgreSQL runtime roles and strict household row-level
 security. Existing databases created before 0.5 need a one-time database-admin
 bootstrap before the application migration runs.

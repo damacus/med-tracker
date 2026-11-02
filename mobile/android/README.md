@@ -80,7 +80,7 @@ task android:package:release
 
 `task android:release:validate` and the packaging command fail closed when a value is missing, empty, contains `invalid`, uses a non-HTTPS server or endpoint, or has a redirect scheme mismatch. Packaging also checks the produced dex files for the password-login request descriptor, generated operation, and `/auth/login` path.
 
-All variants use the same editable instance URL and Rodauth browser sign-in.
+All variants use the same editable instance URL and the application's browser sign-in.
 The phone discovers endpoints and public client configuration from the selected
 instance. The retained release packaging validation above still runs; its
 provider endpoint/client settings are no longer used by the sign-in journey.

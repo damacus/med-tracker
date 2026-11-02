@@ -80,24 +80,13 @@ test('navigation leaves standalone validation pages without a household drawer i
   assert.doesNotThrow(() => listeners['app-navigation']({ detail: { labels: {} } }));
 });
 
-test('login reuses the original Rails brand and benefit artwork', () => {
+test('login keeps the packaged brand and benefit artwork', () => {
   const sprite = readFileSync('assets/static/auth-icons.svg', 'utf8');
-  for (const file of [
-    'rails/app/components/auth/mt_logo.rb',
-    'rails/app/components/auth/benefit_icons/heart_check.rb',
-    'rails/app/components/auth/benefit_icons/schedule_calendar.rb',
-    'rails/app/components/auth/benefit_icons/progress_path_pin.rb',
-    'rails/app/components/auth/benefit_icons/insights_search.rb',
-  ]) {
-    const reference = readFileSync(file, 'utf8');
-    const paths = [...reference.matchAll(/\bd:\s*'([^']+)'/g)].map(match => match[1]);
-    const constant = reference.match(/(?:HEART_PATH|PATH) = ([\s\S]+?)\n\n/);
-    if (constant) paths.push([...constant[1].matchAll(/'([^']*)'/g)].map(match => match[1]).join(''));
-    assert.ok(paths.length > 0, `reference paths missing: ${file}`);
-    for (const path of paths) assert.ok(sprite.includes(`d="${path}"`), `original artwork changed: ${file}`);
-    for (const match of reference.matchAll(/(?:fill|stop_color): '(#[A-Fa-f0-9]{6})'/g)) {
-      assert.ok(sprite.includes(match[1]), `original artwork colour changed: ${file}`);
-    }
+  const symbols = [...sprite.matchAll(/<symbol id="([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(symbols, [...new Set(symbols)]);
+  assert.ok(symbols.length >= 5, 'expected logo and benefit icons in the auth sprite');
+  for (const match of sprite.matchAll(/<path d="([^"]+)"/g)) {
+    assert.ok(match[1].length > 10, 'auth sprite contains a truncated icon path');
   }
 });
 
@@ -180,14 +169,16 @@ test('daisyUI export preserves application border colour separately from thickne
   }
 });
 
-test('existing local fonts remain unchanged and carry their family licences', () => {
-  for (const family of readdirSync('rails/app/assets/fonts')) {
-    for (const name of readdirSync(`rails/app/assets/fonts/${family}`)) {
-      assert.deepEqual(readFileSync(`assets/static/fonts/${family}/${name}`), readFileSync(`rails/app/assets/fonts/${family}/${name}`));
-    }
+test('local font families ship woff2 assets and carry their licences', () => {
+  const families = readdirSync('assets/static/fonts', { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name);
+  assert.ok(families.length > 0);
+  for (const family of families) {
+    const files = readdirSync(`assets/static/fonts/${family}`);
+    assert.ok(files.some(name => name.endsWith('.woff2')), `font family has no woff2 assets: ${family}`);
     assert.match(readFileSync(`assets/static/fonts/${family}/OFL.txt`, 'utf8'), /SIL OPEN FONT LICENSE Version 1\.1/);
   }
-  assert.match(readFileSync('assets/static/fonts/geist/OFL.txt', 'utf8'), /SIL OPEN FONT LICENSE Version 1\.1/);
 });
 
 

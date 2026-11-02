@@ -204,5 +204,5 @@ Health events belong to a person and household. Join records can link relevant
 medications while keeping a name snapshot for historical display.
 
 Audit, API sync, authentication, notification, support-access, and retention
-tables are outside this core diagram. Refer to `db/schema.rb` and the relevant
+tables are outside this core diagram. Refer to `migration/` and the relevant
 domain guide when working in those areas.

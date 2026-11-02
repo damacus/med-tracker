@@ -11,10 +11,11 @@ instructions before broad exploration; if unavailable, state that and use direct
 repository tools. Use Context7 for current dependency/API details when available.
 
 Loco 1.2 is the root application (`src/`, `migration/`, `config/`, `assets/`).
-Views use Tera and DaisyUI; PostgreSQL is version 18. Rails under `rails/` is
-read-only reference, with its own guide. Rust is fresh: no Rails data import,
-credential migration, schema parity or reverse migration. Never reset or silently
-adopt an existing populated database. No production deployment is authorised.
+Views use Tera and DaisyUI; PostgreSQL is version 18. The Rails application and
+the earlier Axum port are archived in git history. Rust is fresh: no Rails data
+import, credential migration, schema parity or reverse migration. Never reset or
+silently adopt an existing populated database. No production deployment is
+authorised.
 
 Read [the accepted decisions](docs/design.md#accepted-rust-direction). Architecture
 acceptance is not proof of implemented behaviour. Preserve API/MCP contracts except

@@ -1,12 +1,12 @@
 # Technical Quick Start
 
-Run the root Rust/Loco application for local development. Rails under `rails/`
-is read-only reference. Read the [0.6 release notes](releases/0.6.md) before
-setting up a new installation.
+Run the root Rust/Loco application for local development. The Rails application
+is archived in git history and is no longer runnable from this checkout. Read
+the [0.6 release notes](releases/0.6.md) before setting up a new installation.
 
 There is no supported rollback from 0.6 to Rails. A full Rails export at the
 transition is an operator action, not an automatic import or a claim that an
-export has already happened. Any retained Rails site contains only its
+export has already happened. Any retained Rails deployment contains only its
 pre-cutover state. Preserve data written in 0.6 with a separate Rust-side export;
 returning to the old site would not carry those records back. These notes do
 not promise that Rails can import that export or provide a lossless switchback.
@@ -71,5 +71,4 @@ for isolated databases, focused filters and screenshots.
 
 Check the server output, database connection and installed tools first. Do not
 reset a populated database as a troubleshooting step. Create a separate empty
-development database when you need a fresh fixture environment. Rails commands
-do not start or repair the root Rust application.
+development database when you need a fresh fixture environment.

@@ -22,9 +22,6 @@ includes:
   frontend:
     taskfile: Taskfiles/frontend.yml
     dir: .
-  rails:
-    taskfile: rails/Taskfile.yml
-    dir: rails
   client-tools:
     taskfile: client-tools/Taskfile.yml
     dir: client-tools
@@ -44,10 +41,6 @@ includes:
   openspec:
     taskfile: Taskfiles/openspec.yml
     dir: .
-  agents:
-    taskfile: Taskfiles/agents.yml
-    dir: .
-    flatten: true
 
 tasks:
   portable:prepare:
@@ -56,9 +49,6 @@ tasks:
     cmds:
       - task: host:portable:prepare
         vars: {PAYLOAD: '{{.PAYLOAD}}', MANIFEST: '{{.MANIFEST}}', OUTPUT: '{{.OUTPUT}}'}
-  test:portable-rails-fixtures:
-    desc: Check synthetic portable fixtures against the read-only Rails serializers
-    cmds: [node --test scripts/test_portable_rails_fixture.mjs]
   whitespace:
     desc: Check staged, unstaged and untracked files without changing staging
     cmds:

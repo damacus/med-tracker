@@ -5,48 +5,32 @@ It covers the retained Rails serializer against fresh Rust, using synthetic
 records only. It is not a live-data migration procedure or proof of complete
 Rails database export.
 
-## Reproduce the evidence
+## Fixture provenance
 
-The fixtures live in `tests/fixtures/portable_rails/`. `generate.rb` loads the
-retained Rails exporter, record/event/outcome serializers, ETag and Encryptor
-without booting Rails, loading application models or connecting to a database.
-Its exporter subclass supplies an in-memory record graph and suppresses export
-audit writes. The production collection selection, record serializers and
-ActiveSupport JSON/encryption run unchanged.
+The fixtures live in `tests/fixtures/portable_rails/`. They were produced by a
+synthetic harness that loaded the retained Rails exporter, record/event/outcome
+serializers, ETag and Encryptor without booting Rails, loading application models
+or connecting to a database. Its exporter subclass supplied an in-memory record
+graph and suppressed export audit writes. The production collection selection,
+record serializers and ActiveSupport JSON/encryption ran unchanged.
 
-The harness creates an uninitialised configuration-only Rails application and
-loads the framework defaults selected in retained `rails/config/application.rb`.
-It applies the same message serializer and metadata settings as the Rails
+The harness created an uninitialised configuration-only Rails application and
+loaded the framework defaults selected in retained `rails/config/application.rb`.
+It applied the same message serializer and metadata settings as the Rails
 ActiveSupport initialisers. Standalone ActiveSupport defaults to Marshal;
-using that default would produce an incorrect fixture for this Rails application.
-See the [Rails configuration source](https://github.com/rails/rails/blob/v8.1.4/railties/lib/rails/application/configuration.rb)
+using that default would have produced an incorrect fixture for this Rails
+application. See the [Rails configuration source](https://github.com/rails/rails/blob/v8.1.4/railties/lib/rails/application/configuration.rb)
 and [ActiveSupport initialisers](https://github.com/rails/rails/blob/v8.1.4/activesupport/lib/active_support/railtie.rb).
 
-Use Ruby 3.2 or newer with the exact ActiveSupport and railties versions from
-`rails/Gemfile.lock` already available. The generator records the
-exact Ruby/ActiveSupport versions and SHA-256 of every loaded source in
-`provenance.json`. The dependency is for regenerating/checking reference fixtures,
-not a new Rust runtime or CI dependency. No gem installation is part of the task.
+The fixtures are frozen: the retained Rails tree is being archived and the
+generator is retired, so they are committed test data, not reproducible output. Their
+recorded provenance is Ruby 4.0.7 with ActiveSupport 8.1.4 under Rails 8.0
+framework defaults. The passphrase is the deliberately public synthetic test
+value `synthetic portable secret`. Never use it for actual records.
 
 ```fish
-# Set RUBY to an existing compatible executable if the system Ruby is older.
-env RUBY=/path/to/ruby rtk task test:portable-rails-fixtures
 rtk task test:integration TARGET=care_api FILTER=rails_serializer_
 ```
-
-To regenerate after reviewing a reference-source change, run
-`ruby tests/fixtures/portable_rails/generate.rb` with that same runtime.
-Encryption uses random salts/nonces. Regeneration retains valid unchanged envelopes;
-`--check` decrypts the committed envelope and compares its plaintext instead.
-The passphrase is the deliberately public synthetic test value
-`synthetic portable secret`. Never use it for actual records.
-
-The Rust acceptance module checks every recorded source hash during the existing
-API CI job, without requiring Ruby or Rails in CI. A source/configuration/lockfile
-change fails that check until the synthetic fixtures are reviewed and regenerated.
-The Docker build context explicitly allowlists those ten read-only inputs so
-the same check also runs through the container test tasks. The Ruby task above
-additionally reproduces the serializer output and decrypts the committed envelopes.
 
 | Fixture | Actual retained Rails path | Contents / expected Rust handling |
 |---|---|---|

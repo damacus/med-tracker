@@ -26,4 +26,4 @@ For maximum retention during incident review, set `MEDTRACKER_OTEL_TRACE_SAMPLE_
 
 For emergency volume reduction, set `MEDTRACKER_OTEL_TRACE_SAMPLE_RATE=0.0` and `MEDTRACKER_OTEL_CRITICAL_TRACE_MATCHERS=none`.
 
-After changing sampling settings, restart the Rails process and confirm exporter throughput in the collector before applying the same setting to all production instances.
+After changing sampling settings, restart the application process and confirm exporter throughput in the collector before applying the same setting to all production instances.

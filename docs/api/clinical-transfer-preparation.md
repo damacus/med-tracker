@@ -78,11 +78,10 @@ with conversion time. Replay uses the existing import rules.
 
 `prepared-history-v2` uses the retained Rails household serializer with all eleven
 collections and different current/historical stock labels. Its manifest and
-extracted-entry serialization use the actual pure HostedExport builders. Their
-hashes join the retained inputs checked in API CI. The acceptance case prepares
-that input and exercises declaration denial, dry-run, apply, replay and restored
-field/side-effect assertions. The unchanged v2 negative case still proves its
-historical-location rejection.
+extracted-entry serialization use the actual pure HostedExport builders. The
+acceptance case prepares that input and exercises declaration denial, dry-run,
+apply, replay and restored field/side-effect assertions. The unchanged v2
+negative case still proves its historical-location rejection.
 
 `prepared-taper-v2` uses the same retained serializer and archive builders with
 numeric taper amounts. Its preparation/decryption and API dry-run/apply/replay
@@ -97,7 +96,6 @@ attachments. Profile JSON/ZIP backup remains separate under
 variants, negative authority/conflict evidence and final care-sharing compatibility
 remain in [#2702](https://github.com/damacus/med-tracker/issues/2702).
 
-Reproduce serialization/manifests with
-`RUBY=/path/to/compatible/ruby rtk task test:portable-rails-fixtures`.
-Library tests cover validation/private no-clobber output; `prepared_rails_` covers
-the supported API transfer journey.
+The fixtures are frozen committed data; the generation harness was retired with
+the Rails archive. Library tests cover validation/private no-clobber output;
+`prepared_rails_` covers the supported API transfer journey.
