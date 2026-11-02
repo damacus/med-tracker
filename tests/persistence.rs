@@ -117,6 +117,7 @@ async fn fresh_database_is_created_by_loco_migrations() {
             .expect("Loco must build an empty database without a schema import");
         let ledger = ledger_rows(&db).await;
         assert!(!ledger.is_empty());
+        assert!(ledger.iter().any(|row| row.0 == "m20261102_000029_nhs_dmd_import_trace_id"));
         migration::Migrator::up(&db, None).await.unwrap();
         assert_eq!(ledger_rows(&db).await, ledger);
         db.close().await.unwrap();
