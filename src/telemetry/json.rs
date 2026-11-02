@@ -96,15 +96,24 @@ struct SpanFields {
 pub struct JsonLayer<W> {
     writer: W,
     resource: Resource,
+    diagnostics: std::sync::Arc<super::export::Diagnostics>,
 }
 
 /// Builds the JSON layer over `writer` (stdout in production, a shared buffer
 /// in tests).
-pub fn layer<W>(writer: W, resource: Resource) -> JsonLayer<W>
+pub fn layer<W>(
+    writer: W,
+    resource: Resource,
+    diagnostics: std::sync::Arc<super::export::Diagnostics>,
+) -> JsonLayer<W>
 where
     W: for<'writer> tracing_subscriber::fmt::MakeWriter<'writer> + Send + Sync + 'static,
 {
-    JsonLayer { writer, resource }
+    JsonLayer {
+        writer,
+        resource,
+        diagnostics,
+    }
 }
 
 fn severity_number(level: &tracing::Level) -> u8 {
@@ -174,6 +183,11 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+        if event.metadata().target().starts_with("opentelemetry") {
+            self.diagnostics.sdk_event(event.metadata().name());
+            self.diagnostics.suppress_one();
+            return;
+        }
         let mut visitor = FieldVisitor::default();
         event.record(&mut visitor);
 
@@ -346,7 +360,11 @@ mod tests {
     }
 
     fn emit(buffer: &Buffer, event: impl FnOnce()) {
-        let subscriber = registry().with(layer(buffer.clone(), resource()));
+        let subscriber = registry().with(layer(
+            buffer.clone(),
+            resource(),
+            super::super::export::Diagnostics::new(),
+        ));
         tracing::subscriber::with_default(subscriber, event);
     }
 
