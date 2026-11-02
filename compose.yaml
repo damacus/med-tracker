@@ -60,6 +60,25 @@ services:
       interval: 2s
       timeout: 2s
       retries: 30
+  victoriatraces:
+    image: victoriametrics/victoria-traces:v0.12.1@sha256:609abddf298c9642496045296f30a3968b5a4b79b678373e2e7ef29c844f5578
+    profiles: [telemetry]
+    ports:
+      - target: 10428
+        host_ip: 127.0.0.1
+      - target: 10429
+        host_ip: 127.0.0.1
+    command:
+      - -storageDataPath=/victoria-traces-data
+      - -retentionPeriod=7d
+    volumes:
+      - victoria-traces-data:/victoria-traces-data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10428/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
 volumes:
+  victoria-traces-data:
   scanner-data:
   scanner-logs:
