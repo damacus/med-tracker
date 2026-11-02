@@ -73,11 +73,6 @@ services:
       - -retentionPeriod=7d
     volumes:
       - victoria-traces-data:/victoria-traces-data
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10428/health"]
-      interval: 2s
-      timeout: 2s
-      retries: 30
 volumes:
   victoria-traces-data:
   scanner-data:
