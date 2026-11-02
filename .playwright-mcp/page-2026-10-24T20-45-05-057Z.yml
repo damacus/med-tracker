@@ -1,0 +1,27 @@
+- generic [active] [ref=f1e1]:
+  - link "Skip to content" [ref=f1e2] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - link "MedTracker home" [ref=f1e5] [cursor=pointer]:
+        - /url: /
+        - text: M MedTracker
+      - button "Appearance" [ref=f1e6] [cursor=pointer]
+      - link "Account security" [ref=f1e7] [cursor=pointer]:
+        - /url: /account/security
+  - main [ref=f1e8]:
+    - generic [ref=f1e9]:
+      - paragraph [ref=f1e10]: Care, kept together
+      - heading "MedTracker" [level=1] [ref=f1e11]
+      - navigation "Account" [ref=f1e12]:
+        - link "Security settings" [ref=f1e13] [cursor=pointer]:
+          - /url: /account/security
+      - generic [ref=f1e14]:
+        - heading "Choose a household" [level=2] [ref=f1e15]
+        - list [ref=f1e16]:
+          - listitem [ref=f1e17]:
+            - generic [ref=f1e18]:
+              - heading "Synthetic household" [level=3] [ref=f1e19]
+              - 'button "Open household: Synthetic household" [ref=f1e21] [cursor=pointer]': Open household
+  - contentinfo [ref=f1e22]:
+    - generic [ref=f1e23]: MedTracker · Care, kept together.

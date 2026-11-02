@@ -283,10 +283,10 @@ fun MedTrackerApp(
     val session by mainViewModel.sessionState.collectAsStateWithLifecycle()
     val mainUiState by mainViewModel.uiState.collectAsStateWithLifecycle()
     val collectedDashboardUiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
-    val medUiState by medicationViewModel.uiState.collectAsStateWithLifecycle()
-    val schedUiState by scheduleViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedMedUiState by medicationViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedSchedUiState by scheduleViewModel.uiState.collectAsStateWithLifecycle()
     val hhUiState by householdViewModel.uiState.collectAsStateWithLifecycle()
-    val healthUiState by healthEventsViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedHealthUiState by healthEventsViewModel.uiState.collectAsStateWithLifecycle()
     val lookupUiState by medicationLookupViewModel.uiState.collectAsStateWithLifecycle()
     val adminUiState by administrationViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -294,15 +294,18 @@ fun MedTrackerApp(
     val pendingMutations by offlineQueueRepository.pendingMutations.collectAsStateWithLifecycle()
 
     val dashboardUiState = collectedDashboardUiState.forSession(session)
+    val medUiState = collectedMedUiState.forSession(session)
+    val schedUiState = collectedSchedUiState.forSession(session)
+    val healthUiState = collectedHealthUiState.forSession(session)
     val sessionRevision = session.revision
     var currentDestination by remember(sessionRevision) { mutableStateOf(AppDestination.Dashboard) }
 
-    var showAddMedicationForm by remember { mutableStateOf(false) }
-    var selectedMedication by remember { mutableStateOf<MedicationDto?>(null) }
-    var showStockRemovalDialog by remember { mutableStateOf(false) }
-    var showAddScheduleForm by remember { mutableStateOf(false) }
-    var showInviteDialog by remember { mutableStateOf(false) }
-    var showHealthEventDialog by remember { mutableStateOf(false) }
+    var showAddMedicationForm by remember(sessionRevision) { mutableStateOf(false) }
+    var selectedMedication by remember(sessionRevision) { mutableStateOf<MedicationDto?>(null) }
+    var showStockRemovalDialog by remember(sessionRevision) { mutableStateOf(false) }
+    var showAddScheduleForm by remember(sessionRevision) { mutableStateOf(false) }
+    var showInviteDialog by remember(sessionRevision) { mutableStateOf(false) }
+    var showHealthEventDialog by remember(sessionRevision) { mutableStateOf(false) }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()

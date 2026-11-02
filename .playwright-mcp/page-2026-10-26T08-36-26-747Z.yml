@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "MedTracker home" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - text: M MedTracker
+      - button "Appearance" [ref=e6] [cursor=pointer]
+      - link "Account security" [ref=e7] [cursor=pointer]:
+        - /url: /account/security
+  - main [ref=e8]:
+    - generic [ref=e9]:
+      - paragraph [ref=e10]: Care, kept together
+      - heading "MedTracker" [level=1] [ref=e11]
+      - link "Sign in" [ref=e12] [cursor=pointer]:
+        - /url: /login
+      - generic [ref=e14]:
+        - heading "Your care, in one place" [level=2] [ref=e15]
+        - paragraph [ref=e16]: Keep people, medicines and their care together.
+  - contentinfo [ref=e17]:
+    - generic [ref=e18]: MedTracker · Care, kept together.
