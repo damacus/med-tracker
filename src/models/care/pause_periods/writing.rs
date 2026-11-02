@@ -21,18 +21,10 @@ pub async fn authorize_create(
     tenant: &TenantTransaction,
     attempt: PauseSourceAttempt,
 ) -> Result<PauseSource, OperationError> {
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_authorize_lock_start").await;
     lock(tenant).await?;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_authorize_source_start").await;
     let selector = attempt.into_result()?;
     let source = find_source(tenant, selector.kind.kind(), &selector.id, false).await?;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_authorize_access_start").await;
     access::require_person_access(tenant, source.person_id(), PersonAccess::Manage).await?;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_authorize_end").await;
     Ok(selector)
 }
 pub async fn authorize_source(
@@ -81,18 +73,10 @@ pub async fn create(
     input: &PauseCreate,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<PauseWritten, OperationError> {
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_create_lock_start").await;
     lock(tenant).await?;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_create_source_start").await;
     let source = find_source(tenant, input.source_kind.kind(), &input.source_id, false).await?;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_create_access_start").await;
     access::require_person_access(tenant, source.person_id(), PersonAccess::Manage).await?;
     let context = AuthContext { tenant, provenance };
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_create_persist_start").await;
     let (source, row) = persistence::pause_source(
         tenant.transaction(),
         &context,
@@ -102,11 +86,7 @@ pub async fn create(
         &tenant.scope().request_id,
     )
     .await?;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_create_projection_start").await;
     let (body, etag) = reading::project(tenant, &row, &source).await?;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(tenant, "pause_create_end").await;
     Ok(PauseWritten { row, body, etag })
 }
 pub async fn resume(

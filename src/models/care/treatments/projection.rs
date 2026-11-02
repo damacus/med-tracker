@@ -53,30 +53,21 @@ async fn source_context(
     }
     let person_ids: Vec<i64> = sources.iter().map(|source| source.person_id).collect();
     let medication_ids: Vec<i64> = sources.iter().map(|source| source.medication_id).collect();
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_subjects_start").await;
     let subjects =
         crate::models::access::person_queries::household_participants(context.scope().household_id)
             .filter(person::Column::Id.is_in(person_ids))
             .all(db)
-            .await;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_subjects_end").await;
-    let subjects = subjects.map_err(database_error)?;
+            .await
+            .map_err(database_error)?;
     let people = subjects
         .iter()
         .map(|person| (person.id, person.portable_id.clone()))
         .collect();
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_medications_start").await;
-    let source_medications = medication::Entity::find()
+    let source_medications: HashMap<i64, medication::Model> = medication::Entity::find()
         .in_tenant(context.scope().household_id)
         .filter(medication::Column::Id.is_in(medication_ids))
         .all(db)
-        .await;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_medications_end").await;
-    let source_medications: HashMap<i64, medication::Model> = source_medications
+        .await
         .map_err(database_error)?
         .into_iter()
         .map(|medication| (medication.id, medication))
@@ -92,17 +83,11 @@ async fn source_context(
         })
         .map(|subject| subject.id)
         .collect();
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_manageable_start").await;
-    let manageable_people = access::people_with_access(context, PersonAccess::Manage).await;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_manageable_end").await;
-    let manageable_people = manageable_people?
+    let manageable_people = access::people_with_access(context, PersonAccess::Manage)
+        .await?
         .into_iter()
         .map(|subject| subject.id)
         .collect();
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_stock_start").await;
     let eligible_stock = source_stock(
         db,
         context,
@@ -110,10 +95,7 @@ async fn source_context(
         &source_medications,
         &recordable_people,
     )
-    .await;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_stock_end").await;
-    let eligible_stock = eligible_stock?;
+    .await?;
     let medications = source_medications
         .into_iter()
         .map(|(id, medication)| (id, medication.portable_id))
@@ -123,17 +105,13 @@ async fn source_context(
         SourceKind::Schedule => pause_period::Column::ScheduleId,
         SourceKind::Assignment => pause_period::Column::PersonMedicationId,
     };
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_pauses_start").await;
     let pauses = pause_period::Entity::find()
         .in_tenant(context.scope().household_id)
         .filter(source_column.is_in(source_ids))
         .filter(pause_period::Column::EndedAt.is_null())
         .all(db)
-        .await;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_pauses_end").await;
-    let pauses = pauses.map_err(database_error)?;
+        .await
+        .map_err(database_error)?;
     let actor_ids: Vec<i64> = pauses
         .iter()
         .flat_map(|pause| {
@@ -144,8 +122,6 @@ async fn source_context(
         })
         .flatten()
         .collect();
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_actor_memberships_start").await;
     let actor_memberships = if actor_ids.is_empty() {
         Vec::new()
     } else {
@@ -156,14 +132,10 @@ async fn source_context(
             .await
             .map_err(database_error)?
     };
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_actor_memberships_end").await;
     let actor_person_ids: Vec<i64> = actor_memberships
         .iter()
         .map(|membership| membership.person_id)
         .collect();
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_actor_people_start").await;
     let actor_people: HashMap<i64, String> = if actor_person_ids.is_empty() {
         HashMap::new()
     } else {
@@ -176,8 +148,6 @@ async fn source_context(
             .map(|person| (person.id, person.name))
             .collect()
     };
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_actor_people_end").await;
     let actor_names: HashMap<i64, String> = actor_memberships
         .into_iter()
         .filter_map(|membership| {
@@ -269,15 +239,10 @@ pub(crate) async fn serialize_schedules(
         .filter(|row| row.execution_ended_at.is_none())
         .filter_map(|row| row.person_schedule_id.clone())
         .collect();
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_pause_starts_start").await;
-    let pause_starts = crate::models::entities::shared_schedule::Entity::find()
+    let pause_starts: HashMap<_, _> = crate::models::entities::shared_schedule::Entity::find()
         .filter(crate::models::entities::shared_schedule::Column::Id.is_in(canonical_ids))
         .all(db)
-        .await;
-    #[cfg(debug_assertions)]
-    access::diagnostic_phase(context, "projection_pause_starts_end").await;
-    let pause_starts: HashMap<_, _> = pause_starts?
+        .await?
         .into_iter()
         .map(|state| (state.id, state.pause_started_at))
         .collect();

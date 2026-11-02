@@ -154,35 +154,15 @@ pub async fn create(
     body: &Value,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
-    #[cfg(debug_assertions)]
-    let diagnostic_start = std::time::Instant::now();
-    #[cfg(debug_assertions)]
-    eprintln!("schedule diagnostic second authorization start");
-    let authorization = authorize_person(tenant, body).await;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic second authorization end {:?}",
-        diagnostic_start.elapsed()
-    );
-    authorization?;
+    authorize_person(tenant, body).await?;
     let attributes = input::attributes(body).map_err(failure)?;
     let input = input::parse_input(attributes)
         .map_err(failure)?
         .validated()?;
     let mut fields = ScheduleFields::new();
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic input validation start {:?}",
-        diagnostic_start.elapsed()
-    );
-    let applied =
-        command::apply_input(tenant.transaction(), tenant, &input, &mut fields, None).await;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic input validation end {:?}",
-        diagnostic_start.elapsed()
-    );
-    applied?.map_err(failure)?;
+    command::apply_input(tenant.transaction(), tenant, &input, &mut fields, None)
+        .await?
+        .map_err(failure)?;
     fields.validate().map_err(failure)?;
     create_fields(tenant, fields, provenance).await
 }
@@ -209,8 +189,6 @@ async fn create_fields(
     fields: ScheduleFields,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
-    #[cfg(debug_assertions)]
-    let diagnostic_start = std::time::Instant::now();
     let now = Utc::now().naive_utc();
     let mut active = schedule::ActiveModel {
         household_id: Set(tenant.scope().household_id),
@@ -222,37 +200,14 @@ async fn create_fields(
         ..Default::default()
     };
     fields.assign(&mut active);
-    #[cfg(debug_assertions)]
-    eprintln!("schedule diagnostic insert start");
-    let row = active.insert(tenant.transaction()).await;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic insert end {:?}",
-        diagnostic_start.elapsed()
-    );
-    let row = row?;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic actor lookup start {:?}",
-        diagnostic_start.elapsed()
-    );
+    let row = active.insert(tenant.transaction()).await?;
     let actor =
         crate::models::entities::account::Entity::find_by_id(tenant.scope().actor.account_id)
             .one(tenant.transaction())
-            .await;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic actor lookup end {:?}",
-        diagnostic_start.elapsed()
-    );
-    let actor = actor?.ok_or(OperationError::Unauthenticated)?;
+            .await?
+            .ok_or(OperationError::Unauthenticated)?;
     let zone = crate::models::identity::time_zone::preferred(&actor.preferences, tenant.settings())
         .map_err(|_| OperationError::Unavailable)?;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic save execution start {:?}",
-        diagnostic_start.elapsed()
-    );
     let row = super::person_schedules::save_execution(
         tenant,
         row,
@@ -260,37 +215,9 @@ async fn create_fields(
         super::doses::app_zone(tenant.settings()),
         provenance,
     )
-    .await;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic save execution end {:?}",
-        diagnostic_start.elapsed()
-    );
-    let row = row?;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic persist start {:?}",
-        diagnostic_start.elapsed()
-    );
-    let persisted = persist(tenant, &row, None, "create", provenance).await;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic persist end {:?}",
-        diagnostic_start.elapsed()
-    );
-    persisted?;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic projection start {:?}",
-        diagnostic_start.elapsed()
-    );
-    let result = lifecycle::project(tenant, row).await;
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "schedule diagnostic projection end {:?}",
-        diagnostic_start.elapsed()
-    );
-    result
+    .await?;
+    persist(tenant, &row, None, "create", provenance).await?;
+    lifecycle::project(tenant, row).await
 }
 pub(super) async fn persist(
     tenant: &TenantTransaction,

@@ -398,8 +398,8 @@ async fn second_native_token(app: &Application) -> Result<String, DbErr> {
 #[tokio::test]
 async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() -> Result<(), DbErr>
 {
-    let app = Application::diagnostic().await;
-    let result=app.sample_diagnostic(async {
+    let app = Application::new().await;
+    let result=async {
         let token=app.token().await;
         legacy_fixture(&app).await?;
         let (subject,id)=declaration(&app,&token).await?;
@@ -479,7 +479,7 @@ async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() 
         require(effects(&app).await?["people"]==before["people"],"Concurrent authority transition must not manufacture identities")?;
         authority(&app,&token,subject,false).await?;
         Ok(())
-    }).await;
+    }.await;
     let cleanup = app
         .fixture
         .admin
