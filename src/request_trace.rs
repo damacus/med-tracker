@@ -186,7 +186,6 @@ mod inbound_tests {
 mod exported_span_tests {
     use super::boundary;
     use axum::{Router, http::StatusCode, routing::get};
-    use opentelemetry::trace::TracerProvider;
     use opentelemetry_sdk::trace::{InMemorySpanExporter, Sampler, SdkTracerProvider};
     use tracing::instrument::WithSubscriber;
     use tracing_subscriber::{layer::SubscriberExt, registry};
@@ -199,7 +198,7 @@ mod exported_span_tests {
             .with_simple_exporter(exporter.clone())
             .with_sampler(Sampler::AlwaysOn)
             .build();
-        let otel = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
+        let otel = crate::telemetry::otel_layer(&provider, "test");
         let subscriber = registry().with(otel);
         let router = Router::new()
             .route(
@@ -240,6 +239,10 @@ mod exported_span_tests {
         assert_eq!(attribute("http.request.method").as_deref(), Some("GET"));
         assert_eq!(attribute("http.route").as_deref(), Some("/private"));
         assert!(attribute("http.response.status_code").is_some());
+        assert!(
+            attribute("medtracker.telemetry.dropped_keys").is_none(),
+            "ordinary request span must not produce dropped_keys"
+        );
         assert_eq!(attribute("error.type").as_deref(), Some("500"));
         assert!(matches!(
             span.status,
@@ -258,7 +261,7 @@ mod exported_span_tests {
             .with_simple_exporter(exporter.clone())
             .with_sampler(Sampler::AlwaysOn)
             .build();
-        let otel = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
+        let otel = crate::telemetry::otel_layer(&provider, "test");
         let subscriber = registry().with(otel);
         let router = Router::new()
             .route("/joined", get(|| async { StatusCode::OK }))
