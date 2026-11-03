@@ -48,23 +48,40 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
         Some(provider) => {
             let _ = TRACER_PROVIDER.set(provider.clone());
             let otel = otel_layer(&provider, "medtracker");
-            let _ = registry().with(json).with(otel).with(filter).try_init();
-            let host = settings.endpoint_host().unwrap_or_default();
-            tracing::info!(
-                event.name = "medtracker.telemetry.export",
-                server.address = %host,
-                "Telemetry export enabled"
-            );
+            match registry().with(json).with(otel).with(filter).try_init() {
+                Ok(()) => {
+                    let host = settings.endpoint_host().unwrap_or_default();
+                    tracing::info!(
+                        event.name = "medtracker.telemetry.export",
+                        server.address = %host,
+                        "Telemetry export enabled"
+                    );
+                }
+                Err(_) => {
+                    eprintln!(
+                        "MedTracker telemetry subscriber could not be installed; continuing without it"
+                    );
+                }
+            }
         }
-        None => {
-            let _ = registry().with(json).with(filter).try_init();
-            tracing::info!(
-                event.name = "medtracker.telemetry.export",
-                "Telemetry export disabled"
-            );
-        }
+        None => match registry().with(json).with(filter).try_init() {
+            Ok(()) => {
+                tracing::info!(
+                    event.name = "medtracker.telemetry.export",
+                    "Telemetry export disabled"
+                );
+            }
+            Err(_) => {
+                eprintln!(
+                    "MedTracker telemetry subscriber could not be installed; continuing without it"
+                );
+            }
+        },
     }
-    units::install_panic_hook();
+    units::install_panic_hook(!matches!(
+        ctx.environment,
+        loco_rs::environment::Environment::Production
+    ));
     true
 }
 
@@ -138,6 +155,20 @@ fn build_provider_inner(
         )
         .build();
     Some(provider)
+}
+
+/// Flushes the tracer provider without shutting it down, within a 2-second
+/// bound. Used by scheduled tasks running in a child process where
+/// `on_shutdown` is never called.
+pub async fn flush() {
+    let Some(provider) = TRACER_PROVIDER.get() else {
+        return;
+    };
+    let provider = provider.clone();
+    let _ = tokio::time::timeout(Duration::from_secs(2), async move {
+        let _ = tokio::task::spawn_blocking(move || provider.force_flush()).await;
+    })
+    .await;
 }
 
 /// Flushes and shuts down the tracer provider within a 2-second bound. Called

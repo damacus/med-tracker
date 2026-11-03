@@ -295,6 +295,21 @@ async fn cleanup(
     Ok(())
 }
 
+/// `ImportArgs` for a reconcile requeue: joins the original request trace via
+/// a fresh span-id stand-in when the run stored one, so the retry shows under
+/// the upload's trace without rewriting `trace_id`.
+fn requeue_args(row: &nhs_dmd_import::Model) -> ImportArgs {
+    requeue_args_for(row.id, row.trace_id.as_deref())
+}
+
+fn requeue_args_for(run_id: i64, trace_id: Option<&str>) -> ImportArgs {
+    ImportArgs {
+        run_id,
+        traceparent: trace_id
+            .map(|trace_id| format!("00-{trace_id}-{}-01", crate::telemetry::ids::new_span_id())),
+    }
+}
+
 pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
     let stale_marked = nhs_dmd_import::Entity::update_many()
         .col_expr(
@@ -358,15 +373,9 @@ pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
         .await?;
     let requeued = stale.len() as i64;
     for row in &stale {
-        ImportWorker::perform_later(
-            ctx,
-            ImportArgs {
-                run_id: row.id,
-                traceparent: None,
-            },
-        )
-        .await
-        .map_err(|_| OperationError::Unavailable)?;
+        ImportWorker::perform_later(ctx, requeue_args(row))
+            .await
+            .map_err(|_| OperationError::Unavailable)?;
     }
     tracing::info!(
         event.name = "medtracker.import.reconciled",
@@ -399,7 +408,7 @@ impl Task for ReconcileTask {
 
 #[cfg(test)]
 mod tests {
-    use super::ImportArgs;
+    use super::{ImportArgs, requeue_args_for};
 
     #[test]
     fn import_args_without_traceparent_deserialises() {
@@ -411,5 +420,18 @@ mod tests {
         )
         .expect("new payload");
         assert!(args.traceparent.is_some());
+    }
+
+    #[test]
+    fn requeue_args_join_the_stored_trace() {
+        let args = requeue_args_for(7, Some("0123456789abcdef0123456789abcdef"));
+        let traceparent = args.traceparent.expect("traceparent for stored trace");
+        assert_eq!(
+            traceparent.split('-').nth(1),
+            Some("0123456789abcdef0123456789abcdef")
+        );
+        assert_eq!(traceparent.split('-').count(), 4);
+        assert_eq!(args.run_id, 7);
+        assert!(requeue_args_for(7, None).traceparent.is_none());
     }
 }

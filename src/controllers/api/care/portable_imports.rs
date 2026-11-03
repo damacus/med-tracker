@@ -305,7 +305,6 @@ async fn handle(
             .await;
         }
     };
-    stage_ok("authorise");
     if !allowed {
         stage_fail("authorise", "forbidden", true);
         return finish(
@@ -317,6 +316,7 @@ async fn handle(
         )
         .await;
     }
+    stage_ok("authorise");
     let result =
         match care::portable_imports::preflight(tenant.transaction(), &tenant, &plan, &index).await
         {

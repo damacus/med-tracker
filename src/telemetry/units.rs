@@ -67,8 +67,11 @@ where
     let trace_id = super::ids::attach(&span, traceparent);
     let outbound = super::ids::outbound_traceparent(&span, &trace_id);
     use tracing::Instrument;
-    let result =
-        super::ids::hold(outbound, super::db::scope(future.instrument(span.clone()))).await;
+    let result = super::ids::hold(
+        outbound,
+        super::db::scope(&span, future.instrument(span.clone())),
+    )
+    .await;
     match &result {
         Ok(_) => {
             span.record("medtracker.outcome", "success");
@@ -115,8 +118,11 @@ where
     let trace_id = super::ids::attach(&span, None);
     let outbound = super::ids::outbound_traceparent(&span, &trace_id);
     use tracing::Instrument;
-    let result =
-        super::ids::hold(outbound, super::db::scope(future.instrument(span.clone()))).await;
+    let result = super::ids::hold(
+        outbound,
+        super::db::scope(&span, future.instrument(span.clone())),
+    )
+    .await;
     match &result {
         Ok(_) => {
             span.record("medtracker.outcome", "success");
@@ -129,11 +135,11 @@ where
                 parent: &span,
                 messaging.destination.name = name,
                 error.type = category,
-                "Background job failed"
+                "Scheduled task failed"
             );
         }
     }
-    super::shutdown().await;
+    super::flush().await;
     result
 }
 
@@ -163,28 +169,47 @@ pub fn storage_span(operation: &str) -> tracing::Span {
     )
 }
 
+/// Logs a fixed `Panic` error inside the current span. Never includes the
+/// payload; re-entry is guarded.
+fn safe_panic_event(info: &std::panic::PanicHookInfo<'_>) {
+    static IN_HOOK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if IN_HOOK.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let location = info.location();
+    tracing::error!(
+        error.type = "panic",
+        code.file.path = location.map(|location| location.file()),
+        code.line.number = location.map(|location| location.line()),
+        "Panic"
+    );
+    IN_HOOK.store(false, std::sync::atomic::Ordering::SeqCst);
+}
+
+type PanicHook = Box<dyn Fn(&std::panic::PanicHookInfo<'_>) + Sync + Send + 'static>;
+
+/// Builds the panic hook. When `chain_default` is true the previously
+/// registered hook runs after the safe event (used outside production so
+/// developers still see payload text); production never writes the payload
+/// because stderr also reaches Loki.
+fn panic_hook(previous: PanicHook, chain_default: bool) -> PanicHook {
+    Box::new(move |info| {
+        safe_panic_event(info);
+        if chain_default {
+            previous(info);
+        }
+    })
+}
+
 /// Replaces the default panic hook (which would write the payload to stderr)
-/// with one that logs a fixed `Panic` error inside the current span. Never
-/// includes the payload; re-entry is guarded.
-pub fn install_panic_hook() {
+/// with the safe event hook. Installed at most once per process.
+pub fn install_panic_hook(chain_default: bool) {
     static INSTALLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     if INSTALLED.swap(true, std::sync::atomic::Ordering::SeqCst) {
         return;
     }
-    static IN_HOOK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    std::panic::set_hook(Box::new(|info| {
-        if IN_HOOK.swap(true, std::sync::atomic::Ordering::SeqCst) {
-            return;
-        }
-        let location = info.location();
-        tracing::error!(
-            error.type = "panic",
-            code.file.path = location.map(|location| location.file()),
-            code.line.number = location.map(|location| location.line()),
-            "Panic"
-        );
-        IN_HOOK.store(false, std::sync::atomic::Ordering::SeqCst);
-    }));
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(panic_hook(previous, chain_default));
 }
 
 /// Records a response status on the client span; `error.type` is the status
@@ -224,7 +249,7 @@ mod tests {
     use tracing_subscriber::prelude::*;
 
     #[derive(Clone, Default)]
-    struct Capture(Arc<Mutex<Vec<String>>>);
+    pub(super) struct Capture(pub(super) Arc<Mutex<Vec<String>>>);
 
     impl<S: tracing::Subscriber> tracing_subscriber::Layer<S> for Capture {
         fn on_event(
@@ -254,7 +279,7 @@ mod tests {
         }
     }
 
-    fn test_otel() -> (
+    pub(super) fn test_otel() -> (
         opentelemetry_sdk::trace::InMemorySpanExporter,
         opentelemetry_sdk::trace::SdkTracerProvider,
         impl tracing_subscriber::Layer<tracing_subscriber::Registry>,
@@ -467,7 +492,7 @@ mod panic_tests {
 
     #[test]
     fn panic_hook_logs_one_error_inside_the_span_without_payload() {
-        install_panic_hook();
+        install_panic_hook(false);
         let capture = Capture::default();
         let subscriber = tracing_subscriber::registry().with(capture.clone());
         let handle = std::thread::spawn(move || {
@@ -488,5 +513,56 @@ mod panic_tests {
         assert!(error.contains("code.file.path"));
         assert!(error.contains("ctx=true"));
         assert!(!error.contains("Sentinel"));
+    }
+}
+
+#[cfg(test)]
+mod task_flush_tests {
+    use super::{task, tests::test_otel};
+    use tracing_subscriber::prelude::*;
+
+    #[tokio::test]
+    async fn task_failure_logs_scheduled_task_failed_message() {
+        let capture = super::tests::Capture::default();
+        let subscriber = tracing_subscriber::registry().with(capture.clone());
+        use tracing::instrument::WithSubscriber;
+        let result: Result<u8, loco_rs::Error> = task("stale-sweep", async {
+            Err(loco_rs::Error::string("ClinicalSentinelPayload"))
+        })
+        .with_subscriber(subscriber)
+        .await;
+        assert!(result.is_err());
+        let events = capture.0.lock().unwrap().clone();
+        let error = events
+            .iter()
+            .find(|event| event.starts_with("ERROR:"))
+            .expect("failure event");
+        assert!(error.contains("Scheduled task failed"), "{error}");
+        assert!(!error.contains("ClinicalSentinelPayload"));
+    }
+
+    #[tokio::test]
+    async fn task_wrapper_flushes_without_shutting_down_the_provider() {
+        let (exporter, provider, layer) = test_otel();
+        let _ = super::super::TRACER_PROVIDER.set(provider.clone());
+        let subscriber = tracing_subscriber::registry().with(layer);
+        use tracing::instrument::WithSubscriber;
+        async {
+            task("flush-check", async { Ok::<u8, loco_rs::Error>(1) })
+                .await
+                .unwrap();
+            tracing::info_span!("after-task").in_scope(|| ());
+        }
+        .with_subscriber(subscriber)
+        .await;
+        let flushed = provider.clone();
+        let _ = tokio::task::spawn_blocking(move || flushed.force_flush()).await;
+        let spans = exporter.get_finished_spans().expect("exported spans");
+        let names: Vec<_> = spans.iter().map(|span| span.name.to_string()).collect();
+        assert!(
+            names.iter().any(|name| name == "task flush-check"),
+            "{names:?}"
+        );
+        assert!(names.iter().any(|name| name == "after-task"), "{names:?}");
     }
 }
