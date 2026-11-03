@@ -490,8 +490,11 @@ mod panic_tests {
         }
     }
 
+    static HOOK_LOCK: Mutex<()> = Mutex::new(());
+
     #[test]
     fn panic_hook_logs_one_error_inside_the_span_without_payload() {
+        let _lock = HOOK_LOCK.lock().expect("hook lock");
         install_panic_hook(false);
         let capture = Capture::default();
         let subscriber = tracing_subscriber::registry().with(capture.clone());
@@ -513,6 +516,31 @@ mod panic_tests {
         assert!(error.contains("code.file.path"));
         assert!(error.contains("ctx=true"));
         assert!(!error.contains("Sentinel"));
+    }
+
+    #[test]
+    fn panic_hook_chains_the_previous_hook_only_when_enabled() {
+        let _lock = HOOK_LOCK.lock().expect("hook lock");
+        use std::sync::atomic::{AtomicBool, Ordering};
+        for chain_default in [true, false] {
+            let ran = Arc::new(AtomicBool::new(false));
+            let marker = ran.clone();
+            let previous: super::PanicHook = Box::new(move |_| {
+                marker.store(true, Ordering::SeqCst);
+            });
+            let hook = super::panic_hook(previous, chain_default);
+            let original = std::panic::take_hook();
+            std::panic::set_hook(hook);
+            let handle = std::thread::spawn(|| {
+                let _ = std::panic::catch_unwind(|| {
+                    std::panic::panic_any("chain test");
+                });
+            });
+            let _ = handle.join();
+            let _ = std::panic::take_hook();
+            std::panic::set_hook(original);
+            assert_eq!(ran.load(Ordering::SeqCst), chain_default, "{chain_default}");
+        }
     }
 }
 
