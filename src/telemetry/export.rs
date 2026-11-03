@@ -137,6 +137,7 @@ fn sanitize_span(mut span: SpanData) -> SpanData {
     let mut dropped = Vec::new();
     sanitize_attributes(&mut span.attributes, &mut dropped);
     for event in span.events.events.iter_mut() {
+        event.name = Cow::Owned(keys::safe_span_name(&event.name).to_owned());
         sanitize_attributes(&mut event.attributes, &mut dropped);
     }
     for link in span.links.links.iter_mut() {
@@ -199,10 +200,6 @@ impl Diagnostics {
         let Ok(mut state) = self.state.lock() else {
             return;
         };
-        if !state.failing {
-            // Internal errors before any observed export failure still open a
-            // failure window only via the exporter wrapper; count them here.
-        }
         if name.contains("SpansDropped") || name.contains("SpanDroppingStarted") {
             state.dropped_spans += 1;
         }
@@ -266,7 +263,7 @@ mod tests {
         }
     }
 
-    fn span(attributes: Vec<KeyValue>, status: Status) -> SpanData {
+    pub(super) fn span(attributes: Vec<KeyValue>, status: Status) -> SpanData {
         SpanData {
             span_context: SpanContext::new(
                 TraceId::from_hex("4bf92f3577b34da6a3ce929d0e0e4736").expect("trace"),
@@ -426,5 +423,28 @@ mod tests {
         ) -> impl std::future::Future<Output = OTelSdkResult> + Send {
             self.0.export(batch)
         }
+    }
+}
+
+#[cfg(test)]
+mod event_name_tests {
+    use super::{sanitize_span, tests::span};
+    use opentelemetry::trace::Event;
+    use opentelemetry_sdk::trace::SpanEvents;
+    use std::borrow::Cow;
+
+    #[test]
+    fn dynamic_span_event_names_are_replaced() {
+        let mut data = span(vec![], opentelemetry::trace::Status::Unset);
+        let mut events = SpanEvents::default();
+        events.events.push(Event::new(
+            Cow::Borrowed("/tmp/sentinel/archive.zip?token=abc"),
+            std::time::SystemTime::now(),
+            vec![],
+            0,
+        ));
+        data.events = events;
+        let data = sanitize_span(data);
+        assert_eq!(data.events.events[0].name, "medtracker.redacted");
     }
 }

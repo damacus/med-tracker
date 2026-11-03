@@ -128,3 +128,44 @@ async fn portable_import_success_logs_every_stage_as_successful() {
         );
     }
 }
+
+#[tokio::test]
+async fn portable_import_forbidden_logs_only_the_failed_authorise_stage() {
+    let (fixture, boot) = boot_request_fixture().await;
+    let token = fixture.token().await;
+    let (request, captured) = captured_router(&boot);
+    let person_id = format!("imported-person-{}", uuid::Uuid::new_v4().simple());
+    let location_id = format!("imported-location-{}", uuid::Uuid::new_v4().simple());
+    let payload = importable_payload(&person_id, &location_id);
+    let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
+    // Undeclared person: authorise must reject because no manage authority exists.
+    let response = request
+        .post(&format!(
+            "/api/v1/households/{}/portable_imports",
+            fixture.household.id
+        ))
+        .add_header("authorization", format!("Bearer {token}"))
+        .add_header("x-medtracker-portable-passphrase", PASSPHRASE)
+        .json(&json!({"bundle":bundle,"initial_guardian_declarations":[{"person_portable_id":person_id,"accepted":false}]}))
+        .await;
+    let status = response.status_code();
+    let stage_events = stage_events(&captured);
+    drop(request);
+    close_request(fixture, boot).await;
+
+    assert_eq!(status, 403, "{status}");
+    let authorise: Vec<_> = stage_events
+        .iter()
+        .filter(|event| event.contains("medtracker.import.stage=\"authorise\""))
+        .collect();
+    assert_eq!(authorise.len(), 1, "{authorise:?}");
+    assert!(authorise[0].contains("WARN"), "{authorise:?}");
+    assert!(
+        authorise[0].contains("medtracker.outcome=\"failure\""),
+        "{authorise:?}"
+    );
+    assert!(
+        authorise[0].contains("error.type=\"forbidden\""),
+        "{authorise:?}"
+    );
+}

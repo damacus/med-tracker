@@ -15,7 +15,10 @@ pub fn remote_parent(header: Option<&str>) -> Option<Context> {
     let value = header?.trim();
     let mut parts = value.split('-');
     let version = parts.next()?;
-    if version.len() != 2 || version == "ff" {
+    if version.len() != 2
+        || !version.bytes().all(|byte| byte.is_ascii_hexdigit())
+        || version == "ff"
+    {
         return None;
     }
     let trace = parts.next()?;
@@ -42,12 +45,7 @@ pub fn remote_parent(header: Option<&str>) -> Option<Context> {
 /// Extracts just the trace ID from a `traceparent` value, for log
 /// correlation when the SDK is disabled.
 pub fn trace_id_from(header: Option<&str>) -> Option<String> {
-    let value = header?;
-    let trace = value.split('-').nth(1)?;
-    (trace.len() == 32
-        && trace != "00000000000000000000000000000000"
-        && trace.chars().all(|c| c.is_ascii_hexdigit()))
-    .then(|| trace.to_ascii_lowercase())
+    remote_parent(header).map(|context| context.span().span_context().trace_id().to_string())
 }
 
 /// Generates a random 32-hex trace ID.
@@ -176,4 +174,41 @@ pub fn current_traceparent() -> Option<String> {
         };
         format!("00-{}-{}-{flags}", context.trace_id(), context.span_id())
     })
+}
+
+#[cfg(test)]
+mod strictness_tests {
+    use super::{attach, remote_parent, trace_id_from};
+
+    const MALFORMED: [&str; 3] = [
+        "zz-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+        "ff-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+        "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-extra",
+    ];
+
+    #[test]
+    fn malformed_headers_never_echo_their_trace_id() {
+        for value in MALFORMED {
+            assert!(remote_parent(Some(value)).is_none(), "{value}");
+            assert!(trace_id_from(Some(value)).is_none(), "{value}");
+        }
+    }
+
+    #[test]
+    fn attach_generates_fresh_ids_for_malformed_headers() {
+        for value in MALFORMED {
+            let span = tracing::info_span!(
+                "unit",
+                trace_id = tracing::field::Empty,
+                span_id = tracing::field::Empty
+            );
+            let trace = attach(&span, Some(value));
+            assert_ne!(trace, "4bf92f3577b34da6a3ce929d0e0e4736", "{value}");
+            assert_eq!(trace.len(), 32);
+            assert!(
+                trace.chars().all(|c| c.is_ascii_hexdigit()),
+                "{value} -> {trace}"
+            );
+        }
+    }
 }

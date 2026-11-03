@@ -44,7 +44,9 @@ pub async fn boundary(request: Request, next: Next) -> Response {
     let outbound = ids::outbound_traceparent(&span, &trace_id);
     let mut response = ids::hold(
         outbound,
-        crate::telemetry::db::scope(async { next.run(request).instrument(span.clone()).await }),
+        crate::telemetry::db::scope(&span, async {
+            next.run(request).instrument(span.clone()).await
+        }),
     )
     .await;
     let status = i64::from(response.status().as_u16());
@@ -169,6 +171,36 @@ mod inbound_tests {
         let value = header.to_str()?;
         assert_eq!(value.len(), 32);
         assert!(value.chars().all(|c| c.is_ascii_hexdigit()));
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn invalid_version_traceparent_gets_a_fresh_trace()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let router = Router::new()
+            .route("/fresh", get(|| async { StatusCode::OK }))
+            .layer(axum::middleware::from_fn(boundary));
+        let server = loco_rs::TestServer::builder()
+            .mock_transport()
+            .build(router)?;
+        for traceparent in [
+            "ff-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+            "zz-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-extra",
+        ] {
+            let response = server
+                .get("/fresh")
+                .add_header("traceparent", traceparent)
+                .await;
+            assert_eq!(response.status_code(), 200);
+            let value = response
+                .header("x-medtracker-trace-id")
+                .to_str()?
+                .to_owned();
+            assert_ne!(value, "4bf92f3577b34da6a3ce929d0e0e4736", "{traceparent}");
+            assert_eq!(value.len(), 32);
+            assert!(value.chars().all(|c| c.is_ascii_hexdigit()));
+        }
         Ok(())
     }
 }
