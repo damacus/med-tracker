@@ -15,11 +15,7 @@ jobs:
           POSTGRES_USER: medtracker
           POSTGRES_PASSWORD: medtracker_password
           POSTGRES_DB: medtracker_loco
-        options: >-
-          --health-cmd "pg_isready -U medtracker -d medtracker_loco"
-          --health-interval 2s
-          --health-timeout 2s
-          --health-retries 30
+        options: --no-healthcheck
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Install smoke tools

@@ -84,6 +84,7 @@ end
 test "$GITHUB_ACTIONS" = true; or exit 1
 string match -rq '^[0-9a-f]{64}$' "$PG_DIAGNOSTIC_CONTAINER"; or exit 1
 test (docker inspect --format '{{.Config.Image}}' "$PG_DIAGNOSTIC_CONTAINER") = postgres:18-alpine; or exit 1
+test (docker inspect --format '{{json .Config.Healthcheck.Test}}' "$PG_DIAGNOSTIC_CONTAINER") = '["NONE"]'; or exit 1
 set -g out "$RUNNER_TEMP/pg-pid-perf-smoke"
 mkdir -m 700 "$out"; or exit 1
 set -g raw "$out/private"
@@ -148,7 +149,6 @@ set -l cg (string replace -r '^0::' '' -- (cat "/proc/$postmaster/cgroup")); or 
 string match -q "*$service*" "$cg"; or exit 1
 set -g cgdir "/sys/fs/cgroup$cg"
 test -f "$cgdir/cgroup.procs"; or exit 1
-set -g exe (sudo stat -Lc '%d:%i' "/proc/$postmaster/exe"); or exit 1
 function pg_pids
     for p in (cat "$cgdir/cgroup.procs")
         set -l this_exe (sudo stat -Lc '%d:%i' "/proc/$p/exe" 2>/dev/null); or return 1
@@ -177,10 +177,13 @@ function process_snapshot
     printf '%s\n' $rows | sort -n
 end
 for i in (seq 1 60)
-    docker exec "$service" pg_isready -U medtracker -d postgres >/dev/null 2>&1; and break
+    docker exec "$service" pg_isready -h 127.0.0.1 -U medtracker -d postgres >/dev/null 2>&1; and break
     test "$i" -lt 60; or exit 1
     sleep 1
 end
+test (docker inspect --format '{{.State.Pid}}' "$service") = "$postmaster"; or exit 1
+set -g exe (sudo stat -Lc '%d:%i' "/proc/$postmaster/exe"); or exit 1
+test "$exe" = (sudo stat -Lc '%d:%i' "/proc/$postmaster/root/usr/local/bin/postgres"); or exit 1
 docker exec "$service" createdb -U medtracker perf_probe; or exit 1
 docker exec "$service" pgbench -U medtracker -i -s 1 perf_probe >"$raw/init.log" 2>&1; or exit 1
 set phase attach
