@@ -185,24 +185,10 @@ pub(crate) async fn refresh_one(
     tenant: &TenantTransaction,
     id: i64,
 ) -> Result<schedule::Model, OperationError> {
-    #[cfg(debug_assertions)]
-    let probe_start = std::time::Instant::now();
-    macro_rules! probe {
-        ($phase:literal) => {{
-            #[cfg(debug_assertions)]
-            eprintln!(
-                "timeout-probe refresh {} {:.3}",
-                $phase,
-                probe_start.elapsed().as_secs_f64() * 1000.0
-            );
-        }};
-    }
     // Every execution writer/projection takes household, safe state, then source.
     // Full current-state reads visit canonical UUIDs in order; writers refresh only
     // their selected source, without acquiring unrelated states after a lock wait.
-    probe!("household-start");
     super::super::sync::lock(tenant).await?;
-    probe!("household-end initial-start");
     let db = tenant.transaction();
     let initial = schedule::Entity::find_by_id(id)
         .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
@@ -210,7 +196,6 @@ pub(crate) async fn refresh_one(
         .one(db)
         .await?
         .ok_or(OperationError::NotFound)?;
-    probe!("initial-end");
     let Some(plan) = initial.person_schedule_id.as_ref() else {
         return schedule::Entity::find_by_id(id)
             .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
@@ -220,17 +205,14 @@ pub(crate) async fn refresh_one(
             .await?
             .ok_or(OperationError::NotFound);
     };
-    probe!("state-lock-start");
     shared_schedule::Entity::find_by_id(plan)
         .lock_exclusive()
         .one(db)
         .await?
         .ok_or(OperationError::NotFound)?;
-    probe!("state-lock-end link-start");
     let link = crate::models::entities::shared_execution::Entity::find_by_id(id)
         .one(db)
         .await?;
-    probe!("link-end approval-start");
     let approval_id = initial
         .sharing_approval_id
         .or(link.as_ref().and_then(|link| link.approval_id));
@@ -242,7 +224,6 @@ pub(crate) async fn refresh_one(
             .await?
             .ok_or(OperationError::Forbidden)?;
     }
-    probe!("approval-end source-lock-start");
     let row = schedule::Entity::find_by_id(id)
         .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
         .filter(schedule::Column::ExecutionEndedAt.is_null())
@@ -250,14 +231,11 @@ pub(crate) async fn refresh_one(
         .one(db)
         .await?
         .ok_or(OperationError::NotFound)?;
-    probe!("source-lock-end recheck-start");
     crate::models::access::recheck(tenant).await?;
-    probe!("recheck-end state-read-start");
     let state = shared_schedule::Entity::find_by_id(plan)
         .one(db)
         .await?
         .ok_or(OperationError::Forbidden)?;
-    probe!("state-read-end link-recheck-start");
     if row.person_schedule_id.as_ref() != Some(plan)
         || row.sharing_approval_id != initial.sharing_approval_id
         || crate::models::entities::shared_execution::Entity::find_by_id(id)
@@ -269,9 +247,7 @@ pub(crate) async fn refresh_one(
     {
         return Err(OperationError::Forbidden);
     }
-    probe!("link-recheck-end owned-pauses-start");
     super::pauses::project_owned(db, &row).await?;
-    probe!("owned-pauses-end");
     if row.clinical_revision == Some(state.clinical_revision) {
         return Ok(row);
     }

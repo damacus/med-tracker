@@ -23,10 +23,6 @@ fail-fast = false
 path = "junit.xml"
 store-failure-output = true
 
-[[profile.api.overrides]]
-filter = 'binary(=care_api) & (test(=approved_sharing::person_owned_schedule_receiving_self_edit_does_not_copy_private_canonical_audit) | test(=approved_sharing::person_owned_schedule_receiving_owned_pause_closes_after_elsewhere_resume_without_note_leak))'
-success-output = "immediate"
-
 [[profile.api.scripts]]
 filter = 'binary(=shared_api) | binary(=care_api) | binary(=care_doses) | binary(=care_medications) | binary(=identity_resource) | binary(=identity_compatibility) | binary(=tenant_access) | binary(=migration_roles) | binary(=oauth_server) | binary(=queue_runtime) | binary(=persistence) | binary(=requests)'
 setup = 'api-fixtures'

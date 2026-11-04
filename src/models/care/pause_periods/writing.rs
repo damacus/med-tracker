@@ -73,25 +73,9 @@ pub async fn create(
     input: &PauseCreate,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<PauseWritten, OperationError> {
-    #[cfg(debug_assertions)]
-    let probe_start = std::time::Instant::now();
-    macro_rules! probe {
-        ($phase:literal) => {{
-            #[cfg(debug_assertions)]
-            eprintln!(
-                "timeout-probe pause {} {:.3}",
-                $phase,
-                probe_start.elapsed().as_secs_f64() * 1000.0
-            );
-        }};
-    }
-    probe!("lock-start");
     lock(tenant).await?;
-    probe!("lock-end source-start");
     let source = find_source(tenant, input.source_kind.kind(), &input.source_id, false).await?;
-    probe!("source-end authority-start");
     access::require_person_access(tenant, source.person_id(), PersonAccess::Manage).await?;
-    probe!("authority-end persist-start");
     let context = AuthContext { tenant, provenance };
     let (source, row) = persistence::pause_source(
         tenant.transaction(),
@@ -102,9 +86,7 @@ pub async fn create(
         &tenant.scope().request_id,
     )
     .await?;
-    probe!("persist-end project-start");
     let (body, etag) = reading::project(tenant, &row, &source).await?;
-    probe!("project-end");
     Ok(PauseWritten { row, body, etag })
 }
 pub async fn resume(

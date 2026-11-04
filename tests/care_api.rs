@@ -181,31 +181,6 @@ struct Application {
     server: tokio::task::JoinHandle<()>,
 }
 
-fn diagnostic_runtime_uri(uri: &str) -> String {
-    if std::env::var("MEDTRACKER_PGSS_DIAGNOSTIC").as_deref() != Ok("1") {
-        return uri.to_owned();
-    }
-    use sha2::{Digest, Sha256};
-    let test = std::env::args()
-        .skip(1)
-        .find(|argument| !argument.starts_with('-'));
-    let test = test.expect("diagnostic capture requires an exact test name");
-    let fingerprint = hex::encode(Sha256::digest(test.as_bytes()))[..16].to_owned();
-    let tag = format!("mt_diag_{}_{fingerprint}", std::process::id());
-    let mut parsed = url::Url::parse(uri).expect("fixture runtime URI must be valid");
-    let options: Vec<_> = parsed
-        .query_pairs()
-        .filter(|(key, _)| key != "application_name")
-        .map(|(key, value)| (key.into_owned(), value.into_owned()))
-        .collect();
-    parsed.set_query(None);
-    parsed
-        .query_pairs_mut()
-        .extend_pairs(options)
-        .append_pair("application_name", &tag);
-    parsed.into()
-}
-
 impl Application {
     async fn assert_status(response: reqwest::Response, expected: u16) -> Value {
         let status = response.status().as_u16();
@@ -222,11 +197,11 @@ impl Application {
         assert!(!config.database.auto_migrate);
         assert!(!config.database.dangerously_recreate);
         assert!(!config.database.dangerously_truncate);
-        config.database.uri = diagnostic_runtime_uri(&self.fixture.runtime_uri);
+        config.database.uri = self.fixture.runtime_uri.clone();
         let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
             panic!("PostgreSQL queue required")
         };
-        queue.uri = diagnostic_runtime_uri(&self.fixture.runtime_uri);
+        queue.uri = self.fixture.runtime_uri.clone();
         config.settings.get_or_insert_with(|| json!({}))["avatar_storage"]["bucket"] =
             json!(bucket);
         let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
@@ -336,7 +311,7 @@ impl Application {
         assert!(!config.database.auto_migrate);
         assert!(!config.database.dangerously_recreate);
         assert!(!config.database.dangerously_truncate);
-        config.database.uri = diagnostic_runtime_uri(&fixture.runtime_uri);
+        config.database.uri = fixture.runtime_uri.clone();
         if let Some(acquire_timeout_ms) = acquire_timeout_ms {
             config.database.acquire_timeout = Some(acquire_timeout_ms);
         }
@@ -347,7 +322,7 @@ impl Application {
         let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
             panic!("PostgreSQL queue required")
         };
-        queue.uri = diagnostic_runtime_uri(&fixture.runtime_uri);
+        queue.uri = fixture.runtime_uri.clone();
         let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
             .await
             .unwrap();
