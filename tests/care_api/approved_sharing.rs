@@ -2466,6 +2466,215 @@ async fn dependent(app: &Application, token: &str) -> i64 {
     child["data"]["id"].as_i64().unwrap()
 }
 
+#[derive(sea_orm::DeriveIden)]
+enum FixtureGuardianDeclarations {
+    #[sea_orm(iden = "guardian_declarations")]
+    Table,
+    Id,
+    SubjectPersonId,
+    GuardianPersonId,
+    OriginHouseholdId,
+    DeclaredByAccountId,
+    SubjectNameAtDeclaration,
+}
+
+struct SeededOrigin {
+    child: i64,
+    source: schedules::Model,
+    plan: person_schedules::Model,
+    safe: shared_schedule_states::Model,
+    execution: med_tracker::models::_entities::shared_schedule_executions::Model,
+}
+
+async fn seed_origin(app: &Application, notes: Option<&str>) -> SeededOrigin {
+    use med_tracker::models::_entities::{carer_relationships, shared_schedule_executions};
+    use med_tracker::models::access::{Actor, HouseholdScope};
+
+    let now = chrono::Utc::now().naive_utc();
+    let mut child = app.fixture.minor.clone().into_active_model();
+    child.name = Set("Synthetic approved dependent".into());
+    child.date_of_birth = Set(Some("2020-01-01".parse().unwrap()));
+    let child = child.update(&app.fixture.admin).await.unwrap();
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &HouseholdScope {
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: uuid::Uuid::new_v4().to_string(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let db = tenant.transaction();
+    let declaration = Query::insert()
+        .into_table(FixtureGuardianDeclarations::Table)
+        .columns([
+            FixtureGuardianDeclarations::SubjectPersonId,
+            FixtureGuardianDeclarations::GuardianPersonId,
+            FixtureGuardianDeclarations::OriginHouseholdId,
+            FixtureGuardianDeclarations::DeclaredByAccountId,
+            FixtureGuardianDeclarations::SubjectNameAtDeclaration,
+        ])
+        .values_panic([
+            child.id.into(),
+            app.fixture.adult.id.into(),
+            app.fixture.household.id.into(),
+            app.fixture.account.id.into(),
+            child.name.clone().into(),
+        ])
+        .returning_col(FixtureGuardianDeclarations::Id)
+        .to_owned();
+    let declaration_id: i64 = db
+        .query_one_raw(db.get_database_backend().build(&declaration))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "id")
+        .unwrap();
+    carer_relationships::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        carer_id: Set(app.fixture.adult.id),
+        patient_id: Set(child.id),
+        guardian_declaration_id: Set(Some(declaration_id)),
+        relationship_type: Set(Some("family_member".into())),
+        active: Set(true),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .unwrap();
+    let stock = &app.fixture.medication;
+    let source = schedules::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(child.id),
+        medication_id: Set(stock.id),
+        active: Set(true),
+        start_date: Set(Some("2026-01-01".parse().unwrap())),
+        end_date: Set(Some("2027-01-01".parse().unwrap())),
+        dose_amount: Set(Some(Decimal::new(2, 0))),
+        dose_unit: Set(Some("tablet".into())),
+        schedule_type: Set(4),
+        schedule_config: Set(json!({})),
+        notes: Set(notes.map(str::to_owned)),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .unwrap();
+    let id = uuid::Uuid::new_v4().to_string();
+    let zone = app
+        .context
+        .config
+        .settings
+        .as_ref()
+        .and_then(|settings| settings.get("time_zone"))
+        .and_then(Value::as_str)
+        .unwrap_or("UTC");
+    let plan = person_schedules::ActiveModel {
+        id: Set(id.clone()),
+        person_id: Set(child.id),
+        origin_household_id: Set(source.household_id),
+        origin_schedule_id: Set(source.id),
+        origin_stock_id: Set(stock.id),
+        origin_stock_portable_id: Set(stock.portable_id.clone()),
+        medicine_name: Set(stock.name.clone()),
+        dmd_system: Set(stock.dmd_system.clone()),
+        dmd_concept_class: Set(stock.dmd_concept_class.clone()),
+        dmd_code: Set(stock.dmd_code.clone()),
+        stock_unit: Set(stock.dose_unit.clone()),
+        stock_dose_default: Set(stock
+            .dose_amount
+            .and_then(|amount| amount.to_string().parse().ok())),
+        stock_default_known: Set(true),
+        origin_time_zone: Set(zone.into()),
+        timezone_provenance: Set("captured_sharer_zone".into()),
+        clinical_revision: Set(1),
+        active: Set(true),
+        retired_at: Set(source.retired_at),
+        dose_amount: Set(source.dose_amount),
+        dose_unit: Set(source.dose_unit.clone()),
+        dose_cycle: Set(source.dose_cycle),
+        frequency: Set(source.frequency.clone()),
+        start_date: Set(source.start_date),
+        end_date: Set(source.end_date),
+        max_daily_doses: Set(source.max_daily_doses),
+        min_hours_between_doses: Set(source.min_hours_between_doses),
+        notes: Set(source.notes.clone()),
+        schedule_type: Set(source.schedule_type),
+        schedule_config: Set(source.schedule_config.clone()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .unwrap();
+    let safe = shared_schedule_states::ActiveModel {
+        id: Set(id.clone()),
+        person_id: Set(child.id),
+        medicine_name: Set(plan.medicine_name.clone()),
+        dmd_system: Set(plan.dmd_system.clone()),
+        dmd_concept_class: Set(plan.dmd_concept_class.clone()),
+        dmd_code: Set(plan.dmd_code.clone()),
+        stock_unit: Set(plan.stock_unit.clone()),
+        stock_dose_default: Set(plan.stock_dose_default),
+        stock_default_known: Set(plan.stock_default_known),
+        origin_time_zone: Set(plan.origin_time_zone.clone()),
+        clinical_revision: Set(1),
+        active: Set(true),
+        retired_at: Set(plan.retired_at),
+        dose_amount: Set(plan.dose_amount),
+        dose_unit: Set(plan.dose_unit.clone()),
+        dose_cycle: Set(plan.dose_cycle),
+        frequency: Set(plan.frequency.clone()),
+        start_date: Set(plan.start_date),
+        end_date: Set(plan.end_date),
+        max_daily_doses: Set(plan.max_daily_doses),
+        min_hours_between_doses: Set(plan.min_hours_between_doses),
+        schedule_type: Set(plan.schedule_type),
+        schedule_config: Set(plan.schedule_config.clone()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .unwrap();
+    let mut linked = source.into_active_model();
+    linked.person_schedule_id = Set(Some(id.clone()));
+    linked.canonical_origin = Set(true);
+    linked.clinical_revision = Set(Some(1));
+    linked.origin_time_zone = Set(Some(zone.into()));
+    let source = linked.update(db).await.unwrap();
+    let execution = shared_schedule_executions::ActiveModel {
+        schedule_id: Set(source.id),
+        portable_id: Set(source.portable_id.clone()),
+        household_id: Set(source.household_id),
+        person_id: Set(child.id),
+        person_schedule_id: Set(id),
+        approval_id: Set(None),
+    }
+    .insert(db)
+    .await
+    .unwrap();
+    tenant.commit().await.unwrap();
+    SeededOrigin {
+        child: child.id,
+        source,
+        plan,
+        safe,
+        execution,
+    }
+}
+
 #[tokio::test]
 async fn guardian_authority_remains_live_on_reused_connection_after_withdrawal() {
     use med_tracker::models::access::{Actor, HouseholdScope};
@@ -2942,30 +3151,10 @@ async fn canonical_execution_rejects_current_and_ended_prior_approvals() {
     use med_tracker::models::access::{Actor, HouseholdScope};
 
     let app = Application::new().await;
-    let token = app.token().await;
-    let child = dependent(&app, &token).await;
-    let response = app
-        .client
-        .post(format!(
-            "{}/api/v1/households/{}/schedules",
-            app.origin, app.fixture.household.id
-        ))
-        .bearer_auth(token)
-        .json(&json!({"schedule": {
-            "person_id": child.to_string(), "medication_id": app.fixture.medication.id.to_string(),
-            "dose_amount": "2", "dose_unit": "tablet", "start_date": "2026-01-01",
-            "end_date": "2027-01-01", "schedule_type": "prn", "schedule_config": {}
-        }}))
-        .send()
-        .await
-        .unwrap();
-    let created = Application::assert_status(response, 201).await;
-    let id = created["data"]["id"].as_i64().unwrap();
-    let execution = shared_schedule_executions::Entity::find_by_id(id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
+    let seeded = seed_origin(&app, None).await;
+    let child = seeded.child;
+    let execution = seeded.execution;
+    let id = execution.schedule_id;
     shared_schedule_executions::Entity::delete_by_id(id)
         .exec(&app.fixture.admin)
         .await
@@ -4512,21 +4701,9 @@ async fn current_declaration(app: &Application, subject: i64) -> Option<i64> {
 
 async fn guardian_origin(app: &Application) -> GuardianOrigin {
     let token = app.token().await;
-    let child = dependent(app, &token).await;
-    let created = Application::assert_status(app.client.post(format!(
-        "{}/api/v1/households/{}/schedules", app.origin, app.fixture.household.id))
-        .bearer_auth(&token).json(&json!({"schedule": {
-            "person_id": child.to_string(), "medication_id": app.fixture.medication.id.to_string(),
-            "dose_amount": "2", "dose_unit": "tablet", "start_date": "2026-01-01",
-            "end_date": "2027-01-01", "schedule_type": "prn", "schedule_config": {},
-            "notes": "Synthetic protected canonical narrative"
-        }})).send().await.unwrap(), 201).await;
-    let template_id = created["data"]["person_schedule_id"].as_str().unwrap();
-    let template = person_schedules::Entity::find_by_id(template_id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
+    let seeded = seed_origin(app, Some("Synthetic protected canonical narrative")).await;
+    let child = seeded.child;
+    let template = seeded.plan;
     let origin = app.fixture.foreign_household().await;
     let mut manager = origin.membership.clone().into_active_model();
     manager.role = Set("owner".into());
@@ -4570,13 +4747,7 @@ async fn guardian_origin(app: &Application) -> GuardianOrigin {
     stock.dmd_code = Set(Some("123456".into()));
     stock.dose_unit = Set(Some("tablet".into()));
     let stock = stock.insert(&app.fixture.admin).await.unwrap();
-    let mut source = schedules::Entity::find_by_id(created["data"]["id"].as_i64().unwrap())
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap()
-        .into_active_model()
-        .reset_all();
+    let mut source = seeded.source.into_active_model().reset_all();
     source.id = sea_orm::NotSet;
     source.household_id = Set(origin.household.id);
     source.medication_id = Set(stock.id);
@@ -4610,13 +4781,7 @@ async fn guardian_origin(app: &Application) -> GuardianOrigin {
     )
     .await
     .unwrap();
-    let mut safe = shared_schedule_states::Entity::find_by_id(template_id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap()
-        .into_active_model()
-        .reset_all();
+    let mut safe = seeded.safe.into_active_model().reset_all();
     safe.id = Set(id.clone());
     safe.dmd_system = Set(stock.dmd_system.clone());
     safe.dmd_concept_class = Set(stock.dmd_concept_class.clone());
