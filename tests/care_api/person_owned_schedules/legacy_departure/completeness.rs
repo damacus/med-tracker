@@ -121,6 +121,14 @@ async fn wait_blocked_by(app: &Application, pid: i32, relation: &str) -> i32 {
                 .columns(["pid", "query"])
                 .from(("pg_catalog", "pg_stat_activity"))
                 .and_where(Expr::col("datname").eq(Func::cust("current_database")))
+                .and_where(Expr::col("state").eq("active"))
+                .and_where(Expr::col("wait_event_type").eq("Lock"))
+                .and_where(
+                    Expr::expr(
+                        Func::cust("strpos").args([Expr::col("query"), Expr::val(relation)]),
+                    )
+                    .gt(0),
+                )
                 .and_where(Expr::val(pid).in_subquery(blockers))
                 .limit(1)
                 .to_owned();

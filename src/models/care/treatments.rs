@@ -144,10 +144,26 @@ async fn authorize_person_id_after_lock(
     let row = find_person(tenant.transaction(), tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !person_access(tenant.transaction(), tenant, row.id, false).await? {
-        return Err(OperationError::NotFound);
+    match access::recheck(tenant).await {
+        Ok(()) => {}
+        Err(OperationError::Forbidden | OperationError::NotFound) => {
+            return Err(OperationError::NotFound);
+        }
+        Err(error) => return Err(error),
     }
-    access::require_person_access(tenant, row.id, PersonAccess::Manage).await
+    match access::can_access_loaded_person(tenant, &row, PersonAccess::View).await {
+        Ok(true) => {}
+        Ok(false) | Err(OperationError::Forbidden | OperationError::NotFound) => {
+            return Err(OperationError::NotFound);
+        }
+        Err(error) => return Err(error),
+    }
+    access::recheck(tenant).await?;
+    if access::can_access_loaded_person(tenant, &row, PersonAccess::Manage).await? {
+        Ok(())
+    } else {
+        Err(OperationError::Forbidden)
+    }
 }
 pub async fn create(
     tenant: &TenantTransaction,

@@ -65,6 +65,17 @@ impl Epoch {
     }
 }
 
+pub(super) fn schedule_source_ids(metadata: &Value) -> Result<Vec<i64>, OperationError> {
+    let epoch = serde_json::from_value::<Epoch>(metadata.clone())
+        .map_err(|_| OperationError::Unavailable)?;
+    Ok(epoch
+        .sources
+        .into_iter()
+        .filter(|source| source.kind == SourceKind::Schedule)
+        .map(|source| source.id)
+        .collect())
+}
+
 pub(super) async fn capture(
     tenant: &TenantTransaction,
     subject: i64,

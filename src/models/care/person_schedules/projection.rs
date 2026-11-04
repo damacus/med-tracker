@@ -1,6 +1,51 @@
 use super::*;
-use crate::models::entities::{api_change_event, shared_schedule, sharing_approval};
+use crate::models::entities::{
+    api_change_event, pause_period, shared_pause_closure, shared_schedule, sharing_approval,
+};
 use sea_orm::{ConnectionTrait, QueryOrder, TryIntoModel};
+
+pub(crate) struct ReadProjection {
+    pub(crate) schedule: schedule::Model,
+    state: Option<shared_schedule::Model>,
+    persisted_revision: Option<i64>,
+    pause_closures: Vec<String>,
+}
+
+impl ReadProjection {
+    pub(crate) fn ineligible(&self) -> bool {
+        !self.schedule.active
+            || self.schedule.retired_at.is_some()
+            || self.schedule.execution_ended_at.is_some()
+            || self.state.as_ref().is_some_and(|state| {
+                !state.active
+                    || state.retired_at.is_some()
+                    || state.pause_started_at.is_some()
+                    || state.pause_instance_id.is_some()
+            })
+    }
+
+    pub(crate) fn refresh_signature(&self) -> Option<RefreshSignature> {
+        let state = self.state.as_ref()?;
+        let revision_stale = self.persisted_revision != Some(state.clinical_revision);
+        if !revision_stale && self.pause_closures.is_empty() {
+            return None;
+        }
+        Some(RefreshSignature {
+            schedule_id: self.schedule.id,
+            persisted_revision: self.persisted_revision,
+            current_revision: state.clinical_revision,
+            pause_closures: self.pause_closures.clone(),
+        })
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RefreshSignature {
+    schedule_id: i64,
+    persisted_revision: Option<i64>,
+    current_revision: i64,
+    pause_closures: Vec<String>,
+}
 
 pub(crate) async fn publish(
     db: &impl ConnectionTrait,
@@ -127,6 +172,27 @@ pub(super) async fn refresh_for(
     Ok(())
 }
 
+pub(crate) async fn refresh_sources(
+    tenant: &TenantTransaction,
+    schedule_ids: &[i64],
+) -> Result<(), OperationError> {
+    if schedule_ids.is_empty() {
+        return Ok(());
+    }
+    let rows = schedule::Entity::find()
+        .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(schedule::Column::Id.is_in(schedule_ids.to_vec()))
+        .filter(schedule::Column::PersonScheduleId.is_not_null())
+        .filter(schedule::Column::ExecutionEndedAt.is_null())
+        .order_by_asc(schedule::Column::PersonScheduleId)
+        .all(tenant.transaction())
+        .await?;
+    for row in rows {
+        refresh_one(tenant, row.id).await?;
+    }
+    Ok(())
+}
+
 /// Read-side projection for paths that must not take the write locks
 /// `refresh_one` holds (household sync lock, shared state and source row
 /// FOR UPDATE). It applies the same canonical merge in memory — no
@@ -138,9 +204,50 @@ pub(crate) async fn refresh_read(
     tenant: &TenantTransaction,
     initial: schedule::Model,
 ) -> Result<schedule::Model, OperationError> {
+    Ok(merge_read(tenant, initial).await?.schedule)
+}
+
+pub(crate) async fn inspect_read(
+    tenant: &TenantTransaction,
+    initial: schedule::Model,
+) -> Result<ReadProjection, OperationError> {
+    let mut projection = merge_read(tenant, initial).await?;
+    let Some(plan) = projection.schedule.person_schedule_id.as_ref() else {
+        return Ok(projection);
+    };
+    let periods = pause_period::Entity::find()
+        .filter(pause_period::Column::ScheduleId.eq(projection.schedule.id))
+        .filter(pause_period::Column::CanonicalPersonScheduleId.eq(plan))
+        .filter(pause_period::Column::EndedAt.is_null())
+        .order_by_asc(pause_period::Column::PortableId)
+        .all(tenant.transaction())
+        .await?;
+    for period in periods {
+        if shared_pause_closure::Entity::find_by_id(&period.portable_id)
+            .filter(shared_pause_closure::Column::PersonScheduleId.eq(plan))
+            .one(tenant.transaction())
+            .await?
+            .is_some()
+        {
+            projection.pause_closures.push(period.portable_id);
+        }
+    }
+    Ok(projection)
+}
+
+async fn merge_read(
+    tenant: &TenantTransaction,
+    initial: schedule::Model,
+) -> Result<ReadProjection, OperationError> {
     let db = tenant.transaction();
+    let persisted_revision = initial.clinical_revision;
     let Some(plan) = initial.person_schedule_id.as_ref() else {
-        return Ok(initial);
+        return Ok(ReadProjection {
+            schedule: initial,
+            state: None,
+            persisted_revision,
+            pause_closures: Vec::new(),
+        });
     };
     let state = shared_schedule::Entity::find_by_id(plan)
         .one(db)
@@ -178,7 +285,12 @@ pub(crate) async fn refresh_read(
     if merged.retired_at.is_some() || merged.execution_ended_at.is_some() {
         return Err(OperationError::NotFound);
     }
-    Ok(merged)
+    Ok(ReadProjection {
+        schedule: merged,
+        state: Some(state),
+        persisted_revision,
+        pause_closures: Vec::new(),
+    })
 }
 
 pub(crate) async fn refresh_one(

@@ -49,6 +49,82 @@ struct PendingSharedReminder {
     approval: i64,
 }
 
+async fn assert_invalid_after_claim(
+    app: Application,
+    pending: PendingSharedReminder,
+    notification_event_id: i64,
+    sent: usize,
+) {
+    use med_tracker::models::_entities::{notification_deliveries, notification_events};
+    let after = notification_deliveries::Entity::find_by_id(pending.delivery)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let calls = pending.transport.0.lock().unwrap().clone();
+    let unchanged = notification_events::Entity::find_by_id(notification_event_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    app.close().await;
+    assert_eq!(unchanged.metadata["sharing_approval_id"], pending.approval);
+    assert_eq!(
+        sent, 0,
+        "After-claim live authority/content deadline must be rechecked before transport"
+    );
+    assert_eq!(calls.len(), 1);
+    assert_eq!(after.status, "invalid");
+}
+
+async fn assert_clinical_revision_after_claim(
+    app: Application,
+    pending: PendingSharedReminder,
+    sent: usize,
+) {
+    use med_tracker::models::_entities::notification_deliveries;
+    let after = notification_deliveries::Entity::find_by_id(pending.delivery)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let calls = pending.transport.0.lock().unwrap().clone();
+    let source = schedules::Entity::find_by_id(pending.care.source_b)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let projections = versions::Entity::find()
+        .filter(versions::Column::HouseholdId.eq(pending.scope.household_id))
+        .filter(versions::Column::ItemType.eq("SharedScheduleProjection"))
+        .filter(versions::Column::ItemId.eq(pending.care.source_b))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(sent, 1);
+    assert_eq!(calls.len(), 2);
+    assert_eq!(source.clinical_revision, Some(2));
+    assert_eq!(source.dose_amount, Some(Decimal::new(3, 0)));
+    assert_eq!(projections.len(), 1);
+    assert_eq!(
+        projections[0].audit_context["actor_account_id"],
+        pending.scope.actor.account_id
+    );
+    assert!(
+        !serde_json::to_string(&projections)
+            .unwrap()
+            .contains("Synthetic private origin clinical note")
+    );
+    assert!(
+        calls[1]["body"]
+            .as_str()
+            .unwrap()
+            .contains("Synthetic afterclaim local label")
+    );
+    assert_eq!(after.status, "accepted");
+}
+
 #[derive(Clone, Copy)]
 enum ReminderRecipient {
     Subject,
@@ -267,7 +343,9 @@ enum AfterClaimChange {
 }
 
 async fn sharing_after_claim_change(change: AfterClaimChange) {
-    use med_tracker::models::_entities::{accounts, notification_deliveries, notification_events};
+    use med_tracker::models::_entities::{
+        accounts, notification_deliveries, notification_events, push_subscriptions,
+    };
     let app = Application::new().await;
     let pending = pending_shared_reminder_for(&app, ReminderRecipient::ReceivingStaff).await;
     assert_ne!(pending.scope.actor.account_id, app.fixture.account.id);
@@ -300,6 +378,104 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
         .exec(&app.fixture.admin)
         .await
         .unwrap();
+    if matches!(
+        change,
+        AfterClaimChange::Pause | AfterClaimChange::ClinicalRevision
+    ) {
+        let subscription_id = original.subscription_id.unwrap();
+        let blocker = app.fixture.admin.begin().await.unwrap();
+        push_subscriptions::Entity::find_by_id(subscription_id)
+            .lock_exclusive()
+            .one(&blocker)
+            .await
+            .unwrap()
+            .unwrap();
+        let blocker_pid = owned_backend(&blocker).await;
+        let context = app.context.clone();
+        let scope = pending.scope.clone();
+        let delivery_id = pending.delivery;
+        let sender = tokio::spawn(async move {
+            med_tracker::models::care::browser_push::reminders::drain_candidates(
+                &context,
+                &scope,
+                chrono::Utc::now(),
+                &[delivery_id],
+            )
+            .await
+        });
+        wait_for_owned_blocker(&app, blocker_pid).await;
+        let claimed = notification_deliveries::Entity::find_by_id(pending.delivery)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            claimed.status, "sending",
+            "Mutation must occur after actual claim commit"
+        );
+        assert_eq!(
+            pending.transport.0.lock().unwrap().len(),
+            1,
+            "The new provider call has not started"
+        );
+        match change {
+            AfterClaimChange::Pause => {
+                Application::assert_status(
+                    super::person_owned_schedules::personal_change(
+                        &app,
+                        &pending.care.token_a,
+                        &json!({
+                            "id": pending.care.plan,
+                            "etag": format!("\"person-schedule:{}:1\"", pending.care.plan)
+                        }),
+                        json!({"action": "pause"}),
+                    )
+                    .await,
+                    200,
+                )
+                .await;
+            }
+            AfterClaimChange::ClinicalRevision => {
+                Application::assert_status(
+                    super::person_owned_schedules::personal_change(
+                        &app,
+                        &pending.care.token_a,
+                        &json!({
+                            "id": pending.care.plan,
+                            "etag": format!("\"person-schedule:{}:1\"", pending.care.plan)
+                        }),
+                        json!({"schedule":{"dose_amount":"3"}}),
+                    )
+                    .await,
+                    200,
+                )
+                .await;
+                medications::Entity::update_many()
+                    .col_expr(
+                        medications::Column::FriendlyName,
+                        Expr::val("Synthetic afterclaim local label"),
+                    )
+                    .filter(medications::Column::Id.eq(pending.care.stock_b.id))
+                    .exec(&app.fixture.admin)
+                    .await
+                    .unwrap();
+            }
+            _ => unreachable!("Only pause and clinical revision use this barrier"),
+        }
+        blocker.commit().await.unwrap();
+        let sent = sender.await.unwrap().unwrap();
+        match change {
+            AfterClaimChange::Pause => {
+                assert_invalid_after_claim(app, pending, original.notification_event_id, sent)
+                    .await;
+            }
+            AfterClaimChange::ClinicalRevision => {
+                assert_clinical_revision_after_claim(app, pending, sent).await;
+            }
+            _ => unreachable!("Only pause and clinical revision use this barrier"),
+        }
+        return;
+    }
     let blocker = app.fixture.admin.begin().await.unwrap();
     shared_schedule_states::Entity::find_by_id(&pending.care.plan)
         .lock_exclusive()
@@ -362,9 +538,8 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
         "The new provider call has not started"
     );
     match change {
-        AfterClaimChange::Pause => {
-            Application::assert_status(super::person_owned_schedules::personal_change(&app,&pending.care.token_a,
-                &json!({"id":pending.care.plan,"etag":format!("\"person-schedule:{}:1\"",pending.care.plan)}),json!({"action":"pause"})).await,200).await;
+        AfterClaimChange::Pause | AfterClaimChange::ClinicalRevision => {
+            unreachable!("Pause and clinical revision use the subscription barrier")
         }
         AfterClaimChange::Withdraw => {
             assert_eq!(
@@ -388,19 +563,6 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
             if let Ok(remaining) = remaining.to_std() {
                 tokio::time::sleep(remaining).await;
             }
-        }
-        AfterClaimChange::ClinicalRevision => {
-            Application::assert_status(super::person_owned_schedules::personal_change(&app,&pending.care.token_a,
-                &json!({"id":pending.care.plan,"etag":format!("\"person-schedule:{}:1\"",pending.care.plan)}),json!({"schedule":{"dose_amount":"3"}})).await,200).await;
-            medications::Entity::update_many()
-                .col_expr(
-                    medications::Column::FriendlyName,
-                    Expr::val("Synthetic afterclaim local label"),
-                )
-                .filter(medications::Column::Id.eq(pending.care.stock_b.id))
-                .exec(&app.fixture.admin)
-                .await
-                .unwrap();
         }
         AfterClaimChange::FreshConsent => {
             assert_eq!(
@@ -442,61 +604,7 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
     release.notify_one();
     guard_job.await.unwrap();
     let sent = sender.await.unwrap().unwrap();
-    let after = notification_deliveries::Entity::find_by_id(pending.delivery)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    let calls = pending.transport.0.lock().unwrap().clone();
-    let source = schedules::Entity::find_by_id(pending.care.source_b)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    let unchanged = notification_events::Entity::find_by_id(original.notification_event_id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    let projections = versions::Entity::find()
-        .filter(versions::Column::HouseholdId.eq(pending.scope.household_id))
-        .filter(versions::Column::ItemType.eq("SharedScheduleProjection"))
-        .filter(versions::Column::ItemId.eq(pending.care.source_b))
-        .all(&app.fixture.admin)
-        .await
-        .unwrap();
-    app.close().await;
-    if matches!(change, AfterClaimChange::ClinicalRevision) {
-        assert_eq!(sent, 1);
-        assert_eq!(calls.len(), 2);
-        assert!(
-            calls[1]["body"]
-                .as_str()
-                .unwrap()
-                .contains("Synthetic afterclaim local label")
-        );
-        assert_eq!(source.clinical_revision, Some(2));
-        assert_eq!(source.dose_amount, Some(Decimal::new(3, 0)));
-        assert_eq!(projections.len(), 1);
-        assert_eq!(
-            projections[0].audit_context["actor_account_id"],
-            pending.scope.actor.account_id
-        );
-        assert!(
-            !serde_json::to_string(&projections)
-                .unwrap()
-                .contains("Synthetic private origin clinical note")
-        );
-        assert_eq!(after.status, "accepted");
-        return;
-    }
-    assert_eq!(unchanged.metadata["sharing_approval_id"], pending.approval);
-    assert_eq!(
-        sent, 0,
-        "After-claim live authority/content deadline must be rechecked before transport"
-    );
-    assert_eq!(calls.len(), 1);
-    assert_eq!(after.status, "invalid");
+    assert_invalid_after_claim(app, pending, original.notification_event_id, sent).await;
 }
 
 #[tokio::test]
@@ -1426,6 +1534,7 @@ async fn person_owned_schedule_clinical_update_waits_for_safe_state_before_sourc
             .patch(endpoint)
             .bearer_auth(token)
             .json(&json!({"schedule":{"dose_amount":"3"}}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -2358,6 +2467,609 @@ async fn dependent(app: &Application, token: &str) -> i64 {
 }
 
 #[tokio::test]
+async fn guardian_authority_remains_live_on_reused_connection_after_withdrawal() {
+    use med_tracker::models::access::{Actor, HouseholdScope};
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database};
+
+    async fn caller_state(tx: &sea_orm::DatabaseTransaction) -> (i32, String, String, String) {
+        let query = Query::select()
+            .expr_as(Func::cust("pg_backend_pid"), "pid")
+            .expr_as(
+                Func::cust("current_setting").arg("plan_cache_mode"),
+                "plan_cache",
+            )
+            .expr_as(
+                Func::cust("current_setting").arg("join_collapse_limit"),
+                "join_collapse",
+            )
+            .expr_as(
+                Func::cust("current_setting")
+                    .arg("med_tracker.sharing_subject_id")
+                    .arg(true),
+                "subject",
+            )
+            .to_owned();
+        let row = tx
+            .query_one_raw(tx.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .unwrap();
+        (
+            row.try_get("", "pid").unwrap(),
+            row.try_get("", "plan_cache").unwrap(),
+            row.try_get("", "join_collapse").unwrap(),
+            row.try_get::<Option<String>>("", "subject")
+                .unwrap()
+                .unwrap_or_default(),
+        )
+    }
+
+    async fn guardian(tx: &sea_orm::DatabaseTransaction, subject: i64) -> Option<i64> {
+        let query = Query::select()
+            .expr_as(
+                Func::cust("med_tracker.sharing_guardian").arg(subject),
+                "guardian",
+            )
+            .to_owned();
+        tx.query_one_raw(tx.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get("", "guardian")
+            .unwrap()
+    }
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let subject = dependent(&app, &token).await;
+    let foreign = app.fixture.foreign_household().await;
+    let scope_a = HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let scope_b = HouseholdScope {
+        actor: Actor {
+            account_id: foreign.account.id,
+        },
+        household_id: foreign.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let mut options = ConnectOptions::new(app.fixture.runtime_uri.clone());
+    options.min_connections(1).max_connections(1);
+    let pool = Database::connect(options).await.unwrap();
+    let mut backend = None;
+    let mut declaration = None;
+    for (scope, authorised) in [(&scope_a, true), (&scope_b, false), (&scope_a, true)] {
+        let tenant =
+            med_tracker::models::access::begin(&pool, scope, app.context.config.settings.as_ref())
+                .await
+                .unwrap();
+        let tx = tenant.transaction();
+        let marker = Query::select()
+            .expr(
+                Func::cust("set_config")
+                    .arg("med_tracker.sharing_subject_id")
+                    .arg("0")
+                    .arg(true),
+            )
+            .to_owned();
+        tx.query_one_raw(tx.get_database_backend().build(&marker))
+            .await
+            .unwrap();
+        let before = caller_state(tx).await;
+        if let Some(pid) = backend {
+            assert_eq!(before.0, pid);
+        } else {
+            backend = Some(before.0);
+        }
+        assert_eq!(before.3, "0");
+        let result = guardian(tx, subject).await;
+        if authorised {
+            let id = result.expect("current guardian must be authorised");
+            if let Some(expected) = declaration {
+                assert_eq!(id, expected);
+            } else {
+                declaration = Some(id);
+            }
+            assert_eq!(guardian(tx, subject).await, Some(id));
+        } else {
+            assert_eq!(result, None);
+        }
+        assert_eq!(caller_state(tx).await, before);
+        tenant.rollback().await.unwrap();
+    }
+    let response = app
+        .client
+        .patch(format!(
+            "{}/api/v1/auth/guardian-declarations/{}",
+            app.origin,
+            declaration.unwrap()
+        ))
+        .bearer_auth(token)
+        .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+        .send()
+        .await
+        .unwrap();
+    let body = Application::assert_status(response, 200).await;
+    assert!(body["data"]["withdrawn_at"].as_str().is_some());
+    let tenant =
+        med_tracker::models::access::begin(&pool, &scope_a, app.context.config.settings.as_ref())
+            .await
+            .unwrap();
+    let tx = tenant.transaction();
+    let marker = Query::select()
+        .expr(
+            Func::cust("set_config")
+                .arg("med_tracker.sharing_subject_id")
+                .arg("0")
+                .arg(true),
+        )
+        .to_owned();
+    tx.query_one_raw(tx.get_database_backend().build(&marker))
+        .await
+        .unwrap();
+    let before = caller_state(tx).await;
+    assert_eq!(Some(before.0), backend);
+    assert_eq!(before.3, "0");
+    assert_eq!(guardian(tx, subject).await, None);
+    assert_eq!(caller_state(tx).await, before);
+    tenant.rollback().await.unwrap();
+    pool.close().await.unwrap();
+    app.close().await;
+}
+
+#[tokio::test]
+async fn shared_schedule_visibility_accepts_direct_and_linked_current_approvals() {
+    use med_tracker::models::_entities::shared_schedule_executions;
+    use med_tracker::models::access::{Actor, HouseholdScope};
+
+    let app = Application::new().await;
+    let care = shared(&app, None, None, false).await;
+    let direct = schedules::Entity::find_by_id(care.source_b)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let direct_link = shared_schedule_executions::Entity::find_by_id(direct.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let approval_id = direct.sharing_approval_id.unwrap();
+    assert!(!direct.canonical_origin);
+    assert_eq!(direct_link.approval_id, Some(approval_id));
+    let scope = HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: care.invitation.target_household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        schedules::Entity::find_by_id(direct.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    tenant.rollback().await.unwrap();
+    shared_schedule_executions::Entity::delete_by_id(direct.id)
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        schedules::Entity::find_by_id(direct.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_some(),
+        "a current direct approval remains visible without a link"
+    );
+    tenant.rollback().await.unwrap();
+
+    let other_invitation = super::invitations::seed_acceptance(&app).await;
+    let accepted = app
+        .client
+        .post(format!("{}/api/v1/invitations/accept", app.origin))
+        .bearer_auth(&other_invitation.bearer)
+        .json(&json!({"token":other_invitation.token,"sharing_consent":true}))
+        .send()
+        .await
+        .unwrap();
+    Application::assert_status(accepted, 200).await;
+    let other_approval = person_household_approvals::Entity::find()
+        .filter(person_household_approvals::Column::InvitationId.eq(other_invitation.invitation.id))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_ne!(
+        other_approval.household_id,
+        care.invitation.target_household.id
+    );
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let mut malformed = direct.clone().into_active_model().reset_all();
+    malformed.id = sea_orm::NotSet;
+    malformed.portable_id = Set(uuid::Uuid::new_v4().to_string());
+    malformed.person_schedule_id = Set(None);
+    malformed.sharing_approval_id = Set(Some(other_approval.id));
+    malformed.canonical_origin = Set(false);
+    let malformed = malformed.insert(tenant.transaction()).await.unwrap();
+    assert!(
+        schedules::Entity::find_by_id(malformed.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_some(),
+        "a visible current direct approval remains sufficient even when it refers to another household"
+    );
+    let mut ended = other_approval.into_active_model();
+    ended.ended_at = Set(Some(chrono::Utc::now().naive_utc()));
+    ended.update(tenant.transaction()).await.unwrap();
+    assert!(
+        schedules::Entity::find_by_id(malformed.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_none(),
+        "an ended direct approval must not grant visibility"
+    );
+    tenant.rollback().await.unwrap();
+
+    let stranger = Application::new().await;
+    let stranger_invitation = super::invitations::seed_acceptance(&stranger).await;
+    let accepted = stranger
+        .client
+        .post(format!("{}/api/v1/invitations/accept", stranger.origin))
+        .bearer_auth(&stranger_invitation.bearer)
+        .json(&json!({"token":stranger_invitation.token,"sharing_consent":true}))
+        .send()
+        .await
+        .unwrap();
+    Application::assert_status(accepted, 200).await;
+    let invisible = person_household_approvals::Entity::find()
+        .filter(
+            person_household_approvals::Column::InvitationId.eq(stranger_invitation.invitation.id),
+        )
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        person_household_approvals::Entity::find_by_id(invisible.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let mut denied = direct.clone().into_active_model().reset_all();
+    denied.id = sea_orm::NotSet;
+    denied.portable_id = Set(uuid::Uuid::new_v4().to_string());
+    denied.person_schedule_id = Set(None);
+    denied.sharing_approval_id = Set(Some(invisible.id));
+    denied.canonical_origin = Set(false);
+    assert!(
+        denied.insert(tenant.transaction()).await.is_err(),
+        "an invisible direct approval must not grant a write"
+    );
+    tenant.rollback().await.unwrap();
+    stranger.close().await;
+
+    let foreign = app.fixture.foreign_household().await;
+    let foreign_scope = HouseholdScope {
+        actor: Actor {
+            account_id: foreign.account.id,
+        },
+        household_id: foreign.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let foreign_tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &foreign_scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        schedules::Entity::find_by_id(direct.id)
+            .one(foreign_tenant.transaction())
+            .await
+            .unwrap()
+            .is_none(),
+        "an unrelated household must not see shared sources"
+    );
+    foreign_tenant.rollback().await.unwrap();
+
+    let link_app = Application::new().await;
+    let origin = existing_origin(&link_app).await;
+    let approval = consent_existing_origin(&link_app, &origin).await;
+    let source = schedules::Entity::find_by_id(origin.source_id)
+        .one(&link_app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let link = shared_schedule_executions::Entity::find_by_id(source.id)
+        .one(&link_app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(source.sharing_approval_id.is_none());
+    assert!(source.person_schedule_id.is_some());
+    assert!(source.execution_ended_at.is_none());
+    assert!(approval.ended_at.is_none());
+    assert_eq!(link.approval_id, Some(approval.id));
+    let link_scope = HouseholdScope {
+        actor: Actor {
+            account_id: origin.invitation.inviter_account.id,
+        },
+        household_id: origin.invitation.target_household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = med_tracker::models::access::begin(
+        &link_app.fixture.runtime,
+        &link_scope,
+        link_app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let eligibility = Query::select()
+        .expr_as(
+            Func::cust("med_tracker.sharing_current_member").arg(Expr::val(source.person_id)),
+            "member",
+        )
+        .expr_as(
+            Func::cust("med_tracker.sharing_clinical_authority").arg(Expr::val(source.person_id)),
+            "clinical",
+        )
+        .expr_as(
+            Func::cust("med_tracker.sharing_origin_execution").args([
+                Expr::val(source.id),
+                Expr::val(source.person_schedule_id.clone()),
+                Expr::val(source.person_id),
+                Expr::val(source.household_id),
+                Expr::val(source.canonical_origin),
+            ]),
+            "origin",
+        )
+        .expr_as(
+            Func::cust("current_setting").args([
+                Expr::val("med_tracker.sharing_withdrawal_approval_id"),
+                Expr::val(true),
+            ]),
+            "withdrawal",
+        )
+        .to_owned();
+    let eligibility = tenant
+        .transaction()
+        .query_one_raw(
+            tenant
+                .transaction()
+                .get_database_backend()
+                .build(&eligibility),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(eligibility.try_get::<bool>("", "member").unwrap());
+    assert!(!eligibility.try_get::<bool>("", "clinical").unwrap());
+    assert!(!eligibility.try_get::<bool>("", "origin").unwrap());
+    assert!(
+        eligibility
+            .try_get::<Option<String>>("", "withdrawal")
+            .unwrap()
+            .as_deref()
+            .unwrap_or("")
+            .is_empty()
+    );
+    assert!(
+        schedules::Entity::find_by_id(source.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_some(),
+        "a current linked approval grants visibility without a direct approval"
+    );
+    let mut ended = approval.into_active_model();
+    ended.ended_at = Set(Some(chrono::Utc::now().naive_utc()));
+    ended.update(tenant.transaction()).await.unwrap();
+    assert!(
+        schedules::Entity::find_by_id(source.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_none(),
+        "an ended linked approval must not grant visibility"
+    );
+    tenant.rollback().await.unwrap();
+
+    shared_schedule_executions::Entity::delete_by_id(source.id)
+        .exec(&link_app.fixture.admin)
+        .await
+        .unwrap();
+    let tenant = med_tracker::models::access::begin(
+        &link_app.fixture.runtime,
+        &link_scope,
+        link_app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        schedules::Entity::find_by_id(source.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_none(),
+        "a null direct approval with no link must not grant visibility"
+    );
+    tenant.rollback().await.unwrap();
+    link_app.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn canonical_execution_rejects_current_and_ended_prior_approvals() {
+    use med_tracker::models::_entities::shared_schedule_executions;
+    use med_tracker::models::access::{Actor, HouseholdScope};
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let child = dependent(&app, &token).await;
+    let response = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/{}/schedules",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(token)
+        .json(&json!({"schedule": {
+            "person_id": child.to_string(), "medication_id": app.fixture.medication.id.to_string(),
+            "dose_amount": "2", "dose_unit": "tablet", "start_date": "2026-01-01",
+            "end_date": "2027-01-01", "schedule_type": "prn", "schedule_config": {}
+        }}))
+        .send()
+        .await
+        .unwrap();
+    let created = Application::assert_status(response, 201).await;
+    let id = created["data"]["id"].as_i64().unwrap();
+    let execution = shared_schedule_executions::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    shared_schedule_executions::Entity::delete_by_id(id)
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let scope = HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    execution
+        .clone()
+        .into_active_model()
+        .reset_all()
+        .insert(tenant.transaction())
+        .await
+        .unwrap();
+    tenant.rollback().await.unwrap();
+
+    let now = chrono::Utc::now().naive_utc();
+    let invitation = household_invitations::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        email: Set(app.fixture.account.email.clone()),
+        membership_role: Set("member".into()),
+        token_digest: Set(uuid::Uuid::new_v4().to_string()),
+        invited_by_membership_id: Set(app.fixture.membership.id),
+        dependent_sharing: Set(true),
+        expires_at: Set(now + chrono::Duration::days(1)),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let declaration = current_declaration(&app, child).await.unwrap();
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let approval = person_household_approvals::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(child),
+        invitation_id: Set(invitation.id),
+        approved_by_account_id: Set(app.fixture.account.id),
+        approved_by_person_id: Set(app.fixture.adult.id),
+        guardian_declaration_id: Set(Some(declaration)),
+        statement_version: Set(1),
+        approved_at: Set(now),
+        ..Default::default()
+    }
+    .insert(tenant.transaction())
+    .await
+    .unwrap();
+    tenant.commit().await.unwrap();
+    for status in ["current", "ended"] {
+        if status == "ended" {
+            let tenant = med_tracker::models::access::begin(
+                &app.fixture.runtime,
+                &scope,
+                app.context.config.settings.as_ref(),
+            )
+            .await
+            .unwrap();
+            let mut ended = approval.clone().into_active_model();
+            ended.ended_at = Set(Some(now));
+            ended.update(tenant.transaction()).await.unwrap();
+            tenant.commit().await.unwrap();
+        }
+        let tenant = med_tracker::models::access::begin(
+            &app.fixture.runtime,
+            &scope,
+            app.context.config.settings.as_ref(),
+        )
+        .await
+        .unwrap();
+        let result = execution
+            .clone()
+            .into_active_model()
+            .reset_all()
+            .insert(tenant.transaction())
+            .await;
+        let error = result.unwrap_err().to_string();
+        assert!(
+            error.contains("row-level security policy"),
+            "{status} prior approval must deny canonical execution: {error}"
+        );
+        tenant.rollback().await.unwrap();
+    }
+    app.close().await;
+}
+
+#[tokio::test]
 async fn person_owned_schedule_guardian_outside_destination_approves_without_joining() {
     let app = Application::new().await;
     let token = app.token().await;
@@ -2472,6 +3184,7 @@ async fn person_owned_schedule_guardian_replay_rechecks_declaration_after_destin
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&body)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -2821,11 +3534,15 @@ async fn origin_attachment_wait_change(change: OriginWaitChange) {
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&json!({"token":token,"sharing_consent":true}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
     });
     wait_for_owned_blocker(&app, holder).await;
+    if matches!(change, OriginWaitChange::RevokeCredential) {
+        tokio::time::sleep(std::time::Duration::from_secs(6)).await;
+    }
     match change {
         OriginWaitChange::RevokeCredential => {
             let affected =
@@ -3662,6 +4379,7 @@ async fn person_owned_schedule_acceptance_rechecks_api_session_after_invitation_
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&body)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -4048,6 +4766,7 @@ async fn person_owned_schedule_origin_attachment_preserves_database_failure_with
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&json!({"token":token,"subject_person_id":subject,"sharing_consent":true}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -4203,6 +4922,7 @@ async fn person_owned_schedule_origin_attachment_rechecks_guardian_eligibility_a
             .post(endpoint)
             .bearer_auth(bearer)
             .json(&json!({"token":token,"subject_person_id":subject,"sharing_consent":true}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -5445,6 +6165,7 @@ async fn person_owned_schedule_shared_command_rechecks_captured_guardian_after_s
             .bearer_auth(token)
             .header("if-match", etag)
             .json(&json!({"schedule":{"dose_amount":"3"}}))
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .unwrap()
@@ -5670,5 +6391,86 @@ async fn person_owned_schedule_shared_command_documents_account_session_error_en
         "#/components/schemas/ErrorEnvelope",
         "the documented 500 must carry the shared error envelope"
     );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn current_member_rechecks_reused_backend_after_approval_withdrawal() {
+    use med_tracker::models::access::{Actor, HouseholdScope};
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection};
+
+    async fn check(
+        pool: &DatabaseConnection,
+        app: &Application,
+        scope: &HouseholdScope,
+        expected: bool,
+    ) -> i32 {
+        let tenant =
+            med_tracker::models::access::begin(pool, scope, app.context.config.settings.as_ref())
+                .await
+                .unwrap();
+        let tx = tenant.transaction();
+        let query = Query::select()
+            .expr_as(Func::cust("pg_backend_pid"), "pid")
+            .expr_as(
+                Func::cust("med_tracker.sharing_current_member")
+                    .arg(Expr::val(app.fixture.adult.id)),
+                "allowed",
+            )
+            .to_owned();
+        let row = tx
+            .query_one_raw(tx.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.try_get::<bool>("", "allowed").unwrap(), expected);
+        let pid = row.try_get("", "pid").unwrap();
+        tenant.rollback().await.unwrap();
+        pid
+    }
+
+    let app = Application::new().await;
+    let care = shared(&app, None, None, false).await;
+    let source = schedules::Entity::find_by_id(care.source_b)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let approval = source.sharing_approval_id.unwrap();
+    let foreign = app.fixture.foreign_household().await;
+    let scope_a = HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: care.invitation.target_household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let scope_b = HouseholdScope {
+        actor: Actor {
+            account_id: foreign.account.id,
+        },
+        household_id: foreign.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let mut options = ConnectOptions::new(app.fixture.runtime_uri.clone());
+    options.min_connections(1).max_connections(1);
+    let pool = Database::connect(options).await.unwrap();
+    let pid = check(&pool, &app, &scope_a, true).await;
+    assert_eq!(check(&pool, &app, &scope_b, false).await, pid);
+    assert_eq!(check(&pool, &app, &scope_a, true).await, pid);
+    let response = app
+        .client
+        .delete(format!(
+            "{}/api/v1/auth/care-sharing/{}",
+            app.origin, approval
+        ))
+        .bearer_auth(&care.token_a)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 204);
+    assert_eq!(check(&pool, &app, &scope_a, false).await, pid);
+    pool.close().await.unwrap();
+    foreign.close().await;
     app.close().await;
 }
