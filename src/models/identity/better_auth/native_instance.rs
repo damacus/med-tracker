@@ -104,6 +104,7 @@ pub(super) async fn build(
     });
     let mut auth = BetterAuth::<AccountSchema>::new(config)
         .store(store)
+        .middleware(super::error_trace::TraceErrors)
         .plugin(super::request::ClinicalRequest(policy.clone()))
         .plugin(super::onboarding::Onboarding(policy.clone()))
         .plugin(super::credentials::Credentials(policy.clone()))

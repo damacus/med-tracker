@@ -543,6 +543,10 @@ pub mod rate_limit {
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
         let body: Value = rejected.json();
+        assert_eq!(
+            body["error"]["trace_id"],
+            rejected.header("x-medtracker-trace-id").to_str().unwrap()
+        );
         assert_eq!(body["error"]["code"], "rate_limited");
         assert!(
             body["error"]["message"]
@@ -592,6 +596,10 @@ pub mod rate_limit {
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
         let body: Value = rejected.json();
+        assert_eq!(
+            body["error"]["trace_id"],
+            rejected.header("x-medtracker-trace-id").to_str().unwrap()
+        );
         let after = fixture.effect().await;
         drop(request);
         close_request(fixture, boot).await;

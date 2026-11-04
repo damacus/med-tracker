@@ -178,6 +178,29 @@ pub fn current_traceparent() -> Option<String> {
     })
 }
 
+/// The current request or unit-of-work trace identifier, when available.
+pub fn current_trace_id() -> Option<String> {
+    trace_id_from(current_traceparent().as_deref())
+}
+
+/// Adds the active trace to an existing JSON error without changing its shape.
+pub fn enrich_error(body: &mut serde_json::Value) {
+    let Some(trace_id) = current_trace_id() else {
+        return;
+    };
+    let Some(object) = body.as_object_mut() else {
+        return;
+    };
+    if let Some(error) = object
+        .get_mut("error")
+        .and_then(serde_json::Value::as_object_mut)
+    {
+        error.insert("trace_id".into(), trace_id.into());
+    } else {
+        object.insert("trace_id".into(), trace_id.into());
+    }
+}
+
 #[cfg(test)]
 mod strictness_tests {
     use super::{attach, remote_parent, trace_id_from};

@@ -22,8 +22,10 @@ commit `fa20db7c0` passed hosted CI and both Linux image acceptance workflows.
 Checklist completion does not mean merged or deployed.
 
 Stage 5.1 is a separate metrics follow-up dependent on PR #3037. It targets
-`main` under the repository's PR convention; its focused review is against
-the verified foundation. Stages 6–9 remain outside this follow-up.
+the verified foundation in the owner-requested native stack #3040:
+PR #3037 → PR #3039 → the stage 6.1 trace-ID follow-up. Each upper PR targets
+the branch below it, with `main` as the stack trunk. Stages 7–9 remain outside
+the trace-ID follow-up. Stack membership does not authorise merging or deployment.
 
 ## 1. Spec (docs only)
 
@@ -81,7 +83,13 @@ the verified foundation. Stages 6–9 remain outside this follow-up.
 ## 6. API trace_id (follow-up application PR 6)
 
 - [ ] 6.1 `trace_id` in API error bodies, OpenAPI update, regenerated
-      clients.
+      clients. Implementation and independent review are complete locally.
+      Focused server tests, Rust client/CLI checks, Android error-adapter tests,
+      generator determinism, Swift/Kotlin builds and the 68 browser journeys
+      passed. Full `task ci` remains blocked by recurring sharing schedule-setup
+      request timeouts, also observed before this slice; their cause is not
+      established. Deadlines and worker profiles are unchanged. Keep this item
+      unchecked until the full gate is accepted.
 
 ## 7. Domain events (follow-up application PR 7)
 

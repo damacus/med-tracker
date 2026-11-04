@@ -11,6 +11,7 @@ pub struct ErrorBody {
     pub code: String,
     pub message: String,
     pub request_id: Option<String>,
+    pub trace_id: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -33,6 +34,7 @@ pub enum ApiError {
         code: String,
         message: String,
         request_id: Option<String>,
+        trace_id: Option<String>,
         retry_after: Option<String>,
     },
 }

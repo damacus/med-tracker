@@ -6545,6 +6545,9 @@ components:
             $ref: "#/components/schemas/MedicationLookupResult"
         error:
           $ref: "#/components/schemas/MedicationLookupUnavailableError"
+        trace_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
     MedicationLookupUnavailableError:
       type: string
       enum:
@@ -10704,6 +10707,9 @@ components:
         request_id:
           type: string
           minLength: 1
+        trace_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
     PushTestFailedErrorEnvelope:
       type: object
       additionalProperties: false
@@ -10735,6 +10741,9 @@ components:
         request_id:
           type: string
           minLength: 1
+        trace_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
         errors:
           $ref: "#/components/schemas/ValidationErrors"
     ErrorEnvelope:
@@ -10763,6 +10772,9 @@ components:
         request_id:
           type: string
           minLength: 1
+        trace_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
     AdminWriteForbiddenErrorEnvelope:
       type: object
       additionalProperties: false
@@ -10785,6 +10797,9 @@ components:
         message:
           type: string
           minLength: 1
+        trace_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
     RateLimitErrorEnvelope:
       type: object
       additionalProperties: false
@@ -10803,6 +10818,9 @@ components:
           type: string
           enum:
             - temporarily_unavailable
+        trace_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
     PortableRecord:
       type: object
       description: A format-specific portable record. Every record has a portable identity and version.

@@ -140,6 +140,17 @@ Portable care imports and the `nhs_dmd_reconcile` task follow the same pattern.
 API error bodies gain `trace_id` (32 lowercase hex); `x-medtracker-trace-id`
 now carries the W3C trace ID (ADR 0020).
 
+The request boundary owns that identifier; response builders reuse its active
+context even when export is disabled. Standard object-valued error envelopes
+add `error.trace_id`; existing flat formats add a top-level `trace_id`.
+Existing error fields, statuses, authentication headers and `request_id` remain
+unchanged, as do successful bodies. OpenAPI copies and generated clients change
+together; client trace-ID fields are optional for older-server compatibility.
+Empty and non-JSON errors retain their existing format and trace header.
+Coverage includes early authentication, extraction and rate-limit failures as
+well as domain and server errors, with body/header/log equality and concurrent
+request isolation.
+
 ### Domain events
 
 Named log records (also span events) with `event.name`: medication dose
