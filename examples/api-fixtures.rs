@@ -2,6 +2,9 @@ use sea_orm::sea_query::{Expr, ExprTrait, Func, Query};
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
 use std::{error::Error, fs::OpenOptions, io::Write};
 
+#[path = "support/pgss_ci_diagnostic.rs"]
+mod pgss_ci_diagnostic;
+
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 #[tokio::main]
@@ -10,6 +13,25 @@ async fn main() -> Result<()> {
         std::env::var("MEDTRACKER_OWNED_DATABASE").as_deref(),
         Ok("1")
     );
+    if matches!(
+        std::env::args().nth(1).as_deref(),
+        Some("diagnostic-sample" | "diagnostic-inventory")
+    ) {
+        if std::env::var("MEDTRACKER_PGSS_DIAGNOSTIC").as_deref() != Ok("1") {
+            return Err("diagnostic mode is disabled".into());
+        }
+        let control_uri = std::env::var("DATABASE_URL")?;
+        let result = if std::env::args().nth(1).as_deref() == Some("diagnostic-sample") {
+            pgss_ci_diagnostic::sample(&control_uri).await
+        } else {
+            pgss_ci_diagnostic::inventory(&control_uri).await
+        };
+        if result.is_err() {
+            eprintln!("diagnostic helper failed");
+            return Err("diagnostic helper failed".into());
+        }
+        return Ok(());
+    }
     let run = uuid::Uuid::parse_str(&std::env::var("MEDTRACKER_TEST_RUN_ID")?)?;
     let database = format!("api_run_{}", run.simple());
     let role = format!("api_runtime_{}", run.simple());
@@ -55,6 +77,13 @@ async fn main() -> Result<()> {
             if let Some(owned) = database_marker(&control, &database).await? {
                 if owned != marker {
                     return Err("Refusing to remove an unowned database".into());
+                }
+                if std::env::var("MEDTRACKER_PGSS_DIAGNOSTIC").as_deref() == Ok("1")
+                    && pgss_ci_diagnostic::snapshot(&control_uri, &database, run)
+                        .await
+                        .is_err()
+                {
+                    eprintln!("diagnostic snapshot failed; continuing owned cleanup");
                 }
                 control
                     .execute_unprepared(&format!("DROP DATABASE {database} WITH (FORCE)"))
