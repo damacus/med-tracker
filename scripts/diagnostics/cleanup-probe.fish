@@ -1,7 +1,7 @@
 #!/usr/bin/env fish
 # Temporary owned-service diagnostic. Only fixed stages and safe wait metadata leave this host.
 umask 077
-set -g child_wrapper 'set -l result $argv[1]; $argv[2..]; set -l code $status; printf "%s\n" $code > "$result.tmp"; and mv "$result.tmp" "$result"'
+set -g child_wrapper 'const fs = require("node:fs"); const os = require("node:os"); const { spawn } = require("node:child_process"); const [result, command, ...args] = process.argv.slice(1); const child = spawn(command, args, { stdio: "inherit" }); child.once("error", () => { process.exitCode = 1; }); child.once("exit", (code, signal) => { const status = code === null ? 128 + (os.constants.signals[signal] ?? 127) : code; fs.writeFileSync(result + ".tmp", `${status}\n`, { mode: 0o600 }); fs.renameSync(result + ".tmp", result); });'
 function bounded_wait
     set -g bounded_alive 0
     for attempt in (seq 1 "$argv[2]")
@@ -30,18 +30,41 @@ if test "$argv[1]" = --shutdown-selftest
     set -l tmp (mktemp -d); or exit 1
     child_result "$tmp/missing"; and exit 1
     for code in 0 7
-        fish --no-config -c "$child_wrapper" "$tmp/$code" fish -c "exit $code" &
+        node -e "$child_wrapper" "$tmp/$code" fish -c "exit $code" &
         set -l pid $last_pid
         bounded_wait "$pid" 50; or exit 1
         test (cat "$tmp/$code") = "$code"; or exit 1
         if test "$code" -eq 0; child_result "$tmp/$code"; or exit 1
         else; child_result "$tmp/$code"; and exit 1; end
     end
-    fish --no-config -c "$child_wrapper" "$tmp/signal" fish -c 'kill -TERM $fish_pid' &
+    node -e "$child_wrapper" "$tmp/signal" fish -c 'kill -TERM $fish_pid' &
     set -l pid $last_pid
     bounded_wait "$pid" 50; or exit 1
     test (cat "$tmp/signal") = 143; or exit 1
     child_result "$tmp/signal"; and exit 1
+    set -l node_path (command -s node); or exit 1
+    node -e "$child_wrapper" "$tmp/interrupt" "$node_path" -e 'require("fs").writeFileSync(process.argv[1], String(process.pid)); setInterval(() => {}, 1000)' "$tmp/pid" &
+    set pid $last_pid
+    for attempt in (seq 1 50)
+        test -s "$tmp/pid"; and break
+        sleep 0.1
+    end
+    set -l child_pid (cat "$tmp/pid"); or exit 1
+    kill -INT "$child_pid"; or exit 1
+    bounded_wait "$pid" 50; or exit 1
+    test (cat "$tmp/interrupt") = 130; or exit 1
+    child_result "$tmp/interrupt"; and exit 1
+    node -e "$child_wrapper" "$tmp/handled" "$node_path" -e 'process.on("SIGINT", () => process.exit(0)); require("fs").writeFileSync(process.argv[1], String(process.pid)); setInterval(() => {}, 1000)' "$tmp/handled-pid" &
+    set pid $last_pid
+    for attempt in (seq 1 50)
+        test -s "$tmp/handled-pid"; and break
+        sleep 0.1
+    end
+    set child_pid (cat "$tmp/handled-pid"); or exit 1
+    kill -INT "$child_pid"; or exit 1
+    bounded_wait "$pid" 50; or exit 1
+    test (cat "$tmp/handled") = 0; or exit 1
+    child_result "$tmp/handled"; or exit 1
     rm -rf "$tmp"
     echo shutdown_selftest_passed
     exit 0
@@ -100,6 +123,10 @@ function cleanup --on-event fish_exit
     if set -q cleanup_job
         if not kill -0 "$cleanup_job" 2>/dev/null
             wait "$cleanup_job" >/dev/null 2>&1
+            if set -q cleanup_result_file; and not set -q cleanup_result_recorded
+                record_result "$cleanup_result_file" cleanup_observed
+                set -g cleanup_result_recorded 1
+            end
         else if not terminate_owned_cleanup
             event cleanup_termination_unverified
         end
@@ -275,7 +302,7 @@ if test "$nested_selftest" -eq 1
     event "selftest_$mode.start"
     rm -f "$raw/sampler.result"
     set -e sampler_leaf
-    fish --no-config -c "$child_wrapper" "$raw/sampler.result" sudo "$node_path" -e 'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000)' >/dev/null 2>&1 &
+    node -e "$child_wrapper" "$raw/sampler.result" sudo "$node_path" -e 'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000)' >/dev/null 2>&1 &
     set -g sampler $last_pid
     set -g sampler_start (sudo awk '{print $22}' "/proc/$sampler/stat"); or exit 1
     for attempt in (seq 1 80)
@@ -341,7 +368,8 @@ if test "$prepare_exit" -eq 124; event baseline_prepare_incomplete; exit 1; end
 if test "$prepare_exit" -ne 0; event baseline_prepare_failed; exit 1; end
 event baseline_prepare_complete
 set -gx MEDTRACKER_CLEANUP_STAGE_FILE "$raw/baseline-stages"
-fish --no-config -c "$child_wrapper" "$raw/baseline.result" "$fixture" cleanup >"$raw/baseline-cleanup.log" 2>&1 &
+set -g cleanup_result_file "$raw/baseline.result"
+node -e "$child_wrapper" "$raw/baseline.result" "$fixture" cleanup >"$raw/baseline-cleanup.log" 2>&1 &
 set -g cleanup_job $last_pid
 set -g cleanup_start (awk '{print $22}' "/proc/$cleanup_job/stat"); or exit 1
 event baseline_cleanup_start
@@ -361,6 +389,7 @@ child_result "$raw/baseline.result"
 set -l baseline_exit $status
 event "baseline_cleanup_result=$baseline_exit"
 set -e cleanup_job
+set -e cleanup_result_file cleanup_result_recorded
 test -s "$raw/baseline-stages"; or begin; event baseline_stage_missing; exit 1; end
 if test "$baseline_exit" -ne 0; event baseline_cleanup_failed; exit 1; end
 event baseline_cleanup_complete
@@ -402,7 +431,7 @@ process_snapshot >"$raw/before"; or exit 1
 set -l pids (awk '{print $1}' "$raw/before")
 contains -- "$postmaster" $pids; or exit 1
 set -l pidlist (string join ',' $pids)
-fish --no-config -c "$child_wrapper" "$raw/recorder.result" sudo perf record -e cpu-clock -p "$pidlist" -F 49 --strict-freq --max-size 256M --clockid mono --timestamp-boundary --no-buildid-cache -o "$raw/perf.data" >"$raw/perf.log" 2>&1 &
+node -e "$child_wrapper" "$raw/recorder.result" sudo perf record -e cpu-clock -p "$pidlist" -F 49 --strict-freq --max-size 256M --clockid mono --timestamp-boundary --no-buildid-cache -o "$raw/perf.data" >"$raw/perf.log" 2>&1 &
 set -g recorder $last_pid
 set -g recorder_start (sudo awk '{print $22}' "/proc/$recorder/stat"); or exit 1
 set -l perf_pid
@@ -433,7 +462,7 @@ docker unpause "$service" >/dev/null; or exit 1
 rm "$raw/paused"; or exit 1
 set -l node_path (command -s node); or exit 1
 set -l node_exe (sudo stat -Lc '%d:%i' "$node_path"); or exit 1
-fish --no-config -c "$child_wrapper" "$raw/sampler.result" sudo "$node_path" scripts/diagnostics/pg-capture-sampler.js "$raw" "$cgdir" "$postmaster" "$service" >"$raw/sampler.log" 2>&1 &
+node -e "$child_wrapper" "$raw/sampler.result" sudo "$node_path" scripts/diagnostics/pg-capture-sampler.js "$raw" "$cgdir" "$postmaster" "$service" >"$raw/sampler.log" 2>&1 &
 set -g sampler $last_pid
 set -g sampler_start (sudo awk '{print $22}' "/proc/$sampler/stat"); or exit 1
 for attempt in (seq 1 80)
@@ -473,7 +502,8 @@ if test "$prepare_exit" -ne 0; event instrumented_prepare_failed; exit 1; end
 event instrumented_prepare_complete
 kill -0 "$recorder" 2>/dev/null; and kill -0 "$sampler" 2>/dev/null; or begin; event profiler_or_sampler_early_exit; exit 1; end
 set -gx MEDTRACKER_CLEANUP_STAGE_FILE "$raw/instrumented-stages"
-fish --no-config -c "$child_wrapper" "$raw/instrumented.result" "$fixture" cleanup >"$raw/instrumented-cleanup.log" 2>&1 &
+set -g cleanup_result_file "$raw/instrumented.result"
+node -e "$child_wrapper" "$raw/instrumented.result" "$fixture" cleanup >"$raw/instrumented-cleanup.log" 2>&1 &
 set -g cleanup_job $last_pid
 set -g cleanup_start (awk '{print $22}' "/proc/$cleanup_job/stat"); or exit 1
 event instrumented_cleanup_start
@@ -483,7 +513,7 @@ for attempt in (seq 1 5)
 end
 if kill -0 "$cleanup_job" 2>/dev/null
     event blocked_at_observation
-    fish --no-config -c "$child_wrapper" "$raw/observer.result" "$observer_binary" >"$raw/waits" 2>"$raw/observer.log" &
+    node -e "$child_wrapper" "$raw/observer.result" "$observer_binary" >"$raw/waits" 2>"$raw/observer.log" &
     set -g observer $last_pid
     set -g observer_start (awk '{print $22}' "/proc/$observer/stat"); or exit 1
     set -l observed 0
@@ -505,7 +535,13 @@ set -l recorder_parent (sudo awk '/^PPid:/ {print $2}' "/proc/$recorder/status")
 set -l recorder_now (sudo awk '{print $22}' "/proc/$recorder/stat"); or exit 1
 test "$recorder_parent" = "$fish_pid"; and test "$recorder_now" = "$recorder_start"; or exit 1
 begin; test "$parent" = "$recorder"; or test "$grandparent" = "$recorder"; end; and test "$start" = "$perf_start"; or exit 1
-if kill -0 "$cleanup_job" 2>/dev/null; event cleanup_active_before_perf_stop; else; event cleanup_finished_before_perf_stop; end
+if kill -0 "$cleanup_job" 2>/dev/null
+    event cleanup_active_before_perf_stop
+else
+    event cleanup_finished_before_perf_stop
+    record_result "$cleanup_result_file" cleanup_observed
+    set -g cleanup_result_recorded 1
+end
 event perf_stop_requested
 sudo kill -INT "$perf_pid"; or exit 1
 finish_profile_job "$recorder" "$recorder_start" recorder
@@ -541,6 +577,7 @@ child_result "$raw/instrumented.result"
 set -l instrumented_exit $status
 event "instrumented_cleanup_result=$instrumented_exit"
 set -e cleanup_job
+set -e cleanup_result_file cleanup_result_recorded
 test -s "$raw/instrumented-stages"; or begin; event cleanup_stage_missing; exit 1; end
 if test "$instrumented_exit" -eq 0; event instrumented_cleanup_complete; else; event instrumented_cleanup_failed; end
 if set -q observer
