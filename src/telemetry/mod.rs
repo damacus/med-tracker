@@ -9,6 +9,9 @@ pub mod json;
 pub mod keys;
 pub mod units;
 
+#[cfg(test)]
+mod lifecycle_tests;
+
 use std::sync::OnceLock;
 use std::time::Duration;
 
@@ -162,6 +165,105 @@ fn build_provider_inner(
     Some(provider)
 }
 
+#[derive(Default)]
+struct LifecycleState {
+    running: bool,
+    pending_flush: bool,
+    shutdown_requested: bool,
+    shutdown_started: bool,
+    shutdown_complete: bool,
+}
+
+struct Lifecycle {
+    state: std::sync::Mutex<LifecycleState>,
+    completed: tokio::sync::watch::Sender<u64>,
+}
+
+impl Lifecycle {
+    fn new() -> Self {
+        let (completed, _) = tokio::sync::watch::channel(0);
+        Self {
+            state: std::sync::Mutex::new(LifecycleState::default()),
+            completed,
+        }
+    }
+
+    fn finish(&self, state: &mut LifecycleState) {
+        state.running = false;
+        self.completed
+            .send_modify(|generation| *generation = generation.saturating_add(1));
+    }
+
+    fn run(&'static self, provider: SdkTracerProvider) {
+        loop {
+            let _ =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| provider.force_flush()));
+            let mut state = self
+                .state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if state.pending_flush {
+                state.pending_flush = false;
+                continue;
+            }
+            if state.shutdown_requested {
+                state.shutdown_started = true;
+                drop(state);
+                let _ =
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| provider.shutdown()));
+                let mut state = self
+                    .state
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                state.shutdown_complete = true;
+                self.finish(&mut state);
+                return;
+            }
+            self.finish(&mut state);
+            return;
+        }
+    }
+
+    async fn request(&'static self, provider: SdkTracerProvider, shutdown: bool) {
+        let (mut completed, start) = {
+            let mut state = self
+                .state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if state.shutdown_complete {
+                return;
+            }
+            let completed = self.completed.subscribe();
+            let start = !state.running;
+            if start {
+                state.running = true;
+            } else if !state.shutdown_requested && !state.shutdown_started {
+                state.pending_flush = true;
+            }
+            if shutdown {
+                state.shutdown_requested = true;
+            }
+            (completed, start)
+        };
+        if start
+            && std::thread::Builder::new()
+                .name("telemetry-lifecycle".into())
+                .spawn(move || self.run(provider))
+                .is_err()
+        {
+            let mut state = self
+                .state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            self.finish(&mut state);
+            return;
+        }
+        let _ = tokio::time::timeout(Duration::from_secs(2), completed.changed()).await;
+    }
+}
+
+static LIFECYCLE: OnceLock<Lifecycle> = OnceLock::new();
+
 /// Flushes the tracer provider without shutting it down, within a 2-second
 /// bound. Used by scheduled tasks running in a child process where
 /// `on_shutdown` is never called.
@@ -169,11 +271,10 @@ pub async fn flush() {
     let Some(provider) = TRACER_PROVIDER.get() else {
         return;
     };
-    let provider = provider.clone();
-    let _ = tokio::time::timeout(Duration::from_secs(2), async move {
-        let _ = tokio::task::spawn_blocking(move || provider.force_flush()).await;
-    })
-    .await;
+    LIFECYCLE
+        .get_or_init(Lifecycle::new)
+        .request(provider.clone(), false)
+        .await;
 }
 
 /// Flushes and shuts down the tracer provider within a 2-second bound. Called
@@ -183,15 +284,10 @@ pub async fn shutdown() {
     let Some(provider) = TRACER_PROVIDER.get() else {
         return;
     };
-    let provider = provider.clone();
-    let _ = tokio::time::timeout(Duration::from_secs(2), async move {
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = provider.force_flush();
-            provider.shutdown()
-        })
+    LIFECYCLE
+        .get_or_init(Lifecycle::new)
+        .request(provider.clone(), true)
         .await;
-    })
-    .await;
 }
 
 /// Build identity: `version+commit`, preferring the `MEDTRACKER_VERSION` /

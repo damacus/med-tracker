@@ -35,6 +35,14 @@ states export is disabled. When enabled, the startup line names the endpoint
 host only, never headers. Settings live under `settings.telemetry` declared via
 `get_env` in `config/*.yaml`; `std::env` is never read in `src/`.
 
+Flush and shutdown wait at most two seconds for a single detached OS worker.
+The worker serialises SDK lifecycle calls, coalesces overlapping requests and
+retains a pending shutdown request. It runs outside Tokio's blocking pool so
+runtime teardown does not wait for a timed-out SDK call. SDK calls cannot be
+cancelled: an outstanding call may continue until completion or process exit,
+and telemetry still pending at process exit may be lost. Process-level tests
+cover both stalled flush and stalled shutdown, including runtime teardown.
+
 ### Log format
 
 One JSON object per line on stdout, no ANSI, following the OTel log data
