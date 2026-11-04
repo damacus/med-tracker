@@ -73,6 +73,10 @@ set -g event_decoder_exit -1
 set -g event_stderr_bytes -1
 set -g event_stderr_truncated -1
 set -g event_validation_exit -1
+set -g metadata_decoder_exit -1
+set -g metadata_bytes -1
+set -g metadata_truncated -1
+set -g metadata_exported 0
 set -g event_summary 'first=unavailable events=-1 comm=-1 fork=-1 exit=-1 mmap=-1 mmap2=-1 kernel_map=-1 unowned_comm=-1 unowned_mmap=-1 unowned_fork_exit=-1 malformed=-1 other=-1'
 set -g summary 'samples=-1 malformed=-1 unknown=-1 outside=-1 seen_a=-1 seen_b=-1 in_window=-1'
 function cleanup --on-event fish_exit
@@ -98,7 +102,7 @@ function cleanup --on-event fish_exit
             wait $$job >/dev/null 2>&1
         end
     end
-    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s decoder_exit=%s decoder_stderr_bytes=%s decoder_stderr_truncated=%s event_decoder_exit=%s event_stderr_bytes=%s event_stderr_truncated=%s event_validation_exit=%s %s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$decoder_exit" "$decoder_stderr_bytes" "$decoder_stderr_truncated" "$event_decoder_exit" "$event_stderr_bytes" "$event_stderr_truncated" "$event_validation_exit" "$summary" "$event_summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
+    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s decoder_exit=%s decoder_stderr_bytes=%s decoder_stderr_truncated=%s event_decoder_exit=%s event_stderr_bytes=%s event_stderr_truncated=%s event_validation_exit=%s metadata_decoder_exit=%s metadata_bytes=%s metadata_truncated=%s metadata_exported=%s %s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$decoder_exit" "$decoder_stderr_bytes" "$decoder_stderr_truncated" "$event_decoder_exit" "$event_stderr_bytes" "$event_stderr_truncated" "$event_validation_exit" "$metadata_decoder_exit" "$metadata_bytes" "$metadata_truncated" "$metadata_exported" "$summary" "$event_summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
     set -l encryption_status $pipestatus
     if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/status.age.partial"
         mv "$out/status.age.partial" "$out/status.age"
@@ -267,6 +271,30 @@ if test "$decoder_exit" -ne 0
 end
 set reason empty_samples
 set summary 'samples=0 malformed=0 unknown=0 outside=0 seen_a=0 seen_b=0 in_window=0'
+set reason metadata_decode
+sudo perf script -i "$raw/perf.data" --hide-call-graph -F pid,time --show-task-events --show-mmap-events >"$raw/metadata" 2>"$raw/metadata.log"
+set metadata_decoder_exit $status
+begin
+    for snapshot in before a b end
+        printf '\n--- snapshot %s ---\n' "$snapshot"
+        cat "$raw/$snapshot"; or exit 1
+    end
+    printf '\n--- decoded metadata ---\n'
+    cat "$raw/metadata"; or exit 1
+end >"$raw/metadata-bundle"
+set metadata_bytes (wc -c <"$raw/metadata-bundle" | string trim)
+set metadata_truncated 0
+if test "$metadata_bytes" -gt 1048576
+    set metadata_truncated 1
+end
+set reason metadata_encrypt
+head -c 1048576 "$raw/metadata-bundle" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/unvalidated-decoded-metadata.age.partial" 2>/dev/null
+set -l metadata_encryption_status $pipestatus
+test $metadata_encryption_status[1] -eq 0; and test $metadata_encryption_status[2] -eq 0; and test -s "$out/unvalidated-decoded-metadata.age.partial"; or exit 1
+mv "$out/unvalidated-decoded-metadata.age.partial" "$out/unvalidated-decoded-metadata.age"; or exit 1
+set metadata_exported 1
+test "$metadata_decoder_exit" -eq 0; or exit 1
+set reason empty_samples
 test -s "$raw/samples"; or exit 1
 set summary (awk -v a="$a" -v b="$b" -v x="$outside" -v initial="$pidlist" -v lo="$window_start" -v hi="$window_end" '
   BEGIN {n=split(initial,p,","); for(i=1;i<=n;i++) owned[p[i]]=1; owned[a]=1; owned[b]=1}
