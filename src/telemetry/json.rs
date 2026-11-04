@@ -24,7 +24,6 @@ pub struct Resource {
 struct Fields {
     attributes: Vec<(String, Value)>,
     dropped: Vec<String>,
-    body: Option<String>,
 }
 
 #[derive(Default)]
@@ -35,11 +34,6 @@ struct FieldVisitor {
 impl FieldVisitor {
     fn push(&mut self, name: &str, value: Value) {
         if name == "message" {
-            self.fields.body = value
-                .as_str()
-                .map(|s| keys::cap(s).to_owned())
-                .map(Value::String)
-                .and_then(|v| v.as_str().map(str::to_owned));
             return;
         }
         if keys::allowed(name) {
@@ -95,6 +89,7 @@ struct SpanFields {
 /// OTel log-data-model JSON layer.
 pub struct JsonLayer<W> {
     writer: W,
+    writer_lock: std::sync::Mutex<()>,
     resource: Resource,
     diagnostics: std::sync::Arc<super::export::Diagnostics>,
 }
@@ -111,6 +106,7 @@ where
 {
     JsonLayer {
         writer,
+        writer_lock: std::sync::Mutex::new(()),
         resource,
         diagnostics,
     }
@@ -197,7 +193,7 @@ where
         let mut span_id = None;
 
         if let Some(scope) = ctx.event_scope(event) {
-            for span in scope {
+            for span in scope.from_root() {
                 let extensions = span.extensions();
                 if let Some(fields) = extensions.get::<SpanFields>() {
                     let mut inherited = fields.attributes.clone();
@@ -219,7 +215,15 @@ where
         dropped.extend(visitor.fields.dropped);
 
         // Prefer the live OTel context when the export layer is installed.
-        let otel_context = tracing::Span::current().context();
+        let current = tracing::Span::current();
+        let same_parent = ctx
+            .event_span(event)
+            .is_some_and(|span| Some(span.id()) == current.id());
+        let otel_context = if same_parent {
+            current.context()
+        } else {
+            opentelemetry::Context::new()
+        };
         let otel_span_context = otel_context.span().span_context().clone();
         if otel_span_context.is_valid() {
             trace_id = Some(otel_span_context.trace_id().to_string());
@@ -259,12 +263,7 @@ where
         );
         record.insert(
             "body".to_owned(),
-            Value::String(
-                visitor
-                    .fields
-                    .body
-                    .unwrap_or_else(|| event.metadata().name().to_owned()),
-            ),
+            Value::String(event.metadata().name().to_owned()),
         );
         if let Some(trace_id) = trace_id {
             record.insert("trace_id".to_owned(), Value::String(trace_id));
@@ -297,11 +296,14 @@ where
         record.insert("scope".to_owned(), Value::Object(scope));
         record.insert("attributes".to_owned(), Value::Object(map));
 
-        let line = Value::Object(record).to_string();
+        let mut line = Value::Object(record).to_string();
+        line.push('\n');
+        let Ok(_lock) = self.writer_lock.lock() else {
+            return;
+        };
         let mut writer = self.writer.make_writer();
         // Fail-open: a logging failure must never affect the operation.
         let _ = writer.write_all(line.as_bytes());
-        let _ = writer.write_all(b"\n");
         let _ = writer.flush();
     }
 }
@@ -398,7 +400,7 @@ mod tests {
         }
         assert_eq!(record["severity_text"], "INFO");
         assert_eq!(record["severity_number"], 9);
-        assert_eq!(record["body"], "HTTP request completed");
+        assert!(record["body"].as_str().unwrap().starts_with("event "));
         assert_eq!(record["resource"]["service.name"], "medtracker");
         assert_eq!(record["resource"]["service.version"], "0.1.0+abcdef0");
         assert_eq!(record["resource"]["deployment.environment.name"], "test");
@@ -488,5 +490,100 @@ mod tests {
         assert_eq!(record["span_id"], "00f067aa0ba902b7");
         assert!(record["attributes"].get("trace_id").is_none());
         assert!(record["attributes"].get("span_id").is_none());
+    }
+
+    #[test]
+    fn inner_span_fields_and_identifiers_win_without_event_override() {
+        let buffer = Buffer::default();
+        emit(&buffer, || {
+            let outer = tracing::info_span!(
+                "outer",
+                http.route = "/outer",
+                trace_id = "outer",
+                span_id = "outer"
+            );
+            let _outer = outer.enter();
+            let inner = tracing::info_span!(
+                "inner",
+                http.route = "/inner",
+                trace_id = "inner",
+                span_id = "inner"
+            );
+            let _inner = inner.enter();
+            tracing::info!("nested");
+        });
+        let record = &buffer.lines()[0];
+        assert_eq!(record["attributes"]["http.route"], "/inner");
+        assert_eq!(record["trace_id"], "inner");
+        assert_eq!(record["span_id"], "inner");
+    }
+
+    #[test]
+    fn formatted_message_does_not_leak() {
+        let buffer = Buffer::default();
+        emit(&buffer, || {
+            tracing::info!("value {}", "ClinicalValueSentinel");
+            tracing::warn!(target: "dependency", "dependency {}", "ClinicalValueSentinel");
+        });
+        assert!(!buffer.raw().contains("ClinicalValueSentinel"));
+    }
+
+    #[test]
+    fn concurrent_records_are_whole_json_lines() {
+        let buffer = Buffer::default();
+        let subscriber = registry().with(layer(
+            buffer.clone(),
+            resource(),
+            super::super::export::Diagnostics::new(),
+        ));
+        let dispatch = tracing::Dispatch::new(subscriber);
+        std::thread::scope(|scope| {
+            for _ in 0..16 {
+                let dispatch = dispatch.clone();
+                scope.spawn(move || {
+                    tracing::dispatcher::with_default(&dispatch, || {
+                        for _ in 0..1000 {
+                            tracing::info!("concurrent");
+                        }
+                    })
+                });
+            }
+        });
+        assert_eq!(buffer.lines().len(), 16_000);
+    }
+
+    #[test]
+    fn explicit_parent_uses_parent_context_not_current_context() {
+        use opentelemetry::trace::TraceContextExt;
+        use tracing_opentelemetry::OpenTelemetrySpanExt;
+        let buffer = Buffer::default();
+        let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+            .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
+            .build();
+        let otel = crate::telemetry::otel_layer(&provider, "test");
+        let subscriber = registry().with(otel).with(layer(
+            buffer.clone(),
+            resource(),
+            super::super::export::Diagnostics::new(),
+        ));
+        tracing::subscriber::with_default(subscriber, || {
+            let parent = tracing::info_span!(
+                "parent",
+                trace_id = tracing::field::Empty,
+                span_id = tracing::field::Empty
+            );
+            super::super::ids::attach(&parent, None);
+            let context = parent.context();
+            let expected = context.span().span_context().clone();
+            tracing::error!(parent: &parent, "failure");
+            let other = tracing::info_span!("other");
+            let _guard = other.enter();
+            tracing::error!(parent: &parent, "failure");
+            for record in buffer.lines() {
+                assert_eq!(record["trace_id"], expected.trace_id().to_string());
+                assert_eq!(record["span_id"], expected.span_id().to_string());
+            }
+        });
+        drop(provider);
     }
 }
