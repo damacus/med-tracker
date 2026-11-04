@@ -929,12 +929,44 @@ async fn portable_import_accepts_derived_occurrence_window_ends() {
     let app = Application::new().await;
     let token = app.token().await;
     let now = chrono::Utc::now().naive_utc();
+    let unrelated: Vec<String> = (0..3_000)
+        .map(|_| uuid::Uuid::new_v4().to_string())
+        .collect();
+    for chunk in unrelated.chunks(200) {
+        let people = chunk.iter().map(|id| rows::people::ActiveModel {
+            portable_id: Set(id.clone()),
+            name: Set("Synthetic unrelated person".into()),
+            date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(1985, 2, 3)),
+            has_capacity: Set(true),
+            person_type: Set(0),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        });
+        rows::people::Entity::insert_many(people)
+            .exec(&app.fixture.admin)
+            .await
+            .unwrap();
+    }
     let schedule = rows::schedules::ActiveModel {
         household_id: Set(app.fixture.household.id),
         person_id: Set(app.fixture.adult.id),
         medication_id: Set(app.fixture.medication.id),
         schedule_type: Set(0),
         schedule_config: Set(json!({})),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let assignment_occurrence = rows::medication_dose_occurrences::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_medication_id: Set(Some(app.fixture.assignment.id)),
+        window_starts_on: Set("2026-10-06".parse().unwrap()),
+        position: Set(1),
+        outcome: Set("open".into()),
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()
@@ -972,11 +1004,24 @@ async fn portable_import_accepts_derived_occurrence_window_ends() {
                 "note": null,
                 "resolved_at": null,
                 "medication_take_portable_id": null
+            }, {
+                "portable_id": assignment_occurrence.portable_id,
+                "source_type": "person_medication",
+                "source_portable_id": app.fixture.assignment.portable_id,
+                "window_starts_on": "2026-10-06",
+                "window_ends_on": "2026-10-06",
+                "position": 1,
+                "scheduled_at": null,
+                "outcome": "open",
+                "reason": null,
+                "note": null,
+                "resolved_at": null,
+                "medication_take_portable_id": null
             }]
         }
     });
     let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
-    let response = app
+    let response = match app
         .client
         .post(import_url(&app, "portable_imports/dry_run"))
         .bearer_auth(&token)
@@ -984,16 +1029,86 @@ async fn portable_import_accepts_derived_occurrence_window_ends() {
         .json(&json!({"bundle": bundle}))
         .send()
         .await
-        .unwrap();
-    let status = response.status().as_u16();
-    let body: Value = response.json().await.unwrap();
+    {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            response.bytes().await.map(|body| (status, body))
+        }
+        Err(error) => Err(error),
+    };
+    for chunk in unrelated.chunks(200) {
+        rows::people::Entity::delete_many()
+            .filter(rows::people::Column::PortableId.is_in(chunk.iter().cloned()))
+            .exec(&app.fixture.admin)
+            .await
+            .unwrap();
+    }
     app.close().await;
+    let (status, body) = response.unwrap();
+    let body: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(status, 200, "dry-run body: {body}");
     assert_eq!(
         body["data"]["errors"].as_array().unwrap().len(),
         0,
         "derived window_ends_on must not conflict: {body}"
     );
+}
+
+#[tokio::test]
+async fn portable_import_rejects_foreign_schedule_and_assignment_sources() {
+    let app = Application::new().await;
+    let foreign = Fixture::new().await;
+    let token = app.token().await;
+    let now = chrono::Utc::now().naive_utc();
+    let schedule = rows::schedules::ActiveModel {
+        household_id: Set(foreign.household.id),
+        person_id: Set(foreign.adult.id),
+        medication_id: Set(foreign.medication.id),
+        schedule_type: Set(0),
+        schedule_config: Set(json!({})),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&foreign.admin)
+    .await
+    .unwrap();
+    let payload = json!({
+        "format": "medtracker.portable.v2",
+        "scope": "household",
+        "records": {"dose_occurrences": [
+            {"portable_id": uuid::Uuid::new_v4().to_string(), "source_type": "schedule",
+             "source_portable_id": schedule.portable_id, "window_starts_on": "2026-10-06",
+             "window_ends_on": "2026-10-06", "position": 1, "outcome": "open"},
+            {"portable_id": uuid::Uuid::new_v4().to_string(), "source_type": "person_medication",
+             "source_portable_id": foreign.assignment.portable_id, "window_starts_on": "2026-10-06",
+             "window_ends_on": "2026-10-06", "position": 1, "outcome": "open"}
+        ]}
+    });
+    let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
+    let response = app
+        .client
+        .post(import_url(&app, "portable_imports/dry_run"))
+        .bearer_auth(token)
+        .header(PASSPHRASE_HEADER, PASSPHRASE)
+        .json(&json!({"bundle": bundle}))
+        .send()
+        .await
+        .unwrap();
+    let body = Application::assert_status(response, 200).await;
+    let errors = body["data"]["errors"].as_array().unwrap();
+    assert_eq!(
+        errors.len(),
+        2,
+        "foreign sources must remain unavailable: {body}"
+    );
+    assert!(errors.iter().all(|error| {
+        error
+            .as_str()
+            .is_some_and(|error| error.contains("source_portable_id") && error.contains("unknown"))
+    }));
+    foreign.close().await;
+    app.close().await;
 }
 
 #[tokio::test]

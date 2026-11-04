@@ -1,4 +1,5 @@
 use super::*;
+use sea_orm::sea_query::{Alias, Expr, ExprTrait, JoinType, Query};
 
 pub(crate) struct ExistingIndex {
     pub(super) ids: HashMap<&'static str, HashMap<String, i64>>,
@@ -66,31 +67,61 @@ impl ExistingIndex {
             "medication_pause_periods",
             "dose_occurrences",
         ] {
-            let table = table(kind);
-            let sql = if matches!(
+            let direct_owner = matches!(
                 kind,
                 "schedules" | "person_medications" | "notification_preferences" | "health_events"
-            ) {
-                format!(
-                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record JOIN people person ON person.id = record.person_id WHERE record.household_id = $1"
-                )
+            );
+            let sources: &[(&str, &str)] = if direct_owner {
+                &[]
             } else {
-                format!(
-                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record LEFT JOIN schedules schedule ON schedule.id = record.schedule_id AND schedule.household_id = record.household_id LEFT JOIN person_medications assignment ON assignment.id = record.person_medication_id AND assignment.household_id = record.household_id JOIN people person ON person.id = COALESCE(schedule.person_id, assignment.person_id) WHERE record.household_id = $1"
-                )
+                &[
+                    ("schedules", "schedule_id"),
+                    ("person_medications", "person_medication_id"),
+                ]
             };
-            let rows = db
-                .query_all_raw(Statement::from_sql_and_values(
-                    DbBackend::Postgres,
-                    sql,
-                    [household_id.into()],
-                ))
-                .await?;
             let mut type_owners = HashMap::new();
-            for row in rows {
-                let portable_id: String = row.try_get("", "portable_id")?;
-                let owner: String = row.try_get("", "person_portable_id")?;
-                type_owners.insert(portable_id, owner);
+            for source in sources
+                .iter()
+                .copied()
+                .map(Some)
+                .chain(direct_owner.then_some(None))
+            {
+                let mut query = Query::select();
+                query
+                    .column(("record", "portable_id"))
+                    .expr_as(Expr::col(("person", "portable_id")), "person_portable_id")
+                    .from_as(Alias::new(table(kind)), "record")
+                    .and_where(Expr::col(("record", "household_id")).eq(household_id));
+                let owner_table = if let Some((source_table, source_column)) = source {
+                    query.join_as(
+                        JoinType::InnerJoin,
+                        Alias::new(source_table),
+                        "source",
+                        Expr::col(("source", "id"))
+                            .equals(("record", source_column))
+                            .and(
+                                Expr::col(("source", "household_id"))
+                                    .equals(("record", "household_id")),
+                            ),
+                    );
+                    "source"
+                } else {
+                    "record"
+                };
+                query.join_as(
+                    JoinType::InnerJoin,
+                    Alias::new("people"),
+                    "person",
+                    Expr::col(("person", "id")).equals((owner_table, "person_id")),
+                );
+                for row in db
+                    .query_all_raw(db.get_database_backend().build(&query))
+                    .await?
+                {
+                    let portable_id: String = row.try_get("", "portable_id")?;
+                    let owner: String = row.try_get("", "person_portable_id")?;
+                    type_owners.insert(portable_id, owner);
+                }
             }
             owners.insert(kind, type_owners);
         }

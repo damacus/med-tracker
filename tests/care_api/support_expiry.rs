@@ -22,6 +22,14 @@ fn missing() -> DbErr {
 }
 
 async fn seed(fixture: &Fixture, count: i32) -> Result<Vec<support_access_sessions::Model>, DbErr> {
+    seed_on(fixture, &fixture.admin, count).await
+}
+
+async fn seed_on<C: ConnectionTrait>(
+    fixture: &Fixture,
+    connection: &C,
+    count: i32,
+) -> Result<Vec<support_access_sessions::Model>, DbErr> {
     let now = chrono::Utc::now().naive_utc();
     let admin = platform_admins::Entity::insert(platform_admins::ActiveModel {
         account_id: Set(fixture.account.id),
@@ -35,7 +43,7 @@ async fn seed(fixture: &Fixture, count: i32) -> Result<Vec<support_access_sessio
             .update_column(platform_admins::Column::Status)
             .to_owned(),
     )
-    .exec_with_returning(&fixture.admin)
+    .exec_with_returning(connection)
     .await?;
     let mut sessions = Vec::new();
     for _ in 0..count {
@@ -50,7 +58,7 @@ async fn seed(fixture: &Fixture, count: i32) -> Result<Vec<support_access_sessio
                 updated_at: Set(now),
                 ..Default::default()
             }
-            .insert(&fixture.admin)
+            .insert(connection)
             .await?,
         );
     }
@@ -147,8 +155,12 @@ async fn state(fixture: &Fixture, id: i64) -> Result<QueryResult, DbErr> {
 }
 
 async fn change(fixture: &Fixture, id: i64, kind: u8) -> Result<(), DbErr> {
+    change_on(&fixture.admin, id, kind).await
+}
+
+async fn change_on<C: ConnectionTrait>(connection: &C, id: i64, kind: u8) -> Result<(), DbErr> {
     let mut row = support_access_sessions::Entity::find_by_id(id)
-        .one(&fixture.admin)
+        .one(connection)
         .await?
         .ok_or_else(missing)?
         .into_active_model();
@@ -158,7 +170,7 @@ async fn change(fixture: &Fixture, id: i64, kind: u8) -> Result<(), DbErr> {
         1 => row.ended_at = Set(Some(now)),
         _ => row.expired_at = Set(Some(now)),
     }
-    row.update(&fixture.admin).await?;
+    row.update(connection).await?;
     Ok(())
 }
 
@@ -321,10 +333,12 @@ async fn expiry_audit_failure_rolls_back_session_and_version_then_retries() -> R
 async fn expiry_cannot_mutate_future_ended_expired_or_unknown_sessions() -> Result<(), DbErr> {
     let fixture = Fixture::new().await;
     let result = async {
-        let seeded = seed(&fixture, 3).await?;
-        change(&fixture, seeded[0].id, 0).await?;
-        change(&fixture, seeded[1].id, 1).await?;
-        change(&fixture, seeded[2].id, 2).await?;
+        let setup = fixture.admin.begin().await?;
+        let seeded = seed_on(&fixture, &setup, 3).await?;
+        change_on(&setup, seeded[0].id, 0).await?;
+        change_on(&setup, seeded[1].id, 1).await?;
+        change_on(&setup, seeded[2].id, 2).await?;
+        setup.commit().await?;
         let transaction = runtime(&fixture).await?;
         context(&transaction, "search_path", "pg_temp").await?;
         let table = sea_orm::sea_query::Table::create()
