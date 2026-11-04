@@ -95,6 +95,12 @@ set -g snapshot_success 0
 set -g recorder_exit -1
 set -g duration_ms -1
 set -g report_exit -1
+set -g report_stdout_bytes -1
+set -g report_stdout_truncated -1
+set -g report_stderr_bytes -1
+set -g report_stderr_truncated -1
+set -g symfs_realpath_is_root -1
+set -g pg_binary_readable -1
 set -g report_info 'sanitiser=unavailable rows=-1 pg_user=-1 kernel=-1 unknown_mode=-1 redacted=-1 first_semicolons=-1 first_fields=-1'
 set -g summary 'coverage=unavailable'
 function cleanup --on-event fish_exit
@@ -120,7 +126,7 @@ function cleanup --on-event fish_exit
             wait $$job >/dev/null 2>&1
         end
     end
-    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s report_exit=%s %s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$report_exit" "$report_info" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
+    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s report_exit=%s report_stdout_bytes=%s report_stdout_truncated=%s report_stderr_bytes=%s report_stderr_truncated=%s symfs_realpath_is_root=%s pg_binary_readable=%s %s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$report_exit" "$report_stdout_bytes" "$report_stdout_truncated" "$report_stderr_bytes" "$report_stderr_truncated" "$symfs_realpath_is_root" "$pg_binary_readable" "$report_info" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
     set -l encryption_status $pipestatus
     if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/status.age.partial"
         mv "$out/status.age.partial" "$out/status.age"
@@ -141,6 +147,17 @@ function encrypt_file
 end
 set -g postmaster (docker inspect --format '{{.State.Pid}}' "$service"); or exit 1
 string match -rq '^[1-9][0-9]*$' "$postmaster"; or exit 1
+set -l symfs_resolved (sudo realpath "/proc/$postmaster/root" 2>/dev/null)
+if test $status -eq 0
+    set symfs_realpath_is_root 0
+    if test "$symfs_resolved" = /
+        set symfs_realpath_is_root 1
+    end
+end
+set pg_binary_readable 0
+if sudo test -r "/proc/$postmaster/root/usr/local/bin/postgres"
+    set pg_binary_readable 1
+end
 set -l cg (string replace -r '^0::' '' -- (cat "/proc/$postmaster/cgroup")); or exit 1
 string match -q "*$service*" "$cg"; or exit 1
 set -g cgdir "/sys/fs/cgroup$cg"
@@ -323,6 +340,26 @@ set phase aggregate
 set reason report_generate
 sudo perf report --stdio --no-children --call-graph none --percentage relative --sort symbol --fields overhead,symbol --field-separator ';' --pid "$known_list" --time "$interval" --symfs "/proc/$postmaster/root" -i "$raw/perf.data" >"$raw/report" 2>"$raw/report.log"
 set report_exit $status
+set reason report_debug_encrypt
+set report_stdout_bytes (wc -c <"$raw/report" | string trim)
+set report_stdout_truncated 0
+if test "$report_stdout_bytes" -gt 32768
+    set report_stdout_truncated 1
+end
+set report_stderr_bytes (wc -c <"$raw/report.log" | string trim)
+set report_stderr_truncated 0
+if test "$report_stderr_bytes" -gt 16384
+    set report_stderr_truncated 1
+end
+head -c 32768 "$raw/report" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/unsanitised-report-stdout.age.partial" 2>/dev/null
+set -l stdout_encryption_status $pipestatus
+test $stdout_encryption_status[1] -eq 0; and test $stdout_encryption_status[2] -eq 0; and test -s "$out/unsanitised-report-stdout.age.partial"; or exit 1
+mv "$out/unsanitised-report-stdout.age.partial" "$out/unsanitised-report-stdout.age"; or exit 1
+head -c 16384 "$raw/report.log" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/unsanitised-report-stderr.age.partial" 2>/dev/null
+set -l stderr_encryption_status $pipestatus
+test $stderr_encryption_status[1] -eq 0; and test $stderr_encryption_status[2] -eq 0; and test -s "$out/unsanitised-report-stderr.age.partial"; or exit 1
+mv "$out/unsanitised-report-stderr.age.partial" "$out/unsanitised-report-stderr.age"; or exit 1
+set reason report_generate
 test "$report_exit" -eq 0; or exit 1
 set reason report_sanitise
 sanitise_histogram "$raw/report-diagnostic" <"$raw/report" >"$raw/safe-report" 2>"$raw/sanitise.log"
