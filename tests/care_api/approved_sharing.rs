@@ -6285,3 +6285,84 @@ async fn person_owned_schedule_shared_command_documents_account_session_error_en
     );
     app.close().await;
 }
+
+#[tokio::test]
+async fn current_member_rechecks_reused_backend_after_approval_withdrawal() {
+    use med_tracker::models::access::{Actor, HouseholdScope};
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection};
+
+    async fn check(
+        pool: &DatabaseConnection,
+        app: &Application,
+        scope: &HouseholdScope,
+        expected: bool,
+    ) -> i32 {
+        let tenant =
+            med_tracker::models::access::begin(pool, scope, app.context.config.settings.as_ref())
+                .await
+                .unwrap();
+        let tx = tenant.transaction();
+        let query = Query::select()
+            .expr_as(Func::cust("pg_backend_pid"), "pid")
+            .expr_as(
+                Func::cust("med_tracker.sharing_current_member")
+                    .arg(Expr::val(app.fixture.adult.id)),
+                "allowed",
+            )
+            .to_owned();
+        let row = tx
+            .query_one_raw(tx.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.try_get::<bool>("", "allowed").unwrap(), expected);
+        let pid = row.try_get("", "pid").unwrap();
+        tenant.rollback().await.unwrap();
+        pid
+    }
+
+    let app = Application::new().await;
+    let care = shared(&app, None, None, false).await;
+    let source = schedules::Entity::find_by_id(care.source_b)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let approval = source.sharing_approval_id.unwrap();
+    let foreign = app.fixture.foreign_household().await;
+    let scope_a = HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: care.invitation.target_household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let scope_b = HouseholdScope {
+        actor: Actor {
+            account_id: foreign.account.id,
+        },
+        household_id: foreign.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let mut options = ConnectOptions::new(app.fixture.runtime_uri.clone());
+    options.min_connections(1).max_connections(1);
+    let pool = Database::connect(options).await.unwrap();
+    let pid = check(&pool, &app, &scope_a, true).await;
+    assert_eq!(check(&pool, &app, &scope_b, false).await, pid);
+    assert_eq!(check(&pool, &app, &scope_a, true).await, pid);
+    let response = app
+        .client
+        .delete(format!(
+            "{}/api/v1/auth/care-sharing/{}",
+            app.origin, approval
+        ))
+        .bearer_auth(&care.token_a)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 204);
+    assert_eq!(check(&pool, &app, &scope_a, false).await, pid);
+    pool.close().await.unwrap();
+    foreign.close().await;
+    app.close().await;
+}

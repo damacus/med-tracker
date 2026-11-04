@@ -34,6 +34,7 @@ pub mod m20261102_000030_shared_schedule_current_execution_policy;
 pub mod m20261102_000031_guardian_authority_plan_cache;
 pub mod m20261102_000032_guardian_authority_join_order;
 pub mod m20261104_000033_guardian_authority_eligibility;
+pub mod m20261104_000034_sharing_member_plan_cache;
 mod native_authentication;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
@@ -76,6 +77,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261102_000031_guardian_authority_plan_cache::Migration),
             Box::new(m20261102_000032_guardian_authority_join_order::Migration),
             Box::new(m20261104_000033_guardian_authority_eligibility::Migration),
+            Box::new(m20261104_000034_sharing_member_plan_cache::Migration),
         ]
     }
 }
