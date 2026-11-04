@@ -82,14 +82,17 @@ the trace-ID follow-up. Stack membership does not authorise merging or deploymen
 
 ## 6. API trace_id (follow-up application PR 6)
 
-- [ ] 6.1 `trace_id` in API error bodies, OpenAPI update, regenerated
+- [x] 6.1 `trace_id` in API error bodies, OpenAPI update, regenerated
       clients. Implementation and independent review are complete locally.
       Focused server tests, Rust client/CLI checks, Android error-adapter tests,
-      generator determinism, Swift/Kotlin builds and the 68 browser journeys
-      passed. Full `task ci` remains blocked by recurring sharing schedule-setup
-      request timeouts, also observed before this slice; their cause is not
-      established. Deadlines and worker profiles are unchanged. Keep this item
-      unchecked until the full gate is accepted.
+      generator determinism and Swift/Kotlin builds passed. The final unchanged
+      candidate passed full `task ci` with normal profiles: 273 unit tests,
+      two canary tests, 1,189 API tests, template concurrency and 68 browser
+      journeys. The trace-ID follow-up remains local and unpublished by owner
+      decision. Earlier runs reproduced two intermittent sharing schedule-setup
+      request timeouts, also observed before this slice; their cause remains
+      unresolved. No deadline, worker-profile, RLS or planner changes were
+      retained, and no latency improvement or flakiness fix is claimed.
 
 ## 7. Domain events (follow-up application PR 7)
 
