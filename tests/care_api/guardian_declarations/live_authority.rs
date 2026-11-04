@@ -320,16 +320,29 @@ async fn committed_withdrawal_denies_subsequent_plan_without_effects() -> Result
 struct PendingRequest(tokio::task::JoinHandle<Result<reqwest::Response, reqwest::Error>>);
 
 impl PendingRequest {
-    async fn finish(&mut self) -> Result<reqwest::Response, DbErr> {
+    async fn finish(&mut self, stage: &str) -> Result<reqwest::Response, DbErr> {
         tokio::time::timeout(Duration::from_secs(5), &mut self.0)
             .await
             .map_err(|_| {
-                DbErr::Custom(
-                    "Owned concurrent request exceeded its bounded completion window".into(),
-                )
+                DbErr::Custom(format!(
+                    "{stage} request exceeded its bounded completion window"
+                ))
             })?
-            .map_err(|_| DbErr::Custom("Owned concurrent request task did not complete".into()))?
-            .map_err(|_| DbErr::Custom("Owned concurrent request failed before response".into()))
+            .map_err(|_| DbErr::Custom(format!("{stage} request task did not complete")))?
+            .map_err(|error| {
+                let category = if error.is_timeout() {
+                    "timeout"
+                } else if error.is_builder() {
+                    "request construction"
+                } else if error.is_connect() {
+                    "connection"
+                } else {
+                    "transport"
+                };
+                DbErr::Custom(format!(
+                    "{stage} request failed before response: {category}"
+                ))
+            })
     }
 }
 
@@ -339,7 +352,24 @@ impl Drop for PendingRequest {
     }
 }
 
-async fn blocked_waiter(app: &Application, blocker: i32) -> Result<i32, DbErr> {
+#[tokio::test]
+async fn concurrent_request_failure_reports_error_category() {
+    let mut request = PendingRequest(tokio::spawn(async {
+        reqwest::Client::new().get("http://[").send().await
+    }));
+    let error = request.finish("plan").await.unwrap_err().to_string();
+    assert!(
+        error.contains("plan") && error.contains("request construction"),
+        "request failure must identify its phase and category: {error}"
+    );
+}
+
+async fn blocked_waiter(
+    app: &Application,
+    blocker: i32,
+    request: &mut PendingRequest,
+    stage: &str,
+) -> Result<i32, DbErr> {
     for _ in 0..100 {
         let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND $1::int=ANY(pg_blocking_pids(pid)) ORDER BY pid LIMIT 1",
@@ -349,9 +379,16 @@ async fn blocked_waiter(app: &Application, blocker: i32) -> Result<i32, DbErr> {
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
-    Err(DbErr::Custom(
-        "Expected deterministic PostgreSQL blocking witness was not reached".into(),
-    ))
+    if request.0.is_finished() {
+        let response = request.finish(stage).await?;
+        return Err(DbErr::Custom(format!(
+            "{stage} request returned HTTP {} before its blocking witness",
+            response.status().as_u16()
+        )));
+    }
+    Err(DbErr::Custom(format!(
+        "{stage} PostgreSQL blocking witness was not reached while request remained pending"
+    )))
 }
 
 async fn second_native_token(app: &Application) -> Result<String, DbErr> {
@@ -383,12 +420,12 @@ async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() 
         let plan_token=token.clone();
         let body=schedule_body(&app, subject);
         let mut plan=PendingRequest(tokio::spawn(async move {client.post(endpoint).bearer_auth(plan_token).json(&body).send().await}));
-        let plan_pid=blocked_waiter(&app,gate_pid).await?;
+        let plan_pid=blocked_waiter(&app,gate_pid,&mut plan,"plan").await?;
         let client=app.client.clone();
         let endpoint=format!("{}/api/v1/auth/guardian-declarations/{id}",app.origin);
         let mut withdrawal=PendingRequest(tokio::spawn(async move {client.patch(endpoint).bearer_auth(withdrawal_token)
             .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}})).send().await}));
-        let withdrawal_pid=blocked_waiter(&app,plan_pid).await?;
+        let withdrawal_pid=blocked_waiter(&app,plan_pid,&mut withdrawal,"withdrawal").await?;
         let locks=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND relation='public.guardian_declarations'::regclass AND mode='RowShareLock' AND granted) AS declaration_reached,
               EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.security_audit_events'::regclass AND confrelid='public.accounts'::regclass AND contype='f') AS audit_account_fk",
@@ -398,13 +435,13 @@ async fn plan_declaration_share_blocks_withdrawal_until_plan_and_audit_commit() 
         require(!plan.0.is_finished() && !withdrawal.0.is_finished(),"Both actual requests must be pending before releasing the plan audit")?;
         require(declaration_state(&app,id).await?["withdrawn"]==false,"Blocked withdrawal must not become visible before plan commit")?;
         gate.commit().await?;
-        let saved=plan.finish().await?;
+        let saved=plan.finish("plan").await?;
         require(saved.status().as_u16()==201,"Plan holding declaration SHARE must finish with its audit before withdrawal")?;
         let plan_request=saved.headers().get("x-request-id").and_then(|value|value.to_str().ok())
             .filter(|value|!value.is_empty()).ok_or_else(||DbErr::Custom("Committed plan request ID missing".into()))?.to_owned();
         let saved:Value=saved.json().await.map_err(|_|DbErr::Custom("Concurrent plan result must be JSON".into()))?;
         let plan_id=saved["data"]["id"].as_i64().ok_or_else(||DbErr::Custom("Concurrent plan ID missing".into()))?;
-        let withdrawn=withdrawal.finish().await?;
+        let withdrawn=withdrawal.finish("withdrawal").await?;
         require(withdrawn.status().as_u16()==200,"Waiting withdrawal must commit after the authorised plan and audit")?;
         let version_ids=Query::select().column("id").from("versions")
             .and_where(Expr::col("item_type").is_in(["Schedule","PersonSchedule","SharedPersonSchedule"]))

@@ -6,7 +6,7 @@ use crate::models::{
         browser_push::{Delivery, Service, audit},
         push_subscriptions,
     },
-    entities::{account, household, push_subscription},
+    entities::{account, household, push_subscription, schedule},
     errors::OperationError,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -37,6 +37,42 @@ enum Guard {
     Attempt(Delivery),
     Suppressed,
     Stale,
+}
+
+enum ProjectionCheck {
+    Current,
+    Ineligible,
+    Refresh(Vec<crate::models::care::person_schedules::projection::RefreshSignature>),
+}
+
+async fn inspect_claim_projections(
+    tenant: &TenantTransaction,
+    schedule_ids: &[i64],
+) -> Result<ProjectionCheck, OperationError> {
+    let mut refresh = Vec::new();
+    for &id in schedule_ids {
+        let Some(initial) = schedule::Entity::find_by_id(id)
+            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .one(tenant.transaction())
+            .await?
+        else {
+            return Ok(ProjectionCheck::Ineligible);
+        };
+        let projection =
+            crate::models::care::person_schedules::projection::inspect_read(tenant, initial)
+                .await?;
+        if projection.ineligible() {
+            return Ok(ProjectionCheck::Ineligible);
+        }
+        if let Some(signature) = projection.refresh_signature() {
+            refresh.push(signature);
+        }
+    }
+    if refresh.is_empty() {
+        Ok(ProjectionCheck::Current)
+    } else {
+        Ok(ProjectionCheck::Refresh(refresh))
+    }
 }
 
 async fn terminal(
@@ -287,88 +323,150 @@ async fn presend_authority(
         return Err(error);
     }
     projection_tenant.commit().await?;
-    let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
-    let checked = async {
-        tenant
-            .transaction()
-            .execute_unprepared("SET LOCAL lock_timeout = '5s'")
-            .await?;
-        account::Entity::find_by_id(scope.actor.account_id)
-            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
-            .one(tenant.transaction())
-            .await?
-            .ok_or(OperationError::Forbidden)?;
-        household::Entity::find_by_id(scope.household_id)
-            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
-            .one(tenant.transaction())
-            .await?
-            .ok_or(OperationError::Forbidden)?;
-        let subscription = push_subscription::Entity::find_by_id(claim.subscription.id)
-            .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
-            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
-            .one(tenant.transaction())
-            .await?;
-        let owned = notification_delivery::Entity::find_by_id(id)
-            .filter(notification_delivery::Column::HouseholdId.eq(scope.household_id))
-            .filter(notification_delivery::Column::AccountId.eq(scope.actor.account_id))
-            .filter(notification_delivery::Column::Status.eq("sending"))
-            .filter(notification_delivery::Column::AttemptCount.eq(claim.attempt))
-            .filter(notification_delivery::Column::ClaimedAt.eq(claim.claimed_at))
-            .one(tenant.transaction())
-            .await?
-            .is_some();
-        access::recheck(&tenant).await?;
-        Ok::<_, OperationError>((subscription, owned))
-    }
-    .await;
-    let (subscription, owned) = match checked {
-        Ok(values) => values,
-        Err(error) => {
-            if revocable(&error)
-                && suppress(&tenant, id, "recipient_revoked").await.is_ok()
-                && tenant.commit().await.is_ok()
-            {
+    let schedule_ids = super::authority::schedule_source_ids(&claim.metadata).unwrap_or_default();
+    let mut previous_refresh = None;
+    loop {
+        let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+        let checked = async {
+            tenant
+                .transaction()
+                .execute_unprepared("SET LOCAL lock_timeout = '5s'")
+                .await?;
+            account::Entity::find_by_id(scope.actor.account_id)
+                .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+                .one(tenant.transaction())
+                .await?
+                .ok_or(OperationError::Forbidden)?;
+            household::Entity::find_by_id(scope.household_id)
+                .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+                .one(tenant.transaction())
+                .await?
+                .ok_or(OperationError::Forbidden)?;
+            let subscription = push_subscription::Entity::find_by_id(claim.subscription.id)
+                .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
+                .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+                .one(tenant.transaction())
+                .await?;
+            let owned = notification_delivery::Entity::find_by_id(id)
+                .filter(notification_delivery::Column::HouseholdId.eq(scope.household_id))
+                .filter(notification_delivery::Column::AccountId.eq(scope.actor.account_id))
+                .filter(notification_delivery::Column::Status.eq("sending"))
+                .filter(notification_delivery::Column::AttemptCount.eq(claim.attempt))
+                .filter(notification_delivery::Column::ClaimedAt.eq(claim.claimed_at))
+                .one(tenant.transaction())
+                .await?
+                .is_some();
+            access::recheck(&tenant).await?;
+            Ok::<_, OperationError>((subscription, owned))
+        }
+        .await;
+        let (subscription, owned) = match checked {
+            Ok(values) => values,
+            Err(error) => {
+                if revocable(&error)
+                    && suppress(&tenant, id, "recipient_revoked").await.is_ok()
+                    && tenant.commit().await.is_ok()
+                {
+                    return Ok(Guard::Suppressed);
+                }
+                return Err(error);
+            }
+        };
+        if !owned {
+            tenant.commit().await?;
+            return Ok(Guard::Stale);
+        }
+        let projections = match inspect_claim_projections(&tenant, &schedule_ids).await {
+            Ok(value) => value,
+            Err(error) => {
+                if revocable(&error)
+                    && suppress(&tenant, id, "recipient_revoked").await.is_ok()
+                    && tenant.commit().await.is_ok()
+                {
+                    return Ok(Guard::Suppressed);
+                }
+                return Err(error);
+            }
+        };
+        match projections {
+            ProjectionCheck::Ineligible => {
+                suppress(&tenant, id, "no_longer_eligible").await?;
+                tenant.commit().await?;
                 return Ok(Guard::Suppressed);
             }
-            return Err(error);
+            ProjectionCheck::Refresh(signatures) => {
+                if previous_refresh.as_ref() == Some(&signatures) {
+                    suppress(&tenant, id, "no_longer_eligible").await?;
+                    tenant.commit().await?;
+                    return Ok(Guard::Suppressed);
+                }
+                let refresh_at = Utc::now().max(send_at);
+                if refresh_at >= claim.expires_at {
+                    suppress(&tenant, id, "deadline_before_send").await?;
+                    tenant.commit().await?;
+                    return Ok(Guard::Suppressed);
+                }
+                tenant.commit().await?;
+                let projection_tenant =
+                    access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+                if let Err(error) =
+                    crate::models::care::person_schedules::projection::refresh_sources(
+                        &projection_tenant,
+                        &schedule_ids,
+                    )
+                    .await
+                {
+                    if revocable(&error) {
+                        let tenant =
+                            access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+                        if suppress(&tenant, id, "recipient_revoked").await.is_ok()
+                            && tenant.commit().await.is_ok()
+                        {
+                            return Ok(Guard::Suppressed);
+                        }
+                    }
+                    return Err(error);
+                }
+                projection_tenant.commit().await?;
+                previous_refresh = Some(signatures);
+                continue;
+            }
+            ProjectionCheck::Current => {}
         }
-    };
-    if !owned {
+        let send_at = send_at.max(Utc::now());
+        if send_at >= claim.expires_at {
+            suppress(&tenant, id, "deadline_before_send").await?;
+            tenant.commit().await?;
+            return Ok(Guard::Suppressed);
+        }
+        let intent = plans(&tenant, send_at)
+            .await?
+            .into_iter()
+            .find(|intent| intent.key == claim.key && intent.epoch.matches(&claim.metadata));
+        let Some((intent, subscription)) = intent.zip(subscription) else {
+            suppress(&tenant, id, "no_longer_eligible").await?;
+            tenant.commit().await?;
+            return Ok(Guard::Suppressed);
+        };
+        let payload =
+            serde_json::to_vec(&intent.payload).map_err(|_| OperationError::Unavailable)?;
+        let expires_at = claim.expires_at.min(intent.expires_at);
+        let remaining = expires_at - send_at.max(Utc::now());
+        if remaining <= chrono::Duration::zero() {
+            suppress(&tenant, id, "deadline_before_send").await?;
+            tenant.commit().await?;
+            return Ok(Guard::Suppressed);
+        }
+        let ttl = u32::try_from(remaining.num_seconds())
+            .map_err(|_| OperationError::Unavailable)?
+            .min(300);
+        let outcome = service
+            .transport
+            .send_with_ttl(&subscription, &payload, ttl)
+            .await;
         tenant.commit().await?;
-        return Ok(Guard::Stale);
+        return Ok(Guard::Attempt(outcome));
     }
-    let send_at = send_at.max(Utc::now());
-    if send_at >= claim.expires_at {
-        suppress(&tenant, id, "deadline_before_send").await?;
-        tenant.commit().await?;
-        return Ok(Guard::Suppressed);
-    }
-    let intent = plans(&tenant, send_at)
-        .await?
-        .into_iter()
-        .find(|intent| intent.key == claim.key && intent.epoch.matches(&claim.metadata));
-    let Some((intent, subscription)) = intent.zip(subscription) else {
-        suppress(&tenant, id, "no_longer_eligible").await?;
-        tenant.commit().await?;
-        return Ok(Guard::Suppressed);
-    };
-    let payload = serde_json::to_vec(&intent.payload).map_err(|_| OperationError::Unavailable)?;
-    let expires_at = claim.expires_at.min(intent.expires_at);
-    let remaining = expires_at - send_at.max(Utc::now());
-    if remaining <= chrono::Duration::zero() {
-        suppress(&tenant, id, "deadline_before_send").await?;
-        tenant.commit().await?;
-        return Ok(Guard::Suppressed);
-    }
-    let ttl = u32::try_from(remaining.num_seconds())
-        .map_err(|_| OperationError::Unavailable)?
-        .min(300);
-    let outcome = service
-        .transport
-        .send_with_ttl(&subscription, &payload, ttl)
-        .await;
-    tenant.commit().await?;
-    Ok(Guard::Attempt(outcome))
 }
 
 async fn complete(
