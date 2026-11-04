@@ -306,11 +306,11 @@ if test "$nested_selftest" -eq 1
     if test "$mode" = orphan
         test (sudo awk '{print $22}' "/proc/$sampler_leaf_parent/stat") = "$sampler_leaf_parent_start"; or exit 1
         test (sudo awk '{print $22}' "/proc/$sampler/stat") = "$sampler_start"; or exit 1
+        event selftest_orphan.parent_kill_start
         sudo kill -KILL "$sampler_leaf_parent"; or exit 1
-        if test "$sampler_leaf_parent" != "$sampler"
-            sudo kill -KILL "$sampler"; or exit 1
-        end
+        event selftest_orphan.wrapper_wait_start
         bounded_wait "$sampler" 30; or exit 1
+        event selftest_orphan.wrapper_wait_complete
         sudo kill -0 "$sampler_leaf" 2>/dev/null; or exit 1
         event selftest_orphan.parents_gone_leaf_alive
     end
