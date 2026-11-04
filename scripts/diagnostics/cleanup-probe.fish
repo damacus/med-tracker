@@ -26,6 +26,7 @@ function record_result
     end
 end
 if test "$argv[1]" = --shutdown-selftest
+    echo shutdown_selftest_start
     set -l tmp (mktemp -d); or exit 1
     child_result "$tmp/missing"; and exit 1
     for code in 0 7
@@ -42,6 +43,7 @@ if test "$argv[1]" = --shutdown-selftest
     test (cat "$tmp/signal") = 143; or exit 1
     child_result "$tmp/signal"; and exit 1
     rm -rf "$tmp"
+    echo shutdown_selftest_passed
     exit 0
 end
 set -g nested_selftest 0
@@ -66,6 +68,7 @@ function cleanup --on-event fish_exit
         if set -q sampler sampler_start
             finish_profile_job "$sampler" "$sampler_start" sampler 2
         end
+        if test -f "$raw/events"; cat "$raw/events"; end
         rm -rf -- "$out"
         return
     end
@@ -264,9 +267,12 @@ function terminated --on-signal SIGTERM
     exit 1
 end
 if test "$nested_selftest" -eq 1
+    event selftest_start
     test (uname -s) = Linux; or exit 1
     set -l node_path (command -s node); or exit 1
+    set -l node_exe (sudo stat -Lc '%d:%i' "$node_path"); or exit 1
     for mode in nested orphan
+    event "selftest_$mode.start"
     rm -f "$raw/sampler.result"
     set -e sampler_leaf
     fish --no-config -c "$child_wrapper" "$raw/sampler.result" sudo "$node_path" -e 'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000)' >/dev/null 2>&1 &
@@ -274,38 +280,48 @@ if test "$nested_selftest" -eq 1
     set -g sampler_start (sudo awk '{print $22}' "/proc/$sampler/stat"); or exit 1
     for attempt in (seq 1 80)
         for parent in (pgrep -P "$sampler")
-            for p in (pgrep -P "$parent")
-                if test (ps -o comm= -p "$p" | string trim) = node
+            for p in "$parent" (pgrep -P "$parent")
+                set -l candidate_exe (sudo stat -Lc '%d:%i' "/proc/$p/exe" 2>/dev/null)
+                if test "$candidate_exe" = "$node_exe"
                     set -g sampler_leaf "$p"
-                    set -g sampler_leaf_parent "$parent"
+                    set -g sampler_leaf_parent (sudo awk '/^PPid:/ {print $2}' "/proc/$p/status")
                 end
             end
         end
         set -q sampler_leaf; and break
         sleep 0.1
     end
+    event "selftest_$mode.discovery_done"
     set -q sampler_leaf; or exit 1
     set -g sampler_leaf_start (sudo awk '{print $22}' "/proc/$sampler_leaf/stat"); or exit 1
     set -g sampler_leaf_exe (sudo stat -Lc '%d:%i' "/proc/$sampler_leaf/exe"); or exit 1
     set -g sampler_leaf_uid (sudo stat -Lc '%u' "/proc/$sampler_leaf"); or exit 1
     set -g sampler_leaf_parent_start (sudo awk '{print $22}' "/proc/$sampler_leaf_parent/stat"); or exit 1
+    event "selftest_$mode.identity_recorded"
     sleep 1
     sudo kill -TERM "$sampler_leaf"; or exit 1
     sleep 0.2
     sudo kill -0 "$sampler_leaf" 2>/dev/null; or exit 1
+    event "selftest_$mode.term_ignored"
     if test "$mode" = orphan
         test (sudo awk '{print $22}' "/proc/$sampler_leaf_parent/stat") = "$sampler_leaf_parent_start"; or exit 1
         test (sudo awk '{print $22}' "/proc/$sampler/stat") = "$sampler_start"; or exit 1
         sudo kill -KILL "$sampler_leaf_parent"; or exit 1
-        sudo kill -KILL "$sampler"; or exit 1
+        if test "$sampler_leaf_parent" != "$sampler"
+            sudo kill -KILL "$sampler"; or exit 1
+        end
         bounded_wait "$sampler" 30; or exit 1
         sudo kill -0 "$sampler_leaf" 2>/dev/null; or exit 1
+        event selftest_orphan.parents_gone_leaf_alive
     end
+    event "selftest_$mode.finish_start"
     finish_profile_job "$sampler" "$sampler_start" sampler 2
     set -l forced_result $status
+    event "selftest_$mode.finish_result=$forced_result"
     test "$forced_result" -ne 0; and test "$profile_ended" -eq 1; or exit 1
     sudo kill -0 "$sampler_leaf" 2>/dev/null; and exit 1
     child_result "$raw/sampler.result"; and exit 1
+    event "selftest_$mode.passed"
     set -e sampler
     end
     exit 0
@@ -416,13 +432,15 @@ cmp -s "$raw/before" "$raw/after"; or exit 1
 docker unpause "$service" >/dev/null; or exit 1
 rm "$raw/paused"; or exit 1
 set -l node_path (command -s node); or exit 1
+set -l node_exe (sudo stat -Lc '%d:%i' "$node_path"); or exit 1
 fish --no-config -c "$child_wrapper" "$raw/sampler.result" sudo "$node_path" scripts/diagnostics/pg-capture-sampler.js "$raw" "$cgdir" "$postmaster" "$service" >"$raw/sampler.log" 2>&1 &
 set -g sampler $last_pid
 set -g sampler_start (sudo awk '{print $22}' "/proc/$sampler/stat"); or exit 1
 for attempt in (seq 1 80)
     for wrapper_child in (pgrep -P "$sampler")
         for p in "$wrapper_child" (pgrep -P "$wrapper_child")
-            if test (ps -o comm= -p "$p" | string trim) = node
+            set -l candidate_exe (sudo stat -Lc '%d:%i' "/proc/$p/exe" 2>/dev/null)
+            if test "$candidate_exe" = "$node_exe"
                 set -g sampler_leaf "$p"
             end
         end
