@@ -142,7 +142,6 @@ pub(crate) async fn can_access_person(
     access: PersonAccess,
 ) -> Result<bool, OperationError> {
     recheck(transaction).await?;
-    let membership = transaction.membership();
     let Some(subject) = person_queries::household_people(transaction.scope())
         .filter(person::Column::Id.eq(person_id))
         .one(transaction.transaction())
@@ -150,17 +149,26 @@ pub(crate) async fn can_access_person(
     else {
         return Ok(false);
     };
+    can_access_loaded_person(transaction, &subject, access).await
+}
+
+pub(crate) async fn can_access_loaded_person(
+    transaction: &TenantTransaction,
+    subject: &person::Model,
+    access: PersonAccess,
+) -> Result<bool, OperationError> {
+    let membership = transaction.membership();
     if matches!(access, PersonAccess::View | PersonAccess::Record) {
         return Ok(authorization::participating_person_access(
-            membership, &subject, access,
+            membership, subject, access,
         ));
     }
-    if authorization::own_person_manage(membership, &subject) {
+    if authorization::own_person_manage(membership, subject) {
         return Ok(true);
     }
     if super::care::guardian_declarations::manageable_subjects(transaction)
         .await?
-        .contains(&person_id)
+        .contains(&subject.id)
     {
         return Ok(true);
     }
