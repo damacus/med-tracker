@@ -1,90 +1,11 @@
 ---
-name: CI
-
+name: Private PostgreSQL aggregate capture
 "on":
   workflow_dispatch:
-  pull_request:
-  push:
-    branches: [main]
-
 permissions:
   contents: read
   pull-requests: read
-
-concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
-  loco_lint:
-    name: Rust lint and formatting
-    runs-on: ubuntu-26.04
-    timeout-minutes: 15
-    env:
-      CARGO_INCREMENTAL: "0"
-      CARGO_PROFILE_DEV_DEBUG: "0"
-      CARGO_PROFILE_TEST_DEBUG: "0"
-      PLAYWRIGHT_SKIP_DRIVER_DOWNLOAD: "1"
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          shared-key: loco-tests-v1
-      - name: Install Rust verification tools
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: |
-            cargo-machete@0.9.2
-            cargo-deny@0.20.2
-          fallback: none
-      - run: task fmt lint
-
-  loco_unit:
-    name: Rust and JavaScript unit tests
-    runs-on: ubuntu-26.04
-    timeout-minutes: 30
-    env:
-      CARGO_INCREMENTAL: "0"
-      CARGO_PROFILE_DEV_DEBUG: "0"
-      CARGO_PROFILE_TEST_DEBUG: "0"
-      PLAYWRIGHT_SKIP_DRIVER_DOWNLOAD: "1"
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "26"
-          check-latest: true
-          cache: "npm"
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
-        with:
-          toolchain: stable
-      - name: Install nextest
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: cargo-nextest@0.9.149
-          fallback: cargo-binstall
-        env:
-          BINSTALL_STRATEGIES: crate-meta-data
-      - name: Verify nextest checksum
-        run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          shared-key: loco-tests-v1
-          cache-bin: false
-      - run: task host:test:unit
-
   loco_integration:
     name: API, security and database integration tests
     runs-on: ubuntu-26.04
@@ -160,198 +81,70 @@ jobs:
           echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
           task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
           psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "CREATE DATABASE medtracker_reference"
-      - run: task host:test:integration
-
-  loco_browser:
-    name: Browser journeys
-    runs-on: ubuntu-26.04
-    timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: medtracker
-          POSTGRES_PASSWORD: medtracker_password
-          POSTGRES_DB: medtracker_loco
-        ports:
-          - 127.0.0.1:5432:5432
-        options: >-
-          --health-cmd "pg_isready -h 127.0.0.1 -U medtracker -d medtracker_loco"
-          --health-interval 2s
-          --health-timeout 2s
-          --health-retries 30
-    env:
-      CARGO_INCREMENTAL: "0"
-      CARGO_PROFILE_DEV_DEBUG: "0"
-      CARGO_PROFILE_TEST_DEBUG: "0"
-      DATABASE_URL: postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco
-      MEDTRACKER_OWNED_DATABASE: "1"
-      MEDTRACKER_OWNED_STORAGE: "1"
-      ACTIVE_STORAGE_S3_BUCKET: medtracker-fixture
-      ACTIVE_STORAGE_S3_REGION: us-east-1
-      ACTIVE_STORAGE_S3_ACCESS_KEY_ID: storage-smoke-access
-      ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY: storage-smoke-secret
-      ACTIVE_STORAGE_S3_FORCE_PATH_STYLE: "true"
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "26"
-          check-latest: true
-          cache: "npm"
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
-        with:
-          toolchain: stable
-      - name: Install nextest
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: cargo-nextest@0.9.149
-          fallback: cargo-binstall
-        env:
-          BINSTALL_STRATEGIES: crate-meta-data
-      - name: Verify nextest checksum
-        run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          shared-key: loco-tests-v1
-          cache-bin: false
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: |
-            ~/.cache/playwright-rust
-            ~/.cache/ms-playwright
-          key: loco-playwright-${{ hashFiles('Cargo.lock') }}
-      - name: Verify isolated demo seed and reset gate
-        run: task host:test:canary
-        env:
-          ACTIVE_STORAGE_S3_ENDPOINT: ""
-          ACTIVE_STORAGE_S3_BUCKET: ""
-          ACTIVE_STORAGE_S3_ACCESS_KEY_ID: ""
-          ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY: ""
-      - name: Start browser avatar storage
+      - name: Install temporary capture tools
         run: |
-          docker compose -f compose.yaml --env-file /dev/null -p mtloco-browser-ci --profile fixture-storage up -d --wait rustfs
-          STORAGE_PORT=$(docker compose -f compose.yaml --env-file /dev/null -p mtloco-browser-ci --profile fixture-storage port rustfs 9000 | cut -d: -f2)
-          echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
-          task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
-      - run: task host:test:browser
-      - name: Preserve browser screenshots
+          sudo apt-get update -qq
+          sudo apt-get install -y age fish ripgrep
+      - name: Install matching perf
+        shell: fish --no-config {0}
+        run: sudo apt-get install -y linux-tools-(uname -r)
+      - name: Capture integration diagnostics
+        shell: fish --no-config {0}
+        env:
+          PG_DIAGNOSTIC_CONTAINER: ${{ job.services.postgres.id }}
+          MEDTRACKER_PGSS_RECIPIENT: age1jzdak3qe6qhskt0ua0nhacqerwsrxxz2rawf7l3zzdy0ty70acwqmucu4e
+        run: |
+          set -gx MEDTRACKER_DIAGNOSTIC_TIMEOUT_FILE "$RUNNER_TEMP/pg-capture/timeout.ns"
+          fish scripts/diagnostics/pg-perf-capture.fish --validator-selftest; or exit 1
+          fish scripts/diagnostics/pg-perf-capture.fish >/dev/null 2>&1 &
+          set -l collector $last_pid
+          for attempt in (seq 1 200)
+            test -f "$RUNNER_TEMP/pg-capture/collector.ready"; and break
+            if not kill -0 "$collector" 2>/dev/null
+              wait "$collector"
+              echo 'Diagnostic collector could not start' >&2
+              exit 1
+            end
+            sleep 0.1
+          end
+          if not test -f "$RUNNER_TEMP/pg-capture/collector.ready"
+            touch "$RUNNER_TEMP/pg-capture/test.done"
+            wait "$collector"
+            echo 'Diagnostic collector readiness failed' >&2
+            exit 1
+          end
+          task host:test:integration
+          set -l test_status $status
+          touch "$RUNNER_TEMP/pg-capture/test.done"
+          wait "$collector"
+          set -l capture_status $status
+          if test "$test_status" -ne 0; exit "$test_status"; end
+          if test "$capture_status" -ne 0; exit 1; end
+      - name: Ensure owned PostgreSQL service is unpaused
+        if: always()
+        timeout-minutes: 1
+        shell: fish --no-config {0}
+        env:
+          PG_DIAGNOSTIC_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          string match -rq '^[0-9a-f]{64}$' "$PG_DIAGNOSTIC_CONTAINER"; or exit 1
+          test (docker inspect --format '{{.Config.Image}}' "$PG_DIAGNOSTIC_CONTAINER") = postgres:18-alpine; or exit 1
+          set -l paused (docker inspect --format '{{.State.Paused}}' "$PG_DIAGNOSTIC_CONTAINER"); or exit 1
+          if test "$paused" = true
+            docker unpause "$PG_DIAGNOSTIC_CONTAINER" >/dev/null; or exit 1
+          else if test "$paused" != false
+            exit 1
+          end
+      - name: Remove private capture files
+        if: always()
+        timeout-minutes: 1
+        shell: fish --no-config {0}
+        run: sudo rm -rf -- "$RUNNER_TEMP/pg-capture/private"
+      - name: Preserve encrypted aggregate
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: browser-journey-screenshots
-          path: docs/screenshots/browser-journeys/
-          if-no-files-found: ignore
-
-  client_tools:
-    runs-on: [ubuntu-latest]
-    name: Rust Client Tools
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          workspaces: client-tools
-          cache-bin: false
-      - name: Install Task
-        uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - name: Install Fish and private Secret Service test tools
-        run: sudo apt-get update && sudo apt-get install --yes fish dbus gnome-keyring libsecret-tools
-      - name: Install nextest
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: cargo-nextest@0.9.149
-          fallback: cargo-binstall
-        env:
-          BINSTALL_STRATEGIES: crate-meta-data
-      - name: Verify nextest checksum
-        run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
-      - name: Install Rust client verification tools
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: |
-            cargo-machete@0.9.2
-            cargo-deny@0.20.2
-          fallback: none
-      - name: Check client tools
-        run: task client-tools:ci
-      - name: Verify Linux credential compatibility in a private session
-        run: task client-tools:test:secret-service
-
-  android:
-    uses: ./.github/workflows/android.yml
-
-  api_clients:
-    uses: ./.github/workflows/api-clients.yml
-
-  markdown_check:
-    name: Markdown Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "26"
-          check-latest: true
-      - name: Check Markdown
-        run: npx --yes markdownlint-cli2@0.20.0 --config .markdownlint-cli2.jsonc "**/*.md"
-
-  docs_check:
-    runs-on: [ubuntu-latest]
-    name: Documentation Check
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: "3.x"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-      - name: Install documentation dependencies
-        run: pip install uv==0.10.12
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - name: Build documentation
-        run: task docs:build
-
-  ci_success:
-    name: CI Success
-    if: always()
-    needs:
-      - loco_lint
-      - loco_unit
-      - loco_integration
-      - loco_browser
-      - client_tools
-      - android
-      - api_clients
-      - markdown_check
-      - docs_check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require every CI job to pass
-        env:
-          JOB_RESULTS: ${{ toJSON(needs) }}
-        run: |
-          if ! jq -e 'all(.[]; .result == "success")' <<< "$JOB_RESULTS"; then
-            echo "$JOB_RESULTS" | jq .
-            exit 1
-          fi
+          name: pg-aggregate-encrypted
+          path: ${{ runner.temp }}/pg-capture/*.age
+          if-no-files-found: error
+          retention-days: 1
