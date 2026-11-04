@@ -7,15 +7,19 @@ const fs = require("node:fs");
 const rows = [];
 let redacted = 0;
 let redactedPercent = 0;
-let pgUser = 0, kernel = 0;
+let pgUser = 0, kernel = 0, unknownMode = 0;
+let malformed = false, firstSemicolons = -1, firstFields = -1;
 for (const line of fs.readFileSync(0, "utf8").split("\n")) {
   if (!line.trim() || line.trimStart().startsWith("#")) continue;
   const match = line.match(/^\s*(\d+(?:\.\d+)?)%?\s*;\s*(.*?)\s*$/);
-  if (!match) process.exit(1);
-  const value = Number(match[1]);
-  if (!Number.isFinite(value) || value < 0 || value > 100) process.exit(1);
+  const value = match ? Number(match[1]) : NaN;
+  if (!match || !Number.isFinite(value) || value < 0 || value > 100) {
+    if (!malformed) { firstSemicolons = (line.match(/;/g) || []).length; firstFields = firstSemicolons + 1; }
+    malformed = true; continue;
+  }
   const prefix = match[2].match(/^\[([.k])\]\s*/);
   const mode = prefix ? (prefix[1] === "." ? "user" : "kernel") : "unknown";
+  if (mode === "unknown") unknownMode++;
   const label = match[2].replace(/^\[[.k]\]\s*/, "");
   const safe = /^[A-Za-z_][A-Za-z0-9_.]*$/.test(label) && !/0x[0-9a-f]/i.test(label);
   if (!safe) { redacted++; redactedPercent += value; }
@@ -23,9 +27,11 @@ for (const line of fs.readFileSync(0, "utf8").split("\n")) {
   if (safe && mode === "kernel") kernel++;
   rows.push({percent:value, mode, symbol:safe ? label : "[unknown]"});
 }
-if (!rows.length || !pgUser || !kernel) process.exit(1);
+const reason = malformed ? "malformed_row" : !rows.length ? "no_rows" : !pgUser ? "missing_pg_user" : !kernel ? "missing_kernel" : "none";
+if (process.argv[1]) fs.writeFileSync(process.argv[1], JSON.stringify({reason, rows:rows.length, pg_user:pgUser, kernel, unknown_mode:unknownMode, redacted, first_semicolons:firstSemicolons, first_fields:firstFields}));
+if (reason !== "none") process.exit(1);
 console.log(JSON.stringify({scope:"verified_pid_subset", redacted_rows:redacted, redacted_percent:redactedPercent, rows}));
-'
+' $argv
 end
 function verify_filter_reports
     node -e '
@@ -54,6 +60,14 @@ if test "$argv[1]" = --validator-selftest
     if printf '30.00;[k] schedule\n' | sanitise_histogram >/dev/null; exit 1; end
     if printf '20.00;/private/path\nwrong\n' | sanitise_histogram >/dev/null; exit 1; end
     set -l fixture (mktemp -d); or exit 1
+    printf 'bad;row;extra\n' | sanitise_histogram "$fixture/diagnostic" >/dev/null
+    test $status -ne 0; and jq -e '.reason == "malformed_row" and .first_semicolons == 2 and .first_fields == 3' "$fixture/diagnostic" >/dev/null; or begin; rm -rf "$fixture"; exit 1; end
+    printf '\n' | sanitise_histogram "$fixture/diagnostic" >/dev/null
+    test $status -ne 0; and jq -e '.reason == "no_rows" and .rows == 0' "$fixture/diagnostic" >/dev/null; or begin; rm -rf "$fixture"; exit 1; end
+    printf '20.00;[.] 0x1234\n30.00;[k] 0x1234\n' | sanitise_histogram "$fixture/diagnostic" >/dev/null
+    test $status -ne 0; and jq -e '.reason == "missing_pg_user" and .redacted == 2' "$fixture/diagnostic" >/dev/null; or begin; rm -rf "$fixture"; exit 1; end
+    printf '20.00;[.] ExecScan\n' | sanitise_histogram "$fixture/diagnostic" >/dev/null
+    test $status -ne 0; and jq -e '.reason == "missing_kernel" and .pg_user == 1' "$fixture/diagnostic" >/dev/null; or begin; rm -rf "$fixture"; exit 1; end
     printf '{"a":2,"b":3,"selected":5}\n' >"$fixture/coverage"
     printf '2; 1:postgres\n' >"$fixture/proof-a"
     printf '2; 1:postgres\n3; 2:postgres\n' >"$fixture/proof-known"
@@ -80,6 +94,8 @@ set -g b_count -1
 set -g snapshot_success 0
 set -g recorder_exit -1
 set -g duration_ms -1
+set -g report_exit -1
+set -g report_info 'sanitiser=unavailable rows=-1 pg_user=-1 kernel=-1 unknown_mode=-1 redacted=-1 first_semicolons=-1 first_fields=-1'
 set -g summary 'coverage=unavailable'
 function cleanup --on-event fish_exit
     if test -f "$raw/paused"
@@ -104,7 +120,7 @@ function cleanup --on-event fish_exit
             wait $$job >/dev/null 2>&1
         end
     end
-    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
+    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s report_exit=%s %s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$report_exit" "$report_info" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
     set -l encryption_status $pipestatus
     if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/status.age.partial"
         mv "$out/status.age.partial" "$out/status.age"
@@ -304,9 +320,16 @@ for entry in a known missing
 end
 verify_filter_reports "$raw" "$known_list" "$a" "$b" "$missing" >"$raw/proof-check.log" 2>&1; or exit 1
 set phase aggregate
-set reason report
-sudo perf report --stdio --no-children --call-graph none --percentage relative --sort symbol --fields overhead,symbol --field-separator ';' --pid "$known_list" --time "$interval" --symfs "/proc/$postmaster/root" -i "$raw/perf.data" >"$raw/report" 2>"$raw/report.log"; or exit 1
-sanitise_histogram <"$raw/report" >"$raw/safe-report"; or exit 1
+set reason report_generate
+sudo perf report --stdio --no-children --call-graph none --percentage relative --sort symbol --fields overhead,symbol --field-separator ';' --pid "$known_list" --time "$interval" --symfs "/proc/$postmaster/root" -i "$raw/perf.data" >"$raw/report" 2>"$raw/report.log"
+set report_exit $status
+test "$report_exit" -eq 0; or exit 1
+set reason report_sanitise
+sanitise_histogram "$raw/report-diagnostic" <"$raw/report" >"$raw/safe-report" 2>"$raw/sanitise.log"
+set -l sanitise_exit $status
+set report_info (node -e 'const d=JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8")); const keys=["rows","pg_user","kernel","unknown_mode","redacted","first_semicolons","first_fields"]; if(!["none","malformed_row","no_rows","missing_pg_user","missing_kernel"].includes(d.reason)||keys.some(k=>!Number.isSafeInteger(d[k])||d[k]<-1))process.exit(1); console.log(`sanitiser=${d.reason} `+keys.map(k=>`${k}=${d[k]}`).join(" "))' "$raw/report-diagnostic" 2>"$raw/report-diagnostic.log"); or exit 1
+test "$sanitise_exit" -eq 0; or exit 1
+set reason report_size
 test (wc -c <"$raw/safe-report" | string trim) -le 1048576; or exit 1
 set -l bytes (stat -c %s "$raw/perf.data")
 test "$bytes" -lt 268435456; or exit 1
