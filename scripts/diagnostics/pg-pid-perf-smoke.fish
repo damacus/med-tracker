@@ -5,32 +5,49 @@ function validate_events
     node -e '
 const fs = require("node:fs");
 const owned = new Set(process.argv[1].split(","));
-let records = 0;
+const counts = {events:0, comm:0, fork:0, exit:0, mmap:0, mmap2:0, kernel_map:0, unowned_comm:0, unowned_mmap:0, unowned_fork_exit:0, malformed:0, other:0};
+let first = "none";
+const mark = reason => { if (first === "none") first = reason; };
 for (const line of fs.readFileSync(0, "utf8").split("\n")) {
   if (!line.includes("PERF_RECORD_")) continue;
-  records++;
+  counts.events++;
   let match = line.match(/PERF_RECORD_COMM(?: exec)?: .*:(\d+)\/(\d+)\s*$/);
-  if (match) { if (!owned.has(match[1]) || !owned.has(match[2])) process.exit(1); continue; }
-  match = line.match(/PERF_RECORD_(?:FORK|EXIT)\((\d+):(\d+)\):\((\d+):(\d+)\)\s*$/);
-  if (match) { if (!match.slice(1).every(id => owned.has(id))) process.exit(1); continue; }
-  match = line.match(/PERF_RECORD_MMAP2?\s+(-?\d+)\/(\d+):.*$/);
+  if (match) { counts.comm++; if (!owned.has(match[1]) || !owned.has(match[2])) { counts.unowned_comm++; mark(!owned.has(match[1]) ? "unowned_pid" : "unowned_tid"); } continue; }
+  match = line.match(/PERF_RECORD_(FORK|EXIT)\((\d+):(\d+)\):\((\d+):(\d+)\)\s*$/);
+  if (match) { counts[match[1].toLowerCase()]++; if (!match.slice(2).every(id => owned.has(id))) { counts.unowned_fork_exit++; mark(!owned.has(match[2]) ? "unowned_pid" : !owned.has(match[3]) ? "unowned_tid" : "unowned_parent"); } continue; }
+  match = line.match(/PERF_RECORD_(MMAP2?)\s+(-?\d+)\/(\d+):.*$/);
   if (match) {
-    if (match[1] === "-1" && match[2] === "0" && /\[kernel\.kallsyms\]\s*$/.test(line)) continue;
-    if (!owned.has(match[1]) || !owned.has(match[2])) process.exit(1);
+    counts[match[1].toLowerCase()]++;
+    if (match[2] === "-1" && match[3] === "0" && /\[kernel\.kallsyms\]\s*$/.test(line)) { counts.kernel_map++; continue; }
+    if (!owned.has(match[2]) || !owned.has(match[3])) { counts.unowned_mmap++; mark(match[2] === "-1" ? "rejected_kernel_map" : !owned.has(match[2]) ? "unowned_pid" : "unowned_tid"); }
     continue;
   }
-  process.exit(1);
+  if (/PERF_RECORD_(?:COMM|FORK|EXIT|MMAP2?)(?:\b|\()/.test(line)) { counts.malformed++; mark("malformed_known_record"); }
+  else { counts.other++; mark("unknown_record_kind"); }
 }
-if (records === 0) process.exit(1);
+if (!counts.events) mark("no_records");
+console.log(`first=${first} ` + Object.entries(counts).map(([name, value]) => `${name}=${value}`).join(" "));
+if (!counts.events || counts.unowned_comm || counts.unowned_mmap || counts.unowned_fork_exit || counts.malformed || counts.other) process.exit(1);
 ' "$argv[1]"
 end
 if test "$argv[1]" = --validator-selftest
-    printf 'PERF_RECORD_COMM: postgres:1/1\nPERF_RECORD_MMAP 2/2: [0x0] x /postgres\nPERF_RECORD_FORK(2:2):(1:1)\n' | validate_events 1,2; or exit 1
-    if printf 'PERF_RECORD_COMM: intruder:3/3\n' | validate_events 1,2; exit 1; end
-    if printf 'PERF_RECORD_MMAP 3/3: [0x0] x /intruder\n' | validate_events 1,2; exit 1; end
-    if printf 'PERF_RECORD_FORK(3:3):(1:1)\n' | validate_events 1,2; exit 1; end
-    printf 'PERF_RECORD_MMAP -1/0: [0x0] x [kernel.kallsyms]\n' | validate_events 1,2; or exit 1
-    if printf 'PERF_RECORD_MMAP -1/0: [0x0] x /intruder\n' | validate_events 1,2; exit 1; end
+    function expect_invalid_event
+        set -l result (printf '%s\n' "$argv[1]" | validate_events 1,2)
+        set -l result_status $status
+        test "$result_status" -ne 0; or return 1
+        string match -q "first=$argv[2] *" "$result"
+    end
+    set -l positive (printf 'PERF_RECORD_COMM: postgres:1/1\nPERF_RECORD_MMAP 2/2: [0x0] x /postgres\nPERF_RECORD_FORK(2:2):(1:1)\n' | validate_events 1,2); or exit 1
+    string match -q 'first=none events=3 comm=1 fork=1 exit=0 mmap=1 mmap2=0 kernel_map=0 unowned_comm=0 unowned_mmap=0 unowned_fork_exit=0 malformed=0 other=0' "$positive"; or exit 1
+    expect_invalid_event 'PERF_RECORD_COMM: intruder:3/3' unowned_pid; or exit 1
+    expect_invalid_event 'PERF_RECORD_COMM: intruder:1/3' unowned_tid; or exit 1
+    expect_invalid_event 'PERF_RECORD_MMAP 3/3: [0x0] x /intruder' unowned_pid; or exit 1
+    expect_invalid_event 'PERF_RECORD_FORK(3:3):(1:1)' unowned_pid; or exit 1
+    expect_invalid_event 'PERF_RECORD_FORK(2:2):(3:3)' unowned_parent; or exit 1
+    printf 'PERF_RECORD_MMAP -1/0: [0x0] x [kernel.kallsyms]\n' | validate_events 1,2 >/dev/null; or exit 1
+    expect_invalid_event 'PERF_RECORD_MMAP -1/0: [0x0] x /intruder' rejected_kernel_map; or exit 1
+    expect_invalid_event 'PERF_RECORD_COMM bad' malformed_known_record; or exit 1
+    expect_invalid_event 'PERF_RECORD_OTHER bad' unknown_record_kind; or exit 1
     exit 0
 end
 test "$GITHUB_ACTIONS" = true; or exit 1
@@ -52,6 +69,11 @@ set -g duration_ms -1
 set -g decoder_exit -1
 set -g decoder_stderr_bytes -1
 set -g decoder_stderr_truncated -1
+set -g event_decoder_exit -1
+set -g event_stderr_bytes -1
+set -g event_stderr_truncated -1
+set -g event_validation_exit -1
+set -g event_summary 'first=unavailable events=-1 comm=-1 fork=-1 exit=-1 mmap=-1 mmap2=-1 kernel_map=-1 unowned_comm=-1 unowned_mmap=-1 unowned_fork_exit=-1 malformed=-1 other=-1'
 set -g summary 'samples=-1 malformed=-1 unknown=-1 outside=-1 seen_a=-1 seen_b=-1 in_window=-1'
 function cleanup --on-event fish_exit
     if test -f "$raw/paused"
@@ -76,7 +98,7 @@ function cleanup --on-event fish_exit
             wait $$job >/dev/null 2>&1
         end
     end
-    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s decoder_exit=%s decoder_stderr_bytes=%s decoder_stderr_truncated=%s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$decoder_exit" "$decoder_stderr_bytes" "$decoder_stderr_truncated" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
+    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s decoder_exit=%s decoder_stderr_bytes=%s decoder_stderr_truncated=%s event_decoder_exit=%s event_stderr_bytes=%s event_stderr_truncated=%s event_validation_exit=%s %s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$decoder_exit" "$decoder_stderr_bytes" "$decoder_stderr_truncated" "$event_decoder_exit" "$event_stderr_bytes" "$event_stderr_truncated" "$event_validation_exit" "$summary" "$event_summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
     set -l encryption_status $pipestatus
     if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/status.age.partial"
         mv "$out/status.age.partial" "$out/status.age"
@@ -258,10 +280,32 @@ awk -v a="$a" -v b="$b" -v x="$outside" -v initial="$pidlist" -v lo="$window_sta
   END { if (!seen_a || !seen_b || !in_window) exit 1 }
 ' "$raw/samples"; or exit 1
 set phase validate-events
-sudo perf script -i "$raw/perf.data" --show-task-events --show-mmap-events >"$raw/events" 2>"$raw/events.log"; or exit 1
-validate_events "$pidlist,$a,$b" <"$raw/events"; or exit 1
+set reason event_decode
+sudo perf script -i "$raw/perf.data" --show-task-events --show-mmap-events >"$raw/events" 2>"$raw/events.log"
+set event_decoder_exit $status
+if test "$event_decoder_exit" -ne 0
+    set event_stderr_bytes (wc -c <"$raw/events.log" | string trim)
+    set event_stderr_truncated 0
+    if test "$event_stderr_bytes" -gt 16384
+        set event_stderr_truncated 1
+    end
+    head -c 16384 "$raw/events.log" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/event-decoder-stderr.age.partial" 2>/dev/null
+    set -l encryption_status $pipestatus
+    if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/event-decoder-stderr.age.partial"
+        mv "$out/event-decoder-stderr.age.partial" "$out/event-decoder-stderr.age"
+    end
+    exit 1
+end
+set reason event_validation
+set event_summary (validate_events "$pidlist,$a,$b" <"$raw/events" 2>"$raw/validator.log")
+set event_validation_exit $status
+string match -rq '^first=(none|no_records|unowned_pid|unowned_tid|unowned_parent|rejected_kernel_map|malformed_known_record|unknown_record_kind) events=[0-9]+ comm=[0-9]+ fork=[0-9]+ exit=[0-9]+ mmap=[0-9]+ mmap2=[0-9]+ kernel_map=[0-9]+ unowned_comm=[0-9]+ unowned_mmap=[0-9]+ unowned_fork_exit=[0-9]+ malformed=[0-9]+ other=[0-9]+$' "$event_summary"; or exit 1
+test "$event_validation_exit" -eq 0; or exit 1
+set reason missing_fork
 rg -q 'FORK' "$raw/events"; or exit 1
+set reason missing_comm
 rg -q 'COMM' "$raw/events"; or exit 1
+set reason missing_mmap
 rg -q 'MMAP' "$raw/events"; or exit 1
 set phase validate-symbols
 sudo perf report --stdio --no-children --symfs "/proc/$postmaster/root" -i "$raw/perf.data" >"$raw/report" 2>"$raw/report.log"; or exit 1
