@@ -49,6 +49,82 @@ struct PendingSharedReminder {
     approval: i64,
 }
 
+async fn assert_invalid_after_claim(
+    app: Application,
+    pending: PendingSharedReminder,
+    notification_event_id: i64,
+    sent: usize,
+) {
+    use med_tracker::models::_entities::{notification_deliveries, notification_events};
+    let after = notification_deliveries::Entity::find_by_id(pending.delivery)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let calls = pending.transport.0.lock().unwrap().clone();
+    let unchanged = notification_events::Entity::find_by_id(notification_event_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    app.close().await;
+    assert_eq!(unchanged.metadata["sharing_approval_id"], pending.approval);
+    assert_eq!(
+        sent, 0,
+        "After-claim live authority/content deadline must be rechecked before transport"
+    );
+    assert_eq!(calls.len(), 1);
+    assert_eq!(after.status, "invalid");
+}
+
+async fn assert_clinical_revision_after_claim(
+    app: Application,
+    pending: PendingSharedReminder,
+    sent: usize,
+) {
+    use med_tracker::models::_entities::notification_deliveries;
+    let after = notification_deliveries::Entity::find_by_id(pending.delivery)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let calls = pending.transport.0.lock().unwrap().clone();
+    let source = schedules::Entity::find_by_id(pending.care.source_b)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let projections = versions::Entity::find()
+        .filter(versions::Column::HouseholdId.eq(pending.scope.household_id))
+        .filter(versions::Column::ItemType.eq("SharedScheduleProjection"))
+        .filter(versions::Column::ItemId.eq(pending.care.source_b))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(sent, 1);
+    assert_eq!(calls.len(), 2);
+    assert_eq!(source.clinical_revision, Some(2));
+    assert_eq!(source.dose_amount, Some(Decimal::new(3, 0)));
+    assert_eq!(projections.len(), 1);
+    assert_eq!(
+        projections[0].audit_context["actor_account_id"],
+        pending.scope.actor.account_id
+    );
+    assert!(
+        !serde_json::to_string(&projections)
+            .unwrap()
+            .contains("Synthetic private origin clinical note")
+    );
+    assert!(
+        calls[1]["body"]
+            .as_str()
+            .unwrap()
+            .contains("Synthetic afterclaim local label")
+    );
+    assert_eq!(after.status, "accepted");
+}
+
 #[derive(Clone, Copy)]
 enum ReminderRecipient {
     Subject,
@@ -267,7 +343,9 @@ enum AfterClaimChange {
 }
 
 async fn sharing_after_claim_change(change: AfterClaimChange) {
-    use med_tracker::models::_entities::{accounts, notification_deliveries, notification_events};
+    use med_tracker::models::_entities::{
+        accounts, notification_deliveries, notification_events, push_subscriptions,
+    };
     let app = Application::new().await;
     let pending = pending_shared_reminder_for(&app, ReminderRecipient::ReceivingStaff).await;
     assert_ne!(pending.scope.actor.account_id, app.fixture.account.id);
@@ -300,6 +378,104 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
         .exec(&app.fixture.admin)
         .await
         .unwrap();
+    if matches!(
+        change,
+        AfterClaimChange::Pause | AfterClaimChange::ClinicalRevision
+    ) {
+        let subscription_id = original.subscription_id.unwrap();
+        let blocker = app.fixture.admin.begin().await.unwrap();
+        push_subscriptions::Entity::find_by_id(subscription_id)
+            .lock_exclusive()
+            .one(&blocker)
+            .await
+            .unwrap()
+            .unwrap();
+        let blocker_pid = owned_backend(&blocker).await;
+        let context = app.context.clone();
+        let scope = pending.scope.clone();
+        let delivery_id = pending.delivery;
+        let sender = tokio::spawn(async move {
+            med_tracker::models::care::browser_push::reminders::drain_candidates(
+                &context,
+                &scope,
+                chrono::Utc::now(),
+                &[delivery_id],
+            )
+            .await
+        });
+        wait_for_owned_blocker(&app, blocker_pid).await;
+        let claimed = notification_deliveries::Entity::find_by_id(pending.delivery)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            claimed.status, "sending",
+            "Mutation must occur after actual claim commit"
+        );
+        assert_eq!(
+            pending.transport.0.lock().unwrap().len(),
+            1,
+            "The new provider call has not started"
+        );
+        match change {
+            AfterClaimChange::Pause => {
+                Application::assert_status(
+                    super::person_owned_schedules::personal_change(
+                        &app,
+                        &pending.care.token_a,
+                        &json!({
+                            "id": pending.care.plan,
+                            "etag": format!("\"person-schedule:{}:1\"", pending.care.plan)
+                        }),
+                        json!({"action": "pause"}),
+                    )
+                    .await,
+                    200,
+                )
+                .await;
+            }
+            AfterClaimChange::ClinicalRevision => {
+                Application::assert_status(
+                    super::person_owned_schedules::personal_change(
+                        &app,
+                        &pending.care.token_a,
+                        &json!({
+                            "id": pending.care.plan,
+                            "etag": format!("\"person-schedule:{}:1\"", pending.care.plan)
+                        }),
+                        json!({"schedule":{"dose_amount":"3"}}),
+                    )
+                    .await,
+                    200,
+                )
+                .await;
+                medications::Entity::update_many()
+                    .col_expr(
+                        medications::Column::FriendlyName,
+                        Expr::val("Synthetic afterclaim local label"),
+                    )
+                    .filter(medications::Column::Id.eq(pending.care.stock_b.id))
+                    .exec(&app.fixture.admin)
+                    .await
+                    .unwrap();
+            }
+            _ => unreachable!("Only pause and clinical revision use this barrier"),
+        }
+        blocker.commit().await.unwrap();
+        let sent = sender.await.unwrap().unwrap();
+        match change {
+            AfterClaimChange::Pause => {
+                assert_invalid_after_claim(app, pending, original.notification_event_id, sent)
+                    .await;
+            }
+            AfterClaimChange::ClinicalRevision => {
+                assert_clinical_revision_after_claim(app, pending, sent).await;
+            }
+            _ => unreachable!("Only pause and clinical revision use this barrier"),
+        }
+        return;
+    }
     let blocker = app.fixture.admin.begin().await.unwrap();
     shared_schedule_states::Entity::find_by_id(&pending.care.plan)
         .lock_exclusive()
@@ -362,9 +538,8 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
         "The new provider call has not started"
     );
     match change {
-        AfterClaimChange::Pause => {
-            Application::assert_status(super::person_owned_schedules::personal_change(&app,&pending.care.token_a,
-                &json!({"id":pending.care.plan,"etag":format!("\"person-schedule:{}:1\"",pending.care.plan)}),json!({"action":"pause"})).await,200).await;
+        AfterClaimChange::Pause | AfterClaimChange::ClinicalRevision => {
+            unreachable!("Pause and clinical revision use the subscription barrier")
         }
         AfterClaimChange::Withdraw => {
             assert_eq!(
@@ -388,19 +563,6 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
             if let Ok(remaining) = remaining.to_std() {
                 tokio::time::sleep(remaining).await;
             }
-        }
-        AfterClaimChange::ClinicalRevision => {
-            Application::assert_status(super::person_owned_schedules::personal_change(&app,&pending.care.token_a,
-                &json!({"id":pending.care.plan,"etag":format!("\"person-schedule:{}:1\"",pending.care.plan)}),json!({"schedule":{"dose_amount":"3"}})).await,200).await;
-            medications::Entity::update_many()
-                .col_expr(
-                    medications::Column::FriendlyName,
-                    Expr::val("Synthetic afterclaim local label"),
-                )
-                .filter(medications::Column::Id.eq(pending.care.stock_b.id))
-                .exec(&app.fixture.admin)
-                .await
-                .unwrap();
         }
         AfterClaimChange::FreshConsent => {
             assert_eq!(
@@ -442,61 +604,7 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
     release.notify_one();
     guard_job.await.unwrap();
     let sent = sender.await.unwrap().unwrap();
-    let after = notification_deliveries::Entity::find_by_id(pending.delivery)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    let calls = pending.transport.0.lock().unwrap().clone();
-    let source = schedules::Entity::find_by_id(pending.care.source_b)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    let unchanged = notification_events::Entity::find_by_id(original.notification_event_id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    let projections = versions::Entity::find()
-        .filter(versions::Column::HouseholdId.eq(pending.scope.household_id))
-        .filter(versions::Column::ItemType.eq("SharedScheduleProjection"))
-        .filter(versions::Column::ItemId.eq(pending.care.source_b))
-        .all(&app.fixture.admin)
-        .await
-        .unwrap();
-    app.close().await;
-    if matches!(change, AfterClaimChange::ClinicalRevision) {
-        assert_eq!(sent, 1);
-        assert_eq!(calls.len(), 2);
-        assert!(
-            calls[1]["body"]
-                .as_str()
-                .unwrap()
-                .contains("Synthetic afterclaim local label")
-        );
-        assert_eq!(source.clinical_revision, Some(2));
-        assert_eq!(source.dose_amount, Some(Decimal::new(3, 0)));
-        assert_eq!(projections.len(), 1);
-        assert_eq!(
-            projections[0].audit_context["actor_account_id"],
-            pending.scope.actor.account_id
-        );
-        assert!(
-            !serde_json::to_string(&projections)
-                .unwrap()
-                .contains("Synthetic private origin clinical note")
-        );
-        assert_eq!(after.status, "accepted");
-        return;
-    }
-    assert_eq!(unchanged.metadata["sharing_approval_id"], pending.approval);
-    assert_eq!(
-        sent, 0,
-        "After-claim live authority/content deadline must be rechecked before transport"
-    );
-    assert_eq!(calls.len(), 1);
-    assert_eq!(after.status, "invalid");
+    assert_invalid_after_claim(app, pending, original.notification_event_id, sent).await;
 }
 
 #[tokio::test]
