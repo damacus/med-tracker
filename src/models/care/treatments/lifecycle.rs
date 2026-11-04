@@ -115,9 +115,25 @@ pub async fn update(
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(Value, String), OperationError> {
+    #[cfg(debug_assertions)]
+    let probe_start = std::time::Instant::now();
+    macro_rules! probe {
+        ($phase:literal) => {{
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "timeout-probe edit {} {:.3}",
+                $phase,
+                probe_start.elapsed().as_secs_f64() * 1000.0
+            );
+        }};
+    }
+    probe!("authorize-start");
     authorize_update(tenant, id).await?;
+    probe!("authorize-end find-start");
     let row = find(tenant, id, true).await?;
+    probe!("find-end project-start");
     let before = project(tenant, row.clone()).await?;
+    probe!("project-end input-start");
     let snapshot = representation(&row).0["data"].clone();
     if etag.is_some_and(|value| !value.is_empty() && value != before.1) {
         return Err(OperationError::Conflict {
@@ -140,7 +156,10 @@ pub async fn update(
     .await?
     .map_err(failure)?;
     fields.validate().map_err(failure)?;
-    update_fields(tenant, row, before, snapshot, fields, provenance).await
+    probe!("input-end write-start");
+    let result = update_fields(tenant, row, before, snapshot, fields, provenance).await;
+    probe!("write-end");
+    result
 }
 pub(crate) async fn update_input(
     tenant: &TenantTransaction,

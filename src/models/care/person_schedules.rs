@@ -105,6 +105,19 @@ pub(crate) async fn save_execution(
     configured_zone: Tz,
     provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
 ) -> Result<schedule::Model, OperationError> {
+    #[cfg(debug_assertions)]
+    let probe_start = std::time::Instant::now();
+    macro_rules! probe {
+        ($phase:literal) => {{
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "timeout-probe save {} {:.3}",
+                $phase,
+                probe_start.elapsed().as_secs_f64() * 1000.0
+            );
+        }};
+    }
+    probe!("start");
     let db = tenant.transaction();
     if row.execution_ended_at.is_some() {
         return Err(OperationError::NotFound);
@@ -252,12 +265,15 @@ pub(crate) async fn save_execution(
         None
     };
     plan.updated_at = Set(resumed_at.unwrap_or_else(|| Utc::now().naive_utc()));
+    probe!("plan-write-start");
     let plan = if row.person_schedule_id.is_some() {
         plan.update(db).await?
     } else {
         plan.insert(db).await?
     };
+    probe!("plan-write-end publish-start");
     projection::publish(db, &plan).await?;
+    probe!("publish-end version-start");
     if let Some(before) = shared_before {
         let after = crate::models::entities::shared_schedule::Entity::find_by_id(&plan.id)
             .one(db)
@@ -316,6 +332,7 @@ pub(crate) async fn save_execution(
         )
         .await?;
     }
+    probe!("version-end resume-start");
     pauses::record_resume(
         db,
         previous
@@ -330,14 +347,18 @@ pub(crate) async fn save_execution(
         },
     )
     .await?;
+    probe!("resume-end history-start");
     let history = adoption_history::capture(tenant, &row, &plan, provenance).await?;
+    probe!("history-end link-update-start");
     let mut linked = row.into_active_model();
     linked.canonical_origin = Set(plan.origin_schedule_id == linked.id.clone().unwrap());
     linked.person_schedule_id = Set(Some(plan.id));
     linked.clinical_revision = Set(Some(plan.clinical_revision));
     linked.origin_time_zone = Set(Some(plan.origin_time_zone));
     let linked = linked.update(db).await?;
+    probe!("link-update-end associate-start");
     pauses::associate_start(db, &linked).await?;
+    probe!("associate-end approval-start");
     use crate::models::entities::sharing_approval;
     let approval = sharing_approval::Entity::find()
         .filter(sharing_approval::Column::HouseholdId.eq(linked.household_id))
@@ -346,7 +367,9 @@ pub(crate) async fn save_execution(
         .lock_shared()
         .one(db)
         .await?;
+    probe!("approval-end recheck-start");
     crate::models::access::recheck(tenant).await?;
+    probe!("recheck-end execution-start");
     if let Some(approval) = approval {
         projection::record_execution(db, &linked, Some(approval.id)).await?;
     } else if sharing_approval::Entity::find()
@@ -360,6 +383,7 @@ pub(crate) async fn save_execution(
     } else if linked.canonical_origin {
         projection::record_execution(db, &linked, None).await?;
     }
+    probe!("execution-end seed-start");
     history
         .seed(
             db,
