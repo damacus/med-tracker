@@ -9,6 +9,158 @@ use std::sync::{
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]
+struct SlowMetrics {
+    delay: Duration,
+    shutdown_delay: Duration,
+}
+
+impl opentelemetry_sdk::metrics::exporter::PushMetricExporter for SlowMetrics {
+    async fn export(&self, _: &opentelemetry_sdk::metrics::data::ResourceMetrics) -> OTelSdkResult {
+        std::thread::sleep(self.delay);
+        Ok(())
+    }
+    fn force_flush(&self) -> OTelSdkResult {
+        Ok(())
+    }
+    fn shutdown_with_timeout(&self, _: Duration) -> OTelSdkResult {
+        std::thread::sleep(self.shutdown_delay);
+        Ok(())
+    }
+    fn temporality(&self) -> opentelemetry_sdk::metrics::Temporality {
+        opentelemetry_sdk::metrics::Temporality::Cumulative
+    }
+}
+
+fn metrics_process_exit_is_bounded(test_name: &str, stalled_shutdown: bool) {
+    const MARKER: &str = "MEDTRACKER_METRICS_LIFECYCLE_CHILD";
+    if std::env::var_os(MARKER).is_some() {
+        use opentelemetry::metrics::MeterProvider;
+        let (traces, _) = install(false, Duration::ZERO, Duration::ZERO, None);
+        let exporter = SlowMetrics {
+            delay: if stalled_shutdown {
+                Duration::ZERO
+            } else {
+                Duration::from_secs(4)
+            },
+            shutdown_delay: if stalled_shutdown {
+                Duration::from_secs(4)
+            } else {
+                Duration::ZERO
+            },
+        };
+        let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(exporter).build();
+        let provider = opentelemetry_sdk::metrics::SdkMeterProvider::builder()
+            .with_reader(reader)
+            .build();
+        provider
+            .meter("test")
+            .u64_counter("sample")
+            .build()
+            .add(1, &[]);
+        super::METER_PROVIDER.set(provider).expect("meter provider");
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
+        runtime.block_on(async {
+            if stalled_shutdown {
+                super::shutdown().await;
+            } else {
+                super::flush().await;
+            }
+        });
+        assert_eq!(
+            traces.load(Ordering::SeqCst),
+            1,
+            "healthy traces must flush despite stalled metrics"
+        );
+        drop(runtime);
+        return;
+    }
+    let mut child = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args(["--exact", test_name, "--nocapture"])
+        .env(MARKER, "1")
+        .spawn()
+        .expect("child");
+    let started = Instant::now();
+    loop {
+        if let Some(status) = child.try_wait().expect("wait") {
+            assert!(status.success(), "child failed: {status}");
+            break;
+        }
+        if started.elapsed() > Duration::from_millis(3500) {
+            child.kill().expect("stop overdue child");
+            child.wait().expect("reap child");
+            panic!("metrics operation prevented bounded process exit");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[test]
+fn stalled_metrics_flush_allows_healthy_trace_and_process_exit() {
+    metrics_process_exit_is_bounded(
+        "telemetry::lifecycle_tests::stalled_metrics_flush_allows_healthy_trace_and_process_exit",
+        false,
+    );
+}
+
+#[test]
+fn stalled_metrics_shutdown_allows_healthy_trace_and_process_exit() {
+    metrics_process_exit_is_bounded(
+        "telemetry::lifecycle_tests::stalled_metrics_shutdown_allows_healthy_trace_and_process_exit",
+        true,
+    );
+}
+
+#[test]
+fn stalled_trace_flush_does_not_block_healthy_metrics_or_process_exit() {
+    const MARKER: &str = "MEDTRACKER_TRACE_STALL_CHILD";
+    if std::env::var_os(MARKER).is_some() {
+        use opentelemetry::metrics::MeterProvider;
+        install(false, Duration::from_secs(4), Duration::ZERO, None);
+        let exporter = opentelemetry_sdk::metrics::InMemoryMetricExporter::default();
+        let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(exporter.clone()).build();
+        let provider = opentelemetry_sdk::metrics::SdkMeterProvider::builder()
+            .with_reader(reader)
+            .build();
+        provider
+            .meter("test")
+            .u64_counter("sample")
+            .build()
+            .add(1, &[]);
+        super::METER_PROVIDER.set(provider).expect("meter provider");
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
+        runtime.block_on(super::flush());
+        assert!(
+            !exporter.get_finished_metrics().unwrap().is_empty(),
+            "healthy metrics must flush"
+        );
+        drop(runtime);
+        return;
+    }
+    let mut child = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args(["--exact", "telemetry::lifecycle_tests::stalled_trace_flush_does_not_block_healthy_metrics_or_process_exit", "--nocapture"])
+        .env(MARKER, "1").spawn().expect("child");
+    let started = Instant::now();
+    loop {
+        if let Some(status) = child.try_wait().expect("wait") {
+            assert!(status.success(), "child failed: {status}");
+            break;
+        }
+        if started.elapsed() > Duration::from_millis(3500) {
+            child.kill().expect("stop overdue child");
+            child.wait().expect("reap child");
+            panic!("trace operation prevented bounded process exit");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[derive(Debug)]
 struct Processor {
     flushes: Arc<AtomicUsize>,
     shutdowns: Arc<AtomicUsize>,

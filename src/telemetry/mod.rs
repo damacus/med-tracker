@@ -7,6 +7,8 @@ pub mod export;
 pub mod ids;
 pub mod json;
 pub mod keys;
+pub mod metrics;
+pub mod queue_metrics;
 pub mod units;
 
 #[cfg(test)]
@@ -23,6 +25,7 @@ use config::TelemetrySettings;
 use opentelemetry_otlp::{WithExportConfig, WithHttpConfig};
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
+static METER_PROVIDER: OnceLock<opentelemetry_sdk::metrics::SdkMeterProvider> = OnceLock::new();
 
 /// Implements `Hooks::init_logger`: builds the registry with Loco's env
 /// filter, the MedTracker JSON layer, and — only when a traces endpoint is
@@ -47,6 +50,10 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
     );
     let diagnostics = export::Diagnostics::new();
     let json = json::layer(std::io::stdout, resource.clone(), diagnostics.clone());
+    if let Some(provider) = metrics::build_provider(&settings, &resource) {
+        metrics::install(&provider);
+        let _ = METER_PROVIDER.set(provider);
+    }
     match build_provider(&settings, &resource, diagnostics) {
         Some(provider) => {
             let _ = TRACER_PROVIDER.set(provider.clone());
@@ -54,7 +61,7 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
             match registry().with(json).with(otel).with(filter).try_init() {
                 Ok(()) => {
                     let host = settings.endpoint_host().unwrap_or_default();
-                    log_export_state(Some(&host));
+                    log_signal_state(true, METER_PROVIDER.get().is_some(), Some(&host));
                 }
                 Err(_) => {
                     eprintln!(
@@ -65,7 +72,14 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
         }
         None => match registry().with(json).with(filter).try_init() {
             Ok(()) => {
-                log_export_state(None);
+                let metrics_host = url::Url::parse(&settings.otlp_metrics_endpoint)
+                    .ok()
+                    .and_then(|url| url.host_str().map(str::to_owned));
+                log_signal_state(
+                    false,
+                    METER_PROVIDER.get().is_some(),
+                    metrics_host.as_deref(),
+                );
             }
             Err(_) => {
                 eprintln!(
@@ -81,14 +95,21 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
     true
 }
 
+#[cfg(test)]
 fn log_export_state(host: Option<&str>) {
+    log_signal_state(host.is_some(), false, host);
+}
+
+fn log_signal_state(traces: bool, metrics: bool, host: Option<&str>) {
     if let Some(host) = host {
-        tracing::info!(event.name = "medtracker.telemetry.export", medtracker.telemetry.export.enabled = true, server.address = %host, "Telemetry export enabled");
+        tracing::info!(event.name = "medtracker.telemetry.export", medtracker.telemetry.export.enabled = traces || metrics, medtracker.telemetry.traces.enabled = traces, medtracker.telemetry.metrics.enabled = metrics, server.address = %host, "Telemetry export configured");
     } else {
         tracing::info!(
             event.name = "medtracker.telemetry.export",
-            medtracker.telemetry.export.enabled = false,
-            "Telemetry export disabled"
+            medtracker.telemetry.export.enabled = traces || metrics,
+            medtracker.telemetry.traces.enabled = traces,
+            medtracker.telemetry.metrics.enabled = metrics,
+            "Telemetry export configured"
         );
     }
 }
@@ -194,7 +215,7 @@ impl Lifecycle {
             .send_modify(|generation| *generation = generation.saturating_add(1));
     }
 
-    fn run(&'static self, provider: SdkTracerProvider) {
+    fn run<P: LifecycleProvider>(&'static self, provider: P) {
         loop {
             let _ =
                 std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| provider.force_flush()));
@@ -224,7 +245,7 @@ impl Lifecycle {
         }
     }
 
-    async fn request(&'static self, provider: SdkTracerProvider, shutdown: bool) {
+    async fn request<P: LifecycleProvider>(&'static self, provider: P, shutdown: bool) {
         let (mut completed, start) = {
             let mut state = self
                 .state
@@ -263,31 +284,63 @@ impl Lifecycle {
 }
 
 static LIFECYCLE: OnceLock<Lifecycle> = OnceLock::new();
+static METRICS_LIFECYCLE: OnceLock<Lifecycle> = OnceLock::new();
+
+trait LifecycleProvider: Clone + Send + 'static {
+    fn force_flush(&self) -> opentelemetry_sdk::error::OTelSdkResult;
+    fn shutdown(&self) -> opentelemetry_sdk::error::OTelSdkResult;
+}
+
+impl LifecycleProvider for SdkTracerProvider {
+    fn force_flush(&self) -> opentelemetry_sdk::error::OTelSdkResult {
+        SdkTracerProvider::force_flush(self)
+    }
+    fn shutdown(&self) -> opentelemetry_sdk::error::OTelSdkResult {
+        SdkTracerProvider::shutdown(self)
+    }
+}
+
+impl LifecycleProvider for opentelemetry_sdk::metrics::SdkMeterProvider {
+    fn force_flush(&self) -> opentelemetry_sdk::error::OTelSdkResult {
+        opentelemetry_sdk::metrics::SdkMeterProvider::force_flush(self)
+    }
+    fn shutdown(&self) -> opentelemetry_sdk::error::OTelSdkResult {
+        opentelemetry_sdk::metrics::SdkMeterProvider::shutdown(self)
+    }
+}
+
+async fn lifecycle(shutdown: bool) {
+    let traces = async {
+        if let Some(provider) = TRACER_PROVIDER.get() {
+            LIFECYCLE
+                .get_or_init(Lifecycle::new)
+                .request(provider.clone(), shutdown)
+                .await;
+        }
+    };
+    let metrics = async {
+        if let Some(provider) = METER_PROVIDER.get() {
+            METRICS_LIFECYCLE
+                .get_or_init(Lifecycle::new)
+                .request(provider.clone(), shutdown)
+                .await;
+        }
+    };
+    tokio::join!(traces, metrics);
+}
 
 /// Flushes the tracer provider without shutting it down, within a 2-second
 /// bound. Used by scheduled tasks running in a child process where
 /// `on_shutdown` is never called.
 pub async fn flush() {
-    let Some(provider) = TRACER_PROVIDER.get() else {
-        return;
-    };
-    LIFECYCLE
-        .get_or_init(Lifecycle::new)
-        .request(provider.clone(), false)
-        .await;
+    lifecycle(false).await;
 }
 
 /// Flushes and shuts down the tracer provider within a 2-second bound. Called
 /// from `Hooks::on_shutdown`; a failed flush surfaces only through the
 /// rate-limited diagnostics warning.
 pub async fn shutdown() {
-    let Some(provider) = TRACER_PROVIDER.get() else {
-        return;
-    };
-    LIFECYCLE
-        .get_or_init(Lifecycle::new)
-        .request(provider.clone(), true)
-        .await;
+    lifecycle(true).await;
 }
 
 /// Build identity: `version+commit`, preferring the `MEDTRACKER_VERSION` /
@@ -377,6 +430,54 @@ mod pipeline_tests {
             environment: "test".into(),
             instance_id: String::new(),
         }
+    }
+
+    #[test]
+    fn metrics_only_startup_and_independent_signal_recovery_are_explicit() {
+        let buffer = Buffer::default();
+        let subscriber =
+            registry().with(json::layer(buffer.clone(), resource(), Diagnostics::new()));
+        let traces = Diagnostics::new();
+        let metrics = Diagnostics::metrics();
+        tracing::subscriber::with_default(subscriber, || {
+            super::log_signal_state(false, true, Some("collector.example"));
+            traces.record(false, "trace_export");
+            metrics.record(false, "metrics_export");
+            traces.record(true, "trace_export");
+            metrics.record(true, "metrics_export");
+        });
+        let records: Vec<serde_json::Value> = buffer
+            .text()
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        assert_eq!(
+            records[0]["attributes"]["medtracker.telemetry.export.enabled"],
+            true
+        );
+        assert_eq!(
+            records[0]["attributes"]["medtracker.telemetry.traces.enabled"],
+            false
+        );
+        assert_eq!(
+            records[0]["attributes"]["medtracker.telemetry.metrics.enabled"],
+            true
+        );
+        let recovery: Vec<_> = records
+            .iter()
+            .filter(|record| {
+                record["attributes"]["event.name"] == "medtracker.telemetry.export_recovered"
+            })
+            .collect();
+        assert_eq!(recovery.len(), 2);
+        assert_eq!(
+            recovery[0]["attributes"]["medtracker.telemetry.signal"],
+            "traces"
+        );
+        assert_eq!(
+            recovery[1]["attributes"]["medtracker.telemetry.signal"],
+            "metrics"
+        );
     }
 
     #[test]

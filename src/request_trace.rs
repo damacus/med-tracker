@@ -14,6 +14,7 @@ use crate::telemetry::ids;
 /// `traceparent` while ignoring its sampled flag, and returning the 32-hex
 /// trace ID in `x-medtracker-trace-id`.
 pub async fn boundary(request: Request, next: Next) -> Response {
+    let started = std::time::Instant::now();
     let method = request.method().clone();
     let route = request
         .extensions()
@@ -50,6 +51,12 @@ pub async fn boundary(request: Request, next: Next) -> Response {
     )
     .await;
     let status = i64::from(response.status().as_u16());
+    crate::telemetry::metrics::server_request(
+        started.elapsed(),
+        method.as_str(),
+        &route,
+        status as u16,
+    );
     span.record("http.response.status_code", status);
     span.set_attribute("http.response.status_code", status);
     if status >= 500 {

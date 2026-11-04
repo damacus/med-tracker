@@ -165,6 +165,8 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
     let Some(row) = nhs_dmd_import::Entity::find_by_id(id).one(&ctx.db).await? else {
         return Ok(());
     };
+    let mut attempt =
+        (row.status < 4).then(|| crate::telemetry::metrics::ImportAttempt::new("nhs_dmd"));
     let Some(key) = row.archive_key.as_deref() else {
         if row.status < 4 {
             import::fail_owned_run(
@@ -242,6 +244,9 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             import::fail_owned_run(&ctx.db, &row, error).await?;
         }
         Ok(()) => {
+            if let Some(attempt) = &mut attempt {
+                attempt.succeeded();
+            }
             let finished = nhs_dmd_import::Entity::find_by_id(row.id)
                 .one(&ctx.db)
                 .await
