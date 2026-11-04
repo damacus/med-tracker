@@ -1,53 +1,67 @@
 #!/usr/bin/env fish
 # Temporary, smoke-only diagnostic. Never print or upload plaintext perf output.
 umask 077
-function validate_events
+function sanitise_histogram
     node -e '
 const fs = require("node:fs");
-const owned = new Set(process.argv[1].split(","));
-const counts = {events:0, comm:0, fork:0, exit:0, mmap:0, mmap2:0, kernel_map:0, unowned_comm:0, unowned_mmap:0, unowned_fork_exit:0, malformed:0, other:0};
-let first = "none";
-const mark = reason => { if (first === "none") first = reason; };
+const rows = [];
+let redacted = 0;
+let redactedPercent = 0;
+let pgUser = 0, kernel = 0;
 for (const line of fs.readFileSync(0, "utf8").split("\n")) {
-  if (!line.includes("PERF_RECORD_")) continue;
-  counts.events++;
-  let match = line.match(/PERF_RECORD_COMM(?: exec)?: .*:(\d+)\/(\d+)\s*$/);
-  if (match) { counts.comm++; if (!owned.has(match[1]) || !owned.has(match[2])) { counts.unowned_comm++; mark(!owned.has(match[1]) ? "unowned_pid" : "unowned_tid"); } continue; }
-  match = line.match(/PERF_RECORD_(FORK|EXIT)\((\d+):(\d+)\):\((\d+):(\d+)\)\s*$/);
-  if (match) { counts[match[1].toLowerCase()]++; if (!match.slice(2).every(id => owned.has(id))) { counts.unowned_fork_exit++; mark(!owned.has(match[2]) ? "unowned_pid" : !owned.has(match[3]) ? "unowned_tid" : "unowned_parent"); } continue; }
-  match = line.match(/PERF_RECORD_(MMAP2?)\s+(-?\d+)\/(\d+):.*$/);
-  if (match) {
-    counts[match[1].toLowerCase()]++;
-    if (match[2] === "-1" && match[3] === "0" && /\[kernel\.kallsyms\]\s*$/.test(line)) { counts.kernel_map++; continue; }
-    if (!owned.has(match[2]) || !owned.has(match[3])) { counts.unowned_mmap++; mark(match[2] === "-1" ? "rejected_kernel_map" : !owned.has(match[2]) ? "unowned_pid" : "unowned_tid"); }
-    continue;
-  }
-  if (/PERF_RECORD_(?:COMM|FORK|EXIT|MMAP2?)(?:\b|\()/.test(line)) { counts.malformed++; mark("malformed_known_record"); }
-  else { counts.other++; mark("unknown_record_kind"); }
+  if (!line.trim() || line.trimStart().startsWith("#")) continue;
+  const match = line.match(/^\s*(\d+(?:\.\d+)?)%?\s*;\s*(.*?)\s*$/);
+  if (!match) process.exit(1);
+  const value = Number(match[1]);
+  if (!Number.isFinite(value) || value < 0 || value > 100) process.exit(1);
+  const prefix = match[2].match(/^\[([.k])\]\s*/);
+  const mode = prefix ? (prefix[1] === "." ? "user" : "kernel") : "unknown";
+  const label = match[2].replace(/^\[[.k]\]\s*/, "");
+  const safe = /^[A-Za-z_][A-Za-z0-9_.]*$/.test(label) && !/0x[0-9a-f]/i.test(label);
+  if (!safe) { redacted++; redactedPercent += value; }
+  if (safe && mode === "user" && /^(Exec|PortalRun|PostgresMain|standard_planner|FunctionCall)/.test(label)) pgUser++;
+  if (safe && mode === "kernel") kernel++;
+  rows.push({percent:value, mode, symbol:safe ? label : "[unknown]"});
 }
-if (!counts.events) mark("no_records");
-console.log(`first=${first} ` + Object.entries(counts).map(([name, value]) => `${name}=${value}`).join(" "));
-if (!counts.events || counts.unowned_comm || counts.unowned_mmap || counts.unowned_fork_exit || counts.malformed || counts.other) process.exit(1);
-' "$argv[1]"
+if (!rows.length || !pgUser || !kernel) process.exit(1);
+console.log(JSON.stringify({scope:"verified_pid_subset", redacted_rows:redacted, redacted_percent:redactedPercent, rows}));
+'
+end
+function verify_filter_reports
+    node -e '
+const fs=require("node:fs"), [dir, ids, aa, bb, missing] = process.argv.slice(1), coverage=JSON.parse(fs.readFileSync(`${dir}/coverage`,"utf8"));
+function check(name, allowed, expected) {
+  let count=0, rows=0;
+  for(const line of fs.readFileSync(`${dir}/proof-${name}`,"utf8").split("\n")) {
+    if(!line.trim() || line.trimStart().startsWith("#")) continue;
+    const m=line.match(/^\s*(\d+)\s*;\s*(\d+):[^;]*\s*$/); if(!m || !allowed.has(m[2])) process.exit(1);
+    count+=Number(m[1]); rows++;
+  }
+  if(count!==expected || (expected>0 && !rows) || (expected===0 && rows)) process.exit(1);
+}
+if(!coverage.a || !coverage.b) process.exit(1);
+check("a",new Set([aa]),coverage.a);
+check("known",new Set(ids.split(",")),coverage.selected);
+check("missing",new Set([missing]),0);
+' $argv
 end
 if test "$argv[1]" = --validator-selftest
-    function expect_invalid_event
-        set -l result (printf '%s\n' "$argv[1]" | validate_events 1,2)
-        set -l result_status $status
-        test "$result_status" -ne 0; or return 1
-        string match -q "first=$argv[2] *" "$result"
-    end
-    set -l positive (printf 'PERF_RECORD_COMM: postgres:1/1\nPERF_RECORD_MMAP 2/2: [0x0] x /postgres\nPERF_RECORD_FORK(2:2):(1:1)\n' | validate_events 1,2); or exit 1
-    string match -q 'first=none events=3 comm=1 fork=1 exit=0 mmap=1 mmap2=0 kernel_map=0 unowned_comm=0 unowned_mmap=0 unowned_fork_exit=0 malformed=0 other=0' "$positive"; or exit 1
-    expect_invalid_event 'PERF_RECORD_COMM: intruder:3/3' unowned_pid; or exit 1
-    expect_invalid_event 'PERF_RECORD_COMM: intruder:1/3' unowned_tid; or exit 1
-    expect_invalid_event 'PERF_RECORD_MMAP 3/3: [0x0] x /intruder' unowned_pid; or exit 1
-    expect_invalid_event 'PERF_RECORD_FORK(3:3):(1:1)' unowned_pid; or exit 1
-    expect_invalid_event 'PERF_RECORD_FORK(2:2):(3:3)' unowned_parent; or exit 1
-    printf 'PERF_RECORD_MMAP -1/0: [0x0] x [kernel.kallsyms]\n' | validate_events 1,2 >/dev/null; or exit 1
-    expect_invalid_event 'PERF_RECORD_MMAP -1/0: [0x0] x /intruder' rejected_kernel_map; or exit 1
-    expect_invalid_event 'PERF_RECORD_COMM bad' malformed_known_record; or exit 1
-    expect_invalid_event 'PERF_RECORD_OTHER bad' unknown_record_kind; or exit 1
+    set -l result (printf '20.00;[.] ExecScan\n30.00;[k] schedule\n10.00;[.] 0x1234\n' | sanitise_histogram); or exit 1
+    string match -q '*"symbol":"ExecScan"*"symbol":"[unknown]"*' "$result"; or exit 1
+    string match -q '*"mode":"user"*"mode":"kernel"*' "$result"; or exit 1
+    if printf '20.00;[.] 0x1234\n30.00;[k] 0x1234\n' | sanitise_histogram >/dev/null; exit 1; end
+    if printf '20.00;[.] ExecScan\n' | sanitise_histogram >/dev/null; exit 1; end
+    if printf '30.00;[k] schedule\n' | sanitise_histogram >/dev/null; exit 1; end
+    if printf '20.00;/private/path\nwrong\n' | sanitise_histogram >/dev/null; exit 1; end
+    set -l fixture (mktemp -d); or exit 1
+    printf '{"a":2,"b":3,"selected":5}\n' >"$fixture/coverage"
+    printf '2; 1:postgres\n' >"$fixture/proof-a"
+    printf '2; 1:postgres\n3; 2:postgres\n' >"$fixture/proof-known"
+    printf '# no samples\n' >"$fixture/proof-missing"
+    verify_filter_reports "$fixture" 1,2 1 2 3; or begin; rm -rf "$fixture"; exit 1; end
+    printf '2; 1:postgres\n1; 2:postgres\n' >"$fixture/proof-a"
+    if verify_filter_reports "$fixture" 1,2 1 2 3; rm -rf "$fixture"; exit 1; end
+    rm -rf "$fixture"
     exit 0
 end
 test "$GITHUB_ACTIONS" = true; or exit 1
@@ -66,19 +80,7 @@ set -g b_count -1
 set -g snapshot_success 0
 set -g recorder_exit -1
 set -g duration_ms -1
-set -g decoder_exit -1
-set -g decoder_stderr_bytes -1
-set -g decoder_stderr_truncated -1
-set -g event_decoder_exit -1
-set -g event_stderr_bytes -1
-set -g event_stderr_truncated -1
-set -g event_validation_exit -1
-set -g metadata_decoder_exit -1
-set -g metadata_bytes -1
-set -g metadata_truncated -1
-set -g metadata_exported 0
-set -g event_summary 'first=unavailable events=-1 comm=-1 fork=-1 exit=-1 mmap=-1 mmap2=-1 kernel_map=-1 unowned_comm=-1 unowned_mmap=-1 unowned_fork_exit=-1 malformed=-1 other=-1'
-set -g summary 'samples=-1 malformed=-1 unknown=-1 outside=-1 seen_a=-1 seen_b=-1 in_window=-1'
+set -g summary 'coverage=unavailable'
 function cleanup --on-event fish_exit
     if test -f "$raw/paused"
         docker unpause "$service" >/dev/null 2>&1
@@ -102,7 +104,7 @@ function cleanup --on-event fish_exit
             wait $$job >/dev/null 2>&1
         end
     end
-    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s decoder_exit=%s decoder_stderr_bytes=%s decoder_stderr_truncated=%s event_decoder_exit=%s event_stderr_bytes=%s event_stderr_truncated=%s event_validation_exit=%s metadata_decoder_exit=%s metadata_bytes=%s metadata_truncated=%s metadata_exported=%s %s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$decoder_exit" "$decoder_stderr_bytes" "$decoder_stderr_truncated" "$event_decoder_exit" "$event_stderr_bytes" "$event_stderr_truncated" "$event_validation_exit" "$metadata_decoder_exit" "$metadata_bytes" "$metadata_truncated" "$metadata_exported" "$summary" "$event_summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
+    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
     set -l encryption_status $pipestatus
     if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/status.age.partial"
         mv "$out/status.age.partial" "$out/status.age"
@@ -227,7 +229,10 @@ set -l b (comm -13 (awk '{print $1}' "$raw/a" | sort | psub) (awk '{print $1}' "
 set b_count (count $b)
 set reason new_b_count
 test (count $b) -eq 1; or exit 1
+set -l scope_start (node -e 'console.log((Number(process.hrtime.bigint()) / 1e9).toFixed(9))'); or exit 1
 sleep 3
+kill -0 "$recorder" 2>/dev/null; or exit 1
+set -l scope_end (node -e 'console.log((Number(process.hrtime.bigint()) / 1e9).toFixed(9))'); or exit 1
 set reason snapshot_end
 process_snapshot >"$raw/end"; or exit 1
 set snapshot_success (math $snapshot_success + 1)
@@ -253,105 +258,66 @@ set reason outside_end
 set -l outside_end (awk '{print $14 + $15}' "/proc/$outside/stat"); or exit 1
 set reason outside_inactive
 test "$outside_end" -gt "$outside_start"; or exit 1
+set reason scope_selection
+set -l stable (comm -12 (sort "$raw/b" | psub) (sort "$raw/end" | psub))
+set -l known
+for line in $stable
+    set -l fields (string split ' ' -- "$line")
+    set -a known "$fields[1]"
+end
+contains -- "$a" $known; and contains -- "$b" $known; or exit 1
+set -l known_list (string join ',' $known)
+set -l interval "$scope_start,$scope_end"
+set phase coverage
 set reason decode_samples
-sudo perf script -i "$raw/perf.data" --hide-call-graph -F pid,time >"$raw/samples" 2>"$raw/script.log"
-set decoder_exit $status
-if test "$decoder_exit" -ne 0
-    set decoder_stderr_bytes (wc -c <"$raw/script.log" | string trim)
-    set decoder_stderr_truncated 0
-    if test "$decoder_stderr_bytes" -gt 16384
-        set decoder_stderr_truncated 1
+sudo perf script -i "$raw/perf.data" --hide-call-graph -F pid,time,period >"$raw/samples" 2>"$raw/script.log"; or exit 1
+node -e '
+const fs=require("node:fs"), [path, ids, aa, bb, outside, lo, hi] = process.argv.slice(1);
+const known=new Set(ids.split(",")); let total=0, selected=0, excluded=0, a=0, b=0, out=0, totalPeriod=0n, selectedPeriod=0n;
+for(const line of fs.readFileSync(path,"utf8").split("\n")) {
+  if(!line.trim()) continue;
+  const m=line.trim().match(/^(\d+)\s+(\d+(?:\.\d+)?):?\s+(\d+)$/); if(!m) process.exit(1);
+  const t=Number(m[2]); if(t < Number(lo) || t > Number(hi)) continue;
+  const p=BigInt(m[3]); total++; totalPeriod+=p; if(m[1]===outside) out++;
+  if(known.has(m[1])) { selected++; selectedPeriod+=p; } else excluded++;
+  if(m[1]===aa) a++; if(m[1]===bb) b++;
+}
+if(!total || !selected || !a || !b || out) process.exit(1);
+console.log(JSON.stringify({total,selected,excluded,a,b,out,total_period:totalPeriod.toString(),selected_period:selectedPeriod.toString()}));
+' "$raw/samples" "$known_list" "$a" "$b" "$outside" "$scope_start" "$scope_end" >"$raw/coverage" 2>"$raw/coverage.log"; or exit 1
+set reason lost_records
+sudo perf script -i "$raw/perf.data" --show-lost-events --hide-call-graph -F pid,time,period >"$raw/loss" 2>"$raw/loss.log"; or exit 1
+set -l lost_records (rg -c 'PERF_RECORD_LOST(_SAMPLES)?' "$raw/loss"); or set lost_records 0
+set summary "lost_records=$lost_records"
+test "$lost_records" -eq 0; or exit 1
+set -l missing 2147483647
+test ! -e "/proc/$missing"; or exit 1
+set reason pid_filter_proof
+for entry in a known missing
+    set -l selected_pid
+    switch "$entry"
+        case a; set selected_pid "$a"
+        case known; set selected_pid "$known_list"
+        case missing; set selected_pid "$missing"
     end
-    head -c 16384 "$raw/script.log" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/decoder-stderr.age.partial" 2>/dev/null
-    set -l encryption_status $pipestatus
-    if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/decoder-stderr.age.partial"
-        mv "$out/decoder-stderr.age.partial" "$out/decoder-stderr.age"
-    end
-    exit 1
+    sudo perf report --stdio --no-children --call-graph none --sort tgid --fields sample,tgid --field-separator ';' --pid "$selected_pid" --time "$interval" --symfs "/proc/$postmaster/root" -i "$raw/perf.data" >"$raw/proof-$entry" 2>"$raw/proof-$entry.log"; or exit 1
 end
-set reason empty_samples
-set summary 'samples=0 malformed=0 unknown=0 outside=0 seen_a=0 seen_b=0 in_window=0'
-set reason metadata_decode
-sudo perf script -i "$raw/perf.data" --hide-call-graph -F pid,time --show-task-events --show-mmap-events >"$raw/metadata" 2>"$raw/metadata.log"
-set metadata_decoder_exit $status
-begin
-    for snapshot in before a b end
-        printf '\n--- snapshot %s ---\n' "$snapshot"
-        cat "$raw/$snapshot"; or exit 1
-    end
-    printf '\n--- decoded metadata ---\n'
-    cat "$raw/metadata"; or exit 1
-end >"$raw/metadata-bundle"
-set metadata_bytes (wc -c <"$raw/metadata-bundle" | string trim)
-set metadata_truncated 0
-if test "$metadata_bytes" -gt 1048576
-    set metadata_truncated 1
-end
-set reason metadata_encrypt
-head -c 1048576 "$raw/metadata-bundle" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/unvalidated-decoded-metadata.age.partial" 2>/dev/null
-set -l metadata_encryption_status $pipestatus
-test $metadata_encryption_status[1] -eq 0; and test $metadata_encryption_status[2] -eq 0; and test -s "$out/unvalidated-decoded-metadata.age.partial"; or exit 1
-mv "$out/unvalidated-decoded-metadata.age.partial" "$out/unvalidated-decoded-metadata.age"; or exit 1
-set metadata_exported 1
-test "$metadata_decoder_exit" -eq 0; or exit 1
-set reason empty_samples
-test -s "$raw/samples"; or exit 1
-set summary (awk -v a="$a" -v b="$b" -v x="$outside" -v initial="$pidlist" -v lo="$window_start" -v hi="$window_end" '
-  BEGIN {n=split(initial,p,","); for(i=1;i<=n;i++) owned[p[i]]=1; owned[a]=1; owned[b]=1}
-  NF {count++; gsub(":","",$2); if($1 !~ /^[0-9]+$/ || $2 !~ /^[0-9.]+$/) {malformed++; next} if(!owned[$1]) unknown++; if($1 == x) outside++; if($1 == a) seen_a=1; if($1 == b) seen_b=1; if($2>=lo && $2<=hi) in_window=1}
-  END {printf "samples=%d malformed=%d unknown=%d outside=%d seen_a=%d seen_b=%d in_window=%d",count,malformed,unknown,outside,seen_a,seen_b,in_window}
-' "$raw/samples")
-set reason sample_validation
-awk -v a="$a" -v b="$b" -v x="$outside" -v initial="$pidlist" -v lo="$window_start" -v hi="$window_end" '
-  BEGIN { n=split(initial, p, ","); for (i=1; i<=n; i++) owned[p[i]]=1; owned[a]=1; owned[b]=1 }
-  NF { gsub(":", "", $2); if ($1 !~ /^[0-9]+$/ || $2 !~ /^[0-9.]+$/ || $1 == x || !owned[$1]) exit 1; if ($1 == a) seen_a=1; if ($1 == b) seen_b=1; if ($2 >= lo && $2 <= hi) in_window=1 }
-  END { if (!seen_a || !seen_b || !in_window) exit 1 }
-' "$raw/samples"; or exit 1
-set phase validate-events
-set reason event_decode
-sudo perf script -i "$raw/perf.data" --show-task-events --show-mmap-events >"$raw/events" 2>"$raw/events.log"
-set event_decoder_exit $status
-if test "$event_decoder_exit" -ne 0
-    set event_stderr_bytes (wc -c <"$raw/events.log" | string trim)
-    set event_stderr_truncated 0
-    if test "$event_stderr_bytes" -gt 16384
-        set event_stderr_truncated 1
-    end
-    head -c 16384 "$raw/events.log" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/event-decoder-stderr.age.partial" 2>/dev/null
-    set -l encryption_status $pipestatus
-    if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/event-decoder-stderr.age.partial"
-        mv "$out/event-decoder-stderr.age.partial" "$out/event-decoder-stderr.age"
-    end
-    exit 1
-end
-set reason event_validation
-set event_summary (validate_events "$pidlist,$a,$b" <"$raw/events" 2>"$raw/validator.log")
-set event_validation_exit $status
-string match -rq '^first=(none|no_records|unowned_pid|unowned_tid|unowned_parent|rejected_kernel_map|malformed_known_record|unknown_record_kind) events=[0-9]+ comm=[0-9]+ fork=[0-9]+ exit=[0-9]+ mmap=[0-9]+ mmap2=[0-9]+ kernel_map=[0-9]+ unowned_comm=[0-9]+ unowned_mmap=[0-9]+ unowned_fork_exit=[0-9]+ malformed=[0-9]+ other=[0-9]+$' "$event_summary"; or exit 1
-test "$event_validation_exit" -eq 0; or exit 1
-set reason missing_fork
-rg -q 'FORK' "$raw/events"; or exit 1
-set reason missing_comm
-rg -q 'COMM' "$raw/events"; or exit 1
-set reason missing_mmap
-rg -q 'MMAP' "$raw/events"; or exit 1
-set phase validate-symbols
-sudo perf report --stdio --no-children --symfs "/proc/$postmaster/root" -i "$raw/perf.data" >"$raw/report" 2>"$raw/report.log"; or exit 1
-rg -q 'postgres.*\[\.\][[:space:]]+(Exec|PortalRun|PostgresMain|standard_planner|FunctionCall)' "$raw/report"; or exit 1
-rg -q '\[kernel\.kallsyms\].*\[k\][[:space:]]+[[:alnum:]_]' "$raw/report"; or exit 1
-cat "$raw/before" "$raw/a" "$raw/b" "$raw/end" >"$raw/process-map"
-printf 'clock=monotonic start=%s end=%s utc_start=%s utc_end=%s bytes=%s samples=%s\n' "$window_start" "$window_end" "$utc_start" "$utc_end" (stat -c %s "$raw/perf.data") (wc -l <"$raw/samples" | string trim) >"$raw/window"
-cat "$raw/cpu-before" "$raw/cpu-after" >>"$raw/window"
+verify_filter_reports "$raw" "$known_list" "$a" "$b" "$missing" >"$raw/proof-check.log" 2>&1; or exit 1
+set phase aggregate
+set reason report
+sudo perf report --stdio --no-children --call-graph none --percentage relative --sort symbol --fields overhead,symbol --field-separator ';' --pid "$known_list" --time "$interval" --symfs "/proc/$postmaster/root" -i "$raw/perf.data" >"$raw/report" 2>"$raw/report.log"; or exit 1
+sanitise_histogram <"$raw/report" >"$raw/safe-report"; or exit 1
+test (wc -c <"$raw/safe-report" | string trim) -le 1048576; or exit 1
+set -l bytes (stat -c %s "$raw/perf.data")
+test "$bytes" -lt 268435456; or exit 1
+set summary (node -e 'const fs=require("node:fs"); const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8")), y=JSON.parse(fs.readFileSync(process.argv[2],"utf8")); console.log(`scope=verified_pid_subset clock=monotonic start=${process.argv[4]} end=${process.argv[5]} total_samples=${x.total} known_samples=${x.selected} excluded_samples=${x.excluded} total_period=${x.total_period} known_period=${x.selected_period} lost_records=0 redacted_symbol_rows=${y.redacted_rows} redacted_percent=${y.redacted_percent} raw_bytes=${process.argv[3]} raw_cap_bytes=268435456`)' "$raw/coverage" "$raw/safe-report" "$bytes" "$scope_start" "$scope_end")
 set phase encrypt
-set reason data_ownership
-sudo chown (id -u):(id -g) "$raw/perf.data"; or exit 1
-for name in perf.data events report process-map window samples
-    encrypt_file "$raw/$name" "$name"; or exit 1
-end
+set reason aggregate_encrypt
+encrypt_file "$raw/safe-report" aggregate-report; or exit 1
 wait "$bench_a"; or exit 1
 set -e bench_a
 wait "$bench_b"; or exit 1
 set -e bench_b
 docker exec "$service" dropdb -U medtracker perf_probe; or exit 1
 set phase complete
-echo 'Smoke artefacts encrypted; task/MMAP lineage requires independent review.'
+echo 'Encrypted subset aggregate and coverage status created.'
