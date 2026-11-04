@@ -227,8 +227,6 @@ set reason outside_end
 set -l outside_end (awk '{print $14 + $15}' "/proc/$outside/stat"); or exit 1
 set reason outside_inactive
 test "$outside_end" -gt "$outside_start"; or exit 1
-set reason data_ownership
-sudo chown (id -u):(id -g) "$raw/perf.data"; or exit 1
 set reason decode_samples
 sudo perf script -i "$raw/perf.data" --hide-call-graph -F pid,time >"$raw/samples" 2>"$raw/script.log"
 set decoder_exit $status
@@ -273,6 +271,8 @@ cat "$raw/before" "$raw/a" "$raw/b" "$raw/end" >"$raw/process-map"
 printf 'clock=monotonic start=%s end=%s utc_start=%s utc_end=%s bytes=%s samples=%s\n' "$window_start" "$window_end" "$utc_start" "$utc_end" (stat -c %s "$raw/perf.data") (wc -l <"$raw/samples" | string trim) >"$raw/window"
 cat "$raw/cpu-before" "$raw/cpu-after" >>"$raw/window"
 set phase encrypt
+set reason data_ownership
+sudo chown (id -u):(id -g) "$raw/perf.data"; or exit 1
 for name in perf.data events report process-map window samples
     encrypt_file "$raw/$name" "$name"; or exit 1
 end
