@@ -17,6 +17,10 @@ function child_result
     string match -rq '^(0|[1-9][0-9]{0,2})$' -- "$result"; or return 1
     test "$result" -eq 0
 end
+function recorder_status_allowed
+    test "$argv[2]" = 1; and test "$argv[3]" = 1; or return 1
+    contains -- "$argv[1]" 0 130
+end
 function record_result
     set -l value (cat "$argv[1]" 2>/dev/null)
     if string match -rq '^(0|[1-9][0-9]{0,2})$' -- "$value"; and test "$value" -le 255
@@ -27,6 +31,11 @@ function record_result
 end
 if test "$argv[1]" = --shutdown-selftest
     echo shutdown_selftest_start
+    recorder_status_allowed 130 1 1; or exit 1
+    recorder_status_allowed 130 0 1; and exit 1
+    recorder_status_allowed 130 1 0; and exit 1
+    recorder_status_allowed 143 1 1; and exit 1
+    recorder_status_allowed 0 1 1; or exit 1
     set -l tmp (mktemp -d); or exit 1
     child_result "$tmp/missing"; and exit 1
     for code in 0 7
@@ -108,7 +117,9 @@ function cleanup --on-event fish_exit
             set -l leaf_start (sudo awk '{print $22}' "/proc/$recorder_leaf/stat" 2>/dev/null)
             set -l owner_start (sudo awk '{print $22}' "/proc/$recorder_leaf_parent/stat" 2>/dev/null)
             if test "$leaf_parent" = "$recorder_leaf_parent"; and test "$leaf_start" = "$recorder_leaf_start"; and test "$owner_start" = "$recorder_leaf_parent_start"
-                sudo kill -INT "$recorder_leaf" >/dev/null 2>&1
+                if sudo kill -INT "$recorder_leaf" >/dev/null 2>&1
+                    set -g recorder_requested_sigint 1
+                end
             end
         end
         finish_profile_job "$recorder" "$recorder_start" recorder
@@ -194,6 +205,21 @@ function finish_profile_job
         end
         set -g profile_ended 1
         record_result "$raw/$label.result" "$label"
+        if test "$label" = recorder
+            set -l requested 0
+            if set -q recorder_requested_sigint; set requested "$recorder_requested_sigint"; end
+            set -l header_ok 0
+            if test -s "$raw/perf.data"; and sudo perf report --header-only -i "$raw/perf.data" >/dev/null 2>&1
+                set header_ok 1
+            end
+            set -l recorder_status (cat "$raw/recorder.result" 2>/dev/null)
+            if recorder_status_allowed "$recorder_status" "$requested" "$header_ok"
+                event recorder.validated_stop
+                return 0
+            end
+            event recorder.invalid_stop
+            return 1
+        end
         if child_result "$raw/$label.result"
             event "$label.exit=0"
             return 0
@@ -544,6 +570,7 @@ else
 end
 event perf_stop_requested
 sudo kill -INT "$perf_pid"; or exit 1
+set -g recorder_requested_sigint 1
 finish_profile_job "$recorder" "$recorder_start" recorder
 set -l perf_exit $status
 if test "$profile_ended" -eq 1; set -e recorder; end
