@@ -189,7 +189,7 @@ test "$exe" = (sudo stat -Lc '%d:%i' "/proc/$postmaster/root/usr/local/bin/postg
 docker exec "$service" createdb -U medtracker perf_probe; or exit 1
 docker exec "$service" pgbench -U medtracker -i -s 1 perf_probe >"$raw/init.log" 2>&1; or exit 1
 set phase attach
-sudo perf record --dry-run -e cpu-clock -p "$postmaster" -F 49 --strict-freq --call-graph dwarf,4096 --max-size 256M --clockid mono >"$raw/dry.log" 2>&1; or exit 1
+sudo perf record --dry-run -e cpu-clock -p "$postmaster" -F 49 --strict-freq --max-size 256M --clockid mono >"$raw/dry.log" 2>&1; or exit 1
 touch "$raw/paused"; or exit 1
 fish --no-config -c 'sleep 20; if test -f "$argv[1]"; docker unpause "$argv[2]" >/dev/null 2>&1; end' "$raw/paused" "$service" &
 docker pause "$service" >/dev/null; or exit 1
@@ -200,7 +200,7 @@ set -l pids (awk '{print $1}' "$raw/before")
 set initial_count (count $pids)
 contains -- "$postmaster" $pids; or exit 1
 set -l pidlist (string join ',' $pids)
-sudo perf record -e cpu-clock -p "$pidlist" -F 49 --strict-freq --call-graph dwarf,4096 --max-size 256M --clockid mono --timestamp-boundary --no-buildid-cache -o "$raw/perf.data" -- sleep 15 >"$raw/perf.log" 2>&1 &
+sudo perf record -e cpu-clock -p "$pidlist" -F 49 --strict-freq --max-size 256M --clockid mono --timestamp-boundary --no-buildid-cache -o "$raw/perf.data" -- sleep 15 >"$raw/perf.log" 2>&1 &
 set -g recorder $last_pid
 set -g recorder_start (sudo awk '{print $22}' "/proc/$recorder/stat"); or exit 1
 set -l perf_pid
