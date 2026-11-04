@@ -49,6 +49,9 @@ set -g b_count -1
 set -g snapshot_success 0
 set -g recorder_exit -1
 set -g duration_ms -1
+set -g decoder_exit -1
+set -g decoder_stderr_bytes -1
+set -g decoder_stderr_truncated -1
 set -g summary 'samples=-1 malformed=-1 unknown=-1 outside=-1 seen_a=-1 seen_b=-1 in_window=-1'
 function cleanup --on-event fish_exit
     if test -f "$raw/paused"
@@ -73,7 +76,7 @@ function cleanup --on-event fish_exit
             wait $$job >/dev/null 2>&1
         end
     end
-    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
+    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s decoder_exit=%s decoder_stderr_bytes=%s decoder_stderr_truncated=%s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$decoder_exit" "$decoder_stderr_bytes" "$decoder_stderr_truncated" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
     set -l encryption_status $pipestatus
     if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/status.age.partial"
         mv "$out/status.age.partial" "$out/status.age"
@@ -227,7 +230,21 @@ test "$outside_end" -gt "$outside_start"; or exit 1
 set reason data_ownership
 sudo chown (id -u):(id -g) "$raw/perf.data"; or exit 1
 set reason decode_samples
-sudo perf script -i "$raw/perf.data" --hide-call-graph -F pid,time >"$raw/samples" 2>"$raw/script.log"; or exit 1
+sudo perf script -i "$raw/perf.data" --hide-call-graph -F pid,time >"$raw/samples" 2>"$raw/script.log"
+set decoder_exit $status
+if test "$decoder_exit" -ne 0
+    set decoder_stderr_bytes (wc -c <"$raw/script.log" | string trim)
+    set decoder_stderr_truncated 0
+    if test "$decoder_stderr_bytes" -gt 16384
+        set decoder_stderr_truncated 1
+    end
+    head -c 16384 "$raw/script.log" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/decoder-stderr.age.partial" 2>/dev/null
+    set -l encryption_status $pipestatus
+    if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/decoder-stderr.age.partial"
+        mv "$out/decoder-stderr.age.partial" "$out/decoder-stderr.age"
+    end
+    exit 1
+end
 set reason empty_samples
 set summary 'samples=0 malformed=0 unknown=0 outside=0 seen_a=0 seen_b=0 in_window=0'
 test -s "$raw/samples"; or exit 1
