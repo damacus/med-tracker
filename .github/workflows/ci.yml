@@ -15,7 +15,6 @@ jobs:
           POSTGRES_USER: medtracker
           POSTGRES_PASSWORD: medtracker_password
           POSTGRES_DB: medtracker_loco
-        options: --no-healthcheck
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Install smoke tools

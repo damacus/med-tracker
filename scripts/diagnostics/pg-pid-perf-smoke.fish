@@ -84,7 +84,9 @@ end
 test "$GITHUB_ACTIONS" = true; or exit 1
 string match -rq '^[0-9a-f]{64}$' "$PG_DIAGNOSTIC_CONTAINER"; or exit 1
 test (docker inspect --format '{{.Config.Image}}' "$PG_DIAGNOSTIC_CONTAINER") = postgres:18-alpine; or exit 1
-test (docker inspect --format '{{json .Config.Healthcheck.Test}}' "$PG_DIAGNOSTIC_CONTAINER") = '["NONE"]'; or exit 1
+docker inspect "$PG_DIAGNOSTIC_CONTAINER" | jq -e '.[0].Config.Healthcheck == null' >/dev/null
+set -l health_status $pipestatus
+test $health_status[1] -eq 0; and test $health_status[2] -eq 0; or exit 1
 set -g out "$RUNNER_TEMP/pg-pid-perf-smoke"
 mkdir -m 700 "$out"; or exit 1
 set -g raw "$out/private"
