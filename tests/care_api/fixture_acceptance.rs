@@ -6,6 +6,40 @@ use med_tracker::models::{
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, Database, EntityTrait, IntoActiveModel};
 
 #[tokio::test]
+async fn temporary_pgss_capture_tags_the_actual_runtime_pool() {
+    use sea_orm::ConnectionTrait;
+    use sea_orm::sea_query::{Expr, Func, Query};
+    let app = Application::new().await;
+    let query = Query::select()
+        .expr_as(
+            Func::cust("current_setting").arg(Expr::val("application_name")),
+            "tag",
+        )
+        .to_owned();
+    let row = app
+        .context
+        .db
+        .query_one_raw(app.context.db.get_database_backend().build(&query))
+        .await
+        .unwrap()
+        .unwrap();
+    let tag: String = row.try_get("", "tag").unwrap();
+    use sha2::{Digest, Sha256};
+    let fingerprint = hex::encode(Sha256::digest(
+        b"fixture_acceptance::temporary_pgss_capture_tags_the_actual_runtime_pool",
+    ));
+    if std::env::var("MEDTRACKER_PGSS_DIAGNOSTIC").as_deref() == Ok("1") {
+        assert_eq!(
+            tag,
+            format!("mt_diag_{}_{}", std::process::id(), &fingerprint[..16])
+        );
+    } else {
+        assert!(!tag.starts_with("mt_diag_"));
+    }
+    app.close().await;
+}
+
+#[tokio::test]
 async fn scenario_seed_rolls_back_identity_if_membership_insert_fails() {
     use futures_util::FutureExt;
     use sea_orm::sea_query::{Alias, Expr, Func, Query};

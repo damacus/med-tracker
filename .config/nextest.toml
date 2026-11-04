@@ -28,6 +28,10 @@ filter = 'binary(=shared_api) | binary(=care_api) | binary(=care_doses) | binary
 setup = 'api-fixtures'
 
 [[profile.api.overrides]]
+filter = 'binary(=care_api) & (test(=approved_sharing::canonical_execution_rejects_current_and_ended_prior_approvals) | test(=approved_sharing::person_owned_schedule_current_guardian_can_edit_and_pause_without_origin_membership))'
+success-output = 'immediate'
+
+[[profile.api.overrides]]
 filter = '''
 binary(=migration_roles)
 | test(=fixture_acceptance::scenario_seed_rolls_back_identity_if_membership_insert_fails)

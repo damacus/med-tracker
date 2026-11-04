@@ -80,24 +80,46 @@ pub(super) async fn update(
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
 ) -> Response {
+    #[cfg(debug_assertions)]
+    let probe_start = std::time::Instant::now();
     let request_id = request_id(request);
     let method = if method == axum::http::Method::PUT {
         "PUT"
     } else {
         "PATCH"
     };
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "timeout-probe edit-controller begin-start {:.3}",
+        probe_start.elapsed().as_secs_f64() * 1000.0
+    );
     let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "timeout-probe edit-controller begin-end {:.3}",
+        probe_start.elapsed().as_secs_f64() * 1000.0
+    );
     let savepoint = match tenant.transaction().begin().await {
         Ok(value) => value,
         Err(_) => return response::error(response::unavailable(), &request_id),
     };
     let result = async {
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "timeout-probe edit-controller first-authorize-start {:.3}",
+            probe_start.elapsed().as_secs_f64() * 1000.0
+        );
         lifecycle::authorize_update(&tenant, &id)
             .await
             .map_err(response::operation)?;
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "timeout-probe edit-controller first-authorize-end {:.3}",
+            probe_start.elapsed().as_secs_f64() * 1000.0
+        );
         let AxumJson(body) =
             body.map_err(|_| response::Failure::bad_request("Invalid JSON request body"))?;
         let path = format!("/api/v1/households/{household_id}/schedules/{id}");
@@ -110,10 +132,20 @@ pub(super) async fn update(
         let etag = headers
             .get(axum::http::header::IF_MATCH)
             .map(|value| value.to_str().unwrap_or(""));
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "timeout-probe edit-controller update-start {:.3}",
+            probe_start.elapsed().as_secs_f64() * 1000.0
+        );
         let (reply, etag) =
             lifecycle::update(&tenant, &id, &body, etag, Some(principal.provenance()))
                 .await
                 .map_err(response::operation)?;
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "timeout-probe edit-controller update-end {:.3}",
+            probe_start.elapsed().as_secs_f64() * 1000.0
+        );
         if let Some(key) = key {
             return store(
                 &tenant,

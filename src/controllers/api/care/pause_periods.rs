@@ -70,11 +70,23 @@ async fn change(
     body: std::result::Result<Value, response::Failure>,
     method: &'static str,
 ) -> Response {
+    #[cfg(debug_assertions)]
+    let probe_start = std::time::Instant::now();
     let request_id = request_id(request);
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "timeout-probe pause-controller begin-start {:.3}",
+        probe_start.elapsed().as_secs_f64() * 1000.0
+    );
     let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "timeout-probe pause-controller begin-end {:.3}",
+        probe_start.elapsed().as_secs_f64() * 1000.0
+    );
     let action = if id.is_some() { "resume" } else { "create" };
     let savepoint = match tenant.transaction().begin().await {
         Ok(value) => value,
@@ -116,6 +128,8 @@ async fn process(
     body: std::result::Result<Value, response::Failure>,
     method: &str,
 ) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+    #[cfg(debug_assertions)]
+    let probe_start = std::time::Instant::now();
     let body = body?;
     if id.is_none()
         && body
@@ -125,6 +139,11 @@ async fn process(
     {
         return Err(response::Failure::bad_request("Invalid request body"));
     }
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "timeout-probe pause-controller authorize-start {:.3}",
+        probe_start.elapsed().as_secs_f64() * 1000.0
+    );
     let source = if let Some(id) = id {
         pause_periods::authorize_resume(tenant, id)
             .await
@@ -135,6 +154,11 @@ async fn process(
             .map(Some)
     }
     .map_err(response::operation)?;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "timeout-probe pause-controller authorize-end {:.3}",
+        probe_start.elapsed().as_secs_f64() * 1000.0
+    );
     let path = if let Some(id) = id {
         format!("/api/v1/households/{household_id}/medication_pause_periods/{id}/resume")
     } else {
