@@ -4,6 +4,18 @@ use std::{error::Error, fs::OpenOptions, io::Write};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
+fn cleanup_stage(stage: &str) {
+    let Some(path) = std::env::var_os("MEDTRACKER_CLEANUP_STAGE_FILE") else {
+        return;
+    };
+    let Ok(elapsed) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) else {
+        return;
+    };
+    if let Ok(mut output) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(output, "{} {}", elapsed.as_nanos(), stage);
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     assert_eq!(
@@ -14,9 +26,25 @@ async fn main() -> Result<()> {
     let database = format!("api_run_{}", run.simple());
     let role = format!("api_runtime_{}", run.simple());
     let marker = format!("medtracker-api-run:{run}");
-    let control_uri = std::env::var("DATABASE_URL")?;
-    let control = Database::connect(&control_uri).await?;
-    match std::env::args().nth(1).as_deref() {
+    let mut control_uri = std::env::var("DATABASE_URL")?;
+    let command = std::env::args().nth(1);
+    if command.as_deref() == Some("cleanup")
+        && std::env::var_os("MEDTRACKER_CLEANUP_STAGE_FILE").is_some()
+    {
+        let mut uri = url::Url::parse(&control_uri)?;
+        uri.query_pairs_mut()
+            .append_pair("application_name", "medtracker_cleanup_probe");
+        control_uri = uri.into();
+    }
+    if command.as_deref() == Some("cleanup") {
+        cleanup_stage("connect_start");
+    }
+    let control_result = Database::connect(&control_uri).await;
+    if command.as_deref() == Some("cleanup") {
+        cleanup_stage("connect_end");
+    }
+    let control = control_result?;
+    match command.as_deref() {
         Some("prepare") => {
             if database_marker(&control, &database).await?.is_some() {
                 return Err("Refusing to adopt an existing API test database".into());
@@ -52,13 +80,19 @@ async fn main() -> Result<()> {
             setup.close().await?;
         }
         Some("cleanup") => {
-            if let Some(owned) = database_marker(&control, &database).await? {
+            cleanup_stage("database_marker_start");
+            let database_marker_result = database_marker(&control, &database).await;
+            cleanup_stage("database_marker_end");
+            if let Some(owned) = database_marker_result? {
                 if owned != marker {
                     return Err("Refusing to remove an unowned database".into());
                 }
-                control
+                cleanup_stage("drop_database_start");
+                let result = control
                     .execute_unprepared(&format!("DROP DATABASE {database} WITH (FORCE)"))
-                    .await?;
+                    .await;
+                cleanup_stage("drop_database_end");
+                result?;
             }
             let role_query = Query::select()
                 .expr_as(
@@ -69,21 +103,33 @@ async fn main() -> Result<()> {
                 .from(("pg_catalog", "pg_roles"))
                 .and_where(Expr::col("rolname").eq(&role))
                 .to_owned();
-            if let Some(row) = control
+            cleanup_stage("role_marker_start");
+            let role_marker_result = control
                 .query_one_raw(control.get_database_backend().build(&role_query))
-                .await?
-            {
+                .await;
+            cleanup_stage("role_marker_end");
+            if let Some(row) = role_marker_result? {
                 if row.try_get::<Option<String>>("", "owner")?.as_deref() != Some(marker.as_str()) {
                     return Err("Refusing to remove an unowned role".into());
                 }
-                control
+                cleanup_stage("drop_role_start");
+                let result = control
                     .execute_unprepared(&format!("DROP ROLE {role}"))
-                    .await?;
+                    .await;
+                cleanup_stage("drop_role_end");
+                result?;
             }
         }
         _ => return Err("Use prepare or cleanup".into()),
     }
-    control.close().await?;
+    if command.as_deref() == Some("cleanup") {
+        cleanup_stage("close_start");
+    }
+    let close_result = control.close().await;
+    if command.as_deref() == Some("cleanup") {
+        cleanup_stage("close_end");
+    }
+    close_result?;
     Ok(())
 }
 
