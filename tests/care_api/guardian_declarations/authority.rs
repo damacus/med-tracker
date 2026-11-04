@@ -296,7 +296,7 @@ async fn schedule(
     let household = app.fixture.household.id;
     app.client.post(format!("{}/api/v1/households/{household}/schedules",app.origin)).bearer_auth(token)
         .json(&json!({"schedule":{"person_id":person_id.to_string(),"medication_id":app.fixture.medication.id.to_string(),"dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}}))
-        .send().await.map_err(|_|DbErr::Custom("Guardian plan request failed before response".into()))
+        .send().await.map_err(|error| DbErr::Custom(format!("Guardian plan request failed before response: {error:?}")))
 }
 
 #[tokio::test]
@@ -371,4 +371,23 @@ async fn declared_guardian_manage_is_live_for_direct_and_aggregate_access() -> R
     }.await;
     app.close().await;
     result
+}
+
+#[tokio::test]
+async fn guardian_plan_transport_failure_retains_request_error() {
+    let app = Application::new().await;
+    app.server.abort();
+    while !app.server.is_finished() {
+        tokio::task::yield_now().await;
+    }
+    let error = schedule(&app, "synthetic", app.fixture.minor.id)
+        .await
+        .expect_err("stopped server must fail");
+    let message = error.to_string();
+    let expected_url = app.origin.clone();
+    app.close().await;
+    assert!(
+        message.contains(&expected_url),
+        "missing request context: {message}"
+    );
 }

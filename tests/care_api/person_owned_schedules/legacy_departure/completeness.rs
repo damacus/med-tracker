@@ -1,5 +1,7 @@
 use super::*;
 
+const LOCK_OBSERVATION_BUDGET: std::time::Duration = std::time::Duration::from_secs(10);
+
 async fn freeze_empty(
     app: &Application,
     scope: &TenantTransaction,
@@ -80,6 +82,15 @@ fn start_restore(
     token: &str,
     records: Vec<Value>,
 ) -> tokio::task::JoinHandle<reqwest::Response> {
+    start_restore_with_budget(app, token, records, None)
+}
+
+fn start_restore_with_budget(
+    app: &Application,
+    token: &str,
+    records: Vec<Value>,
+    timeout: Option<std::time::Duration>,
+) -> tokio::task::JoinHandle<reqwest::Response> {
     let payload = json!({"format":"medtracker.portable.v1", "scope":"household",
         "exported_at":chrono::Utc::now().to_rfc3339(), "source_instance_id":"synthetic:test",
         "records":{"medication_takes":records}});
@@ -94,6 +105,10 @@ fn start_restore(
         .bearer_auth(token)
         .header("x-medtracker-portable-passphrase", passphrase)
         .json(&json!({"bundle":bundle}));
+    let request = match timeout {
+        Some(timeout) => request.timeout(timeout),
+        None => request,
+    };
     tokio::spawn(async move { request.send().await.unwrap() })
 }
 
@@ -110,7 +125,7 @@ async fn backend_pid<C: ConnectionTrait>(db: &C) -> i32 {
 }
 
 async fn wait_blocked_by(app: &Application, pid: i32, relation: &str) -> i32 {
-    let waited = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let waited = tokio::time::timeout(LOCK_OBSERVATION_BUDGET, async {
         loop {
             let blockers = Query::select()
                 .expr(
@@ -393,10 +408,13 @@ async fn departure_waiting_on_restore_household_lock_captures_committed_history(
         .await
         .unwrap()
         .unwrap();
-    let restore = start_restore(
+    let held_lock_proof = std::time::Duration::from_millis(5_250);
+    let response_budget = std::time::Duration::from_secs(5);
+    let mut restore = start_restore_with_budget(
         &app,
         &token,
         vec![history_record(&source), history_record(&linked)],
+        Some(LOCK_OBSERVATION_BUDGET * 2 + held_lock_proof + response_budget),
     );
     let restore_pid = wait_blocked_by(
         &app,
@@ -404,13 +422,20 @@ async fn departure_waiting_on_restore_household_lock_captures_committed_history(
         "shared_schedule_administrations",
     )
     .await;
+    if let Ok(result) = tokio::time::timeout(held_lock_proof, &mut restore).await {
+        state.rollback().await.unwrap();
+        manager.close().await;
+        app.close().await;
+        panic!("restore ended while its observed database lock was held: {result:?}");
+    }
     let request = app
         .client
         .delete(format!(
             "{}/api/v1/households/{}/admin/memberships/{}",
             app.origin, app.fixture.household.id, app.fixture.membership.id
         ))
-        .bearer_auth(&manager_token);
+        .bearer_auth(&manager_token)
+        .timeout(LOCK_OBSERVATION_BUDGET + response_budget);
     let departure = tokio::spawn(async move { request.send().await.unwrap() });
     wait_blocked_by(&app, restore_pid, "households").await;
     state.rollback().await.unwrap();
