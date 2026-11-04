@@ -42,6 +42,14 @@ set -g raw "$out/private"
 mkdir -m 700 "$raw"; or exit 1
 set -g service "$PG_DIAGNOSTIC_CONTAINER"
 set -g phase setup
+set -g reason initial
+set -g initial_count -1
+set -g a_count -1
+set -g b_count -1
+set -g snapshot_success 0
+set -g recorder_exit -1
+set -g duration_ms -1
+set -g summary 'samples=-1 malformed=-1 unknown=-1 outside=-1 seen_a=-1 seen_b=-1 in_window=-1'
 function cleanup --on-event fish_exit
     if test -f "$raw/paused"
         docker unpause "$service" >/dev/null 2>&1
@@ -65,7 +73,7 @@ function cleanup --on-event fish_exit
             wait $$job >/dev/null 2>&1
         end
     end
-    printf 'phase=%s\n' "$phase" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
+    printf 'phase=%s reason=%s initial_count=%s a_count=%s b_count=%s snapshot_success=%s recorder_exit=%s duration_ms=%s %s\n' "$phase" "$reason" "$initial_count" "$a_count" "$b_count" "$snapshot_success" "$recorder_exit" "$duration_ms" "$summary" | age -r "$MEDTRACKER_PGSS_RECIPIENT" -o "$out/status.age.partial" 2>/dev/null
     set -l encryption_status $pipestatus
     if test $encryption_status[1] -eq 0; and test $encryption_status[2] -eq 0; and test -s "$out/status.age.partial"
         mv "$out/status.age.partial" "$out/status.age"
@@ -130,8 +138,11 @@ sudo perf record --dry-run -e cpu-clock -p "$postmaster" -F 49 --strict-freq --c
 touch "$raw/paused"; or exit 1
 fish --no-config -c 'sleep 20; if test -f "$argv[1]"; docker unpause "$argv[2]" >/dev/null 2>&1; end' "$raw/paused" "$service" &
 docker pause "$service" >/dev/null; or exit 1
+set reason snapshot_before
 process_snapshot >"$raw/before"; or exit 1
+set snapshot_success (math $snapshot_success + 1)
 set -l pids (awk '{print $1}' "$raw/before")
+set initial_count (count $pids)
 contains -- "$postmaster" $pids; or exit 1
 set -l pidlist (string join ',' $pids)
 sudo perf record -e cpu-clock -p "$pidlist" -F 49 --strict-freq --call-graph dwarf,4096 --max-size 256M --clockid mono --timestamp-boundary --no-buildid-cache -o "$raw/perf.data" -- sleep 15 >"$raw/perf.log" 2>&1 &
@@ -150,45 +161,82 @@ for attempt in (seq 1 80)
     test "$attempt" -lt 80; or exit 1
     sleep 0.1
 end
+set reason snapshot_after
 process_snapshot >"$raw/after"; or exit 1
+set snapshot_success (math $snapshot_success + 1)
 cmp -s "$raw/before" "$raw/after"; or exit 1
 docker unpause "$service" >/dev/null; or exit 1
 rm "$raw/paused"; or exit 1
 set phase workload
+set reason clock_start
 set -l window_start (node -e 'console.log((Number(process.hrtime.bigint()) / 1e9).toFixed(9))'); or exit 1
+set reason utc_start
 set -l utc_start (date -u +%FT%TZ)
+set reason cpu_before
 cat "$cgdir/cpu.stat" >"$raw/cpu-before"
 yes >/dev/null &
 set -g outside $last_pid
+set reason outside_start
 set -l outside_start (awk '{print $14 + $15}' "/proc/$outside/stat"); or exit 1
 docker exec "$service" pgbench -U medtracker -T 15 -c 1 -j 1 perf_probe >"$raw/bench-a.log" 2>&1 &
 set -g bench_a $last_pid
 sleep 2
+set reason snapshot_a
 process_snapshot >"$raw/a"; or exit 1
+set snapshot_success (math $snapshot_success + 1)
 set -l a (comm -13 (awk '{print $1}' "$raw/before" | sort | psub) (awk '{print $1}' "$raw/a" | sort | psub))
+set a_count (count $a)
+set reason new_a_count
 test (count $a) -eq 1; or exit 1
 docker exec "$service" pgbench -U medtracker -T 12 -c 1 -j 1 perf_probe >"$raw/bench-b.log" 2>&1 &
 set -g bench_b $last_pid
 sleep 2
+set reason snapshot_b
 process_snapshot >"$raw/b"; or exit 1
+set snapshot_success (math $snapshot_success + 1)
 set -l b (comm -13 (awk '{print $1}' "$raw/a" | sort | psub) (awk '{print $1}' "$raw/b" | sort | psub))
+set b_count (count $b)
+set reason new_b_count
 test (count $b) -eq 1; or exit 1
 sleep 3
+set reason snapshot_end
 process_snapshot >"$raw/end"; or exit 1
+set snapshot_success (math $snapshot_success + 1)
+set reason a_identity
 test (awk -v id="$a" '$1 == id {print $3}' "$raw/a") = (awk -v id="$a" '$1 == id {print $3}' "$raw/end"); or exit 1
+set reason b_identity
 test (awk -v id="$b" '$1 == id {print $3}' "$raw/b") = (awk -v id="$b" '$1 == id {print $3}' "$raw/end"); or exit 1
 set phase validate-samples
-wait "$recorder"; or exit 1
+set reason recorder_wait
+wait "$recorder"
+set recorder_exit $status
+test "$recorder_exit" -eq 0; or exit 1
 set -e recorder
+set reason clock_end
 set -l window_end (node -e 'console.log((Number(process.hrtime.bigint()) / 1e9).toFixed(9))'); or exit 1
 set -l utc_end (date -u +%FT%TZ)
+set reason cpu_after
 cat "$cgdir/cpu.stat" >"$raw/cpu-after"
+set duration_ms (awk -v start="$window_start" -v end="$window_end" 'BEGIN {printf "%.0f", (end-start)*1000}')
+set reason recording_duration
 awk -v start="$window_start" -v end="$window_end" 'BEGIN {if (end - start < 10) exit 1}'; or exit 1
+set reason outside_end
 set -l outside_end (awk '{print $14 + $15}' "/proc/$outside/stat"); or exit 1
+set reason outside_inactive
 test "$outside_end" -gt "$outside_start"; or exit 1
+set reason data_ownership
 sudo chown (id -u):(id -g) "$raw/perf.data"; or exit 1
+set reason decode_samples
 sudo perf script -i "$raw/perf.data" --hide-call-graph -F pid,time >"$raw/samples" 2>"$raw/script.log"; or exit 1
+set reason empty_samples
+set summary 'samples=0 malformed=0 unknown=0 outside=0 seen_a=0 seen_b=0 in_window=0'
 test -s "$raw/samples"; or exit 1
+set summary (awk -v a="$a" -v b="$b" -v x="$outside" -v initial="$pidlist" -v lo="$window_start" -v hi="$window_end" '
+  BEGIN {n=split(initial,p,","); for(i=1;i<=n;i++) owned[p[i]]=1; owned[a]=1; owned[b]=1}
+  NF {count++; gsub(":","",$2); if($1 !~ /^[0-9]+$/ || $2 !~ /^[0-9.]+$/) {malformed++; next} if(!owned[$1]) unknown++; if($1 == x) outside++; if($1 == a) seen_a=1; if($1 == b) seen_b=1; if($2>=lo && $2<=hi) in_window=1}
+  END {printf "samples=%d malformed=%d unknown=%d outside=%d seen_a=%d seen_b=%d in_window=%d",count,malformed,unknown,outside,seen_a,seen_b,in_window}
+' "$raw/samples")
+set reason sample_validation
 awk -v a="$a" -v b="$b" -v x="$outside" -v initial="$pidlist" -v lo="$window_start" -v hi="$window_end" '
   BEGIN { n=split(initial, p, ","); for (i=1; i<=n; i++) owned[p[i]]=1; owned[a]=1; owned[b]=1 }
   NF { gsub(":", "", $2); if ($1 !~ /^[0-9]+$/ || $2 !~ /^[0-9.]+$/ || $1 == x || !owned[$1]) exit 1; if ($1 == a) seen_a=1; if ($1 == b) seen_b=1; if ($2 >= lo && $2 <= hi) in_window=1 }
