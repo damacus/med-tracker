@@ -85,10 +85,14 @@ jobs:
           cache-bin: false
       - run: task host:test:unit
 
-  loco_integration:
-    name: API, security and database integration tests
+  loco_integration_shards:
+    name: API, security and database integration tests (shard ${{ matrix.shard }}/2)
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:18-alpine
@@ -160,7 +164,22 @@ jobs:
           echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
           task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
           psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "CREATE DATABASE medtracker_reference"
-      - run: task host:test:integration
+      - run: task host:test:integration -- --partition hash:${{ matrix.shard }}/2
+      - name: Verify concurrent fixture preparation
+        if: matrix.shard == 1
+        run: task host:test:fixture-concurrency
+
+  loco_integration:
+    name: API, security and database integration tests
+    if: always()
+    needs: [loco_integration_shards]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Require both integration shards to pass
+        env:
+          SHARD_RESULT: ${{ needs.loco_integration_shards.result }}
+        run: test "$SHARD_RESULT" = success
 
   loco_browser:
     name: Browser journeys

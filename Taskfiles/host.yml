@@ -226,7 +226,7 @@ tasks:
     internal: true
     cmds:
       - defer: 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo run --locked --example api-fixtures -- cleanup'
-      - 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo nextest run --locked --profile api {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}} {{.CLI_ARGS}}{{if and (not .TARGET) (not (.FILTER | default "")) (not .CLI_ARGS)}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
+      - 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo nextest run --locked --profile api {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}} {{.CLI_ARGS}}{{if and (not .TARGET) (not (.FILTER | default "")) (not .CLI_ARGS)}} && task host:test:fixture-concurrency{{end}}'
   test:integration:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -287,9 +287,16 @@ tasks:
         fi;
         cargo nextest run --locked --profile api --no-tests=fail "$@";
         if [ -z "$target" ] && [ -z "$filter" ] && [ "$extra_count" = 0 ]; then
-          cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
+          task host:test:fixture-concurrency;
         fi
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}} {{.API_RUN_ID | shellQuote}} {{.CLI_ARGS}}
+  test:fixture-concurrency:
+    desc: Verify concurrent API fixture preparation
+    env:
+      RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
+      RUST_ICU_LINK_SEARCH_DIR: *icu_lib
+    cmds:
+      - cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact
   test:browser:
     desc: Run the Rust browser journeys against a private owned database
     deps: [":frontend:prepare"]
