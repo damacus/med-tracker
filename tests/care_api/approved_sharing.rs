@@ -4405,14 +4405,48 @@ async fn current_declaration(app: &Application, subject: i64) -> Option<i64> {
 async fn guardian_origin(app: &Application) -> GuardianOrigin {
     let token = app.token().await;
     let child = dependent(app, &token).await;
-    let created = Application::assert_status(app.client.post(format!(
-        "{}/api/v1/households/{}/schedules", app.origin, app.fixture.household.id))
-        .bearer_auth(&token).json(&json!({"schedule": {
+    let created = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/{}/schedules",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(&token)
+        .json(&json!({"schedule": {
             "person_id": child.to_string(), "medication_id": app.fixture.medication.id.to_string(),
             "dose_amount": "2", "dose_unit": "tablet", "start_date": "2026-01-01",
             "end_date": "2027-01-01", "schedule_type": "prn", "schedule_config": {},
             "notes": "Synthetic protected canonical narrative"
-        }})).send().await.unwrap(), 201).await;
+        }}))
+        .send()
+        .await;
+    if let Err(error) = &created
+        && error.is_timeout()
+        && let Some(path) = std::env::var_os("MEDTRACKER_DIAGNOSTIC_TIMEOUT_FILE")
+    {
+        match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+            Ok(elapsed) => {
+                let timestamp = elapsed.as_nanos().to_string();
+                match std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(path)
+                {
+                    Ok(mut file) => {
+                        if std::io::Write::write_all(&mut file, timestamp.as_bytes()).is_err() {
+                            eprintln!("diagnostic timeout marker write failed");
+                        }
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                    Err(_) => {
+                        eprintln!("diagnostic timeout marker creation failed");
+                    }
+                }
+            }
+            Err(_) => eprintln!("diagnostic timeout marker clock unavailable"),
+        }
+    }
+    let created = Application::assert_status(created.unwrap(), 201).await;
     let template_id = created["data"]["person_schedule_id"].as_str().unwrap();
     let template = person_schedules::Entity::find_by_id(template_id)
         .one(&app.fixture.admin)

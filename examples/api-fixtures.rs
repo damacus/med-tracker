@@ -1,6 +1,11 @@
 use sea_orm::sea_query::{Expr, ExprTrait, Func, Query};
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
-use std::{error::Error, fs::OpenOptions, io::Write};
+use std::{
+    error::Error,
+    fs::{self, OpenOptions},
+    io::{ErrorKind, Write},
+    time::Duration,
+};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -14,9 +19,13 @@ async fn main() -> Result<()> {
     let database = format!("api_run_{}", run.simple());
     let role = format!("api_runtime_{}", run.simple());
     let marker = format!("medtracker-api-run:{run}");
+    let action = std::env::args().nth(1);
+    if action.as_deref() == Some("cleanup") {
+        await_diagnostic_stop(run).await?;
+    }
     let control_uri = std::env::var("DATABASE_URL")?;
     let control = Database::connect(&control_uri).await?;
-    match std::env::args().nth(1).as_deref() {
+    match action.as_deref() {
         Some("prepare") => {
             if database_marker(&control, &database).await?.is_some() {
                 return Err("Refusing to adopt an existing API test database".into());
@@ -85,6 +94,57 @@ async fn main() -> Result<()> {
     }
     control.close().await?;
     Ok(())
+}
+
+async fn await_diagnostic_stop(run: uuid::Uuid) -> Result<()> {
+    let done = std::env::var_os("MEDTRACKER_DIAGNOSTIC_CLEANUP_DONE_FILE");
+    let stopped = std::env::var_os("MEDTRACKER_DIAGNOSTIC_COLLECTOR_STOPPED_FILE");
+    let (done, stopped) = match (done, stopped) {
+        (None, None) => return Ok(()),
+        (Some(done), Some(stopped)) => (done, stopped),
+        _ => return Err("Incomplete diagnostic cleanup handoff".into()),
+    };
+    let done = std::path::PathBuf::from(done);
+    let stopped = std::path::PathBuf::from(stopped);
+    let run_marker = format!("{run}\n");
+    if done.exists() {
+        if fs::read_to_string(&done)? != run_marker {
+            return Err("Diagnostic cleanup handoff belongs to another run".into());
+        }
+    } else {
+        let partial = done.with_extension("partial");
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&partial)
+            .map_err(|_| "Could not stage diagnostic cleanup handoff")?;
+        file.write_all(run_marker.as_bytes())?;
+        file.sync_all()?;
+        match fs::hard_link(&partial, &done) {
+            Ok(()) => fs::remove_file(&partial)?,
+            Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+                let _ = fs::remove_file(&partial);
+                if fs::read_to_string(&done)? != run_marker {
+                    return Err("Diagnostic cleanup handoff belongs to another run".into());
+                }
+            }
+            Err(_) => {
+                let _ = fs::remove_file(&partial);
+                return Err("Could not publish diagnostic cleanup handoff".into());
+            }
+        }
+    }
+    let expected = format!("stopped:{run}\n");
+    for _ in 0..650 {
+        if let Ok(contents) = fs::read_to_string(&stopped) {
+            if contents == expected {
+                return Ok(());
+            }
+            return Err("Diagnostic collector returned an invalid stop acknowledgement".into());
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    Err("Diagnostic collector did not stop before fixture cleanup".into())
 }
 
 async fn database_marker(control: &DatabaseConnection, database: &str) -> Result<Option<String>> {

@@ -226,7 +226,7 @@ tasks:
     internal: true
     cmds:
       - defer: 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo run --locked --example api-fixtures -- cleanup'
-      - 'env MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo nextest run --locked --profile api {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}} {{.CLI_ARGS}}{{if and (not .TARGET) (not (.FILTER | default "")) (not .CLI_ARGS)}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
+      - 'env -u MEDTRACKER_DIAGNOSTIC_CLEANUP_DONE_FILE -u MEDTRACKER_DIAGNOSTIC_COLLECTOR_STOPPED_FILE MEDTRACKER_TEST_RUN_ID={{.API_RUN_ID | shellQuote}} cargo nextest run --locked --profile api {{if .TARGET}}--test {{.TARGET | shellQuote}}{{else}}--test "*"{{end}} --no-tests=fail {{.FILTER | default "" | shellQuote}} {{.CLI_ARGS}}{{if and (not .TARGET) (not (.FILTER | default "")) (not .CLI_ARGS)}} && env -u MEDTRACKER_DIAGNOSTIC_CLEANUP_DONE_FILE -u MEDTRACKER_DIAGNOSTIC_COLLECTOR_STOPPED_FILE cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
   test:integration:owned:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
@@ -257,7 +257,17 @@ tasks:
         export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
         export MEDTRACKER_OWNED_DATABASE=1;
         export MEDTRACKER_TEST_RUN_ID="$4";
-        trap "cargo run --locked --example api-fixtures -- cleanup" EXIT;
+        diagnostic_done="${MEDTRACKER_DIAGNOSTIC_CLEANUP_DONE_FILE:-}";
+        diagnostic_stopped="${MEDTRACKER_DIAGNOSTIC_COLLECTOR_STOPPED_FILE:-}";
+        cleanup_fixture() {
+          if [ -n "$diagnostic_done" ] && [ -n "$diagnostic_stopped" ]; then
+            env MEDTRACKER_DIAGNOSTIC_CLEANUP_DONE_FILE="$diagnostic_done" MEDTRACKER_DIAGNOSTIC_COLLECTOR_STOPPED_FILE="$diagnostic_stopped" cargo run --locked --example api-fixtures -- cleanup;
+          else
+            cargo run --locked --example api-fixtures -- cleanup;
+          fi
+        };
+        trap cleanup_fixture EXIT;
+        unset MEDTRACKER_DIAGNOSTIC_CLEANUP_DONE_FILE MEDTRACKER_DIAGNOSTIC_COLLECTOR_STOPPED_FILE;
         export MEDTRACKER_OWNED_STORAGE=1;
         export S3_ENDPOINT="$storage_endpoint";
         export S3_BUCKET=scanner-fixture;
@@ -285,9 +295,9 @@ tasks:
         if [ -n "$filter" ]; then
           set -- "$@" "$filter";
         fi;
-        cargo nextest run --locked --profile api --no-tests=fail "$@";
+        env -u MEDTRACKER_DIAGNOSTIC_CLEANUP_DONE_FILE -u MEDTRACKER_DIAGNOSTIC_COLLECTOR_STOPPED_FILE cargo nextest run --locked --profile api --no-tests=fail "$@";
         if [ -z "$target" ] && [ -z "$filter" ] && [ "$extra_count" = 0 ]; then
-          cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
+          env -u MEDTRACKER_DIAGNOSTIC_CLEANUP_DONE_FILE -u MEDTRACKER_DIAGNOSTIC_COLLECTOR_STOPPED_FILE cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
         fi
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}} {{.API_RUN_ID | shellQuote}} {{.CLI_ARGS}}
   test:browser:
