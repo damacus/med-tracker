@@ -131,13 +131,36 @@ fn sanitize_attributes(attributes: &mut Vec<KeyValue>, dropped: &mut Vec<String>
 }
 
 fn sanitize_span(mut span: SpanData) -> SpanData {
-    if keys::safe_span_name(&span.name) != span.name {
+    let method = span
+        .attributes
+        .iter()
+        .find(|attribute| attribute.key.as_str() == "http.request.method");
+    let route = span
+        .attributes
+        .iter()
+        .find(|attribute| attribute.key.as_str() == "http.route");
+    let matched_route_name = match (method, route) {
+        (Some(method), Some(route)) => match (&method.value, &route.value) {
+            (opentelemetry::Value::String(method), opentelemetry::Value::String(route)) => {
+                span.name == format!("{} {}", method.as_str(), route.as_str())
+                    && route.as_str().starts_with('/')
+                    && route.as_str().len() <= 128
+                    && route.as_str().chars().all(|c| {
+                        c.is_ascii_alphanumeric()
+                            || matches!(c, '/' | '_' | '-' | '.' | '{' | '}' | '*')
+                    })
+            }
+            _ => false,
+        },
+        _ => false,
+    };
+    if !matched_route_name && keys::safe_span_name(&span.name) != span.name {
         span.name = Cow::Owned("medtracker.redacted".to_owned());
     }
     let mut dropped = Vec::new();
     sanitize_attributes(&mut span.attributes, &mut dropped);
     for event in span.events.events.iter_mut() {
-        event.name = Cow::Owned(keys::safe_span_name(&event.name).to_owned());
+        event.name = Cow::Borrowed("medtracker.redacted");
         sanitize_attributes(&mut event.attributes, &mut dropped);
     }
     for link in span.links.links.iter_mut() {
@@ -446,5 +469,33 @@ mod event_name_tests {
         data.events = events;
         let data = sanitize_span(data);
         assert_eq!(data.events.events[0].name, "medtracker.redacted");
+    }
+
+    #[test]
+    fn formatted_span_event_name_is_redacted() {
+        let mut data = span(vec![], opentelemetry::trace::Status::Unset);
+        data.events.events.push(Event::new(
+            Cow::Borrowed("ClinicalValueSentinel"),
+            std::time::SystemTime::now(),
+            vec![],
+            0,
+        ));
+        let data = sanitize_span(data);
+        assert_eq!(data.events.events[0].name, "medtracker.redacted");
+    }
+
+    #[test]
+    fn matched_parameterized_request_name_survives_export() {
+        let route = "/households/{slug}/medications/{id}";
+        let mut data = span(
+            vec![
+                opentelemetry::KeyValue::new("http.request.method", "GET"),
+                opentelemetry::KeyValue::new("http.route", route),
+            ],
+            opentelemetry::trace::Status::Unset,
+        );
+        data.name = format!("GET {route}").into();
+        let data = sanitize_span(data);
+        assert_eq!(data.name, format!("GET {route}"));
     }
 }

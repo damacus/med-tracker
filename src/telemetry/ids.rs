@@ -130,6 +130,8 @@ pub fn attach(span: &tracing::Span, inbound: Option<&str>) -> String {
     let span_context = span.context();
     let otel_context = span_context.span().span_context().clone();
     if otel_context.is_valid() {
+        span.record("trace_id", otel_context.trace_id().to_string().as_str());
+        span.record("span_id", otel_context.span_id().to_string().as_str());
         otel_context.trace_id().to_string()
     } else {
         let generated = trace_id_from(inbound).unwrap_or_else(new_trace_id);

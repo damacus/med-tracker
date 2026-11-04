@@ -217,15 +217,19 @@ mod exported_span_tests {
     async fn server_span_carries_semconv_attributes_without_private_input()
     -> Result<(), Box<dyn std::error::Error>> {
         let exporter = InMemorySpanExporter::default();
+        let sanitized = crate::telemetry::export::SanitizingExporter::new(
+            exporter.clone(),
+            crate::telemetry::export::Diagnostics::new(),
+        );
         let provider = SdkTracerProvider::builder()
-            .with_simple_exporter(exporter.clone())
+            .with_simple_exporter(sanitized)
             .with_sampler(Sampler::AlwaysOn)
             .build();
         let otel = crate::telemetry::otel_layer(&provider, "test");
         let subscriber = registry().with(otel);
         let router = Router::new()
             .route(
-                "/private",
+                "/households/{slug}/medications/{id}",
                 get(|| async { (StatusCode::INTERNAL_SERVER_ERROR, "ClinicalBodySentinel") }),
             )
             .layer(axum::middleware::from_fn(boundary));
@@ -234,7 +238,7 @@ mod exported_span_tests {
             .build(router)?;
         let response = async {
             server
-                .get("/private?token=ClinicalQuerySentinel")
+                .get("/households/ClinicalPathSentinel/medications/123?token=ClinicalQuerySentinel")
                 .add_header("authorization", "ClinicalHeaderSentinel")
                 .await
         }
@@ -248,7 +252,10 @@ mod exported_span_tests {
         let spans = exporter.get_finished_spans()?;
         assert_eq!(spans.len(), 1);
         let span = &spans[0];
-        assert_eq!(span.name.as_ref(), "GET /private");
+        assert_eq!(
+            span.name.as_ref(),
+            "GET /households/{slug}/medications/{id}"
+        );
         assert_eq!(span.span_context.trace_id().to_string(), trace_id);
         let attribute = |key: &str| {
             span.attributes
@@ -260,7 +267,10 @@ mod exported_span_tests {
                 })
         };
         assert_eq!(attribute("http.request.method").as_deref(), Some("GET"));
-        assert_eq!(attribute("http.route").as_deref(), Some("/private"));
+        assert_eq!(
+            attribute("http.route").as_deref(),
+            Some("/households/{slug}/medications/{id}")
+        );
         assert!(attribute("http.response.status_code").is_some());
         assert!(
             attribute("medtracker.telemetry.dropped_keys").is_none(),
@@ -273,6 +283,38 @@ mod exported_span_tests {
         ));
         assert!(!format!("{spans:?}").contains("Sentinel"));
         provider.shutdown().expect("shutdown");
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn exported_catch_all_route_uses_template_without_private_path()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let exporter = InMemorySpanExporter::default();
+        let sanitized = crate::telemetry::export::SanitizingExporter::new(
+            exporter.clone(),
+            crate::telemetry::export::Diagnostics::new(),
+        );
+        let provider = SdkTracerProvider::builder()
+            .with_simple_exporter(sanitized)
+            .with_sampler(Sampler::AlwaysOn)
+            .build();
+        let subscriber = registry().with(crate::telemetry::otel_layer(&provider, "test"));
+        let router = Router::new()
+            .route("/static/{*path}", get(|| async { StatusCode::OK }))
+            .layer(axum::middleware::from_fn(boundary));
+        let server = loco_rs::TestServer::builder()
+            .mock_transport()
+            .build(router)?;
+        let response = async { server.get("/static/ClinicalPathSentinel/file").await }
+            .with_subscriber(subscriber)
+            .await;
+        assert_eq!(response.status_code(), 200);
+        provider.force_flush()?;
+        let spans = exporter.get_finished_spans()?;
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].name, "GET /static/{*path}");
+        assert!(!format!("{spans:?}").contains("ClinicalPathSentinel"));
+        provider.shutdown()?;
         Ok(())
     }
 

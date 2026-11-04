@@ -134,11 +134,11 @@ async fn portable_import_forbidden_logs_only_the_failed_authorise_stage() {
     let (fixture, boot) = boot_request_fixture().await;
     let token = fixture.token().await;
     let (request, captured) = captured_router(&boot);
-    let person_id = format!("imported-person-{}", uuid::Uuid::new_v4().simple());
+    let person_id = fixture.dependent.portable_id.clone();
     let location_id = format!("imported-location-{}", uuid::Uuid::new_v4().simple());
     let payload = importable_payload(&person_id, &location_id);
     let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
-    // Undeclared person: authorise must reject because no manage authority exists.
+    // Existing dependent without guardian authority reaches authorisation.
     let response = request
         .post(&format!(
             "/api/v1/households/{}/portable_imports",
@@ -146,7 +146,7 @@ async fn portable_import_forbidden_logs_only_the_failed_authorise_stage() {
         ))
         .add_header("authorization", format!("Bearer {token}"))
         .add_header("x-medtracker-portable-passphrase", PASSPHRASE)
-        .json(&json!({"bundle":bundle,"initial_guardian_declarations":[{"person_portable_id":person_id,"accepted":false}]}))
+        .json(&json!({"bundle":bundle}))
         .await;
     let status = response.status_code();
     let stage_events = stage_events(&captured);

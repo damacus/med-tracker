@@ -56,7 +56,7 @@ Disallowed keys are dropped and their names listed in
 and to exported span attributes, events, links, resource and status via an
 exporter wrapper (the Rails `AllowlistedSpanExporter` equivalent). There is no
 signal registry: coverage comes from the generic rule plus sentinel privacy
-tests, not a frozen event inventory.
+tests, not a frozen event inventory. JSON bodies use static tracing callsite metadata; formatted message prose is omitted for application and dependency events. Exported span-event names use a fixed redaction value because their provenance cannot distinguish literal text from formatted values. Reviewed structured event.name fields retain fixed diagnostic identifiers. This deliberately trades free-form prose for privacy.
 
 ### Traces
 

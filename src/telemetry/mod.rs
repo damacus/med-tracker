@@ -51,11 +51,7 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
             match registry().with(json).with(otel).with(filter).try_init() {
                 Ok(()) => {
                     let host = settings.endpoint_host().unwrap_or_default();
-                    tracing::info!(
-                        event.name = "medtracker.telemetry.export",
-                        server.address = %host,
-                        "Telemetry export enabled"
-                    );
+                    log_export_state(Some(&host));
                 }
                 Err(_) => {
                     eprintln!(
@@ -66,10 +62,7 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
         }
         None => match registry().with(json).with(filter).try_init() {
             Ok(()) => {
-                tracing::info!(
-                    event.name = "medtracker.telemetry.export",
-                    "Telemetry export disabled"
-                );
+                log_export_state(None);
             }
             Err(_) => {
                 eprintln!(
@@ -83,6 +76,18 @@ pub fn init<H: Hooks>(ctx: &loco_rs::app::AppContext) -> bool {
         loco_rs::environment::Environment::Production
     ));
     true
+}
+
+fn log_export_state(host: Option<&str>) {
+    if let Some(host) = host {
+        tracing::info!(event.name = "medtracker.telemetry.export", medtracker.telemetry.export.enabled = true, server.address = %host, "Telemetry export enabled");
+    } else {
+        tracing::info!(
+            event.name = "medtracker.telemetry.export",
+            medtracker.telemetry.export.enabled = false,
+            "Telemetry export disabled"
+        );
+    }
 }
 
 fn build_provider(
@@ -276,6 +281,40 @@ mod pipeline_tests {
             environment: "test".into(),
             instance_id: String::new(),
         }
+    }
+
+    #[test]
+    fn startup_output_reports_export_state_without_message_prose() {
+        let buffer = Buffer::default();
+        let subscriber =
+            registry().with(json::layer(buffer.clone(), resource(), Diagnostics::new()));
+        tracing::subscriber::with_default(subscriber, || {
+            super::log_export_state(Some("collector.example"));
+            super::log_export_state(None);
+        });
+        let output = buffer.text();
+        let records: Vec<serde_json::Value> = output
+            .lines()
+            .map(|line| serde_json::from_str(line).expect("JSON record"))
+            .collect();
+        assert_eq!(records.len(), 2);
+        for (record, enabled) in records.iter().zip([true, false]) {
+            assert_eq!(
+                record["attributes"]["event.name"],
+                "medtracker.telemetry.export"
+            );
+            assert_eq!(
+                record["attributes"]["medtracker.telemetry.export.enabled"],
+                enabled
+            );
+        }
+        assert_eq!(
+            records[0]["attributes"]["server.address"],
+            "collector.example"
+        );
+        assert!(records[1]["attributes"].get("server.address").is_none());
+        assert!(!output.contains("Telemetry export enabled"));
+        assert!(!output.contains("Telemetry export disabled"));
     }
 
     fn emit_span(provider: &SdkTracerProvider) {

@@ -139,6 +139,7 @@ where
             );
         }
     }
+    drop(span);
     super::flush().await;
     result
 }
@@ -546,7 +547,7 @@ mod panic_tests {
 
 #[cfg(test)]
 mod task_flush_tests {
-    use super::{task, tests::test_otel};
+    use super::task;
     use tracing_subscriber::prelude::*;
 
     #[tokio::test]
@@ -571,7 +572,12 @@ mod task_flush_tests {
 
     #[tokio::test]
     async fn task_wrapper_flushes_without_shutting_down_the_provider() {
-        let (exporter, provider, layer) = test_otel();
+        let exporter = opentelemetry_sdk::trace::InMemorySpanExporter::default();
+        let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+            .with_batch_exporter(exporter.clone())
+            .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
+            .build();
+        let layer = crate::telemetry::otel_layer(&provider, "test");
         let _ = super::super::TRACER_PROVIDER.set(provider.clone());
         let subscriber = tracing_subscriber::registry().with(layer);
         use tracing::instrument::WithSubscriber;
@@ -579,6 +585,15 @@ mod task_flush_tests {
             task("flush-check", async { Ok::<u8, loco_rs::Error>(1) })
                 .await
                 .unwrap();
+            let spans = exporter.get_finished_spans().expect("exported spans");
+            assert!(spans.iter().any(|span| span.name == "task flush-check"));
+            let failed: Result<u8, loco_rs::Error> = task("flush-failure", async {
+                Err(loco_rs::Error::string("synthetic"))
+            })
+            .await;
+            assert!(failed.is_err());
+            let spans = exporter.get_finished_spans().expect("exported spans");
+            assert!(spans.iter().any(|span| span.name == "task flush-failure"));
             tracing::info_span!("after-task").in_scope(|| ());
         }
         .with_subscriber(subscriber)
