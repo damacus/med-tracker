@@ -9,7 +9,8 @@ sections below describe the reference, not requirements to reproduce its interna
 
 For the current Rust role checks, administration pages, platform-only NHS dm+d
 importer and synthetic seed limitations, see [Manage People and Household
-Access](user-management.md#household-roles). The historical person-grant model
+Access](user-management.md#household-roles) and the [roles and importer access
+audit](operations/roles-and-importer-audit.md). The historical person-grant model
 below is not the current Rust care-authority contract.
 
 - [Accounts, people and households](adrs/0013-accounts-people-and-households.md)

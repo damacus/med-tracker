@@ -14,8 +14,9 @@ below apply to the Rails reference application.
 Accounts with an active platform administrator record upload releases at
 `/admin/nhs-dmd`. Household owner or administrator access alone does not qualify.
 The development/test seed does not create a platform administrator, and the
-current administration navigation has no importer link. See [roles, administration
-pages and seed limitations](user-management.md#administration-pages-and-nhs-dmd-access).
+current administration navigation has no importer link. See [platform
+administrators](user-management.md#platform-administrators) and the [seed and
+navigation audit](operations/roles-and-importer-audit.md).
 Configure the same
 private object store for the web process and worker:
 
@@ -113,15 +114,14 @@ return results.
 
 ## Import NHS release data
 
-Platform administrators can upload the NHSBSA release ZIP through **Admin**,
-then **Import NHS dm+d**. MedTracker stores the archive, queues the import,
+In the root Rust application, platform administrators open `/admin/nhs-dmd`
+directly and upload the NHSBSA release ZIP. There is currently no importer link
+in the administration menus. MedTracker stores the archive, queues the import,
 shows progress and record counts, and removes the archive when the run ends.
 
-Kubernetes operators can use a one-off Job with an extracted release directory
+In the archived Rails application, operators could use a one-off Job with an extracted release directory
 when the admin upload is unsuitable. See [Import an NHS dm+d
 release](kubernetes-nhs-dmd-import.md).
-
-Local development provides Task wrappers for a staged release:
 
 The staged-release import wrappers belonged to the archived Rails application. Use the admin upload or the scheduled `nhs_dmd_reconcile` job configured in `config/*.yaml`.
 
