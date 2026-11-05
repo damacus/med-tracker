@@ -16,6 +16,15 @@ tokio::task_local! {
     static ACCUMULATOR: DbAccumulator;
 }
 
+#[cfg(test)]
+pub(crate) fn seed_test_metrics() {
+    ACCUMULATOR.with(|acc| {
+        acc.queries.store(3, Ordering::Relaxed);
+        acc.elapsed_us.store(1500, Ordering::Relaxed);
+        acc.failed.store(1, Ordering::Relaxed);
+    });
+}
+
 /// Registers the SeaORM metric callback on a connection. Runs even when
 /// export is disabled because the counts also appear in log records.
 pub fn install(connection: &mut sea_orm::DatabaseConnection) {
