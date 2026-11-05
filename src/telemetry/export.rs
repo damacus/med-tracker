@@ -211,7 +211,9 @@ impl<E: SpanExporter> SpanExporter for SanitizingExporter<E> {
             .collect();
         let mut dropped = Vec::new();
         sanitize_attributes(&mut attributes, &mut dropped);
-        let resource = Resource::builder().with_attributes(attributes).build();
+        let resource = Resource::builder_empty()
+            .with_attributes(attributes)
+            .build();
         self.inner.set_resource(&resource);
     }
 }
@@ -446,6 +448,63 @@ mod tests {
         ) -> impl std::future::Future<Output = OTelSdkResult> + Send {
             self.0.export(batch)
         }
+    }
+
+    #[test]
+    fn resource_filter_does_not_redetect_environment_attributes() {
+        const CHILD: &str = "MEDTRACKER_RESOURCE_FILTER_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "telemetry::export::tests::resource_filter_does_not_redetect_environment_attributes", "--nocapture"])
+                .env(CHILD, "1")
+                .env("OTEL_RESOURCE_ATTRIBUTES", "raw_password=SecretSentinel,service.name=allowed-service")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{} {}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+
+        #[derive(Debug, Clone, Default)]
+        struct ResourceCapture(Arc<Mutex<Vec<KeyValue>>>, Arc<Mutex<usize>>);
+        impl SpanExporter for ResourceCapture {
+            async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
+                *self.1.lock().unwrap() += batch.len();
+                Ok(())
+            }
+            fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
+                *self.0.lock().unwrap() = resource
+                    .iter()
+                    .map(|(k, v)| KeyValue::new(k.clone(), v.clone()))
+                    .collect();
+            }
+        }
+        let capture = ResourceCapture::default();
+        let exporter = SanitizingExporter::new(
+            capture.clone(),
+            Diagnostics::with_window(Duration::from_secs(1)),
+        );
+        let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+            .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
+            .with_resource(opentelemetry_sdk::Resource::builder().build())
+            .with_simple_exporter(exporter)
+            .build();
+        use opentelemetry::trace::{Tracer, TracerProvider};
+        drop(provider.tracer("test").start("test-span"));
+        provider.force_flush().unwrap();
+        assert_eq!(*capture.1.lock().unwrap(), 1);
+        let attrs = capture.0.lock().unwrap();
+        assert!(attrs.iter().any(
+            |kv| kv.key.as_str() == "service.name" && kv.value.to_string() == "allowed-service"
+        ));
+        assert!(
+            !attrs.iter().any(|kv| kv.key.as_str() == "raw_password"),
+            "{attrs:?}"
+        );
     }
 }
 
