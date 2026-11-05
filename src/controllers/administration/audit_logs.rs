@@ -132,6 +132,7 @@ async fn data(
     data["household_name"] = json!(&household_name);
     data["admin_section"] = json!("audit");
     data["invalid_field"] = json!("");
+    data["event_types"] = json!(administration::audit_logs::event_types(tenant).await?);
     let audit_title = labels["administration"]["audit"]["title"]
         .as_str()
         .ok_or(OperationError::Unavailable)?;

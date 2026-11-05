@@ -288,6 +288,19 @@ async fn authorize_browse(tenant: &TenantTransaction) -> Result<(), OperationErr
     Ok(())
 }
 
+pub async fn event_types(tenant: &TenantTransaction) -> Result<Vec<String>, OperationError> {
+    authorize_browse(tenant).await?;
+    Ok(security_audit_event::Entity::find()
+        .select_only()
+        .column(security_audit_event::Column::EventType)
+        .distinct()
+        .filter(security_audit_event::Column::HouseholdId.eq(tenant.scope().household_id))
+        .order_by_asc(security_audit_event::Column::EventType)
+        .into_tuple::<String>()
+        .all(tenant.transaction())
+        .await?)
+}
+
 pub async fn browse(
     tenant: &TenantTransaction,
     filter: &BrowseFilter,

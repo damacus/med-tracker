@@ -574,6 +574,10 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
             .header("cookie", &cookie).send().await?;
         let date_only_status = date_only.status();
         let date_only_body = date_only.text().await?;
+        let document = scraper::Html::parse_document(&date_only_body);
+        for selector in ["select#audit-event-type option[value='api.request']", "input#audit-from[type='date']", "input#audit-to[type='date']"] {
+            assert!(document.select(&scraper::Selector::parse(selector).unwrap()).next().is_some(), "missing filter control: {selector}");
+        }
         let first = app.client.get(format!("{}/households/{fixture_slug}/admin/audit_logs?event_type=api.request&from=2030-01-15&to=2030-01-15", app.origin))
             .header("cookie", &cookie).send().await?;
         let first_status = first.status();

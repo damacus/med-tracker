@@ -12,15 +12,19 @@
     {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
     <div>
       <label class="label" for="audit-event-type">{{ admin_labels.audit.event_type }}</label>
-      <input class="input input-bordered w-full" id="audit-event-type" name="event_type" value="{{ filters.event_type }}" placeholder="{{ admin_labels.audit.event_type_placeholder }}" {% if invalid_field == 'audit-event-type' %}aria-invalid="true" aria-describedby="form-error-audit-event-type"{% endif %}>
+      <select class="select select-bordered w-full" id="audit-event-type" name="event_type" {% if invalid_field == 'audit-event-type' %}aria-invalid="true" aria-describedby="form-error-audit-event-type"{% endif %}>
+        <option value="">{{ admin_labels.audit.event_type_placeholder }}</option>
+        {% if filters.event_type != "" and filters.event_type not in event_types %}<option value="{{ filters.event_type }}" selected>{{ filters.event_type }}</option>{% endif %}
+        {% for event_type in event_types %}<option value="{{ event_type }}" {% if event_type == filters.event_type %}selected{% endif %}>{{ event_type }}</option>{% endfor %}
+      </select>
     </div>
     <div>
       <label class="label" for="audit-from">{{ admin_labels.audit.from }}</label>
-      <input class="input input-bordered w-full" id="audit-from" name="from" type="text" placeholder="YYYY-MM-DD" value="{{ filters.from_utc }}" {% if invalid_field == 'audit-from' %}aria-invalid="true" aria-describedby="form-error-audit-from"{% endif %}>
+      <input class="input input-bordered w-full" id="audit-from" name="from" type="date" value="{{ filters.from_utc }}" {% if invalid_field == 'audit-from' %}aria-invalid="true" aria-describedby="form-error-audit-from"{% endif %}>
     </div>
     <div>
       <label class="label" for="audit-to">{{ admin_labels.audit.to }}</label>
-      <input class="input input-bordered w-full" id="audit-to" name="to" type="text" placeholder="YYYY-MM-DD" value="{{ filters.through_utc }}" {% if invalid_field == 'audit-to' %}aria-invalid="true" aria-describedby="form-error-audit-to"{% endif %}>
+      <input class="input input-bordered w-full" id="audit-to" name="to" type="date" value="{{ filters.through_utc }}" {% if invalid_field == 'audit-to' %}aria-invalid="true" aria-describedby="form-error-audit-to"{% endif %}>
     </div>
     <div class="sm:col-span-3"><button class="btn btn-neutral" type="submit">{{ admin_labels.audit.filter }}</button></div>
   </form>
