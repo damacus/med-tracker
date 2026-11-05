@@ -90,7 +90,7 @@ document.addEventListener('submit', async event => {
     const personal = documentResult.querySelector('[data-testid="profile-personal-info-card"]');
     for (const summary of documentResult.querySelectorAll('[data-profile-summary][id]')) document.getElementById(summary.id)?.replaceWith(summary);
     if (personal) document.querySelector('[data-testid="profile-personal-info-card"]')?.replaceWith(personal);
-    const avatar = documentResult.querySelector('[data-profile-avatar]');
+    const avatar = documentResult.querySelector('main [data-profile-avatar]');
     if (avatar) for (const current of document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')) current.replaceChildren(...avatar.cloneNode(true).childNodes);
     if (dialog) dialog.close();
     else (region ? document.getElementById(region.id) : replacement)?.querySelector('[type="submit"]')?.focus();

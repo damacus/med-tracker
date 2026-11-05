@@ -18,9 +18,15 @@ async function refreshMobileShortcuts() {
     const headers = { Accept: "application/json" };
     if (document.documentElement.lang) headers["Accept-Language"] = document.documentElement.lang;
     const response = await fetch(`/households/${match[1]}/profile/navigation`, { headers, cache: 'no-store' });
-    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return;
+    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+      document.body?.setAttribute('data-navigation-failed', 'true');
+      return;
+    }
     const data = await response.json();
-    if (!Array.isArray(data.links) || data.links.length > 3) return;
+    if (!Array.isArray(data.links) || data.links.length > 3 || !data.shell?.labels) {
+      document.body?.setAttribute('data-navigation-failed', 'true');
+      return;
+    }
     const selectedSection = navigationSection(location.pathname, data.shell?.choices || []);
     const navigation = document.querySelector('[data-mobile-shortcuts]') || document.createElement('nav');
     navigation.dataset.mobileShortcuts = '';
@@ -50,7 +56,11 @@ async function refreshMobileShortcuts() {
     if (!navigation.isConnected) (document.querySelector('.drawer-content') || document.body).append(navigation);
     document.body.classList.add('pb-[calc(4rem+env(safe-area-inset-bottom))]', 'lg:pb-0');
     document.dispatchEvent(new CustomEvent('app-navigation', { detail: { ...data.shell, slug: match[1], selected_section: selectedSection } }));
-  } catch { }
+    if (document.body && !document.body.hasAttribute('data-navigation-ready')) {
+      document.body.dataset.navigationFailed = 'true';
+      for (const link of document.querySelectorAll('[data-sidebar-profile], [data-sidebar-security]')) link.hidden = false;
+    }
+  } catch { document.body?.setAttribute('data-navigation-failed', 'true'); }
 }
 document.addEventListener('DOMContentLoaded', refreshMobileShortcuts);
 document.addEventListener('profile-saved', refreshMobileShortcuts);

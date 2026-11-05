@@ -9,6 +9,7 @@
   <div class="app-sidebar-account">
     <ul class="menu w-full">
       <li><a class="min-w-0 whitespace-normal wrap-anywhere" href="/households/{{ slug }}/profile" data-sidebar-profile><span class="app-avatar" aria-hidden="true">M</span><span class="min-w-0 wrap-anywhere">{% if labels %}{{ labels.layouts.profile_menu.profile }}{% else %}Profile{% endif %}</span></a></li>
+      <li><a class="min-w-0 whitespace-normal wrap-anywhere" href="/account/security" data-sidebar-security data-account-security-fallback>{% if labels %}{{ labels.profiles.account_security.title }}{% else %}Account security{% endif %}</a></li>
       <li><button type="button" class="min-w-0 whitespace-normal wrap-anywhere" data-sidebar-account aria-haspopup="dialog" aria-controls="app-account" aria-expanded="false" hidden><span class="app-avatar" data-sidebar-avatar aria-hidden="true"></span> <span class="min-w-0 wrap-anywhere" data-sidebar-name></span></button></li>
       <li><a class="min-w-0 whitespace-normal wrap-anywhere" href="/households/choose?switch=1">{% if labels %}{{ labels.layouts.profile_menu.households }}{% else %}Households{% endif %}</a></li>
     </ul>
