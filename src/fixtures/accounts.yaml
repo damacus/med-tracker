@@ -6,3 +6,11 @@
   created_at: "2026-10-06T00:00:00Z"
   updated_at: "2026-10-06T00:00:00Z"
   preferences: {}
+- id: 71002
+  active: true
+  person_id: 73002
+  email: "platform-admin@example.test"
+  status: 2
+  created_at: "2026-10-06T00:00:00Z"
+  updated_at: "2026-10-06T00:00:00Z"
+  preferences: {}
