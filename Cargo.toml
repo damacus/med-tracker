@@ -44,7 +44,7 @@ better-auth = { version = "=1.0.0-alpha.5", default-features = false, features =
 ] }
 better-auth-core = { version = "=1.0.0-alpha.5" }
 better-auth-seaorm = "=1.0.0-alpha.5"
-cedar-policy = { version = "=4.13.0", default-features = false }
+cedar-policy = { version = "=4.14.1", default-features = false }
 headers = "=0.4.2"
 hex = "=0.4.3"
 image = { version = "=0.25.10", default-features = false, features = [
