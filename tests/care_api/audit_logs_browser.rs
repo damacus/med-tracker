@@ -767,6 +767,16 @@ async fn audit_browser_retains_invalid_filter_drafts_after_authorization()
     assert_eq!(date_cache.as_deref(), Some("no-store"));
     assert!(date_body.contains("value=\"api.request\""));
     assert!(date_body.contains("value=\"2030-02-30\""));
+    let date_document = scraper::Html::parse_document(&date_body);
+    assert!(
+        date_document
+            .select(
+                &scraper::Selector::parse("input#audit-from[type='text'][value='2030-02-30']")
+                    .unwrap()
+            )
+            .next()
+            .is_some()
+    );
     assert!(date_body.contains("form-error-audit-from"));
     assert_eq!(anonymous_status, reqwest::StatusCode::SEE_OTHER);
     assert_eq!(anonymous_cache.as_deref(), Some("no-store"));
