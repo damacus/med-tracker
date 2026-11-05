@@ -625,8 +625,9 @@ fn classify_gtin(
     }
     let enddt = enddt.trim();
     if !enddt.is_empty() {
-        let date = NaiveDate::parse_from_str(enddt, "%Y-%m-%d")
-            .map_err(|error| format!("Invalid GTIN ENDDT: {error}"))?;
+        let date = NaiveDate::parse_from_str(enddt, "%Y-%m-%d").map_err(|_| {
+            ImportFailure::new(ImportStage::ParseGtin, ImportFailureCategory::RecordInvalid)
+        })?;
         if date <= today {
             return Ok(GtinParsed::SkipExpired);
         }
@@ -1019,15 +1020,18 @@ pub(crate) async fn run_import(
         set_status(&db, run_id, 1, "Extracting release archive").await?;
         let zip_for_task = zip_path.clone();
         let extracted = blocking_with_activity(&db, run_id, move |activity| {
-            let dir =
-                tempfile::tempdir().map_err(|error| ImportFailure::from(error.to_string()))?;
+            let dir = tempfile::tempdir().map_err(|_| {
+                ImportFailure::new(ImportStage::Extract, ImportFailureCategory::Storage)
+            })?;
             extract::extract_with_progress(&zip_for_task, dir.path(), None, || {
-                activity
-                    .send(())
-                    .map_err(|_| "Import activity could not be reported".to_owned())
+                activity.send(()).map_err(|_| {
+                    ImportFailure::new(
+                        ImportStage::Activity,
+                        ImportFailureCategory::ActivityUnreported,
+                    )
+                })
             })
             .map(|_| dir)
-            .map_err(ImportFailure::from)
         })
         .await?;
         extraction.complete();
@@ -1243,7 +1247,7 @@ async fn import_extracted(
 
 fn find_gtin_file(
     dir: &Path,
-    mut progress: impl FnMut() -> Result<(), ImportFailure>,
+    progress: impl FnMut() -> Result<(), ImportFailure>,
 ) -> Result<PathBuf, ImportFailure> {
     if let Some(first) = glob_paths(dir, "f_gtin2_0*.xml").into_iter().next() {
         return Ok(first);
@@ -1255,10 +1259,7 @@ fn find_gtin_file(
         ));
     };
     let dest = dir.join(format!("nested-gtin-{}", uuid::Uuid::new_v4()));
-    extract::extract_with_progress(&zip, &dest, Some("f_gtin2_0*.xml"), move || {
-        progress().map_err(|error| error.to_string())
-    })
-    .map_err(ImportFailure::from)?;
+    extract::extract_with_progress(&zip, &dest, Some("f_gtin2_0*.xml"), progress)?;
     glob_paths(&dest, "f_gtin2_0*.xml")
         .into_iter()
         .next()
@@ -1602,6 +1603,59 @@ pub(crate) async fn fail_owned_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extraction_failures_keep_their_origin() {
+        use std::io::Write;
+        let directory = tempfile::tempdir().unwrap();
+        let archive = directory.path().join("release.zip");
+        std::fs::write(&archive, b"not a zip release").unwrap();
+        let invalid = extract::extract_with_progress(&archive, directory.path(), None, || Ok(()))
+            .unwrap_err();
+        assert_eq!(invalid.stage.name(), "extract");
+        assert_eq!(invalid.category.name(), "archive_invalid");
+
+        let missing = extract::extract_with_progress(
+            &directory.path().join("missing"),
+            directory.path(),
+            None,
+            || Ok(()),
+        )
+        .unwrap_err();
+        assert_eq!(missing.category.name(), "storage");
+
+        let mut writer = zip::ZipWriter::new(File::create(&archive).unwrap());
+        writer
+            .start_file("release.xml", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"content").unwrap();
+        writer.finish().unwrap();
+        let activity =
+            extract::extract_with_progress(&archive, &directory.path().join("out"), None, || {
+                Err(ImportFailure::new(
+                    ImportStage::Activity,
+                    ImportFailureCategory::ActivityUnreported,
+                ))
+            })
+            .unwrap_err();
+        assert_eq!(activity.category.name(), "activity_unreported");
+        assert_eq!(activity.stage.name(), "activity");
+    }
+
+    #[test]
+    fn invalid_gtin_end_date_is_a_record_error() {
+        let failure = classify_gtin(
+            "1",
+            "123",
+            "invalid",
+            &HashMap::new(),
+            NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+        )
+        .err()
+        .expect("invalid date");
+        assert_eq!(failure.stage.name(), "parse_gtin");
+        assert_eq!(failure.category.name(), "record_invalid");
+    }
 
     #[tokio::test]
     async fn blocking_work_failure_survives_activity_failure() {

@@ -172,19 +172,33 @@ pub fn storage_span(operation: &str) -> tracing::Span {
 
 /// Logs a fixed `Panic` error inside the current span. Never includes the
 /// payload; re-entry is guarded.
-fn safe_panic_event(info: &std::panic::PanicHookInfo<'_>) {
-    static IN_HOOK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if IN_HOOK.swap(true, std::sync::atomic::Ordering::SeqCst) {
-        return;
+fn with_panic_guard(operation: impl FnOnce()) {
+    thread_local! { static IN_HOOK: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
+    struct Reset<'a>(&'a std::cell::Cell<bool>);
+    impl Drop for Reset<'_> {
+        fn drop(&mut self) {
+            self.0.set(false);
+        }
     }
-    let location = info.location();
-    tracing::error!(
-        error.type = "panic",
-        code.file.path = location.map(|location| location.file()),
-        code.line.number = location.map(|location| location.line()),
-        "Panic"
-    );
-    IN_HOOK.store(false, std::sync::atomic::Ordering::SeqCst);
+    let _ = IN_HOOK.try_with(|guard| {
+        if guard.replace(true) {
+            return;
+        }
+        let _reset = Reset(guard);
+        operation();
+    });
+}
+
+fn safe_panic_event(info: &std::panic::PanicHookInfo<'_>) {
+    with_panic_guard(|| {
+        let location = info.location();
+        tracing::error!(
+            error.type = "panic",
+            code.file.path = location.map(|location| location.file()),
+            code.line.number = location.map(|location| location.line()),
+            "Panic"
+        );
+    });
 }
 
 type PanicHook = Box<dyn Fn(&std::panic::PanicHookInfo<'_>) + Sync + Send + 'static>;
@@ -492,6 +506,86 @@ mod panic_tests {
     }
 
     static HOOK_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn panic_guard_blocks_reentry_and_resets_after_unwind() {
+        let calls = std::cell::Cell::new(0);
+        with_panic_guard(|| {
+            calls.set(calls.get() + 1);
+            with_panic_guard(|| calls.set(calls.get() + 1));
+        });
+        assert_eq!(calls.get(), 1);
+        let _ = std::panic::catch_unwind(|| with_panic_guard(|| panic!("guard reset")));
+        with_panic_guard(|| calls.set(calls.get() + 1));
+        assert_eq!(calls.get(), 2);
+    }
+
+    #[test]
+    fn concurrent_panic_events_are_not_suppressed() {
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+        use std::sync::mpsc;
+        use std::time::Duration;
+
+        struct BlockingCapture {
+            count: Arc<AtomicUsize>,
+            entered: mpsc::Sender<()>,
+            release: Arc<Mutex<mpsc::Receiver<()>>>,
+            callback_failed: Arc<AtomicBool>,
+        }
+        impl<S: tracing::Subscriber> tracing_subscriber::Layer<S> for BlockingCapture {
+            fn on_event(
+                &self,
+                _: &tracing::Event<'_>,
+                _: tracing_subscriber::layer::Context<'_, S>,
+            ) {
+                let index = self.count.fetch_add(1, Ordering::SeqCst);
+                if self.entered.send(()).is_err() {
+                    self.callback_failed.store(true, Ordering::SeqCst);
+                }
+                if index == 0 {
+                    let ok = self.release.lock().is_ok_and(|receiver| {
+                        receiver.recv_timeout(Duration::from_secs(5)).is_ok()
+                    });
+                    if !ok {
+                        self.callback_failed.store(true, Ordering::SeqCst);
+                    }
+                }
+            }
+        }
+        let _lock = HOOK_LOCK.lock().unwrap();
+        let old = std::panic::take_hook();
+        std::panic::set_hook(super::panic_hook(Box::new(|_| {}), false));
+        let count = Arc::new(AtomicUsize::new(0));
+        let callback_failed = Arc::new(AtomicBool::new(false));
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let subscriber = tracing_subscriber::registry().with(BlockingCapture {
+            count: count.clone(),
+            entered: entered_tx,
+            release: Arc::new(Mutex::new(release_rx)),
+            callback_failed: callback_failed.clone(),
+        });
+        let dispatch = tracing::Dispatch::new(subscriber);
+        let first_dispatch = dispatch.clone();
+        let first = std::thread::spawn(move || {
+            let _guard = tracing::dispatcher::set_default(&first_dispatch);
+            let _ = std::panic::catch_unwind(|| panic!("first"));
+        });
+        let first_entered = entered_rx.recv_timeout(Duration::from_secs(5)).is_ok();
+        let second = std::thread::spawn(move || {
+            let _guard = tracing::dispatcher::set_default(&dispatch);
+            let _ = std::panic::catch_unwind(|| panic!("second"));
+        });
+        let second_entered = entered_rx.recv_timeout(Duration::from_secs(1)).is_ok();
+        let released = release_tx.send(()).is_ok();
+        let first_result = first.join();
+        let second_result = second.join();
+        std::panic::set_hook(old);
+        assert!(first_entered && released && first_result.is_ok() && second_result.is_ok());
+        assert!(!callback_failed.load(Ordering::SeqCst));
+        assert!(second_entered, "second thread's panic was suppressed");
+        assert_eq!(count.load(Ordering::SeqCst), 2);
+    }
 
     #[test]
     fn panic_hook_logs_one_error_inside_the_span_without_payload() {
