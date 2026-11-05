@@ -4,6 +4,108 @@ use tracing::instrument::WithSubscriber;
 #[path = "../support/request_trace_capture.rs"]
 pub(super) mod capture;
 
+#[tokio::test(flavor = "current_thread")]
+async fn dose_events_report_committed_and_replayed_requests()
+-> Result<(), Box<dyn std::error::Error>> {
+    use med_tracker::models::_entities::{medication_takes, person_medications};
+    use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
+
+    let (fixture, boot) = boot_request_fixture().await;
+    let token = fixture.token().await;
+    let assignment = person_medications::Entity::find()
+        .filter(person_medications::Column::HouseholdId.eq(fixture.household.id))
+        .filter(person_medications::Column::MedicationId.eq(fixture.medication.id))
+        .one(&fixture.admin)
+        .await?
+        .ok_or("fixture assignment missing")?;
+    let captured = capture::Captured::default();
+    let subscriber = captured.clone();
+    let router = boot
+        .router
+        .clone()
+        .ok_or("router unavailable")?
+        .layer(axum::middleware::from_fn(
+            move |request: axum::extract::Request, next: axum::middleware::Next| {
+                let subscriber = subscriber.clone();
+                async move { next.run(request).with_subscriber(subscriber).await }
+            },
+        ));
+    let server =
+        TestServer::new(router.into_make_service_with_connect_info::<std::net::SocketAddr>())?;
+    let path = format!(
+        "/api/v1/households/{}/medication_takes",
+        fixture.household.id
+    );
+    let body = json!({"medication_take": {
+        "source_type": "person_medication", "source_id": assignment.id.to_string(),
+        "taken_at": chrono::Utc::now().to_rfc3339(), "dose_amount": "2", "dose_unit": "tablet",
+        "client_uuid": uuid::Uuid::new_v4().to_string()
+    }});
+    let first = server
+        .post(&path)
+        .add_header("authorization", format!("Bearer {token}"))
+        .json(&body)
+        .await;
+    assert_eq!(first.status_code(), 201, "{}", first.text());
+    let replay = server
+        .post(&path)
+        .add_header("authorization", format!("Bearer {token}"))
+        .json(&body)
+        .await;
+    assert_eq!(replay.status_code(), 200, "{}", replay.text());
+    let trigger = format!(
+        "reject_dose_request_audit_{}",
+        uuid::Uuid::new_v4().simple()
+    );
+    // SeaORM cannot define PostgreSQL trigger functions; isolate this fault injection to the fixture household.
+    fixture.admin.execute_unprepared(&format!(
+        "CREATE FUNCTION public.{trigger}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.household_id = {} AND NEW.event_type = 'api.request' THEN RAISE EXCEPTION 'synthetic audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER {trigger} BEFORE INSERT ON public.security_audit_events FOR EACH ROW EXECUTE FUNCTION public.{trigger}()",
+        fixture.household.id
+    )).await?;
+    let mut failing_body = body.clone();
+    failing_body["medication_take"]["client_uuid"] = uuid::Uuid::new_v4().to_string().into();
+    let failed = server
+        .post(&path)
+        .add_header("authorization", format!("Bearer {token}"))
+        .json(&failing_body)
+        .await;
+    fixture.admin.execute_unprepared(&format!(
+        "DROP TRIGGER {trigger} ON public.security_audit_events; DROP FUNCTION public.{trigger}()"
+    )).await?;
+    assert_eq!(failed.status_code(), 503, "{}", failed.text());
+    assert_eq!(
+        medication_takes::Entity::find()
+            .filter(medication_takes::Column::HouseholdId.eq(fixture.household.id))
+            .count(&fixture.admin)
+            .await?,
+        1
+    );
+    let events = captured.events();
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| event.contains("medtracker.dose.committed"))
+            .count(),
+        1,
+        "{events:?}"
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| event.contains("medtracker.dose.replayed"))
+            .count(),
+        1,
+        "{events:?}"
+    );
+    assert!(
+        !events.iter().any(|event| event.contains(&token)),
+        "private credential leaked"
+    );
+    drop(server);
+    close_request(fixture, boot).await;
+    Ok(())
+}
+
 #[tokio::test]
 async fn api_errors_match_response_trace_header_with_and_without_valid_parent()
 -> Result<(), Box<dyn std::error::Error>> {

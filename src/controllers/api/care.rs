@@ -511,6 +511,12 @@ async fn take(
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
 ) -> Response {
+    tracing::event!(
+        name: "medtracker.dose.attempted",
+        tracing::Level::INFO,
+        event.name = "medtracker.dose.attempted",
+        medtracker.outcome = "success",
+    );
     let request_id = request.map_or_else(
         || uuid::Uuid::new_v4().to_string(),
         |Extension(id)| id.get().to_owned(),
@@ -569,14 +575,30 @@ async fn take(
     if savepoint_result.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    finish(
+    let response = finish(
         tenant,
         principal.provenance(),
         audit::RequestAudit::take(),
         result,
         &request_id,
     )
-    .await
+    .await;
+    match response.status() {
+        StatusCode::CREATED => tracing::event!(
+            name: "medtracker.dose.committed",
+            tracing::Level::INFO,
+            event.name = "medtracker.dose.committed",
+            medtracker.outcome = "success",
+        ),
+        StatusCode::OK => tracing::event!(
+            name: "medtracker.dose.replayed",
+            tracing::Level::INFO,
+            event.name = "medtracker.dose.replayed",
+            medtracker.outcome = "success",
+        ),
+        _ => {}
+    }
+    response
 }
 
 async fn adjust_stock(
