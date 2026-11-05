@@ -222,6 +222,8 @@ enum FieldLabelView<'a> {
 }
 
 enum EventLabel {
+    HealthHistoryDownloaded,
+    MedicationReviewDownloaded,
     ApiRequest,
     RoleUpdated,
     MembershipChanged,
@@ -234,6 +236,8 @@ enum EventLabel {
 impl EventLabel {
     fn from_identifier(event_type: &str) -> Option<Self> {
         match event_type {
+            "health_history_report.downloaded" => Some(Self::HealthHistoryDownloaded),
+            "medication_review_report.downloaded" => Some(Self::MedicationReviewDownloaded),
             "api/admin/invitation/created" => Some(Self::InvitationCreated),
             "api/admin/invitation/resent" => Some(Self::InvitationResent),
             "api/admin/invitation/revoked" => Some(Self::InvitationRevoked),
@@ -247,6 +251,8 @@ impl EventLabel {
 
     const fn translation_key(&self) -> &'static str {
         match self {
+            Self::HealthHistoryDownloaded => "health_history_downloaded",
+            Self::MedicationReviewDownloaded => "medication_review_downloaded",
             Self::InvitationCreated => "invitation_created",
             Self::InvitationResent => "invitation_resent",
             Self::InvitationRevoked => "invitation_revoked",
@@ -276,7 +282,7 @@ pub(super) fn summaries(
 pub(super) fn summary(
     event: &administration::audit_logs::AuditSummary,
     labels: &Value,
-    language: &str,
+    _language: &str,
 ) -> Result<SummaryView, OperationError> {
     let audit = &labels["administration"]["audit"];
     let event_label = if let Some(kind) = EventLabel::from_identifier(&event.event_type) {
@@ -284,21 +290,17 @@ pub(super) fn summary(
     } else {
         event.event_label.clone()
     };
-    let actor = if language == "en" {
-        event.actor.clone()
-    } else {
-        match (event.actor_account_id, event.actor_membership_id) {
-            (Some(account), Some(membership)) => format!(
-                "{} #{account}, {} #{membership}",
-                text(&audit["actors"], "account")?,
-                text(&audit["actors"], "membership")?
-            ),
-            (Some(account), None) => format!("{} #{account}", text(&audit["actors"], "account")?),
-            (None, Some(membership)) => {
-                format!("{} #{membership}", text(&audit["actors"], "membership")?)
-            }
-            (None, None) => text(&audit["actors"], "system")?.to_owned(),
+    let actor = match (event.actor_account_id, event.actor_membership_id) {
+        (Some(account), Some(membership)) => format!(
+            "{} #{account}, {} #{membership}",
+            text(&audit["actors"], "account")?,
+            text(&audit["actors"], "membership")?
+        ),
+        (Some(account), None) => format!("{} #{account}", text(&audit["actors"], "account")?),
+        (None, Some(membership)) => {
+            format!("{} #{membership}", text(&audit["actors"], "membership")?)
         }
+        (None, None) => text(&audit["actors"], "system")?.to_owned(),
     };
     Ok(SummaryView {
         id: event.id,
@@ -453,6 +455,34 @@ fn filter_errors(error: &OperationError, labels: &Value) -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn report_download_events_have_translated_labels() -> Result<(), OperationError> {
+        for language in ["en", "cy", "ga", "pt", "es"] {
+            let labels = crate::models::care::report_pdf::translations(language)
+                .map_err(|_| OperationError::Unavailable)?;
+            for identifier in [
+                "health_history_report.downloaded",
+                "medication_review_report.downloaded",
+            ] {
+                let event = administration::audit_logs::AuditSummary {
+                    id: 1,
+                    event_type: identifier.to_owned(),
+                    event_label: identifier.to_owned(),
+                    occurred_at_utc: "2030-01-15 12:00:00 UTC".to_owned(),
+                    actor: "System".to_owned(),
+                    actor_account_id: None,
+                    actor_membership_id: None,
+                };
+                assert_ne!(
+                    summary(&event, &labels, language)?.event_label,
+                    identifier,
+                    "{language}"
+                );
+            }
+        }
+        Ok(())
+    }
 
     #[test]
     fn unknown_event_labels_keep_their_identifier_in_every_locale() -> Result<(), OperationError> {

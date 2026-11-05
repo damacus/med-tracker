@@ -76,13 +76,20 @@ async fn administration_polish_overview_and_forms() {
                 expect(trigger).to_be_focused().await.unwrap();
             }
         }
-        let detail = page.locator("main table tbody tr:first-child a").get_attribute("href").await.unwrap().unwrap();
-        page.goto(&format!("{}{detail}",journey.origin),None).await.unwrap();
-        expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+        page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
+        let detail = page.locator("main table tbody tr:first-child a");
+        detail.click(None).await.unwrap();
+        expect(page.locator("dialog[open]")).to_be_visible().await.unwrap();
+        assert!(!page.evaluate::<(), bool>("() => [...document.querySelectorAll('dialog[open] dt')].some(term => term.textContent.trim() === 'Event type')", None).await.unwrap());
+        assert!(!page.evaluate::<(), bool>("() => [...document.querySelectorAll('dialog[open] dt')].some(term => ['When (UTC)', 'Actor'].includes(term.textContent.trim()))", None).await.unwrap());
+        assert!(page.url().ends_with("/admin/audit_logs"));
         for width in [1440,390,320] {
             page.set_viewport_size(Viewport {width,height:if width==1440 {1000}else{844}}).await.unwrap();
             capture(page,&format!("audit-detail-{width}")).await;
         }
+        page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
+        page.keyboard().press("Escape", None).await.unwrap();
+        expect(detail).to_be_focused().await.unwrap();
         page.goto(&format!("{}/households/persistence-fixture/admin/household/edit",journey.origin),None).await.unwrap();
         page.get_by_label("Household name",true).fill("   ",None).await.unwrap();
         page.get_by_role(AriaRole::Button,named("Save household")).click(None).await.unwrap();

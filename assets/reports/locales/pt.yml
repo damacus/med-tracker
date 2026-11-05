@@ -3403,9 +3403,10 @@ pt:
       event_id: "ID do evento"
       request_id: "ID do pedido"
       view_event: "Ver evento"
+      close: "Fechar"
       actors:
-        account: "Conta"
-        membership: "Adesão"
+        account: "ID da conta"
+        membership: "ID da adesão ao agregado familiar"
         system: "Sistema"
       values:
         owner: "Titular"
@@ -3442,6 +3443,8 @@ pt:
       to_invalid: "A data final (UTC) é inválida"
       filters_invalid: "Verifique os filtros da auditoria"
       events:
+        health_history_downloaded: "Relatório de histórico de saúde transferido"
+        medication_review_downloaded: "Relatório de revisão de medicação transferido"
         invitation_created: "Convite criado"
         invitation_resent: "Convite reenviado"
         invitation_revoked: "Convite cancelado"

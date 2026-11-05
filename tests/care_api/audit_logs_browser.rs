@@ -549,10 +549,12 @@ async fn audit_browser_rejects_foreign_events_and_lost_manager_authority()
     assert!(!foreign_body.contains("synthetic-foreign-clinical-note"));
     assert_eq!(member_status, reqwest::StatusCode::FORBIDDEN);
     assert_eq!(member_cache.as_deref(), Some("no-store"));
-    assert!(!member_body.contains(&audit_ids["foreign"].to_string()));
+    assert!(!member_body.contains(&format!("/admin/audit_logs/{}", audit_ids["foreign"])));
+    assert!(!member_body.contains("synthetic-foreign-clinical-note"));
     assert_ne!(revoked_status, reqwest::StatusCode::OK);
     assert_eq!(revoked_cache.as_deref(), Some("no-store"));
-    assert!(!revoked_body.contains(&audit_ids["foreign"].to_string()));
+    assert!(!revoked_body.contains(&format!("/admin/audit_logs/{}", audit_ids["foreign"])));
+    assert!(!revoked_body.contains("synthetic-foreign-clinical-note"));
     Ok(())
 }
 

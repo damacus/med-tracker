@@ -3372,9 +3372,10 @@ en:
       event_id: "Event ID"
       request_id: "Request ID"
       view_event: "View event"
+      close: "Close"
       actors:
-        account: "Account"
-        membership: "membership"
+        account: "Account ID"
+        membership: "household membership ID"
         system: "System"
       values:
         owner: "Owner"
@@ -3411,6 +3412,8 @@ en:
       to_invalid: "To date (UTC) is invalid"
       filters_invalid: "Check the audit filters"
       events:
+        health_history_downloaded: "Health history report downloaded"
+        medication_review_downloaded: "Medication review report downloaded"
         invitation_created: "Invitation created"
         invitation_resent: "Invitation resent"
         invitation_revoked: "Invitation cancelled"
