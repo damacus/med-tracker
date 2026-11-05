@@ -282,6 +282,59 @@ atomics so collection never blocks request handling.
 - **THEN** at most one warning per minute is emitted and one recovery line
   follows success
 
+#### Scenario: Metrics without traces
+
+- **GIVEN** an explicit metrics endpoint and no trace endpoint
+- **WHEN** the application handles a request and metrics are flushed
+- **THEN** the request-duration metric is exported without creating a tracer
+  provider
+- **AND** the startup record truthfully reports the enabled signals
+
+#### Scenario: Metric labels preserve privacy
+
+- **GIVEN** private sentinels in request paths, query strings, headers and bodies
+- **WHEN** metrics are recorded and exported
+- **THEN** those sentinels and person or medication identifiers are absent
+- **AND** route labels contain matched templates or `unmatched`
+- **AND** unsupported HTTP methods use a bounded fallback label
+
+#### Scenario: Scheduled queue work is not overdue
+
+- **GIVEN** queued jobs ready to run and jobs scheduled for the future
+- **WHEN** the worker refreshes its cached observations
+- **THEN** queue counts include the supported job states
+- **AND** the oldest queued waiting time considers only ready-to-run work
+- **AND** collection callbacks read cached atomics without querying the database
+
+#### Scenario: Queue refresh fails after success
+
+- **GIVEN** a successful cached queue snapshot
+- **WHEN** a later refresh fails
+- **THEN** the last successful values remain available
+- **AND** a failure does not replace them with a misleading empty queue
+
+#### Scenario: Reused instrumentation preserves actual outcomes
+
+- **GIVEN** completed HTTP calls, background jobs and import attempts
+- **WHEN** their metrics are recorded
+- **THEN** durations use seconds and the actual terminal outcome
+- **AND** import stage events do not increment the run count separately
+
+#### Scenario: One provider stalls during shutdown
+
+- **GIVEN** both providers are enabled and one SDK lifecycle call stalls
+- **WHEN** the application flushes or shuts down
+- **THEN** the healthy provider still receives its lifecycle request
+- **AND** the caller's total wait is bounded at two seconds
+- **AND** runtime teardown does not wait for the stalled SDK call
+
+#### Scenario: Exporter recovery is independent
+
+- **GIVEN** metric export is failing while trace export succeeds
+- **WHEN** traces are exported
+- **THEN** metric recovery is not reported
+- **AND** one metric recovery record follows actual metric export success
+
 ### Requirement: Domain events use named records with a stable outcome vocabulary
 
 Domain events SHALL be emitted as log records (and span events where a span

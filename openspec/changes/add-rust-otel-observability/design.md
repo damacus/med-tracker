@@ -35,13 +35,14 @@ states export is disabled. When enabled, the startup line names the endpoint
 host only, never headers. Settings live under `settings.telemetry` declared via
 `get_env` in `config/*.yaml`; `std::env` is never read in `src/`.
 
-Flush and shutdown wait at most two seconds for a single detached OS worker.
-The worker serialises SDK lifecycle calls, coalesces overlapping requests and
-retains a pending shutdown request. It runs outside Tokio's blocking pool so
-runtime teardown does not wait for a timed-out SDK call. SDK calls cannot be
-cancelled: an outstanding call may continue until completion or process exit,
-and telemetry still pending at process exit may be lost. Process-level tests
-cover both stalled flush and stalled shutdown, including runtime teardown.
+Flush and shutdown wait at most two seconds in total for bounded detached
+lifecycle work. Calls for each provider are serialised, overlapping requests
+are coalesced and pending shutdown is retained. A stalled provider must not
+prevent the other provider from flushing. Lifecycle work runs outside Tokio's
+blocking pool so runtime teardown does not wait for a timed-out SDK call.
+SDK calls cannot be cancelled: outstanding work may continue until completion
+or process exit, and telemetry still pending at process exit may be lost.
+Process-level tests cover stalled flush and shutdown, including runtime teardown.
 
 ### Log format
 
@@ -91,6 +92,32 @@ behind SeaORM — documented exception, SeaORM exposes no pool statistics),
 `medtracker.job.duration`, `medtracker.import.runs`, and
 `medtracker.queue.jobs`/`medtracker.queue.oldest_queued_age_s` read from
 `pg_loco_queue` in a worker-only background task with cached atomics.
+
+Only the explicit `settings.telemetry.otlp_metrics_endpoint` enables the meter
+provider. The trace endpoint and generic endpoint do not enable metrics. A
+metrics-only configuration works without a tracer provider. Durations use
+seconds; import counts represent terminal attempts rather than individual
+stage events. Labels use bounded methods, route templates, status and outcome
+values without identifiers, concrete paths or clinical data.
+
+Connection observations refer to the running application's pool, rather than
+the separate context Loco creates to initialise logging. SeaORM 2.0.4 exposes
+`get_postgres_connection_pool` but no pool-size or idle-count abstraction.
+The narrow metadata exception reads only the exposed pool's size, idle count
+and configured maximum; queries continue through SeaORM.
+
+Queue job counts cover the fixed supported states, including scheduled work;
+unrecognised framework states contribute to a fixed `other` bucket.
+Waiting time starts when a queued job is ready to run (`run_at` is due), so
+future jobs do not appear overdue. Collection callbacks only read cached
+atomics. Each refresh has a five-second deadline. A failed refresh retains the
+last successful snapshot, emits at most one warning per minute and emits one
+recovery record after success. The
+application context owns and stops the worker refresh task without retaining
+an ownership cycle through the task or SDK callbacks.
+
+Trace and metric exporter diagnostics have independent failure/recovery state.
+A successful trace export cannot report recovery of a failing metric exporter.
 
 ### Self-diagnostics
 

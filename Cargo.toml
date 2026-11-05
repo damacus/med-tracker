@@ -98,6 +98,7 @@ tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 opentelemetry = "=0.33.1"
 opentelemetry_sdk = { version = "=0.33.1", default-features = false, features = [
     "trace",
+    "metrics",
     "rt-tokio",
     "testing",
 ] }
@@ -106,6 +107,7 @@ opentelemetry-otlp = { version = "=0.33.1", default-features = false, features =
     "reqwest-blocking-client",
     "reqwest-rustls",
     "trace",
+    "metrics",
     "internal-logs",
 ] }
 tracing-opentelemetry = "=0.34.0"
@@ -120,6 +122,8 @@ migration = { path = "migration" }
 ignore-tables = "account_active_session_keys,account_login_change_keys,account_password_reset_keys,account_remember_keys,account_verification_keys"
 
 [dev-dependencies]
+opentelemetry-proto = { version = "=0.33.1", default-features = false, features = ["gen-tonic-messages", "metrics"] }
+prost = "=0.14.4"
 josekit = "=0.10.3"
 base32 = "=0.5.1"
 iri-string = { version = "=0.7.14", default-features = false }

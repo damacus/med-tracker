@@ -49,6 +49,7 @@ where
     F: Future<Output = Result<T, E>>,
     E: ErrorCategory,
 {
+    let mut measurement = super::metrics::JobAttempt::new(name);
     let span = tracing::info_span!(
         "job",
         otel.name = format!("job {name}"),
@@ -72,6 +73,7 @@ where
         super::db::scope(&span, future.instrument(span.clone())),
     )
     .await;
+    measurement.finish(result.is_ok());
     match &result {
         Ok(_) => {
             span.record("medtracker.outcome", "success");
@@ -250,9 +252,18 @@ pub async fn send(
     host: &str,
     method: &str,
 ) -> reqwest::Result<reqwest::Response> {
+    let started = std::time::Instant::now();
     let span = client_span(host, method);
     use tracing::Instrument;
     let result = request.send().instrument(span.clone()).await;
+    super::metrics::client_request(
+        started.elapsed(),
+        method,
+        result
+            .as_ref()
+            .ok()
+            .map(|response| response.status().as_u16()),
+    );
     client_result(&span, &result);
     result
 }

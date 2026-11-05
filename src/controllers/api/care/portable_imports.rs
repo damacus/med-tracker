@@ -55,7 +55,9 @@ pub(super) async fn dry_run(
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
 ) -> Response {
-    handle(ctx, household, headers, request, body, true).await
+    let response = handle(ctx, household, headers, request, body, true).await;
+    crate::telemetry::metrics::import("portable_dry_run", response.status().is_success());
+    response
 }
 
 pub(super) async fn apply(
@@ -65,7 +67,9 @@ pub(super) async fn apply(
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
 ) -> Response {
-    handle(ctx, household, headers, request, body, false).await
+    let response = handle(ctx, household, headers, request, body, false).await;
+    crate::telemetry::metrics::import("portable_apply", response.status().is_success());
+    response
 }
 
 async fn handle(

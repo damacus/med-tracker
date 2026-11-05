@@ -19,6 +19,7 @@ const RATE_WINDOW: Duration = Duration::from_secs(300);
 pub struct Diagnostics {
     state: Mutex<DiagnosticsState>,
     window: Duration,
+    signal: &'static str,
 }
 
 #[derive(Debug, Default)]
@@ -34,6 +35,15 @@ impl Diagnostics {
         Arc::new(Self {
             state: Mutex::new(DiagnosticsState::default()),
             window: RATE_WINDOW,
+            signal: "traces",
+        })
+    }
+
+    pub fn metrics() -> Arc<Self> {
+        Arc::new(Self {
+            state: Mutex::new(DiagnosticsState::default()),
+            window: RATE_WINDOW,
+            signal: "metrics",
         })
     }
 
@@ -42,6 +52,7 @@ impl Diagnostics {
         Arc::new(Self {
             state: Mutex::new(DiagnosticsState::default()),
             window,
+            signal: "traces",
         })
     }
 
@@ -82,12 +93,14 @@ impl Diagnostics {
         if emit_recovery {
             tracing::info!(
                 event.name = "medtracker.telemetry.export_recovered",
+                medtracker.telemetry.signal = self.signal,
                 "Telemetry export recovered"
             );
         } else if emit_failure {
             let dropped = self.dropped_spans();
             tracing::warn!(
                 event.name = "medtracker.telemetry.export_failed",
+                medtracker.telemetry.signal = self.signal,
                 error.type = error_type,
                 medtracker.telemetry.suppressed_count = suppressed,
                 medtracker.telemetry.dropped_spans = dropped,

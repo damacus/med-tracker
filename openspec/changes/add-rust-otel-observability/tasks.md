@@ -14,10 +14,16 @@ before its output can be used as evidence.
 Verification for slices 1–4 includes telemetry unit tests, restricted-runtime
 integration tests, desktop/mobile import-reference browser journeys, strict
 OpenSpec validation and documentation build. Required application verification
-uses `rtk env NEXTEST_TEST_THREADS=4 task ci`. The earlier eight-worker run
-had eight timeouts of unconfirmed cause; subsequent focused retries and the
-complete four-worker run passed. Hosted checks remain a separate acceptance
-gate; checklist completion does not mean merged or deployed.
+uses `rtk task ci` with the normal profiles, including eight API workers.
+The run-owned API fixture connections reuse generic query plans, with live
+authority checked on every request. The earlier worker-budget experiment did
+not resolve the intermittent request timeouts and was discarded. Foundation
+commit `fa20db7c0` passed hosted CI and both Linux image acceptance workflows.
+Checklist completion does not mean merged or deployed.
+
+Stage 5.1 is a separate metrics follow-up dependent on PR #3037. It targets
+`main` under the repository's PR convention; its focused review is against
+the verified foundation. Stages 6–9 remain outside this follow-up.
 
 ## 1. Spec (docs only)
 
@@ -66,9 +72,11 @@ gate; checklist completion does not mean merged or deployed.
 
 ## 5. Metrics (follow-up application PR 5)
 
-- [ ] 5.1 OTLP periodic reader and the instruments listed in the design,
+- [x] 5.1 OTLP periodic reader and the instruments listed in the design,
       including `pg_loco_queue` gauges and the documented SQLx pool-stat
-      exception.
+      exception. Verified by decoded OTLP request/queue/pool acceptance,
+      disabled and unavailable exporter checks, independent signal recovery,
+      bounded lifecycle tests and full `rtk task ci` with normal profiles.
 
 ## 6. API trace_id (follow-up application PR 6)
 

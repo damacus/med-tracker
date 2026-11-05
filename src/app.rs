@@ -89,6 +89,7 @@ impl Hooks for App {
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         let mut ctx = ctx;
         crate::telemetry::db::install(&mut ctx.db);
+        crate::telemetry::metrics::observe_pool(&ctx.db);
         crate::models::canary::configure(&ctx).await?;
         let rate_limit = crate::models::rate_limit::RateLimitState::from_settings(
             ctx.config.settings.as_ref(),
@@ -148,6 +149,7 @@ impl Hooks for App {
     }
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
+        crate::telemetry::queue_metrics::start(ctx);
         queue
             .register(crate::models::nhs_dmd::ImportWorker::build(ctx))
             .await?;
@@ -223,7 +225,8 @@ impl Hooks for App {
         crate::models::seed::seed(ctx, base).await
     }
 
-    async fn on_shutdown(_ctx: &AppContext) {
+    async fn on_shutdown(ctx: &AppContext) {
+        crate::telemetry::queue_metrics::stop(ctx);
         crate::telemetry::shutdown().await;
     }
 }
