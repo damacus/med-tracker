@@ -73,6 +73,7 @@ jobs:
           fallback: cargo-binstall
         env:
           BINSTALL_STRATEGIES: crate-meta-data
+          CARGO_BUILD_TARGET: x86_64-unknown-linux-gnu
       - name: Verify nextest checksum
         run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
@@ -142,6 +143,7 @@ jobs:
           fallback: cargo-binstall
         env:
           BINSTALL_STRATEGIES: crate-meta-data
+          CARGO_BUILD_TARGET: x86_64-unknown-linux-gnu
       - name: Verify nextest checksum
         run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
@@ -209,6 +211,7 @@ jobs:
           fallback: cargo-binstall
         env:
           BINSTALL_STRATEGIES: crate-meta-data
+          CARGO_BUILD_TARGET: x86_64-unknown-linux-gnu
       - name: Verify nextest checksum
         run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
@@ -277,6 +280,7 @@ jobs:
           fallback: cargo-binstall
         env:
           BINSTALL_STRATEGIES: crate-meta-data
+          CARGO_BUILD_TARGET: x86_64-unknown-linux-gnu
       - name: Verify nextest checksum
         run: echo "7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff  $(command -v cargo-nextest)" | sha256sum --check --strict
       - name: Install Rust client verification tools
