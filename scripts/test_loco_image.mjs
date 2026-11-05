@@ -65,12 +65,15 @@ test("production boot with restricted database identity", async (t) => {
     "--mount", `type=bind,src=${config},dst=/tmp/scheduler.yaml,readonly`,
     image, "scheduler", "--environment", "production", "--config", "/tmp/scheduler.yaml");
   containers.push(scheduler);
+  const records = (logs) => logs.split("\n").flatMap((line) => {
+    try { return [JSON.parse(line)]; } catch { return []; }
+  });
   let logs = "";
   let ran = false;
   for (let attempt = 0; attempt < 30; attempt++) {
     logs = await docker("logs", scheduler);
-    assert.ok(!logs.includes("failed to execute scheduler job"), logs);
-    if (logs.includes("Support expiry run finished")) { ran = true; break; }
+    assert.ok(!records(logs).some((record) => record.severity_text === "ERROR" && record.scope?.name === "loco_rs::scheduler"), logs);
+    if (records(logs).some((record) => record.attributes?.["event.name"] === "medtracker.support_access.expired" && record.attributes?.["medtracker.outcome"] === "success")) { ran = true; break; }
     await setTimeout(1000);
   }
   assert.ok(ran, `Native scheduled task did not execute: ${logs}`);
@@ -82,10 +85,11 @@ test("production boot with restricted database identity", async (t) => {
     "--mount", `type=bind,src=${config},dst=/tmp/scheduler.yaml,readonly`,
     image, "scheduler", "--environment", "production", "--config", "/tmp/scheduler.yaml");
   containers.push(shellScheduler);
+  await assert.rejects(docker("run", "--rm", "--pull=never", "--network=none", "--entrypoint", "/bin/sh", image, "-c", "exit 0"), /no such file or directory/i);
   let missingShell = false;
   for (let attempt = 0; attempt < 30; attempt++) {
     logs = await docker("logs", shellScheduler);
-    if (logs.includes("failed to execute scheduler job") && logs.includes("NotFound")) { missingShell = true; break; }
+    if (records(logs).some((record) => record.severity_text === "ERROR" && record.scope?.name === "loco_rs::scheduler" && record.attributes?.["medtracker.telemetry.dropped_keys"]?.includes("error"))) { missingShell = true; break; }
     await setTimeout(1000);
   }
   assert.ok(missingShell, `Explicit shell job did not report the missing shell: ${logs}`);

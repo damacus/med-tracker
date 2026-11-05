@@ -19,6 +19,35 @@ fn crypto_message(error: PortableCryptoError) -> &'static str {
     }
 }
 
+fn stage_ok(stage: &'static str) {
+    tracing::info!(
+        event.name = "medtracker.portable_import.stage",
+        medtracker.import.stage = stage,
+        medtracker.outcome = "success",
+        "Portable import stage completed"
+    );
+}
+
+fn stage_fail(stage: &'static str, error_type: &'static str, client_caused: bool) {
+    if client_caused {
+        tracing::warn!(
+            event.name = "medtracker.portable_import.stage",
+            medtracker.import.stage = stage,
+            medtracker.outcome = "failure",
+            error.type = error_type,
+            "Portable import stage failed"
+        );
+    } else {
+        tracing::error!(
+            event.name = "medtracker.portable_import.stage",
+            medtracker.import.stage = stage,
+            medtracker.outcome = "failure",
+            error.type = error_type,
+            "Portable import stage failed"
+        );
+    }
+}
+
 pub(super) async fn dry_run(
     ctx: State<AppContext>,
     household: ApiPath<i64>,
@@ -26,7 +55,9 @@ pub(super) async fn dry_run(
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
 ) -> Response {
-    handle(ctx, household, headers, request, body, true).await
+    let response = handle(ctx, household, headers, request, body, true).await;
+    crate::telemetry::metrics::import("portable_dry_run", response.status().is_success());
+    response
 }
 
 pub(super) async fn apply(
@@ -36,7 +67,9 @@ pub(super) async fn apply(
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
 ) -> Response {
-    handle(ctx, household, headers, request, body, false).await
+    let response = handle(ctx, household, headers, request, body, false).await;
+    crate::telemetry::metrics::import("portable_apply", response.status().is_success());
+    response
 }
 
 async fn handle(
@@ -151,6 +184,7 @@ async fn handle(
         tokio::task::spawn_blocking(move || care::portable_crypto::decrypt(&bundle, &passphrase))
             .await;
     let Ok(decrypted) = decrypted else {
+        stage_fail("decrypt", "unavailable", false);
         return response::error(response::unavailable(), &request_id);
     };
     let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
@@ -158,8 +192,17 @@ async fn handle(
         Err(error) => return response::error(error, &request_id),
     };
     let payload = match decrypted {
-        Ok(payload) => payload,
+        Ok(payload) => {
+            stage_ok("decrypt");
+            payload
+        }
         Err(error) => {
+            let caused = matches!(error, PortableCryptoError::InvalidEnvelope);
+            stage_fail(
+                "decrypt",
+                if caused { "validation" } else { "crypto" },
+                caused,
+            );
             return finish(
                 tenant,
                 principal.provenance(),
@@ -171,8 +214,12 @@ async fn handle(
         }
     };
     let plan = match care::portable_imports::ImportPlan::parse(payload) {
-        Ok(plan) => plan,
+        Ok(plan) => {
+            stage_ok("validate");
+            plan
+        }
         Err(message) => {
+            stage_fail("validate", "validation", true);
             return finish(
                 tenant,
                 principal.provenance(),
@@ -196,6 +243,7 @@ async fn handle(
     }
     .await;
     if let Err(error) = locked {
+        stage_fail("authorise", "unavailable", false);
         return finish(
             tenant,
             principal.provenance(),
@@ -250,6 +298,7 @@ async fn handle(
     {
         Ok(allowed) => allowed,
         Err(error) => {
+            stage_fail("authorise", "unavailable", false);
             return finish(
                 tenant,
                 principal.provenance(),
@@ -261,6 +310,7 @@ async fn handle(
         }
     };
     if !allowed {
+        stage_fail("authorise", "forbidden", true);
         return finish(
             tenant,
             principal.provenance(),
@@ -270,11 +320,16 @@ async fn handle(
         )
         .await;
     }
+    stage_ok("authorise");
     let result =
         match care::portable_imports::preflight(tenant.transaction(), &tenant, &plan, &index).await
         {
-            Ok(result) => result,
+            Ok(result) => {
+                stage_ok("preflight");
+                result
+            }
             Err(_) => {
+                stage_fail("preflight", "unavailable", false);
                 return finish(
                     tenant,
                     principal.provenance(),
@@ -311,6 +366,7 @@ async fn handle(
     )
     .await
     {
+        stage_fail("apply", "unavailable", false);
         if tenant.rollback().await.is_err() {
             return response::error(response::unavailable(), &request_id);
         }
@@ -327,6 +383,7 @@ async fn handle(
         )
         .await;
     }
+    stage_ok("apply");
     let now = chrono::Utc::now().naive_utc();
     let event = security_audit_event::ActiveModel {
         household_id: Set(household_id),

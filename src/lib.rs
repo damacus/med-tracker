@@ -3,6 +3,7 @@ pub mod controllers;
 pub mod initializers;
 pub mod models;
 mod request_trace;
+pub mod telemetry;
 pub mod views;
 
 #[cfg(test)]

@@ -154,7 +154,10 @@ async fn restore_indexes_prior_take_without_operational_side_effects() {
     let plan = source.person_schedule_id.clone().unwrap();
     let before = import_effects(&app).await;
     let take_portable_id = uuid::Uuid::new_v4().to_string();
-    let taken_at = chrono::Utc::now() - chrono::Duration::minutes(30);
+    let taken_at = (chrono::Utc::now().date_naive() - chrono::Duration::days(1))
+        .and_hms_opt(12, 0, 0)
+        .unwrap()
+        .and_utc();
     let payload = take_bundle(&source, &take_portable_id, &taken_at.to_rfc3339(), "2");
     let dry = import(&app, &token, &payload, true).await;
     assert_eq!(dry.status().as_u16(), 200, "{}", dry.text().await.unwrap());
@@ -238,7 +241,8 @@ async fn restore_indexes_prior_take_without_operational_side_effects() {
     assert_eq!(index_rows(&app, take.id).await.len(), 1);
     assert!(fact_row(&app, take.id).await.is_some());
     assert_eq!(import_effects(&app).await, after);
-    let denied = record_take(&app, &token, source_id, &chrono::Utc::now().to_rfc3339()).await;
+    let later = taken_at + chrono::Duration::minutes(1);
+    let denied = record_take(&app, &token, source_id, &later.to_rfc3339()).await;
     assert_eq!(
         denied, 422,
         "restored history must bound a later live dose under the daily maximum"

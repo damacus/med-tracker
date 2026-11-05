@@ -49,8 +49,11 @@ impl Visit for ImportTimingFields {
 
 impl Subscriber for ImportTimingEvents {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        metadata.fields().field("duration_ms").is_some()
-            || metadata.fields().field("secondary_failure").is_some()
+        metadata.fields().field("medtracker.duration_ms").is_some()
+            || metadata
+                .fields()
+                .field("medtracker.secondary_failure")
+                .is_some()
     }
 
     fn new_span(&self, _: &Attributes<'_>) -> Id {
@@ -69,7 +72,7 @@ impl Subscriber for ImportTimingEvents {
             if pending.as_ref().is_some_and(|pause| {
                 fields
                     .0
-                    .get("phase")
+                    .get("medtracker.import.phase")
                     .is_some_and(|phase| phase == pause.phase)
             }) {
                 pending.take()
@@ -118,7 +121,7 @@ impl ImportTimingEvents {
             .lock()
             .unwrap()
             .iter()
-            .filter(|event| event["run_id"] == run_id)
+            .filter(|event| event["medtracker.import.run_id"] == run_id)
             .cloned()
             .collect()
     }
@@ -360,8 +363,10 @@ async fn nhs_dmd_parser_failures_survive_progress_failure() {
         assert!(failed.archive_key.is_none());
         let captured = events.for_run(id);
         assert!(
-            captured.iter().any(|event| event["phase"] == phase
-                && event["secondary_failure"] == "activity_reporting")
+            captured
+                .iter()
+                .any(|event| event["medtracker.import.stage"] == phase
+                    && event["medtracker.secondary_failure"] == "activity_reporting")
         );
         assert!(
             !serde_json::to_string(&captured)
@@ -474,20 +479,20 @@ async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_fa
     ] {
         let event = successful
             .iter()
-            .find(|event| event["phase"] == phase)
+            .find(|event| event["medtracker.import.phase"] == phase)
             .unwrap_or_else(|| panic!("missing {phase} timing: {successful:?}"));
-        assert_eq!(event["outcome"], "success");
-        assert!(event["duration_ms"].is_number(), "{event:?}");
-        assert!(event["duration_ms"].as_f64().unwrap() >= 0.0);
+        assert_eq!(event["medtracker.outcome"], "success");
+        assert!(event["medtracker.duration_ms"].is_number(), "{event:?}");
+        assert!(event["medtracker.duration_ms"].as_f64().unwrap() >= 0.0);
     }
     let failed = timings.for_run(failure);
     for phase in ["extract", "total"] {
         let event = failed
             .iter()
-            .find(|event| event["phase"] == phase)
+            .find(|event| event["medtracker.import.phase"] == phase)
             .unwrap_or_else(|| panic!("missing {phase} failure timing: {failed:?}"));
-        assert_eq!(event["outcome"], "failure");
-        assert!(event["duration_ms"].is_number());
+        assert_eq!(event["medtracker.outcome"], "failure");
+        assert!(event["medtracker.duration_ms"].is_number());
     }
     assert_eq!(failed.len(), 2, "{failed:?}");
 }
@@ -1835,4 +1840,46 @@ fn nhs_dmd_reconciliation_is_scheduled_for_every_runtime() {
             "0 */5 * * * *"
         );
     }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn nhs_dmd_upload_stores_request_trace_and_worker_joins_it() {
+    crate::reference_fixture::clean_nhs_catalogue().await;
+    let app = Application::new().await;
+    let trace_id = "0123456789abcdef0123456789abcdef";
+    let traceparent = format!("00-{trace_id}-0123456789abcdef-01");
+    // Simulate the request boundary: upload runs inside ids::hold so the
+    // enqueue path sees current_traceparent exactly as it does under
+    // request_trace::boundary.
+    let id = med_tracker::telemetry::ids::hold(
+        traceparent.clone(),
+        med_tracker::models::nhs_dmd::upload(&app.context, "release.zip", release()),
+    )
+    .await
+    .unwrap();
+    let row = rows::nhs_dmd_imports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.trace_id.as_deref(), Some(trace_id));
+    // The queued args carry the same traceparent so the worker's job span
+    // joins this trace in either export mode.
+    let args = med_tracker::models::nhs_dmd::ImportArgs {
+        run_id: row.id,
+        traceparent: Some(traceparent),
+    };
+    let propagated = med_tracker::telemetry::units::job_with_parent(
+        "import",
+        args.traceparent.as_deref(),
+        async {
+            Ok::<String, loco_rs::Error>(
+                med_tracker::telemetry::ids::current_traceparent().expect("traceparent"),
+            )
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(propagated.split('-').nth(1), Some(trace_id));
+    app.close().await;
 }

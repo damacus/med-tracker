@@ -41,6 +41,31 @@ async fn main() -> Result<()> {
             runtime_uri
                 .set_password(Some("password"))
                 .map_err(|()| "runtime password")?;
+            // Fresh test pools repeatedly pay cold planning costs. This applies only
+            // to the owned runtime login; live RLS and authority queries still run.
+            let pairs: Vec<(String, String)> = runtime_uri
+                .query_pairs()
+                .map(|(key, value)| (key.into_owned(), value.into_owned()))
+                .collect();
+            let mut options = pairs
+                .iter()
+                .filter(|(key, _)| key == "options")
+                .map(|(_, value)| value.as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+            if !options.is_empty() {
+                options.push(' ');
+            }
+            options.push_str("-c plan_cache_mode=force_generic_plan");
+            let mut query = runtime_uri.query_pairs_mut();
+            query.clear();
+            for (key, value) in &pairs {
+                if key != "options" {
+                    query.append_pair(key, value);
+                }
+            }
+            query.append_pair("options", &options);
+            drop(query);
             let mut environment = OpenOptions::new()
                 .append(true)
                 .open(std::env::var("NEXTEST_ENV")?)?;

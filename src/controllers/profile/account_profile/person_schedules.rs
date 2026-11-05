@@ -252,8 +252,8 @@ async fn render(
             response,
         )
             .into_response(),
-        Err(error) => {
-            tracing::warn!(error=%error,"Personal schedule rendering failed");
+        Err(_error) => {
+            tracing::warn!(error.type = "render","Personal schedule rendering failed");
             unavailable()
         }
     }

@@ -444,8 +444,8 @@ async fn dose_take_database_failure_emits_the_safe_diagnostic() {
         .collect::<Vec<_>>();
     assert_eq!(failures.len(), 1, "{events:?}");
     let event = failures[0];
-    assert!(event.contains("category"), "{event}");
-    assert!(event.contains("error_trace_id"), "{event}");
+    assert!(event.contains("error.type"), "{event}");
+    assert!(event.contains("medtracker.error_reference"), "{event}");
     assert!(!event.contains("synthetic take failure"), "{event}");
     assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
     fixture.close().await;

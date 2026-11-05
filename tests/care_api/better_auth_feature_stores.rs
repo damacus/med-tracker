@@ -380,6 +380,10 @@ async fn zero_quota_personal_key_public_replay_is_denied_with_redacted_errors() 
             .await
             .unwrap();
         assert_eq!(response.status().as_u16(), 401);
+        let trace_id = response.headers()["x-medtracker-trace-id"]
+            .to_str()
+            .unwrap()
+            .to_owned();
         let mut body: Value = response.json().await.unwrap();
         assert!(!body.to_string().contains(&secret));
         let request_id = body["error"]["request_id"].as_str().unwrap().to_owned();
@@ -389,6 +393,8 @@ async fn zero_quota_personal_key_public_replay_is_denied_with_redacted_errors() 
         }
         first = Some(request_id);
         body["error"].as_object_mut().unwrap().remove("request_id");
+        assert_eq!(body["error"]["trace_id"], trace_id);
+        body["error"].as_object_mut().unwrap().remove("trace_id");
         assert_eq!(
             body,
             json!({"error":{"code":"unauthorized","message":"Authentication required"}})

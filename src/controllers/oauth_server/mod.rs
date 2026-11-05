@@ -97,7 +97,7 @@ async fn revocation_request(request: Request) -> std::result::Result<Request, Ex
 }
 
 pub(super) fn failure(error: ExchangeError) -> Response {
-    let (status, body, authenticate) = match error {
+    let (status, mut body, authenticate) = match error {
         ExchangeError::InvalidRequest => (
             StatusCode::BAD_REQUEST,
             serde_json::json!({"error":"invalid_request"}),
@@ -128,6 +128,7 @@ pub(super) fn failure(error: ExchangeError) -> Response {
             authenticate,
         ),
     };
+    crate::telemetry::ids::enrich_error(&mut body);
     let mut response = (status, axum::Json(body)).into_response();
     if let Some(value) = authenticate.and_then(|value| header::HeaderValue::from_str(&value).ok()) {
         response

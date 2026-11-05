@@ -53,6 +53,8 @@ mod dosages;
 mod dose_history;
 #[path = "care_api/dose_outcomes.rs"]
 mod dose_outcomes;
+#[path = "care_api/error_trace.rs"]
+mod error_trace;
 #[path = "care_api/fixture.rs"]
 mod fixture;
 #[path = "care_api/fixture_acceptance.rs"]
@@ -77,6 +79,8 @@ mod me;
 mod medication_lookup;
 #[path = "care_api/medication_reads.rs"]
 mod medication_reads;
+#[path = "care_api/metrics_acceptance.rs"]
+mod metrics_acceptance;
 #[path = "care_api/mobile_snapshot.rs"]
 mod mobile_snapshot;
 #[path = "care_api/native_device_tokens.rs"]

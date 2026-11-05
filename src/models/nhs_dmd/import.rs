@@ -20,6 +20,199 @@ use std::sync::{Arc, LazyLock};
 use std::time::Instant;
 use tokio::sync::mpsc;
 
+#[derive(Clone, Copy, Debug)]
+pub enum ImportStage {
+    Extract,
+    Count,
+    ParseAmpp,
+    ParseSupplementary,
+    ParseGtin,
+    Persist,
+    Commit,
+    Activity,
+    Finalise,
+}
+
+impl ImportStage {
+    pub fn from_phase(phase: &str) -> Self {
+        match phase {
+            "extract" => Self::Extract,
+            "count" => Self::Count,
+            "parse_ampp" => Self::ParseAmpp,
+            "parse_supplementary" => Self::ParseSupplementary,
+            "parse_gtin" => Self::ParseGtin,
+            "persist" => Self::Persist,
+            "commit" => Self::Commit,
+            "activity" => Self::Activity,
+            _ => Self::Finalise,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Extract => "extract",
+            Self::Count => "count",
+            Self::ParseAmpp => "parse_ampp",
+            Self::ParseSupplementary => "parse_supplementary",
+            Self::ParseGtin => "parse_gtin",
+            Self::Persist => "persist",
+            Self::Commit => "commit",
+            Self::Activity => "activity",
+            Self::Finalise => "finalise",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ImportFailureCategory {
+    ArchiveInvalid,
+    XmlInvalid,
+    RecordInvalid,
+    Storage,
+    Database,
+    Timeout,
+    Cancelled,
+    Panicked,
+    Inactive,
+    ActivityUnreported,
+    Stale,
+}
+
+impl ImportFailureCategory {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::ArchiveInvalid => "archive_invalid",
+            Self::XmlInvalid => "xml_invalid",
+            Self::RecordInvalid => "record_invalid",
+            Self::Storage => "storage",
+            Self::Database => "database",
+            Self::Timeout => "timeout",
+            Self::Cancelled => "cancelled",
+            Self::Panicked => "panicked",
+            Self::Inactive => "inactive",
+            Self::ActivityUnreported => "activity_unreported",
+            Self::Stale => "stale",
+        }
+    }
+
+    pub fn summary(self) -> &'static str {
+        match self {
+            Self::ArchiveInvalid => "Choose a ZIP release archive no larger than 500 MB.",
+            Self::XmlInvalid => "The release archive could not be read. Upload the release again.",
+            Self::RecordInvalid => {
+                "The release contents did not match the expected catalogue structure."
+            }
+            Self::Storage => "Archive storage is unavailable. Upload the release again.",
+            Self::Database => "The catalogue database is unavailable. Upload the release again.",
+            Self::Timeout => "The import stopped making progress. Upload the release again.",
+            Self::Cancelled => "The import was interrupted. Upload the release again.",
+            Self::Panicked => "The import worker failed unexpectedly. Upload the release again.",
+            Self::Inactive => "Import is no longer active",
+            Self::ActivityUnreported => "Import activity could not be reported",
+            Self::Stale => "The import stopped making progress. Upload the release again.",
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ImportFailure {
+    pub stage: ImportStage,
+    pub category: ImportFailureCategory,
+    summary: Option<&'static str>,
+}
+
+impl ImportFailure {
+    pub fn new(stage: ImportStage, category: ImportFailureCategory) -> Self {
+        Self {
+            stage,
+            category,
+            summary: None,
+        }
+    }
+
+    pub fn with_summary(
+        stage: ImportStage,
+        category: ImportFailureCategory,
+        summary: &'static str,
+    ) -> Self {
+        Self {
+            stage,
+            category,
+            summary: Some(summary),
+        }
+    }
+
+    pub fn summary(&self) -> &'static str {
+        self.summary.unwrap_or_else(|| self.category.summary())
+    }
+}
+
+impl std::fmt::Display for ImportFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.summary())
+    }
+}
+
+impl std::error::Error for ImportFailure {}
+
+fn categorize(text: &str) -> ImportFailure {
+    let (stage, category) = match text {
+        "Import is no longer active" => (ImportStage::Finalise, ImportFailureCategory::Inactive),
+        "Import activity could not be reported" => (
+            ImportStage::Activity,
+            ImportFailureCategory::ActivityUnreported,
+        ),
+        "Import worker panicked" => (ImportStage::Activity, ImportFailureCategory::Panicked),
+        "Import worker was cancelled" => (ImportStage::Activity, ImportFailureCategory::Cancelled),
+        "Nested AMPP record in release XML" => {
+            (ImportStage::ParseAmpp, ImportFailureCategory::RecordInvalid)
+        }
+        "Nested AMPP record in GTIN XML" | "Nested GTINDATA record in GTIN XML" => {
+            (ImportStage::ParseGtin, ImportFailureCategory::RecordInvalid)
+        }
+        _ if text.starts_with("No GTIN XML or ZIP") => {
+            (ImportStage::Extract, ImportFailureCategory::ArchiveInvalid)
+        }
+        _ if text.contains("parse failed") || text.contains("XML") => {
+            (ImportStage::Finalise, ImportFailureCategory::XmlInvalid)
+        }
+        _ if text.contains("database")
+            || text.contains("pool")
+            || text.contains("statement")
+            || text.contains("connection") =>
+        {
+            (ImportStage::Persist, ImportFailureCategory::Database)
+        }
+        _ if text.contains("timed out") => (ImportStage::Finalise, ImportFailureCategory::Timeout),
+        _ => (ImportStage::Extract, ImportFailureCategory::Storage),
+    };
+    ImportFailure {
+        stage,
+        category,
+        summary: None,
+    }
+}
+
+impl From<String> for ImportFailure {
+    fn from(text: String) -> Self {
+        categorize(&text)
+    }
+}
+
+impl From<&str> for ImportFailure {
+    fn from(text: &str) -> Self {
+        categorize(text)
+    }
+}
+
+impl ImportFailure {
+    /// Maps a DbErr to the database category at an explicit stage so no
+    /// implicit conversion can mislabel a failures stage.
+    pub fn database(stage: ImportStage) -> impl Fn(sea_orm::DbErr) -> Self {
+        move |_| Self::new(stage, ImportFailureCategory::Database)
+    }
+}
+
 const PROGRESS_BATCH: i32 = 250;
 const INSERT_BATCH: usize = 1000;
 static TRAILING_PARENS: LazyLock<Regex> =
@@ -52,10 +245,11 @@ impl Drop for ImportPhaseTimer {
         let duration_ms = self.started.elapsed().as_secs_f64() * 1000.0;
         let outcome = if self.succeeded { "success" } else { "failure" };
         tracing::info!(
-            run_id = self.run_id,
-            phase = self.phase,
-            duration_ms,
-            outcome,
+            medtracker.import.run_id = self.run_id,
+            medtracker.import.phase = self.phase,
+            medtracker.duration_ms = duration_ms,
+            medtracker.outcome = outcome,
+            event.name = "medtracker.import.timing",
             "nhs_dmd_import_timing"
         );
     }
@@ -125,19 +319,18 @@ fn glob_paths(dir: &Path, pattern: &str) -> Vec<PathBuf> {
     matches
 }
 
-fn glob_one(dir: &Path, pattern: &str) -> Result<PathBuf, String> {
-    glob_paths(dir, pattern)
-        .into_iter()
-        .next()
-        .ok_or_else(|| format!("No file matching {pattern} in {}", dir.display()))
+fn glob_one(dir: &Path, pattern: &str) -> Result<PathBuf, ImportFailure> {
+    glob_paths(dir, pattern).into_iter().next().ok_or_else(|| {
+        ImportFailure::new(ImportStage::Extract, ImportFailureCategory::ArchiveInvalid)
+    })
 }
 
 fn count_elements(
     path: &Path,
     element: &str,
-    mut progress: impl FnMut() -> Result<(), String>,
-) -> Result<i32, String> {
-    let file = File::open(path).map_err(|error| error.to_string())?;
+    mut progress: impl FnMut() -> Result<(), ImportFailure>,
+) -> Result<i32, ImportFailure> {
+    let file = File::open(path).map_err(|error| ImportFailure::from(error.to_string()))?;
     let mut reader = Reader::from_reader(BufReader::new(file));
     let mut buffer = Vec::new();
     let mut count = 0_i32;
@@ -151,7 +344,12 @@ fn count_elements(
             }
             Ok(Event::Eof) => return Ok(count),
             Ok(_) => {}
-            Err(error) => return Err(format!("XML parse failed: {error}")),
+            Err(_error) => {
+                return Err(ImportFailure::new(
+                    ImportStage::ParseAmpp,
+                    ImportFailureCategory::XmlInvalid,
+                ));
+            }
         }
         let position = reader.buffer_position();
         if position.saturating_sub(last_position) >= 1024 * 1024 {
@@ -162,23 +360,27 @@ fn count_elements(
     }
 }
 
-fn text_fragment(event: Event<'_>) -> Result<String, String> {
+fn text_fragment(event: Event<'_>) -> Result<String, ImportFailure> {
     match event {
         Event::Text(event) => {
-            let raw = event.xml10_content().map_err(|error| error.to_string())?;
+            let raw = event
+                .xml10_content()
+                .map_err(|error| ImportFailure::from(error.to_string()))?;
             quick_xml::escape::unescape(&raw)
                 .map(|text| text.into_owned())
-                .map_err(|error| error.to_string())
+                .map_err(|error| ImportFailure::from(error.to_string()))
         }
         Event::CData(event) => event
             .xml10_content()
             .map(|text| text.into_owned())
-            .map_err(|error| error.to_string()),
+            .map_err(|error| ImportFailure::from(error.to_string())),
         Event::GeneralRef(event) => {
-            let name = event.decode().map_err(|error| error.to_string())?;
+            let name = event
+                .decode()
+                .map_err(|error| ImportFailure::from(error.to_string()))?;
             quick_xml::escape::unescape(&format!("&{name};"))
                 .map(|text| text.into_owned())
-                .map_err(|error| error.to_string())
+                .map_err(|error| ImportFailure::from(error.to_string()))
         }
         _ => unreachable!(),
     }
@@ -188,8 +390,8 @@ fn parse_ampp_names(
     path: &Path,
     counts: &mut Counts,
     progress: &mpsc::UnboundedSender<Counts>,
-) -> Result<HashMap<String, AmppName>, String> {
-    let file = File::open(path).map_err(|error| error.to_string())?;
+) -> Result<HashMap<String, AmppName>, ImportFailure> {
+    let file = File::open(path).map_err(|error| ImportFailure::from(error.to_string()))?;
     let mut reader = Reader::from_reader(BufReader::new(file));
     reader.config_mut().trim_text(false);
     let mut buffer = Vec::new();
@@ -207,7 +409,11 @@ fn parse_ampp_names(
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
                 if tag == "AMPP" {
                     if in_ampp {
-                        return Err("Nested AMPP record in release XML".to_owned());
+                        return Err(ImportFailure::with_summary(
+                            ImportStage::ParseAmpp,
+                            ImportFailureCategory::RecordInvalid,
+                            "Nested AMPP record in release XML",
+                        ));
                     }
                     in_ampp = true;
                     ampp_depth = 1;
@@ -269,7 +475,12 @@ fn parse_ampp_names(
             }
             Ok(Event::Eof) => break,
             Ok(_) => {}
-            Err(error) => return Err(format!("AMPP parse failed: {error}")),
+            Err(_error) => {
+                return Err(ImportFailure::new(
+                    ImportStage::ParseAmpp,
+                    ImportFailureCategory::XmlInvalid,
+                ));
+            }
         }
         buffer.clear();
     }
@@ -282,8 +493,8 @@ fn parse_gtins(
     today: NaiveDate,
     counts: &mut Counts,
     progress: &mpsc::UnboundedSender<Counts>,
-) -> Result<Vec<GtinParsed>, String> {
-    let file = File::open(path).map_err(|error| error.to_string())?;
+) -> Result<Vec<GtinParsed>, ImportFailure> {
+    let file = File::open(path).map_err(|error| ImportFailure::from(error.to_string()))?;
     let mut reader = Reader::from_reader(BufReader::new(file));
     reader.config_mut().trim_text(false);
     let mut buffer = Vec::new();
@@ -303,7 +514,11 @@ fn parse_gtins(
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
                 if tag == "AMPP" {
                     if in_ampp {
-                        return Err("Nested AMPP record in GTIN XML".to_owned());
+                        return Err(ImportFailure::with_summary(
+                            ImportStage::ParseGtin,
+                            ImportFailureCategory::RecordInvalid,
+                            "Nested AMPP record in GTIN XML",
+                        ));
                     }
                     in_ampp = true;
                     ampp_depth = 1;
@@ -313,7 +528,11 @@ fn parse_gtins(
                     amppid.clear();
                 } else if tag == "GTINDATA" && in_ampp {
                     if in_gtindata {
-                        return Err("Nested GTINDATA record in GTIN XML".to_owned());
+                        return Err(ImportFailure::with_summary(
+                            ImportStage::ParseGtin,
+                            ImportFailureCategory::RecordInvalid,
+                            "Nested GTINDATA record in GTIN XML",
+                        ));
                     }
                     in_gtindata = true;
                     ampp_depth += 1;
@@ -382,7 +601,12 @@ fn parse_gtins(
             }
             Ok(Event::Eof) => break,
             Ok(_) => {}
-            Err(error) => return Err(format!("GTIN parse failed: {error}")),
+            Err(_error) => {
+                return Err(ImportFailure::new(
+                    ImportStage::ParseGtin,
+                    ImportFailureCategory::XmlInvalid,
+                ));
+            }
         }
         buffer.clear();
     }
@@ -395,14 +619,15 @@ fn classify_gtin(
     enddt: &str,
     names: &HashMap<String, AmppName>,
     today: NaiveDate,
-) -> Result<GtinParsed, String> {
+) -> Result<GtinParsed, ImportFailure> {
     if gtin.trim().is_empty() {
         return Ok(GtinParsed::SkipInvalid);
     }
     let enddt = enddt.trim();
     if !enddt.is_empty() {
-        let date = NaiveDate::parse_from_str(enddt, "%Y-%m-%d")
-            .map_err(|error| format!("Invalid GTIN ENDDT: {error}"))?;
+        let date = NaiveDate::parse_from_str(enddt, "%Y-%m-%d").map_err(|_| {
+            ImportFailure::new(ImportStage::ParseGtin, ImportFailureCategory::RecordInvalid)
+        })?;
         if date <= today {
             return Ok(GtinParsed::SkipExpired);
         }
@@ -480,7 +705,9 @@ struct TradeFamilyData {
     released_on: Option<Date>,
 }
 
-fn parse_supplementary(files: &SupplementaryFiles) -> Result<Option<TradeFamilyData>, String> {
+fn parse_supplementary(
+    files: &SupplementaryFiles,
+) -> Result<Option<TradeFamilyData>, ImportFailure> {
     let groups = parse_code_names(&files.groups, "TRADE_FAMILY_GROUP", "TFGID")?;
     let families = parse_families(&files.families)?;
     let memberships = parse_memberships(&files.memberships)?;
@@ -519,8 +746,8 @@ fn parse_supplementary(files: &SupplementaryFiles) -> Result<Option<TradeFamilyD
 fn parse_optional_supplementary(files: &SupplementaryFiles) -> Option<TradeFamilyData> {
     match parse_supplementary(files) {
         Ok(data) => data,
-        Err(error) => {
-            tracing::warn!(error = %error, "NHS dm+d supplementary metadata could not be read");
+        Err(_error) => {
+            tracing::warn!(error.type = "supplementary_metadata", "NHS dm+d supplementary metadata could not be read");
             None
         }
     }
@@ -530,8 +757,8 @@ fn parse_code_names(
     path: &Path,
     element: &str,
     code_tag: &str,
-) -> Result<Vec<(String, String)>, String> {
-    let file = File::open(path).map_err(|error| error.to_string())?;
+) -> Result<Vec<(String, String)>, ImportFailure> {
+    let file = File::open(path).map_err(|error| ImportFailure::from(error.to_string()))?;
     let mut reader = Reader::from_reader(BufReader::new(file));
     reader.config_mut().trim_text(false);
     let mut buffer = Vec::new();
@@ -575,15 +802,20 @@ fn parse_code_names(
             }
             Ok(Event::Eof) => break,
             Ok(_) => {}
-            Err(error) => return Err(format!("supplementary parse failed: {error}")),
+            Err(_error) => {
+                return Err(ImportFailure::new(
+                    ImportStage::ParseSupplementary,
+                    ImportFailureCategory::XmlInvalid,
+                ));
+            }
         }
         buffer.clear();
     }
     Ok(rows)
 }
 
-fn parse_families(path: &Path) -> Result<Vec<(String, String, Option<String>)>, String> {
-    let file = File::open(path).map_err(|error| error.to_string())?;
+fn parse_families(path: &Path) -> Result<Vec<(String, String, Option<String>)>, ImportFailure> {
+    let file = File::open(path).map_err(|error| ImportFailure::from(error.to_string()))?;
     let mut reader = Reader::from_reader(BufReader::new(file));
     reader.config_mut().trim_text(false);
     let mut buffer = Vec::new();
@@ -634,15 +866,20 @@ fn parse_families(path: &Path) -> Result<Vec<(String, String, Option<String>)>, 
             }
             Ok(Event::Eof) => break,
             Ok(_) => {}
-            Err(error) => return Err(format!("trade family parse failed: {error}")),
+            Err(_error) => {
+                return Err(ImportFailure::new(
+                    ImportStage::ParseSupplementary,
+                    ImportFailureCategory::XmlInvalid,
+                ));
+            }
         }
         buffer.clear();
     }
     Ok(rows)
 }
 
-fn parse_memberships(path: &Path) -> Result<Vec<(String, String)>, String> {
-    let file = File::open(path).map_err(|error| error.to_string())?;
+fn parse_memberships(path: &Path) -> Result<Vec<(String, String)>, ImportFailure> {
+    let file = File::open(path).map_err(|error| ImportFailure::from(error.to_string()))?;
     let mut reader = Reader::from_reader(BufReader::new(file));
     reader.config_mut().trim_text(false);
     let mut buffer = Vec::new();
@@ -696,7 +933,12 @@ fn parse_memberships(path: &Path) -> Result<Vec<(String, String)>, String> {
             }
             Ok(Event::Eof) => break,
             Ok(_) => {}
-            Err(error) => return Err(format!("AMP trade family parse failed: {error}")),
+            Err(_error) => {
+                return Err(ImportFailure::new(
+                    ImportStage::ParseSupplementary,
+                    ImportFailureCategory::XmlInvalid,
+                ));
+            }
         }
         buffer.clear();
     }
@@ -718,7 +960,7 @@ async fn drain_activity(
     db: &DatabaseConnection,
     run_id: i64,
     mut receiver: mpsc::UnboundedReceiver<()>,
-) -> Result<(), String> {
+) -> Result<(), ImportFailure> {
     while receiver.recv().await.is_some() {
         touch_run(db, run_id).await?;
     }
@@ -729,36 +971,36 @@ async fn blocking_with_activity<T, F>(
     db: &DatabaseConnection,
     run_id: i64,
     operation: F,
-) -> Result<T, String>
+) -> Result<T, ImportFailure>
 where
     T: Send + 'static,
-    F: FnOnce(mpsc::UnboundedSender<()>) -> Result<T, String> + Send + 'static,
+    F: FnOnce(mpsc::UnboundedSender<()>) -> Result<T, ImportFailure> + Send + 'static,
 {
     let (sender, receiver) = mpsc::unbounded_channel();
     let work = tokio::task::spawn_blocking(move || operation(sender));
     let activity = drain_activity(db, run_id, receiver);
-    finish_work(run_id, "activity", work, activity).await
+    finish_work(run_id, ImportStage::Activity.name(), work, activity).await
 }
 
 async fn finish_work<T>(
     run_id: i64,
     phase: &'static str,
-    work: tokio::task::JoinHandle<Result<T, String>>,
-    activity: impl std::future::Future<Output = Result<(), String>>,
-) -> Result<T, String> {
+    work: tokio::task::JoinHandle<Result<T, ImportFailure>>,
+    activity: impl std::future::Future<Output = Result<(), ImportFailure>>,
+) -> Result<T, ImportFailure> {
     let (result, liveness) = tokio::join!(work, activity);
     let result = result.unwrap_or_else(|error| {
         Err(if error.is_panic() {
-            "Import worker panicked".to_owned()
+            ImportFailure::new(ImportStage::Activity, ImportFailureCategory::Panicked)
         } else {
-            "Import worker was cancelled".to_owned()
+            ImportFailure::new(ImportStage::Activity, ImportFailureCategory::Cancelled)
         })
     });
     if result.is_err() && liveness.is_err() {
         tracing::warn!(
-            run_id,
-            phase,
-            secondary_failure = "activity_reporting",
+            medtracker.import.run_id = run_id,
+            medtracker.import.stage = ImportStage::from_phase(phase).name(),
+            medtracker.secondary_failure = "activity_reporting",
             "NHS import activity reporting also failed"
         );
     }
@@ -771,18 +1013,23 @@ pub(crate) async fn run_import(
     db: DatabaseConnection,
     run_id: i64,
     zip_path: PathBuf,
-) -> Result<(), String> {
+) -> Result<(), ImportFailure> {
     let total = ImportPhaseTimer::new(run_id, "total");
     let result = async {
         let extraction = ImportPhaseTimer::new(run_id, "extract");
         set_status(&db, run_id, 1, "Extracting release archive").await?;
         let zip_for_task = zip_path.clone();
         let extracted = blocking_with_activity(&db, run_id, move |activity| {
-            let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+            let dir = tempfile::tempdir().map_err(|_| {
+                ImportFailure::new(ImportStage::Extract, ImportFailureCategory::Storage)
+            })?;
             extract::extract_with_progress(&zip_for_task, dir.path(), None, || {
-                activity
-                    .send(())
-                    .map_err(|_| "Import activity could not be reported".to_owned())
+                activity.send(()).map_err(|_| {
+                    ImportFailure::new(
+                        ImportStage::Activity,
+                        ImportFailureCategory::ActivityUnreported,
+                    )
+                })
             })
             .map(|_| dir)
         })
@@ -802,18 +1049,21 @@ async fn set_status(
     run_id: i64,
     status: i32,
     message: &str,
-) -> Result<(), String> {
+) -> Result<(), ImportFailure> {
     let changed = db.execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "UPDATE nhs_dmd_imports SET status = $1, started_at = COALESCE(started_at, now()), log = COALESCE(log, '') || $2 || E'\\n', updated_at = now() WHERE id = $3 AND status < 4",
         [status.into(), message.into(), run_id.into()],
     ))
     .await
-    .map_err(|error| error.to_string())?;
+    .map_err(ImportFailure::database(ImportStage::Finalise))?;
     if changed.rows_affected() == 1 {
         Ok(())
     } else {
-        Err("Import is no longer active".into())
+        Err(ImportFailure::new(
+            ImportStage::Finalise,
+            ImportFailureCategory::Inactive,
+        ))
     }
 }
 
@@ -822,7 +1072,7 @@ async fn apply_progress(
     run_id: i64,
     counts: &Counts,
     status: i32,
-) -> Result<(), String> {
+) -> Result<(), ImportFailure> {
     let changed = db.execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "UPDATE nhs_dmd_imports SET status = $1, total_records = $2, processed_records = $3, imported_count = $4, skipped_count = $5, created_count = $6, updated_count = $7, unchanged_count = $8, skipped_expired_count = $9, skipped_missing_name_count = $10, skipped_invalid_count = $11, updated_at = now() WHERE id = $12 AND status < 4",
@@ -842,15 +1092,18 @@ async fn apply_progress(
         ],
     ))
     .await
-    .map_err(|error| error.to_string())?;
+    .map_err(ImportFailure::database(ImportStage::Persist))?;
     if changed.rows_affected() == 1 {
         Ok(())
     } else {
-        Err("Import is no longer active".into())
+        Err(ImportFailure::new(
+            ImportStage::Finalise,
+            ImportFailureCategory::Inactive,
+        ))
     }
 }
 
-async fn touch_run(db: &impl ConnectionTrait, run_id: i64) -> Result<(), String> {
+async fn touch_run(db: &impl ConnectionTrait, run_id: i64) -> Result<(), ImportFailure> {
     let changed = db
         .execute_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
@@ -858,11 +1111,14 @@ async fn touch_run(db: &impl ConnectionTrait, run_id: i64) -> Result<(), String>
             [run_id.into()],
         ))
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(ImportFailure::database(ImportStage::Finalise))?;
     if changed.rows_affected() == 1 {
         Ok(())
     } else {
-        Err("Import is no longer active".into())
+        Err(ImportFailure::new(
+            ImportStage::Finalise,
+            ImportFailureCategory::Inactive,
+        ))
     }
 }
 
@@ -870,23 +1126,30 @@ async fn drain_progress(
     db: &DatabaseConnection,
     run_id: i64,
     mut receiver: mpsc::UnboundedReceiver<Counts>,
-) -> Result<(), String> {
+) -> Result<(), ImportFailure> {
     while let Some(snapshot) = receiver.recv().await {
         apply_progress(db, run_id, &snapshot, 3).await?;
     }
     Ok(())
 }
 
-async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> Result<(), String> {
+async fn import_extracted(
+    db: &DatabaseConnection,
+    run_id: i64,
+    dir: &Path,
+) -> Result<(), ImportFailure> {
     let counting = ImportPhaseTimer::new(run_id, "count");
     set_status(db, run_id, 2, "Counting release records").await?;
     let ampp_file = glob_one(dir, "f_ampp2_3*.xml")?;
     let gtin_dir = dir.to_path_buf();
     let gtin_file = blocking_with_activity(db, run_id, move |activity| {
         find_gtin_file(&gtin_dir, || {
-            activity
-                .send(())
-                .map_err(|_| "Import activity could not be reported".to_owned())
+            activity.send(()).map_err(|_| {
+                ImportFailure::new(
+                    ImportStage::Activity,
+                    ImportFailureCategory::ActivityUnreported,
+                )
+            })
         })
     })
     .await?;
@@ -894,13 +1157,16 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     let gtin_count = gtin_file.clone();
     let (ampp_total, gtin_total) = blocking_with_activity(db, run_id, move |activity| {
         let mut signal = || {
-            activity
-                .send(())
-                .map_err(|_| "Import activity could not be reported".to_owned())
+            activity.send(()).map_err(|_| {
+                ImportFailure::new(
+                    ImportStage::Activity,
+                    ImportFailureCategory::ActivityUnreported,
+                )
+            })
         };
         let ampp = count_elements(&ampp_count, "AMPP", &mut signal)?;
         let gtin = count_elements(&gtin_count, "GTINDATA", &mut signal)?;
-        Ok::<_, String>((ampp, gtin))
+        Ok::<_, ImportFailure>((ampp, gtin))
     })
     .await?;
     let counts = Counts {
@@ -921,7 +1187,7 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
         };
         let names = parse_ampp_names(&ampp_parse, &mut counts, &progress_tx)?;
         emit_progress(&progress_tx, &counts, true);
-        Ok::<_, String>((names, counts))
+        Ok::<_, ImportFailure>((names, counts))
     });
     let drain = drain_progress(db, run_id, progress_rx);
     let (names, counts) = finish_work(run_id, "parse_ampp", names_task, drain).await?;
@@ -932,7 +1198,13 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     let supplementary = if let Some(files) = supplementary_files(dir) {
         tokio::task::spawn_blocking(move || parse_optional_supplementary(&files))
             .await
-            .map_err(|error| error.to_string())?
+            .map_err(|_error| {
+                ImportFailure::with_summary(
+                    ImportStage::ParseSupplementary,
+                    ImportFailureCategory::Panicked,
+                    "The import worker failed unexpectedly. Upload the release again.",
+                )
+            })?
     } else {
         None
     };
@@ -946,13 +1218,16 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
         let mut counts = counts;
         let records = parse_gtins(&gtin_parse, &names_for_parse, today, &mut counts, &gtin_tx)?;
         emit_progress(&gtin_tx, &counts, true);
-        Ok::<_, String>((records, counts))
+        Ok::<_, ImportFailure>((records, counts))
     });
     let drain = drain_progress(db, run_id, gtin_rx);
     let (records, mut counts) = finish_work(run_id, "parse_gtin", gtin_task, drain).await?;
     parsing_gtin.complete();
     let persisting = ImportPhaseTimer::new(run_id, "persist");
-    let transaction = db.begin().await.map_err(|error| error.to_string())?;
+    let transaction = db
+        .begin()
+        .await
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     touch_run(&transaction, run_id).await?;
     persist_relationships(&transaction, &names).await?;
     if let Some(data) = supplementary {
@@ -965,37 +1240,42 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     transaction
         .commit()
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(ImportFailure::database(ImportStage::Commit))?;
     committing.complete();
     Ok(())
 }
 
 fn find_gtin_file(
     dir: &Path,
-    progress: impl FnMut() -> Result<(), String>,
-) -> Result<PathBuf, String> {
+    progress: impl FnMut() -> Result<(), ImportFailure>,
+) -> Result<PathBuf, ImportFailure> {
     if let Some(first) = glob_paths(dir, "f_gtin2_0*.xml").into_iter().next() {
         return Ok(first);
     }
     let Some(zip) = glob_paths(dir, "*GTIN.zip").into_iter().next() else {
-        return Err(format!("No GTIN XML or ZIP found in {}", dir.display()));
+        return Err(ImportFailure::new(
+            ImportStage::Extract,
+            ImportFailureCategory::ArchiveInvalid,
+        ));
     };
     let dest = dir.join(format!("nested-gtin-{}", uuid::Uuid::new_v4()));
     extract::extract_with_progress(&zip, &dest, Some("f_gtin2_0*.xml"), progress)?;
     glob_paths(&dest, "f_gtin2_0*.xml")
         .into_iter()
         .next()
-        .ok_or_else(|| "No GTIN XML found in nested archive".to_owned())
+        .ok_or_else(|| {
+            ImportFailure::new(ImportStage::Extract, ImportFailureCategory::ArchiveInvalid)
+        })
 }
 
 async fn persist_relationships(
     transaction: &DatabaseTransaction,
     names: &HashMap<String, AmppName>,
-) -> Result<(), String> {
+) -> Result<(), ImportFailure> {
     nhs_dmd_ampp_relationship::Entity::delete_many()
         .exec(transaction)
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     let now = Utc::now().naive_utc();
     let rows: Vec<nhs_dmd_ampp_relationship::ActiveModel> = names
         .iter()
@@ -1017,7 +1297,7 @@ async fn persist_relationships(
         nhs_dmd_ampp_relationship::Entity::insert_many(chunk.to_vec())
             .exec(transaction)
             .await
-            .map_err(|error| error.to_string())?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
     }
     Ok(())
 }
@@ -1026,11 +1306,11 @@ async fn persist_gtins(
     transaction: &DatabaseTransaction,
     records: &[GtinParsed],
     counts: &mut Counts,
-) -> Result<(), String> {
+) -> Result<(), ImportFailure> {
     let existing: Vec<nhs_dmd_barcode::Model> = nhs_dmd_barcode::Entity::find()
         .all(transaction)
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     let by_gtin: HashMap<String, nhs_dmd_barcode::Model> = existing
         .into_iter()
         .map(|row| (row.gtin.clone(), row))
@@ -1103,7 +1383,7 @@ async fn persist_gtins(
             )
             .exec_without_returning(transaction)
             .await
-            .map_err(|error| error.to_string())?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
     }
     Ok(())
 }
@@ -1111,7 +1391,7 @@ async fn persist_gtins(
 async fn persist_supplementary(
     transaction: &DatabaseTransaction,
     data: &TradeFamilyData,
-) -> Result<(), String> {
+) -> Result<(), ImportFailure> {
     let now = Utc::now().naive_utc();
     let mut group_ids = HashMap::new();
     for (code, name) in &data.groups {
@@ -1119,7 +1399,7 @@ async fn persist_supplementary(
             .filter(nhs_dmd_trade_family_group::Column::Code.eq(code))
             .one(transaction)
             .await
-            .map_err(|error| error.to_string())?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
         let row = match existing {
             Some(existing) if existing.name == *name => existing,
             Some(existing) => {
@@ -1129,7 +1409,7 @@ async fn persist_supplementary(
                 active
                     .update(transaction)
                     .await
-                    .map_err(|error| error.to_string())?
+                    .map_err(ImportFailure::database(ImportStage::Persist))?
             }
             None => nhs_dmd_trade_family_group::ActiveModel {
                 code: Set(code.clone()),
@@ -1140,7 +1420,7 @@ async fn persist_supplementary(
             }
             .insert(transaction)
             .await
-            .map_err(|error| error.to_string())?,
+            .map_err(ImportFailure::database(ImportStage::Persist))?,
         };
         group_ids.insert(code.clone(), row.id);
     }
@@ -1154,7 +1434,7 @@ async fn persist_supplementary(
             .filter(nhs_dmd_trade_family::Column::Code.eq(code))
             .one(transaction)
             .await
-            .map_err(|error| error.to_string())?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
         let row = match existing {
             Some(existing)
                 if existing.name == *name && existing.trade_family_group_id == group_id =>
@@ -1169,7 +1449,7 @@ async fn persist_supplementary(
                 active
                     .update(transaction)
                     .await
-                    .map_err(|error| error.to_string())?
+                    .map_err(ImportFailure::database(ImportStage::Persist))?
             }
             None => nhs_dmd_trade_family::ActiveModel {
                 code: Set(code.clone()),
@@ -1181,14 +1461,14 @@ async fn persist_supplementary(
             }
             .insert(transaction)
             .await
-            .map_err(|error| error.to_string())?,
+            .map_err(ImportFailure::database(ImportStage::Persist))?,
         };
         family_ids.insert(code.clone(), row.id);
     }
     nhs_dmd_amp_trade_family::Entity::delete_many()
         .exec(transaction)
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     for (amp_code, family_code) in &data.memberships {
         let Some(family_id) = family_ids.get(family_code) else {
             continue;
@@ -1202,14 +1482,14 @@ async fn persist_supplementary(
         }
         .insert(transaction)
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(ImportFailure::database(ImportStage::Persist))?;
     }
     if let Some(released_on) = data.released_on {
         let exists = nhs_dmd_supplementary_release::Entity::find()
             .filter(nhs_dmd_supplementary_release::Column::ReleasedOn.eq(released_on))
             .one(transaction)
             .await
-            .map_err(|error| error.to_string())?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
         if exists.is_none() {
             nhs_dmd_supplementary_release::ActiveModel {
                 released_on: Set(released_on),
@@ -1219,13 +1499,17 @@ async fn persist_supplementary(
             }
             .insert(transaction)
             .await
-            .map_err(|error| error.to_string())?;
+            .map_err(ImportFailure::database(ImportStage::Persist))?;
         }
     }
     Ok(())
 }
 
-async fn finalize(db: &DatabaseTransaction, run_id: i64, counts: &Counts) -> Result<(), String> {
+async fn finalize(
+    db: &DatabaseTransaction,
+    run_id: i64,
+    counts: &Counts,
+) -> Result<(), ImportFailure> {
     let changed = db.execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "UPDATE nhs_dmd_imports SET status = 4, processed_records = $1, imported_count = $2, skipped_count = $3, created_count = $4, updated_count = $5, unchanged_count = $6, skipped_expired_count = $7, skipped_missing_name_count = $8, skipped_invalid_count = $9, completed_at = now(), error_message = NULL, updated_at = now() WHERE id = $10 AND status < 4",
@@ -1243,11 +1527,14 @@ async fn finalize(db: &DatabaseTransaction, run_id: i64, counts: &Counts) -> Res
         ],
     ))
     .await
-    .map_err(|error| error.to_string())?;
+    .map_err(ImportFailure::database(ImportStage::Commit))?;
     if changed.rows_affected() == 1 {
         Ok(())
     } else {
-        Err("Import is no longer active".into())
+        Err(ImportFailure::new(
+            ImportStage::Finalise,
+            ImportFailureCategory::Inactive,
+        ))
     }
 }
 
@@ -1269,16 +1556,17 @@ pub(crate) async fn fail_run(
 pub(crate) async fn fail_owned_run(
     db: &DatabaseConnection,
     owned_run: &nhs_dmd_import::Model,
-    message: &str,
+    failure: &ImportFailure,
 ) -> Result<(), sea_orm::DbErr> {
     const STALE_MESSAGE: &str = "The import stopped making progress. Upload the release again.";
     if owned_run.status >= 4 {
         return Ok(());
     }
+    let message = failure.summary();
     fail_run(db, owned_run.id, message).await?;
     if matches!(
-        message,
-        "Import is no longer active" | "Import activity could not be reported"
+        failure.category,
+        ImportFailureCategory::Inactive | ImportFailureCategory::ActivityUnreported
     ) {
         return Ok(());
     }
@@ -1316,15 +1604,71 @@ pub(crate) async fn fail_owned_run(
 mod tests {
     use super::*;
 
+    #[test]
+    fn extraction_failures_keep_their_origin() {
+        use std::io::Write;
+        let directory = tempfile::tempdir().unwrap();
+        let archive = directory.path().join("release.zip");
+        std::fs::write(&archive, b"not a zip release").unwrap();
+        let invalid = extract::extract_with_progress(&archive, directory.path(), None, || Ok(()))
+            .unwrap_err();
+        assert_eq!(invalid.stage.name(), "extract");
+        assert_eq!(invalid.category.name(), "archive_invalid");
+
+        let missing = extract::extract_with_progress(
+            &directory.path().join("missing"),
+            directory.path(),
+            None,
+            || Ok(()),
+        )
+        .unwrap_err();
+        assert_eq!(missing.category.name(), "storage");
+
+        let mut writer = zip::ZipWriter::new(File::create(&archive).unwrap());
+        writer
+            .start_file("release.xml", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"content").unwrap();
+        writer.finish().unwrap();
+        let activity =
+            extract::extract_with_progress(&archive, &directory.path().join("out"), None, || {
+                Err(ImportFailure::new(
+                    ImportStage::Activity,
+                    ImportFailureCategory::ActivityUnreported,
+                ))
+            })
+            .unwrap_err();
+        assert_eq!(activity.category.name(), "activity_unreported");
+        assert_eq!(activity.stage.name(), "activity");
+    }
+
+    #[test]
+    fn invalid_gtin_end_date_is_a_record_error() {
+        let failure = classify_gtin(
+            "1",
+            "123",
+            "invalid",
+            &HashMap::new(),
+            NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+        )
+        .err()
+        .expect("invalid date");
+        assert_eq!(failure.stage.name(), "parse_gtin");
+        assert_eq!(failure.category.name(), "record_invalid");
+    }
+
     #[tokio::test]
     async fn blocking_work_failure_survives_activity_failure() {
         let error = blocking_with_activity(&DatabaseConnection::default(), 1, |activity| {
             let _ = activity.send(());
-            Err::<(), _>("Specific release parsing failure".to_owned())
+            Err::<(), _>(ImportFailure::from("Specific release parsing failure"))
         })
         .await
         .unwrap_err();
-        assert_eq!(error, "Specific release parsing failure");
+        assert_eq!(
+            error.summary(),
+            ImportFailure::from("Specific release parsing failure").summary()
+        );
     }
 
     #[tokio::test]
@@ -1335,7 +1679,7 @@ mod tests {
         })
         .await
         .unwrap_err();
-        assert!(error.contains("Disconnected"));
+        assert!(!error.summary().is_empty());
     }
 
     #[tokio::test]
@@ -1383,7 +1727,10 @@ mod tests {
                 result
             };
             assert_eq!(
-                finish_work(1, phase, work, drain).await.unwrap_err(),
+                finish_work(1, phase, work, drain)
+                    .await
+                    .unwrap_err()
+                    .summary(),
                 expected
             );
         }
@@ -1394,14 +1741,14 @@ mod tests {
         let error = blocking_with_activity(
             &DatabaseConnection::default(),
             1,
-            |activity| -> Result<(), String> {
+            |activity| -> Result<(), ImportFailure> {
                 let _ = activity.send(());
                 panic!("synthetic private panic payload");
             },
         )
         .await
         .unwrap_err();
-        assert_eq!(error, "Import worker panicked");
+        assert_eq!(error.summary(), ImportFailureCategory::Panicked.summary());
     }
 
     #[test]
@@ -1749,5 +2096,37 @@ mod tests {
         assert!(
             matches!(&records[0], GtinParsed::Record { gtin, display, .. } if gtin == "5016298210989" && display == "Scanner imported tablets")
         );
+    }
+
+    #[test]
+    fn failure_categories_store_fixed_summaries_without_error_text() {
+        let sentinel = "ClinicalPanicSentinel-9f8e";
+        let categories = [
+            ImportFailureCategory::ArchiveInvalid,
+            ImportFailureCategory::XmlInvalid,
+            ImportFailureCategory::RecordInvalid,
+            ImportFailureCategory::Storage,
+            ImportFailureCategory::Database,
+            ImportFailureCategory::Timeout,
+            ImportFailureCategory::Cancelled,
+            ImportFailureCategory::Panicked,
+            ImportFailureCategory::Inactive,
+            ImportFailureCategory::ActivityUnreported,
+            ImportFailureCategory::Stale,
+        ];
+        for category in categories {
+            let summary = category.summary();
+            assert!(!summary.is_empty());
+            assert!(summary.len() < 160);
+            assert!(!summary.contains(sentinel));
+        }
+        let raw = format!("XML parse failed near sentinel {sentinel} in <ampp>");
+        let failure = ImportFailure::from(raw);
+        assert!(!failure.summary().contains(sentinel));
+        assert!(!failure.to_string().contains(sentinel));
+        let mapped =
+            ImportFailure::database(ImportStage::Count)(sea_orm::DbErr::Custom("x".into()));
+        assert_eq!(mapped.category.name(), "database");
+        assert_eq!(mapped.stage.name(), "count");
     }
 }

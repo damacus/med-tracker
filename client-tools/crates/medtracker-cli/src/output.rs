@@ -22,6 +22,7 @@ pub fn format_api_error(error: ApiError) -> anyhow::Error {
             code,
             message,
             request_id,
+            trace_id,
             retry_after,
             ..
         } => {
@@ -29,6 +30,10 @@ pub fn format_api_error(error: ApiError) -> anyhow::Error {
             if let Some(request_id) = request_id {
                 text.push_str(" request_id=");
                 text.push_str(&request_id);
+            }
+            if let Some(trace_id) = trace_id {
+                text.push_str(" trace_id=");
+                text.push_str(&trace_id);
             }
             if let Some(retry_after) = retry_after {
                 text.push_str(" retry_after=");

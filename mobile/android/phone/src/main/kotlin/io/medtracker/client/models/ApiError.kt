@@ -25,6 +25,7 @@ import com.squareup.moshi.JsonClass
  * @param code 
  * @param message 
  * @param requestId 
+ * @param traceId 
  * @param errors 
  */
 
@@ -39,6 +40,9 @@ data class ApiError (
 
     @Json(name = "request_id")
     val requestId: kotlin.String,
+
+    @Json(name = "trace_id")
+    val traceId: kotlin.String? = null,
 
     @Json(name = "errors")
     val errors: kotlin.collections.Map<kotlin.String, kotlin.collections.List<kotlin.String>>? = null

@@ -117,6 +117,11 @@ async fn fresh_database_is_created_by_loco_migrations() {
             .expect("Loco must build an empty database without a schema import");
         let ledger = ledger_rows(&db).await;
         assert!(!ledger.is_empty());
+        assert!(
+            ledger
+                .iter()
+                .any(|row| row.0 == "m20261102_000029_nhs_dmd_import_trace_id")
+        );
         migration::Migrator::up(&db, None).await.unwrap();
         assert_eq!(ledger_rows(&db).await, ledger);
         db.close().await.unwrap();
@@ -549,7 +554,9 @@ async fn development_seed_creates_a_usable_account_and_household() {
         .unwrap();
         let mut server = loco_rs::TestServer::new(
             boot.router
+                .as_ref()
                 .unwrap()
+                .clone()
                 .into_make_service_with_connect_info::<std::net::SocketAddr>(),
         )
         .unwrap();
@@ -579,7 +586,38 @@ async fn development_seed_creates_a_usable_account_and_household() {
             .await;
         assert_eq!(medicines.status_code(), 200, "{}", medicines.text());
         assert!(medicines.text().contains("Synthetic"));
+        assert_eq!(server.get("/admin/nhs-dmd").await.status_code(), 403);
         drop(server);
+        let mut platform_server = loco_rs::TestServer::new(
+            boot.router
+                .unwrap()
+                .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .unwrap();
+        platform_server.save_cookies();
+        let login = platform_server
+            .post("/api/auth/sign-in/email")
+            .add_header("origin", boot.app_context.config.server.full_url())
+            .json(&serde_json::json!({"email":"platform-admin@example.test","password":"password"}))
+            .await;
+        assert_eq!(login.status_code(), 200, "{}", login.text());
+        let platform_users = platform_server.get("/platform/users").await;
+        assert_eq!(
+            platform_users.status_code(),
+            200,
+            "{}",
+            platform_users.text()
+        );
+        let importer = platform_server.get("/admin/nhs-dmd").await;
+        assert_eq!(importer.status_code(), 200, "{}", importer.text());
+        assert_eq!(
+            platform_server
+                .get("/households/persistence-fixture/admin")
+                .await
+                .status_code(),
+            403
+        );
+        drop(platform_server);
         if let Some(queue) = boot.app_context.queue_provider.as_ref() {
             queue.shutdown().unwrap();
         }

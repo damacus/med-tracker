@@ -6,7 +6,7 @@ use sea_orm::{ConnectionTrait, EntityTrait};
 
 use super::_entities::{
     accounts, household_memberships, households, locations, medications, people,
-    person_access_grants, person_medications,
+    person_access_grants, person_medications, platform_admins,
 };
 
 #[allow(
@@ -50,6 +50,7 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         .execute_unprepared("UPDATE public.accounts SET email_verified=(status=2)")
         .await?;
     load!(households);
+    load!(platform_admins);
     load!(household_memberships);
     load!(person_access_grants);
     load!(locations);

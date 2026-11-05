@@ -355,7 +355,12 @@ fn failure(status: StatusCode, code: &str, message: &str, request_id: &str) -> R
     )
 }
 
-fn reply(status: StatusCode, body: Option<Value>, request_id: &str) -> Response {
+fn reply(status: StatusCode, mut body: Option<Value>, request_id: &str) -> Response {
+    if (status.is_client_error() || status.is_server_error())
+        && let Some(body) = &mut body
+    {
+        crate::telemetry::ids::enrich_error(body);
+    }
     let response = match body {
         Some(body) => (status, Json(body)).into_response(),
         None => status.into_response(),
