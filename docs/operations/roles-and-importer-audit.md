@@ -54,7 +54,7 @@ The NHS dm+d importer is at `/admin/nhs-dmd`. Both opening the page and uploadin
 a release require a signed-in account with an **active platform administrator**
 record. A household owner or administrator without that separate record is
 denied. The current household dashboard and platform navigation do not contain
-an importer link; open its URL directly. See [NHS dm+d integration](nhs-dmd-integration.md#loco-migration-checkout).
+an importer link; open its URL directly. See [NHS dm+d integration](../nhs-dmd-integration.md#loco-migration-checkout).
 
 ### Synthetic seed and reported usability gaps
 
@@ -88,4 +88,3 @@ behaviour.
 - [Cedar role policies](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/models/authorization/policies.cedar), [care access checks](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/models/access.rs) and [membership changes](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/models/care/administration/memberships.rs).
 - [Importer authorisation](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/controllers/nhs_dmd.rs), [plain-text error response](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/controllers/medications.rs) and [platform support](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/models/platform/support.rs).
 - [Standard seed](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/models/seed.rs), [sample membership](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/fixtures/household_memberships.yaml) and [canary fixtures](https://github.com/damacus/med-tracker/blob/9f5f3f3736092bb5b228878478268d0e12310fed/src/models/canary/fixtures.rs).
-
