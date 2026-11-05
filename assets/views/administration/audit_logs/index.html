@@ -27,12 +27,11 @@
 
   <ul class="md:hidden flex flex-col gap-3 mt-6" aria-label="{{ admin_labels.audit.events_label }}">
     {% for event in page.rows %}
-      <li class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+      <li data-event-type="{{ event.event_type }}" class="card bg-base-100 border border-base-300"><div class="card-body p-4">
         <h2 class="font-semibold">{{ event.event_label }}</h2>
-        {% if event.event_label != event.event_type %}<p class="text-sm text-base-content/70 break-all">{{ event.event_type }}</p>{% endif %}
-        <p class="text-sm">{{ event.occurred_at_utc }}</p>
+        <p class="text-sm"><time data-audit-time>{{ event.occurred_at_utc }}</time></p>
         <p class="text-sm break-words">{{ event.actor }}</p>
-        <a class="link w-fit" href="/households/{{ slug }}/admin/audit_logs/{{ event.id }}{{ language_suffix }}">{{ admin_labels.audit.view_event }} {{ event.id }}</a>
+        <a class="link w-fit" data-audit-detail-link href="/households/{{ slug }}/admin/audit_logs/{{ event.id }}{{ language_suffix }}">{{ admin_labels.audit.view_event }} {{ event.id }}</a>
       </div></li>
     {% else %}
       <li>{{ admin_labels.audit.empty }}</li>
@@ -45,11 +44,11 @@
       <thead><tr><th scope="col">{{ admin_labels.audit.when }}</th><th scope="col">{{ admin_labels.audit.event }}</th><th scope="col">{{ admin_labels.audit.actor }}</th><th scope="col">{{ admin_labels.audit.details }}</th></tr></thead>
       <tbody>
       {% for event in page.rows %}
-        <tr>
-          <td>{{ event.occurred_at_utc }}</td>
-          <td>{{ event.event_label }}{% if event.event_label != event.event_type %}<span class="block text-sm text-base-content/70">{{ event.event_type }}</span>{% endif %}</td>
+        <tr data-event-type="{{ event.event_type }}">
+          <td><time data-audit-time>{{ event.occurred_at_utc }}</time></td>
+          <td>{{ event.event_label }}</td>
           <td>{{ event.actor }}</td>
-          <td><a class="link" href="/households/{{ slug }}/admin/audit_logs/{{ event.id }}{{ language_suffix }}">{{ admin_labels.audit.view_event }} {{ event.id }}</a></td>
+          <td><a class="link" data-audit-detail-link href="/households/{{ slug }}/admin/audit_logs/{{ event.id }}{{ language_suffix }}">{{ admin_labels.audit.view_event }} {{ event.id }}</a></td>
         </tr>
       {% else %}
         <tr><td colspan="4">{{ admin_labels.audit.empty }}</td></tr>
@@ -58,5 +57,13 @@
     </table>
   </div>
   {% if next_url %}<a class="btn btn-outline mt-6" rel="next" href="{{ next_url }}">{{ admin_labels.audit.next }}</a>{% endif %}
+  <dialog id="audit-detail-dialog" class="modal" aria-labelledby="audit-detail-title">
+    <div class="modal-box">
+      <h2 id="audit-detail-title" class="text-xl font-semibold"></h2>
+      <div data-audit-detail-content class="mt-4"></div>
+      <div class="modal-action"><button type="button" class="btn" data-dialog-close>{{ admin_labels.audit.close }}</button></div>
+    </div>
+  </dialog>
 </section>
+<script type="module" src="/static/js/audit-detail.js"></script>
 {% endblock content %}
