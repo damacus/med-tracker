@@ -152,6 +152,13 @@ async fn person_owned_schedule_remains_editable_after_last_departure() {
                     .click(None)
                     .await
                     .unwrap();
+                expect(page.locator(&format!(
+                    "form[data-person-schedule-form][action='/profile/schedules/{}'] input[name='clinical_revision']",
+                    plan.id
+                )))
+                .to_have_value(&(plan.clinical_revision + 1).to_string())
+                .await
+                .unwrap();
                 page.reload(None).await.unwrap();
                 assert_eq!(
                     page.evaluate::<(), String>(
