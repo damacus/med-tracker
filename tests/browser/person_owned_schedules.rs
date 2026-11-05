@@ -152,7 +152,7 @@ async fn person_owned_schedule_remains_editable_after_last_departure() {
                     .click(None)
                     .await
                     .unwrap();
-                expect(page.locator(&format!(
+                expect(page.locator(format!(
                     "form[data-person-schedule-form][action='/profile/schedules/{}'] input[name='clinical_revision']",
                     plan.id
                 )))
