@@ -4700,6 +4700,13 @@ async fn current_declaration(app: &Application, subject: i64) -> Option<i64> {
 }
 
 async fn guardian_origin(app: &Application) -> GuardianOrigin {
+    guardian_origin_with_acceptance(app, false).await.0
+}
+
+async fn guardian_origin_with_acceptance(
+    app: &Application,
+    accepted: bool,
+) -> (GuardianOrigin, Option<household_invitations::Model>) {
     let token = app.token().await;
     let seeded = seed_origin(app, Some("Synthetic protected canonical narrative")).await;
     let child = seeded.child;
@@ -4802,13 +4809,63 @@ async fn guardian_origin(app: &Application) -> GuardianOrigin {
     linked.canonical_origin = Set(true);
     linked.clinical_revision = Set(Some(1));
     let linked = linked.update(&app.fixture.admin).await.unwrap();
+    let (invitation, approval_id) = if accepted {
+        let token = uuid::Uuid::new_v4().to_string();
+        let invitation = household_invitations::ActiveModel {
+            household_id: Set(origin.household.id),
+            email: Set(app.fixture.account.email.clone()),
+            membership_role: Set("member".into()),
+            dependent_sharing: Set(true),
+            invited_by_membership_id: Set(membership.id),
+            token_digest: Set(hex::encode(Sha256::digest(token.as_bytes()))),
+            expires_at: Set(now + chrono::Duration::days(1)),
+            accepted_at: Set(Some(now)),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+        let declaration = current_declaration(app, child).await.unwrap();
+        let transaction = app.fixture.admin.begin().await.unwrap();
+        let query = Query::select()
+            .expr(Func::cust("set_config").args([
+                Expr::val("med_tracker.current_account_id"),
+                Expr::val(app.fixture.account.id.to_string()),
+                Expr::val(true),
+            ]))
+            .to_owned();
+        transaction
+            .execute_raw(transaction.get_database_backend().build(&query))
+            .await
+            .unwrap();
+        let approval = person_household_approvals::ActiveModel {
+            household_id: Set(origin.household.id),
+            person_id: Set(child),
+            invitation_id: Set(invitation.id),
+            approved_by_account_id: Set(app.fixture.account.id),
+            approved_by_person_id: Set(app.fixture.adult.id),
+            guardian_declaration_id: Set(Some(declaration)),
+            statement_version: Set(1),
+            approved_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&transaction)
+        .await
+        .unwrap();
+        transaction.commit().await.unwrap();
+        (Some(invitation), Some(approval.id))
+    } else {
+        (None, None)
+    };
     med_tracker::models::_entities::shared_schedule_executions::ActiveModel {
         schedule_id: Set(linked.id),
         portable_id: Set(linked.portable_id.clone()),
         household_id: Set(linked.household_id),
         person_id: Set(linked.person_id),
         person_schedule_id: Set(id.clone()),
-        approval_id: Set(None),
+        approval_id: Set(approval_id),
     }
     .insert(&app.fixture.admin)
     .await
@@ -4837,7 +4894,7 @@ async fn guardian_origin(app: &Application) -> GuardianOrigin {
         plan: id,
     };
     origin.close().await;
-    result
+    (result, invitation)
 }
 
 async fn guardian_origin_invitation(
@@ -5447,7 +5504,8 @@ async fn person_owned_schedule_safe_identity_cannot_be_retargeted_by_current_cli
 async fn person_owned_schedule_guardian_changes_unbound_medicine_in_actual_household_with_explicit_dose()
  {
     let app = Application::new().await;
-    let mut origin = guardian_origin(&app).await;
+    let (mut origin, invitation) = guardian_origin_with_acceptance(&app, true).await;
+    let invitation = invitation.unwrap();
     let option = med_tracker::models::_entities::dosages::ActiveModel {
         household_id: Set(origin.household.id),
         medication_id: Set(origin.stock.id),
@@ -5468,21 +5526,6 @@ async fn person_owned_schedule_guardian_changes_unbound_medicine_in_actual_house
     let mut source = origin.source.clone().into_active_model();
     source.source_dosage_option_id = Set(Some(option.id));
     origin.source = source.update(&app.fixture.admin).await.unwrap();
-    let (invitation, token) = guardian_origin_invitation(&app, &origin).await;
-    Application::assert_status(
-        app.client
-            .post(format!(
-                "{}/api/v1/invitations/dependent-sharing/accept",
-                app.origin
-            ))
-            .bearer_auth(&origin.acceptance_bearer)
-            .json(&json!({"token":token,"subject_person_id":origin.child,"sharing_consent":true}))
-            .send()
-            .await
-            .unwrap(),
-        200,
-    )
-    .await;
     let mut new = app
         .fixture
         .medication
@@ -6094,8 +6137,101 @@ async fn person_owned_schedule_medicine_adapter_requires_current_local_stock_dos
     app.close().await;
 }
 
+fn assert_guardian_redaction(results: &[Value]) {
+    for result in results {
+        for field in [
+            "notes",
+            "pause_reason",
+            "pause_note",
+            "origin_household_id",
+            "origin_stock_id",
+            "origin_stock_portable_id",
+            "origin_schedule_id",
+            "medication_id",
+            "location_id",
+        ] {
+            assert!(
+                result["data"].get(field).is_none(),
+                "Safe clinical commands cannot disclose {field}"
+            );
+        }
+    }
+}
+
+async fn assert_guardian_audits(
+    app: &Application,
+    subject: i64,
+    id: &str,
+    token: &str,
+    revisions: &[i32],
+) -> (Vec<versions::Model>, i64) {
+    let declaration = current_declaration(app, subject).await.unwrap();
+    let scope = med_tracker::models::access::HouseholdScope {
+        actor: med_tracker::models::access::Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = med_tracker::models::access::begin(
+        &app.fixture.runtime,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        person_schedules::Entity::find_by_id(id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let audits = versions::Entity::find()
+        .filter(versions::Column::ItemType.eq("SharedPersonSchedule"))
+        .filter(versions::Column::ItemId.eq(subject))
+        .order_by_asc(versions::Column::Id)
+        .all(tenant.transaction())
+        .await
+        .unwrap();
+    assert_eq!(audits.len(), revisions.len());
+    for (audit, revision) in audits.iter().zip(revisions.iter().copied()) {
+        assert_eq!(audit.whodunnit, Some(app.fixture.account.id.to_string()));
+        assert_eq!(audit.actor_membership_id, None);
+        assert_eq!(audit.household_id, None);
+        assert_eq!(
+            audit.audit_context["actor_account_id"],
+            app.fixture.account.id
+        );
+        assert_eq!(audit.audit_context["actor_person_id"], app.fixture.adult.id);
+        assert_eq!(audit.audit_context["person_id"], subject);
+        assert_eq!(audit.audit_context["guardian_declaration_id"], declaration);
+        assert_eq!(audit.audit_context["clinical_revision"], revision);
+        assert_eq!(audit.audit_context["person_schedule_id"], id);
+        assert_eq!(audit.audit_context["request_id"], json!(audit.request_id));
+        assert!(
+            audit
+                .request_id
+                .as_ref()
+                .is_some_and(|value| !value.is_empty())
+        );
+        assert_eq!(audit.audit_context["authentication_method"], "oauth");
+        assert!(
+            audit.audit_context["session_reference"]
+                .as_str()
+                .unwrap()
+                .starts_with("oauth_grant:")
+        );
+    }
+    let safe = serde_json::to_string(&audits).unwrap();
+    assert!(!safe.contains("Synthetic protected canonical narrative"));
+    assert!(!safe.contains(token));
+    tenant.rollback().await.unwrap();
+    (audits, declaration)
+}
+
 #[tokio::test]
-async fn person_owned_schedule_current_guardian_can_edit_and_pause_without_origin_membership() {
+async fn person_owned_schedule_current_guardian_can_edit_without_origin_membership() {
     let app = Application::new().await;
     let origin = guardian_origin(&app).await;
     let token = origin.token;
@@ -6135,11 +6271,49 @@ async fn person_owned_schedule_current_guardian_can_edit_and_pause_without_origi
     );
     let edited = Application::assert_status(response, 200).await;
     assert_eq!(edited["data"]["dose_amount"], "3");
+    assert_guardian_redaction(&[edited]);
+    let private = person_schedules::Entity::find_by_id(&id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(private.dose_amount, Some(Decimal::new(3, 0)));
+    assert_eq!(
+        private.notes.as_deref(),
+        Some("Synthetic protected canonical narrative")
+    );
+    let safe = shared_schedule_states::Entity::find_by_id(&id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(safe.dose_amount, Some(Decimal::new(3, 0)));
+    assert_guardian_audits(&app, origin.child, &id, &token, &[2]).await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_without_origin_membership()
+ {
+    let app = Application::new().await;
+    let origin = guardian_origin(&app).await;
+    let token = origin.token;
+    let id = origin.plan;
+    assert_eq!(
+        household_memberships::Entity::find()
+            .filter(household_memberships::Column::HouseholdId.eq(origin.household.id))
+            .filter(household_memberships::Column::PersonId.eq(app.fixture.adult.id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    let endpoint = format!("{}/api/v1/auth/shared_schedules/{id}", app.origin);
     let paused = Application::assert_status(
         app.client
             .patch(&endpoint)
             .bearer_auth(&token)
-            .header("if-match", format!("\"person-schedule:{id}:2\""))
+            .header("if-match", format!("\"person-schedule:{id}:1\""))
             .json(&json!({"action": "pause"}))
             .send()
             .await
@@ -6157,7 +6331,7 @@ async fn person_owned_schedule_current_guardian_can_edit_and_pause_without_origi
         app.client
             .patch(&endpoint)
             .bearer_auth(&token)
-            .header("if-match", format!("\"person-schedule:{id}:3\""))
+            .header("if-match", format!("\"person-schedule:{id}:2\""))
             .json(&json!({"schedule":{"dose_amount":"4"}}))
             .send()
             .await
@@ -6177,7 +6351,7 @@ async fn person_owned_schedule_current_guardian_can_edit_and_pause_without_origi
         app.client
             .patch(&endpoint)
             .bearer_auth(&token)
-            .header("if-match", format!("\"person-schedule:{id}:4\""))
+            .header("if-match", format!("\"person-schedule:{id}:3\""))
             .json(&json!({"action":"resume"}))
             .send()
             .await
@@ -6197,26 +6371,9 @@ async fn person_owned_schedule_current_guardian_can_edit_and_pause_without_origi
     assert_eq!(closure.actor_account_id, app.fixture.account.id);
     assert_eq!(closure.actor_person_id, app.fixture.adult.id);
     assert_eq!(closure.actor_membership_id, None);
-    assert_eq!(closure.clinical_revision, 5);
+    assert_eq!(closure.clinical_revision, 4);
     assert_eq!(closure.person_schedule_id, id);
-    for result in [edited, paused, during_pause, resumed] {
-        for field in [
-            "notes",
-            "pause_reason",
-            "pause_note",
-            "origin_household_id",
-            "origin_stock_id",
-            "origin_stock_portable_id",
-            "origin_schedule_id",
-            "medication_id",
-            "location_id",
-        ] {
-            assert!(
-                result["data"].get(field).is_none(),
-                "Safe clinical commands cannot disclose {field}"
-            );
-        }
-    }
+    assert_guardian_redaction(&[paused, during_pause, resumed]);
     let private = person_schedules::Entity::find_by_id(&id)
         .one(&app.fixture.admin)
         .await
@@ -6227,70 +6384,10 @@ async fn person_owned_schedule_current_guardian_can_edit_and_pause_without_origi
         Some("Synthetic protected canonical narrative")
     );
     assert!(private.active);
-    let declaration = current_declaration(&app, origin.child).await.unwrap();
-    let scope = med_tracker::models::access::HouseholdScope {
-        actor: med_tracker::models::access::Actor {
-            account_id: app.fixture.account.id,
-        },
-        household_id: app.fixture.household.id,
-        request_id: uuid::Uuid::new_v4().to_string(),
-    };
-    let tenant = med_tracker::models::access::begin(
-        &app.fixture.runtime,
-        &scope,
-        app.context.config.settings.as_ref(),
-    )
-    .await
-    .unwrap();
-    assert!(
-        person_schedules::Entity::find_by_id(&id)
-            .one(tenant.transaction())
-            .await
-            .unwrap()
-            .is_none()
-    );
-    let audits = versions::Entity::find()
-        .filter(versions::Column::ItemType.eq("SharedPersonSchedule"))
-        .filter(versions::Column::ItemId.eq(origin.child))
-        .order_by_asc(versions::Column::Id)
-        .all(tenant.transaction())
-        .await
-        .unwrap();
-    assert_eq!(audits.len(), 4);
+    let (audits, declaration) =
+        assert_guardian_audits(&app, origin.child, &id, &token, &[2, 3, 4]).await;
     assert_eq!(closure.guardian_declaration_id, Some(declaration));
-    assert_eq!(closure.request_id, audits[3].request_id.as_deref().unwrap());
-    for (audit, revision) in audits.iter().zip([2, 3, 4, 5]) {
-        assert_eq!(audit.whodunnit, Some(app.fixture.account.id.to_string()));
-        assert_eq!(audit.actor_membership_id, None);
-        assert_eq!(audit.household_id, None);
-        assert_eq!(
-            audit.audit_context["actor_account_id"],
-            app.fixture.account.id
-        );
-        assert_eq!(audit.audit_context["actor_person_id"], app.fixture.adult.id);
-        assert_eq!(audit.audit_context["person_id"], origin.child);
-        assert_eq!(audit.audit_context["guardian_declaration_id"], declaration);
-        assert_eq!(audit.audit_context["clinical_revision"], revision);
-        assert_eq!(audit.audit_context["person_schedule_id"], id);
-        assert_eq!(audit.audit_context["request_id"], json!(audit.request_id));
-        assert!(
-            audit
-                .request_id
-                .as_ref()
-                .is_some_and(|value| !value.is_empty())
-        );
-        assert_eq!(audit.audit_context["authentication_method"], "oauth");
-        assert!(
-            audit.audit_context["session_reference"]
-                .as_str()
-                .unwrap()
-                .starts_with("oauth_grant:")
-        );
-    }
-    let safe = serde_json::to_string(&audits).unwrap();
-    assert!(!safe.contains("Synthetic protected canonical narrative"));
-    assert!(!safe.contains(&token));
-    tenant.rollback().await.unwrap();
+    assert_eq!(closure.request_id, audits[2].request_id.as_deref().unwrap());
     app.close().await;
 }
 
