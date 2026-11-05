@@ -9,6 +9,8 @@ pub struct RateLimitResponse {
 pub struct RateLimitError {
     pub code: &'static str,
     pub message: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trace_id: Option<String>,
 }
 
 impl Default for RateLimitResponse {
@@ -17,6 +19,7 @@ impl Default for RateLimitResponse {
             error: RateLimitError {
                 code: "rate_limited",
                 message: "Too many requests",
+                trace_id: crate::telemetry::ids::current_trace_id(),
             },
         }
     }
@@ -28,6 +31,7 @@ impl RateLimitResponse {
             error: RateLimitError {
                 code: "service_unavailable",
                 message: "Client source unavailable",
+                trace_id: crate::telemetry::ids::current_trace_id(),
             },
         }
     }

@@ -4,6 +4,45 @@ use tracing::instrument::WithSubscriber;
 #[path = "../support/request_trace_capture.rs"]
 pub(super) mod capture;
 
+#[tokio::test]
+async fn api_errors_match_response_trace_header_with_and_without_valid_parent()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (fixture, boot) = boot_request_fixture().await;
+    let request = server(&boot);
+    let path = format!("/api/v1/households/{}/medications", fixture.household.id);
+    let (missing, valid, malformed) = tokio::join!(
+        request.get(&path),
+        request.get(&path).add_header(
+            "traceparent",
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        ),
+        request.get(&path).add_header("traceparent", "malformed")
+    );
+    let mut traces = Vec::new();
+    for response in [&missing, &valid, &malformed] {
+        assert_eq!(response.status_code(), 401);
+        let header = response
+            .header("x-medtracker-trace-id")
+            .to_str()?
+            .to_owned();
+        let body: serde_json::Value = response.json();
+        assert_eq!(body["error"]["code"], "unauthorized");
+        assert_eq!(body["error"]["trace_id"], header);
+        assert_eq!(header.len(), 32);
+        assert!(
+            header
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        );
+        traces.push(header);
+    }
+    assert_eq!(traces[1], "4bf92f3577b34da6a3ce929d0e0e4736");
+    assert_ne!(traces[0], traces[1]);
+    assert_ne!(traces[0], traces[2]);
+    fixture.close().await;
+    Ok(())
+}
+
 #[tokio::test(flavor = "current_thread")]
 async fn request_trace_correlates_booted_completion_without_private_input()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -89,6 +128,7 @@ async fn request_trace_correlates_booted_completion_without_private_input()
     );
     let failed_header = failed.header("x-medtracker-trace-id");
     let failed_trace = failed_header.to_str()?;
+    assert_eq!(failed_body["error"]["trace_id"], failed_trace);
     assert!(failed_trace.len() == 32 && failed_trace.chars().all(|c| c.is_ascii_hexdigit()));
     assert_ne!(failed_trace, first_trace);
     assert_ne!(failed_trace, second_trace);

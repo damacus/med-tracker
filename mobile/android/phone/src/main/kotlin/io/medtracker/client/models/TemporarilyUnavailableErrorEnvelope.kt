@@ -23,13 +23,17 @@ import com.squareup.moshi.JsonClass
  * 
  *
  * @param error 
+ * @param traceId 
  */
 
 
 data class TemporarilyUnavailableErrorEnvelope (
 
     @Json(name = "error")
-    val error: TemporarilyUnavailableErrorEnvelope.Error
+    val error: TemporarilyUnavailableErrorEnvelope.Error,
+
+    @Json(name = "trace_id")
+    val traceId: kotlin.String? = null
 
 ) {
 

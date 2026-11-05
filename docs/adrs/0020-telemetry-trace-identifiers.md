@@ -36,6 +36,22 @@ lowercase hexadecimal trace ID. Clients and administrators can quote it to
 locate the exact request in logs and traces. The field is additive: existing
 `code`, `message` and specialised error components are unchanged.
 
+For standard object-valued error envelopes the field is `error.trace_id`.
+Existing flat error formats, including string-valued `error` fields, gain a
+top-level `trace_id` instead. Status codes, authentication headers and the
+independent `request_id` retain their existing behaviour. Successful response
+bodies are unchanged. Existing empty or non-JSON error responses are not wrapped
+as JSON; their trace reference remains in the response header.
+
+The request boundary owns the identifier. Error responses reuse its validated
+trace context, including when export is disabled, rather than generating a
+second identifier. Generated and hand-written clients accept an absent
+`trace_id` when communicating with an older server.
+
+An idempotent replay uses the current HTTP request's trace ID. The new trace
+field is excluded from retained-payload equality; existing error fields,
+request-ID behaviour and domain effects keep their replay semantics.
+
 `docs/api/openapi.v1.yaml`, the mirrored
 `mobile/android/openapi.v1.yaml`, and the generated clients are updated
 together with the change that emits the field.

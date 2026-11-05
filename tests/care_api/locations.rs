@@ -309,10 +309,17 @@ async fn location_api_saved_nonobject_error_replays_without_panic() {
         .send()
         .await;
     let observed = match replay {
-        Ok(response) => Some((
-            response.status().as_u16(),
-            response.json::<Value>().await.unwrap_or(Value::Null),
-        )),
+        Ok(response) => {
+            let status = response.status().as_u16();
+            let trace = response.headers()["x-medtracker-trace-id"]
+                .to_str()
+                .unwrap()
+                .to_owned();
+            let mut body = response.json::<Value>().await.unwrap_or(Value::Null);
+            assert_eq!(body["trace_id"], trace);
+            body.as_object_mut().unwrap().remove("trace_id");
+            Some((status, body))
+        }
         Err(_) => None,
     };
     let effect = app.fixture.effect().await;

@@ -25,6 +25,7 @@ import com.squareup.moshi.JsonClass
  * @param code 
  * @param message 
  * @param requestId 
+ * @param traceId 
  */
 
 
@@ -37,7 +38,10 @@ data class PushTestFailedError (
     val message: PushTestFailedError.Message,
 
     @Json(name = "request_id")
-    val requestId: kotlin.String
+    val requestId: kotlin.String,
+
+    @Json(name = "trace_id")
+    val traceId: kotlin.String? = null
 
 ) {
 

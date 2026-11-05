@@ -178,10 +178,13 @@ pub(super) fn error(error: Failure, request_id: &str) -> Response {
 
 pub(super) fn success(
     status: StatusCode,
-    body: Value,
+    mut body: Value,
     request_id: &str,
     etag: Option<String>,
 ) -> Response {
+    if status.is_client_error() || status.is_server_error() {
+        crate::telemetry::ids::enrich_error(&mut body);
+    }
     let mut response = (status, AxumJson(body)).into_response();
     response.headers_mut().insert(
         "x-request-id",

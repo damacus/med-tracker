@@ -26,6 +26,7 @@ import com.squareup.moshi.JsonClass
  *
  * @param results 
  * @param error 
+ * @param traceId 
  */
 
 
@@ -35,7 +36,10 @@ data class MedicationLookupUnavailableResponse (
     val results: kotlin.collections.List<MedicationLookupResult>,
 
     @Json(name = "error")
-    val error: MedicationLookupUnavailableError
+    val error: MedicationLookupUnavailableError,
+
+    @Json(name = "trace_id")
+    val traceId: kotlin.String? = null
 
 ) {
 

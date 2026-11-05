@@ -335,6 +335,54 @@ atomics so collection never blocks request handling.
 - **THEN** metric recovery is not reported
 - **AND** one metric recovery record follows actual metric export success
 
+### Requirement: JSON API errors expose the request trace identifier
+
+JSON API errors SHALL expose the request boundary's 32 lowercase hexadecimal
+W3C trace identifier, equal to `x-medtracker-trace-id` and diagnostic log IDs.
+Object-valued error envelopes SHALL add `error.trace_id`; flat formats SHALL
+add a top-level `trace_id`. Clients SHALL accept its absence on older servers.
+
+#### Scenario: Error correlation with export disabled
+
+- **GIVEN** trace export is disabled
+- **WHEN** an API request fails
+- **THEN** its error body, trace header and diagnostic logs carry the same ID
+- **AND** the ID is reused from the request boundary rather than minted again
+
+#### Scenario: Early and specialised errors
+
+- **GIVEN** authentication, extraction, validation, rate limiting or a server
+  failure produces a JSON API error
+- **WHEN** the response is returned
+- **THEN** the trace reference is present in the appropriate existing format
+- **AND** the original status and authentication headers are preserved
+- **AND** existing error fields and `request_id` retain their behaviour
+- **AND** successful bodies remain unchanged
+- **AND** empty or non-JSON errors retain their existing format and trace header
+
+#### Scenario: Inbound and concurrent request contexts
+
+- **GIVEN** concurrent requests with valid, missing or malformed `traceparent`
+- **WHEN** their error responses are produced
+- **THEN** valid parents retain their trace ID
+- **AND** missing or malformed parents receive distinct generated IDs
+- **AND** one request's ID does not appear in another request's response
+
+#### Scenario: Client compatibility
+
+- **GIVEN** generated or hand-written clients receive an API error
+- **WHEN** the server includes a trace ID
+- **THEN** the decoded error exposes that reference
+- **AND** older responses without the field still decode successfully
+
+#### Scenario: Replayed error response
+
+- **GIVEN** an idempotent request replays a retained error result
+- **WHEN** the response is produced
+- **THEN** its trace reference matches the current request's header and logs
+- **AND** the retained error fields and existing request-ID behaviour are preserved
+- **AND** replay does not duplicate domain effects
+
 ### Requirement: Domain events use named records with a stable outcome vocabulary
 
 Domain events SHALL be emitted as log records (and span events where a span

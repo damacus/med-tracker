@@ -392,6 +392,11 @@ async fn capability_database_lookup_failure_uses_existing_unavailable_envelope()
     let cache_control = unavailable.header("cache-control").to_owned();
     let pragma = unavailable.header("pragma").to_owned();
     let request_id = unavailable.header("x-request-id").to_owned();
+    let trace_id = unavailable
+        .header("x-medtracker-trace-id")
+        .to_str()
+        .unwrap()
+        .to_owned();
     let body: Value = unavailable.json();
     let effects_after = global_effects(&fixture).await;
     let credentials_after = credential_counts(&fixture).await;
@@ -403,7 +408,10 @@ async fn capability_database_lookup_failure_uses_existing_unavailable_envelope()
     assert_eq!(cache_control, "no-store");
     assert_eq!(pragma, "no-cache");
     assert!(!request_id.is_empty());
-    assert_eq!(body, json!({"error":"temporarily_unavailable"}));
+    assert_eq!(
+        body,
+        json!({"error":"temporarily_unavailable", "trace_id":trace_id})
+    );
     assert_eq!(effects_after, effects);
     assert_eq!(credentials_after, credentials);
 }

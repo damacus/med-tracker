@@ -183,15 +183,58 @@ impl ApiClient {
         retry_after: Option<String>,
         response: reqwest::Response,
     ) -> ApiError {
-        match response.json::<ErrorEnvelope>().await {
-            Ok(envelope) => ApiError::Server {
+        let body = match response.bytes().await {
+            Ok(body) => body,
+            Err(error) => return ApiError::Http(error),
+        };
+        if let Ok(envelope) = serde_json::from_slice::<ErrorEnvelope>(&body) {
+            ApiError::Server {
                 status,
                 code: envelope.error.code,
                 message: envelope.error.message,
                 request_id: envelope.error.request_id,
+                trace_id: envelope.error.trace_id,
                 retry_after,
-            },
-            Err(error) => ApiError::Http(error),
+            }
+        } else {
+            let value: serde_json::Value = serde_json::from_slice(&body).unwrap_or_default();
+            let text = |key: &str| {
+                value
+                    .get(key)
+                    .and_then(serde_json::Value::as_str)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_owned)
+            };
+            let scalar = text("error");
+            let oauth_code = scalar
+                .as_ref()
+                .filter(|error| {
+                    matches!(
+                        error.as_str(),
+                        "invalid_request"
+                            | "invalid_client"
+                            | "invalid_grant"
+                            | "temporarily_unavailable"
+                    )
+                })
+                .cloned();
+            let flat = text("code").zip(text("message"));
+            let recognised = flat.is_some() || scalar.is_some();
+            ApiError::Server {
+                status,
+                code: flat
+                    .as_ref()
+                    .map(|(code, _)| code.clone())
+                    .or(oauth_code)
+                    .unwrap_or_else(|| format!("http_{status}")),
+                message: flat
+                    .map(|(_, message)| message)
+                    .or_else(|| recognised.then(|| text("error_description")).flatten())
+                    .unwrap_or_else(|| format!("Request failed (HTTP {status}).")),
+                request_id: recognised.then(|| text("request_id")).flatten(),
+                trace_id: recognised.then(|| text("trace_id")).flatten(),
+                retry_after,
+            }
         }
     }
 }
@@ -365,6 +408,76 @@ mod tests {
                 ..
             }) if code == "unauthorized" && request_id.as_deref() == Some("req-test")
         ));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn error_trace_ids_survive_nested_flat_and_old_server_responses()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let server = MockServer::start().await;
+        let trace = "4bf92f3577b34da6a3ce929d0e0e4736";
+        for (path, body) in [
+            (
+                "/nested",
+                serde_json::json!({"error":{"code":"forbidden","message":"Denied","trace_id":trace}}),
+            ),
+            (
+                "/flat",
+                serde_json::json!({"code":"FORBIDDEN","message":"Denied","trace_id":trace}),
+            ),
+            (
+                "/scalar",
+                serde_json::json!({"error":"invalid_grant","trace_id":trace}),
+            ),
+            (
+                "/throttle",
+                serde_json::json!({"error":"Too many authentication attempts. Try again later.","trace_id":trace}),
+            ),
+            (
+                "/lookup",
+                serde_json::json!({"results":[],"error":"Medication search is temporarily unavailable.","trace_id":trace}),
+            ),
+            (
+                "/old",
+                serde_json::json!({"error":{"code":"forbidden","message":"Denied"}}),
+            ),
+            (
+                "/unknown",
+                serde_json::json!({"private":"sentinel","trace_id":trace}),
+            ),
+        ] {
+            Mock::given(method("GET"))
+                .and(wiremock::matchers::path(path))
+                .respond_with(ResponseTemplate::new(403).set_body_json(body))
+                .mount(&server)
+                .await;
+        }
+        Mock::given(method("GET"))
+            .and(wiremock::matchers::path("/malformed"))
+            .respond_with(ResponseTemplate::new(403).set_body_string("private non-json"))
+            .mount(&server)
+            .await;
+        let client = ApiClient::new(server.uri(), None)?;
+        for path in ["/nested", "/flat", "/scalar", "/throttle", "/lookup"] {
+            let result = client.get_json::<serde_json::Value>(path).await;
+            assert!(
+                matches!(result, Err(ApiError::Server { trace_id: Some(ref id), .. }) if id == trace)
+            );
+        }
+        for path in ["/throttle", "/lookup"] {
+            let result = client.get_json::<serde_json::Value>(path).await;
+            assert!(
+                matches!(result, Err(ApiError::Server { ref code, ref message, .. })
+                if code == "http_403" && message == "Request failed (HTTP 403).")
+            );
+        }
+        for path in ["/old", "/unknown", "/malformed"] {
+            let result = client.get_json::<serde_json::Value>(path).await;
+            assert!(matches!(
+                result,
+                Err(ApiError::Server { trace_id: None, .. })
+            ));
+        }
         Ok(())
     }
 
