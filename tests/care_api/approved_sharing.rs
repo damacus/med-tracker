@@ -5588,7 +5588,7 @@ async fn person_owned_schedule_guardian_changes_unbound_medicine_in_actual_house
         .unwrap();
     let response=app.client.patch(format!("{}/api/v1/households/{}/shared_schedules/{}/medicine",app.origin,app.fixture.household.id,origin.plan))
         .bearer_auth(&origin.token).header("if-match",format!("\"person-schedule:{}:1\"",origin.plan))
-        .json(&json!({"medication_id":new.id,"medication_etag":medication_etag,"dose_amount":"3","dose_unit":"mg"})).send().await.unwrap();
+        .json(&json!({"medication_id":new.id,"medication_etag":medication_etag,"dose_amount":"3","dose_unit":"mg"})).timeout(std::time::Duration::from_secs(15)).send().await.unwrap();
     let status = response.status().as_u16();
     println!("current-household guardian medicine route HTTP status: {status}");
     let changed = Application::assert_status(response, 200).await;
@@ -6262,6 +6262,7 @@ async fn person_owned_schedule_current_guardian_can_edit_without_origin_membersh
         .bearer_auth(&token)
         .header("if-match", format!("\"person-schedule:{id}:1\""))
         .json(&json!({"schedule": {"dose_amount": "3"}}))
+        .timeout(std::time::Duration::from_secs(15))
         .send()
         .await
         .unwrap();
@@ -6315,6 +6316,7 @@ async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_withou
             .bearer_auth(&token)
             .header("if-match", format!("\"person-schedule:{id}:1\""))
             .json(&json!({"action": "pause"}))
+            .timeout(std::time::Duration::from_secs(15))
             .send()
             .await
             .unwrap(),
@@ -6333,6 +6335,7 @@ async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_withou
             .bearer_auth(&token)
             .header("if-match", format!("\"person-schedule:{id}:2\""))
             .json(&json!({"schedule":{"dose_amount":"4"}}))
+            .timeout(std::time::Duration::from_secs(15))
             .send()
             .await
             .unwrap(),
@@ -6353,6 +6356,7 @@ async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_withou
             .bearer_auth(&token)
             .header("if-match", format!("\"person-schedule:{id}:3\""))
             .json(&json!({"action":"resume"}))
+            .timeout(std::time::Duration::from_secs(15))
             .send()
             .await
             .unwrap(),
