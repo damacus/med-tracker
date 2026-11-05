@@ -132,12 +132,14 @@ async fn data(
     data["household_name"] = json!(&household_name);
     data["admin_section"] = json!("audit");
     data["invalid_field"] = json!("");
+    data["invalid_draft"] = json!(false);
     let audit_title = labels["administration"]["audit"]["title"]
         .as_str()
         .ok_or(OperationError::Unavailable)?;
     let mut error = None;
     let template = match screen {
         Screen::List(filter) => {
+            data["event_types"] = json!(administration::audit_logs::event_types(tenant).await?);
             let page = administration::audit_logs::browse(tenant, &filter).await?;
             let rows = summaries(&page.rows, &labels, language)?;
             data["title"] = json!(format!("{household_name} · {audit_title}"));
@@ -153,6 +155,8 @@ async fn data(
             "administration/audit_logs/index.html"
         }
         Screen::Invalid(draft, validation) => {
+            data["event_types"] = json!(administration::audit_logs::event_types(tenant).await?);
+            data["invalid_draft"] = json!(true);
             data["title"] = json!(format!("{household_name} · {audit_title}"));
             data["next_url"] = Value::Null;
             data["filters"] = json!(draft);
