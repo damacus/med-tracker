@@ -93,12 +93,10 @@
     const header = document.querySelector('.shell-header');
     const sidebar = document.querySelector('.app-sidebar');
     const sidebarTrigger = document.querySelector('[data-sidebar-account]');
-    const template = document.getElementById('app-navigation-template');
     const layout = document.querySelector('[data-app-drawer-layout]');
-    if (!header || !template || !layout || !data?.labels || installed) return;
+    if (!header || !layout || !data?.labels || installed) return;
     const labels = data.labels;
-    const searchTrigger = header?.querySelector('[data-global-search-trigger]');
-    const securityLink = header?.querySelector('a[href="/account/security"]');
+    const securityLink = document.querySelector('[data-account-security-fallback]')?.cloneNode(true);
     const selected = data.selected_section;
     const menu = controls => {
       const list = element('ul', null, 'menu w-full');
@@ -241,6 +239,20 @@
           panel.classList.toggle('dropdown-bottom', trigger !== sidebarTrigger);
           panel.classList.toggle('dropdown-end', trigger !== sidebarTrigger);
         });
+        if (trigger.tagName === 'A') {
+          trigger.setAttribute('role', 'button');
+          trigger.setAttribute('aria-controls', panel.id);
+          trigger.addEventListener('click', event => {
+            event.preventDefault();
+            if (panel.matches(':popover-open')) panel.close();
+            else panel.showPopover({ source: trigger });
+          });
+          trigger.addEventListener('keydown', event => {
+            if (event.key !== ' ') return;
+            event.preventDefault();
+            trigger.click();
+          });
+        }
         trigger.addEventListener('keydown', event => {
           if (event.key !== 'ArrowDown') return;
           event.preventDefault();
@@ -248,6 +260,7 @@
           panel.querySelector('button, a[href]')?.focus({ preventScroll: true });
         });
         trigger.hidden = false;
+        trigger.disabled = false;
       }
       panel.addEventListener('beforetoggle', event => {
         if (event.newState !== 'open') return;
@@ -267,11 +280,10 @@
       return panel;
     };
     if (header) {
-      header.replaceChildren(template.content.cloneNode(true));
-      if (searchTrigger) header.querySelector('.app-header').insertBefore(searchTrigger, header.querySelector('[data-app-account]'));
       const drawerTrigger = header.querySelector('[data-app-drawer]');
       const navigationDrawer = drawer(drawerTrigger);
       drawerTrigger.setAttribute('aria-label', labels.mobile_menu.open_menu);
+      drawerTrigger.disabled = false;
       const navigation = element('nav');
       navigation.setAttribute('aria-label', labels.mobile_rail.primary_navigation);
       const profile = data.choices.find(item => item.id === 'profile');
@@ -282,7 +294,7 @@
       header.querySelector('[data-account-name]').textContent = data.name;
       const avatar = header.querySelector('[data-profile-avatar]');
       avatar.classList.add('relative');
-      avatar.append(element('span', data.initials));
+      if (data.initials) avatar.replaceChildren(element('span', data.initials));
       if (data.avatar_attached || data.gravatar_url) {
         const image = element('img');
         image.src = data.avatar_attached ? `/households/${data.slug}/profile/avatar` : data.gravatar_url;
@@ -307,6 +319,7 @@
       sidebar.querySelector('[data-sidebar-name]').textContent = data.name;
       sidebar.querySelector('[data-sidebar-avatar]').replaceChildren(...[...header.querySelector('[data-profile-avatar]').childNodes].map(node => node.cloneNode(true)));
       sidebar.querySelector('[data-sidebar-profile]').hidden = true;
+      sidebar.querySelector('[data-sidebar-security]').hidden = true;
       const signOut = sidebar.querySelector('form[action="/logout"]');
       if (signOut) {
         signOut.querySelector("button").textContent = labels.sidebar.sign_out;
@@ -316,7 +329,7 @@
     const accountTriggers = [header.querySelector('[data-app-account]'), ...(sidebarTrigger ? [sidebarTrigger] : [])];
     const account = dropdown(accountTriggers);
     const accountControls = [];
-    for (const trigger of accountTriggers) trigger.setAttribute('aria-label', `${data.initials} ${data.name} ${labels.profile_menu.my_account}`);
+    for (const trigger of accountTriggers) trigger.setAttribute('aria-label', [data.initials, data.name, labels.profile_menu.my_account].filter(Boolean).join(' '));
     if (securityLink) {
       securityLink.className = 'min-w-0 whitespace-normal wrap-anywhere';
       accountControls.push(securityLink);
@@ -353,6 +366,25 @@
     account.append(logout());
     document.querySelector('[data-profile-navigation-fallback]')?.remove();
     document.body.dataset.navigationReady = 'true';
+    delete document.body.dataset.navigationFailed;
     installed = true;
   });
+  const standalone = document.querySelector('[data-standalone-navigation]');
+  if (standalone) {
+    const header = document.querySelector('.shell-header');
+    const accountName = header.querySelector('[data-account-name]').textContent;
+    document.dispatchEvent(new CustomEvent('app-navigation', { detail: {
+      labels: {
+        sidebar: { sign_out: standalone.querySelector('button[type="submit"]').textContent },
+        mobile_menu: { brand: header.querySelector('.app-brand').textContent, open_menu: header.querySelector('[data-app-drawer]').getAttribute('aria-label'), close_menu: standalone.dataset.closeMenu },
+        mobile_rail: { primary_navigation: standalone.getAttribute('aria-label') },
+        profile_menu: { my_account: accountName },
+      },
+      name: accountName,
+      navigation_label: standalone.getAttribute('aria-label'),
+      authenticity_token: standalone.querySelector('[name="authenticity_token"]').value,
+      sidebar: [...standalone.querySelectorAll('[data-section]')].map(anchor => ({ id: anchor.dataset.section, href: anchor.getAttribute('href'), label: anchor.textContent })),
+      choices: [],
+    } }));
+  }
 })();

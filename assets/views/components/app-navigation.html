@@ -1,7 +1,6 @@
-<template id="app-navigation-template">
   <div class="shell-width shell-header-inner app-header">
-    <button type="button" class="btn btn-ghost app-menu-trigger" data-app-drawer aria-haspopup="dialog" aria-controls="app-drawer" aria-expanded="false"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <button type="button" class="btn btn-ghost app-menu-trigger" data-app-drawer aria-label="{% if labels %}{{ labels.layouts.mobile_menu.open_menu }}{% else %}Open menu{% endif %}" aria-haspopup="dialog" aria-controls="app-drawer" aria-expanded="false" disabled><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     <a href="/" class="text-xl font-semibold app-brand" aria-label="{% if labels %}{{ labels.layouts.navigation.home_link }}{% else %}MedTracker home{% endif %}">MedTracker</a>
-    <button type="button" class="btn btn-ghost app-account-trigger" data-app-account aria-haspopup="dialog" aria-controls="app-account" aria-expanded="false"><span class="app-avatar" data-profile-avatar aria-hidden="true"></span> <span data-account-name></span></button>
+    {% if slug %}<button type="button" class="btn btn-outline" data-global-search-trigger aria-label="{% if labels %}{{ labels.global_search.open }}{% else %}Open global search{% endif %}" aria-controls="global_search_panel" aria-expanded="false">{% if labels %}{{ labels.global_search.open_short }}{% else %}Search{% endif %}</button>{% endif %}
+    <a href="/account/security" class="btn btn-ghost app-account-trigger" data-app-account aria-label="{% if labels %}{{ labels.layouts.profile_menu.my_account }}{% else %}My Account{% endif %}"><span class="app-avatar" data-profile-avatar aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#profile"/></svg></span> <span data-account-name>{% if labels %}{{ labels.layouts.profile_menu.my_account }}{% else %}My Account{% endif %}</span></a>
   </div>
-</template>

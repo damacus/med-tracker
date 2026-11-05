@@ -9,24 +9,27 @@
     <script src="/static/js/appearance.js"></script>
     <script src="/static/js/avatar-image.js"></script>
     <link rel="stylesheet" href="/static/css/compiled.css">
+    <noscript><link rel="stylesheet" href="/static/css/navigation-fallback.css"></noscript>
     <script src="/static/js/interaction.js" defer></script>
     <script src="/static/js/mobile-shortcuts.js" defer></script>
     <script src="/static/js/app-navigation.js" defer></script>
     {% if canary_enabled | default(value=false) %}<script src="/static/js/canary.js" defer></script>{% endif %}
   </head>
   <body{% if slug %} class="app-household"{% endif %}>
-    {% if slug %}<div class="drawer" data-app-drawer-layout><input id="app-drawer-toggle" type="checkbox" class="drawer-toggle" tabindex="-1" aria-hidden="true"><div class="drawer-content">{% endif %}
+    {% if slug or standalone_navigation | default(value=false) %}<div class="drawer" data-app-drawer-layout><input id="app-drawer-toggle" type="checkbox" class="drawer-toggle" tabindex="-1" aria-hidden="true"><div class="drawer-content">{% endif %}
     <a href="#main" class="skip-link">{% if labels %}{{ labels.layouts.navigation.skip_to_content }}{% else %}Skip to content{% endif %}</a>
     {% block header %}
     {% if slug %}{% include "components/app-sidebar.html" %}{% endif %}
     <header class="shell-header">
+      {% if slug or standalone_navigation | default(value=false) %}{% include "components/app-navigation.html" %}{% else %}
       <div class="shell-width shell-header-inner">
         <a href="/" class="text-xl font-semibold" aria-label="{% if labels %}{{ labels.layouts.navigation.home_link }}{% else %}MedTracker home{% endif %}">MedTracker</a>
         <a class="link" href="/account/security">{% if labels %}{{ labels.profiles.account_security.title }}{% else %}Account security{% endif %}</a>
-        {% if slug %}{% block search_trigger %}<button type="button" class="btn btn-outline" data-global-search-trigger aria-label="{% if labels %}{{ labels.global_search.open }}{% else %}Open global search{% endif %}" aria-controls="global_search_panel" aria-expanded="false">{% if labels %}{{ labels.global_search.open_short }}{% else %}Search{% endif %}</button>{% endblock search_trigger %}{% endif %}
       </div>
+      {% endif %}
     </header>
     {% endblock header %}
+    {% if standalone_navigation | default(value=false) %}{% include "components/standalone-navigation.html" %}{% endif %}
     {% if slug %}
     <dialog id="global_search_panel" aria-label="{% if labels %}{{ labels.global_search.dialog_label }}{% else %}Global search{% endif %}" data-global-search data-household="{{ slug }}" data-search-url="/households/{{ slug }}/search.json" data-labels-ready="{% if labels %}true{% else %}false{% endif %}" data-loading="{% if labels %}{{ labels.global_search.loading }}{% else %}Searching...{% endif %}" data-no-results="{% if labels %}{{ labels.global_search.no_results }}{% else %}No results{% endif %}" data-error="{% if labels %}{{ labels.global_search.error }}{% else %}Search is unavailable. Please try again.{% endif %}" data-retry="{% if labels %}{{ labels.global_search.retry }}{% else %}Retry search{% endif %}" data-result-one="{% if labels %}{{ labels.global_search.results.one }}{% else %}1 result{% endif %}" data-result-other="{% if labels %}{{ labels.global_search.results.other }}{% else %}%{count} results{% endif %}" data-type-command="{% if labels %}{{ labels.global_search.types.command }}{% else %}Commands{% endif %}" data-type-person="{% if labels %}{{ labels.global_search.types.person }}{% else %}People{% endif %}" data-type-medication="{% if labels %}{{ labels.global_search.types.medication }}{% else %}Medications{% endif %}" data-type-person-medication="{% if labels %}{{ labels.global_search.types.person_medication }}{% else %}Person medications{% endif %}" data-type-schedule="{% if labels %}{{ labels.global_search.types.schedule }}{% else %}Schedules{% endif %}" data-type-location="{% if labels %}{{ labels.global_search.types.location }}{% else %}Locations{% endif %}" class="modal">
       <div class="modal-box w-11/12 max-w-2xl overflow-hidden p-0">
@@ -37,10 +40,9 @@
     </dialog>
     <script src="/static/js/global-search.js" defer></script>
     {% endif %}
-    {% include "components/app-navigation.html" %}
     <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% if canary_enabled | default(value=false) %}{% include "components/canary-notice.html" %}{% endif %}{% block content %}{% endblock content %}</main>
     {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · {% if labels %}{{ labels.layouts.navigation.care_tagline }}{% else %}Care, kept together.{% endif %}</div></footer>{% endblock footer %}
     {% block appearance %}{% endblock appearance %}
-    {% if slug %}</div><div class="drawer-side app-drawer-side" inert><label for="app-drawer-toggle" class="drawer-overlay" aria-hidden="true"></label><div id="app-drawer" class="app-navigation-panel app-drawer" role="dialog" aria-modal="true" tabindex="-1"></div></div></div>{% endif %}
+    {% if slug or standalone_navigation | default(value=false) %}</div><div class="drawer-side app-drawer-side" inert><label for="app-drawer-toggle" class="drawer-overlay" aria-hidden="true"></label><div id="app-drawer" class="app-navigation-panel app-drawer" role="dialog" aria-modal="true" tabindex="-1"></div></div></div>{% endif %}
   </body>
 </html>

@@ -68,6 +68,7 @@ async fn render(
         return unavailable();
     };
     let mut data = rendering::appearance_context();
+    data["standalone_navigation"] = json!(true);
     data["title"] = json!("NHS dm+d catalogue");
     data["authenticity_token"] = json!(authenticity);
     data["error"] = json!(error.map(crate::controllers::medications::forms::message));
