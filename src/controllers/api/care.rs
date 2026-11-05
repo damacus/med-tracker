@@ -533,15 +533,22 @@ async fn take(
         Ok(savepoint) => savepoint,
         Err(_) => return response::error(response::unavailable(), &request_id),
     };
+    let mut blocked = false;
     let result = match input {
-        Ok(command) => doses::execute_attempt_in_timezone(
+        Ok(command) => match doses::execute_attempt_in_timezone(
             &tenant,
             command,
             principal.time_zone(),
             Some(principal.provenance()),
         )
         .await
-        .map_err(response::operation),
+        {
+            Ok(outcome) => Ok(outcome),
+            Err(error) => {
+                blocked = matches!(error, OperationError::Validation { .. });
+                Err(response::operation(error))
+            }
+        },
         Err(error) => Err(error),
     };
     let result = match result {
@@ -575,14 +582,44 @@ async fn take(
     if savepoint_result.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    let response = finish(
-        tenant,
+    let status = match &result {
+        Ok((status, _, _)) => *status,
+        Err(error) => error.status,
+    };
+    if audit::record(
+        &tenant,
         principal.provenance(),
         audit::RequestAudit::take(),
-        result,
-        &request_id,
+        status,
     )
-    .await;
+    .await
+    .is_err()
+    {
+        if status == StatusCode::CREATED && tenant.rollback().await.is_ok() {
+            tracing::event!(
+                name: "medtracker.dose.rolled_back",
+                tracing::Level::INFO,
+                event.name = "medtracker.dose.rolled_back",
+                medtracker.outcome = "rolled_back",
+            );
+        }
+        return response::error(response::unavailable(), &request_id);
+    }
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    if blocked {
+        tracing::event!(
+            name: "medtracker.dose.blocked",
+            tracing::Level::INFO,
+            event.name = "medtracker.dose.blocked",
+            medtracker.outcome = "blocked",
+        );
+    }
+    let response = match result {
+        Ok((status, body, etag)) => response::success(status, body, &request_id, etag),
+        Err(error) => response::error(error, &request_id),
+    };
     match response.status() {
         StatusCode::CREATED => tracing::event!(
             name: "medtracker.dose.committed",
