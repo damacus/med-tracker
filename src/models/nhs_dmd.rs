@@ -5,13 +5,14 @@ pub mod storage;
 use crate::models::{entities::nhs_dmd_import, errors::OperationError};
 use async_trait::async_trait;
 use chrono::Utc;
+use import::{ImportFailure, ImportFailureCategory, ImportStage};
 use loco_rs::{
     app::AppContext,
     bgworker::BackgroundWorker,
     task::{Task, TaskInfo, Vars},
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, ExprTrait, QueryFilter,
     QueryOrder, QuerySelect, Set, Statement, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
@@ -21,6 +22,8 @@ use std::io::Write;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ImportArgs {
     pub run_id: i64,
+    #[serde(default)]
+    pub traceparent: Option<String>,
 }
 
 pub struct ImportWorker {
@@ -33,10 +36,14 @@ impl BackgroundWorker<ImportArgs> for ImportWorker {
         Self { ctx: ctx.clone() }
     }
     async fn perform(&self, args: ImportArgs) -> loco_rs::Result<()> {
-        crate::models::canary::work(&self.ctx).await?;
-        run(&self.ctx, args.run_id)
-            .await
-            .map_err(|_| loco_rs::Error::string("NHS catalogue import could not finish"))
+        let traceparent = args.traceparent.clone();
+        crate::telemetry::units::job_with_parent("import", traceparent.as_deref(), async {
+            crate::models::canary::work(&self.ctx).await?;
+            run(&self.ctx, args.run_id)
+                .await
+                .map_err(|_| loco_rs::Error::string("NHS catalogue import could not finish"))
+        })
+        .await
     }
 }
 
@@ -86,6 +93,8 @@ pub async fn upload(
         skipped_expired_count: Set(0),
         skipped_invalid_count: Set(0),
         skipped_missing_name_count: Set(0),
+        trace_id: Set(crate::telemetry::ids::current_traceparent()
+            .and_then(|value| crate::telemetry::ids::trace_id_from(Some(&value)))),
         ..Default::default()
     }
     .insert(&ctx.db)
@@ -109,9 +118,15 @@ pub async fn upload(
             );
         }
     };
-    if ImportWorker::perform_later(ctx, ImportArgs { run_id: row.id })
-        .await
-        .is_err()
+    if ImportWorker::perform_later(
+        ctx,
+        ImportArgs {
+            run_id: row.id,
+            traceparent: crate::telemetry::ids::current_traceparent(),
+        },
+    )
+    .await
+    .is_err()
     {
         import::fail_run(
             &ctx.db,
@@ -155,7 +170,11 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             import::fail_owned_run(
                 &ctx.db,
                 &row,
-                "The release archive is missing. Upload the release again.",
+                &ImportFailure::with_summary(
+                    ImportStage::Extract,
+                    ImportFailureCategory::ArchiveInvalid,
+                    "The release archive is missing. Upload the release again.",
+                ),
             )
             .await?;
         }
@@ -167,7 +186,7 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             import::fail_owned_run(
                 &ctx.db,
                 &row,
-                "Archive storage is unavailable. Upload the release again.",
+                &ImportFailure::new(ImportStage::Extract, ImportFailureCategory::Storage),
             )
             .await?;
             return Err(error);
@@ -184,7 +203,11 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             import::fail_owned_run(
                 &ctx.db,
                 &row,
-                "The release archive could not be read. Upload the release again.",
+                &ImportFailure::with_summary(
+                    ImportStage::Extract,
+                    ImportFailureCategory::Storage,
+                    "The release archive could not be read. Upload the release again.",
+                ),
             )
             .await?;
             cleanup(ctx, &store, &row).await?;
@@ -200,10 +223,41 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
             .map_err(|_| OperationError::Unavailable)?;
         import::run_import(ctx.db.clone(), id, file.path().to_path_buf()).await
     } else {
-        Err("Archive integrity verification failed".into())
+        Err(crate::models::nhs_dmd::import::ImportFailure::with_summary(
+            crate::models::nhs_dmd::import::ImportStage::Extract,
+            crate::models::nhs_dmd::import::ImportFailureCategory::ArchiveInvalid,
+            "Archive integrity verification failed",
+        ))
     };
-    if let Err(error) = result {
-        import::fail_owned_run(&ctx.db, &row, &error).await?;
+    match &result {
+        Err(error) => {
+            tracing::error!(
+                event.name = "medtracker.import.failed",
+                medtracker.import.run_id = row.id,
+                medtracker.import.stage = error.stage.name(),
+                error.type = error.category.name(),
+                medtracker.import.trace_id = row.trace_id.as_deref(),
+                "NHS dm+d import failed"
+            );
+            import::fail_owned_run(&ctx.db, &row, error).await?;
+        }
+        Ok(()) => {
+            let finished = nhs_dmd_import::Entity::find_by_id(row.id)
+                .one(&ctx.db)
+                .await
+                .map_err(|_| OperationError::Unavailable)?
+                .unwrap_or_else(|| row.clone());
+            tracing::info!(
+                event.name = "medtracker.import.completed",
+                medtracker.import.run_id = finished.id,
+                medtracker.import.trace_id = row.trace_id.as_deref(),
+                medtracker.import.created_count = finished.created_count,
+                medtracker.import.updated_count = finished.updated_count,
+                medtracker.import.imported_count = finished.imported_count,
+                medtracker.import.skipped_count = finished.skipped_count,
+                "NHS dm+d import completed"
+            );
+        }
     }
     cleanup(ctx, &store, &row).await?;
     lease.commit().await?;
@@ -241,8 +295,64 @@ async fn cleanup(
     Ok(())
 }
 
+/// `ImportArgs` for a reconcile requeue: joins the original request trace via
+/// a fresh span-id stand-in when the run stored one, so the retry shows under
+/// the upload's trace without rewriting `trace_id`.
+fn requeue_args(row: &nhs_dmd_import::Model) -> ImportArgs {
+    requeue_args_for(row.id, row.trace_id.as_deref())
+}
+
+fn requeue_args_for(run_id: i64, trace_id: Option<&str>) -> ImportArgs {
+    ImportArgs {
+        run_id,
+        traceparent: trace_id
+            .map(|trace_id| format!("00-{trace_id}-{}-01", crate::telemetry::ids::new_span_id())),
+    }
+}
+
 pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
-    ctx.db.execute_unprepared("UPDATE nhs_dmd_imports SET status=5,error_message='The import stopped making progress. Upload the release again.',completed_at=now(),updated_at=now() WHERE status IN (0,1,2,3) AND updated_at < now()-interval '30 minutes'").await?;
+    let stale_marked = nhs_dmd_import::Entity::update_many()
+        .col_expr(
+            nhs_dmd_import::Column::Status,
+            sea_orm::sea_query::Expr::value(5),
+        )
+        .col_expr(
+            nhs_dmd_import::Column::ErrorMessage,
+            sea_orm::sea_query::Expr::value(
+                "The import stopped making progress. Upload the release again.",
+            ),
+        )
+        .col_expr(
+            nhs_dmd_import::Column::CompletedAt,
+            sea_orm::sea_query::Expr::current_timestamp(),
+        )
+        .col_expr(
+            nhs_dmd_import::Column::UpdatedAt,
+            sea_orm::sea_query::Expr::current_timestamp(),
+        )
+        .filter(nhs_dmd_import::Column::Status.is_in([0, 1, 2, 3]))
+        .filter(
+            sea_orm::Condition::all().add(
+                sea_orm::sea_query::Expr::col(nhs_dmd_import::Column::UpdatedAt).lt(
+                    sea_orm::sea_query::Expr::current_timestamp().sub(
+                        sea_orm::sea_query::Expr::val("30 minutes")
+                            .cast_as(sea_orm::sea_query::Alias::new("interval")),
+                    ),
+                ),
+            ),
+        )
+        .exec_with_returning(&ctx.db)
+        .await?;
+    let stale_failed_count = stale_marked.len() as i64;
+    for marked in &stale_marked {
+        tracing::warn!(
+            event.name = "medtracker.import.stale",
+            medtracker.import.run_id = marked.id,
+            medtracker.import.trace_id = marked.trace_id.as_deref(),
+            error.type = ImportFailureCategory::Stale.name(),
+            "NHS dm+d import marked stale"
+        );
+    }
     let lease = ctx.db.begin().await?;
     let locked = lease
         .query_one_raw(Statement::from_string(
@@ -261,11 +371,18 @@ pub async fn reconcile(ctx: &AppContext) -> Result<(), OperationError> {
         .filter(nhs_dmd_import::Column::Status.gte(4))
         .all(&ctx.db)
         .await?;
-    for row in stale {
-        ImportWorker::perform_later(ctx, ImportArgs { run_id: row.id })
+    let requeued = stale.len() as i64;
+    for row in &stale {
+        ImportWorker::perform_later(ctx, requeue_args(row))
             .await
             .map_err(|_| OperationError::Unavailable)?;
     }
+    tracing::info!(
+        event.name = "medtracker.import.reconciled",
+        medtracker.import.requeued_count = requeued,
+        medtracker.import.stale_failed_count = stale_failed_count,
+        "NHS dm+d reconcile finished"
+    );
     Ok(())
 }
 
@@ -279,9 +396,42 @@ impl Task for ReconcileTask {
         }
     }
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> loco_rs::Result<()> {
-        crate::models::canary::work(ctx).await?;
-        reconcile(ctx)
-            .await
-            .map_err(|_| loco_rs::Error::string("NHS catalogue reconciliation failed"))
+        crate::telemetry::units::task("nhs_dmd_reconcile", async {
+            crate::models::canary::work(ctx).await?;
+            reconcile(ctx)
+                .await
+                .map_err(|_| loco_rs::Error::string("NHS catalogue reconciliation failed"))
+        })
+        .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ImportArgs, requeue_args_for};
+
+    #[test]
+    fn import_args_without_traceparent_deserialises() {
+        let args: ImportArgs = serde_json::from_str(r#"{"run_id": 42}"#).expect("legacy payload");
+        assert_eq!(args.run_id, 42);
+        assert!(args.traceparent.is_none());
+        let args: ImportArgs = serde_json::from_str(
+            r#"{"run_id": 42, "traceparent": "00-7fa01885bf8086b9a009c00c9ca89e1b-6dd454d737734ffa-01"}"#,
+        )
+        .expect("new payload");
+        assert!(args.traceparent.is_some());
+    }
+
+    #[test]
+    fn requeue_args_join_the_stored_trace() {
+        let args = requeue_args_for(7, Some("0123456789abcdef0123456789abcdef"));
+        let traceparent = args.traceparent.expect("traceparent for stored trace");
+        assert_eq!(
+            traceparent.split('-').nth(1),
+            Some("0123456789abcdef0123456789abcdef")
+        );
+        assert_eq!(traceparent.split('-').count(), 4);
+        assert_eq!(args.run_id, 7);
+        assert!(requeue_args_for(7, None).traceparent.is_none());
     }
 }

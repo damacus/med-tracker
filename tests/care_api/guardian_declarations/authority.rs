@@ -296,12 +296,13 @@ async fn schedule(
     let household = app.fixture.household.id;
     app.client.post(format!("{}/api/v1/households/{household}/schedules",app.origin)).bearer_auth(token)
         .json(&json!({"schedule":{"person_id":person_id.to_string(),"medication_id":app.fixture.medication.id.to_string(),"dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{},"dose_cycle":"daily"}}))
-        .send().await.map_err(|_|DbErr::Custom("Guardian plan request failed before response".into()))
+        .send().await.map_err(|error| DbErr::Custom(format!("Guardian plan request failed before response: {error:?}")))
 }
 
 #[tokio::test]
 async fn declared_guardian_manage_is_live_for_direct_and_aggregate_access() -> Result<(), DbErr> {
-    let app = Application::new().await;
+    let app = Application::new_single_connection(None).await;
+    let other = app.fixture.foreign_household().await;
     let household = app.fixture.household.id;
     let result=async {
         let token=app.token().await;
@@ -313,6 +314,22 @@ async fn declared_guardian_manage_is_live_for_direct_and_aggregate_access() -> R
         let person_id=body["data"]["id"].as_i64().ok_or_else(||DbErr::Custom("Created dependent ID missing".into()))?;
         let manages=capabilities(&app,&token).await?;
         require(manages["data"]["people"]["manage_ids"].as_array().is_some_and(|ids|ids.contains(&json!(person_id))),"A current initial guardian must appear in aggregate Manage without a legacy grant")?;
+        let mut membership = other.membership.clone().into_active_model().reset_all();
+        membership.id = sea_orm::NotSet;
+        membership.household_id = Set(household);
+        membership.role = Set("member".into());
+        membership.insert(&app.fixture.admin).await?;
+        let other_token = super::storage_boundary::foreign_token(&app, other.account.id).await?;
+        for _ in 0..3 {
+            let warmed = capabilities(&app, &token).await?;
+            require(warmed["data"]["people"]["manage_ids"].as_array().is_some_and(|ids|ids.contains(&json!(person_id))), "Current guardian must remain authorised on the reused connection")?;
+        }
+        let other_manages = capabilities(&app, &other_token).await?;
+        require(other_manages["data"]["people"]["manage_ids"].as_array().is_some_and(|ids|!ids.contains(&json!(person_id))), "Another active household member must not inherit guardian authority")?;
+        let other_plan = schedule(&app, &other_token, person_id).await?;
+        require(other_plan.status().as_u16()==403, "Another active household member cannot create the guardian plan")?;
+        let restored = capabilities(&app, &token).await?;
+        require(restored["data"]["people"]["manage_ids"].as_array().is_some_and(|ids|ids.contains(&json!(person_id))), "Switching back restores the current guardian authority")?;
         let response=schedule(&app,&token,person_id).await?;
         require(response.status().as_u16()==201,&format!("Current guardian must create a dependent plan, received{}",response.status().as_u16()))?;
         let plan:Value=response.json().await.map_err(|_|DbErr::Custom("Guardian plan response was not JSON".into()))?;
@@ -369,6 +386,26 @@ async fn declared_guardian_manage_is_live_for_direct_and_aggregate_access() -> R
         require(effects(&app).await?==before,"Denied plan write must preserve clinical and authority state")?;
         Ok(())
     }.await;
+    other.close().await;
     app.close().await;
     result
+}
+
+#[tokio::test]
+async fn guardian_plan_transport_failure_retains_request_error() {
+    let app = Application::new().await;
+    app.server.abort();
+    while !app.server.is_finished() {
+        tokio::task::yield_now().await;
+    }
+    let error = schedule(&app, "synthetic", app.fixture.minor.id)
+        .await
+        .expect_err("stopped server must fail");
+    let message = error.to_string();
+    let expected_url = app.origin.clone();
+    app.close().await;
+    assert!(
+        message.contains(&expected_url),
+        "missing request context: {message}"
+    );
 }

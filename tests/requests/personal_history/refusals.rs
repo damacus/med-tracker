@@ -58,7 +58,7 @@ async fn personal_history_unproved_identity_refusals_do_not_write_audit_rows() -
         .collect();
     assert_eq!(refusals.len(), 4);
     for trace in traces {
-        assert!(uuid::Uuid::parse_str(&trace).is_ok());
+        assert!(trace.len() == 32 && trace.chars().all(|c| c.is_ascii_hexdigit()));
         let event = refusals
             .iter()
             .find(|event| event.contains(&trace))
@@ -128,13 +128,13 @@ async fn personal_history_throttled_reads_record_anonymous_refusals_without_data
         .collect();
     assert_eq!(refusals.len(), 2);
     for trace in traces {
-        assert!(uuid::Uuid::parse_str(&trace).is_ok());
+        assert!(trace.len() == 32 && trace.chars().all(|c| c.is_ascii_hexdigit()));
         let event = refusals
             .iter()
             .find(|event| event.contains(&trace))
             .ok_or("missing correlated refusal")?;
         assert!(event.contains("rate_limited"));
-        assert!(event.contains("status=429"));
+        assert!(event.contains("http.response.status_code=429"));
         assert!(event.contains("outcome=\"denied\""));
         assert!(!event.contains("Clinical"));
         assert!(!event.contains("actor"));
@@ -188,7 +188,7 @@ async fn personal_history_missing_peer_reads_record_anonymous_refusals() -> Test
             .find(|event| event.contains(&trace))
             .ok_or("missing correlated refusal")?;
         assert!(event.contains("source_unavailable"));
-        assert!(event.contains("status=503"));
+        assert!(event.contains("http.response.status_code=503"));
         assert!(!event.contains("Clinical"));
         assert!(!event.contains("actor"));
         assert!(!event.contains("household"));

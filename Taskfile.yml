@@ -41,6 +41,9 @@ includes:
   openspec:
     taskfile: Taskfiles/openspec.yml
     dir: .
+  telemetry:
+    taskfile: Taskfiles/telemetry.yml
+    dir: .
 
 tasks:
   portable:prepare:

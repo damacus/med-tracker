@@ -85,9 +85,9 @@ fn unavailable<T: 'static>(error: T) -> SignupError {
         constraint = database.constraint().map(str::to_owned);
     }
     tracing::error!(
-        error_type = std::any::type_name::<T>(),
-        sql_state,
-        constraint,
+        error.type = std::any::type_name::<T>(),
+        medtracker.sql_state = sql_state,
+        medtracker.constraint = constraint,
         "Account setup operation failed"
     );
     SignupError::Unavailable

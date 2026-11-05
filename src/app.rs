@@ -25,7 +25,11 @@ impl Hooks for App {
     }
 
     fn app_version() -> String {
-        env!("CARGO_PKG_VERSION").to_string()
+        crate::telemetry::build_version()
+    }
+
+    fn init_logger(ctx: &AppContext) -> Result<bool> {
+        Ok(crate::telemetry::init::<Self>(ctx))
     }
 
     async fn boot(
@@ -83,6 +87,8 @@ impl Hooks for App {
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        let mut ctx = ctx;
+        crate::telemetry::db::install(&mut ctx.db);
         crate::models::canary::configure(&ctx).await?;
         let rate_limit = crate::models::rate_limit::RateLimitState::from_settings(
             ctx.config.settings.as_ref(),
@@ -215,5 +221,9 @@ impl Hooks for App {
 
     async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         crate::models::seed::seed(ctx, base).await
+    }
+
+    async fn on_shutdown(_ctx: &AppContext) {
+        crate::telemetry::shutdown().await;
     }
 }

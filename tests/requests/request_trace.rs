@@ -89,12 +89,12 @@ async fn request_trace_correlates_booted_completion_without_private_input()
     );
     let failed_header = failed.header("x-medtracker-trace-id");
     let failed_trace = failed_header.to_str()?;
-    assert!(uuid::Uuid::parse_str(failed_trace).is_ok());
+    assert!(failed_trace.len() == 32 && failed_trace.chars().all(|c| c.is_ascii_hexdigit()));
     assert_ne!(failed_trace, first_trace);
     assert_ne!(failed_trace, second_trace);
     assert!(!failed.text().contains(&unavailable_table));
-    assert!(uuid::Uuid::parse_str(first_trace).is_ok());
-    assert!(uuid::Uuid::parse_str(second_trace).is_ok());
+    assert!(first_trace.len() == 32 && first_trace.chars().all(|c| c.is_ascii_hexdigit()));
+    assert!(second_trace.len() == 32 && second_trace.chars().all(|c| c.is_ascii_hexdigit()));
     assert_ne!(first_trace, second_trace);
     let events = captured.events();
     let completed = events
@@ -120,6 +120,14 @@ async fn request_trace_correlates_booted_completion_without_private_input()
                 .any(|event| event.contains(trace) && event.contains(method))
         );
     }
+    let failed_completion = completed
+        .iter()
+        .find(|event| event.contains(failed_trace))
+        .expect("failed request completion");
+    assert!(failed_completion.contains("medtracker.db.query_count"));
+    assert!(failed_completion.contains("medtracker.db.failed_query_count"));
+    assert!(!failed_completion.contains("medtracker.db.query_count=0"));
+    assert!(!failed_completion.contains("medtracker.db.failed_query_count=0"));
     let database_events = events
         .iter()
         .filter(|event| event.contains("Database operation failed"))
@@ -127,8 +135,8 @@ async fn request_trace_correlates_booted_completion_without_private_input()
     assert!(!database_events.is_empty());
     for event in database_events {
         assert!(event.contains(failed_trace));
-        assert!(event.contains("error_trace_id"));
-        assert!(event.contains("category"));
+        assert!(event.contains("medtracker.error_reference"));
+        assert!(event.contains("error.type"));
         assert!(!event.contains(first_trace));
         assert!(!event.contains(second_trace));
     }

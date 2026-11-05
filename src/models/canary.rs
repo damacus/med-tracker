@@ -105,8 +105,10 @@ pub(crate) async fn configure(ctx: &AppContext) -> Result<(), DbErr> {
         .min_connections(0)
         .connect_timeout(Duration::from_secs(3))
         .sqlx_logging(false);
+    let mut control_connection = Database::connect(options).await?;
+    crate::telemetry::db::install(&mut control_connection);
     ctx.shared_store.insert(Arc::new(Canary {
-        control: Database::connect(options).await?,
+        control: control_connection,
         image: text(ctx, "image")?.into(),
         smoke_key: text(ctx, "smoke_key")?.into(),
     }));
@@ -235,22 +237,26 @@ impl Task for CapabilitiesTask {
         TaskInfo { name: "canary-capabilities".into(), detail: "Validate synthetic canary seed, gate and no-send configuration without application writes".into() }
     }
     async fn run(&self, ctx: &AppContext, _: &Vars) -> loco_rs::Result<()> {
-        if !enabled(ctx) || ctx.shared_store.get::<Arc<Canary>>().is_none() {
-            return Err(loco_rs::Error::string("Canary is not configured"));
-        }
-        let state = ctx
-            .shared_store
-            .get::<Arc<Canary>>()
-            .ok_or_else(|| loco_rs::Error::string("Canary state unavailable"))?;
-        let query = Query::select()
-            .column(Alias::new("scope"))
-            .from(Alias::new("canary_control"))
-            .and_where(Expr::col(Alias::new("scope")).eq(SCOPE))
-            .to_owned();
-        if state.control.query_one(&query).await?.is_none() {
-            return Err(loco_rs::Error::string("Canary control scope unavailable"));
-        }
-        Ok(())
+        crate::telemetry::units::task("canary-capabilities", async {
+            if !enabled(ctx) || ctx.shared_store.get::<Arc<Canary>>().is_none() {
+                Err(loco_rs::Error::string("Canary is not configured"))?;
+            }
+            let state = ctx
+                .shared_store
+                .get::<Arc<Canary>>()
+                .ok_or_else(|| loco_rs::Error::string("Canary state unavailable"))?;
+            let query = Query::select()
+                .column(Alias::new("scope"))
+                .from(Alias::new("canary_control"))
+                .and_where(Expr::col(Alias::new("scope")).eq(SCOPE))
+                .to_owned();
+            if state.control.query_one(&query).await?.is_none() {
+                Err(loco_rs::Error::string("Canary control scope unavailable"))
+            } else {
+                Ok(())
+            }
+        })
+        .await
     }
 }
 
@@ -264,9 +270,12 @@ impl Task for SeedTask {
         }
     }
     async fn run(&self, ctx: &AppContext, _: &Vars) -> loco_rs::Result<()> {
-        fixtures::seed(ctx)
-            .await
-            .map_err(|_| loco_rs::Error::string("Synthetic canary seed refused or failed"))
+        crate::telemetry::units::task("canary-seed", async {
+            fixtures::seed(ctx)
+                .await
+                .map_err(|_| loco_rs::Error::string("Synthetic canary seed refused or failed"))
+        })
+        .await
     }
 }
 
@@ -281,9 +290,12 @@ impl Task for SmokeTask {
         }
     }
     async fn run(&self, ctx: &AppContext, _: &Vars) -> loco_rs::Result<()> {
-        smoke::run(ctx)
-            .await
-            .map_err(|_| loco_rs::Error::string("Synthetic canary smoke failed"))
+        crate::telemetry::units::task("canary-smoke", async {
+            smoke::run(ctx)
+                .await
+                .map_err(|_| loco_rs::Error::string("Synthetic canary smoke failed"))
+        })
+        .await
     }
 }
 
@@ -302,10 +314,13 @@ impl loco_rs::bgworker::BackgroundWorker<loco_rs::mailer::Email> for MailerWorke
         Some("mailer".into())
     }
     async fn perform(&self, email: loco_rs::mailer::Email) -> loco_rs::Result<()> {
-        work(&self.ctx).await?;
-        loco_rs::mailer::MailerWorker::build(&self.ctx)
-            .perform(email)
-            .await
+        crate::telemetry::units::job("canary-mail", async {
+            work(&self.ctx).await?;
+            loco_rs::mailer::MailerWorker::build(&self.ctx)
+                .perform(email)
+                .await
+        })
+        .await
     }
 }
 

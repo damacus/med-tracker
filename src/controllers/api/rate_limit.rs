@@ -54,8 +54,8 @@ fn history_refusal(request: &Request, refusal: HistoryRefusal) {
         HistoryRefusal::SourceUnavailable => ("source_unavailable", 503_u16),
     };
     tracing::info!(
-        event_type = "personal_history_denied", outcome = "denied", reason, status,
-        method = %request.method(), route = "/api/v1/auth/profile/history",
+        event.name = "medtracker.personal_history.denied", medtracker.outcome = "denied", medtracker.reason = reason, http.response.status_code = status,
+        http.request.method = %request.method(), http.route = "/api/v1/auth/profile/history",
         "Personal history read denied before authentication"
     );
 }

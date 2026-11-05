@@ -42,16 +42,16 @@ fn provider_error(error: &better_auth_core::AuthError, operation: &'static str) 
     };
     if status >= 500 {
         tracing::error!(
-            operation,
-            category,
-            status,
+            medtracker.operation = operation,
+            error.type = category,
+            medtracker.identity.status_code = status,
             "Native provider operation failed"
         );
     } else {
         tracing::debug!(
-            operation,
-            category,
-            status,
+            medtracker.operation = operation,
+            error.type = category,
+            medtracker.identity.status_code = status,
             "Native provider operation rejected"
         );
     }

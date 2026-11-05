@@ -29,6 +29,7 @@ pub mod m20261029_000025_frozen_adoption_history;
 pub mod m20261029_000026_adoption_fact_backfill;
 pub mod m20261030_000027_restore_history_indexing;
 pub mod m20261102_000028_frozen_capture_completeness;
+mod m20261102_000029_nhs_dmd_import_trace_id;
 pub mod m20261102_000029_shared_execution_approval_policy;
 pub mod m20261102_000030_shared_schedule_current_execution_policy;
 pub mod m20261102_000031_guardian_authority_plan_cache;
@@ -78,6 +79,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261102_000032_guardian_authority_join_order::Migration),
             Box::new(m20261104_000033_guardian_authority_eligibility::Migration),
             Box::new(m20261104_000034_sharing_member_plan_cache::Migration),
+            Box::new(m20261102_000029_nhs_dmd_import_trace_id::Migration),
         ]
     }
 }

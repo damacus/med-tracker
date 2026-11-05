@@ -47,23 +47,26 @@ impl BackgroundWorker<ReminderRun> for ReminderWorker {
     }
 
     async fn perform(&self, run: ReminderRun) -> loco_rs::Result<()> {
-        crate::models::canary::work(&self.ctx).await?;
-        let scope = HouseholdScope {
-            actor: Actor {
-                account_id: run.account_id,
-            },
-            household_id: run.household_id,
-            request_id: format!("browser-reminders:{}", run.at.timestamp()),
-        };
-        match reminders::deliver_account(&self.ctx, &scope, Utc::now()).await {
-            Ok(_)
-            | Err(
-                OperationError::Forbidden
-                | OperationError::NotFound
-                | OperationError::Unauthenticated,
-            ) => Ok(()),
-            Err(_) => Err(loco_rs::Error::string("Browser reminder delivery failed")),
-        }
+        crate::telemetry::units::job("reminder", async {
+            crate::models::canary::work(&self.ctx).await?;
+            let scope = HouseholdScope {
+                actor: Actor {
+                    account_id: run.account_id,
+                },
+                household_id: run.household_id,
+                request_id: format!("browser-reminders:{}", run.at.timestamp()),
+            };
+            match reminders::deliver_account(&self.ctx, &scope, Utc::now()).await {
+                Ok(_)
+                | Err(
+                    OperationError::Forbidden
+                    | OperationError::NotFound
+                    | OperationError::Unauthenticated,
+                ) => Ok(()),
+                Err(_) => Err(loco_rs::Error::string("Browser reminder delivery failed")),
+            }
+        })
+        .await
     }
 }
 
@@ -117,16 +120,20 @@ impl Task for ReminderTask {
     }
 
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> loco_rs::Result<()> {
-        crate::models::canary::work(ctx).await?;
-        let runs = recipients(ctx, Utc::now())
-            .await
-            .map_err(|_| loco_rs::Error::string("Browser reminder scheduling failed"))?;
-        if ctx.shared_store.get::<Service>().is_none() {
-            return Ok(());
-        }
-        for run in runs {
-            ReminderWorker::perform_later(ctx, run).await?;
-        }
-        Ok(())
+        crate::telemetry::units::task("browser-reminders", async {
+            crate::models::canary::work(ctx).await?;
+            let runs = recipients(ctx, Utc::now())
+                .await
+                .map_err(|_| loco_rs::Error::string("Browser reminder scheduling failed"))?;
+            if ctx.shared_store.get::<Service>().is_none() {
+                Ok(())
+            } else {
+                for run in runs {
+                    ReminderWorker::perform_later(ctx, run).await?;
+                }
+                Ok(())
+            }
+        })
+        .await
     }
 }
