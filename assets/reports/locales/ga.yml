@@ -3405,9 +3405,10 @@ ga:
       event_id: "Aitheantas imeachta"
       request_id: "Aitheantas iarratais"
       view_event: "Féach ar imeacht"
+      close: "Dún"
       actors:
-        account: "Cuntas"
-        membership: "Ballraíocht"
+        account: "Aitheantas cuntais"
+        membership: "aitheantas ballraíochta teaghlaigh"
         system: "Córas"
       values:
         owner: "Úinéir"
@@ -3444,6 +3445,8 @@ ga:
       to_invalid: "Tá an dáta go dtí (UTC) neamhbhailí"
       filters_invalid: "Seiceáil na scagairí iniúchta"
       events:
+        health_history_downloaded: "Tuairisc ar stair sláinte íoslódáilte"
+        medication_review_downloaded: "Tuairisc ar athbhreithniú cógas íoslódáilte"
         invitation_created: "Cuireadh cruthaithe"
         invitation_resent: "Cuireadh athsheolta"
         invitation_revoked: "Cuireadh curtha ar ceal"

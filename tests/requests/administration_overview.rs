@@ -1330,10 +1330,9 @@ async fn administration_overview_shows_five_recent_scoped_safe_events() -> TestR
     assert!(populated_html.contains(&format!("/admin/audit_logs/{}", recent[5].id)));
     assert!(!populated_html.contains(&format!("/admin/audit_logs/{}", recent[0].id)));
     assert!(!populated_html.contains(&format!("/admin/audit_logs/{}", foreign_recent.unwrap().id)));
-    assert!(
-        populated_html
-            .contains(format!("Account #{account_id}, membership #{actor_member_id}").as_str())
-    );
+    assert!(populated_html.contains(
+        format!("Account ID #{account_id}, household membership ID #{actor_member_id}").as_str()
+    ));
     assert!(populated_html.contains("Household role changed"));
     assert!(!populated_html.contains("private-clinical-note"));
     assert!(!populated_html.contains("private-session"));
@@ -1670,10 +1669,10 @@ async fn member_detail_scopes_safe_history_and_preserves_navigation() -> TestRes
     assert_eq!(html.matches("data-member-event=").count(), 25);
     assert!(html.contains(&format!("data-member-event=\"{}\"", detail_events[27].id)));
     assert!(!html.contains(&format!("data-member-event=\"{}\"", excluded.id)));
-    assert!(html.contains(format!("Account #{account_id}").as_str()));
-    assert!(
-        html.contains(format!("Account #{account_id}, membership #{actor_member_id}").as_str())
-    );
+    assert!(html.contains(format!("Account ID #{account_id}").as_str()));
+    assert!(html.contains(
+        format!("Account ID #{account_id}, household membership ID #{actor_member_id}").as_str()
+    ));
     accounts::Entity::update_many()
         .col_expr(
             accounts::Column::Name,
@@ -1687,11 +1686,9 @@ async fn member_detail_scopes_safe_history_and_preserves_navigation() -> TestRes
         .await;
     assert_eq!(renamed.status_code(), 200);
     assert!(renamed.text().contains("Renamed synthetic actor"));
-    assert!(
-        renamed
-            .text()
-            .contains(format!("Account #{account_id}, membership #{actor_member_id}").as_str())
-    );
+    assert!(renamed.text().contains(
+        format!("Account ID #{account_id}, household membership ID #{actor_member_id}").as_str()
+    ));
     assert!(!html.contains("<script>alert(1)</script>"));
     assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
     assert!(!html.contains(&format!("data-member-event=\"{}\"", foreign_event.id)));
@@ -1739,7 +1736,11 @@ async fn member_detail_scopes_safe_history_and_preserves_navigation() -> TestRes
     let next = request.get(&older).await;
     assert_eq!(next.status_code(), 200, "{}", next.text());
     assert_eq!(next.text().matches("data-member-event=").count(), 3);
-    assert!(!next.text().contains(&format!("{}\"", detail_events[3].id)));
+    assert!(
+        !next
+            .text()
+            .contains(&format!("data-member-event=\"{}\"", detail_events[3].id))
+    );
     let csrf = authenticity_token(&html).ok_or("csrf missing")?;
     let changed = request
         .post(format!("/households/{slug}/admin/users/{subject_member_id}/restore").as_str())

@@ -549,10 +549,12 @@ async fn audit_browser_rejects_foreign_events_and_lost_manager_authority()
     assert!(!foreign_body.contains("synthetic-foreign-clinical-note"));
     assert_eq!(member_status, reqwest::StatusCode::FORBIDDEN);
     assert_eq!(member_cache.as_deref(), Some("no-store"));
-    assert!(!member_body.contains(&audit_ids["foreign"].to_string()));
+    assert!(!member_body.contains(&format!("/admin/audit_logs/{}", audit_ids["foreign"])));
+    assert!(!member_body.contains("synthetic-foreign-clinical-note"));
     assert_ne!(revoked_status, reqwest::StatusCode::OK);
     assert_eq!(revoked_cache.as_deref(), Some("no-store"));
-    assert!(!revoked_body.contains(&audit_ids["foreign"].to_string()));
+    assert!(!revoked_body.contains(&format!("/admin/audit_logs/{}", audit_ids["foreign"])));
+    assert!(!revoked_body.contains("synthetic-foreign-clinical-note"));
     Ok(())
 }
 
@@ -574,6 +576,10 @@ async fn audit_browser_filters_and_pages_stable_tied_events() -> Result<(), Box<
             .header("cookie", &cookie).send().await?;
         let date_only_status = date_only.status();
         let date_only_body = date_only.text().await?;
+        let document = scraper::Html::parse_document(&date_only_body);
+        for selector in ["select#audit-event-type option[value='api.request']", "input#audit-from[type='date']", "input#audit-to[type='date']"] {
+            assert!(document.select(&scraper::Selector::parse(selector).unwrap()).next().is_some(), "missing filter control: {selector}");
+        }
         let first = app.client.get(format!("{}/households/{fixture_slug}/admin/audit_logs?event_type=api.request&from=2030-01-15&to=2030-01-15", app.origin))
             .header("cookie", &cookie).send().await?;
         let first_status = first.status();
@@ -763,6 +769,16 @@ async fn audit_browser_retains_invalid_filter_drafts_after_authorization()
     assert_eq!(date_cache.as_deref(), Some("no-store"));
     assert!(date_body.contains("value=\"api.request\""));
     assert!(date_body.contains("value=\"2030-02-30\""));
+    let date_document = scraper::Html::parse_document(&date_body);
+    assert!(
+        date_document
+            .select(
+                &scraper::Selector::parse("input#audit-from[type='text'][value='2030-02-30']")
+                    .unwrap()
+            )
+            .next()
+            .is_some()
+    );
     assert!(date_body.contains("form-error-audit-from"));
     assert_eq!(anonymous_status, reqwest::StatusCode::SEE_OTHER);
     assert_eq!(anonymous_cache.as_deref(), Some("no-store"));

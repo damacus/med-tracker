@@ -240,7 +240,13 @@ impl Transport for WebPush {
         for (name, value) in &parts.headers {
             request = request.header(name.as_str(), value.as_bytes().to_vec());
         }
-        let Ok(response) = request.body(body).send().await else {
+        let Ok(response) = crate::telemetry::units::send(
+            request.body(body),
+            parts.uri.host().unwrap_or_default(),
+            "POST",
+        )
+        .await
+        else {
             return Delivery::Uncertain;
         };
         let retry_after = response

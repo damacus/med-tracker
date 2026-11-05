@@ -1229,7 +1229,10 @@ async fn account_authentication_throttle_retains_body_and_retry_after() {
             assert_eq!(response.status_code(), 429, "{}", response.text());
             assert_eq!(
                 response.json::<Value>(),
-                json!({"error":"Too many authentication attempts. Try again later."})
+                json!({
+                    "error":"Too many authentication attempts. Try again later.",
+                    "trace_id": response.header("x-medtracker-trace-id").to_str().unwrap()
+                })
             );
             let retry_after: u32 = response
                 .header("retry-after")

@@ -31,30 +31,44 @@ person who does not have capacity.
 
 ## Household roles
 
-Each signed-in account has one household role:
+Your account can have a different role in each household.
 
-- **Owner:** controls the household and its memberships. A household must
-  always have an active owner.
-- **Administrator:** manages household records and members but cannot promote
-  someone to owner.
-- **Member:** receives access only to the people covered by their active
-  grants.
+| Role | What you can do |
+| --- | --- |
+| Member | View household care records and record doses and health events. |
+| Administrator | Everything a member can do, plus manage household members, invitations, settings and audit records. |
+| Owner | Everything an administrator can do, plus remove owner access while keeping at least one active owner. |
 
-Platform administrators can manage every household. This is separate from a
-household role.
+Your membership must be active. Access to one household does not give you access
+to another.
 
-## Access to a person's records
+## Managing a person's care
 
-Owners and household administrators manage access for members. A grant applies
-to one person and has one of these levels:
+You can manage your own care. Managing someone else's care requires a current
+guardian declaration; being an owner or administrator does not make you their
+guardian. A care relationship label alone does not give that permission.
 
-- **View:** read the person's records.
-- **Record:** view records and record medication or health events.
-- **Manage:** change the person's medication plans and other records.
+Household owners and administrators can use the guardian recovery journey for
+an eligible minor who has no effective guardian.
 
-A grant can represent self-management or a relationship with a parent, family
-member, carer, or professional. It can expire or be revoked. Access to one
-person does not give access to everyone in the household.
+## Platform administrators
+
+Platform administrators manage the installation's users and settings, recover
+households without a usable owner, and import the NHS medicine catalogue.
+Platform administration is separate from household roles.
+
+Platform administrators need the household owner's approval for temporary
+support access to household care records. Platform status alone does not give
+them unrestricted access to everyone's care.
+
+If you have platform access, open **Platform administration** from your account
+security page. Household administration remains available to household owners
+and administrators.
+
+To import an NHS dm+d release, sign in as a platform administrator and open
+`/admin/nhs-dmd` directly; there is currently no importer link in the
+administration menus. Household administration access alone is not enough.
+See [NHS dm+d import instructions](nhs-dmd-integration.md#loco-migration-checkout).
 
 ## Add a person
 
@@ -68,11 +82,11 @@ person does not give access to everyone in the household.
 ## Invite someone to the household
 
 A household owner or administrator can invite an account and choose its
-household role. Give members access only to the people they support and select
-the lowest access level they need.
+household role. Membership grants household-wide viewing and recording for
+participating people, so invite only people who should have that access.
 
-Review access when a care relationship changes. Revoke an old grant instead of
-sharing an account or leaving broad access in place.
+Review membership, participation and guardian authority when a care relationship
+changes. Use individual accounts so actions remain attributable.
 
 ## Continue setup
 

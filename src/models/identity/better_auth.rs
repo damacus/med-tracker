@@ -2,6 +2,7 @@ use better_auth::{AuthConfig, AuthError, AuthResult, BetterAuth};
 use std::sync::Arc;
 
 mod credentials;
+mod error_trace;
 mod http;
 mod limits;
 mod mail;

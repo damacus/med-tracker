@@ -3397,9 +3397,10 @@ cy:
       event_id: "ID y digwyddiad"
       request_id: "ID y cais"
       view_event: "Gweld digwyddiad"
+      close: "Cau"
       actors:
-        account: "Cyfrif"
-        membership: "Aelodaeth"
+        account: "ID cyfrif"
+        membership: "ID aelodaeth yr aelwyd"
         system: "System"
       values:
         owner: "Perchennog"
@@ -3436,6 +3437,8 @@ cy:
       to_invalid: "Mae'r dyddiad hyd at (UTC) yn annilys"
       filters_invalid: "Gwiriwch yr hidlwyr archwilio"
       events:
+        health_history_downloaded: "Adroddiad hanes iechyd wedi’i lawrlwytho"
+        medication_review_downloaded: "Adroddiad adolygu meddyginiaeth wedi’i lawrlwytho"
         invitation_created: "Gwahoddiad wedi’i greu"
         invitation_resent: "Gwahoddiad wedi’i ailanfon"
         invitation_revoked: "Gwahoddiad wedi’i ganslo"

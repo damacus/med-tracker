@@ -279,9 +279,8 @@ async fn revoke_session(
 ) -> Response {
     let request_id = request_id().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     match dispatch(&service, request, request_id).await {
-        Ok(response) => better_auth_core::error::materialize_axum_response(response)
-            .unwrap_or_else(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response()),
-        Err(error) => error.into_response(),
+        Ok(response) => super::error_trace::materialize(response),
+        Err(error) => super::error_trace::error(error),
     }
 }
 
@@ -343,12 +342,9 @@ async fn request_context(
     if !dispatched {
         match super::limits::check(&service, &preflight).await {
             Ok(Some(response)) => {
-                return better_auth_core::error::materialize_axum_response(response)
-                    .unwrap_or_else(|_| {
-                        axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                    });
+                return super::error_trace::materialize(response);
             }
-            Err(error) => return error.into_response(),
+            Err(error) => return super::error_trace::error(error),
             Ok(None) => {}
         }
     }
@@ -380,7 +376,7 @@ async fn request_context(
             response
         }
         Ok(response) => response,
-        Err(error) => error.into_response(),
+        Err(error) => super::error_trace::error(error),
     }
 }
 

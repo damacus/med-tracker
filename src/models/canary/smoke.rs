@@ -31,6 +31,7 @@ pub(super) async fn run(ctx: &AppContext) -> Result<(), DbErr> {
         .ok_or_else(invalid)?;
     state.status().await?;
     let url = url::Url::parse(text(ctx, "smoke_url")?).map_err(|_| invalid())?;
+
     if url.scheme() != "http"
         || url.host_str() != Some("medtracker-canary.medtracker-canary.svc.cluster.local")
         || url.port() != Some(5150)
@@ -46,6 +47,7 @@ pub(super) async fn run(ctx: &AppContext) -> Result<(), DbErr> {
 }
 
 pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbErr> {
+    let host = url.host_str().unwrap_or_default().to_owned();
     let origin = crate::models::settings::public_origin(ctx)
         .map_err(|_| invalid())?
         .origin()
@@ -73,8 +75,8 @@ pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbEr
     let mut jar = BTreeMap::new();
     let response = client
         .post(url.join("api/auth/sign-in/email").map_err(|_| invalid())?)
-        .json(&serde_json::json!({"email":"persistence@example.test","password":"password"}))
-        .send()
+        .json(&serde_json::json!({"email":"persistence@example.test","password":"password"}));
+    let response = crate::telemetry::units::send(response, &host, "POST")
         .await
         .map_err(|_| invalid())?;
     if !response.status().is_success() {
@@ -91,12 +93,15 @@ pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbEr
         ),
         ("households/canary-second/medications", "medication"),
     ] {
-        let response = client
-            .get(url.join(path).map_err(|_| invalid())?)
-            .header(header::COOKIE, cookie_header(&jar))
-            .send()
-            .await
-            .map_err(|_| invalid())?;
+        let response = crate::telemetry::units::send(
+            client
+                .get(url.join(path).map_err(|_| invalid())?)
+                .header(header::COOKIE, cookie_header(&jar)),
+            &host,
+            "GET",
+        )
+        .await
+        .map_err(|_| invalid())?;
         if !response.status().is_success() {
             return Err(invalid());
         }
@@ -113,12 +118,15 @@ pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbEr
     let detail_url = url
         .join("households/persistence-fixture/medications/80001")
         .map_err(|_| invalid())?;
-    let detail = client
-        .get(detail_url.clone())
-        .header(header::COOKIE, cookie_header(&jar))
-        .send()
-        .await
-        .map_err(|_| invalid())?;
+    let detail = crate::telemetry::units::send(
+        client
+            .get(detail_url.clone())
+            .header(header::COOKIE, cookie_header(&jar)),
+        &host,
+        "GET",
+    )
+    .await
+    .map_err(|_| invalid())?;
     if !detail.status().is_success() {
         return Err(invalid());
     }
@@ -134,20 +142,23 @@ pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbEr
             .post(take_url.clone())
             .header(header::COOKIE, cookie_header(&jar))
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-            .body(encoded.clone())
-            .send()
+            .body(encoded.clone());
+        let response = crate::telemetry::units::send(response, &host, "POST")
             .await
             .map_err(|_| invalid())?;
         if response.status() != reqwest::StatusCode::SEE_OTHER {
             return Err(invalid());
         }
         cookies(&response, &mut jar)?;
-        let response = client
-            .get(detail_url.clone())
-            .header(header::COOKIE, cookie_header(&jar))
-            .send()
-            .await
-            .map_err(|_| invalid())?;
+        let response = crate::telemetry::units::send(
+            client
+                .get(detail_url.clone())
+                .header(header::COOKIE, cookie_header(&jar)),
+            &host,
+            "GET",
+        )
+        .await
+        .map_err(|_| invalid())?;
         if !response.status().is_success() {
             return Err(invalid());
         }
@@ -156,15 +167,18 @@ pub(super) async fn journey(ctx: &AppContext, url: &url::Url) -> Result<(), DbEr
         if after != before - sea_orm::prelude::Decimal::new(2, 0) {
             return Err(invalid());
         }
-        tracing::info!(attempt, "Synthetic canary dose and stock replay passed");
+        tracing::info!(
+            medtracker.attempt = attempt,
+            "Synthetic canary dose and stock replay passed"
+        );
     }
     let response = client
         .get(
             url.join("households/canary-unrelated/medications")
                 .map_err(|_| invalid())?,
         )
-        .header(header::COOKIE, cookie_header(&jar))
-        .send()
+        .header(header::COOKIE, cookie_header(&jar));
+    let response = crate::telemetry::units::send(response, &host, "GET")
         .await
         .map_err(|_| invalid())?;
     if response.status() != reqwest::StatusCode::FORBIDDEN {

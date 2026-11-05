@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
-FROM node:26.13.0-trixie-slim@sha256:e4db4c914bf8ad241bd24804fc25d272d89bad97e68cdc8a1414862790a02c39 AS frontend-dependencies
+FROM node:26.13.0-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS frontend-dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,id=loco-npm,target=/root/.npm,sharing=locked \
@@ -47,6 +47,10 @@ COPY . .
 COPY --from=frontend /app/assets/ assets/
 
 FROM dependencies AS build
+ARG MEDTRACKER_VERSION=""
+ARG MEDTRACKER_COMMIT=""
+ENV MEDTRACKER_VERSION=$MEDTRACKER_VERSION \
+    MEDTRACKER_COMMIT=$MEDTRACKER_COMMIT
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY migration/ migration/
 COPY src/ src/

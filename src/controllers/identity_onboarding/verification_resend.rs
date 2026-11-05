@@ -76,13 +76,13 @@ pub(super) async fn resend(
         }
         Ok(response) => {
             tracing::warn!(
-                status = response.status,
+                medtracker.identity.status_code = response.status,
                 "Verification resend rejected by framework"
             );
             super::rendering::unavailable()
         }
         Err(error) => {
-            tracing::warn!(status = ?error.status_code(), "Verification resend failed");
+            tracing::warn!(medtracker.identity.status_code = ?error.status_code(), "Verification resend failed");
             super::rendering::unavailable()
         }
     }

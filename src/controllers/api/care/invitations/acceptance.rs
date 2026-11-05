@@ -93,10 +93,14 @@ pub(in crate::controllers::api::care) async fn accept(
         )
         .await
     };
-    let response=match result {
-        Ok(body)=>(StatusCode::OK,AxumJson(body)).into_response(),
-        Err(OperationError::Validation{..})=>(StatusCode::UNPROCESSABLE_ENTITY,AxumJson(json!({"error":{"code":"invitation_unavailable","message":"Invitation is unavailable","request_id":request_id}}))).into_response(),
-        Err(error)=>response::error(response::operation(error),&request_id),
+    let response = match result {
+        Ok(body) => (StatusCode::OK, AxumJson(body)).into_response(),
+        Err(OperationError::Validation { .. }) => {
+            let mut body = json!({"error":{"code":"invitation_unavailable","message":"Invitation is unavailable","request_id":request_id}});
+            crate::telemetry::ids::enrich_error(&mut body);
+            (StatusCode::UNPROCESSABLE_ENTITY, AxumJson(body)).into_response()
+        }
+        Err(error) => response::error(response::operation(error), &request_id),
     };
     let mut response = no_store(response);
     if let Ok(value) = axum::http::HeaderValue::from_str(&request_id) {

@@ -27,6 +27,7 @@ pub struct Model {
     pub skipped_missing_name_count: i32,
     pub started_at: Option<DateTime>,
     pub status: i32,
+    pub trace_id: Option<String>,
     pub total_records: i32,
     pub unchanged_count: i32,
     pub updated_at: DateTime,

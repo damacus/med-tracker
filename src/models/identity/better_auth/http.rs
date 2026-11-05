@@ -61,8 +61,11 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
     } else {
         next.run(request).await
     };
-    tracing::info!(method = %method, route, status = response.status().as_u16(),
-        duration_ms = started.elapsed().as_secs_f64() * 1000.0,
+    tracing::info!(event.name = "http.server.request", http.request.method = %method, http.route = route, http.response.status_code = response.status().as_u16(),
+        medtracker.duration_ms = started.elapsed().as_secs_f64() * 1000.0,
+        medtracker.db.query_count = crate::telemetry::db::snapshot().map(|(count, _, _)| count),
+        medtracker.db.runtime_ms = crate::telemetry::db::snapshot().map(|(_, runtime, _)| runtime),
+        medtracker.db.failed_query_count = crate::telemetry::db::snapshot().map(|(_, _, failed)| failed),
         "HTTP request completed");
     response
 }
@@ -78,6 +81,81 @@ mod tests {
         instrument::WithSubscriber,
         span::{Attributes, Id, Record},
     };
+
+    #[derive(Clone, Default)]
+    struct JsonBuffer(Arc<Mutex<Vec<u8>>>);
+    struct JsonWriter(Arc<Mutex<Vec<u8>>>);
+    impl std::io::Write for JsonWriter {
+        fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(data);
+            Ok(data.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for JsonBuffer {
+        type Writer = JsonWriter;
+        fn make_writer(&'a self) -> Self::Writer {
+            JsonWriter(self.0.clone())
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn completion_log_db_counters_are_numeric_only_when_scoped() {
+        use tracing_subscriber::prelude::*;
+        let buffer = JsonBuffer::default();
+        let layer = crate::telemetry::json::layer(
+            buffer.clone(),
+            crate::telemetry::json::Resource {
+                service_version: "test".into(),
+                environment: "test".into(),
+                instance_id: "test".into(),
+            },
+            crate::telemetry::export::Diagnostics::new(),
+        );
+        let subscriber = tracing_subscriber::registry().with(layer);
+        async {
+            let router = Router::new()
+                .route("/health", get(|| async { StatusCode::OK }))
+                .layer(axum::middleware::from_fn(boundary));
+            let server = loco_rs::TestServer::builder()
+                .mock_transport()
+                .build(router)
+                .unwrap();
+            crate::telemetry::db::scope(&tracing::Span::none(), async {
+                crate::telemetry::db::seed_test_metrics();
+                assert_eq!(server.get("/health").await.status_code(), 200);
+            })
+            .await;
+            assert_eq!(server.get("/health").await.status_code(), 200);
+        }
+        .with_subscriber(subscriber)
+        .await;
+        let data = buffer.0.lock().unwrap();
+        let lines: Vec<serde_json::Value> = std::str::from_utf8(&data)
+            .unwrap()
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        assert_eq!(lines.len(), 2);
+        let scoped = &lines[0]["attributes"];
+        assert_eq!(scoped["medtracker.db.query_count"], 3);
+        assert_eq!(scoped["medtracker.db.runtime_ms"], 1.5);
+        assert_eq!(scoped["medtracker.db.failed_query_count"], 1);
+        for key in [
+            "medtracker.db.query_count",
+            "medtracker.db.runtime_ms",
+            "medtracker.db.failed_query_count",
+        ] {
+            assert!(scoped[key].is_number(), "{key}: {scoped}");
+            assert!(
+                lines[1]["attributes"].get(key).is_none(),
+                "unscoped: {}",
+                lines[1]
+            );
+        }
+    }
 
     #[derive(Clone, Default)]
     struct RequestIdEvents(Arc<Mutex<Vec<String>>>);

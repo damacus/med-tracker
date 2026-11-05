@@ -43,6 +43,15 @@ populated application databases and production environments.
 Fixture passwords are `password`. Keep a seeded development instance private;
 do not use synthetic accounts for real medication records.
 
+| Account | Access |
+| --- | --- |
+| `persistence@example.test` | Administrator of the synthetic household |
+| `platform-admin@example.test` | Platform administrator, including `/platform/users` and the NHS dm+d importer at `/admin/nhs-dmd`; no household membership |
+
+These accounts are created only by the standard development/test seed on an
+empty application database. Existing development databases are not updated by
+this change; do not reset a populated database to obtain the new account.
+
 ## Start the application
 
 Set `DATABASE_URL` to your restricted runtime connection, then run:

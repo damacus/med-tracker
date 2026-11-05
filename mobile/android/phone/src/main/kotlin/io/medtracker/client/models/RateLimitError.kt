@@ -24,6 +24,7 @@ import com.squareup.moshi.JsonClass
  *
  * @param code 
  * @param message 
+ * @param traceId 
  */
 
 
@@ -33,7 +34,10 @@ data class RateLimitError (
     val code: RateLimitError.Code,
 
     @Json(name = "message")
-    val message: kotlin.String
+    val message: kotlin.String,
+
+    @Json(name = "trace_id")
+    val traceId: kotlin.String? = null
 
 ) {
 

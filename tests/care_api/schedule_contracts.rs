@@ -15,12 +15,15 @@ pub(super) fn assert_unavailable(path: &str, method: &str, request_id: &str, bod
         body,
         "schedule audit failure",
     );
+    let trace_id = body["error"]["trace_id"].as_str().expect("trace id");
+    assert_eq!(trace_id.len(), 32);
     assert_eq!(
         body,
         &json!({"error": {
             "code": "service_unavailable",
             "message": "Service is temporarily unavailable",
-            "request_id": request_id
+            "request_id": request_id,
+            "trace_id": trace_id
         }})
     );
 }

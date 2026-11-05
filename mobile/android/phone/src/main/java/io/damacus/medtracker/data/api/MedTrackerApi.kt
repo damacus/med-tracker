@@ -78,7 +78,7 @@ import java.util.UUID
 
 sealed class ApiResult<out T> {
     data class Success<T>(val data: T) : ApiResult<T>()
-    data class Error(val code: String?, val message: String, val statusCode: Int? = null, val requestId: String? = null) : ApiResult<Nothing>()
+    data class Error(val code: String?, val message: String, val statusCode: Int? = null, val requestId: String? = null, val traceId: String? = null) : ApiResult<Nothing>()
     data class NetworkError(val cause: Throwable) : ApiResult<Nothing>()
 }
 
@@ -311,9 +311,21 @@ class GeneratedMedTrackerApi(
             null
         }
         return if (error != null && error.code.isNotBlank() && error.message.isNotBlank() && error.requestId.isNotBlank()) {
-            ApiResult.Error(error.code, error.message, statusCode, error.requestId)
+            ApiResult.Error(error.code, error.message, statusCode, error.requestId, error.traceId)
         } else {
-            ApiResult.Error("http_$statusCode", "Request failed (HTTP $statusCode).", statusCode)
+            val flat = try {
+                (body as? String)?.let { Serializer.moshi.adapter(Map::class.java).fromJson(it) }
+            } catch (_: JsonDataException) {
+                null
+            } catch (_: IOException) {
+                null
+            }
+            val isFlatError = flat?.get("error") is String ||
+                (flat?.get("code") is String && flat["message"] is String)
+            val nestedError = flat?.get("error") as? Map<*, *>
+            val traceId = if (isFlatError) flat?.get("trace_id") as? String
+                else nestedError?.get("trace_id") as? String
+            ApiResult.Error("http_$statusCode", "Request failed (HTTP $statusCode).", statusCode, traceId = traceId)
         }
     }
 

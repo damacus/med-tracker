@@ -37,6 +37,8 @@ mod typed_care_operations;
 
 #[path = "browser/administration_polish.rs"]
 mod administration_polish;
+#[path = "browser/nhs_dmd_admin.rs"]
+mod nhs_dmd_admin;
 
 #[path = "browser/member_details.rs"]
 mod member_details;

@@ -7,6 +7,12 @@ archived in git history. The accepted architecture below supersedes older parity
 assumptions; implementation acceptance remains pending. Historical Rails design
 sections below describe the reference, not requirements to reproduce its internals.
 
+For the current Rust role checks, administration pages, platform-only NHS dm+d
+importer and synthetic seed limitations, see [Manage People and Household
+Access](user-management.md#household-roles) and the [roles and importer access
+audit](operations/roles-and-importer-audit.md). The historical person-grant model
+below is not the current Rust care-authority contract.
+
 - [Accounts, people and households](adrs/0013-accounts-people-and-households.md)
 - [Household inventory and personal care](adrs/0014-household-inventory-and-personal-care.md)
 - [Authentication, membership and tenancy](adrs/0015-authentication-membership-and-tenancy.md): native authentication maps directly to Account–Person, without a separate `users` table

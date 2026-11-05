@@ -738,6 +738,10 @@ async fn household_administration_saved_retries_preserve_effects() {
             .get("x-request-id")
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
+        let original_trace_id = original.headers()["x-medtracker-trace-id"]
+            .to_str()
+            .unwrap()
+            .to_owned();
         let mut original: Value = if status == 204 {
             json!({})
         } else {
@@ -811,6 +815,10 @@ async fn household_administration_saved_retries_preserve_effects() {
             .get("x-request-id")
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
+        let replay_trace_id = replay.headers()["x-medtracker-trace-id"]
+            .to_str()
+            .unwrap()
+            .to_owned();
         markers.push(replay.headers().get("idempotency-replayed").is_some());
         let mut replay: Value = if status == 204 {
             empty_delete_bodies.push(replay.bytes().await.unwrap().is_empty());
@@ -822,6 +830,9 @@ async fn household_administration_saved_retries_preserve_effects() {
             assert_eq!(rejected_count(&app).await, 1);
             assert_eq!(original["error"]["code"], "forbidden");
             assert_eq!(replay["error"]["code"], "forbidden");
+            assert_eq!(original["error"]["trace_id"], original_trace_id);
+            assert_eq!(replay["error"]["trace_id"], replay_trace_id);
+            assert_ne!(original_trace_id, replay_trace_id);
             assert_eq!(
                 original["error"]["request_id"].as_str(),
                 original_request_id.as_deref()
@@ -836,6 +847,11 @@ async fn household_administration_saved_retries_preserve_effects() {
             );
             original["error"]["request_id"] = Value::Null;
             replay["error"]["request_id"] = Value::Null;
+            original["error"]
+                .as_object_mut()
+                .unwrap()
+                .remove("trace_id");
+            replay["error"].as_object_mut().unwrap().remove("trace_id");
             let default_id = app
                 .client
                 .request(method, format!("{}{path}", app.origin))
@@ -857,13 +873,22 @@ async fn household_administration_saved_retries_preserve_effects() {
                 .and_then(|value| value.to_str().ok())
                 .map(str::to_owned);
             assert!(default_request_id.is_some());
+            let default_trace_id = default_id.headers()["x-medtracker-trace-id"]
+                .to_str()
+                .unwrap()
+                .to_owned();
             let mut default_body: Value = default_id.json().await.unwrap();
             assert_eq!(
                 default_body["error"]["request_id"].as_str(),
                 default_request_id.as_deref()
             );
             assert_eq!(default_body["error"]["code"], "forbidden");
+            assert_eq!(default_body["error"]["trace_id"], default_trace_id);
             default_body["error"]["request_id"] = Value::Null;
+            default_body["error"]
+                .as_object_mut()
+                .unwrap()
+                .remove("trace_id");
             assert_eq!(default_body, original);
             assert_eq!(
                 denied_attempts(&app, default_request_id.as_deref().unwrap()).await,

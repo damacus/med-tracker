@@ -111,6 +111,29 @@ class ApiErrorContractTest {
         assertEquals("Validation failed", result.message)
     }
 
+    @Test fun traceIdIsAvailableForNestedAndFlatErrorsAndOptionalForOldServers() = runBlocking {
+        val trace = "4bf92f3577b34da6a3ce929d0e0e4736"
+        server.enqueue(MockResponse().setResponseCode(403).setBody(
+            """{"error":{"code":"forbidden","message":"Denied","request_id":"request-1","trace_id":"$trace"}}"""
+        ))
+        assertEquals(trace, (recordDose() as ApiResult.Error).traceId)
+        server.enqueue(MockResponse().setResponseCode(503).setBody(
+            """{"error":"temporarily_unavailable","trace_id":"$trace"}"""
+        ))
+        val flat = recordDose() as ApiResult.Error
+        assertEquals(trace, flat.traceId)
+        assertEquals("http_503", flat.code)
+        assertEquals("Request failed (HTTP 503).", flat.message)
+        server.enqueue(MockResponse().setResponseCode(429).setBody(
+            """{"error":{"code":"rate_limited","message":"Too many requests","trace_id":"$trace"}}"""
+        ))
+        val limited = recordDose() as ApiResult.Error
+        assertEquals(trace, limited.traceId)
+        assertEquals("http_429", limited.code)
+        enqueueError(403, "forbidden", "Denied")
+        assertNull((recordDose() as ApiResult.Error).traceId)
+    }
+
     private fun enqueueError(status: Int, code: String, message: String) {
         server.enqueue(MockResponse().setResponseCode(status)
             .setHeader("Content-Type", "application/json")

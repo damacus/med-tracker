@@ -3406,9 +3406,10 @@ es:
       event_id: "ID del evento"
       request_id: "ID de la solicitud"
       view_event: "Ver evento"
+      close: "Cerrar"
       actors:
-        account: "Cuenta"
-        membership: "Membresía"
+        account: "ID de cuenta"
+        membership: "ID de membresía del hogar"
         system: "Sistema"
       values:
         owner: "Propietario"
@@ -3445,6 +3446,8 @@ es:
       to_invalid: "La fecha final (UTC) no es válida"
       filters_invalid: "Revisa los filtros de auditoría"
       events:
+        health_history_downloaded: "Informe del historial de salud descargado"
+        medication_review_downloaded: "Informe de revisión de medicamentos descargado"
         invitation_created: "Invitación creada"
         invitation_resent: "Invitación reenviada"
         invitation_revoked: "Invitación cancelada"
