@@ -11,6 +11,15 @@ use sea_orm::{
 };
 use sha2::{Digest, Sha256};
 
+async fn sharing_app() -> Application {
+    let mut app = Application::new().await;
+    app.client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .unwrap();
+    app
+}
+
 struct SharedCare {
     invitation: super::invitations::Acceptance,
     token_a: String,
@@ -346,7 +355,7 @@ async fn sharing_after_claim_change(change: AfterClaimChange) {
     use med_tracker::models::_entities::{
         accounts, notification_deliveries, notification_events, push_subscriptions,
     };
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let pending = pending_shared_reminder_for(&app, ReminderRecipient::ReceivingStaff).await;
     assert_ne!(pending.scope.actor.account_id, app.fixture.account.id);
     let original = notification_deliveries::Entity::find_by_id(pending.delivery)
@@ -635,7 +644,7 @@ async fn person_owned_schedule_queued_after_claim_fresh_consent_cannot_upgrade_t
 #[tokio::test]
 async fn person_owned_schedule_queued_reminder_cancels_after_current_pause_or_withdrawal() {
     for pause in [true, false] {
-        let app = Application::new().await;
+        let app = sharing_app().await;
         let pending = pending_shared_reminder(&app).await;
         if pause {
             Application::assert_status(super::person_owned_schedules::personal_change(&app,&pending.care.token_a,
@@ -677,7 +686,7 @@ async fn person_owned_schedule_queued_reminder_cancels_after_current_pause_or_wi
 
 #[tokio::test]
 async fn person_owned_schedule_queued_reminder_refreshes_current_clinical_revision_and_payload() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let pending = pending_shared_reminder(&app).await;
     Application::assert_status(super::person_owned_schedules::personal_change(&app,&pending.care.token_a,
         &json!({"id":pending.care.plan,"etag":format!("\"person-schedule:{}:1\"",pending.care.plan)}),json!({"schedule":{"dose_amount":"3"}})).await,200).await;
@@ -788,7 +797,7 @@ async fn renew_shared_reminder_consent(
 
 #[tokio::test]
 async fn person_owned_schedule_queued_old_approval_cannot_upgrade_to_fresh_consent() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let pending = pending_shared_reminder(&app).await;
     let event_id = med_tracker::models::_entities::notification_deliveries::Entity::find_by_id(
         pending.delivery,
@@ -852,7 +861,7 @@ async fn person_owned_schedule_queued_old_approval_cannot_upgrade_to_fresh_conse
 #[tokio::test]
 async fn person_owned_schedule_queued_care_proof_is_database_immutable() {
     use med_tracker::models::_entities::{notification_deliveries, notification_events};
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let pending = pending_shared_reminder(&app).await;
     let event_id = notification_deliveries::Entity::find_by_id(pending.delivery)
         .one(&app.fixture.admin)
@@ -1209,7 +1218,7 @@ async fn take_with_unit(
 }
 
 async fn taper_global_limit(maximum: Option<i32>, hours: Option<&str>) {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let mut step =
         json!({"start_date":"2026-01-01","end_date":"2027-01-01","amount":"2","unit":"tablet"});
     if let Some(maximum) = maximum {
@@ -1277,7 +1286,7 @@ async fn person_owned_schedule_taper_step_global_cooldown() {
 
 #[tokio::test]
 async fn person_owned_schedule_taper_step_effective_unit_is_recordable() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared_with_calendar(&app,None,None,"tapering",json!({"taper_steps":[{"start_date":"2026-01-01","end_date":"2027-01-01","amount":"2","unit":"mg"}]})).await;
     let recorded = Application::assert_status(
         take_with_unit(
@@ -1307,7 +1316,7 @@ async fn person_owned_schedule_taper_step_effective_unit_is_recordable() {
 
 #[tokio::test]
 async fn person_owned_schedule_taper_rejects_unsupported_units_before_creating_a_plan() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let token = app.token().await;
     let baseline = app.fixture.effect().await;
     let mut outcomes = Vec::new();
@@ -1367,7 +1376,7 @@ async fn person_owned_schedule_taper_rejects_unsupported_units_before_creating_a
 
 #[tokio::test]
 async fn person_owned_schedule_persisted_unsupported_effective_unit_has_no_operational_effects() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared_with_calendar(
         &app,
         None,
@@ -1504,7 +1513,7 @@ async fn person_owned_schedule_persisted_unsupported_effective_unit_has_no_opera
 
 #[tokio::test]
 async fn person_owned_schedule_clinical_update_waits_for_safe_state_before_source_lock() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let blocker = app.fixture.admin.begin().await.unwrap();
     shared_schedule_states::Entity::find_by_id(&care.plan)
@@ -1595,7 +1604,7 @@ async fn person_owned_schedule_clinical_update_waits_for_safe_state_before_sourc
 
 #[tokio::test]
 async fn person_owned_schedule_single_time_daily_keeps_effective_cooldown_semantics() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, Some(4), true).await;
     let now = chrono::Utc::now();
     for (household, token, source, stock, time) in [
@@ -1642,7 +1651,7 @@ async fn person_owned_schedule_single_time_daily_keeps_effective_cooldown_semant
 
 #[tokio::test]
 async fn person_owned_schedule_shared_stock_choices_use_safe_exact_prescription() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let body = source(&app, &care).await;
     app.close().await;
@@ -1655,7 +1664,7 @@ async fn person_owned_schedule_shared_stock_choices_use_safe_exact_prescription(
 
 #[tokio::test]
 async fn person_owned_schedule_fixed_safety_uses_origin_named_zone_dst_cycle() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, Some(1), None, false).await;
     let plan = json!({"id":care.plan,"etag":format!("\"person-schedule:{}:1\"",care.plan)});
     Application::assert_status(
@@ -1703,7 +1712,7 @@ async fn person_owned_schedule_fixed_safety_uses_origin_named_zone_dst_cycle() {
 
 #[tokio::test]
 async fn person_owned_schedule_two_households_race_deducts_only_actual_local_stock() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, Some(1), None, false).await;
     valid_recording_inputs(&app, &care).await;
     let time = chrono::Utc::now().to_rfc3339();
@@ -1781,7 +1790,7 @@ async fn person_owned_schedule_two_households_race_deducts_only_actual_local_sto
 
 #[tokio::test]
 async fn person_owned_schedule_receiving_household_can_win_and_origin_observes_global_limit() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, Some(1), None, false).await;
     valid_recording_inputs(&app, &care).await;
     let time = chrono::Utc::now().to_rfc3339();
@@ -1871,7 +1880,7 @@ async fn person_owned_schedule_receiving_household_can_win_and_origin_observes_g
 
 #[tokio::test]
 async fn person_owned_schedule_backdating_cannot_evade_a_later_foreign_cooldown() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, Some(4), Some(4), false).await;
     valid_recording_inputs(&app, &care).await;
     let now = chrono::Utc::now();
@@ -1924,7 +1933,7 @@ async fn person_owned_schedule_backdating_cannot_evade_a_later_foreign_cooldown(
 #[tokio::test]
 async fn person_owned_schedule_receiving_manager_cannot_mutate_execution_clinical_fields_directly()
 {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let tenant = med_tracker::models::access::begin(
         &app.fixture.runtime,
@@ -1954,7 +1963,7 @@ async fn person_owned_schedule_receiving_manager_cannot_mutate_execution_clinica
 
 #[tokio::test]
 async fn person_owned_schedule_foreign_notes_pause_narratives_and_canonical_rows_stay_private() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let origin_source = schedules::Entity::find_by_id(care.source_a)
         .one(&app.fixture.admin)
@@ -2042,7 +2051,7 @@ async fn person_owned_schedule_foreign_notes_pause_narratives_and_canonical_rows
 
 #[tokio::test]
 async fn person_owned_schedule_private_versions_and_duplicate_ledger_stay_scoped() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let origin = schedules::Entity::find_by_id(care.source_a)
         .one(&app.fixture.admin)
@@ -2256,7 +2265,7 @@ async fn person_owned_schedule_private_versions_and_duplicate_ledger_stay_scoped
 
 #[tokio::test]
 async fn person_owned_schedule_receiving_self_edit_does_not_copy_private_canonical_audit() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let member = household_memberships::Entity::find()
         .filter(household_memberships::Column::HouseholdId.eq(care.invitation.target_household.id))
@@ -2332,7 +2341,7 @@ async fn person_owned_schedule_receiving_self_edit_does_not_copy_private_canonic
 #[tokio::test]
 async fn person_owned_schedule_receiving_owned_pause_closes_after_elsewhere_resume_without_note_leak()
  {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let member = household_memberships::Entity::find()
         .filter(household_memberships::Column::HouseholdId.eq(care.invitation.target_household.id))
@@ -2416,7 +2425,7 @@ async fn person_owned_schedule_receiving_owned_pause_closes_after_elsewhere_resu
 
 #[tokio::test]
 async fn person_owned_schedule_exact_stock_mismatch_and_manager_clinical_edits_are_denied() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let mut changed = care.stock_b.clone().into_active_model();
     changed.dmd_code = Set(Some("654321".into()));
@@ -2728,7 +2737,7 @@ async fn guardian_authority_remains_live_on_reused_connection_after_withdrawal()
             .unwrap()
     }
 
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let token = app.token().await;
     let subject = dependent(&app, &token).await;
     let foreign = app.fixture.foreign_household().await;
@@ -2835,7 +2844,7 @@ async fn shared_schedule_visibility_accepts_direct_and_linked_current_approvals(
     use med_tracker::models::_entities::shared_schedule_executions;
     use med_tracker::models::access::{Actor, HouseholdScope};
 
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let direct = schedules::Entity::find_by_id(care.source_b)
         .one(&app.fixture.admin)
@@ -2948,7 +2957,7 @@ async fn shared_schedule_visibility_accepts_direct_and_linked_current_approvals(
     );
     tenant.rollback().await.unwrap();
 
-    let stranger = Application::new().await;
+    let stranger = sharing_app().await;
     let stranger_invitation = super::invitations::seed_acceptance(&stranger).await;
     let accepted = stranger
         .client
@@ -3019,7 +3028,7 @@ async fn shared_schedule_visibility_accepts_direct_and_linked_current_approvals(
     );
     foreign_tenant.rollback().await.unwrap();
 
-    let link_app = Application::new().await;
+    let link_app = sharing_app().await;
     let origin = existing_origin(&link_app).await;
     let approval = consent_existing_origin(&link_app, &origin).await;
     let source = schedules::Entity::find_by_id(origin.source_id)
@@ -3150,7 +3159,7 @@ async fn canonical_execution_rejects_current_and_ended_prior_approvals() {
     use med_tracker::models::_entities::shared_schedule_executions;
     use med_tracker::models::access::{Actor, HouseholdScope};
 
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let seeded = seed_origin(&app, None).await;
     let child = seeded.child;
     let execution = seeded.execution;
@@ -3260,7 +3269,7 @@ async fn canonical_execution_rejects_current_and_ended_prior_approvals() {
 
 #[tokio::test]
 async fn person_owned_schedule_guardian_outside_destination_approves_without_joining() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let token = app.token().await;
     let child = dependent(&app, &token).await;
     let invitation = super::invitations::seed_acceptance(&app).await;
@@ -3329,7 +3338,7 @@ async fn person_owned_schedule_guardian_outside_destination_approves_without_joi
 
 #[tokio::test]
 async fn person_owned_schedule_guardian_replay_rechecks_declaration_after_destination_lock() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let token = app.token().await;
     let child = dependent(&app, &token).await;
     let invitation = super::invitations::seed_acceptance(&app).await;
@@ -3434,7 +3443,7 @@ async fn person_owned_schedule_guardian_replay_rechecks_declaration_after_destin
 
 #[tokio::test]
 async fn person_owned_schedule_withdrawal_role_has_no_foreign_row_read_and_only_constant_update() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, Some(1), None, false).await;
     let approval = person_household_approvals::Entity::find()
         .filter(person_household_approvals::Column::InvitationId.eq(care.invitation.invitation.id))
@@ -3519,7 +3528,7 @@ async fn person_owned_schedule_withdrawal_role_has_no_foreign_row_read_and_only_
 
 #[tokio::test]
 async fn person_owned_schedule_withdrawal_role_cannot_delete_unreferenced_foreign_execution() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, Some(1), None, false).await;
     assert_eq!(
         medication_takes::Entity::find()
@@ -3673,7 +3682,7 @@ enum OriginWaitChange {
 async fn origin_attachment_wait_change(change: OriginWaitChange) {
     use med_tracker::models::_entities::shared_schedule_executions;
     use med_tracker::models::access::{Actor, HouseholdScope};
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = existing_origin(&app).await;
     let scope = HouseholdScope {
         actor: Actor {
@@ -3867,7 +3876,7 @@ async fn person_owned_schedule_origin_attachment_skips_source_ended_during_valid
 #[tokio::test]
 async fn person_owned_schedule_origin_consent_skips_ended_facts_without_reopening_them() {
     use med_tracker::models::_entities::shared_schedule_executions;
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = existing_origin(&app).await;
     let manager = session(
         &app,
@@ -3942,7 +3951,7 @@ async fn person_owned_schedule_origin_attachment_scope_and_immutable_fact_are_en
 {
     use med_tracker::models::_entities::shared_schedule_executions;
     use med_tracker::models::access::{Actor, HouseholdScope};
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = existing_origin(&app).await;
     let foreign_source = super::schedule_lifecycle::create_schedule(&app, &origin.self_token).await;
     let foreign_plan = schedules::Entity::find_by_id(foreign_source)
@@ -4102,7 +4111,7 @@ async fn person_owned_schedule_origin_attachment_scope_and_immutable_fact_are_en
 #[tokio::test]
 async fn person_owned_schedule_consent_attaches_existing_origin_and_withdraws_its_execution() {
     use med_tracker::models::_entities::shared_schedule_executions;
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let ExistingOrigin {
         invitation,
         self_token,
@@ -4164,7 +4173,7 @@ async fn person_owned_schedule_consent_attaches_existing_origin_and_withdraws_it
 
 #[tokio::test]
 async fn person_owned_schedule_origin_waits_for_effective_approval_before_source_lock() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let created = Application::assert_status(app.client.post(format!("{}/api/v1/households/{}/schedules",app.origin,care.invitation.target_household.id))
         .bearer_auth(&care.token_a).json(&json!({"schedule":{"person_id":app.fixture.adult.id.to_string(),"medication_id":care.stock_b.id.to_string(),
@@ -4226,7 +4235,7 @@ async fn person_owned_schedule_origin_waits_for_effective_approval_before_source
 #[tokio::test]
 async fn person_owned_schedule_withdrawal_closes_current_and_future_sources_and_removes_feed() {
     use med_tracker::models::_entities::{api_tombstones, shared_schedule_executions};
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let future = Application::assert_status(app.client.post(format!("{}/api/v1/households/{}/schedules", app.origin, care.invitation.target_household.id))
         .bearer_auth(&care.token_a).json(&json!({"schedule":{
@@ -4341,7 +4350,7 @@ async fn person_owned_schedule_withdrawal_closes_current_and_future_sources_and_
 
 #[tokio::test]
 async fn person_owned_schedule_fresh_consent_keeps_member_and_ends_old_replay_epoch() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let member = household_memberships::Entity::find()
         .filter(household_memberships::Column::HouseholdId.eq(care.invitation.target_household.id))
@@ -4479,7 +4488,7 @@ async fn person_owned_schedule_fresh_consent_keeps_member_and_ends_old_replay_ep
 
 #[tokio::test]
 async fn person_owned_schedule_safety_does_not_offer_foreign_historical_window_queries() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, Some(4), None, false).await;
     Application::assert_status(
         take(
@@ -4540,7 +4549,7 @@ async fn person_owned_schedule_safety_does_not_offer_foreign_historical_window_q
 
 #[tokio::test]
 async fn person_owned_schedule_acceptance_rechecks_api_session_after_invitation_lock() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let invitation = super::invitations::seed_acceptance(&app).await;
     let blocker = app.fixture.admin.begin().await.unwrap();
     household_invitations::Entity::find_by_id(invitation.invitation.id)
@@ -4925,7 +4934,7 @@ async fn guardian_origin_invitation(
 async fn person_owned_schedule_origin_attachment_preserves_database_failure_with_current_guardian()
 {
     use med_tracker::models::_entities::{security_audit_events, shared_schedule_executions};
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let (invitation, token) = guardian_origin_invitation(&app, &origin).await;
     let declaration = current_declaration(&app, origin.child).await;
@@ -5099,7 +5108,7 @@ async fn person_owned_schedule_origin_attachment_preserves_database_failure_with
 #[tokio::test]
 async fn person_owned_schedule_origin_attachment_rechecks_guardian_eligibility_after_source_wait() {
     use med_tracker::models::_entities::{carer_relationships, shared_schedule_executions};
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let (invitation, token) = guardian_origin_invitation(&app, &origin).await;
     let member = household_memberships::Entity::find()
@@ -5258,7 +5267,7 @@ async fn person_owned_schedule_origin_attachment_rechecks_guardian_eligibility_a
 #[tokio::test]
 async fn person_owned_schedule_outside_guardian_attaches_existing_origin_and_covers_future_plan() {
     use med_tracker::models::_entities::shared_schedule_executions;
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let before_households = Application::assert_status(
         app.client
@@ -5446,7 +5455,7 @@ async fn person_owned_schedule_outside_guardian_attaches_existing_origin_and_cov
 #[tokio::test]
 async fn person_owned_schedule_safe_identity_cannot_be_retargeted_by_current_clinical_actor() {
     use med_tracker::models::access::{Actor, HouseholdScope};
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let scope = HouseholdScope {
         actor: Actor {
@@ -5503,7 +5512,7 @@ async fn person_owned_schedule_safe_identity_cannot_be_retargeted_by_current_cli
 #[tokio::test]
 async fn person_owned_schedule_guardian_changes_unbound_medicine_in_actual_household_with_explicit_dose()
  {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let (mut origin, invitation) = guardian_origin_with_acceptance(&app, true).await;
     let invitation = invitation.unwrap();
     let option = med_tracker::models::_entities::dosages::ActiveModel {
@@ -5588,7 +5597,7 @@ async fn person_owned_schedule_guardian_changes_unbound_medicine_in_actual_house
         .unwrap();
     let response=app.client.patch(format!("{}/api/v1/households/{}/shared_schedules/{}/medicine",app.origin,app.fixture.household.id,origin.plan))
         .bearer_auth(&origin.token).header("if-match",format!("\"person-schedule:{}:1\"",origin.plan))
-        .json(&json!({"medication_id":new.id,"medication_etag":medication_etag,"dose_amount":"3","dose_unit":"mg"})).timeout(std::time::Duration::from_secs(15)).send().await.unwrap();
+        .json(&json!({"medication_id":new.id,"medication_etag":medication_etag,"dose_amount":"3","dose_unit":"mg"})).send().await.unwrap();
     let status = response.status().as_u16();
     println!("current-household guardian medicine route HTTP status: {status}");
     let changed = Application::assert_status(response, 200).await;
@@ -5793,7 +5802,7 @@ async fn person_owned_schedule_guardian_changes_unbound_medicine_in_actual_house
 #[tokio::test]
 async fn person_owned_schedule_shared_command_scope_cannot_read_or_change_private_fields() {
     use med_tracker::models::access::{Actor, HouseholdScope};
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let declaration = current_declaration(&app, origin.child).await.unwrap();
     let local = shared_schedule_states::Entity::find()
@@ -5968,7 +5977,7 @@ async fn person_owned_schedule_shared_command_scope_cannot_read_or_change_privat
 #[tokio::test]
 async fn person_owned_schedule_medicine_adapter_requires_current_local_stock_dose_unit_and_clinical_authority()
  {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let mut stock = app.fixture.medication.clone().into_active_model();
     stock.dmd_system = Set(Some("https://dmd.nhs.uk".into()));
@@ -6232,7 +6241,7 @@ async fn assert_guardian_audits(
 
 #[tokio::test]
 async fn person_owned_schedule_current_guardian_can_edit_without_origin_membership() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let token = origin.token;
     let id = origin.plan;
@@ -6262,7 +6271,6 @@ async fn person_owned_schedule_current_guardian_can_edit_without_origin_membersh
         .bearer_auth(&token)
         .header("if-match", format!("\"person-schedule:{id}:1\""))
         .json(&json!({"schedule": {"dose_amount": "3"}}))
-        .timeout(std::time::Duration::from_secs(15))
         .send()
         .await
         .unwrap();
@@ -6296,7 +6304,7 @@ async fn person_owned_schedule_current_guardian_can_edit_without_origin_membersh
 #[tokio::test]
 async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_without_origin_membership()
  {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let token = origin.token;
     let id = origin.plan;
@@ -6316,7 +6324,6 @@ async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_withou
             .bearer_auth(&token)
             .header("if-match", format!("\"person-schedule:{id}:1\""))
             .json(&json!({"action": "pause"}))
-            .timeout(std::time::Duration::from_secs(15))
             .send()
             .await
             .unwrap(),
@@ -6335,7 +6342,6 @@ async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_withou
             .bearer_auth(&token)
             .header("if-match", format!("\"person-schedule:{id}:2\""))
             .json(&json!({"schedule":{"dose_amount":"4"}}))
-            .timeout(std::time::Duration::from_secs(15))
             .send()
             .await
             .unwrap(),
@@ -6356,7 +6362,6 @@ async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_withou
             .bearer_auth(&token)
             .header("if-match", format!("\"person-schedule:{id}:3\""))
             .json(&json!({"action":"resume"}))
-            .timeout(std::time::Duration::from_secs(15))
             .send()
             .await
             .unwrap(),
@@ -6398,7 +6403,7 @@ async fn person_owned_schedule_current_guardian_can_pause_edit_and_resume_withou
 #[tokio::test]
 async fn person_owned_schedule_shared_command_rechecks_captured_guardian_after_state_wait() {
     use med_tracker::models::_entities::carer_relationships;
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let before = shared_schedule_states::Entity::find_by_id(&origin.plan)
         .one(&app.fixture.admin)
@@ -6501,7 +6506,7 @@ async fn person_owned_schedule_shared_command_rechecks_captured_guardian_after_s
 
 #[tokio::test]
 async fn person_owned_schedule_shared_command_audit_failure_rolls_back_canonical_and_safe_state() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let before = shared_schedule_states::Entity::find_by_id(&origin.plan)
         .one(&app.fixture.admin)
@@ -6609,7 +6614,7 @@ async fn person_owned_schedule_shared_command_audit_failure_rolls_back_canonical
 
 #[tokio::test]
 async fn person_owned_schedule_shared_command_documents_account_session_error_envelope() {
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let origin = guardian_origin(&app).await;
     let endpoint = format!(
         "{}/api/v1/auth/shared_schedules/{}",
@@ -6695,7 +6700,7 @@ async fn current_member_rechecks_reused_backend_after_approval_withdrawal() {
         pid
     }
 
-    let app = Application::new().await;
+    let app = sharing_app().await;
     let care = shared(&app, None, None, false).await;
     let source = schedules::Entity::find_by_id(care.source_b)
         .one(&app.fixture.admin)
