@@ -88,17 +88,25 @@ the trace-ID follow-up. Stack membership does not authorise merging or deploymen
       generator determinism and Swift/Kotlin builds passed. The final unchanged
       candidate passed full `task ci` with normal profiles: 273 unit tests,
       two canary tests, 1,189 API tests, template concurrency and 68 browser
-      journeys. The trace-ID follow-up remains local and unpublished by owner
-      decision. Earlier runs reproduced two intermittent sharing schedule-setup
-      request timeouts, also observed before this slice; their cause remains
-      unresolved. No deadline, worker-profile, RLS or planner changes were
-      retained, and no latency improvement or flakiness fix is claimed.
+      journeys. The trace-ID follow-up is published as PR #3042, and hosted
+      CI passed on commit `136585970`. Earlier runs reproduced sharing
+      schedule-setup timeouts; PR #3030 replaced prerequisite setup with
+      fixtures and merged after its hosted checks passed. A separate test
+      crossed UTC midnight; its same-day safety assertion was corrected in
+      PR #3042. No deadline, worker-profile, RLS or planner changes were
+      retained, and no overall latency improvement is claimed.
 
 ## 7. Domain events (follow-up application PR 7)
 
+- [x] 7.1a API medication-take attempts, committed creates and replays emit
+      named, privacy-safe events. Committed and replayed events are emitted
+      only after the outer request transaction commits; a request-audit failure
+      rolls back the take without a committed event. Focused restricted-runtime
+      API and tracing-to-exporter checks cover the behaviour.
 - [ ] 7.1 Dose, reminder/push, mail/invitation and auth/rate-limit/support
       events with `medtracker.outcome`, committed-only-after-commit
-      semantics.
+      semantics. Dose paths outside API medication-take, blocked/rolled-back
+      events and all other event families remain outstanding.
 
 ## 8. Docs and archive (follow-up application PR 8)
 

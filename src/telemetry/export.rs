@@ -173,7 +173,29 @@ fn sanitize_span(mut span: SpanData) -> SpanData {
     let mut dropped = Vec::new();
     sanitize_attributes(&mut span.attributes, &mut dropped);
     for event in span.events.events.iter_mut() {
-        event.name = Cow::Borrowed("medtracker.redacted");
+        if !matches!(
+            event.name.as_ref(),
+            "medtracker.dose.attempted"
+                | "medtracker.dose.committed"
+                | "medtracker.dose.rolled_back"
+                | "medtracker.dose.blocked"
+                | "medtracker.dose.replayed"
+                | "medtracker.reminder.scheduled"
+                | "medtracker.reminder.suppressed"
+                | "medtracker.reminder.sent"
+                | "medtracker.reminder.provider_failed"
+                | "medtracker.mail.enqueued"
+                | "medtracker.mail.delivered"
+                | "medtracker.mail.retried"
+                | "medtracker.mail.failed"
+                | "medtracker.auth.sign_in_failed"
+                | "medtracker.auth.throttled"
+                | "medtracker.support.session_started"
+                | "medtracker.support.session_ended"
+                | "medtracker.support.session_expired"
+        ) {
+            event.name = Cow::Borrowed("medtracker.redacted");
+        }
         sanitize_attributes(&mut event.attributes, &mut dropped);
     }
     for link in span.links.links.iter_mut() {
@@ -527,6 +549,57 @@ mod event_name_tests {
     use opentelemetry::trace::Event;
     use opentelemetry_sdk::trace::SpanEvents;
     use std::borrow::Cow;
+
+    #[test]
+    fn named_domain_event_survives_export() {
+        let mut data = span(vec![], opentelemetry::trace::Status::Unset);
+        data.events.events.push(Event::new(
+            Cow::Borrowed("medtracker.dose.committed"),
+            std::time::SystemTime::now(),
+            vec![],
+            0,
+        ));
+        let data = sanitize_span(data);
+        assert_eq!(data.events.events[0].name, "medtracker.dose.committed");
+    }
+
+    #[test]
+    fn named_tracing_event_survives_the_real_export_pipeline() {
+        use opentelemetry_sdk::trace::{InMemorySpanExporter, Sampler, SdkTracerProvider};
+        use tracing_subscriber::layer::SubscriberExt;
+
+        let exporter = InMemorySpanExporter::default();
+        let provider = SdkTracerProvider::builder()
+            .with_simple_exporter(super::SanitizingExporter::new(
+                exporter.clone(),
+                super::Diagnostics::new(),
+            ))
+            .with_sampler(Sampler::AlwaysOn)
+            .build();
+        let subscriber =
+            tracing_subscriber::registry().with(crate::telemetry::otel_layer(&provider, "test"));
+        tracing::subscriber::with_default(subscriber, || {
+            let span = tracing::info_span!("request");
+            let guard = span.enter();
+            tracing::event!(name: "medtracker.dose.committed", tracing::Level::INFO,
+                event.name = "medtracker.dose.committed", medtracker.outcome = "success");
+            drop(guard);
+            drop(span);
+        });
+        provider.force_flush().expect("flush");
+        let spans = exporter.get_finished_spans().expect("exported spans");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].events.events.len(), 1);
+        let event = &spans[0].events.events[0];
+        assert_eq!(event.name, "medtracker.dose.committed");
+        assert!(
+            event
+                .attributes
+                .iter()
+                .any(|attribute| attribute.key.as_str() == "event.name"
+                    && attribute.value.to_string() == "medtracker.dose.committed")
+        );
+    }
 
     #[test]
     fn dynamic_span_event_names_are_replaced() {
