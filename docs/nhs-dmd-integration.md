@@ -11,7 +11,12 @@ cached products and the curated catalogue. Its scanner and Medicine Finder do
 not call live NHS or Open Food Facts services. The live-provider instructions
 below apply to the Rails reference application.
 
-Platform administrators upload releases at `/admin/nhs-dmd`. Configure the same
+Accounts with an active platform administrator record upload releases at
+`/admin/nhs-dmd`. Household owner or administrator access alone does not qualify.
+The development/test seed does not create a platform administrator, and the
+current administration navigation has no importer link. See [roles, administration
+pages and seed limitations](user-management.md#administration-pages-and-nhs-dmd-access).
+Configure the same
 private object store for the web process and worker:
 
 | Variable                | Purpose                                                      |
