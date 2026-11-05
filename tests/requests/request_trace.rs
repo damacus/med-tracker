@@ -7,7 +7,9 @@ pub(super) mod capture;
 #[tokio::test(flavor = "current_thread")]
 async fn dose_events_report_committed_and_replayed_requests()
 -> Result<(), Box<dyn std::error::Error>> {
-    use med_tracker::models::_entities::{medication_takes, person_medications};
+    use med_tracker::models::_entities::{
+        medication_takes, medications, person_medications, security_audit_events,
+    };
     use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 
     let (fixture, boot) = boot_request_fixture().await;
@@ -53,6 +55,49 @@ async fn dose_events_report_committed_and_replayed_requests()
         .json(&body)
         .await;
     assert_eq!(replay.status_code(), 200, "{}", replay.text());
+    let mut blocked_body = body.clone();
+    blocked_body["medication_take"]["client_uuid"] = uuid::Uuid::new_v4().to_string().into();
+    blocked_body["medication_take"]["dose_amount"] = "1000000".into();
+    blocked_body["medication_take"]["taken_from_medication_id"] = fixture.medication.id.into();
+    let stock_before = medications::Entity::find_by_id(fixture.medication.id)
+        .one(&fixture.admin)
+        .await?
+        .ok_or("fixture medication missing")?
+        .current_supply;
+    let audits_before = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+        .filter(security_audit_events::Column::EventType.eq("api.request"))
+        .count(&fixture.admin)
+        .await?;
+    let blocked = server
+        .post(&path)
+        .add_header("authorization", format!("Bearer {token}"))
+        .json(&blocked_body)
+        .await;
+    assert_eq!(blocked.status_code(), 422, "{}", blocked.text());
+    assert_eq!(
+        security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+            .filter(security_audit_events::Column::EventType.eq("api.request"))
+            .count(&fixture.admin)
+            .await?,
+        audits_before + 1
+    );
+    assert_eq!(
+        medication_takes::Entity::find()
+            .filter(medication_takes::Column::HouseholdId.eq(fixture.household.id))
+            .count(&fixture.admin)
+            .await?,
+        1
+    );
+    assert_eq!(
+        medications::Entity::find_by_id(fixture.medication.id)
+            .one(&fixture.admin)
+            .await?
+            .ok_or("fixture medication missing")?
+            .current_supply,
+        stock_before
+    );
     let trigger = format!(
         "reject_dose_request_audit_{}",
         uuid::Uuid::new_v4().simple()
@@ -69,10 +114,33 @@ async fn dose_events_report_committed_and_replayed_requests()
         .add_header("authorization", format!("Bearer {token}"))
         .json(&failing_body)
         .await;
+    let events_before_failed_block = captured.events();
+    let failed_block = server
+        .post(&path)
+        .add_header("authorization", format!("Bearer {token}"))
+        .json(&blocked_body)
+        .await;
     fixture.admin.execute_unprepared(&format!(
         "DROP TRIGGER {trigger} ON public.security_audit_events; DROP FUNCTION public.{trigger}()"
     )).await?;
     assert_eq!(failed.status_code(), 503, "{}", failed.text());
+    assert_eq!(failed_block.status_code(), 503, "{}", failed_block.text());
+    assert_eq!(
+        security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+            .filter(security_audit_events::Column::EventType.eq("api.request"))
+            .count(&fixture.admin)
+            .await?,
+        audits_before + 1
+    );
+    assert_eq!(
+        medications::Entity::find_by_id(fixture.medication.id)
+            .one(&fixture.admin)
+            .await?
+            .ok_or("fixture medication missing")?
+            .current_supply,
+        stock_before
+    );
     assert_eq!(
         medication_takes::Entity::find()
             .filter(medication_takes::Column::HouseholdId.eq(fixture.household.id))
@@ -81,6 +149,20 @@ async fn dose_events_report_committed_and_replayed_requests()
         1
     );
     let events = captured.events();
+    for name in [
+        "medtracker.dose.blocked",
+        "medtracker.dose.rolled_back",
+        "medtracker.dose.committed",
+    ] {
+        assert_eq!(
+            events.iter().filter(|event| event.contains(name)).count(),
+            events_before_failed_block
+                .iter()
+                .filter(|event| event.contains(name))
+                .count(),
+            "unexpected {name} event"
+        );
+    }
     assert_eq!(
         events
             .iter()
@@ -88,6 +170,34 @@ async fn dose_events_report_committed_and_replayed_requests()
             .count(),
         1,
         "{events:?}"
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| event.contains("medtracker.dose.blocked"))
+            .count(),
+        1,
+        "{events:?}"
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| event.contains("medtracker.dose.rolled_back"))
+            .count(),
+        1,
+        "{events:?}"
+    );
+    assert!(
+        events
+            .iter()
+            .any(|event| event.contains("medtracker.dose.blocked")
+                && event.contains("medtracker.outcome=\"blocked\""))
+    );
+    assert!(
+        events
+            .iter()
+            .any(|event| event.contains("medtracker.dose.rolled_back")
+                && event.contains("medtracker.outcome=\"rolled_back\""))
     );
     assert_eq!(
         events
@@ -101,6 +211,15 @@ async fn dose_events_report_committed_and_replayed_requests()
         !events.iter().any(|event| event.contains(&token)),
         "private credential leaked"
     );
+    for event in &events {
+        assert!(
+            !event.contains(
+                blocked_body["medication_take"]["client_uuid"]
+                    .as_str()
+                    .ok_or("client UUID missing")?
+            )
+        );
+    }
     drop(server);
     close_request(fixture, boot).await;
     Ok(())

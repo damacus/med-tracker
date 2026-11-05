@@ -583,13 +583,17 @@ mod event_name_tests {
             let guard = span.enter();
             tracing::event!(name: "medtracker.dose.committed", tracing::Level::INFO,
                 event.name = "medtracker.dose.committed", medtracker.outcome = "success");
+            tracing::event!(name: "medtracker.dose.blocked", tracing::Level::INFO,
+                event.name = "medtracker.dose.blocked", medtracker.outcome = "blocked", private.value = "ClinicalSentinel");
+            tracing::event!(name: "medtracker.dose.rolled_back", tracing::Level::INFO,
+                event.name = "medtracker.dose.rolled_back", medtracker.outcome = "rolled_back", private.value = "ClinicalSentinel");
             drop(guard);
             drop(span);
         });
         provider.force_flush().expect("flush");
         let spans = exporter.get_finished_spans().expect("exported spans");
         assert_eq!(spans.len(), 1);
-        assert_eq!(spans[0].events.events.len(), 1);
+        assert_eq!(spans[0].events.events.len(), 3);
         let event = &spans[0].events.events[0];
         assert_eq!(event.name, "medtracker.dose.committed");
         assert!(
@@ -599,6 +603,35 @@ mod event_name_tests {
                 .any(|attribute| attribute.key.as_str() == "event.name"
                     && attribute.value.to_string() == "medtracker.dose.committed")
         );
+        for (event, name, outcome) in [
+            (
+                &spans[0].events.events[1],
+                "medtracker.dose.blocked",
+                "blocked",
+            ),
+            (
+                &spans[0].events.events[2],
+                "medtracker.dose.rolled_back",
+                "rolled_back",
+            ),
+        ] {
+            assert_eq!(event.name, name);
+            assert!(
+                event
+                    .attributes
+                    .iter()
+                    .any(|attribute| attribute.key.as_str() == "event.name"
+                        && attribute.value.to_string() == name)
+            );
+            assert!(
+                event
+                    .attributes
+                    .iter()
+                    .any(|attribute| attribute.key.as_str() == "medtracker.outcome"
+                        && attribute.value.to_string() == outcome)
+            );
+            assert!(!format!("{event:?}").contains("ClinicalSentinel"));
+        }
     }
 
     #[test]

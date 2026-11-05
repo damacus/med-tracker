@@ -103,10 +103,14 @@ the trace-ID follow-up. Stack membership does not authorise merging or deploymen
       only after the outer request transaction commits; a request-audit failure
       rolls back the take without a committed event. Focused restricted-runtime
       API and tracing-to-exporter checks cover the behaviour.
+- [x] 7.1b API medication-take validation emits a blocked event after its
+      savepoint rollback and audited outer commit. Request-audit failure after
+      a new dose emits rolled_back only after explicit outer rollback succeeds.
 - [ ] 7.1 Dose, reminder/push, mail/invitation and auth/rate-limit/support
       events with `medtracker.outcome`, committed-only-after-commit
       semantics. Dose paths outside API medication-take, blocked/rolled-back
-      events and all other event families remain outstanding.
+      events beyond the API medication-take cases and all other event families
+      remain outstanding.
 
 ## 8. Docs and archive (follow-up application PR 8)
 
