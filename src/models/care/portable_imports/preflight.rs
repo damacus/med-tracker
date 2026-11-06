@@ -2,13 +2,44 @@ use super::*;
 
 pub(crate) struct Preflight {
     counts: Value,
-    pub(crate) conflicts: Vec<Value>,
+    pub(crate) conflicts: Vec<NameConflict>,
     pub(crate) errors: Vec<String>,
+}
+
+#[derive(serde::Serialize)]
+pub(crate) struct NameConflict {
+    pub(crate) record_type: &'static str,
+    pub(crate) portable_id: String,
+    pub(crate) field: &'static str,
+    pub(crate) existing_portable_id: String,
 }
 
 impl Preflight {
     pub(crate) fn body(&self, applied: bool) -> Value {
         json!({"applied": applied, "counts": self.counts, "conflicts": self.conflicts, "errors": self.errors})
+    }
+}
+
+#[cfg(test)]
+mod typed_conflict_tests {
+    use super::*;
+
+    #[test]
+    fn name_conflict_retains_the_existing_response_shape() {
+        let result = Preflight {
+            counts: json!({}),
+            conflicts: vec![NameConflict {
+                record_type: "medications",
+                portable_id: "source".into(),
+                field: "name",
+                existing_portable_id: "destination".into(),
+            }],
+            errors: Vec::new(),
+        };
+        assert_eq!(
+            result.body(false)["conflicts"],
+            json!([{"record_type":"medications", "portable_id":"source", "field":"name", "existing_portable_id":"destination"}])
+        );
     }
 }
 
@@ -67,8 +98,12 @@ pub(crate) async fn preflight(
             if let Some(other) = current
                 && other != portable_id
             {
-                conflicts.push(json!({"record_type": kind, "portable_id": portable_id,
-                    "field": field, "existing_portable_id": other}));
+                conflicts.push(NameConflict {
+                    record_type: kind,
+                    portable_id: portable_id.to_owned(),
+                    field,
+                    existing_portable_id: other.to_owned(),
+                });
             }
             names.insert(lower, portable_id);
         }
