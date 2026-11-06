@@ -32,7 +32,7 @@ together without handing control of it to a hosted service.
 
 ## Migration checkout
 
-This branch makes Loco 1.2 the root Rust application. The Rails application and
+This branch makes Loco 1.3 the root Rust application. The Rails application and
 the earlier Axum port are archived in git history. The foundation currently
 exposes `/up`, framework database readiness at `/_health`, and a Tera landing
 page. The accepted fresh Rust architecture is recorded in

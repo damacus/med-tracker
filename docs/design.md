@@ -2,7 +2,7 @@
 
 ## Accepted Rust direction
 
-Root Loco 1.2 with Tera/DaisyUI and PostgreSQL 18 is primary. The Rails application is
+Root Loco 1.3 with Tera/DaisyUI and PostgreSQL 18 is primary. The Rails application is
 archived in git history. The accepted architecture below supersedes older parity and access
 assumptions; implementation acceptance remains pending. Historical Rails design
 sections below describe the reference, not requirements to reproduce its internals.

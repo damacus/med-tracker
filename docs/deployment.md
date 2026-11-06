@@ -81,7 +81,7 @@ decisions do not claim inbox receipt, device display or unperformed checks.
 ## Invitation email transactions
 
 Invitation delivery uses Loco's standard `MailerWorker` and `Email` payload.
-Loco 1.2's PostgreSQL enqueue API takes a separate pool; it cannot join the existing
+Loco's PostgreSQL enqueue API takes a separate pool; it cannot join the existing
 SeaORM tenant transaction. The invitation adapter inserts that standard job into
 the owner-provisioned `pg_loco_queue` within the same transaction as the invitation,
 token rotation and audit changes. Loco owns job execution and retries.

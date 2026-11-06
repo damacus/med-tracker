@@ -3,8 +3,8 @@ use loco_rs::{
     Error, Result,
     app::{AppContext, Hooks, Initializer},
     bgworker::{BackgroundWorker, Queue},
-    boot::{BootResult, StartMode, create_app},
-    config::Config,
+    boot::{BootResult, StartMode, create_context, run_app},
+    config::{Config, QueueConfig},
     controller::{
         AppRoutes,
         middleware::{self, MiddlewareLayer, MiddlewareStackExt},
@@ -13,6 +13,10 @@ use loco_rs::{
     task::Tasks,
 };
 use migration::Migrator;
+use sea_orm::{
+    ConnectionTrait, Database,
+    sea_query::{Alias, Expr, ExprTrait, Func, JoinType, Query},
+};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -37,7 +41,248 @@ impl Hooks for App {
         environment: &Environment,
         config: Config,
     ) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment, config).await
+        let ctx = create_context::<Self>(environment, config).await?;
+        let result = async {
+            loco_rs::db::converge::<Self, Migrator>(&ctx, &ctx.config.database).await?;
+            if let (Some(queue), Some(QueueConfig::Postgres(config))) =
+                (&ctx.queue_provider, &ctx.config.queue)
+            {
+                let connection = Database::connect(&config.uri).await?;
+                let columns = Query::select()
+                    .columns([
+                        "id",
+                        "name",
+                        "task_data",
+                        "status",
+                        "run_at",
+                        "interval",
+                        "created_at",
+                        "updated_at",
+                        "tags",
+                        "priority",
+                        "attempts",
+                        "unique_key",
+                    ])
+                    .from(Alias::new("pg_loco_queue"))
+                    .limit(0)
+                    .to_owned();
+                connection
+                    .query_all_raw(connection.get_database_backend().build(&columns))
+                    .await?;
+                let column_metadata = Query::select()
+                    .columns(["column_name", "data_type", "is_nullable", "column_default"])
+                    .from(("information_schema", "columns"))
+                    .and_where(Expr::col("table_schema").eq("public"))
+                    .and_where(Expr::col("table_name").eq("pg_loco_queue"))
+                    .to_owned();
+                let column_rows = connection
+                    .query_all_raw(connection.get_database_backend().build(&column_metadata))
+                    .await?;
+                for (name, data_type, nullable, default) in [
+                    ("id", "character varying", "NO", None),
+                    ("name", "character varying", "NO", None),
+                    ("task_data", "jsonb", "NO", None),
+                    (
+                        "status",
+                        "character varying",
+                        "NO",
+                        Some("'queued'::character varying"),
+                    ),
+                    ("run_at", "timestamp with time zone", "NO", None),
+                    ("interval", "bigint", "YES", None),
+                    (
+                        "created_at",
+                        "timestamp with time zone",
+                        "NO",
+                        Some("now()"),
+                    ),
+                    (
+                        "updated_at",
+                        "timestamp with time zone",
+                        "NO",
+                        Some("now()"),
+                    ),
+                    ("tags", "jsonb", "YES", None),
+                    ("priority", "integer", "NO", Some("0")),
+                    ("attempts", "integer", "NO", Some("0")),
+                    ("unique_key", "character varying", "YES", None),
+                ] {
+                    let mut found = false;
+                    for row in &column_rows {
+                        if row.try_get::<String>("", "column_name")? == name {
+                            found = row.try_get::<String>("", "data_type")? == data_type
+                                && row.try_get::<String>("", "is_nullable")? == nullable
+                                && row
+                                    .try_get::<Option<String>>("", "column_default")?
+                                    .as_deref()
+                                    == default;
+                            break;
+                        }
+                    }
+                    if !found {
+                        return Err(Error::string(
+                            "Queue schema is not prepared; run database migrations",
+                        ));
+                    }
+                }
+                let indexes = Query::select()
+                    .column("indexname")
+                    .from(("pg_catalog", "pg_indexes"))
+                    .and_where(Expr::col("schemaname").eq("public"))
+                    .and_where(Expr::col("tablename").eq("pg_loco_queue"))
+                    .to_owned();
+                let rows = connection
+                    .query_all_raw(connection.get_database_backend().build(&indexes))
+                    .await?;
+                let names = rows
+                    .iter()
+                    .map(|row| row.try_get::<String>("", "indexname"))
+                    .collect::<std::result::Result<Vec<_>, _>>()?;
+                for required in [
+                    "pg_loco_queue_pkey",
+                    "pg_loco_queue_unique_queued",
+                    "pg_loco_queue_dequeue",
+                    "pg_loco_queue_status_updated_at",
+                ] {
+                    if !names.iter().any(|name| name == required) {
+                        return Err(Error::string(
+                            "Queue schema is not prepared; run database migrations",
+                        ));
+                    }
+                }
+                // PostgreSQL exposes index predicates and indexed column names
+                // through pg_get_expr/pg_get_indexdef; SeaQuery has no typed
+                // equivalents for these catalog functions.
+                let unique_index = Query::select()
+                    .columns([
+                        ("i", "indisunique"),
+                        ("i", "indisvalid"),
+                        ("i", "indnkeyatts"),
+                    ])
+                    .expr_as(
+                        Func::cust(Alias::new("pg_get_expr"))
+                            .args([Expr::col(("i", "indpred")), Expr::col(("i", "indrelid"))]),
+                        "predicate",
+                    )
+                    .expr_as(
+                        Func::cust(Alias::new("pg_get_indexdef")).args([
+                            Expr::col(("i", "indexrelid")),
+                            Expr::val(1_i32),
+                            Expr::val(true),
+                        ]),
+                        "first_key",
+                    )
+                    .expr_as(
+                        Func::cust(Alias::new("pg_get_indexdef")).args([
+                            Expr::col(("i", "indexrelid")),
+                            Expr::val(2_i32),
+                            Expr::val(true),
+                        ]),
+                        "second_key",
+                    )
+                    .from_as(("pg_catalog", "pg_index"), "i")
+                    .join_as(
+                        JoinType::InnerJoin,
+                        ("pg_catalog", "pg_class"),
+                        "idx",
+                        Expr::col(("idx", "oid")).equals(("i", "indexrelid")),
+                    )
+                    .join_as(
+                        JoinType::InnerJoin,
+                        ("pg_catalog", "pg_class"),
+                        "table",
+                        Expr::col(("table", "oid")).equals(("i", "indrelid")),
+                    )
+                    .join_as(
+                        JoinType::InnerJoin,
+                        ("pg_catalog", "pg_namespace"),
+                        "namespace",
+                        Expr::col(("namespace", "oid")).equals(("table", "relnamespace")),
+                    )
+                    .and_where(Expr::col(("idx", "relname")).eq("pg_loco_queue_unique_queued"))
+                    .and_where(Expr::col(("table", "relname")).eq("pg_loco_queue"))
+                    .and_where(Expr::col(("namespace", "nspname")).eq("public"))
+                    .to_owned();
+                let index = connection
+                    .query_one_raw(connection.get_database_backend().build(&unique_index))
+                    .await?
+                    .ok_or_else(|| {
+                        Error::string("Queue schema is not prepared; run database migrations")
+                    })?;
+                let unique: bool = index.try_get("", "indisunique")?;
+                let valid: bool = index.try_get("", "indisvalid")?;
+                let key_count: i16 = index.try_get("", "indnkeyatts")?;
+                let first_key: String = index.try_get("", "first_key")?;
+                let second_key: String = index.try_get("", "second_key")?;
+                let predicate: Option<String> = index.try_get("", "predicate")?;
+                if !unique
+                    || !valid
+                    || key_count != 2
+                    || first_key != "name"
+                    || second_key != "unique_key"
+                    || predicate.as_deref()
+                        != Some("(((status)::text = 'queued'::text) AND (unique_key IS NOT NULL))")
+                {
+                    return Err(Error::string(
+                        "Queue schema is not prepared; run database migrations",
+                    ));
+                }
+                let primary_key = Query::select()
+                    .column(("key", "column_name"))
+                    .from_as(("information_schema", "table_constraints"), "constraint")
+                    .join_as(
+                        JoinType::InnerJoin,
+                        ("information_schema", "key_column_usage"),
+                        "key",
+                        Expr::col(("constraint", "constraint_name"))
+                            .equals(("key", "constraint_name"))
+                            .and(
+                                Expr::col(("constraint", "constraint_schema"))
+                                    .equals(("key", "constraint_schema")),
+                            )
+                            .and(
+                                Expr::col(("constraint", "table_name"))
+                                    .equals(("key", "table_name")),
+                            )
+                            .and(
+                                Expr::col(("constraint", "table_schema"))
+                                    .equals(("key", "table_schema")),
+                            ),
+                    )
+                    .and_where(Expr::col(("constraint", "table_schema")).eq("public"))
+                    .and_where(Expr::col(("constraint", "table_name")).eq("pg_loco_queue"))
+                    .and_where(Expr::col(("constraint", "constraint_type")).eq("PRIMARY KEY"))
+                    .to_owned();
+                let primary = connection
+                    .query_all_raw(connection.get_database_backend().build(&primary_key))
+                    .await?;
+                if primary.len() != 1
+                    || primary
+                        .first()
+                        .map(|row| row.try_get::<String>("", "column_name"))
+                        .transpose()?
+                        .as_deref()
+                        != Some("id")
+                {
+                    return Err(Error::string(
+                        "Queue schema is not prepared; run database migrations",
+                    ));
+                }
+                connection.close().await?;
+                if config.dangerously_flush {
+                    queue.clear().await?;
+                }
+            }
+            Ok(())
+        }
+        .await;
+        if let Err(error) = result {
+            if let Some(queue) = &ctx.queue_provider {
+                queue.shutdown()?;
+            }
+            return Err(error);
+        }
+        run_app::<Self>(&mode, ctx).await
     }
 
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {

@@ -10,7 +10,7 @@
 
 ## Stack
 
-- Rust (stable) with Loco 1.2 (Axum)
+- Rust (stable) with Loco 1.3 (Axum)
 - PostgreSQL 18 with row-level security, accessed through SeaORM
 - Tera templates with DaisyUI and Tailwind CSS
 - Better Auth: passwords, passkeys, TOTP, recovery codes, optional OIDC

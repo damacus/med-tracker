@@ -23,12 +23,12 @@ On a Docker host with exhausted default network pools, the image checks accept
 `LOCO_IMAGE_SUBNET=<unused-private-subnet>`. Choose an unused subnet; the checks
 remove only the network and containers they created.
 
-Loco's released 1.2.0 scheduler requires a correction for direct native-task
+Loco's released 1.2.0 scheduler required a correction for direct native-task
 execution. The owner approved a temporary exception to the registry-only dependency
-rule: `Cargo.toml` patches `loco-rs` to
+rule and patched `loco-rs` to
 [`damacus/loco` commit `5224bc58f9292a2f4713ee333bded785e5266f09`](https://github.com/damacus/loco/commit/5224bc58f9292a2f4713ee333bded785e5266f09).
-The full revision is also recorded in `Cargo.lock`; builds use `--locked` and
-`deny.toml` permits only the named Git source with revision pins.
+The 1.3.0 release includes shell-free scheduling and is used from the registry.
+The application checks native scheduler commands for NUL bytes before starting.
 
 The fork starts at published 1.2.0's recorded source commit
 [`43b3fe60db487758c195d6947f1c37e5246cedf2`](https://github.com/loco-rs/loco/commit/43b3fe60db487758c195d6947f1c37e5246cedf2),
@@ -36,26 +36,20 @@ from the release archive's `.cargo_vcs_info.json`. That archive's SHA-256 is
 `5386baf405736a2620001f4561b00fa4874dae99eac3ccf01713fabc9ef13af4`.
 The [fork diff](https://github.com/damacus/loco/compare/43b3fe60db487758c195d6947f1c37e5246cedf2...5224bc58f9292a2f4713ee333bded785e5266f09)
 contains the scheduler fix, its tests and exact `shlex` dependency. Its `loco-gen`
-dependency remains the published 1.2.0 package. Other locked package records are
-unchanged. This avoids taking the unrelated framework changes in the current
-upstream development branch; [upstream PR #1887](https://github.com/loco-rs/loco/pull/1887)
-proposes the corresponding fix there.
+dependency was the published 1.2.0 package. [Upstream PR #1887](https://github.com/loco-rs/loco/pull/1887)
+proposed the corresponding fix there.
 
 Configured native jobs parse grouping and escaping with `shlex`, then execute
 the application directly. Shell operators and expansions remain literal arguments.
 Empty task names, malformed quotes and NUL bytes fail before spawning. Explicit
 `shell: true` jobs still need a platform shell, which the scratch image lacks.
-The released `JobDescription` fields and public shell-based `run()` API are retained;
-direct execution and argument-safe failure logs apply to the scheduler-owned path.
 Cron timing, filters, environment inheritance, output modes and shutdown remain
 owned by the released framework.
 
 The fork's scheduler tests cover exact native arguments, executable paths with
 spaces, separate startup and periodic callbacks, output modes, nonzero exits,
-missing executables and failure-log privacy. Keep those checks and the application's
-process/image acceptance when updating the pin. Replace the fork with a published
-release containing the correction when available; do not remove the regression
-coverage with the temporary dependency.
+missing executables and failure-log privacy. The application retains its own
+process and image acceptance checks when updating the framework.
 Native `run` values support quoted arguments but do not expand shell syntax.
 `shell: true` explicitly requests a platform shell and cannot run in this scratch
 image. Keep production schedules as native tasks.
