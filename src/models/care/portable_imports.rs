@@ -9,6 +9,7 @@ mod links;
 mod mapping;
 mod pauses;
 mod person_schedules;
+pub(crate) mod planning;
 mod preflight;
 mod validation;
 mod writing;
