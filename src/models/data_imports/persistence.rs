@@ -120,6 +120,7 @@ pub async fn find(
     }))
 }
 
+// Stage 42 must add bounded pagination before exposing report listing through an API.
 pub async fn list_reports(tenant: &TenantTransaction) -> Result<Vec<ImportReport>, OperationError> {
     let documents: Vec<(serde_json::Value,)> = data_import_runs::Entity::find()
         .select_only()

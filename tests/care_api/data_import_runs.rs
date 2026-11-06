@@ -5,12 +5,25 @@ use med_tracker::models::{
     data_imports::{
         contracts::{
             ConsentInput, ImportState, PersonDestination, PersonId, PersonMapping,
-            PreparationReceipt, PreviewResult,
+            PreparationReceipt, PreviewResult, PreviewToken,
         },
         persistence::{self, EncryptedPrepared, NewRun, SourceTimeZone},
     },
 };
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter, Set,
+};
+
+fn permission_denied(error: &DbErr) -> bool {
+    match error {
+        DbErr::Exec(sea_orm::RuntimeErr::SqlxError(error))
+        | DbErr::Query(sea_orm::RuntimeErr::SqlxError(error)) => error
+            .as_database_error()
+            .and_then(|error| error.code())
+            .is_some_and(|code| code == "42501"),
+        _ => false,
+    }
+}
 
 #[tokio::test]
 async fn data_import_runs_persist_snapshot_and_isolate_households() {
@@ -124,11 +137,57 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
             .iter()
             .all(|report| report.id != preview.report.id)
     );
-    let mut forged = original.into_active_model();
+    let mut forged = original.clone().into_active_model().reset_all();
     forged.id = Set(uuid::Uuid::new_v4().to_string());
     forged.created_by_membership_id = Set(foreign.membership.id);
-    assert!(forged.insert(other.transaction()).await.is_err());
+    let error = forged.insert(other.transaction()).await.unwrap_err();
+    assert!(permission_denied(&error));
     other.rollback().await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    let mut forged = original.into_active_model().reset_all();
+    forged.id = Set(uuid::Uuid::new_v4().to_string());
+    forged.created_by_membership_id = Set(app.fixture.minor_membership.id);
+    let error = forged.insert(tenant.transaction()).await.unwrap_err();
+    assert!(permission_denied(&error));
+    tenant.rollback().await.unwrap();
+
+    for column in [
+        data_import_runs::Column::EncryptedPrepared,
+        data_import_runs::Column::Receipt,
+        data_import_runs::Column::Mappings,
+        data_import_runs::Column::Consents,
+        data_import_runs::Column::AcknowledgedOmissions,
+        data_import_runs::Column::SourceTimezone,
+        data_import_runs::Column::Id,
+        data_import_runs::Column::HouseholdId,
+        data_import_runs::Column::CreatedByMembershipId,
+    ] {
+        let tenant = access::begin(&app.fixture.runtime, &scope, None)
+            .await
+            .unwrap();
+        let error = data_import_runs::Entity::update_many()
+            .col_expr(column, sea_orm::sea_query::Expr::col(column))
+            .filter(data_import_runs::Column::Id.eq(preview.report.id.clone()))
+            .exec(tenant.transaction())
+            .await
+            .unwrap_err();
+        assert!(
+            permission_denied(&error),
+            "immutable column {column:?}: {error}"
+        );
+        tenant.rollback().await.unwrap();
+    }
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    let error = data_import_runs::Entity::delete_by_id(preview.report.id.clone())
+        .exec(tenant.transaction())
+        .await
+        .unwrap_err();
+    assert!(permission_denied(&error));
+    tenant.rollback().await.unwrap();
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
@@ -139,6 +198,27 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
             .await
             .is_err()
     );
+    let wrong_token = PreviewToken("wrong-nonempty-token".into());
+    assert!(
+        persistence::transition(&tenant, ImportState::Ready, &applying, Some(&wrong_token))
+            .await
+            .is_err()
+    );
+    let mut altered = applying.clone();
+    altered.totals.expected_create += 1;
+    assert!(
+        persistence::transition(
+            &tenant,
+            ImportState::Ready,
+            &altered,
+            preview.confirmation.as_ref()
+        )
+        .await
+        .is_err()
+    );
+    let competitor = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     persistence::transition(
         &tenant,
         ImportState::Ready,
@@ -147,7 +227,36 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
     )
     .await
     .unwrap();
+    let competing_report = applying.clone();
+    let competing_token = preview.confirmation.clone();
+    let (started, ready) = tokio::sync::oneshot::channel();
+    let mut competing = tokio::spawn(async move {
+        let _ = started.send(());
+        let result = persistence::transition(
+            &competitor,
+            ImportState::Ready,
+            &competing_report,
+            competing_token.as_ref(),
+        )
+        .await;
+        competitor.rollback().await.unwrap();
+        result
+    });
+    ready.await.unwrap();
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(150), &mut competing)
+            .await
+            .is_err()
+    );
     tenant.commit().await.unwrap();
+    let second = tokio::time::timeout(std::time::Duration::from_secs(10), competing)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(matches!(
+        second,
+        Err(med_tracker::models::errors::OperationError::Conflict { .. })
+    ));
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
