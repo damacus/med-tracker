@@ -1,5 +1,6 @@
 mod access;
 mod aliases;
+mod canonical_restore;
 mod contracts;
 mod create_only;
 mod declarations;
@@ -20,6 +21,9 @@ pub(crate) use access::authorized;
 pub(crate) use aliases::{
     AliasError, AliasSelection, NormalizedImport, ProfileDifference, ResolvedAlias,
     normalize_aliases,
+};
+pub(crate) use canonical_restore::{
+    CanonicalRestoredSchedule, VerifiedCanonicalTake, initialize_canonical_schedules,
 };
 pub(crate) use identity::ExistingIndex;
 pub(crate) use preflight::preflight;
