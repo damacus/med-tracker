@@ -1,0 +1,27 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="admin-page">
+  <a class="link" href="{{ back_url }}">{{ import_labels.back }}</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ import_labels.title }}</h1>
+  <p class="mt-2">{{ import_labels.intro }}</p>
+  <p class="mt-2">{{ import_labels.credentials }}</p>
+  {% include "components/form_errors.html" %}
+  <form id="administration-form" action="{{ inspect_url }}" method="post" enctype="multipart/form-data" class="card bg-base-100 border border-base-300 mt-6">
+    <div class="card-body gap-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+      <label class="font-semibold" for="source">{{ import_labels.source }}</label>
+      <select class="select w-full" id="source" name="source" required><option value="med_tracker05">MedTracker 0.5</option></select>
+      <label class="font-semibold" for="archive">{{ import_labels.archive }}</label>
+      <input class="file-input w-full" id="archive" name="archive" type="file" accept=".zip,application/zip" required>
+      <label class="font-semibold" for="passphrase">{{ import_labels.passphrase }}</label>
+      <input class="input w-full" id="passphrase" name="passphrase" type="password" autocomplete="off" required>
+      <label class="font-semibold" for="source_timezone">{{ import_labels.timezone }}</label>
+      <p id="timezone-help">{{ import_labels.timezone_help }}</p>
+      <input class="input w-full" id="source_timezone" name="source_timezone" value="{{ source_timezone | default(value='Europe/London') }}" aria-describedby="timezone-help" required>
+      <label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="timezone_confirmed" value="true" required> <span>{{ import_labels.timezone_confirm }}</span></label>
+      <button class="btn btn-neutral w-fit" type="submit">{{ import_labels.inspect }}</button>
+    </div>
+  </form>
+</section>
+{% endblock content %}

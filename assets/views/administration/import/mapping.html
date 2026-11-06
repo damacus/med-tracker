@@ -1,0 +1,41 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="admin-page">
+  <a class="link" href="{{ back_url }}">{{ import_labels.back }}</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ import_labels.mapping_title }}</h1>
+  <p class="mt-2">{{ import_labels.mapping_help }}</p>
+  <p class="mt-2">{{ import_labels.consent_help }}</p>
+  {% include "components/form_errors.html" %}
+  <form id="administration-form" action="{{ preview_url }}" method="post" enctype="multipart/form-data" class="space-y-5 mt-6">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="inspection_token" value="{{ inspection_token }}">
+    {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+    {% for person in people %}
+    <fieldset class="card bg-base-100 border border-base-300"><legend class="font-semibold text-lg">{{ person.name }}</legend><div class="card-body gap-3">
+      <p>{{ import_labels.source_reference }}: {{ person.source.source }} / {{ person.source.instance }} / {{ person.source.id }}</p>
+      <label for="mapping-{{ loop.index }}">{{ import_labels.choose_mapping }}</label>
+      <select id="mapping-{{ loop.index }}" name="mapping[{{ person.key }}]" class="select w-full" required>
+        <option value="">{{ import_labels.choose_mapping }}</option>
+        {% for destination in person.destinations %}<option value="{{ destination.value }}" {% if destination.selected %}selected{% endif %}>{{ destination.name }}</option>{% endfor %}
+        {% if person.may_create_dependent %}<option value="new_dependent" {% if person.new_dependent_selected %}selected{% endif %}>{{ import_labels.new_dependent }}</option>{% endif %}
+      </select>
+      {% if person.consent_status %}<p>{{ import_labels.consent_title }}: {{ import_labels.codes[person.consent_status] }}</p>{% endif %}
+      {% for choice in person.consent_choices %}<label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="consent[{{ person.key }}]" value="{{ choice }}"> <span>{{ import_labels[choice] }}</span></label>{% endfor %}
+      {% if person.may_request_consent %}<p>{{ import_labels.request_consent_help }}</p><label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="request_consent[{{ person.key }}]" value="true"> <span>{{ import_labels.request_consent }}</span></label>{% endif %}
+      {% if person.may_create_dependent %}<p>{{ import_labels.guardian_help }}</p><label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="guardian[{{ person.key }}]" value="true"> <span>{{ import_labels.guardian_declaration }}</span></label>{% endif %}
+    </div></fieldset>
+    {% endfor %}
+    {% if omissions | length > 0 %}<fieldset class="card bg-base-100 border border-base-300"><legend class="font-semibold text-lg">{{ import_labels.ack_title }}</legend><div class="card-body gap-3">
+      <p>{{ import_labels.ack_help }}</p>
+      {% for omission in omissions %}<div>{% include "administration/import/omission.html" %}<label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="acknowledgement" value="{{ omission.acknowledgement_id }}" required> <span>{{ import_labels.acknowledge }}</span></label></div>{% endfor %}
+    </div></fieldset>{% endif %}
+    <div class="card bg-base-100 border border-base-300"><div class="card-body gap-3">
+      <label for="archive" class="font-semibold">{{ import_labels.archive }}</label><input class="file-input w-full" id="archive" name="archive" type="file" accept=".zip,application/zip" required>
+      <label for="passphrase" class="font-semibold">{{ import_labels.passphrase }}</label><input class="input w-full" id="passphrase" name="passphrase" type="password" autocomplete="off" required>
+      <label for="source_timezone" class="font-semibold">{{ import_labels.timezone }}</label><p id="timezone-help">{{ import_labels.timezone_help }}</p><input class="input w-full" id="source_timezone" name="source_timezone" value="{{ source_timezone }}" aria-describedby="timezone-help" required>
+      <label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="timezone_confirmed" value="true" required> <span>{{ import_labels.timezone_confirm }}</span></label>
+      <button class="btn btn-neutral w-fit" type="submit">{{ import_labels.preview_action }}</button>
+    </div></div>
+  </form>
+</section>
+{% endblock content %}

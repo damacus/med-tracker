@@ -1,0 +1,22 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="admin-page">
+  <a class="link" href="{{ back_url }}">{{ import_labels.back }}</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ import_labels.consent_request }}</h1>
+  <p class="mt-2">{{ import_labels.personal_request_from }}: {{ request.requester_name }}</p>
+  <p>{{ import_labels.household }}: {{ request.household_name }}</p>
+  <p class="mt-2">{{ import_labels.personal_consent_help }}</p>
+  <p class="mt-2">{{ import_labels.kinds.person }}: {{ request.person_name }}</p>
+  <p>{{ import_labels.source_reference }}: {{ request.source_name }} · {{ request.source.source }} / {{ request.source.instance }} / {{ request.source.id }}</p>
+  {% include "components/form_errors.html" %}
+  <form id="administration-form" action="{{ decision_url }}" method="post" class="card bg-base-100 border border-base-300 mt-6"><div class="card-body gap-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+    <fieldset><legend class="font-semibold">{{ import_labels.consent_request }}</legend>
+      <label class="flex items-center gap-2 mt-2"><input class="radio" type="radio" name="decision" value="accept" required> {{ import_labels.accept }}</label>
+      <label class="flex items-center gap-2 mt-2"><input class="radio" type="radio" name="decision" value="decline" required> {{ import_labels.decline }}</label>
+    </fieldset>
+    <button class="btn btn-neutral w-fit" type="submit">{{ import_labels.submit_decision }}</button>
+  </div></form>
+</section>
+{% endblock content %}

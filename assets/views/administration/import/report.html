@@ -1,0 +1,35 @@
+<section aria-labelledby="import-report-heading" class="space-y-6">
+  <h2 id="import-report-heading" class="text-2xl font-semibold">{{ import_labels.report }}</h2>
+  <p>{{ import_labels.status }}: {{ import_labels.codes[report.state] }} · {{ report.created_at }}</p>
+  <p class="break-all">{{ import_labels.source_hash }}: {{ report.source_sha256 }}</p>
+  {% if source_timezone %}<p>{{ import_labels.timezone }}: {{ source_timezone }}</p>{% endif %}
+  <p>{{ import_labels.credentials }}</p>
+  <section aria-labelledby="import-totals-heading">
+    <h3 id="import-totals-heading" class="text-xl font-semibold">{{ import_labels.totals }}</h3>
+    <dl class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div><dt>{{ import_labels.expected_create }}</dt><dd>{{ report.totals.expected_create }}</dd></div>
+      <div><dt>{{ import_labels.expected_match }}</dt><dd>{{ report.totals.expected_match }}</dd></div>
+      <div><dt>{{ import_labels.expected_link }}</dt><dd>{{ report.totals.expected_link }}</dd></div>
+      <div><dt>{{ import_labels.created }}</dt><dd>{{ report.totals.created }}</dd></div>
+      <div><dt>{{ import_labels.matched }}</dt><dd>{{ report.totals.matched }}</dd></div>
+      <div><dt>{{ import_labels.verified_links }}</dt><dd>{{ report.totals.verified_links }}</dd></div>
+      <div><dt>{{ import_labels.skipped }}</dt><dd>{{ report.totals.skipped }}</dd></div>
+      <div><dt>{{ import_labels.rejected }}</dt><dd>{{ report.totals.rejected }}</dd></div>
+      <div><dt>{{ import_labels.unlinked }}</dt><dd>{{ report.totals.unlinked }}</dd></div>
+      <div><dt>{{ import_labels.decisions }}</dt><dd>{{ report.totals.decisions_required }}</dd></div>
+      <div><dt>{{ import_labels.omissions }}</dt><dd>{{ report.totals.omissions }}</dd></div>
+    </dl>
+  </section>
+  {% for person in report.people %}
+  <section class="card bg-base-100 border border-base-300"><div class="card-body p-4 space-y-4">
+    <h3 class="text-xl font-semibold">{% if person.person.details.name %}{{ person.person.details.name }}{% else %}{{ person.person.source.id }}{% endif %}</h3>
+    {% set record = person.person %}{% include "administration/import/record.html" %}
+    {% for record in person.records %}{% include "administration/import/record.html" %}{% endfor %}
+    {% for relationship in person.relationships %}{% include "administration/import/relationship.html" %}{% endfor %}
+    {% for omission in person.omissions %}{% include "administration/import/omission.html" %}{% endfor %}
+  </div></section>
+  {% endfor %}
+  {% for record in report.records %}{% include "administration/import/record.html" %}{% endfor %}
+  {% for relationship in report.relationships %}{% include "administration/import/relationship.html" %}{% endfor %}
+  {% for omission in report.omissions %}{% include "administration/import/omission.html" %}{% endfor %}
+</section>

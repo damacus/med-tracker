@@ -1,0 +1,6 @@
+<div class="border-t border-base-300 pt-3">
+  <h4 class="font-semibold">{{ import_labels.omission }}: {{ import_labels.kinds[omission.item.kind] }} {{ omission.item.source }} / {{ omission.item.instance }} / {{ omission.item.id }}</h4>
+  {% if omission.field %}<p>{{ import_labels.field }}: {{ omission.field }}</p>{% endif %}
+  <p>{{ import_labels.reason }}: {{ import_labels.codes[omission.reason] }}</p>
+  <p>{% if omission.acknowledged %}{{ import_labels.acknowledged }}{% else %}{{ import_labels.acknowledgement_required }}{% endif %}</p>
+</div>

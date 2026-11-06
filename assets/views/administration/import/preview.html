@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="admin-page">
+  <a class="link" href="{{ back_url }}">{{ import_labels.back }}</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ import_labels.title }}</h1>
+  {% if stale %}<p role="alert" class="alert alert-warning mt-4">{{ import_labels.stale }}</p>{% endif %}
+  {% if report.state == "failed" %}<p role="alert" class="alert alert-error mt-4">{{ import_labels.failed_help }}</p>{% endif %}
+  <div class="mt-6">{% include "administration/import/report.html" %}</div>
+  {% if confirmation and report.state == "ready" and not stale %}
+  <form id="administration-form" action="{{ confirm_url }}" method="post" class="card bg-base-100 border border-base-300 mt-6"><div class="card-body gap-4">
+    <h2 class="text-xl font-semibold">{{ import_labels.confirm_title }}</h2><p>{{ import_labels.confirm_help }}</p>
+    {% include "components/form_errors.html" %}
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="preview_token" value="{{ confirmation }}">
+    {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+    <label for="passphrase" class="font-semibold">{{ import_labels.passphrase }}</label><input class="input w-full" id="passphrase" name="passphrase" type="password" autocomplete="off" required>
+    <label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="confirm" value="true" required> <span>{{ import_labels.confirm_ack }}</span></label>
+    <button class="btn btn-neutral w-fit" type="submit">{{ import_labels.confirm_action }}</button>
+  </div></form>
+  {% endif %}
+</section>
+{% endblock content %}

@@ -637,3 +637,158 @@ pub(super) fn fallback_language(headers: &HeaderMap) -> &'static str {
 pub(super) fn presentation_invalid_link(view: &TeraView, headers: &HeaderMap) -> Response {
     rendering::invalid_link(view, fallback_language(headers))
 }
+
+#[cfg(test)]
+mod import_presentation_tests {
+    use loco_rs::controller::views::{ViewRenderer, engines::TeraView};
+    use serde_json::{Value, json};
+
+    use crate::models::data_imports::contracts::{ImportReport, PreviewResult};
+
+    fn labels() -> Value {
+        crate::models::care::report_pdf::translations("en").expect("translations")
+    }
+
+    fn context(report: &ImportReport, confirmation: Option<&str>, stale: bool) -> Value {
+        let labels = labels();
+        json!({
+            "title": "Import", "lang": "en", "language_suffix": "", "labels": labels,
+            "import_labels": labels["administration"]["import"], "report": report,
+            "confirmation": confirmation, "stale": stale, "errors": [],
+            "source_timezone": "Europe/London", "back_url": "/back",
+            "confirm_url": "/confirm", "authenticity_token": "csrf-test"
+        })
+    }
+
+    #[test]
+    fn import_report_distinguishes_expected_and_actual_relationships() {
+        let view = TeraView::build().expect("views load");
+        let preview: PreviewResult =
+            serde_json::from_str(include_str!("../models/data_imports/examples/preview.json"))
+                .expect("preview example");
+        let output = view
+            .render(
+                "administration/import/report.html",
+                context(&preview.report, None, false),
+            )
+            .expect("report renders");
+        assert!(output.contains("Alex Example"));
+        assert!(output.contains("Example medicine"));
+        assert!(output.contains("08:00 daily"));
+        assert!(output.contains("Person and medicine"));
+        assert!(output.contains("Link"));
+        assert!(output.contains("Not yet checked"));
+        assert!(output.contains("Obsolete person-location link"));
+        assert!(output.contains("20 tablet"));
+    }
+
+    #[test]
+    fn completed_and_blocked_reports_show_actual_outcomes_and_confirmation_gate() {
+        let view = TeraView::build().expect("views load");
+        let completed: ImportReport = serde_json::from_str(include_str!(
+            "../models/data_imports/examples/completed.json"
+        ))
+        .expect("completed example");
+        let blocked: PreviewResult =
+            serde_json::from_str(include_str!("../models/data_imports/examples/blocked.json"))
+                .expect("blocked example");
+        let complete_html = view
+            .render(
+                "administration/import/preview.html",
+                context(&completed, None, false),
+            )
+            .expect("completed report");
+        assert!(complete_html.contains("Verified"));
+        assert!(complete_html.contains("/people/12"));
+        assert!(!complete_html.contains("name=\"preview_token\""));
+        let blocked_html = view
+            .render(
+                "administration/import/preview.html",
+                context(&blocked.report, Some("must-not-appear"), false),
+            )
+            .expect("blocked report");
+        assert!(!blocked_html.contains("must-not-appear"));
+        assert!(blocked_html.contains("Acknowledgement required"));
+        let stale_html = view
+            .render(
+                "administration/import/preview.html",
+                context(&completed, Some("must-not-appear"), true),
+            )
+            .expect("stale report");
+        assert!(stale_html.contains("no longer current"));
+        assert!(!stale_html.contains("must-not-appear"));
+        let ready: PreviewResult =
+            serde_json::from_str(include_str!("../models/data_imports/examples/preview.json"))
+                .expect("ready example");
+        let ready_html = view
+            .render(
+                "administration/import/preview.html",
+                context(&ready.report, Some("review-token"), false),
+            )
+            .expect("ready report");
+        assert!(ready_html.contains("value=\"review-token\""));
+        assert!(ready_html.contains("name=\"confirm\" value=\"true\" required"));
+    }
+
+    #[test]
+    fn upload_requires_explicit_timezone_and_does_not_retain_passphrase() {
+        let view = TeraView::build().expect("views load");
+        let labels = labels();
+        let data = json!({"title": "Import", "lang": "en", "language_suffix": "", "labels": labels,
+            "import_labels": labels["administration"]["import"], "back_url": "/back", "inspect_url": "/inspect",
+            "authenticity_token": "csrf-test", "errors": []});
+        let html = view
+            .render("administration/import/upload.html", data)
+            .expect("upload form");
+        assert!(html.contains("Europe/London"));
+        assert!(html.contains("name=\"timezone_confirmed\" value=\"true\" required"));
+        assert!(html.contains("name=\"passphrase\" type=\"password\""));
+        assert!(!html.contains("name=\"passphrase\" type=\"password\" value="));
+    }
+
+    #[test]
+    fn mapping_and_personal_consent_forms_require_attributable_choices() {
+        let view = TeraView::build().expect("views load");
+        let labels = labels();
+        let shared = json!({"title": "Import", "lang": "en", "language_suffix": "", "labels": labels,
+            "import_labels": labels["administration"]["import"], "back_url": "/back", "preview_url": "/preview",
+            "decision_url": "/decision", "authenticity_token": "csrf-test", "inspection_token": "inspection-test",
+            "source_timezone": "Europe/London", "errors": [], "omissions": [],
+            "people": [{"name":"Alex", "key":"p1", "source":{"source":"med_tracker05", "instance":"canary", "id":"p1"},
+                "destinations": [{"value":"12", "name":"Alex", "selected":false}], "consent_status":"pending", "consent_choices":["self_consent"], "may_request_consent":false, "may_create_dependent":true, "new_dependent_selected":false}],
+            "request": {"requester_name":"Admin", "household_name":"Household", "person_name":"Alex", "source_name":"Alex (source)", "source":{"source":"med_tracker05", "instance":"canary", "id":"p1"}}});
+        let mapping = view
+            .render("administration/import/mapping.html", shared.clone())
+            .expect("mapping");
+        assert!(mapping.contains("name=\"mapping[p1]\""));
+        assert!(mapping.contains("name=\"guardian[p1]\""));
+        assert!(mapping.contains("name=\"timezone_confirmed\" value=\"true\" required"));
+        let consent = view
+            .render("administration/import/consent.html", shared)
+            .expect("personal consent");
+        assert!(consent.contains("name=\"decision\" value=\"accept\" required"));
+        assert!(consent.contains("name=\"decision\" value=\"decline\" required"));
+        assert!(!consent.contains("inspection-test"));
+    }
+
+    #[test]
+    fn report_escapes_source_details_and_does_not_treat_failure_as_success() {
+        let view = TeraView::build().expect("views load");
+        let mut report: ImportReport = serde_json::from_str(include_str!(
+            "../models/data_imports/examples/completed.json"
+        ))
+        .expect("completed example");
+        report.state = crate::models::data_imports::contracts::ImportState::Failed;
+        report.people[0].person.details.name = Some("<script>alert(1)</script>".into());
+        let html = view
+            .render(
+                "administration/import/preview.html",
+                context(&report, None, false),
+            )
+            .expect("failed report");
+        assert!(html.contains("The import failed"));
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(!html.contains("<script>alert(1)</script>"));
+        assert!(!html.contains("name=\"preview_token\""));
+    }
+}
