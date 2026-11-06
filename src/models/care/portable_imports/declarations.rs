@@ -73,6 +73,10 @@ impl InitialDeclarations {
 }
 
 impl PreparedDeclarations {
+    pub(super) fn is_fresh(&self, today: NaiveDate) -> bool {
+        self.today == today
+    }
+
     pub(super) fn contains(&self, portable_id: &str) -> bool {
         self.commands.contains_key(portable_id)
     }

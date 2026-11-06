@@ -242,7 +242,7 @@ pub(crate) async fn write_records(
 /// person-owned schedule. Runs inside the same transaction as the upsert so a
 /// rejected receipt rolls the whole import back; unlinked, ended or
 /// non-canonical sources leave the row as ordinary restored history.
-async fn index_restored_take(
+pub(super) async fn index_restored_take(
     db: &DatabaseTransaction,
     tenant: &TenantTransaction,
     provenance: &CredentialProvenance,

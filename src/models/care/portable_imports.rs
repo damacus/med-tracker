@@ -1,6 +1,7 @@
 mod access;
 mod aliases;
 mod contracts;
+mod create_only;
 mod declarations;
 mod identity;
 mod links;
@@ -12,6 +13,7 @@ mod validation;
 mod writing;
 
 pub(crate) use contracts::ImportPlan;
+pub(crate) use create_only::{CreatedRecord, create_only_records};
 pub(crate) use declarations::{InitialDeclarations, PreparedDeclarations};
 
 pub(crate) use access::authorized;
