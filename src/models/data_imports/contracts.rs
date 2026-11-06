@@ -1,12 +1,36 @@
-use crate::models::ids::{AccountId, HouseholdId, MedicationId, PersonId};
+use crate::models::clinical_transfer::{PreparationError, PreparedTransfer};
 use chrono::{DateTime, Utc};
+use sea_orm::prelude::Decimal;
 use serde::{Deserialize, Serialize};
+
+macro_rules! destination_ids {
+    ($($name:ident),+ $(,)?) => {$ (
+        #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+        #[serde(transparent)]
+        pub struct $name(pub i64);
+    )+};
+}
+
+destination_ids!(
+    PersonId,
+    MedicationId,
+    LocationId,
+    DosageOptionId,
+    ScheduleId,
+    AssignmentId,
+    DoseId,
+    StockId,
+    PauseId,
+    OccurrenceId,
+    HealthEventId,
+    AttachmentId
+);
 
 macro_rules! code {
     ($name:ident { $($variant:ident),+ $(,)? }) => {
         #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
         #[serde(rename_all = "snake_case")]
-        pub(crate) enum $name { $($variant),+ }
+        pub enum $name { $($variant),+ }
     };
 }
 
@@ -93,7 +117,7 @@ code!(ImportState {
 });
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct SourceIdentity {
+pub struct SourceIdentity {
     pub source: SourceSystem,
     pub instance: String,
     pub kind: RecordKind,
@@ -101,39 +125,69 @@ pub(crate) struct SourceIdentity {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct DestinationRecord {
+pub struct DestinationRecord {
     pub id: DestinationId,
     pub href: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "kind", content = "id", rename_all = "snake_case")]
-pub(crate) enum DestinationId {
+pub enum DestinationId {
     Person(PersonId),
     Medication(MedicationId),
-    Location(i64),
-    DosageOption(i64),
-    Schedule(i64),
-    Assignment(i64),
-    Dose(i64),
-    Stock(i64),
-    Pause(i64),
-    Occurrence(i64),
-    HealthEvent(i64),
-    Attachment(i64),
+    Location(LocationId),
+    DosageOption(DosageOptionId),
+    Schedule(ScheduleId),
+    Assignment(AssignmentId),
+    Dose(DoseId),
+    Stock(StockId),
+    Pause(PauseId),
+    Occurrence(OccurrenceId),
+    HealthEvent(HealthEventId),
+    Attachment(AttachmentId),
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(default)]
+pub struct RecordDetails {
+    pub name: Option<String>,
+    pub dose_amount: Option<Decimal>,
+    pub dose_unit: Option<String>,
+    pub timing: Option<String>,
+    pub stock_quantity: Option<Decimal>,
+    pub stock_unit: Option<String>,
+    pub occurred_at: Option<DateTime<Utc>>,
+    pub source_fields: Vec<SourceField>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct RecordResult {
+pub struct SourceField {
+    pub field: String,
+    pub source_value: String,
+    pub outcome: FieldOutcome,
+    pub destination_value: Option<String>,
+    pub reason: Option<ReasonCode>,
+}
+
+code!(FieldOutcome {
+    Preserved,
+    Changed,
+    Unsupported,
+    Omitted
+});
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct RecordResult {
     pub source: SourceIdentity,
     pub expected: ExpectedRecord,
     pub actual: Option<ActualRecord>,
     pub destination: Option<DestinationRecord>,
     pub reason: Option<ReasonCode>,
+    pub details: RecordDetails,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct RelationshipResult {
+pub struct RelationshipResult {
     pub kind: RelationshipKind,
     pub source: SourceIdentity,
     pub target: SourceIdentity,
@@ -145,7 +199,7 @@ pub(crate) struct RelationshipResult {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct ReportTotals {
+pub struct ReportTotals {
     pub expected_create: u64,
     pub expected_match: u64,
     pub expected_link: u64,
@@ -160,15 +214,16 @@ pub(crate) struct ReportTotals {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct Omission {
+pub struct Omission {
     pub item: SourceIdentity,
     pub field: Option<String>,
     pub reason: ReasonCode,
     pub acknowledgement_id: String,
+    pub acknowledged: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct PersonReport {
+pub struct PersonReport {
     pub person: RecordResult,
     pub records: Vec<RecordResult>,
     pub relationships: Vec<RelationshipResult>,
@@ -176,7 +231,7 @@ pub(crate) struct PersonReport {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct ImportReport {
+pub struct ImportReport {
     pub id: String,
     pub state: ImportState,
     pub source: SourceSystem,
@@ -189,8 +244,68 @@ pub(crate) struct ImportReport {
     pub omissions: Vec<Omission>,
 }
 
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct PreviewToken(pub String);
+
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PreviewResult {
+    pub report: ImportReport,
+    pub confirmation: Option<PreviewToken>,
+}
+
 #[derive(Clone)]
-pub(crate) struct SourcePreparation<'a> {
+pub struct ArchivePreparation<'a> {
+    pub source: SourceSystem,
+    pub archive: &'a [u8],
+    pub passphrase: &'a str,
+}
+
+pub struct PreparedArchive {
+    pub transfer: PreparedTransfer,
+    pub archive_sha256: String,
+    pub receipt: PreparationReceipt,
+    pub inventory: SourceInventory,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ArchivePreparationError {
+    InvalidArchive,
+    TooLarge,
+    UnsupportedEntry,
+    DuplicateEntry,
+    Preparation(PreparationError),
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PreparationReceipt {
+    pub payload_sha256: String,
+    pub manifest_sha256: String,
+    pub target_sha256: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SourceInventory {
+    pub records: Vec<SourceRecord>,
+    pub relationships: Vec<SourceRelationship>,
+    pub omissions: Vec<Omission>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SourceRecord {
+    pub identity: SourceIdentity,
+    pub details: RecordDetails,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SourceRelationship {
+    pub kind: RelationshipKind,
+    pub source: SourceIdentity,
+    pub target: SourceIdentity,
+}
+
+#[derive(Clone)]
+pub struct SourcePreparation<'a> {
     pub source: SourceSystem,
     pub payload: &'a [u8],
     pub manifest: &'a [u8],
@@ -198,13 +313,13 @@ pub(crate) struct SourcePreparation<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum PersonDestination {
+pub enum PersonDestination {
     Existing(PersonId),
     NewDependent,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PersonMapping {
+pub struct PersonMapping {
     pub source: SourceIdentity,
     pub destination: PersonDestination,
 }
@@ -212,7 +327,7 @@ pub(crate) struct PersonMapping {
 // Acceptance must be attributable to the subject or an eligible guardian; a
 // household manager's role alone is not consent for another adult.
 #[derive(Clone, Debug)]
-pub(crate) enum ConsentInput {
+pub enum ConsentInput {
     ActingPerson {
         subject: PersonId,
         accepted: bool,
@@ -228,26 +343,69 @@ pub(crate) enum ConsentInput {
 }
 
 #[derive(Clone)]
-pub(crate) struct PreviewCommand<'a> {
-    pub actor: AccountId,
-    pub household: HouseholdId,
-    pub source: SourcePreparation<'a>,
+pub struct PreviewCommand<'a> {
+    pub source: ArchivePreparation<'a>,
     pub mappings: Vec<PersonMapping>,
     pub consents: Vec<ConsentInput>,
     pub acknowledged_omissions: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct ConfirmCommand {
-    pub actor: AccountId,
-    pub household: HouseholdId,
+#[derive(Clone)]
+pub struct ConfirmCommand<'a> {
     pub report_id: String,
-    pub preview_token: String,
+    pub preview_token: PreviewToken,
+    pub passphrase: &'a str,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn frozen_reports_are_confirmable_and_show_clinical_details() {
+        let preview: PreviewResult =
+            serde_json::from_str(include_str!("examples/preview.json")).expect("preview document");
+        let completed: ImportReport = serde_json::from_str(include_str!("examples/completed.json"))
+            .expect("completed document");
+        let blocked: PreviewResult =
+            serde_json::from_str(include_str!("examples/blocked.json")).expect("blocked document");
+        assert!(preview.confirmation.is_some());
+        assert!(blocked.confirmation.is_none());
+        assert_eq!(preview.report.state, ImportState::Ready);
+        assert_eq!(blocked.report.state, ImportState::Blocked);
+        assert_eq!(completed.state, ImportState::Completed);
+        assert_eq!(
+            preview.report.people[0].person.details.name.as_deref(),
+            Some("Alex Example")
+        );
+        assert_eq!(
+            completed.people[0].relationships[0].actual,
+            Some(ActualRelationship::Verified)
+        );
+        assert!(!blocked.report.people[0].omissions.is_empty());
+        assert!(!blocked.report.people[0].omissions[0].acknowledged);
+        assert!(preview.report.people[0].omissions[0].acknowledged);
+        assert_eq!(
+            preview.report.people[0].records[1].details.dose_amount,
+            Some("1.5".parse().expect("decimal"))
+        );
+        assert_eq!(
+            completed.people[0].records[2].details.stock_quantity,
+            Some("20".parse().expect("decimal"))
+        );
+        assert_eq!(completed.totals.verified_links, 1);
+        let saved = serde_json::to_string(&preview).expect("serialise preview");
+        let reloaded: PreviewResult = serde_json::from_str(&saved).expect("reload preview");
+        assert!(reloaded.confirmation == preview.confirmation);
+        let completed_json = serde_json::to_string(&completed).expect("serialise completed");
+        let completed_again: ImportReport =
+            serde_json::from_str(&completed_json).expect("reload completed");
+        assert_eq!(completed_again, completed);
+        let blocked_json = serde_json::to_string(&blocked).expect("serialise blocked");
+        let blocked_again: PreviewResult =
+            serde_json::from_str(&blocked_json).expect("reload blocked");
+        assert!(blocked_again == blocked);
+    }
 
     #[test]
     fn relationship_report_keeps_expected_and_verified_outcomes_distinct() {
