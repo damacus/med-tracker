@@ -5,7 +5,7 @@
   <h1 class="text-3xl font-semibold mt-4">{{ import_labels.consent_request }}</h1>
   <p class="mt-2">{{ import_labels.personal_request_from }}: {{ request.requester_name }}</p>
   <p>{{ import_labels.household }}: {{ request.household_name }}</p>
-  <p class="mt-2">{{ import_labels.personal_consent_help }}</p>
+  <p class="mt-2">{{ import_labels.consent_personal_help }}</p>
   <p class="mt-2">{{ import_labels.kinds.person }}: {{ request.person_name }}</p>
   <p>{{ import_labels.source_reference }}: {{ request.source_name }} · {{ request.source.source }} / {{ request.source.instance }} / {{ request.source.id }}</p>
   {% include "components/form_errors.html" %}

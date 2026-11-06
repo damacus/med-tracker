@@ -30,7 +30,7 @@
       {% for omission in omissions %}<div>{% include "administration/import/omission.html" %}<label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="acknowledgement" value="{{ omission.acknowledgement_id }}" required> <span>{{ import_labels.acknowledge }}</span></label></div>{% endfor %}
     </div></fieldset>{% endif %}
     <div class="card bg-base-100 border border-base-300"><div class="card-body gap-3">
-      <label for="archive" class="font-semibold">{{ import_labels.archive }}</label><input class="file-input w-full" id="archive" name="archive" type="file" accept=".zip,application/zip" required>
+      <label for="archive" class="font-semibold">{{ import_labels.archive }}</label><p id="archive-help">{{ import_labels.reupload_help }}</p><input class="file-input w-full" id="archive" name="archive" type="file" accept=".zip,application/zip" aria-describedby="archive-help" required>
       <label for="passphrase" class="font-semibold">{{ import_labels.passphrase }}</label><input class="input w-full" id="passphrase" name="passphrase" type="password" autocomplete="off" required>
       <label for="source_timezone" class="font-semibold">{{ import_labels.timezone }}</label><p id="timezone-help">{{ import_labels.timezone_help }}</p><input class="input w-full" id="source_timezone" name="source_timezone" value="{{ source_timezone }}" aria-describedby="timezone-help" required>
       <label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="timezone_confirmed" value="true" required> <span>{{ import_labels.timezone_confirm }}</span></label>

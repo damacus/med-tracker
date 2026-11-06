@@ -3184,12 +3184,14 @@ en:
     action: "Assign or invite a carer"
   administration:
     import:
+      reupload_help: "Select the same export and enter its passphrase again. Changing the export requires a new inspection."
       household: "Household"
       self_consent: "I consent to this mapping for myself."
       guardian_consent: "I consent as this person's eligible guardian."
       request_consent: "Request this adult's consent"
       request_consent_help: "The person must sign in and decide for themselves."
       kinds:
+        notification_preference: "Notification preference"
         person: "Person"
         medication: "Medicine"
         location: "Location"

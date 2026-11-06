@@ -3218,12 +3218,14 @@ es:
     action: "Asignar o invitar a un cuidador"
   administration:
     import:
+      reupload_help: "Seleccione la misma exportación y vuelva a introducir su frase de contraseña. Si cambia la exportación, deberá inspeccionarla de nuevo."
       household: "Unidad familiar"
       self_consent: "Consiento esta asignación para mí."
       guardian_consent: "Consiento como tutor autorizado de esta persona."
       request_consent: "Solicitar el consentimiento de este adulto"
       request_consent_help: "La persona debe iniciar sesión y decidir por sí misma."
       kinds:
+        notification_preference: "Preferencia de notificaciones"
         person: "Persona"
         medication: "Medicamento"
         location: "Ubicación"

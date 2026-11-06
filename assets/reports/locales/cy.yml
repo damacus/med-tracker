@@ -3209,12 +3209,14 @@ cy:
     action: "Aseiniwch neu wahoddwch ofalwr"
   administration:
     import:
+      reupload_help: "Dewiswch yr un allforiad a rhowch ei gyfrinymadrodd eto. Os byddwch yn newid yr allforiad, rhaid ei archwilio eto."
       household: "Aelwyd"
       self_consent: "Rwy'n cydsynio i'm mapio fy hun."
       guardian_consent: "Rwy'n cydsynio fel gwarcheidwad cymwys y person hwn."
       request_consent: "Gofyn am gydsyniad yr oedolyn hwn"
       request_consent_help: "Rhaid i'r person fewngofnodi a phenderfynu drosto'i hun."
       kinds:
+        notification_preference: "Dewis hysbysiadau"
         person: "Person"
         medication: "Meddyginiaeth"
         location: "Lleoliad"

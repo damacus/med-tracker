@@ -3215,12 +3215,14 @@ pt:
     action: "Atribuir ou convidar um cuidador"
   administration:
     import:
+      reupload_help: "Selecione a mesma exportação e introduza novamente a frase-passe. Alterar a exportação exige uma nova inspeção."
       household: "Agregado familiar"
       self_consent: "Consinto esta associação para mim."
       guardian_consent: "Consinto como tutor elegível desta pessoa."
       request_consent: "Pedir consentimento a este adulto"
       request_consent_help: "A pessoa tem de iniciar sessão e decidir por si."
       kinds:
+        notification_preference: "Preferência de notificações"
         person: "Pessoa"
         medication: "Medicamento"
         location: "Localização"

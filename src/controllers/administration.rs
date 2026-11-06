@@ -709,17 +709,17 @@ mod import_presentation_tests {
             .expect("blocked report");
         assert!(!blocked_html.contains("must-not-appear"));
         assert!(blocked_html.contains("Acknowledgement required"));
-        let stale_html = view
-            .render(
-                "administration/import/preview.html",
-                context(&completed, Some("must-not-appear"), true),
-            )
-            .expect("stale report");
-        assert!(stale_html.contains("no longer current"));
-        assert!(!stale_html.contains("must-not-appear"));
         let ready: PreviewResult =
             serde_json::from_str(include_str!("../models/data_imports/examples/preview.json"))
                 .expect("ready example");
+        let stale_html = view
+            .render(
+                "administration/import/preview.html",
+                context(&ready.report, Some("must-not-appear"), true),
+            )
+            .expect("stale ready report");
+        assert!(stale_html.contains("no longer current"));
+        assert!(!stale_html.contains("must-not-appear"));
         let ready_html = view
             .render(
                 "administration/import/preview.html",
@@ -763,23 +763,55 @@ mod import_presentation_tests {
         assert!(mapping.contains("name=\"mapping[p1]\""));
         assert!(mapping.contains("name=\"guardian[p1]\""));
         assert!(mapping.contains("name=\"timezone_confirmed\" value=\"true\" required"));
+        assert!(mapping.contains("Select the same export"));
+        assert!(mapping.contains("Changing the export requires a new inspection"));
         let consent = view
             .render("administration/import/consent.html", shared)
             .expect("personal consent");
         assert!(consent.contains("name=\"decision\" value=\"accept\" required"));
         assert!(consent.contains("name=\"decision\" value=\"decline\" required"));
+        assert!(consent.contains("Only your own request is shown"));
         assert!(!consent.contains("inspection-test"));
     }
 
     #[test]
-    fn report_escapes_source_details_and_does_not_treat_failure_as_success() {
+    fn failed_report_shows_no_committed_outcomes() {
         let view = TeraView::build().expect("views load");
-        let mut report: ImportReport = serde_json::from_str(include_str!(
-            "../models/data_imports/examples/completed.json"
-        ))
-        .expect("completed example");
+        let preview: PreviewResult =
+            serde_json::from_str(include_str!("../models/data_imports/examples/preview.json"))
+                .expect("preview example");
+        let mut report = preview.report;
         report.state = crate::models::data_imports::contracts::ImportState::Failed;
-        report.people[0].person.details.name = Some("<script>alert(1)</script>".into());
+        assert_eq!(report.totals.created, 0);
+        assert_eq!(report.totals.matched, 0);
+        assert_eq!(report.totals.verified_links, 0);
+        assert!(report.people.iter().all(|person| {
+            person.person.actual.is_none()
+                && person.person.destination.is_none()
+                && person
+                    .records
+                    .iter()
+                    .all(|record| record.actual.is_none() && record.destination.is_none())
+                && person.relationships.iter().all(|relationship| {
+                    relationship.actual.is_none()
+                        && relationship.destination_source.is_none()
+                        && relationship.destination_target.is_none()
+                })
+        }));
+        assert!(
+            report
+                .records
+                .iter()
+                .all(|record| record.actual.is_none() && record.destination.is_none())
+        );
+        assert!(
+            report
+                .relationships
+                .iter()
+                .all(|relationship| relationship.actual.is_none()
+                    && relationship.destination_source.is_none()
+                    && relationship.destination_target.is_none())
+        );
         let html = view
             .render(
                 "administration/import/preview.html",
@@ -787,8 +819,26 @@ mod import_presentation_tests {
             )
             .expect("failed report");
         assert!(html.contains("The import failed"));
+        assert!(html.contains("Not yet checked"));
+        assert!(!html.contains("/people/12"));
+        assert!(!html.contains("name=\"preview_token\""));
+    }
+
+    #[test]
+    fn report_escapes_source_details() {
+        let view = TeraView::build().expect("views load");
+        let preview: PreviewResult =
+            serde_json::from_str(include_str!("../models/data_imports/examples/preview.json"))
+                .expect("preview example");
+        let mut report = preview.report;
+        report.people[0].person.details.name = Some("<script>alert(1)</script>".into());
+        let html = view
+            .render(
+                "administration/import/report.html",
+                context(&report, None, false),
+            )
+            .expect("report");
         assert!(html.contains("&lt;script&gt;"));
         assert!(!html.contains("<script>alert(1)</script>"));
-        assert!(!html.contains("name=\"preview_token\""));
     }
 }
