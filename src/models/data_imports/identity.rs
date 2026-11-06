@@ -110,7 +110,12 @@ pub async fn assess(
     }) {
         return Err(OperationError::Forbidden.into());
     }
-    let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    let ids: Vec<_> = recipient_consents
+        .iter()
+        .map(|consent| consent.request_id.clone())
+        .collect();
+    let tenant =
+        consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &ids).await?;
     inspection::verify(&tenant, inspection_id, &prepared.archive_sha256, timezone).await?;
     let mut declared = HashSet::new();
     for declaration in declarations {

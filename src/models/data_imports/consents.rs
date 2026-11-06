@@ -1,17 +1,119 @@
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
-    QuerySelect,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
+    IntoActiveModel, QueryFilter, QuerySelect,
 };
 use serde::{Deserialize, Serialize};
 
 use super::contracts::{PersonId, RecordKind, SourceIdentity};
 use crate::models::{
     _entities::data_import_consents as consent,
-    access::{self, TenantTransaction},
+    access::{self, HouseholdScope, TenantTransaction},
     entities::{account, membership, person},
     errors::OperationError,
+    ids::AccountId,
 };
+
+pub async fn begin_for_actor(
+    db: &DatabaseConnection,
+    scope: &HouseholdScope,
+    settings: Option<&serde_json::Value>,
+) -> Result<TenantTransaction, OperationError> {
+    access::begin_with_exclusive_accounts(db, scope, settings, &[]).await
+}
+
+pub async fn begin_for_target(
+    db: &DatabaseConnection,
+    scope: &HouseholdScope,
+    settings: Option<&serde_json::Value>,
+    target: PersonId,
+) -> Result<TenantTransaction, OperationError> {
+    let lookup = access::begin(db, scope, settings).await?;
+    if !access::can_manage_household(&lookup) || target.0 == lookup.membership().person_id {
+        return Err(OperationError::Forbidden);
+    }
+    membership::Entity::find()
+        .filter(membership::Column::HouseholdId.eq(scope.household_id))
+        .filter(membership::Column::PersonId.eq(target.0))
+        .filter(membership::Column::Status.eq("active"))
+        .filter(membership::Column::RevokedAt.is_null())
+        .one(lookup.transaction())
+        .await?
+        .ok_or(OperationError::Forbidden)?;
+    let recipient = account::Entity::find()
+        .filter(account::Column::PersonId.eq(target.0))
+        .one(lookup.transaction())
+        .await?
+        .ok_or(OperationError::Forbidden)?
+        .id;
+    lookup.rollback().await?;
+    let tenant = access::begin_with_exclusive_accounts(
+        db,
+        scope,
+        settings,
+        &[AccountId::from_database(recipient)],
+    )
+    .await?;
+    let current = account::Entity::find()
+        .filter(account::Column::PersonId.eq(target.0))
+        .one(tenant.transaction())
+        .await?
+        .ok_or(OperationError::Forbidden)?;
+    if current.id != recipient || !access::can_manage_household(&tenant) {
+        return Err(OperationError::Forbidden);
+    }
+    access::recheck(&tenant).await?;
+    Ok(tenant)
+}
+
+pub async fn begin_for_requests(
+    db: &DatabaseConnection,
+    scope: &HouseholdScope,
+    settings: Option<&serde_json::Value>,
+    ids: &[String],
+) -> Result<TenantTransaction, OperationError> {
+    let lookup = access::begin(db, scope, settings).await?;
+    if !access::can_manage_household(&lookup) {
+        return Err(OperationError::Forbidden);
+    }
+    let mut bindings = Vec::with_capacity(ids.len());
+    for id in ids {
+        let row = consent::Entity::find_by_id(id.clone())
+            .filter(consent::Column::RequesterAccountId.eq(scope.actor.account_id))
+            .filter(consent::Column::RequesterMembershipId.eq(lookup.membership().id))
+            .one(lookup.transaction())
+            .await?
+            .ok_or(OperationError::NotFound)?;
+        bindings.push((id.clone(), row.recipient_account_id));
+    }
+    lookup.rollback().await?;
+    let accounts: Vec<_> = bindings
+        .iter()
+        .map(|(_, account)| AccountId::from_database(*account))
+        .collect();
+    let tenant = access::begin_with_exclusive_accounts(db, scope, settings, &accounts).await?;
+    for (id, recipient) in bindings {
+        let row = consent::Entity::find_by_id(id)
+            .filter(consent::Column::RequesterAccountId.eq(scope.actor.account_id))
+            .filter(consent::Column::RequesterMembershipId.eq(tenant.membership().id))
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::NotFound)?;
+        if row.recipient_account_id != recipient {
+            return Err(OperationError::Forbidden);
+        }
+    }
+    access::recheck(&tenant).await?;
+    Ok(tenant)
+}
+
+fn require_locked(tenant: &TenantTransaction, account: i64) -> Result<(), OperationError> {
+    if tenant.holds_exclusive_account(AccountId::from_database(account)) {
+        Ok(())
+    } else {
+        Err(OperationError::Forbidden)
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ConsentBinding {
@@ -134,6 +236,7 @@ pub async fn request(
     tenant: &TenantTransaction,
     input: ConsentBinding,
 ) -> Result<String, OperationError> {
+    require_locked(tenant, tenant.scope().actor.account_id)?;
     access::recheck(tenant).await?;
     if !access::can_manage_household(tenant)
         || !valid(&input)
@@ -161,6 +264,7 @@ pub async fn request(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Forbidden)?;
+    require_locked(tenant, recipient.id)?;
     let row = consent::Model {
         id: uuid::Uuid::new_v4().to_string(),
         household_id: tenant.scope().household_id,
@@ -185,6 +289,7 @@ pub async fn request(
 }
 
 pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<PersonalRequest, OperationError> {
+    require_locked(tenant, tenant.scope().actor.account_id)?;
     access::recheck(tenant).await?;
     let row = consent::Entity::find_by_id(id.to_owned())
         .filter(consent::Column::RecipientAccountId.eq(tenant.scope().actor.account_id))
@@ -203,6 +308,7 @@ pub async fn decide(
     expected: &ConsentBinding,
     decision: Decision,
 ) -> Result<PersonalRequest, OperationError> {
+    require_locked(tenant, tenant.scope().actor.account_id)?;
     if decision == Decision::Pending || !valid(expected) {
         return Err(OperationError::Forbidden);
     }
@@ -240,6 +346,7 @@ pub async fn current(
     id: &str,
     expected: &ConsentBinding,
 ) -> Result<bool, OperationError> {
+    require_locked(tenant, tenant.scope().actor.account_id)?;
     access::recheck(tenant).await?;
     if !access::can_manage_household(tenant) || !valid(expected) {
         return Err(OperationError::Forbidden);
@@ -251,6 +358,7 @@ pub async fn current(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
+    require_locked(tenant, row.recipient_account_id)?;
     lock_account_and_membership(
         tenant,
         row.requester_account_id,

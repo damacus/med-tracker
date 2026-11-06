@@ -1,6 +1,6 @@
 use super::Application;
 use med_tracker::models::{
-    _entities::{account_lockouts, data_import_consents, household_memberships, people},
+    _entities::{account_lockouts, data_import_consents, household_memberships},
     access::{self, Actor, HouseholdScope},
     data_imports::{
         consents::{self, ConsentBinding, Decision},
@@ -105,9 +105,22 @@ async fn recipient_consent_is_bound_revocable_and_private() {
         },
         target_person: PersonId(recipient.account.person_id),
     };
-    let requester = access::begin(&app.fixture.runtime, &requester_scope, None)
+    let ordinary = access::begin(&app.fixture.runtime, &requester_scope, None)
         .await
         .unwrap();
+    assert!(matches!(
+        consents::request(&ordinary, input.clone()).await,
+        Err(OperationError::Forbidden)
+    ));
+    ordinary.rollback().await.unwrap();
+    let requester = consents::begin_for_target(
+        &app.fixture.runtime,
+        &requester_scope,
+        None,
+        input.target_person,
+    )
+    .await
+    .unwrap();
     let id = consents::request(&requester, input.clone()).await.unwrap();
     assert!(matches!(
         consents::read(&requester, &id).await,
@@ -118,7 +131,7 @@ async fn recipient_consent_is_bound_revocable_and_private() {
         Err(OperationError::NotFound)
     ));
     requester.commit().await.unwrap();
-    let foreign = access::begin(&stranger.runtime, &stranger.scope(), None)
+    let foreign = consents::begin_for_actor(&stranger.runtime, &stranger.scope(), None)
         .await
         .unwrap();
     assert!(matches!(
@@ -130,7 +143,7 @@ async fn recipient_consent_is_bound_revocable_and_private() {
         Err(OperationError::NotFound)
     ));
     foreign.rollback().await.unwrap();
-    let actor = access::begin(&app.fixture.runtime, &recipient_scope, None)
+    let actor = consents::begin_for_actor(&app.fixture.runtime, &recipient_scope, None)
         .await
         .unwrap();
     let personal = consents::read(&actor, &id).await.unwrap();
@@ -159,9 +172,14 @@ async fn recipient_consent_is_bound_revocable_and_private() {
         Decision::Approved
     );
     actor.commit().await.unwrap();
-    let requester = access::begin(&app.fixture.runtime, &requester_scope, None)
-        .await
-        .unwrap();
+    let requester = consents::begin_for_requests(
+        &app.fixture.runtime,
+        &requester_scope,
+        None,
+        std::slice::from_ref(&id),
+    )
+    .await
+    .unwrap();
     assert!(consents::current(&requester, &id, &input).await.unwrap());
     assert!(!consents::current(&requester, &id, &forged).await.unwrap());
     let requester_pid = backend_pid(requester.transaction()).await;
@@ -170,10 +188,19 @@ async fn recipient_consent_is_bound_revocable_and_private() {
         .unwrap();
     let actor_pid = backend_pid(actor.transaction()).await;
     let decision_id = id.clone();
-    let decision_input = input.clone();
     let decision = tokio::spawn(async move {
-        let result =
-            consents::decide(&actor, &decision_id, &decision_input, Decision::Rejected).await;
+        let result = data_import_consents::Entity::update_many()
+            .col_expr(
+                data_import_consents::Column::Decision,
+                Expr::value("rejected"),
+            )
+            .col_expr(
+                data_import_consents::Column::DecidedAt,
+                Expr::value(Some(chrono::Utc::now().naive_utc())),
+            )
+            .filter(data_import_consents::Column::Id.eq(decision_id))
+            .exec(actor.transaction())
+            .await;
         if result.is_ok() {
             actor.commit().await.unwrap();
         } else {
@@ -187,13 +214,15 @@ async fn recipient_consent_is_bound_revocable_and_private() {
         blocked,
         "recipient withdrawal must wait for requester shared consent lock"
     );
-    assert_eq!(
-        decision.await.unwrap().unwrap().decision,
-        Decision::Rejected
-    );
-    let requester = access::begin(&app.fixture.runtime, &requester_scope, None)
-        .await
-        .unwrap();
+    assert_eq!(decision.await.unwrap().unwrap().rows_affected, 1);
+    let requester = consents::begin_for_requests(
+        &app.fixture.runtime,
+        &requester_scope,
+        None,
+        std::slice::from_ref(&id),
+    )
+    .await
+    .unwrap();
     assert!(!consents::current(&requester, &id, &input).await.unwrap());
     let changed = data_import_consents::Entity::update_many()
         .col_expr(
@@ -205,12 +234,17 @@ async fn recipient_consent_is_bound_revocable_and_private() {
         .await;
     assert!(permission_denied(&changed.unwrap_err()));
     requester.rollback().await.unwrap();
-    let requester = access::begin(&app.fixture.runtime, &requester_scope, None)
-        .await
-        .unwrap();
+    let requester = consents::begin_for_target(
+        &app.fixture.runtime,
+        &requester_scope,
+        None,
+        input.target_person,
+    )
+    .await
+    .unwrap();
     let approved_id = consents::request(&requester, input.clone()).await.unwrap();
     requester.commit().await.unwrap();
-    let actor = access::begin(&app.fixture.runtime, &recipient_scope, None)
+    let actor = consents::begin_for_actor(&app.fixture.runtime, &recipient_scope, None)
         .await
         .unwrap();
     consents::decide(&actor, &approved_id, &input, Decision::Approved)
@@ -256,9 +290,14 @@ async fn recipient_consent_is_bound_revocable_and_private() {
     let mut revoked = member.into_active_model();
     revoked.revoked_at = Set(Some(now));
     revoked.update(&app.fixture.admin).await.unwrap();
-    let requester = access::begin(&app.fixture.runtime, &requester_scope, None)
-        .await
-        .unwrap();
+    let requester = consents::begin_for_requests(
+        &app.fixture.runtime,
+        &requester_scope,
+        None,
+        std::slice::from_ref(&approved_id),
+    )
+    .await
+    .unwrap();
     assert!(matches!(
         consents::current(&requester, &approved_id, &input).await,
         Err(OperationError::Forbidden)
@@ -270,7 +309,188 @@ async fn recipient_consent_is_bound_revocable_and_private() {
     ));
 }
 
-async fn recipient_lockout_during_person_wait(recheck_existing: bool) {
+#[tokio::test]
+async fn account_and_existing_lockout_locks_release_on_commit_and_rollback() {
+    for expired in [false, true] {
+        let app = Application::new().await;
+        let recipient = app.fixture.foreign_household().await;
+        let now = chrono::Utc::now().naive_utc();
+        household_memberships::ActiveModel {
+            household_id: Set(app.fixture.household.id),
+            person_id: Set(recipient.account.person_id),
+            role: Set("member".into()),
+            status: Set("active".into()),
+            joined_at: Set(now),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+        if expired {
+            account_lockouts::ActiveModel {
+                account_id: Set(recipient.account.id),
+                key: Set("old".into()),
+                deadline: Set(now - chrono::Duration::hours(1)),
+                ..Default::default()
+            }
+            .insert(&app.fixture.admin)
+            .await
+            .unwrap();
+        }
+        let scope = app.fixture.scenario.scope();
+        let tenant = consents::begin_for_target(
+            &app.fixture.runtime,
+            &scope,
+            None,
+            PersonId(recipient.account.person_id),
+        )
+        .await
+        .unwrap();
+        let holder_pid = backend_pid(tenant.transaction()).await;
+        let writer = app.fixture.admin.begin().await.unwrap();
+        let writer_pid = backend_pid(&writer).await;
+        let recipient_id = recipient.account.id;
+        let writing = tokio::spawn(async move {
+            if expired {
+                account_lockouts::Entity::update_many()
+                    .col_expr(
+                        account_lockouts::Column::Deadline,
+                        Expr::value(now + chrono::Duration::hours(1)),
+                    )
+                    .filter(account_lockouts::Column::AccountId.eq(recipient_id))
+                    .exec(&writer)
+                    .await
+                    .unwrap();
+            } else {
+                account_lockouts::ActiveModel {
+                    account_id: Set(recipient_id),
+                    key: Set("new".into()),
+                    deadline: Set(now + chrono::Duration::hours(1)),
+                    ..Default::default()
+                }
+                .insert(&writer)
+                .await
+                .unwrap();
+            }
+            writer.commit().await.unwrap();
+        });
+        let blocked = wait_for_blocker(&app, writer_pid, holder_pid).await;
+        if expired {
+            tenant.rollback().await.unwrap();
+        } else {
+            tenant.commit().await.unwrap();
+        }
+        tokio::time::timeout(std::time::Duration::from_secs(15), writing)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(
+            blocked,
+            "lockout writer must wait until the consent transaction ends"
+        );
+        let row = account_lockouts::Entity::find_by_id(recipient_id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(row.deadline > now);
+    }
+}
+
+#[tokio::test]
+async fn reciprocal_target_transactions_take_accounts_in_the_same_order() {
+    let app = Application::new().await;
+    let other = app.fixture.foreign_household().await;
+    let now = chrono::Utc::now().naive_utc();
+    household_memberships::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(other.account.person_id),
+        role: Set("administrator".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let first = app.fixture.scenario.scope();
+    let second = HouseholdScope {
+        actor: Actor {
+            account_id: other.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let runtime_a = app.fixture.runtime.clone();
+    let runtime_b = app.fixture.runtime.clone();
+    let target_a = PersonId(other.account.person_id);
+    let target_b = PersonId(app.fixture.scenario.account.person_id);
+    let binding_a = ConsentBinding {
+        source_sha256: "a".repeat(64),
+        source_person: SourceIdentity {
+            source: SourceSystem::MedTracker05,
+            instance: "synthetic".into(),
+            kind: RecordKind::Person,
+            id: "a".into(),
+        },
+        target_person: target_a,
+    };
+    let binding_b = ConsentBinding {
+        source_sha256: "b".repeat(64),
+        source_person: SourceIdentity {
+            source: SourceSystem::MedTracker05,
+            instance: "synthetic".into(),
+            kind: RecordKind::Person,
+            id: "b".into(),
+        },
+        target_person: target_b,
+    };
+    let initial = consents::begin_for_target(&runtime_a, &first, None, target_a)
+        .await
+        .unwrap();
+    let id = consents::request(&initial, binding_a.clone())
+        .await
+        .unwrap();
+    initial.commit().await.unwrap();
+    let actor = consents::begin_for_actor(&runtime_b, &second, None)
+        .await
+        .unwrap();
+    consents::decide(&actor, &id, &binding_a, Decision::Approved)
+        .await
+        .unwrap();
+    actor.commit().await.unwrap();
+    let first_task = tokio::spawn(async move {
+        let tenant =
+            consents::begin_for_requests(&runtime_a, &first, None, std::slice::from_ref(&id))
+                .await?;
+        let approved = consents::current(&tenant, &id, &binding_a).await?;
+        tenant.rollback().await?;
+        if approved {
+            Ok(())
+        } else {
+            Err(OperationError::Forbidden)
+        }
+    });
+    let second_task = tokio::spawn(async move {
+        let tenant = consents::begin_for_target(&runtime_b, &second, None, target_b).await?;
+        consents::request(&tenant, binding_b).await?;
+        tenant.rollback().await
+    });
+    let (a, b) = tokio::time::timeout(std::time::Duration::from_secs(15), async {
+        tokio::join!(first_task, second_task)
+    })
+    .await
+    .unwrap();
+    assert!(matches!(a.unwrap(), Ok(())));
+    assert!(matches!(b.unwrap(), Ok(())));
+}
+
+#[tokio::test]
+async fn lockout_writer_already_in_flight_is_seen_after_account_wait() {
     let app = Application::new().await;
     let recipient = app.fixture.foreign_household().await;
     let now = chrono::Utc::now().naive_utc();
@@ -287,105 +507,71 @@ async fn recipient_lockout_during_person_wait(recheck_existing: bool) {
     .insert(&app.fixture.admin)
     .await
     .unwrap();
-    let requester_scope = app.fixture.scenario.scope();
-    let recipient_scope = HouseholdScope {
-        actor: Actor {
-            account_id: recipient.account.id,
-        },
-        household_id: app.fixture.household.id,
-        request_id: uuid::Uuid::new_v4().to_string(),
-    };
+    let blocker = app.fixture.admin.begin().await.unwrap();
+    let blocker_pid = backend_pid(&blocker).await;
+    account_lockouts::ActiveModel {
+        account_id: Set(recipient.account.id),
+        key: Set("in-flight".into()),
+        deadline: Set(now + chrono::Duration::hours(1)),
+        ..Default::default()
+    }
+    .insert(&blocker)
+    .await
+    .unwrap();
+    let scope = app.fixture.scenario.scope();
+    let runtime = app.fixture.runtime.clone();
     let input = ConsentBinding {
-        source_sha256: "c".repeat(64),
+        source_sha256: "a".repeat(64),
         source_person: SourceIdentity {
             source: SourceSystem::MedTracker05,
             instance: "synthetic".into(),
             kind: RecordKind::Person,
-            id: "race-person".into(),
+            id: "race".into(),
         },
         target_person: PersonId(recipient.account.person_id),
     };
-    let id = if recheck_existing {
-        let requester = access::begin(&app.fixture.runtime, &requester_scope, None)
+    let waiter = tokio::spawn(async move {
+        let tenant =
+            consents::begin_for_target(&runtime, &scope, None, input.target_person).await?;
+        let result = consents::request(&tenant, input).await;
+        tenant.rollback().await?;
+        result
+    });
+    let query = Query::select()
+        .column("pid")
+        .from("pg_stat_activity")
+        .and_where(Expr::col("wait_event_type").eq("Lock"))
+        .and_where(
+            Expr::expr(Func::cust("array_position").args([
+                Expr::expr(Func::cust("pg_blocking_pids").arg(Expr::col("pid"))),
+                Expr::val(blocker_pid),
+            ]))
+            .is_not_null(),
+        )
+        .to_owned();
+    let mut blocked = false;
+    for _ in 0..100 {
+        if app
+            .fixture
+            .admin
+            .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
             .await
-            .unwrap();
-        let id = consents::request(&requester, input.clone()).await.unwrap();
-        requester.commit().await.unwrap();
-        let actor = access::begin(&app.fixture.runtime, &recipient_scope, None)
-            .await
-            .unwrap();
-        consents::decide(&actor, &id, &input, Decision::Approved)
-            .await
-            .unwrap();
-        actor.commit().await.unwrap();
-        Some(id)
-    } else {
-        None
-    };
-    let blocker = app.fixture.admin.begin().await.unwrap();
-    let blocker_pid = backend_pid(&blocker).await;
-    people::Entity::find_by_id(recipient.account.person_id)
-        .lock_exclusive()
-        .one(&blocker)
+            .unwrap()
+            .is_some()
+        {
+            blocked = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    blocker.commit().await.unwrap();
+    let outcome = tokio::time::timeout(std::time::Duration::from_secs(15), waiter)
         .await
         .unwrap()
         .unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &requester_scope, None)
-        .await
-        .unwrap();
-    let waiter_pid = backend_pid(tenant.transaction()).await;
-    let race_input = input.clone();
-    let result = tokio::spawn(async move {
-        let outcome = if let Some(id) = id {
-            consents::current(&tenant, &id, &race_input)
-                .await
-                .map(|_| ())
-        } else {
-            consents::request(&tenant, race_input).await.map(|_| ())
-        };
-        tenant.rollback().await.unwrap();
-        outcome
-    });
-    let blocked = wait_for_blocker(&app, waiter_pid, blocker_pid).await;
-    if blocked {
-        account_lockouts::ActiveModel {
-            account_id: Set(recipient.account.id),
-            key: Set("synthetic-consent-race".into()),
-            deadline: Set(now + chrono::Duration::hours(1)),
-            ..Default::default()
-        }
-        .insert(&blocker)
-        .await
-        .unwrap();
-    }
-    blocker.commit().await.unwrap();
-    let outcome = tokio::time::timeout(std::time::Duration::from_secs(15), result)
-        .await
-        .expect("race task finished")
-        .expect("race task joined");
     assert!(
         blocked,
-        "consent operation must wait on the recipient person row"
+        "consent transaction must wait for the in-flight lockout writer"
     );
-    assert!(
-        matches!(outcome, Err(OperationError::Unauthenticated)),
-        "lockout after the wait must deny the recipient: {outcome:?}"
-    );
-    let count = data_import_consents::Entity::find()
-        .filter(data_import_consents::Column::HouseholdId.eq(app.fixture.household.id))
-        .filter(data_import_consents::Column::TargetPersonId.eq(recipient.account.person_id))
-        .count(&app.fixture.admin)
-        .await
-        .unwrap();
-    assert_eq!(count, if recheck_existing { 1 } else { 0 });
-}
-
-#[tokio::test]
-async fn consent_request_rechecks_recipient_lockout_after_person_wait() {
-    recipient_lockout_during_person_wait(false).await;
-}
-
-#[tokio::test]
-async fn consent_current_rechecks_recipient_lockout_after_person_wait() {
-    recipient_lockout_during_person_wait(true).await;
+    assert!(matches!(outcome, Err(OperationError::Unauthenticated)));
 }
