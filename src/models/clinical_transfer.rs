@@ -13,6 +13,9 @@ use sha2::{Digest, Sha256};
 
 use super::care::portable_crypto;
 
+mod archive;
+pub use archive::prepare_archive;
+
 const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024;
 const MANIFEST_LIMIT: usize = 1024 * 1024;
 const SECRET_LIMIT: usize = 4096;
@@ -93,6 +96,15 @@ pub fn prepare(
     manifest_bytes: &[u8],
     passphrase: &str,
 ) -> Result<PreparedTransfer, PreparationError> {
+    prepare_inner(payload_bytes, manifest_bytes, passphrase, false)
+}
+
+fn prepare_inner(
+    payload_bytes: &[u8],
+    manifest_bytes: &[u8],
+    passphrase: &str,
+    archive_mode: bool,
+) -> Result<PreparedTransfer, PreparationError> {
     if passphrase.is_empty()
         || passphrase.len() > SECRET_LIMIT
         || passphrase.contains('\r')
@@ -122,9 +134,10 @@ pub fn prepare(
     chrono::DateTime::parse_from_rfc3339(exported_at)
         .map_err(|_| PreparationError::InvalidGraph)?;
     text(&payload["source_instance_id"])?;
-    if manifest["attachments"]
-        .as_array()
-        .is_none_or(|items| !items.is_empty())
+    if !archive_mode
+        && manifest["attachments"]
+            .as_array()
+            .is_none_or(|items| !items.is_empty())
     {
         return Err(PreparationError::UnsupportedAttachments);
     }
@@ -156,7 +169,8 @@ pub fn prepare(
             text(&row["etag"])?;
             chrono::DateTime::parse_from_rfc3339(text(&row["updated_at"])?)
                 .map_err(|_| PreparationError::InvalidGraph)?;
-            if kind == "people"
+            if !archive_mode
+                && kind == "people"
                 && row["location_portable_ids"]
                     .as_array()
                     .is_none_or(|ids| !ids.is_empty())
@@ -209,7 +223,14 @@ pub fn prepare(
     let people = payload["records"]["people"]
         .as_array_mut()
         .ok_or(PreparationError::InvalidGraph)?;
-    let removed = people.len();
+    let removed = people
+        .iter()
+        .filter(|person| {
+            person["location_portable_ids"]
+                .as_array()
+                .is_some_and(Vec::is_empty)
+        })
+        .count();
     for person in people {
         person
             .as_object_mut()
@@ -534,6 +555,48 @@ mod tests {
         include_bytes!("../../tests/fixtures/portable_rails/prepared-history-v2.json");
     const MANIFEST: &[u8] =
         include_bytes!("../../tests/fixtures/portable_rails/prepared-history-v2.manifest.json");
+
+    #[test]
+    fn archive_preparation_inventories_obsolete_links_without_changing_strict_helper() {
+        use crate::models::data_imports::contracts::{
+            ArchivePreparation, ReasonCode, SourceSystem,
+        };
+        use std::io::Cursor;
+        use zip::{ZipWriter, write::SimpleFileOptions};
+
+        let mut payload: Value = serde_json::from_slice(PAYLOAD).unwrap();
+        let location = payload["records"]["locations"][0]["portable_id"].clone();
+        payload["records"]["people"][0]["location_portable_ids"] = json!([location]);
+        let bytes = serde_json::to_vec(&payload).unwrap();
+        assert_eq!(
+            prepare(&bytes, MANIFEST, "secret").err(),
+            Some(PreparationError::ObsoleteRelationships)
+        );
+        let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+        zip.start_file("portable.json", SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(&bytes).unwrap();
+        zip.start_file("manifest.json", SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(MANIFEST).unwrap();
+        let archive = zip.finish().unwrap().into_inner();
+        let result = prepare_archive(ArchivePreparation {
+            source: SourceSystem::MedTracker05,
+            archive: &archive,
+            passphrase: "secret",
+        })
+        .unwrap();
+        let omissions: Vec<_> = result
+            .inventory
+            .omissions
+            .iter()
+            .filter(|item| item.reason == ReasonCode::ObsoletePersonLocation)
+            .collect();
+        assert_eq!(omissions.len(), 1);
+        assert!(!omissions[0].acknowledged);
+        assert_eq!(result.archive_sha256, digest(&archive));
+        assert_eq!(result.receipt.payload_sha256, digest(&bytes));
+    }
 
     #[test]
     fn preparation_preserves_actual_rails_taper_json_numbers() {

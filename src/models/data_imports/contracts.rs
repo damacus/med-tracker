@@ -314,13 +314,19 @@ pub struct PreparedArchive {
     pub inventory: SourceInventory,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ArchivePreparationError {
     InvalidArchive,
     TooLarge,
     UnsupportedEntry,
     DuplicateEntry,
+    UnsupportedFields(Vec<SourcePreparationDiagnostic>),
     Preparation(PreparationError),
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SourcePreparationDiagnostic {
+    pub path: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -346,6 +352,7 @@ pub struct SourceRecord {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SourceRelationship {
     pub kind: RelationshipKind,
+    pub field: String,
     pub source: SourceIdentity,
     pub target: SourceIdentity,
 }
