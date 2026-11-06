@@ -8,6 +8,7 @@ use med_tracker::models::{
             PreparationReceipt, PreviewResult, PreviewToken,
         },
         persistence::{self, EncryptedPrepared, NewRun, SourceTimeZone},
+        reports,
     },
 };
 use sea_orm::{
@@ -44,7 +45,7 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
     ))
     .unwrap();
     preview.report.id = uuid::Uuid::new_v4().to_string();
-    let run = NewRun {
+    let mut run = NewRun {
         report: preview.report.clone(),
         receipt: PreparationReceipt {
             payload_sha256: "payload".into(),
@@ -69,6 +70,14 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
         confirmation: preview.confirmation.clone(),
     };
     persistence::create(&tenant, &run).await.unwrap();
+    let mut expected_ids = vec![run.report.id.clone()];
+    for _ in 0..2 {
+        run.report.id = uuid::Uuid::new_v4().to_string();
+        expected_ids.push(run.report.id.clone());
+        persistence::create(&tenant, &run).await.unwrap();
+    }
+    expected_ids.sort();
+    run.report.id = preview.report.id.clone();
     tenant.commit().await.unwrap();
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
@@ -91,13 +100,28 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
     assert_eq!(saved.acknowledged_omissions, vec!["omission-1"]);
     assert_eq!(saved.source_timezone.name(), "Europe/London");
     assert!(saved.confirmation == preview.confirmation);
-    assert!(
-        persistence::list_reports(&tenant)
-            .await
-            .unwrap()
-            .iter()
-            .any(|report| report.id == preview.report.id)
+    let visible = reports::detail(&tenant, &preview.report.id).await.unwrap();
+    assert_eq!(visible.report.id, preview.report.id);
+    assert!(visible.confirmation.is_none());
+    let page = reports::list(&tenant, None, 2).await.unwrap();
+    assert_eq!(page.reports.len(), 2);
+    let second_page = reports::list(&tenant, page.next_cursor.as_deref(), 2)
+        .await
+        .unwrap();
+    assert_eq!(second_page.reports.len(), 1);
+    let first = persistence::list_reports(&tenant, None, 2).await.unwrap();
+    assert_eq!(first.len(), 2);
+    assert_eq!(
+        first.iter().map(|item| &item.id).collect::<Vec<_>>(),
+        expected_ids[..2].iter().collect::<Vec<_>>()
     );
+    let second = persistence::list_reports(&tenant, Some(&first[1].id), 2)
+        .await
+        .unwrap();
+    assert_eq!(second.len(), 1);
+    assert_eq!(second[0].id, expected_ids[2]);
+    assert!(persistence::list_reports(&tenant, None, 0).await.is_err());
+    assert!(persistence::list_reports(&tenant, None, 101).await.is_err());
     tenant.rollback().await.unwrap();
     let original = data_import_runs::Entity::find_by_id(preview.report.id.clone())
         .one(&app.fixture.admin)
@@ -120,6 +144,7 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
             .unwrap()
             .is_none()
     );
+    assert!(reports::detail(&other, &preview.report.id).await.is_err());
     let changed = data_import_runs::Entity::update_many()
         .col_expr(
             data_import_runs::Column::Confirmation,
@@ -131,7 +156,7 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
         .unwrap();
     assert_eq!(changed.rows_affected, 0);
     assert!(
-        persistence::list_reports(&other)
+        persistence::list_reports(&other, None, 100)
             .await
             .unwrap()
             .iter()

@@ -39,6 +39,7 @@ pub mod m20261104_000034_sharing_member_plan_cache;
 pub mod m20261106_000035_loco_queue;
 pub mod m20261106_000036_data_import_runs;
 pub mod m20261106_000037_data_import_consents;
+pub mod m20261106_000038_data_import_inspections;
 mod native_authentication;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
@@ -86,6 +87,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261106_000035_loco_queue::Migration),
             Box::new(m20261106_000036_data_import_runs::Migration),
             Box::new(m20261106_000037_data_import_consents::Migration),
+            Box::new(m20261106_000038_data_import_inspections::Migration),
         ]
     }
 }

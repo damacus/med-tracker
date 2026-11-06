@@ -17,6 +17,14 @@ use crate::models::{
 pub struct EncryptedPrepared(Vec<u8>);
 
 impl EncryptedPrepared {
+    pub fn from_prepared(
+        prepared: &crate::models::clinical_transfer::PreparedTransfer,
+    ) -> Result<Self, portable_crypto::PortableCryptoError> {
+        serde_json::to_vec(&prepared.bundle)
+            .map(Self)
+            .map_err(|_| portable_crypto::PortableCryptoError::InvalidEnvelope)
+    }
+
     pub fn encrypt(
         prepared: &serde_json::Value,
         passphrase: &str,
@@ -120,16 +128,26 @@ pub async fn find(
     }))
 }
 
-// Stage 42 must add bounded pagination before exposing report listing through an API.
-pub async fn list_reports(tenant: &TenantTransaction) -> Result<Vec<ImportReport>, OperationError> {
-    let documents: Vec<(serde_json::Value,)> = data_import_runs::Entity::find()
+pub async fn list_reports(
+    tenant: &TenantTransaction,
+    after_id: Option<&str>,
+    limit: u64,
+) -> Result<Vec<ImportReport>, OperationError> {
+    if !(1..=100).contains(&limit) {
+        return Err(OperationError::Validation {
+            details: serde_json::json!({"errors": {"limit": ["must be between 1 and 100"]}}),
+        });
+    }
+    let mut query = data_import_runs::Entity::find()
         .select_only()
         .column(data_import_runs::Column::Report)
         .filter(data_import_runs::Column::HouseholdId.eq(tenant.scope().household_id))
         .order_by_asc(data_import_runs::Column::Id)
-        .into_tuple()
-        .all(tenant.transaction())
-        .await?;
+        .limit(limit);
+    if let Some(id) = after_id {
+        query = query.filter(data_import_runs::Column::Id.gt(id.to_owned()));
+    }
+    let documents: Vec<(serde_json::Value,)> = query.into_tuple().all(tenant.transaction()).await?;
     documents
         .into_iter()
         .map(|(document,)| read_document(document))

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 macro_rules! destination_ids {
     ($($name:ident),+ $(,)?) => {$ (
-        #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+        #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
         #[serde(transparent)]
         pub struct $name(pub i64);
     )+};
@@ -28,7 +28,7 @@ destination_ids!(
 
 macro_rules! code {
     ($name:ident { $($variant:ident),+ $(,)? }) => {
-        #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+        #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
         #[serde(rename_all = "snake_case")]
         pub enum $name { $($variant),+ }
     };
@@ -118,7 +118,7 @@ code!(ImportState {
     Failed
 });
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct SourceIdentity {
     pub source: SourceSystem,
     pub instance: String,
@@ -191,6 +191,8 @@ pub struct RecordResult {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct RelationshipResult {
     pub kind: RelationshipKind,
+    #[serde(default)]
+    pub field: Option<String>,
     pub source: SourceIdentity,
     pub target: SourceIdentity,
     pub destination_source: Option<DestinationRecord>,
@@ -470,6 +472,7 @@ mod tests {
     fn relationship_report_keeps_expected_and_verified_outcomes_distinct() {
         let report = RelationshipResult {
             kind: RelationshipKind::PersonMedication,
+            field: None,
             source: SourceIdentity {
                 source: SourceSystem::MedTracker05,
                 instance: "canary".into(),

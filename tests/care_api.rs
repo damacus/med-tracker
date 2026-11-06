@@ -4,6 +4,10 @@ mod account_closure_mail;
 mod account_sessions;
 #[path = "care_api/data_import_consents.rs"]
 mod data_import_consents;
+#[path = "care_api/data_import_inspection.rs"]
+mod data_import_inspection;
+#[path = "care_api/data_import_projection.rs"]
+mod data_import_projection;
 #[path = "care_api/administration.rs"]
 mod administration;
 #[path = "care_api/ai_suggestions.rs"]

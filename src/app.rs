@@ -333,6 +333,8 @@ impl Hooks for App {
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         let mut ctx = ctx;
+        ctx.shared_store
+            .insert(crate::models::data_imports::inspection::CryptoLimiter::new());
         crate::telemetry::db::install(&mut ctx.db);
         crate::telemetry::metrics::observe_pool(&ctx.db);
         crate::models::canary::configure(&ctx).await?;
