@@ -10,7 +10,7 @@ use med_tracker::models::{
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel,
-    PaginatorTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
+    QueryFilter, Set, TransactionTrait,
     sea_query::{Expr, ExprTrait, Func, Query},
 };
 
@@ -42,6 +42,35 @@ async fn wait_for_blocker(app: &Application, waiter: i32, blocker: i32) -> bool 
         .column("pid")
         .from("pg_stat_activity")
         .and_where(Expr::col("pid").eq(waiter))
+        .and_where(Expr::col("wait_event_type").eq("Lock"))
+        .and_where(
+            Expr::expr(Func::cust("array_position").args([
+                Expr::expr(Func::cust("pg_blocking_pids").arg(Expr::col("pid"))),
+                Expr::val(blocker),
+            ]))
+            .is_not_null(),
+        )
+        .to_owned();
+    for _ in 0..100 {
+        if app
+            .fixture
+            .admin
+            .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+            .unwrap()
+            .is_some()
+        {
+            return true;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    false
+}
+
+async fn wait_for_any_blocked_by(app: &Application, blocker: i32) -> bool {
+    let query = Query::select()
+        .column("pid")
+        .from("pg_stat_activity")
         .and_where(Expr::col("wait_event_type").eq("Lock"))
         .and_where(
             Expr::expr(Func::cust("array_position").args([
@@ -463,7 +492,36 @@ async fn reciprocal_target_transactions_take_accounts_in_the_same_order() {
         .await
         .unwrap();
     actor.commit().await.unwrap();
-    let first_task = tokio::spawn(async move {
+    let holder = consents::begin_for_requests(&runtime_a, &first, None, std::slice::from_ref(&id))
+        .await
+        .unwrap();
+    assert!(consents::current(&holder, &id, &binding_a).await.unwrap());
+    let blocker = backend_pid(holder.transaction()).await;
+    let runtime = runtime_b.clone();
+    let scope = second.clone();
+    let input = binding_b.clone();
+    let waiter = tokio::spawn(async move {
+        let tenant = consents::begin_for_target(&runtime, &scope, None, target_b).await?;
+        consents::request(&tenant, input).await?;
+        tenant.rollback().await
+    });
+    let blocked = wait_for_any_blocked_by(&app, blocker).await;
+    holder.rollback().await.unwrap();
+    assert!(blocked, "reciprocal request must contend with current");
+    assert!(matches!(
+        tokio::time::timeout(std::time::Duration::from_secs(15), waiter)
+            .await
+            .unwrap()
+            .unwrap(),
+        Ok(())
+    ));
+
+    let holder = consents::begin_for_target(&runtime_b, &second, None, target_b)
+        .await
+        .unwrap();
+    consents::request(&holder, binding_b).await.unwrap();
+    let blocker = backend_pid(holder.transaction()).await;
+    let waiter = tokio::spawn(async move {
         let tenant =
             consents::begin_for_requests(&runtime_a, &first, None, std::slice::from_ref(&id))
                 .await?;
@@ -475,18 +533,16 @@ async fn reciprocal_target_transactions_take_accounts_in_the_same_order() {
             Err(OperationError::Forbidden)
         }
     });
-    let second_task = tokio::spawn(async move {
-        let tenant = consents::begin_for_target(&runtime_b, &second, None, target_b).await?;
-        consents::request(&tenant, binding_b).await?;
-        tenant.rollback().await
-    });
-    let (a, b) = tokio::time::timeout(std::time::Duration::from_secs(15), async {
-        tokio::join!(first_task, second_task)
-    })
-    .await
-    .unwrap();
-    assert!(matches!(a.unwrap(), Ok(())));
-    assert!(matches!(b.unwrap(), Ok(())));
+    let blocked = wait_for_any_blocked_by(&app, blocker).await;
+    holder.rollback().await.unwrap();
+    assert!(blocked, "reciprocal current must contend with request");
+    assert!(matches!(
+        tokio::time::timeout(std::time::Duration::from_secs(15), waiter)
+            .await
+            .unwrap()
+            .unwrap(),
+        Ok(())
+    ));
 }
 
 #[tokio::test]
