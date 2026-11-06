@@ -3293,6 +3293,7 @@ es:
       personal_request_from: "Solicitud de"
       recipient_only: "Esta página muestra solo su propia solicitud."
       codes:
+        historical_actor_unavailable: "El actor histórico original no está disponible. No se creó ningún vínculo con un actor de destino; esto no otorga autoridad actual."
         not_requested: "Sin solicitar"
         pending: "Pendiente"
         accepted: "Aceptado"

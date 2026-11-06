@@ -3259,6 +3259,7 @@ en:
       personal_request_from: "Request from"
       recipient_only: "This page shows only your own request."
       codes:
+        historical_actor_unavailable: "The original historical actor is unavailable. No destination actor link was made; this grants no current authority."
         not_requested: "Not requested"
         pending: "Pending"
         accepted: "Accepted"

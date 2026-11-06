@@ -3290,6 +3290,7 @@ pt:
       personal_request_from: "Pedido de"
       recipient_only: "Esta página mostra apenas o seu pedido."
       codes:
+        historical_actor_unavailable: "O interveniente histórico original não está disponível. Não foi criada uma ligação a um interveniente de destino; isto não concede autoridade atual."
         not_requested: "Não solicitado"
         pending: "Pendente"
         accepted: "Aceite"

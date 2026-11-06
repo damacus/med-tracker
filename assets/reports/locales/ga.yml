@@ -3292,6 +3292,7 @@ ga:
       personal_request_from: "Iarratas ó"
       recipient_only: "Ní thaispeánann an leathanach seo ach d'iarratas féin."
       codes:
+        historical_actor_unavailable: "Níl an gníomhaí stairiúil bunaidh ar fáil. Níor cruthaíodh nasc le gníomhaí sa cheann scríbe; ní thugann sé seo údarás reatha."
         not_requested: "Gan iarraidh"
         pending: "Ar feitheamh"
         accepted: "Glactha"

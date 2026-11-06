@@ -3284,6 +3284,7 @@ cy:
       personal_request_from: "Cais gan"
       recipient_only: "Dim ond eich cais eich hun sydd ar y dudalen hon."
       codes:
+        historical_actor_unavailable: "Nid yw'r gweithredwr hanesyddol gwreiddiol ar gael. Ni chafodd dolen i weithredwr cyrchfan ei chreu; nid yw hyn yn rhoi awdurdod presennol."
         not_requested: "Heb ofyn"
         pending: "Yn aros"
         accepted: "Wedi derbyn"
