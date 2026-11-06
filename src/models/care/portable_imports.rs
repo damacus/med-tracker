@@ -1,4 +1,5 @@
 mod access;
+mod aliases;
 mod contracts;
 mod declarations;
 mod identity;
@@ -14,6 +15,10 @@ pub(crate) use contracts::ImportPlan;
 pub(crate) use declarations::{InitialDeclarations, PreparedDeclarations};
 
 pub(crate) use access::authorized;
+pub(crate) use aliases::{
+    AliasError, AliasSelection, NormalizedImport, ProfileDifference, ResolvedAlias,
+    normalize_aliases,
+};
 pub(crate) use identity::ExistingIndex;
 pub(crate) use preflight::preflight;
 pub(crate) use validation::validate_source_row;
