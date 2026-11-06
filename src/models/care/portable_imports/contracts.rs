@@ -302,7 +302,7 @@ fn allowed_fields(kind: &str) -> &'static [&'static str] {
     }
 }
 
-fn required_fields(kind: &str) -> &'static [&'static str] {
+pub(super) fn required_fields(kind: &str) -> &'static [&'static str] {
     match kind {
         "people" => &["name"],
         "locations" => &["name"],

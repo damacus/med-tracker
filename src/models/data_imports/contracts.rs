@@ -47,6 +47,7 @@ code!(RecordKind {
     Pause,
     Occurrence,
     HealthEvent,
+    NotificationPreference,
     Attachment,
     Other
 });
@@ -102,6 +103,7 @@ code!(ReasonCode {
     GuardianDeclarationRequired,
     InsufficientAuthority,
     MissingDependency,
+    HistoricalActorUnavailable,
     DestinationChanged,
     SourceInvalid,
     AttachmentUnsupported,
@@ -321,6 +323,8 @@ pub enum ArchivePreparationError {
     UnsupportedEntry,
     DuplicateEntry,
     UnsupportedFields(Vec<SourcePreparationDiagnostic>),
+    InvalidFields(Vec<SourcePreparationDiagnostic>),
+    SourceValidation(Vec<String>),
     Preparation(PreparationError),
 }
 
@@ -353,6 +357,7 @@ pub struct SourceRecord {
 pub struct SourceRelationship {
     pub kind: RelationshipKind,
     pub field: String,
+    pub reason: Option<ReasonCode>,
     pub source: SourceIdentity,
     pub target: SourceIdentity,
 }

@@ -141,36 +141,12 @@ pub fn prepare_archive(
     if !entries.is_empty() {
         return Err(E::UnsupportedEntry);
     }
-    let transfer = prepare_inner(&payload_bytes, &manifest_bytes, input.passphrase, true)
-        .map_err(E::Preparation)?;
-    let receipt = PreparationReceipt {
-        payload_sha256: transfer.conversion_receipt.payload_sha256.clone(),
-        manifest_sha256: transfer.conversion_receipt.manifest_sha256.clone(),
-        target_sha256: transfer.conversion_receipt.target_sha256.clone(),
-    };
     let records = payload["records"]
         .as_object()
         .ok_or(E::Preparation(PreparationError::InvalidGraph))?;
-    validate_associations(records)?;
-    for row in records["medication_pause_periods"]
-        .as_array()
-        .ok_or(E::Preparation(PreparationError::InvalidGraph))?
-    {
-        for field in [
-            "recorded_by_person_portable_id",
-            "resumed_by_person_portable_id",
-        ] {
-            if !row[field].is_null() {
-                let id = text(&row[field]).map_err(E::Preparation)?;
-                if !records["people"]
-                    .as_array()
-                    .is_some_and(|people| people.iter().any(|person| person["portable_id"] == id))
-                {
-                    return Err(E::Preparation(PreparationError::InvalidGraph));
-                }
-            }
-        }
-    }
+    let index = index_records(records)?;
+    validate_source(records)?;
+    validate_associations(records, &index)?;
     for collection in COLLECTIONS {
         for row in records[collection]
             .as_array()
@@ -215,6 +191,7 @@ pub fn prepare_archive(
                     inventory.relationships.push(SourceRelationship {
                         kind: relationship(collection, field),
                         field: (*field).to_owned(),
+                        reason: None,
                         source: subject.clone(),
                         target: collection_identity(input.source, &instance, target, id),
                     });
@@ -229,6 +206,11 @@ pub fn prepare_archive(
                         inventory.relationships.push(SourceRelationship {
                             kind: RelationshipKind::Other,
                             field: field.to_owned(),
+                            reason: if index["people"].contains_key(id) {
+                                None
+                            } else {
+                                Some(ReasonCode::HistoricalActorUnavailable)
+                            },
                             source: subject.clone(),
                             target: identity(input.source, &instance, RecordKind::Person, id),
                         });
@@ -247,6 +229,7 @@ pub fn prepare_archive(
                 inventory.relationships.push(SourceRelationship {
                     kind: RelationshipKind::DoseSource,
                     field: "source_portable_id".to_owned(),
+                    reason: None,
                     source: subject.clone(),
                     target: identity(
                         input.source,
@@ -264,6 +247,7 @@ pub fn prepare_archive(
                     inventory.relationships.push(SourceRelationship {
                         kind: RelationshipKind::HealthEventMedication,
                         field: "medication_portable_ids".to_owned(),
+                        reason: None,
                         source: subject.clone(),
                         target: identity(
                             input.source,
@@ -281,18 +265,13 @@ pub fn prepare_archive(
                     .ok_or(E::Preparation(PreparationError::InvalidGraph))?
                 {
                     let id = text(value).map_err(E::Preparation)?;
-                    if !seen.insert(id)
-                        || !records["locations"].as_array().is_some_and(|locations| {
-                            locations
-                                .iter()
-                                .any(|location| location["portable_id"] == id)
-                        })
-                    {
+                    if !seen.insert(id) || !index["locations"].contains_key(id) {
                         return Err(E::Preparation(PreparationError::InvalidGraph));
                     }
                     inventory.relationships.push(SourceRelationship {
                         kind: RelationshipKind::PersonLocation,
                         field: "location_portable_ids".to_owned(),
+                        reason: None,
                         source: subject.clone(),
                         target: identity(input.source, &instance, RecordKind::Location, id),
                     });
@@ -312,6 +291,13 @@ pub fn prepare_archive(
             }
         }
     }
+    let transfer = prepare_inner(&payload_bytes, &manifest_bytes, input.passphrase, true)
+        .map_err(E::Preparation)?;
+    let receipt = PreparationReceipt {
+        payload_sha256: transfer.conversion_receipt.payload_sha256.clone(),
+        manifest_sha256: transfer.conversion_receipt.manifest_sha256.clone(),
+        target_sha256: transfer.conversion_receipt.target_sha256.clone(),
+    };
     Ok(PreparedArchive {
         transfer,
         archive_sha256: digest(input.archive),
@@ -335,12 +321,7 @@ fn collection_identity(
     collection: &str,
     id: &str,
 ) -> SourceIdentity {
-    let id = if collection == "notification_preferences" {
-        format!("notification_preferences:{id}")
-    } else {
-        id.to_owned()
-    };
-    identity(source, instance, kind(collection), &id)
+    identity(source, instance, kind(collection), id)
 }
 
 fn omission_id(instance: &str, category: &str, item: &str, target: &str) -> String {
@@ -352,16 +333,117 @@ fn omission_id(instance: &str, category: &str, item: &str, target: &str) -> Stri
     digest(&bytes)
 }
 
+type SourceIndex<'a> = BTreeMap<&'static str, BTreeMap<&'a str, &'a Value>>;
+
+fn decimal_exact(value: &Value) -> Option<Decimal> {
+    match value {
+        Value::String(value) => Decimal::from_str_exact(value).ok(),
+        Value::Number(value) => Decimal::from_str_exact(&value.to_string()).ok(),
+        _ => None,
+    }
+}
+
+fn exactly_representable_as_f64(value: Decimal) -> bool {
+    let value = value.normalize();
+    let mut numerator = value.mantissa().unsigned_abs();
+    for _ in 0..value.scale() {
+        if numerator % 5 != 0 {
+            return false;
+        }
+        numerator /= 5;
+    }
+    if numerator == 0 {
+        return true;
+    }
+    numerator >>= numerator.trailing_zeros();
+    numerator <= (1_u128 << 53) - 1
+}
+
+fn validate_source(
+    records: &serde_json::Map<String, Value>,
+) -> Result<(), ArchivePreparationError> {
+    let mut source_errors = Vec::new();
+    let mut decimal_errors = Vec::new();
+    for collection in COLLECTIONS {
+        let rows = records.get(collection).and_then(Value::as_array).ok_or(
+            ArchivePreparationError::Preparation(PreparationError::InvalidGraph),
+        )?;
+        for (index, row) in rows.iter().enumerate() {
+            if !row.is_object() {
+                return Err(ArchivePreparationError::Preparation(
+                    PreparationError::InvalidGraph,
+                ));
+            }
+            source_errors.extend(crate::models::care::portable_imports::validate_source_row(
+                collection, index, row,
+            ));
+            for field in [
+                "amount",
+                "dose_amount",
+                "current_supply",
+                "reorder_threshold",
+                "default_min_hours_between_doses",
+            ] {
+                let Some(value) = row.get(field).filter(|value| !value.is_null()) else {
+                    continue;
+                };
+                let valid = decimal_exact(value).is_some_and(|number| {
+                    let normal = number.normalize();
+                    match (collection, field) {
+                        ("dosage_options", "amount") => true,
+                        ("medications", "dose_amount") => exactly_representable_as_f64(number),
+                        (_, "default_min_hours_between_doses") => {
+                            normal.scale() <= 1 && normal.abs() < Decimal::from(1000)
+                        }
+                        _ => normal.scale() <= 2 && normal.abs() < Decimal::from(100_000_000),
+                    }
+                });
+                if !valid {
+                    decimal_errors.push(SourcePreparationDiagnostic {
+                        path: format!("/records/{collection}/{index}/{field}"),
+                    });
+                }
+            }
+        }
+    }
+    if !decimal_errors.is_empty() {
+        return Err(ArchivePreparationError::InvalidFields(decimal_errors));
+    }
+    if !source_errors.is_empty() {
+        return Err(ArchivePreparationError::SourceValidation(source_errors));
+    }
+    Ok(())
+}
+
+fn index_records(
+    records: &serde_json::Map<String, Value>,
+) -> Result<SourceIndex<'_>, ArchivePreparationError> {
+    let mut index = BTreeMap::new();
+    for collection in COLLECTIONS {
+        let rows = records.get(collection).and_then(Value::as_array).ok_or(
+            ArchivePreparationError::Preparation(PreparationError::InvalidGraph),
+        )?;
+        let mut items = BTreeMap::new();
+        for row in rows {
+            let id = text(&row["portable_id"]).map_err(ArchivePreparationError::Preparation)?;
+            if items.insert(id, row).is_some() {
+                return Err(ArchivePreparationError::Preparation(
+                    PreparationError::InvalidGraph,
+                ));
+            }
+        }
+        index.insert(collection, items);
+    }
+    Ok(index)
+}
+
 fn validate_associations(
     records: &serde_json::Map<String, Value>,
+    index: &SourceIndex<'_>,
 ) -> Result<(), ArchivePreparationError> {
     let invalid = || ArchivePreparationError::Preparation(PreparationError::InvalidGraph);
     let find = |collection: &str, id: &Value| -> Option<&Value> {
-        records
-            .get(collection)?
-            .as_array()?
-            .iter()
-            .find(|row| row["portable_id"] == *id)
+        index.get(collection)?.get(id.as_str()?).copied()
     };
     for collection in ["schedules", "person_medications"] {
         for row in records[collection].as_array().ok_or_else(invalid)? {
@@ -369,6 +451,13 @@ fn validate_associations(
                 let dosage = find("dosage_options", &row["source_dosage_option_portable_id"])
                     .ok_or_else(invalid)?;
                 if dosage["medication_portable_id"] != row["medication_portable_id"] {
+                    return Err(invalid());
+                }
+                let amount = decimal_exact(&dosage["amount"]);
+                if amount.is_none()
+                    || amount != decimal_exact(&row["dose_amount"])
+                    || dosage["unit"] != row["dose_unit"]
+                {
                     return Err(invalid());
                 }
             }
@@ -500,7 +589,7 @@ fn kind(collection: &str) -> RecordKind {
         "health_events" => RecordKind::HealthEvent,
         "dose_occurrences" => RecordKind::Occurrence,
         "medication_pause_periods" => RecordKind::Pause,
-        "notification_preferences" => RecordKind::Other,
+        "notification_preferences" => RecordKind::NotificationPreference,
         _ => unreachable!("known collection"),
     }
 }
@@ -778,7 +867,7 @@ mod tests {
     }
 
     #[test]
-    fn inventories_multiple_links_and_blocks_unknown_pause_actors() {
+    fn inventories_links_and_unavailable_pause_actors_without_authority() {
         let mut payload: Value = serde_json::from_slice(PAYLOAD).unwrap();
         let manifest: Value = serde_json::from_slice(MANIFEST).unwrap();
         let locations = payload["records"]["locations"].as_array().unwrap();
@@ -811,13 +900,119 @@ mod tests {
                 .iter()
                 .all(|record| record.details.stock_unit.is_none())
         );
-        payload["records"]["medication_pause_periods"][0]["recorded_by_person_portable_id"] =
-            json!("unknown-person");
+        assert!(
+            result
+                .inventory
+                .relationships
+                .iter()
+                .any(|link| link.field == "recorded_by_person_portable_id"
+                    && link.target.id == "synthetic-absent-actor"
+                    && link.reason == Some(ReasonCode::HistoricalActorUnavailable))
+        );
+        let preference = payload["records"]["notification_preferences"][0]["portable_id"]
+            .as_str()
+            .unwrap();
+        assert!(
+            result
+                .inventory
+                .records
+                .iter()
+                .any(
+                    |record| record.identity.kind == RecordKind::NotificationPreference
+                        && record.identity.id == preference
+                )
+        );
+        payload["records"]["medication_pause_periods"][0]["source_portable_id"] =
+            json!("missing-source");
         assert!(matches!(
             prepare(&documents(&payload, &manifest)),
             Err(ArchivePreparationError::Preparation(
                 PreparationError::InvalidGraph
             ))
         ));
+    }
+
+    #[test]
+    fn rejects_source_precision_and_mismatched_dosage_and_dates() {
+        let original: Value = serde_json::from_slice(PAYLOAD).unwrap();
+        let manifest: Value = serde_json::from_slice(MANIFEST).unwrap();
+        for (collection, field, value) in [
+            ("dosage_options", "amount", "not-decimal"),
+            ("dosage_options", "current_supply", "0.001"),
+            ("dosage_options", "reorder_threshold", "100000000"),
+            ("dosage_options", "default_min_hours_between_doses", "1000"),
+            ("schedules", "dose_amount", "0.001"),
+            ("medications", "dose_amount", "0.1"),
+        ] {
+            let mut payload = original.clone();
+            payload["records"][collection][0][field] = json!(value);
+            assert!(
+                matches!(
+                    prepare(&documents(&payload, &manifest)),
+                    Err(ArchivePreparationError::InvalidFields(_))
+                ),
+                "{collection}.{field}"
+            );
+        }
+        let mut payload = original.clone();
+        payload["records"]["schedules"][0]["dose_unit"] = json!("capsule");
+        assert!(matches!(
+            prepare(&documents(&payload, &manifest)),
+            Err(ArchivePreparationError::Preparation(
+                PreparationError::InvalidGraph
+            ))
+        ));
+        for (collection, field) in [
+            ("medication_pause_periods", "started_at"),
+            ("dose_occurrences", "scheduled_at"),
+        ] {
+            let mut payload = original.clone();
+            payload["records"][collection][0][field] = json!("not-a-date");
+            assert!(matches!(
+                prepare(&documents(&payload, &manifest)),
+                Err(ArchivePreparationError::SourceValidation(_))
+            ));
+        }
+        let mut payload = original;
+        payload["records"]["schedules"][0]["dose_amount"] = json!("0.5000");
+        assert!(prepare(&documents(&payload, &manifest)).is_ok());
+    }
+
+    #[test]
+    fn rejects_expanded_size_entry_count_and_encrypted_flag() {
+        let oversized = vec![0_u8; ARCHIVE_LIMIT];
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        writer.start_file("portable.json", options).unwrap();
+        writer.write_all(PAYLOAD).unwrap();
+        writer.start_file("manifest.json", options).unwrap();
+        writer.write_all(MANIFEST).unwrap();
+        writer.start_file("attachments/1.bin", options).unwrap();
+        writer.write_all(&oversized).unwrap();
+        assert!(matches!(
+            prepare(&writer.finish().unwrap().into_inner()),
+            Err(ArchivePreparationError::TooLarge)
+        ));
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        for i in 0..=ENTRY_LIMIT {
+            writer
+                .start_file(format!("file{i}"), SimpleFileOptions::default())
+                .unwrap();
+        }
+        assert!(matches!(
+            prepare(&writer.finish().unwrap().into_inner()),
+            Err(ArchivePreparationError::TooLarge)
+        ));
+        let mut bytes = zip(&[("portable.json", PAYLOAD), ("manifest.json", MANIFEST)]);
+        for i in 0..bytes.len().saturating_sub(10) {
+            if &bytes[i..i + 4] == b"PK\x03\x04" {
+                bytes[i + 6] |= 1;
+            }
+            if &bytes[i..i + 4] == b"PK\x01\x02" {
+                bytes[i + 8] |= 1;
+            }
+        }
+        assert!(prepare(&bytes).is_err());
     }
 }

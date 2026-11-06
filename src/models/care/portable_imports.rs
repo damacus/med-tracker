@@ -16,6 +16,7 @@ pub(crate) use declarations::{InitialDeclarations, PreparedDeclarations};
 pub(crate) use access::authorized;
 pub(crate) use identity::ExistingIndex;
 pub(crate) use preflight::preflight;
+pub(crate) use validation::validate_source_row;
 pub(crate) use writing::write_records;
 
 use crate::models::{
