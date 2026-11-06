@@ -167,6 +167,13 @@ async fn shared_scenario_renews_short_lived_credentials_without_changing_other_g
 }
 
 #[tokio::test]
+async fn fixture_concurrent_restricted_application_boots_succeed() {
+    let (first, second) = tokio::join!(Application::new(), Application::new());
+    first.close().await;
+    second.close().await;
+}
+
+#[tokio::test]
 async fn shared_scenario_issues_an_independently_usable_authorization_code() {
     let first = Application::new().await;
     let created_at = chrono::Utc::now().naive_utc();

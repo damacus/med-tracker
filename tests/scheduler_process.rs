@@ -19,6 +19,78 @@ fn job(run: &str) -> Job {
 }
 
 #[test]
+fn container_scheduler_rejects_invalid_arguments_before_starting() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("scheduler.yaml");
+    std::fs::write(
+        &path,
+        "jobs:\n  invalid:\n    run: \"support-access-expire value:bad\\0argument\"\n    schedule: '0 * * * * *'\n",
+    )
+    .unwrap();
+    for arguments in [
+        ["scheduler", "--environment", "test"].as_slice(),
+        ["start", "--scheduler", "--environment", "test"].as_slice(),
+    ] {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"))
+            .args(arguments)
+            .env("SCHEDULER_CONFIG", &path)
+            .env(
+                "DATABASE_URL",
+                "postgres://invalid:invalid@127.0.0.1:1/invalid",
+            )
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("scheduler command contains a NUL"),
+            "unexpected error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"))
+        .args(["scheduler", "--environment", "test", "--config"])
+        .arg(&path)
+        .env(
+            "DATABASE_URL",
+            "postgres://invalid:invalid@127.0.0.1:1/invalid",
+        )
+        .output()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("scheduler command contains a NUL"),
+        "unexpected error: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let valid_path = directory.path().join("valid.yaml");
+    std::fs::write(
+        &valid_path,
+        "jobs:\n  valid:\n    run: support-access-expire\n    schedule: '0 * * * * *'\n",
+    )
+    .unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"))
+        .args([
+            "start",
+            "--scheduler",
+            "--environment",
+            "test",
+            "--scheduler-config",
+        ])
+        .arg(valid_path)
+        .env("SCHEDULER_CONFIG", &path)
+        .env(
+            "DATABASE_URL",
+            "postgres://invalid:invalid@127.0.0.1:1/invalid",
+        )
+        .output()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("unexpected argument"),
+        "unexpected error: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
 fn invalid_native_commands_fail_before_spawning() {
     for run in [
         "",
@@ -28,13 +100,15 @@ fn invalid_native_commands_fail_before_spawning() {
         "support-access-expire \"unterminated",
         "support-access-expire 'unterminated",
         "support-access-expire\0",
-        "support-access-expire value:bad\0argument",
     ] {
         let config = loco_rs::scheduler::Config {
             jobs: [("invalid".into(), job(run))].into(),
             output: Output::STDOUT,
         };
-        assert!(Scheduler::new::<App>(&config, &Environment::Test).is_err());
+        assert!(
+            Scheduler::new::<App>(&config, &Environment::Test).is_err(),
+            "invalid command was accepted: {run:?}"
+        );
     }
 }
 

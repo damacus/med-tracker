@@ -2,7 +2,9 @@ use super::fixture::Fixture;
 use med_tracker::models::_entities::{
     platform_admins, security_audit_events, support_access_sessions, versions,
 };
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, Set, TransactionTrait,
+};
 use std::{process::Command, time::Duration};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -144,8 +146,36 @@ async fn actual_schedule_expires_support_and_audits_once_without_a_shell() -> Te
             assert_eq!(row.audit_context["actor_account_id"], fixture.account.id);
             assert_eq!(row.audit_context["active_role"], "support_expiry_task");
         }
-        docker(&["kill", "--signal=SIGINT", &name])?;
-        assert_eq!(docker(&["wait", &name])?.trim(), "0");
+        docker(&["pause", &name])?;
+        let third = seed_session(&fixture, admin.id).await?;
+        let transaction = fixture.admin.begin().await?;
+        // SeaQuery cannot express PostgreSQL's table-level ACCESS EXCLUSIVE lock.
+        // Hold the disposable table so the scheduler's real task stays in flight.
+        transaction.execute_unprepared("LOCK TABLE public.support_access_sessions IN ACCESS EXCLUSIVE MODE").await?;
+        docker(&["unpause", &name])?;
+        let mut active = false;
+        for _ in 0..100 {
+            if docker(&["top", &name, "-o", "pid,args"])?.lines().any(|line| line.contains(" task ")) {
+                active = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        assert!(active, "scheduled subprocess did not start");
+        docker(&["kill", "--signal=SIGTERM", &name])?;
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        assert_eq!(docker(&["inspect", "--format", "{{.State.Running}}", &name])?.trim(), "true", "scheduler exited with a subprocess in flight");
+        transaction.commit().await?;
+        let waiting_name = name.clone();
+        let stopped = tokio::time::timeout(Duration::from_secs(20), tokio::task::spawn_blocking(move || docker(&["wait", &waiting_name]).map_err(|error| error.to_string())))
+            .await??;
+        assert_eq!(stopped?.trim(), "0");
+        assert!(support_access_sessions::Entity::find_by_id(third).one(&fixture.admin).await?.is_some_and(|row| row.expired_at.is_some()));
+        let third_audits = security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::HouseholdId.eq(fixture.household.id))
+            .filter(security_audit_events::Column::EventType.eq("support_access_session.expired"))
+            .all(&fixture.admin).await?;
+        assert_eq!(third_audits.iter().filter(|row| row.metadata["support_access_session_id"].as_i64() == Some(third)).count(), 1);
         drop(guard);
         Ok::<_, Box<dyn std::error::Error>>(())
     }.await;

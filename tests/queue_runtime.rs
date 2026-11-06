@@ -6,10 +6,10 @@ use loco_rs::{
     environment::Environment,
 };
 use scenario::Scenario;
-use sea_orm::ConnectionTrait;
 use sea_orm::sea_query::{
-    Alias, ColumnDef, Expr, ExprTrait, Order, Query, Table, extension::postgres::PgExpr,
+    Alias, ColumnDef, Expr, ExprTrait, Index, Order, Query, Table, extension::postgres::PgExpr,
 };
+use sea_orm::{ConditionalStatement, ConnectionTrait, TransactionTrait};
 use serde_json::json;
 
 struct Fixture {
@@ -40,9 +40,7 @@ impl Fixture {
     }
 
     async fn queue(&self) -> Queue {
-        let queue = pg::create_provider(&self.config).await.unwrap();
-        queue.setup().await.unwrap();
-        queue
+        pg::create_provider(&self.config).await.unwrap()
     }
 
     async fn status(&self, id: &str) -> String {
@@ -88,6 +86,529 @@ impl Fixture {
         }
         self.scenario.close().await;
     }
+}
+
+#[tokio::test]
+async fn restricted_worker_binary_starts_with_preprovisioned_queue() {
+    let fixture = Fixture::new().await;
+    let queue = fixture.queue().await;
+    let id = queue
+        .enqueue(
+            "MailerWorker".into(),
+            None,
+            json!({"invalid": true}),
+            Some(vec!["synthetic-no-jobs".into()]),
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"));
+    command
+        .args([
+            "start",
+            "--worker=synthetic-no-jobs",
+            "--environment",
+            "test",
+        ])
+        .env("DATABASE_URL", &fixture.config.uri)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true);
+    let mut child = command.spawn().unwrap();
+    let result = tokio::time::timeout(std::time::Duration::from_secs(15), async {
+        loop {
+            if fixture.status(&id).await == "failed" {
+                return true;
+            }
+            if child.try_wait().unwrap().is_some() {
+                return false;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .unwrap_or(false);
+    let _ = child.kill().await;
+    queue.shutdown().unwrap();
+    fixture.close(&[id]).await;
+    assert!(result, "worker did not process the synthetic job");
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn restricted_worker_drains_inflight_job_on_sigterm() {
+    let fixture = Fixture::new().await;
+    let queue = fixture.queue().await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let email = loco_rs::mailer::Email {
+        from: Some("sender@example.test".into()),
+        to: "recipient@example.test".into(),
+        subject: "Synthetic shutdown test".into(),
+        text: "Synthetic message".into(),
+        html: "Synthetic message".into(),
+        ..Default::default()
+    };
+    let id = queue
+        .enqueue(
+            "MailerWorker".into(),
+            None,
+            serde_json::to_value(email).unwrap(),
+            Some(vec!["shutdown-test".into()]),
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"))
+        .args(["start", "--worker=shutdown-test", "--environment", "test"])
+        .env("DATABASE_URL", &fixture.config.uri)
+        .env("MEDTRACKER_CAPTURE_MAIL", "true")
+        .env("MEDTRACKER_SMTP_PORT", port.to_string())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    let (socket, _) = tokio::time::timeout(std::time::Duration::from_secs(15), listener.accept())
+        .await
+        .expect("worker did not reach synthetic SMTP server")
+        .unwrap();
+    assert_eq!(fixture.status(&id).await, "processing");
+    let signal = tokio::process::Command::new("kill")
+        .args(["-TERM", &child.id().unwrap().to_string()])
+        .status()
+        .await
+        .unwrap();
+    assert!(signal.success());
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert!(
+        child.try_wait().unwrap().is_none(),
+        "worker exited with a job in flight"
+    );
+    drop(socket);
+    let status = tokio::time::timeout(std::time::Duration::from_secs(10), child.wait())
+        .await
+        .expect("worker did not stop after the job finished")
+        .unwrap();
+    assert!(status.success(), "worker exited with {status}");
+    assert_eq!(fixture.status(&id).await, "failed");
+    queue.shutdown().unwrap();
+    fixture.close(&[id]).await;
+}
+
+#[tokio::test]
+async fn restricted_server_binary_starts_with_preprovisioned_queue() {
+    let fixture = Fixture::new().await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"));
+    command
+        .args([
+            "start",
+            "--environment",
+            "test",
+            "--binding",
+            "127.0.0.1",
+            "--port",
+            &port.to_string(),
+        ])
+        .env("DATABASE_URL", &fixture.config.uri)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true);
+    let mut child = command.spawn().unwrap();
+    let client = reqwest::Client::new();
+    let url = format!("http://127.0.0.1:{port}/up");
+    let mut diagnostic = String::new();
+    let result = tokio::time::timeout(std::time::Duration::from_secs(15), async {
+        loop {
+            match client.get(&url).send().await {
+                Ok(response) if response.status().is_success() => return true,
+                Ok(response) => diagnostic = format!("HTTP {}", response.status()),
+                Err(error) => diagnostic = error.to_string(),
+            }
+            if let Some(status) = child.try_wait().unwrap() {
+                diagnostic = format!("exit {status}: {diagnostic}");
+                return false;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .unwrap_or(false);
+    let _ = child.start_kill();
+    child.wait().await.unwrap();
+    fixture.close(&[]).await;
+    assert!(result, "server did not become healthy: {diagnostic}");
+}
+
+#[tokio::test]
+async fn boot_rejects_incorrect_unique_queue_index() {
+    use loco_rs::{app::Hooks, boot::StartMode};
+    let fixture = Fixture::new().await;
+    let backend = fixture.admin.get_database_backend();
+    let drop_index = Index::drop().name("pg_loco_queue_unique_queued").to_owned();
+    for wrong_predicate in [false, true] {
+        fixture
+            .admin
+            .execute_raw(backend.build(&drop_index))
+            .await
+            .unwrap();
+        let mut wrong = Index::create();
+        wrong
+            .name("pg_loco_queue_unique_queued")
+            .table("pg_loco_queue")
+            .col("name");
+        if wrong_predicate {
+            wrong
+                .unique()
+                .col("unique_key")
+                .and_where(Expr::col("status").eq("failed"))
+                .and_where(Expr::col("unique_key").is_not_null());
+        }
+        fixture
+            .admin
+            .execute_raw(backend.build(&wrong.to_owned()))
+            .await
+            .unwrap();
+        let mut config = Config::new(&Environment::Test).unwrap();
+        config.database.uri = fixture.config.uri.clone();
+        let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+            panic!("PostgreSQL queue required")
+        };
+        queue.uri = fixture.config.uri.clone();
+        let result =
+            med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config).await;
+        if let Ok(boot) = &result
+            && let Some(queue) = &boot.app_context.queue_provider
+        {
+            queue.shutdown().unwrap();
+        }
+        fixture
+            .admin
+            .execute_raw(backend.build(&drop_index))
+            .await
+            .unwrap();
+        let correct = Index::create()
+            .name("pg_loco_queue_unique_queued")
+            .table("pg_loco_queue")
+            .unique()
+            .col("name")
+            .col("unique_key")
+            .and_where(Expr::col("status").eq("queued"))
+            .and_where(Expr::col("unique_key").is_not_null())
+            .to_owned();
+        fixture
+            .admin
+            .execute_raw(backend.build(&correct))
+            .await
+            .unwrap();
+        let error = result
+            .err()
+            .expect("boot accepted an incorrectly defined queue index");
+        assert!(
+            str::contains(&error.to_string(), "Queue schema is not prepared"),
+            "unexpected boot error: {error}"
+        );
+    }
+    fixture.close(&[]).await;
+}
+
+#[tokio::test]
+async fn boot_rejects_queue_index_without_primary_key_constraint() {
+    use loco_rs::{app::Hooks, boot::StartMode};
+    let fixture = Fixture::new().await;
+    let backend = fixture.admin.get_database_backend();
+    let drop_primary = Table::alter()
+        .table("pg_loco_queue")
+        .drop_constraint("pg_loco_queue_pkey")
+        .to_owned();
+    fixture
+        .admin
+        .execute_raw(backend.build(&drop_primary))
+        .await
+        .unwrap();
+    let index = Index::create()
+        .name("pg_loco_queue_pkey")
+        .table("pg_loco_queue")
+        .unique()
+        .col("id")
+        .to_owned();
+    fixture
+        .admin
+        .execute_raw(backend.build(&index))
+        .await
+        .unwrap();
+    let mut config = Config::new(&Environment::Test).unwrap();
+    config.database.uri = fixture.config.uri.clone();
+    let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue.uri = fixture.config.uri.clone();
+    let result =
+        med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config).await;
+    if let Ok(boot) = &result
+        && let Some(queue) = &boot.app_context.queue_provider
+    {
+        queue.shutdown().unwrap();
+    }
+    let drop_index = Index::drop().name("pg_loco_queue_pkey").to_owned();
+    fixture
+        .admin
+        .execute_raw(backend.build(&drop_index))
+        .await
+        .unwrap();
+    // SeaQuery cannot add a primary-key constraint to an existing table.
+    fixture
+        .admin
+        .execute_unprepared("ALTER TABLE public.pg_loco_queue ADD PRIMARY KEY (id)")
+        .await
+        .unwrap();
+    fixture.close(&[]).await;
+    assert!(
+        result.is_err(),
+        "boot accepted a unique index without a primary-key constraint"
+    );
+}
+
+#[tokio::test]
+async fn boot_rejects_wrong_queue_column_type() {
+    use loco_rs::{app::Hooks, boot::StartMode};
+    let fixture = Fixture::new().await;
+    let backend = fixture.admin.get_database_backend();
+    let wrong = Table::alter()
+        .table("pg_loco_queue")
+        .modify_column(
+            ColumnDef::new("attempts")
+                .big_integer()
+                .not_null()
+                .default(0),
+        )
+        .to_owned();
+    fixture
+        .admin
+        .execute_raw(backend.build(&wrong))
+        .await
+        .unwrap();
+    let mut config = Config::new(&Environment::Test).unwrap();
+    config.database.uri = fixture.config.uri.clone();
+    let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue.uri = fixture.config.uri.clone();
+    let result =
+        med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config).await;
+    if let Ok(boot) = &result
+        && let Some(queue) = &boot.app_context.queue_provider
+    {
+        queue.shutdown().unwrap();
+    }
+    let correct = Table::alter()
+        .table("pg_loco_queue")
+        .modify_column(ColumnDef::new("attempts").integer().not_null().default(0))
+        .to_owned();
+    fixture
+        .admin
+        .execute_raw(backend.build(&correct))
+        .await
+        .unwrap();
+    fixture.close(&[]).await;
+    assert!(
+        result.is_err(),
+        "boot accepted the wrong queue attempts type"
+    );
+}
+
+#[tokio::test]
+async fn boot_rejects_wrong_queue_column_default() {
+    use loco_rs::{app::Hooks, boot::StartMode};
+    let fixture = Fixture::new().await;
+    let backend = fixture.admin.get_database_backend();
+    let wrong = Table::alter()
+        .table("pg_loco_queue")
+        .modify_column(ColumnDef::new("attempts").integer().not_null().default(7))
+        .to_owned();
+    fixture
+        .admin
+        .execute_raw(backend.build(&wrong))
+        .await
+        .unwrap();
+    let mut config = Config::new(&Environment::Test).unwrap();
+    config.database.uri = fixture.config.uri.clone();
+    let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue.uri = fixture.config.uri.clone();
+    let result =
+        med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config).await;
+    if let Ok(boot) = &result
+        && let Some(queue) = &boot.app_context.queue_provider
+    {
+        queue.shutdown().unwrap();
+    }
+    let correct = Table::alter()
+        .table("pg_loco_queue")
+        .modify_column(ColumnDef::new("attempts").integer().not_null().default(0))
+        .to_owned();
+    fixture
+        .admin
+        .execute_raw(backend.build(&correct))
+        .await
+        .unwrap();
+    fixture.close(&[]).await;
+    let error = result
+        .err()
+        .expect("boot accepted the wrong queue attempts default");
+    assert!(str::contains(
+        &error.to_string(),
+        "Queue schema is not prepared"
+    ));
+}
+
+async fn prepare_old_queue_schema(transaction: &sea_orm::DatabaseTransaction) {
+    let backend = transaction.get_database_backend();
+    for name in [
+        "pg_loco_queue_unique_queued",
+        "pg_loco_queue_dequeue",
+        "pg_loco_queue_status_updated_at",
+    ] {
+        let drop_index = Index::drop().name(name).to_owned();
+        transaction
+            .execute_raw(backend.build(&drop_index))
+            .await
+            .unwrap();
+    }
+    let old_schema = Table::alter()
+        .table("pg_loco_queue")
+        .drop_constraint("pg_loco_queue_pkey")
+        .drop_column("attempts")
+        .drop_column("unique_key")
+        .to_owned();
+    transaction
+        .execute_raw(backend.build(&old_schema))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn queue_upgrade_preserves_existing_jobs() {
+    use migration::{MigrationTrait, SchemaManager};
+    let fixture = Fixture::new().await;
+    let transaction = fixture.admin.begin().await.unwrap();
+    let backend = transaction.get_database_backend();
+    prepare_old_queue_schema(&transaction).await;
+    let ids = ["queued", "processing", "failed"]
+        .map(|status| format!("{}-{status}", uuid::Uuid::new_v4()));
+    for (id, status) in ids.iter().zip(["queued", "processing", "failed"]) {
+        let insert = Query::insert()
+            .into_table("pg_loco_queue")
+            .columns(["id", "name", "task_data", "status", "run_at"])
+            .values_panic([
+                id.as_str().into(),
+                "MigrationFixture".into(),
+                json!({"fixture": true}).into(),
+                status.into(),
+                chrono::Utc::now().into(),
+            ])
+            .to_owned();
+        transaction
+            .execute_raw(backend.build(&insert))
+            .await
+            .unwrap();
+    }
+    let manager = SchemaManager::new(&transaction);
+    migration::m20261106_000035_loco_queue::Migration
+        .up(&manager)
+        .await
+        .unwrap();
+    let select = Query::select()
+        .columns(["id", "status", "task_data", "attempts", "unique_key"])
+        .from("pg_loco_queue")
+        .and_where(Expr::col("id").is_in(ids.iter().cloned()))
+        .order_by("status", Order::Asc)
+        .to_owned();
+    let rows = transaction
+        .query_all_raw(backend.build(&select))
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 3);
+    for row in rows {
+        assert_eq!(row.try_get::<i32>("", "attempts").unwrap(), 0);
+        assert_eq!(
+            row.try_get::<Option<String>>("", "unique_key").unwrap(),
+            None
+        );
+        let id = row.try_get::<String>("", "id").unwrap();
+        let status = row.try_get::<String>("", "status").unwrap();
+        assert!(ids.contains(&id));
+        assert!(id.ends_with(&format!("-{status}")));
+        assert_eq!(
+            row.try_get::<serde_json::Value>("", "task_data").unwrap(),
+            json!({"fixture": true})
+        );
+    }
+    transaction.rollback().await.unwrap();
+    fixture.close(&[]).await;
+}
+
+#[tokio::test]
+async fn queue_upgrade_rejects_duplicate_ids_and_rolls_back() {
+    use migration::{MigrationTrait, SchemaManager};
+    let fixture = Fixture::new().await;
+    let transaction = fixture.admin.begin().await.unwrap();
+    let backend = transaction.get_database_backend();
+    prepare_old_queue_schema(&transaction).await;
+    let id = format!("duplicate-{}", uuid::Uuid::new_v4());
+    for status in ["queued", "failed"] {
+        let insert = Query::insert()
+            .into_table("pg_loco_queue")
+            .columns(["id", "name", "task_data", "status", "run_at"])
+            .values_panic([
+                id.as_str().into(),
+                "MigrationFixture".into(),
+                json!({"fixture": true}).into(),
+                status.into(),
+                chrono::Utc::now().into(),
+            ])
+            .to_owned();
+        transaction
+            .execute_raw(backend.build(&insert))
+            .await
+            .unwrap();
+    }
+    let savepoint = transaction.begin().await.unwrap();
+    let result = migration::m20261106_000035_loco_queue::Migration
+        .up(&SchemaManager::new(&savepoint))
+        .await;
+    assert!(
+        result.is_err(),
+        "duplicate job IDs must reject the migration"
+    );
+    savepoint.rollback().await.unwrap();
+    assert!(
+        !SchemaManager::new(&transaction)
+            .has_column("pg_loco_queue", "attempts")
+            .await
+            .unwrap()
+    );
+    let select = Query::select()
+        .column("id")
+        .from("pg_loco_queue")
+        .and_where(Expr::col("id").eq(id))
+        .to_owned();
+    assert_eq!(
+        transaction
+            .query_all_raw(backend.build(&select))
+            .await
+            .unwrap()
+            .len(),
+        2
+    );
+    transaction.rollback().await.unwrap();
+    fixture.close(&[]).await;
 }
 
 #[tokio::test]
