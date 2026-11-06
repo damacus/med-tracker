@@ -1,10 +1,14 @@
-use super::{ExistingIndex, ImportPlan, ResolvedAlias};
+use super::{
+    ExistingIndex, ImportPlan, NormalizedImport, PreparedDeclarations, ProfileDifference,
+    ResolvedAlias, authorized, preflight,
+};
 use crate::models::{
     access::{self, TenantTransaction, person_queries},
     entities::{household, location, medication, membership, person},
     errors::OperationError,
     ids::{AccountId, HouseholdId, PersonId},
 };
+use chrono::NaiveDate;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +59,12 @@ impl SourceCollection {
         }
     }
 
+    fn from_name(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|collection| collection.name() == name)
+    }
+
     const fn conflict_field(self) -> Option<&'static str> {
         match self {
             Self::People => Some("email"),
@@ -99,6 +109,421 @@ pub(crate) struct SlotExpectation {
 pub(crate) struct NameExpectation {
     pub(crate) key: String,
     pub(crate) matching_portable_ids: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum PlannedAction {
+    Match,
+    Create,
+    Reject,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum AssessmentReason {
+    OccupiedSourceId,
+    NameConflict,
+    InvalidSource,
+    MissingDependency,
+    IncompatiblePerson,
+    InsufficientAuthority,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct AssessmentIssue {
+    pub(crate) collection: Option<SourceCollection>,
+    pub(crate) portable_id: Option<String>,
+    pub(crate) field: Option<String>,
+    pub(crate) reason: AssessmentReason,
+    pub(crate) detail: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct PlannedRow {
+    pub(crate) collection: SourceCollection,
+    pub(crate) portable_id: String,
+    pub(crate) action: PlannedAction,
+}
+
+pub(crate) struct ImportAssessment {
+    pub(crate) rows: Vec<PlannedRow>,
+    pub(crate) issues: Vec<AssessmentIssue>,
+    pub(crate) aliases: Vec<ResolvedAlias>,
+    pub(crate) expectation: DestinationExpectation,
+    pub(crate) source_compatible: bool,
+    pub(crate) has_blockers: bool,
+}
+
+pub(crate) async fn assess(
+    tenant: &TenantTransaction,
+    mut normalized: NormalizedImport,
+    declarations: &PreparedDeclarations,
+    today: NaiveDate,
+    lock: ExpectationLock,
+) -> Result<ImportAssessment, OperationError> {
+    let expectation =
+        capture_expectation(tenant, &normalized.aliases, &normalized.plan, lock).await?;
+    let index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id).await?;
+    let preflight = preflight(tenant.transaction(), tenant, &normalized.plan, &index).await?;
+    let mut rows: Vec<PlannedRow> = expectation
+        .slots
+        .iter()
+        .map(|slot| PlannedRow {
+            collection: slot.collection,
+            portable_id: slot.portable_id.clone(),
+            action: PlannedAction::Create,
+        })
+        .collect();
+    rows.extend(normalized.aliases.iter().map(|alias| PlannedRow {
+        collection: SourceCollection::People,
+        portable_id: alias.source_person_portable_id.clone(),
+        action: PlannedAction::Match,
+    }));
+    rows.sort_by(|a, b| (a.collection, &a.portable_id).cmp(&(b.collection, &b.portable_id)));
+    let mut issues = Vec::new();
+    for slot in &expectation.slots {
+        if slot.occupied {
+            issues.push(AssessmentIssue {
+                collection: Some(slot.collection),
+                portable_id: Some(slot.portable_id.clone()),
+                field: Some("portable_id".into()),
+                reason: AssessmentReason::OccupiedSourceId,
+                detail: "The source portable ID is already present in the destination.".into(),
+            });
+        }
+        if let Some(name) = &slot.name {
+            for conflict in name
+                .matching_portable_ids
+                .iter()
+                .filter(|id| *id != &slot.portable_id)
+            {
+                let field = slot.collection.conflict_field().unwrap_or("name");
+                issues.push(AssessmentIssue {
+                    collection: Some(slot.collection),
+                    portable_id: Some(slot.portable_id.clone()),
+                    field: Some(field.into()),
+                    reason: AssessmentReason::NameConflict,
+                    detail: format!("The {field} conflicts with portable ID {conflict}."),
+                });
+            }
+        }
+    }
+    for conflict in &preflight.conflicts {
+        if let Some(collection) = SourceCollection::from_name(conflict.record_type) {
+            let issue = AssessmentIssue {
+                collection: Some(collection),
+                portable_id: Some(conflict.portable_id.clone()),
+                field: Some(conflict.field.into()),
+                reason: AssessmentReason::NameConflict,
+                detail: format!(
+                    "The {} conflicts with portable ID {}.",
+                    conflict.field, conflict.existing_portable_id
+                ),
+            };
+            if !issues.contains(&issue) {
+                issues.push(issue);
+            }
+        }
+    }
+    for diagnostic in preflight.diagnostics(&normalized.plan, &normalized.source_payload) {
+        let reason = if diagnostic.detail.contains("references unknown") {
+            AssessmentReason::MissingDependency
+        } else {
+            AssessmentReason::InvalidSource
+        };
+        issues.push(AssessmentIssue {
+            collection: diagnostic.collection.and_then(SourceCollection::from_name),
+            portable_id: diagnostic.portable_id,
+            field: diagnostic.field,
+            reason,
+            detail: diagnostic.detail,
+        });
+    }
+    issues.extend(missing_dependencies(&normalized.plan, &normalized.aliases));
+    for alias in &mut normalized.aliases {
+        let current = expectation
+            .aliases
+            .iter()
+            .find(|item| item.source_person_portable_id == alias.source_person_portable_id);
+        let source = normalized.source_payload["records"]["people"]
+            .as_array()
+            .and_then(|people| {
+                people.iter().find(|row| {
+                    row["portable_id"].as_str() == Some(alias.source_person_portable_id.as_str())
+                })
+            });
+        let current_person = current.and_then(|item| item.person.as_ref());
+        if let (Some(source), Some(person)) = (source, current_person) {
+            let birth = source.get("date_of_birth").and_then(|value| {
+                if value.is_null() {
+                    Some(None)
+                } else {
+                    value
+                        .as_str()
+                        .and_then(|date| NaiveDate::parse_from_str(date, "%Y-%m-%d").ok())
+                        .map(Some)
+                }
+            });
+            let kind = match source["person_type"].as_str() {
+                Some("adult") => Some(0),
+                Some("minor") => Some(1),
+                Some("dependent_adult") => Some(2),
+                _ => None,
+            };
+            for (field, compatible) in [
+                (
+                    "portable_id",
+                    person.portable_id == alias.destination_person_portable_id,
+                ),
+                ("date_of_birth", birth == Some(person.date_of_birth)),
+                ("person_type", kind == Some(person.person_type)),
+                (
+                    "has_capacity",
+                    source["has_capacity"].as_bool() == Some(person.has_capacity),
+                ),
+            ] {
+                if !compatible {
+                    issues.push(AssessmentIssue { collection: Some(SourceCollection::People), portable_id: Some(alias.source_person_portable_id.clone()), field: Some(field.into()), reason: AssessmentReason::IncompatiblePerson, detail: format!("The selected destination person's {field} no longer matches the source or selected identity.") });
+                }
+            }
+            alias.profile_differences.clear();
+            if let Some(name) = source["name"].as_str()
+                && name != person.name
+            {
+                alias.profile_differences.push(ProfileDifference::Name {
+                    source: name.to_owned(),
+                    destination: person.name.clone(),
+                });
+            }
+            let email = source["email"].as_str().map(str::to_owned);
+            if email != person.email {
+                alias.profile_differences.push(ProfileDifference::Email {
+                    source: email,
+                    destination: person.email.clone(),
+                });
+            }
+        } else {
+            issues.push(AssessmentIssue { collection: Some(SourceCollection::People), portable_id: Some(alias.source_person_portable_id.clone()), field: None, reason: AssessmentReason::IncompatiblePerson, detail: "The selected person is no longer an active household member or the source person is missing.".into() });
+        }
+    }
+    let allowed = match authorized(tenant, &normalized.plan, &index, declarations, today).await {
+        Ok(allowed) => allowed,
+        Err(OperationError::Forbidden) => false,
+        Err(error) => return Err(error),
+    };
+    if !allowed {
+        issues.push(AssessmentIssue {
+            collection: None,
+            portable_id: None,
+            field: None,
+            reason: AssessmentReason::InsufficientAuthority,
+            detail: "The current actor is not authorised for this import plan.".into(),
+        });
+    }
+    for row in normalized.plan.rows("schedules") {
+        let Some(source_id) = row["portable_id"].as_str() else {
+            continue;
+        };
+        let Some(subject) = row["person_portable_id"].as_str() else {
+            continue;
+        };
+        let permitted = if let Some(id) = index.get("people", subject) {
+            super::super::person_schedules::sharing::clinical_authority(
+                tenant.transaction(),
+                PersonId::from_database(id),
+            )
+            .await?
+        } else {
+            declarations.contains(subject)
+        };
+        if !permitted {
+            issues.push(AssessmentIssue { collection: Some(SourceCollection::Schedules), portable_id: Some(source_id.to_owned()), field: Some("person_portable_id".into()), reason: AssessmentReason::InsufficientAuthority, detail: "The actor lacks current self or eligible guardian authority for this schedule's person.".into() });
+        }
+    }
+    access::recheck(tenant).await?;
+    Ok(finish_assessment(
+        rows,
+        issues,
+        normalized.aliases,
+        expectation,
+    ))
+}
+
+fn missing_dependencies(plan: &ImportPlan, aliases: &[ResolvedAlias]) -> Vec<AssessmentIssue> {
+    let mut issues = Vec::new();
+    let mut check = |collection: SourceCollection,
+                     row: &serde_json::Value,
+                     field: &str,
+                     target: SourceCollection,
+                     id: &str| {
+        let available = plan
+            .rows(target.name())
+            .iter()
+            .any(|target_row| target_row["portable_id"].as_str() == Some(id))
+            || (target == SourceCollection::People
+                && aliases
+                    .iter()
+                    .any(|alias| alias.destination_person_portable_id == id));
+        if !available {
+            issues.push(AssessmentIssue {
+                collection: Some(collection),
+                portable_id: row["portable_id"].as_str().map(str::to_owned),
+                field: Some(field.to_owned()),
+                reason: AssessmentReason::MissingDependency,
+                detail: format!(
+                    "The referenced {} portable ID {id} is absent from the source plan.",
+                    target.name()
+                ),
+            });
+        }
+    };
+    for (collection, field, target) in [
+        (
+            SourceCollection::Medications,
+            "location_portable_id",
+            SourceCollection::Locations,
+        ),
+        (
+            SourceCollection::DosageOptions,
+            "medication_portable_id",
+            SourceCollection::Medications,
+        ),
+        (
+            SourceCollection::Schedules,
+            "person_portable_id",
+            SourceCollection::People,
+        ),
+        (
+            SourceCollection::Schedules,
+            "medication_portable_id",
+            SourceCollection::Medications,
+        ),
+        (
+            SourceCollection::Schedules,
+            "source_dosage_option_portable_id",
+            SourceCollection::DosageOptions,
+        ),
+        (
+            SourceCollection::PersonMedications,
+            "person_portable_id",
+            SourceCollection::People,
+        ),
+        (
+            SourceCollection::PersonMedications,
+            "medication_portable_id",
+            SourceCollection::Medications,
+        ),
+        (
+            SourceCollection::PersonMedications,
+            "source_dosage_option_portable_id",
+            SourceCollection::DosageOptions,
+        ),
+        (
+            SourceCollection::MedicationTakes,
+            "taken_from_medication_portable_id",
+            SourceCollection::Medications,
+        ),
+        (
+            SourceCollection::MedicationTakes,
+            "taken_from_location_portable_id",
+            SourceCollection::Locations,
+        ),
+        (
+            SourceCollection::NotificationPreferences,
+            "person_portable_id",
+            SourceCollection::People,
+        ),
+        (
+            SourceCollection::DoseOccurrences,
+            "medication_take_portable_id",
+            SourceCollection::MedicationTakes,
+        ),
+        (
+            SourceCollection::HealthEvents,
+            "person_portable_id",
+            SourceCollection::People,
+        ),
+    ] {
+        for row in plan.rows(collection.name()) {
+            if let Some(id) = row[field].as_str().filter(|id| !id.is_empty()) {
+                check(collection, row, field, target, id);
+            }
+        }
+    }
+    for collection in [
+        SourceCollection::MedicationTakes,
+        SourceCollection::MedicationPausePeriods,
+        SourceCollection::DoseOccurrences,
+    ] {
+        for row in plan.rows(collection.name()) {
+            let target = match row["source_type"].as_str() {
+                Some("schedule") => SourceCollection::Schedules,
+                Some("person_medication") => SourceCollection::PersonMedications,
+                _ => continue,
+            };
+            if let Some(id) = row["source_portable_id"]
+                .as_str()
+                .filter(|id| !id.is_empty())
+            {
+                check(collection, row, "source_portable_id", target, id);
+            }
+        }
+    }
+    for row in plan.rows("health_events") {
+        if let Some(ids) = row["medication_portable_ids"].as_array() {
+            for id in ids.iter().filter_map(serde_json::Value::as_str) {
+                check(
+                    SourceCollection::HealthEvents,
+                    row,
+                    "medication_portable_ids",
+                    SourceCollection::Medications,
+                    id,
+                );
+            }
+        }
+    }
+    issues
+}
+
+fn finish_assessment(
+    mut rows: Vec<PlannedRow>,
+    issues: Vec<AssessmentIssue>,
+    aliases: Vec<ResolvedAlias>,
+    expectation: DestinationExpectation,
+) -> ImportAssessment {
+    reject_affected_rows(&mut rows, &issues);
+    let (source_compatible, has_blockers) = assessment_status(&issues);
+    ImportAssessment {
+        rows,
+        issues,
+        aliases,
+        expectation,
+        source_compatible,
+        has_blockers,
+    }
+}
+
+fn assessment_status(issues: &[AssessmentIssue]) -> (bool, bool) {
+    let source_compatible = !issues.iter().any(|issue| {
+        matches!(
+            issue.reason,
+            AssessmentReason::InvalidSource
+                | AssessmentReason::MissingDependency
+                | AssessmentReason::IncompatiblePerson
+        )
+    });
+    (source_compatible, !issues.is_empty())
+}
+
+fn reject_affected_rows(rows: &mut [PlannedRow], issues: &[AssessmentIssue]) {
+    for issue in issues {
+        if let (Some(collection), Some(portable_id)) = (issue.collection, &issue.portable_id)
+            && let Some(row) = rows
+                .iter_mut()
+                .find(|row| row.collection == collection && row.portable_id == *portable_id)
+        {
+            row.action = PlannedAction::Reject;
+        }
+    }
 }
 
 pub(crate) async fn capture_expectation(
@@ -312,6 +737,70 @@ async fn lock_destination(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn missing_dependencies_are_attributed_to_the_source_row() {
+        let plan = ImportPlan::parse(json!({"format":"medtracker.portable.v3","records":{
+            "schedules":[{"portable_id":"schedule", "person_portable_id":"destination", "medication_portable_id":"missing"}]
+        }})).unwrap();
+        let aliases = vec![ResolvedAlias {
+            source_person_portable_id: "source-person".into(),
+            destination_person_id: PersonId::from_database(7),
+            destination_person_portable_id: "destination".into(),
+            profile_differences: vec![],
+        }];
+        let issues = missing_dependencies(&plan, &aliases);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].collection, Some(SourceCollection::Schedules));
+        assert_eq!(issues[0].portable_id.as_deref(), Some("schedule"));
+        assert_eq!(issues[0].field.as_deref(), Some("medication_portable_id"));
+        assert_eq!(issues[0].reason, AssessmentReason::MissingDependency);
+    }
+
+    #[test]
+    fn a_person_conflict_rejects_only_the_identified_person() {
+        let mut rows = vec![
+            PlannedRow {
+                collection: SourceCollection::People,
+                portable_id: "one".into(),
+                action: PlannedAction::Match,
+            },
+            PlannedRow {
+                collection: SourceCollection::People,
+                portable_id: "two".into(),
+                action: PlannedAction::Match,
+            },
+        ];
+        let issues = vec![AssessmentIssue {
+            collection: Some(SourceCollection::People),
+            portable_id: Some("one".into()),
+            field: Some("date_of_birth".into()),
+            reason: AssessmentReason::IncompatiblePerson,
+            detail: "Date of birth differs".into(),
+        }];
+        reject_affected_rows(&mut rows, &issues);
+        assert_eq!(rows[0].action, PlannedAction::Reject);
+        assert_eq!(rows[1].action, PlannedAction::Match);
+    }
+
+    #[test]
+    fn destination_conflict_blocks_without_claiming_source_is_invalid() {
+        let mut issue = AssessmentIssue {
+            collection: Some(SourceCollection::Medications),
+            portable_id: Some("m".into()),
+            field: Some("portable_id".into()),
+            reason: AssessmentReason::OccupiedSourceId,
+            detail: "Occupied".into(),
+        };
+        assert_eq!(
+            assessment_status(std::slice::from_ref(&issue)),
+            (true, true)
+        );
+        issue.reason = AssessmentReason::MissingDependency;
+        assert_eq!(assessment_status(&[issue]), (false, true));
+        assert_eq!(assessment_status(&[]), (true, false));
+    }
 
     #[test]
     fn slot_comparison_detects_occupation_and_name_conflicts() {

@@ -4,6 +4,16 @@ pub(crate) struct Preflight {
     counts: Value,
     pub(crate) conflicts: Vec<NameConflict>,
     pub(crate) errors: Vec<String>,
+    original_errors: usize,
+    schedule_diagnostics: Vec<PreflightDiagnostic>,
+}
+
+#[derive(Clone)]
+pub(crate) struct PreflightDiagnostic {
+    pub(crate) collection: Option<&'static str>,
+    pub(crate) portable_id: Option<String>,
+    pub(crate) field: Option<String>,
+    pub(crate) detail: String,
 }
 
 #[derive(serde::Serialize)]
@@ -17,6 +27,68 @@ pub(crate) struct NameConflict {
 impl Preflight {
     pub(crate) fn body(&self, applied: bool) -> Value {
         json!({"applied": applied, "counts": self.counts, "conflicts": self.conflicts, "errors": self.errors})
+    }
+
+    pub(crate) fn diagnostics(
+        &self,
+        plan: &ImportPlan,
+        source: &Value,
+    ) -> Vec<PreflightDiagnostic> {
+        self.errors
+            .iter()
+            .enumerate()
+            .map(|(position, message)| {
+                if let Some(offset) = position.checked_sub(self.original_errors)
+                    && let Some(diagnostic) = self.schedule_diagnostics.get(offset)
+                {
+                    return diagnostic.clone();
+                }
+                let mut diagnostic = PreflightDiagnostic {
+                    collection: None,
+                    portable_id: None,
+                    field: None,
+                    detail: message.clone(),
+                };
+                let Some((kind, remainder)) = message.split_once('[') else {
+                    return diagnostic;
+                };
+                let Some(collection) = BASE_TYPES
+                    .iter()
+                    .chain(V2_TYPES)
+                    .copied()
+                    .find(|candidate| *candidate == kind)
+                else {
+                    return diagnostic;
+                };
+                let Some((identifier, suffix)) = remainder.split_once(']') else {
+                    return diagnostic;
+                };
+                let portable_id = if let Ok(row_index) = identifier.parse::<usize>() {
+                    let rows = if position < self.original_errors {
+                        source["records"][kind]
+                            .as_array()
+                            .map(Vec::as_slice)
+                            .unwrap_or(&[])
+                    } else {
+                        plan.rows(kind)
+                    };
+                    rows.get(row_index)
+                        .and_then(|row| row["portable_id"].as_str())
+                        .map(str::to_owned)
+                } else {
+                    None
+                };
+                let field = if let Some(suffix) = suffix.strip_prefix('.') {
+                    suffix.split_whitespace().next().map(str::to_owned)
+                } else {
+                    None
+                };
+                diagnostic.collection = Some(collection);
+                diagnostic.portable_id = portable_id;
+                diagnostic.field = field;
+                diagnostic
+            })
+            .collect()
     }
 }
 
@@ -35,11 +107,41 @@ mod typed_conflict_tests {
                 existing_portable_id: "destination".into(),
             }],
             errors: Vec::new(),
+            original_errors: 0,
+            schedule_diagnostics: Vec::new(),
         };
         assert_eq!(
             result.body(false)["conflicts"],
             json!([{"record_type":"medications", "portable_id":"source", "field":"name", "existing_portable_id":"destination"}])
         );
+    }
+
+    #[test]
+    fn diagnostics_distinguish_original_and_normalized_people_indices() {
+        let source = json!({"format":"medtracker.portable.v3","records":{"people":[
+            {"portable_id":"matched", "name":"A"}, {"portable_id":"new", "name":"B"}
+        ]}});
+        let plan = ImportPlan::parse(
+            json!({"format":"medtracker.portable.v3","records":{"people":[
+                {"portable_id":"new", "name":"B"}
+            ]}}),
+        )
+        .unwrap();
+        let result = Preflight {
+            counts: json!({}),
+            conflicts: vec![],
+            errors: vec![
+                "people[0].email is invalid".into(),
+                "people[0].name is required".into(),
+            ],
+            original_errors: 1,
+            schedule_diagnostics: vec![],
+        };
+        let diagnostics = result.diagnostics(&plan, &source);
+        assert_eq!(diagnostics[0].portable_id.as_deref(), Some("matched"));
+        assert_eq!(diagnostics[0].field.as_deref(), Some("email"));
+        assert_eq!(diagnostics[1].portable_id.as_deref(), Some("new"));
+        assert_eq!(diagnostics[1].field.as_deref(), Some("name"));
     }
 }
 
@@ -68,9 +170,27 @@ pub(crate) async fn preflight(
     index: &ExistingIndex,
 ) -> Result<Preflight, OperationError> {
     let mut errors = plan.errors.clone();
+    let original_errors = errors.len();
+    let schedule_conflicts = super::person_schedules::conflicts(db, tenant, plan, index).await?;
+    let schedule_diagnostics = schedule_conflicts
+        .iter()
+        .map(|conflict| {
+            let (source, field) = match conflict {
+                super::person_schedules::RestoreConflict::Clinical { source, field } => {
+                    (source, *field)
+                }
+                super::person_schedules::RestoreConflict::Pause { source } => (source, "pause"),
+            };
+            PreflightDiagnostic {
+                collection: Some("schedules"),
+                portable_id: Some(source.clone()),
+                field: Some(field.into()),
+                detail: conflict.to_string(),
+            }
+        })
+        .collect();
     errors.extend(
-        super::person_schedules::conflicts(db, tenant, plan, index)
-            .await?
+        schedule_conflicts
             .into_iter()
             .map(|conflict| conflict.to_string()),
     );
@@ -373,5 +493,7 @@ pub(crate) async fn preflight(
         counts: plan.counts.clone(),
         conflicts,
         errors,
+        original_errors,
+        schedule_diagnostics,
     })
 }

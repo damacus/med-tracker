@@ -20,8 +20,8 @@ pub(crate) use declarations::{InitialDeclarations, PreparedDeclarations};
 
 pub(crate) use access::authorized;
 pub(crate) use aliases::{
-    AliasError, AliasSelection, NormalizedImport, ProfileDifference, ResolvedAlias,
-    normalize_aliases,
+    AliasError, AliasSelection, IncompatibleField, NormalizedImport, ProfileDifference,
+    ResolvedAlias, normalize_aliases,
 };
 pub(crate) use canonical_restore::{
     CanonicalRestoredSchedule, VerifiedCanonicalTake, initialize_canonical_schedules,

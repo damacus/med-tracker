@@ -46,8 +46,19 @@ pub(crate) struct NormalizedImport {
 pub(crate) enum AliasError {
     InvalidPayload,
     InvalidSelection,
-    IncompatiblePerson,
+    IncompatiblePerson {
+        source_person_portable_id: String,
+        destination_person_id: PersonId,
+        field: IncompatibleField,
+    },
     Database(OperationError),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum IncompatibleField {
+    DateOfBirth,
+    PersonType,
+    HasCapacity,
 }
 
 struct DestinationPerson {
@@ -122,34 +133,44 @@ fn normalize_resolved(
             .iter()
             .find(|person| person.id == selection.destination_person_id)
             .ok_or(AliasError::InvalidSelection)?;
+        let incompatible = |field| AliasError::IncompatiblePerson {
+            source_person_portable_id: selection.source_person_portable_id.clone(),
+            destination_person_id: selection.destination_person_id,
+            field,
+        };
         let birth_value = source
             .get("date_of_birth")
-            .ok_or(AliasError::IncompatiblePerson)?;
+            .ok_or_else(|| incompatible(IncompatibleField::DateOfBirth))?;
         let birth = if birth_value.is_null() {
             None
         } else {
             Some(
                 NaiveDate::parse_from_str(
-                    birth_value.as_str().ok_or(AliasError::IncompatiblePerson)?,
+                    birth_value
+                        .as_str()
+                        .ok_or_else(|| incompatible(IncompatibleField::DateOfBirth))?,
                     "%Y-%m-%d",
                 )
-                .map_err(|_| AliasError::IncompatiblePerson)?,
+                .map_err(|_| incompatible(IncompatibleField::DateOfBirth))?,
             )
         };
         let kind = match source["person_type"].as_str() {
             Some("adult") => 0,
             Some("minor") => 1,
             Some("dependent_adult") => 2,
-            _ => return Err(AliasError::IncompatiblePerson),
+            _ => return Err(incompatible(IncompatibleField::PersonType)),
         };
         let capacity = source["has_capacity"]
             .as_bool()
-            .ok_or(AliasError::IncompatiblePerson)?;
-        if birth != destination.date_of_birth
-            || kind != destination.person_type
-            || capacity != destination.has_capacity
-        {
-            return Err(AliasError::IncompatiblePerson);
+            .ok_or_else(|| incompatible(IncompatibleField::HasCapacity))?;
+        if birth != destination.date_of_birth {
+            return Err(incompatible(IncompatibleField::DateOfBirth));
+        }
+        if kind != destination.person_type {
+            return Err(incompatible(IncompatibleField::PersonType));
+        }
+        if capacity != destination.has_capacity {
+            return Err(incompatible(IncompatibleField::HasCapacity));
         }
         let name = source["name"].as_str().ok_or(AliasError::InvalidPayload)?;
         let email = match source.get("email") {
@@ -407,7 +428,10 @@ mod tests {
                 &["new-child".into()],
                 &[destination()]
             ),
-            Err(AliasError::IncompatiblePerson)
+            Err(AliasError::IncompatiblePerson {
+                field: IncompatibleField::DateOfBirth,
+                ..
+            })
         ));
 
         let mut invalid = payload();
@@ -420,5 +444,16 @@ mod tests {
         )
         .unwrap();
         assert!(!result.plan.errors.is_empty());
+    }
+
+    #[test]
+    fn incompatible_selection_identifies_the_person_and_field() {
+        let mut input = payload();
+        input["records"]["people"][0]["has_capacity"] = json!(false);
+        assert!(matches!(
+            normalize_resolved(input, &[selection("source-adult", 7)], &["new-child".into()], &[destination()]),
+            Err(AliasError::IncompatiblePerson { source_person_portable_id, destination_person_id, field: IncompatibleField::HasCapacity })
+                if source_person_portable_id == "source-adult" && destination_person_id == PersonId::from_database(7)
+        ));
     }
 }
