@@ -37,6 +37,7 @@ pub mod m20261102_000032_guardian_authority_join_order;
 pub mod m20261104_000033_guardian_authority_eligibility;
 pub mod m20261104_000034_sharing_member_plan_cache;
 pub mod m20261106_000035_loco_queue;
+pub mod m20261106_000036_data_import_runs;
 mod native_authentication;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
@@ -82,6 +83,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261104_000034_sharing_member_plan_cache::Migration),
             Box::new(m20261102_000029_nhs_dmd_import_trace_id::Migration),
             Box::new(m20261106_000035_loco_queue::Migration),
+            Box::new(m20261106_000036_data_import_runs::Migration),
         ]
     }
 }

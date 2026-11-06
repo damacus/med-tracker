@@ -236,12 +236,58 @@ pub struct ImportReport {
     pub state: ImportState,
     pub source: SourceSystem,
     pub source_sha256: String,
+    pub source_timezone: SourceTimeZone,
     pub created_at: DateTime<Utc>,
     pub totals: ReportTotals,
     pub people: Vec<PersonReport>,
     pub records: Vec<RecordResult>,
     pub relationships: Vec<RelationshipResult>,
     pub omissions: Vec<Omission>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SourceTimeZone(chrono_tz::Tz);
+
+impl SourceTimeZone {
+    pub fn parse(name: &str) -> Result<Self, chrono_tz::ParseError> {
+        name.parse().map(Self)
+    }
+
+    pub fn name(self) -> &'static str {
+        self.0.name()
+    }
+
+    pub fn zone(self) -> chrono_tz::Tz {
+        self.0
+    }
+}
+
+impl Serialize for SourceTimeZone {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut value = serializer.serialize_struct("SourceTimeZone", 2)?;
+        value.serialize_field("name", self.name())?;
+        value.serialize_field("provenance", "operator_confirmed")?;
+        value.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for SourceTimeZone {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Input {
+            name: String,
+            provenance: Provenance,
+        }
+        #[derive(Deserialize)]
+        #[serde(rename_all = "snake_case")]
+        enum Provenance {
+            OperatorConfirmed,
+        }
+        let input = Input::deserialize(deserializer)?;
+        let Provenance::OperatorConfirmed = input.provenance;
+        Self::parse(&input.name).map_err(serde::de::Error::custom)
+    }
 }
 
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -312,13 +358,13 @@ pub struct SourcePreparation<'a> {
     pub passphrase: &'a str,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum PersonDestination {
     Existing(PersonId),
     NewDependent,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PersonMapping {
     pub source: SourceIdentity,
     pub destination: PersonDestination,
@@ -326,7 +372,7 @@ pub struct PersonMapping {
 
 // Acceptance must be attributable to the subject or an eligible guardian; a
 // household manager's role alone is not consent for another adult.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ConsentInput {
     ActingPerson {
         subject: PersonId,
@@ -345,6 +391,7 @@ pub enum ConsentInput {
 #[derive(Clone)]
 pub struct PreviewCommand<'a> {
     pub source: ArchivePreparation<'a>,
+    pub source_timezone: SourceTimeZone,
     pub mappings: Vec<PersonMapping>,
     pub consents: Vec<ConsentInput>,
     pub acknowledged_omissions: Vec<String>,

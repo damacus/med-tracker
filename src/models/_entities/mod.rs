@@ -25,6 +25,7 @@ pub mod audit_signing_keys;
 pub mod barcode_catalog_entries;
 pub mod browser_sessions;
 pub mod carer_relationships;
+pub mod data_import_runs;
 pub mod dosages;
 pub mod health_event_medications;
 pub mod health_events;

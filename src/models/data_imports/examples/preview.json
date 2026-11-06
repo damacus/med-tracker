@@ -134,7 +134,11 @@
     ],
     "records": [],
     "relationships": [],
-    "omissions": []
+    "omissions": [],
+    "source_timezone": {
+      "name": "Europe/London",
+      "provenance": "operator_confirmed"
+    }
   },
   "confirmation": "opaque-reviewed-snapshot-token"
 }
