@@ -1,5 +1,5 @@
 use super::Application;
-use med_tracker::models::_entities::data_import_runs;
+use med_tracker::models::_entities::{data_import_runs, household_memberships};
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
     data_imports::{
@@ -12,7 +12,8 @@ use med_tracker::models::{
     },
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
+    Set,
 };
 
 fn permission_denied(error: &DbErr) -> bool {
@@ -131,6 +132,64 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
         .unwrap()
         .unwrap();
     let original_receipt = original.receipt.clone();
+    let now = chrono::Utc::now().naive_utc();
+    household_memberships::ActiveModel {
+        household_id: Set(scope.household_id),
+        person_id: Set(foreign.account.person_id),
+        role: Set("administrator".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let same_household_scope = HouseholdScope {
+        actor: Actor {
+            account_id: foreign.account.id,
+        },
+        household_id: scope.household_id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let same_household = access::begin(&app.fixture.runtime, &same_household_scope, None)
+        .await
+        .unwrap();
+    let receipt: Option<(serde_json::Value,)> =
+        data_import_runs::Entity::find_by_id(preview.report.id.clone())
+            .select_only()
+            .column(data_import_runs::Column::Receipt)
+            .into_tuple()
+            .one(same_household.transaction())
+            .await
+            .unwrap();
+    assert!(receipt.is_none());
+    assert!(
+        persistence::find(&same_household, &preview.report.id)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    for (column, value) in [
+        (
+            data_import_runs::Column::Report,
+            sea_orm::sea_query::Expr::value(original.report.clone()),
+        ),
+        (
+            data_import_runs::Column::Confirmation,
+            sea_orm::sea_query::Expr::value("forged"),
+        ),
+    ] {
+        let changed = data_import_runs::Entity::update_many()
+            .col_expr(column, value)
+            .filter(data_import_runs::Column::Id.eq(preview.report.id.clone()))
+            .exec(same_household.transaction())
+            .await
+            .unwrap();
+        assert_eq!(changed.rows_affected, 0);
+    }
+    same_household.rollback().await.unwrap();
     let foreign_scope = HouseholdScope {
         actor: Actor {
             account_id: foreign.account.id,
