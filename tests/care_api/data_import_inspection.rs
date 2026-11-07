@@ -12,7 +12,7 @@ use med_tracker::models::{
     },
     errors::OperationError,
 };
-use sea_orm::{ActiveModelTrait, IntoActiveModel, Set};
+use sea_orm::{ActiveModelTrait, IntoActiveModel, Set, TransactionTrait};
 use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
@@ -348,6 +348,63 @@ fn upload(comment: &str) -> Upload {
         archive: archive(comment),
         passphrase: "password".into(),
     }
+}
+
+#[tokio::test]
+async fn preview_rechecks_unmapped_actor_eligibility_after_profile_lock_wait() {
+    let app = Application::new().await;
+    let scope = app.fixture.scenario.scope();
+    let timezone = inspection::confirmed_timezone("Europe/London", true).unwrap();
+    let inspected = inspection::inspect(&app.context, &scope, upload("actor-lock"), timezone)
+        .await
+        .unwrap();
+    let source = inspected
+        .inventory
+        .records
+        .iter()
+        .find(|record| record.identity.kind == RecordKind::Person)
+        .unwrap()
+        .identity
+        .clone();
+    let input = preview::PreviewInput {
+        inspection_id: inspected.id,
+        upload: upload("actor-lock"),
+        timezone,
+        mappings: vec![PersonMapping {
+            source: source.clone(),
+            destination: PersonDestination::NewDependent,
+        }],
+        declarations: vec![ConsentInput::InitialGuardianDeclaration {
+            source_person: source,
+            accepted: true,
+        }],
+        recipient_consents: vec![],
+        acknowledged_omissions: inspected
+            .inventory
+            .omissions
+            .iter()
+            .map(|item| item.acknowledgement_id.clone())
+            .collect(),
+    };
+    let profile_update = app.fixture.admin.begin().await.unwrap();
+    let blocker = super::data_import_consents::backend_pid(&profile_update).await;
+    let mut actor = app.fixture.adult.clone().into_active_model();
+    actor.has_capacity = Set(false);
+    actor.update(&profile_update).await.unwrap();
+    let ctx = app.context.clone();
+    let mut task = tokio::spawn(async move { preview::create(&ctx, &scope, input).await });
+    let blocked = super::data_import_consents::wait_for_any_blocked_by(&app, blocker).await;
+    profile_update.commit().await.unwrap();
+    let result = tokio::time::timeout(std::time::Duration::from_secs(10), &mut task)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(blocked, "preview must wait for the actor profile update");
+    assert!(matches!(
+        result,
+        Err(InspectionError::Operation(OperationError::Forbidden))
+    ));
+    app.close().await;
 }
 
 #[tokio::test]

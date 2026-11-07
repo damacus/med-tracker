@@ -186,7 +186,9 @@ pub(crate) async fn validate<'a>(
     }
     let authority = PreparedImportAuthority::prepare(tenant, today).await?;
     let mut target_ids: Vec<_> = targets.iter().copied().collect();
+    target_ids.push(tenant.membership().person_id);
     target_ids.sort_unstable();
+    target_ids.dedup();
     for id in target_ids {
         person::Entity::find_by_id(id)
             .lock_shared()

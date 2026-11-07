@@ -25,7 +25,7 @@ fn permission_denied(error: &DbErr) -> bool {
     }
 }
 
-async fn backend_pid<C: ConnectionTrait>(db: &C) -> i32 {
+pub(super) async fn backend_pid<C: ConnectionTrait>(db: &C) -> i32 {
     let query = Query::select()
         .expr_as(Func::cust("pg_backend_pid"), "pid")
         .to_owned();
@@ -67,7 +67,7 @@ async fn wait_for_blocker(app: &Application, waiter: i32, blocker: i32) -> bool 
     false
 }
 
-async fn wait_for_any_blocked_by(app: &Application, blocker: i32) -> bool {
+pub(super) async fn wait_for_any_blocked_by(app: &Application, blocker: i32) -> bool {
     let query = Query::select()
         .column("pid")
         .from("pg_stat_activity")
