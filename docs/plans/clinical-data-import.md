@@ -19,6 +19,11 @@ acceptance exercise or claim universal compatibility.
 
 ## Global Constraints
 
+- Latest owner instruction: run one consolidated build/test pipeline after
+  integration. Workers write tests and review source but do not build or run
+  separate Rust test pipelines. This overrides earlier per-worker test-first
+  execution and target-cache instructions; report deferred execution honestly.
+
 - Terra implements. Separate worktrees permit parallel writers, explicitly
   overriding the SDD skill's default single-writer scheduling rule. No worker
   dispatches other agents. Controller owns integration, reviews and delivery.
@@ -60,8 +65,20 @@ Then Tasks 3, 4 and 5 run concurrently in separate worktrees. Task 4 exclusively
 owns importer internals, persistence, migrations, entity registries, API/OpenAPI
 and shared API client. Task 3 owns clinical_transfer and its archive adapter.
 Task 5 owns administration controllers/routes/navigation/views/translations.
-Controller owns shared dependency/lock files and test-suite registration.
+Controller owns root dependency/lock files. The backend owner registers its
+care_api tests and owns scoped shared-client Cargo changes; the UI owner
+registers its browser/request tests. These files have one writer each.
 Contract changes require controller coordination, never cross-owner edits.
+
+Backend execution is further separated into a service owner, a read-only planner
+owner and a restore owner in isolated worktrees. The planner owns destination
+expectations and typed preflight diagnostics. The restore owner owns create-only
+SeaORM insertion, value/edge verification and canonical history initialization.
+A separate pure projection owner maps planner results to the report and groups
+records by their actual subject; historical actors never become patient owners.
+The service owner integrates those interfaces, consent, persistence and report
+access. Parent module registrations are reconciled during integration. All
+workers defer builds and test execution to the controller's single pipeline.
 
 ## Task 1: Freeze shared import contracts
 
@@ -141,6 +158,63 @@ to report reads, including person-specific restrictions and revocation.
 Focused failure-first acceptance tests cover mapping/consent, authority, omissions,
 staleness, concurrency, rollback, relationships and replay. Coordinate test-suite
 registration with controller. Commit, self-review and report remaining risks.
+
+### Backend stages
+
+Deliver the backend as four bounded stages in its single worktree, with a fresh
+Terra implementer and independent review for each. Other workstreams continue.
+The first broad backend attempt produced investigation only; do not repeat it.
+
+#### Task 41: Persistent import runs and RLS
+
+Implement the run/item persistence, explicit person mappings and consent storage
+needed by the parent Task 4. Own one migration, entity/domain registration and
+typed persistence methods in data_imports. Store encrypted prepared source and
+protected report documents, never passphrases/keys. Follow existing tenancy/RLS
+and restricted runtime grants, using SeaORM and narrow documented exceptions only
+where its APIs cannot express PostgreSQL policies. Introduce the bounded confirmed
+source-timezone input/provenance; source local times must not be silently guessed.
+Test meaningful tenant isolation and state persistence with the real disposable
+database. No API routes, ZIP parser, clinical apply or fake service success.
+Keep interfaces small and publish exact downstream method signatures in report.
+
+#### Task 42: Preview, explicit identity and consent
+
+Build preview/detail/list and attributable authenticated self/guardian approval
+operations against Stage 41 persistence and the reviewed preparation interface.
+Map source adults explicitly without overwriting destination identities; recheck
+current authority and revocation, including consent after lock waits. Capture
+source-timezone confirmation, source hashes, omissions and destination expectations
+in a confirmable snapshot. Block clinical dependencies and unresolved decisions.
+Return complete per-person reports with readable fields and distinct inventory
+totals. No clinical apply or new ZIP implementation. Expose a recipient-bound
+consent service that UI/API transports can call without revealing the whole run.
+
+#### Task 43: Atomic apply and verified final reports
+
+Implement confirmation under existing tenant/clinical locks. Recheck reviewed
+snapshot, authority, consent, source timezone and destination conflicts. Restore
+using the existing validation, mapping, declaration and authority helpers, with
+create-only SeaORM clinical inserts. Existing selected people are explicit
+matches; existing clinical records are conflicts rather than update targets.
+A completed-run replay returns its prior report without repeating writes or
+resetting current stock. Existing portable v1/v2/v3 behavior stays compatible.
+Handle person aliases without rewriting canonical identity. Do not expand legacy
+raw SQL where SeaORM can express writes.
+Verify actual destination values and foreign-key/junction relationships, then
+commit clinical changes, mappings and successful report together. Failed apply
+rolls back clinical writes and records a safe failure separately. Test concurrency,
+stale preview, rollback, replay, shared inventory totals and absence of live stock/
+notification side effects. Commit a complete model/service capability, no API yet.
+
+#### Task 44: JSON transports, OpenAPI and shared client
+
+Wire authenticated household preview/list/detail/confirm and recipient-bound
+consent APIs to reviewed services. Actor/household scope comes from authentication,
+not caller claims. Update OpenAPI and shared client together, retaining old portable
+contracts. Prove full App::boot TestServer journeys with restricted runtime/RLS,
+ConnectInfo where required, denial/revocation and auditable final reports. Give
+the UI owner exact live wiring signatures. No duplicate backend or ZIP parser.
 
 ## Task 5: Implement administration screens
 
