@@ -13,14 +13,15 @@ use med_tracker::models::{
         confirmation,
         contracts::{
             ActualRecord, ActualRelationship, ConsentInput, DestinationId, ExpectedRecord,
-            ExpectedRelationship, ImportReport, ImportState, PersonDestination, PersonMapping,
-            PreviewResult, RecordKind, SourceSystem,
+            ExpectedRelationship, FieldOutcome, ImportReport, ImportState, PersonDestination,
+            PersonMapping, PreviewResult, ReasonCode, RecordKind, SourceSystem,
         },
         inspection::{self, Upload},
         preview,
     },
     identity::credentials::{CredentialMethod, CredentialProvenance},
 };
+use sea_orm::prelude::Decimal;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, TransactionTrait,
@@ -215,6 +216,10 @@ async fn restored_history_preserves_native_values_and_relationships() {
     .await
     .unwrap();
     assert_eq!(report.state, ImportState::Completed);
+    assert_eq!(
+        serde_json::to_value(report.source_timezone).unwrap(),
+        serde_json::json!({"name":"Europe/London", "provenance":"operator_confirmed"})
+    );
     let records: Vec<_> = report
         .people
         .iter()
@@ -227,6 +232,65 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .flat_map(|person| person.relationships.iter())
         .chain(report.relationships.iter())
         .collect();
+    let omissions: Vec<_> = report
+        .people
+        .iter()
+        .flat_map(|person| person.omissions.iter())
+        .chain(report.omissions.iter())
+        .collect();
+    for record in &records {
+        for field in ["updated_at", "etag"] {
+            let detail = record
+                .details
+                .source_fields
+                .iter()
+                .find(|detail| detail.field == field)
+                .unwrap();
+            assert_eq!(detail.outcome, FieldOutcome::Unsupported);
+            assert_eq!(detail.reason, Some(ReasonCode::UnsupportedField));
+            assert!(
+                omissions
+                    .iter()
+                    .any(|omission| omission.item == record.source
+                        && omission.field.as_deref() == Some(field)
+                        && omission.reason == ReasonCode::UnsupportedField
+                        && omission.acknowledged)
+            );
+        }
+    }
+    let pause_report = records
+        .iter()
+        .find(|record| record.source.kind == RecordKind::Pause)
+        .unwrap();
+    let imported_context = pause_report
+        .details
+        .source_fields
+        .iter()
+        .find(|field| field.field == "imported_context")
+        .unwrap();
+    assert_eq!(imported_context.source_value, "false");
+    assert_eq!(imported_context.outcome, FieldOutcome::Changed);
+    assert_eq!(imported_context.reason, Some(ReasonCode::UnsupportedField));
+    assert!(
+        omissions
+            .iter()
+            .any(|omission| omission.item == pause_report.source
+                && omission.field.as_deref() == Some("imported_context")
+                && omission.reason == ReasonCode::UnsupportedField
+                && omission.acknowledged)
+    );
+    for field in [
+        "recorded_by_person_portable_id",
+        "resumed_by_person_portable_id",
+    ] {
+        let edge = relationships
+            .iter()
+            .find(|edge| edge.source == pause_report.source && edge.field.as_deref() == Some(field))
+            .unwrap();
+        assert_eq!(edge.reason, Some(ReasonCode::HistoricalActorUnavailable));
+        assert_eq!(edge.expected, ExpectedRelationship::Omit);
+        assert_eq!(edge.actual, Some(ActualRelationship::Omitted));
+    }
     assert_eq!(
         report.totals.created,
         records
@@ -316,9 +380,28 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap()
         .unwrap();
     assert_eq!(location.name, "Synthetic current cupboard");
+    assert_eq!(
+        location.description.as_deref(),
+        Some("Fixture storage label")
+    );
     assert_eq!(med.current_supply.unwrap().to_string(), "37.50");
     assert_eq!(med.reorder_threshold.to_string(), "5.50");
     assert_eq!(med.name.as_deref(), Some("Synthetic medicine"));
+    assert_eq!(med.friendly_name.as_deref(), Some("Fixture tablet"));
+    assert_eq!(med.category.as_deref(), Some("Vitamin"));
+    assert_eq!(
+        med.description.as_deref(),
+        Some("No real medicine or patient data")
+    );
+    assert_eq!(med.dose_amount, Some(1.0));
+    assert_eq!(med.dose_unit.as_deref(), Some("tablet"));
+    assert_eq!(med.default_schedule_type, 0);
+    assert_eq!(med.barcode.as_deref(), Some("2000000000060"));
+    assert_eq!(med.dmd_code.as_deref(), Some("synthetic-dmd"));
+    assert_eq!(med.dmd_system.as_deref(), Some("synthetic"));
+    assert_eq!(med.dmd_concept_class.as_deref(), Some("VMP"));
+    assert_eq!(med.current_supply, Some(Decimal::new(375, 1)));
+    assert_eq!(med.reorder_threshold, Decimal::new(55, 1));
     let dose = dosages::Entity::find_by_id(dosage.0)
         .one(db)
         .await
@@ -329,6 +412,16 @@ async fn restored_history_preserves_native_values_and_relationships() {
     assert_eq!(dose.amount.to_string(), "0.50");
     assert_eq!(dose.reorder_threshold.unwrap().to_string(), "2.50");
     assert_eq!(dose.unit, "tablet");
+    assert_eq!(dose.amount, Decimal::new(5, 1));
+    assert_eq!(dose.current_supply, Some(Decimal::new(85, 1)));
+    assert_eq!(dose.reorder_threshold, Some(Decimal::new(25, 1)));
+    assert_eq!(dose.frequency, "daily");
+    assert_eq!(dose.description.as_deref(), Some("Synthetic half tablet"));
+    assert!(dose.default_for_adults);
+    assert!(!dose.default_for_children);
+    assert_eq!(dose.default_max_daily_doses, 2);
+    assert_eq!(dose.default_min_hours_between_doses, Decimal::new(4, 0));
+    assert_eq!(dose.default_dose_cycle, 0);
     let schedule = schedules::Entity::find_by_id(schedule.0)
         .one(db)
         .await
@@ -345,6 +438,26 @@ async fn restored_history_preserves_native_values_and_relationships() {
     assert_eq!(schedule.dose_amount.unwrap().to_string(), "0.50");
     assert_eq!(schedule.dose_unit.as_deref(), Some("tablet"));
     assert_eq!(schedule.start_date.unwrap().to_string(), "2026-10-01");
+    assert_eq!(schedule.dose_amount, Some(Decimal::new(5, 1)));
+    assert_eq!(schedule.dose_cycle, Some(0));
+    assert_eq!(schedule.frequency.as_deref(), Some("daily"));
+    assert_eq!(schedule.max_daily_doses, Some(2));
+    assert_eq!(schedule.min_hours_between_doses, Some(4));
+    assert_eq!(schedule.schedule_type, 0);
+    assert_eq!(schedule.schedule_config, serde_json::json!({}));
+    assert_eq!(
+        schedule.start_date,
+        Some(chrono::NaiveDate::from_ymd_opt(2026, 10, 1).unwrap())
+    );
+    assert_eq!(schedule.end_date, None);
+    assert_eq!(schedule.retired_at, None);
+    assert!(schedule.active);
+    assert_eq!(
+        schedule.notes.as_deref(),
+        Some("Synthetic care instructions")
+    );
+    assert_eq!(schedule.origin_time_zone.as_deref(), Some("Europe/London"));
+    assert_eq!(schedule.clinical_revision, Some(1));
     let assignment = person_medications::Entity::find_by_id(assignment.0)
         .one(db)
         .await
@@ -360,6 +473,18 @@ async fn restored_history_preserves_native_values_and_relationships() {
     );
     assert_eq!(assignment.dose_amount.unwrap().to_string(), "0.50");
     assert_eq!(assignment.dose_unit.as_deref(), Some("tablet"));
+    assert_eq!(assignment.dose_amount, Some(Decimal::new(5, 1)));
+    assert_eq!(assignment.dose_cycle, Some(0));
+    assert_eq!(assignment.max_daily_doses, Some(2));
+    assert_eq!(assignment.min_hours_between_doses, Some(4));
+    assert_eq!(assignment.administration_kind, 0);
+    assert_eq!(assignment.position, 1);
+    assert!(assignment.active);
+    assert_eq!(assignment.retired_at, None);
+    assert_eq!(
+        assignment.notes.as_deref(),
+        Some("Synthetic care instructions")
+    );
     let take = medication_takes::Entity::find_by_id(take.0)
         .one(db)
         .await
@@ -372,6 +497,17 @@ async fn restored_history_preserves_native_values_and_relationships() {
     assert_eq!(take.dose_amount.unwrap().to_string(), "0.50");
     assert_eq!(take.dose_unit.as_deref(), Some("tablet"));
     assert_eq!(take.person_medication_id, None);
+    assert_eq!(take.dose_amount, Some(Decimal::new(5, 1)));
+    assert_eq!(
+        take.taken_at,
+        Some(
+            chrono::NaiveDateTime::parse_from_str(
+                "2026-10-10 08:15:00.123456",
+                "%Y-%m-%d %H:%M:%S%.f"
+            )
+            .unwrap()
+        )
+    );
     assert_eq!(
         take.client_uuid.as_deref(),
         source_email
@@ -388,6 +524,10 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap()
         .unwrap();
     assert_eq!(former.name, "Synthetic former cupboard");
+    assert_eq!(
+        former.description.as_deref(),
+        Some("Historical dose location")
+    );
     let pause = medication_pause_periods::Entity::find_by_id(pause.0)
         .one(db)
         .await
@@ -398,6 +538,38 @@ async fn restored_history_preserves_native_values_and_relationships() {
     assert_eq!(pause.recorded_by_membership_id, None);
     assert_eq!(pause.resumed_by_membership_id, None);
     assert_eq!(pause.reason, "out_of_supply");
+    assert_eq!(pause.note.as_deref(), Some("Synthetic closed pause"));
+    assert!(!pause.legacy_context);
+    assert!(pause.imported_context);
+    assert_eq!(
+        pause.imported_actor_references,
+        serde_json::json!({"recorded_by_person_portable_id":"synthetic-absent-actor", "resumed_by_person_portable_id":"synthetic-absent-actor"})
+    );
+    assert_eq!(
+        pause.created_at,
+        chrono::NaiveDateTime::parse_from_str("2026-10-05 10:00:00.123456", "%Y-%m-%d %H:%M:%S%.f")
+            .unwrap()
+    );
+    assert_eq!(
+        pause.started_at,
+        Some(
+            chrono::NaiveDateTime::parse_from_str(
+                "2026-10-05 10:00:00.123456",
+                "%Y-%m-%d %H:%M:%S%.f"
+            )
+            .unwrap()
+        )
+    );
+    assert_eq!(
+        pause.ended_at,
+        Some(
+            chrono::NaiveDateTime::parse_from_str(
+                "2026-10-06 11:00:00.234567",
+                "%Y-%m-%d %H:%M:%S%.f"
+            )
+            .unwrap()
+        )
+    );
     assert_eq!(
         pause.started_at.unwrap().to_string(),
         "2026-10-05 10:00:00.123456"
@@ -416,6 +588,37 @@ async fn restored_history_preserves_native_values_and_relationships() {
     assert_eq!(occurrence.medication_take_id, None);
     assert_eq!(occurrence.outcome, "not_taken");
     assert_eq!(occurrence.reason.as_deref(), Some("refused"));
+    assert_eq!(occurrence.note.as_deref(), Some("Synthetic decision"));
+    assert_eq!(
+        occurrence.window_starts_on,
+        chrono::NaiveDate::from_ymd_opt(2026, 10, 11).unwrap()
+    );
+    assert_eq!(
+        occurrence.window_ends_on,
+        Some(chrono::NaiveDate::from_ymd_opt(2026, 10, 11).unwrap())
+    );
+    assert_eq!(occurrence.position, 1);
+    assert_eq!(
+        occurrence.resolved_by_membership_id,
+        Some(app.fixture.membership.id)
+    );
+    assert_eq!(
+        occurrence.scheduled_at,
+        Some(
+            chrono::NaiveDateTime::parse_from_str("2026-10-11 08:15:00", "%Y-%m-%d %H:%M:%S")
+                .unwrap()
+        )
+    );
+    assert_eq!(
+        occurrence.resolved_at,
+        Some(
+            chrono::NaiveDateTime::parse_from_str(
+                "2026-10-11 08:20:00.345678",
+                "%Y-%m-%d %H:%M:%S%.f"
+            )
+            .unwrap()
+        )
+    );
     assert_eq!(
         occurrence.scheduled_at.unwrap().to_string(),
         "2026-10-11 08:15:00"
@@ -431,6 +634,18 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap();
     assert_eq!(preference.person_id, person.0);
     assert!(preference.enabled && preference.missed_dose_enabled && !preference.dose_due_enabled);
+    assert!(!preference.low_stock_enabled);
+    assert!(preference.private_text_enabled);
+    assert_eq!(preference.afternoon_time, None);
+    assert_eq!(preference.night_time, None);
+    assert_eq!(
+        preference.morning_time,
+        Some(chrono::NaiveTime::from_hms_opt(8, 15, 0).unwrap())
+    );
+    assert_eq!(
+        preference.evening_time,
+        Some(chrono::NaiveTime::from_hms_opt(19, 30, 0).unwrap())
+    );
     assert_eq!(preference.morning_time.unwrap().to_string(), "08:15:00");
     assert_eq!(preference.evening_time.unwrap().to_string(), "19:30:00");
     let event = health_events::Entity::find_by_id(event.0)
@@ -450,6 +665,17 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap();
     assert_eq!(links.len(), 1);
     assert_eq!(links[0].medication_id, Some(med.id));
+    assert_eq!(event.event_kind, 0);
+    assert_eq!(event.severity, Some(0));
+    assert_eq!(event.notes.as_deref(), Some("Fixture only"));
+    assert_eq!(
+        event.started_on,
+        chrono::NaiveDate::from_ymd_opt(2026, 10, 9).unwrap()
+    );
+    assert_eq!(
+        event.ended_on,
+        Some(chrono::NaiveDate::from_ymd_opt(2026, 10, 10).unwrap())
+    );
     assert_eq!(event.started_on.to_string(), "2026-10-09");
     assert_eq!(event.ended_on.unwrap().to_string(), "2026-10-10");
     assert_guardian_and_canonical(
@@ -547,6 +773,36 @@ async fn assert_guardian_and_canonical(
         ),
         (person, household, schedule.id, medication.id)
     );
+    assert_eq!(plan.origin_time_zone, "Europe/London");
+    assert_eq!(plan.timezone_provenance, "captured_sharer_zone");
+    assert_eq!(plan.clinical_revision, 1);
+    assert!(plan.active);
+    assert_eq!(plan.retired_at, None);
+    assert_eq!(plan.dose_amount, Some(Decimal::new(5, 1)));
+    assert_eq!(plan.dose_unit.as_deref(), Some("tablet"));
+    assert_eq!(plan.dose_cycle, Some(0));
+    assert_eq!(plan.frequency.as_deref(), Some("daily"));
+    assert_eq!(
+        plan.start_date,
+        Some(chrono::NaiveDate::from_ymd_opt(2026, 10, 1).unwrap())
+    );
+    assert_eq!(plan.end_date, None);
+    assert_eq!(plan.notes.as_deref(), Some("Synthetic care instructions"));
+    assert_eq!(plan.max_daily_doses, Some(2));
+    assert_eq!(plan.min_hours_between_doses, Some(4));
+    assert_eq!(plan.schedule_type, 0);
+    assert_eq!(plan.schedule_config, serde_json::json!({}));
+    assert_eq!(plan.medicine_name.as_deref(), Some("Synthetic medicine"));
+    assert_eq!(plan.stock_unit.as_deref(), Some("tablet"));
+    assert_eq!(plan.stock_dose_default, Some(Decimal::new(1, 0)));
+    assert!(plan.stock_default_known);
+    assert_eq!(plan.dmd_system.as_deref(), Some("synthetic"));
+    assert_eq!(plan.dmd_code.as_deref(), Some("synthetic-dmd"));
+    assert_eq!(plan.dmd_concept_class.as_deref(), Some("VMP"));
+    assert_eq!(plan.pause_started_at, None);
+    assert_eq!(plan.pause_instance_id, None);
+    assert_eq!(plan.pause_reason, None);
+    assert_eq!(plan.pause_note, None);
     let execution = shared_schedule_executions::Entity::find_by_id(schedule.id)
         .one(db)
         .await
@@ -619,6 +875,13 @@ async fn assert_guardian_and_canonical(
         )
     );
     assert_eq!(fact.taken_at, take.taken_at.unwrap());
+    assert_eq!(
+        fact.taken_at,
+        chrono::NaiveDateTime::parse_from_str("2026-10-10 08:15:00.123456", "%Y-%m-%d %H:%M:%S%.f")
+            .unwrap()
+    );
+    assert_eq!(fact.dose_amount, Decimal::new(5, 1));
+    assert_eq!(fact.dose_unit.as_deref(), Some("tablet"));
     assert_eq!(fact.taken_from_medication_id, Some(medication.id));
     assert_eq!(fact.taken_from_location_id, Some(former_location));
     let safety = shared_schedule_administrations::Entity::find()
@@ -629,12 +892,46 @@ async fn assert_guardian_and_canonical(
         .unwrap();
     assert_eq!(safety.len(), 1);
     assert_eq!(safety[0].household_id, household);
+    assert_eq!(
+        safety[0].taken_at,
+        chrono::NaiveDateTime::parse_from_str("2026-10-10 08:15:00.123456", "%Y-%m-%d %H:%M:%S%.f")
+            .unwrap()
+    );
+    assert_eq!(safety[0].occurrence_starts_on, None);
+    assert_eq!(safety[0].occurrence_position, None);
     let state = shared_schedule_states::Entity::find_by_id(plan_id)
         .one(db)
         .await
         .unwrap()
         .unwrap();
     assert_eq!(state.latest_taken_at, take.taken_at);
+    assert_eq!(state.origin_time_zone, "Europe/London");
+    assert_eq!(state.clinical_revision, 1);
+    assert!(state.active);
+    assert_eq!(state.retired_at, None);
+    assert_eq!(state.dose_amount, Some(Decimal::new(5, 1)));
+    assert_eq!(state.dose_unit.as_deref(), Some("tablet"));
+    assert_eq!(state.dose_cycle, Some(0));
+    assert_eq!(state.frequency.as_deref(), Some("daily"));
+    assert_eq!(
+        state.start_date,
+        Some(chrono::NaiveDate::from_ymd_opt(2026, 10, 1).unwrap())
+    );
+    assert_eq!(state.end_date, None);
+    assert_eq!(state.max_daily_doses, Some(2));
+    assert_eq!(state.min_hours_between_doses, Some(4));
+    assert_eq!(state.schedule_type, 0);
+    assert_eq!(state.schedule_config, serde_json::json!({}));
+    assert_eq!(
+        state.latest_taken_at,
+        Some(
+            chrono::NaiveDateTime::parse_from_str(
+                "2026-10-10 08:15:00.123456",
+                "%Y-%m-%d %H:%M:%S%.f"
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[derive(Debug, PartialEq, Eq)]
