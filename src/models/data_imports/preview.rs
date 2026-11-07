@@ -264,6 +264,8 @@ async fn create_inner(
             confirmation
                 .as_ref()
                 .map(super::result_projection::token_verifier),
+            Some(prepared.archive_sha256.clone()),
+            Some(zone.name().to_owned()),
         )),
         encrypted_prepared,
         source_timezone: timezone,

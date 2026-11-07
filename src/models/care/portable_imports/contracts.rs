@@ -18,6 +18,7 @@ pub(super) const V2_TYPES: &[&str] = &[
     "health_events",
 ];
 
+#[derive(Clone)]
 pub(crate) struct ImportPlan {
     records: Map<String, Value>,
     pub(crate) counts: Value,

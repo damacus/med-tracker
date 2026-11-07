@@ -28,6 +28,30 @@ impl CryptoLimiter {
     }
 }
 
+pub(crate) async fn decrypt_prepared(
+    ctx: &AppContext,
+    prepared: super::persistence::EncryptedPrepared,
+    target_sha256: String,
+    passphrase: String,
+) -> Result<serde_json::Value, InspectionError> {
+    let limiter = ctx
+        .shared_store
+        .get::<CryptoLimiter>()
+        .ok_or_else(|| OperationError::unavailable("import_crypto_limiter"))?;
+    let permit = limiter
+        .0
+        .try_acquire_owned()
+        .map_err(|_| OperationError::unavailable("import_crypto_busy"))?;
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        prepared
+            .decrypt_checked(&passphrase, &target_sha256)
+            .map_err(|_| InspectionError::Operation(OperationError::Forbidden))
+    })
+    .await
+    .map_err(|_| InspectionError::Operation(OperationError::unavailable("import_crypto_task")))?
+}
+
 impl Default for CryptoLimiter {
     fn default() -> Self {
         Self::new()

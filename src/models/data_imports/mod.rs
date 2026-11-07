@@ -1,3 +1,4 @@
+pub mod confirmation;
 pub mod consents;
 pub mod credential;
 pub mod contracts;

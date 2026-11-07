@@ -17,7 +17,7 @@ pub(crate) struct AliasSelection {
     pub(crate) destination_person_id: PersonId,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) enum ProfileDifference {
     Name {
         source: String,
@@ -29,6 +29,7 @@ pub(crate) enum ProfileDifference {
     },
 }
 
+#[derive(Clone)]
 pub(crate) struct ResolvedAlias {
     pub(crate) source_person_portable_id: String,
     pub(crate) destination_person_id: PersonId,
@@ -36,6 +37,7 @@ pub(crate) struct ResolvedAlias {
     pub(crate) profile_differences: Vec<ProfileDifference>,
 }
 
+#[derive(Clone)]
 pub(crate) struct NormalizedImport {
     pub(crate) source_payload: Value,
     pub(crate) aliases: Vec<ResolvedAlias>,

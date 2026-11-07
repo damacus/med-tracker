@@ -351,6 +351,132 @@ fn upload(comment: &str) -> Upload {
 }
 
 #[tokio::test]
+async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
+    use med_tracker::models::{
+        data_imports::{confirmation, contracts::PreviewToken},
+        identity::credentials::{CredentialMethod, CredentialProvenance},
+    };
+    let app = Application::new().await;
+    let scope = app.fixture.scenario.scope();
+    let comment = uuid::Uuid::new_v4().to_string();
+    let zone = inspection::confirmed_timezone("Europe/London", true).unwrap();
+    let inspected = inspection::inspect(&app.context, &scope, upload(&comment), zone)
+        .await
+        .unwrap();
+    let person = inspected
+        .inventory
+        .records
+        .iter()
+        .find(|row| row.identity.kind == RecordKind::Person)
+        .unwrap()
+        .identity
+        .clone();
+    let ready = preview::create(
+        &app.context,
+        &scope,
+        preview::PreviewInput {
+            inspection_id: inspected.id,
+            upload: upload(&comment),
+            timezone: zone,
+            mappings: vec![PersonMapping {
+                source: person.clone(),
+                destination: PersonDestination::NewDependent,
+            }],
+            declarations: vec![ConsentInput::InitialGuardianDeclaration {
+                source_person: person,
+                accepted: true,
+            }],
+            recipient_consents: vec![],
+            acknowledged_omissions: inspected
+                .inventory
+                .omissions
+                .iter()
+                .map(|item| item.acknowledgement_id.clone())
+                .collect(),
+        },
+    )
+    .await
+    .unwrap();
+    let token = ready.confirmation.unwrap();
+    let provenance = CredentialProvenance {
+        method: CredentialMethod::BrowserSession,
+        reference: "synthetic-session".into(),
+    };
+    assert!(
+        confirmation::confirm(
+            &app.context,
+            &scope,
+            &ready.report.id,
+            token.clone(),
+            "wrong-password".into(),
+            &provenance,
+            &scope.request_id
+        )
+        .await
+        .is_err()
+    );
+    assert!(
+        confirmation::confirm(
+            &app.context,
+            &scope,
+            &ready.report.id,
+            PreviewToken("wrong".into()),
+            "password".into(),
+            &provenance,
+            &scope.request_id
+        )
+        .await
+        .is_err()
+    );
+    let completed = confirmation::confirm(
+        &app.context,
+        &scope,
+        &ready.report.id,
+        token.clone(),
+        "password".into(),
+        &provenance,
+        &scope.request_id,
+    )
+    .await
+    .unwrap();
+    assert_eq!(completed.state, ImportState::Completed);
+    assert_eq!(
+        completed.totals.created,
+        ready.report.totals.expected_create
+    );
+    assert_eq!(
+        completed.totals.verified_links,
+        ready.report.totals.expected_link
+    );
+    let replay = confirmation::confirm(
+        &app.context,
+        &scope,
+        &ready.report.id,
+        token,
+        "password".into(),
+        &provenance,
+        &scope.request_id,
+    )
+    .await
+    .unwrap();
+    assert_eq!(replay, completed);
+    assert!(
+        confirmation::confirm(
+            &app.context,
+            &scope,
+            &ready.report.id,
+            PreviewToken("wrong".into()),
+            "password".into(),
+            &provenance,
+            &scope.request_id
+        )
+        .await
+        .is_err()
+    );
+    app.close().await;
+}
+
+#[tokio::test]
 async fn preview_rechecks_unmapped_actor_eligibility_after_profile_lock_wait() {
     let app = Application::new().await;
     let scope = app.fixture.scenario.scope();

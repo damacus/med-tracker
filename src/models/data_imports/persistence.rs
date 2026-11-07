@@ -28,6 +28,10 @@ struct PreviewContextDocument {
     inventory: Option<SourceInventory>,
     #[serde(default)]
     token_verifier: Option<String>,
+    #[serde(default)]
+    archive_sha256: Option<String>,
+    #[serde(default)]
+    eligibility_timezone: Option<String>,
 }
 
 impl PreviewContext {
@@ -36,12 +40,16 @@ impl PreviewContext {
         recipient_consents: Vec<RecipientConsent>,
         inventory: Option<SourceInventory>,
         token_verifier: Option<String>,
+        archive_sha256: Option<String>,
+        eligibility_timezone: Option<String>,
     ) -> Self {
         Self(PreviewContextDocument {
             expectation,
             recipient_consents,
             inventory,
             token_verifier,
+            archive_sha256,
+            eligibility_timezone,
         })
     }
 
@@ -59,6 +67,13 @@ impl PreviewContext {
 
     pub(crate) fn token_verifier(&self) -> Option<&str> {
         self.0.token_verifier.as_deref()
+    }
+
+    pub(crate) fn archive_sha256(&self) -> Option<&str> {
+        self.0.archive_sha256.as_deref()
+    }
+    pub(crate) fn eligibility_timezone(&self) -> Option<&str> {
+        self.0.eligibility_timezone.as_deref()
     }
 }
 
@@ -103,6 +118,19 @@ impl EncryptedPrepared {
     ) -> Result<serde_json::Value, portable_crypto::PortableCryptoError> {
         let envelope = serde_json::from_slice(&self.0)
             .map_err(|_| portable_crypto::PortableCryptoError::InvalidEnvelope)?;
+        portable_crypto::decrypt(&envelope, passphrase)
+    }
+
+    pub(crate) fn decrypt_checked(
+        &self,
+        passphrase: &str,
+        target: &str,
+    ) -> Result<serde_json::Value, portable_crypto::PortableCryptoError> {
+        let envelope: serde_json::Value = serde_json::from_slice(&self.0)
+            .map_err(|_| portable_crypto::PortableCryptoError::InvalidEnvelope)?;
+        if envelope.get("checksum").and_then(serde_json::Value::as_str) != Some(target) {
+            return Err(portable_crypto::PortableCryptoError::InvalidEnvelope);
+        }
         portable_crypto::decrypt(&envelope, passphrase)
     }
 }
@@ -156,6 +184,8 @@ pub async fn create(tenant: &TenantTransaction, run: &NewRun) -> Result<(), Oper
                 recipient_consents: context.recipient_consents().to_vec(),
                 inventory: context.inventory().cloned(),
                 token_verifier: context.token_verifier().map(str::to_owned),
+                archive_sha256: context.archive_sha256().map(str::to_owned),
+                eligibility_timezone: context.eligibility_timezone().map(str::to_owned),
             }),
         })?),
         mappings: Set(document(&run.mappings)?),
@@ -172,10 +202,28 @@ pub async fn find(
     tenant: &TenantTransaction,
     id: &str,
 ) -> Result<Option<StoredRun>, OperationError> {
-    let Some(row) = data_import_runs::Entity::find_by_id(id.to_owned())
-        .one(tenant.transaction())
-        .await?
-    else {
+    find_inner(tenant, id, false).await
+}
+
+pub(crate) async fn find_locked(
+    tenant: &TenantTransaction,
+    id: &str,
+) -> Result<Option<StoredRun>, OperationError> {
+    find_inner(tenant, id, true).await
+}
+
+async fn find_inner(
+    tenant: &TenantTransaction,
+    id: &str,
+    lock: bool,
+) -> Result<Option<StoredRun>, OperationError> {
+    let mut query = data_import_runs::Entity::find_by_id(id.to_owned())
+        .filter(data_import_runs::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(data_import_runs::Column::CreatedByMembershipId.eq(tenant.membership().id));
+    if lock {
+        query = query.lock_exclusive();
+    }
+    let Some(row) = query.one(tenant.transaction()).await? else {
         return Ok(None);
     };
     let source_timezone = SourceTimeZone::parse(&row.source_timezone)
@@ -337,6 +385,8 @@ mod tests {
             vec![recipient.clone()],
             None,
             None,
+            None,
+            None,
         );
         let encoded = document(&ReceiptEnvelope {
             receipt: receipt.clone(),
@@ -356,7 +406,7 @@ mod tests {
             panic!("expected legacy receipt");
         };
         assert_eq!(reloaded_receipt, receipt);
-        let blocked = PreviewContext::new(None, vec![], None, None);
+        let blocked = PreviewContext::new(None, vec![], None, None, None, None);
         assert!(blocked.expectation().is_none());
     }
 
@@ -372,6 +422,8 @@ mod tests {
             vec![],
             Some(inventory.clone()),
             Some("verifier".into()),
+            None,
+            None,
         );
         let encoded = document(&context.0).unwrap();
         let decoded: PreviewContextDocument = read_document(encoded).unwrap();
