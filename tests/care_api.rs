@@ -6,6 +6,8 @@ mod account_sessions;
 mod data_import_authority;
 #[path = "care_api/data_import_consents.rs"]
 mod data_import_consents;
+#[path = "care_api/data_import_atomicity.rs"]
+mod data_import_atomicity;
 #[path = "care_api/data_import_inspection.rs"]
 mod data_import_inspection;
 #[path = "care_api/data_import_projection.rs"]
