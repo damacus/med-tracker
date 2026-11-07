@@ -11,6 +11,7 @@ use super::{
         ConsentInput, ImportIssue, ImportState, PersonMapping, PreviewResult, PreviewToken,
         ReasonCode, RecordKind, SourceTimeZone,
     },
+    credential::ImportPrincipal,
     identity::{self, IdentityChoices, IdentityValidationError, RecipientConsent},
     inspection::{self, InspectionError, Upload},
     persistence::{self, EncryptedPrepared, NewRun, PreviewContext},
@@ -41,6 +42,24 @@ pub async fn create(
     ctx: &AppContext,
     scope: &HouseholdScope,
     input: PreviewInput,
+) -> Result<PreviewResult, InspectionError> {
+    create_inner(ctx, scope, input, None).await
+}
+
+pub async fn create_checked(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    input: PreviewInput,
+    principal: ImportPrincipal<'_>,
+) -> Result<PreviewResult, InspectionError> {
+    create_inner(ctx, scope, input, Some(principal)).await
+}
+
+async fn create_inner(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    input: PreviewInput,
+    principal: Option<ImportPrincipal<'_>>,
 ) -> Result<PreviewResult, InspectionError> {
     let PreviewInput {
         inspection_id,
@@ -73,6 +92,9 @@ pub async fn create(
         .collect();
     let tenant =
         consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &ids).await?;
+    if let Some(principal) = principal {
+        principal.revalidate(&tenant).await?;
+    }
     inspection::verify(&tenant, &inspection_id, &prepared.archive_sha256, timezone).await?;
     let actor = account::Entity::find_by_id(scope.actor.account_id)
         .one(tenant.transaction())

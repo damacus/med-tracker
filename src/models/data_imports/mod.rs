@@ -1,4 +1,5 @@
 pub mod consents;
+pub mod credential;
 pub mod contracts;
 pub mod identity;
 pub mod inspection;

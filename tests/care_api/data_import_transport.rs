@@ -4,6 +4,153 @@ use serde_json::json;
 use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
+#[tokio::test]
+async fn revoked_key_during_upload_cannot_persist_inspection_or_preview() {
+    use med_tracker::models::{
+        _entities::{data_import_inspections, data_import_runs},
+        entities::identity_api_key,
+    };
+    use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, sea_query::Expr};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
+    use tokio::time::{Duration, timeout};
+
+    let app = Application::new().await;
+    let household = app.fixture.household.id;
+    let token = app.token().await;
+    let base = format!("{}/api/v1/households/{household}/data_imports", app.origin);
+    let payload: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../fixtures/portable_rails/prepared-history-v2.json"
+    ))
+    .unwrap();
+    let upload = json!({"source":"med_tracker05", "archive_base64":archive_with_payload(&payload),
+        "passphrase":"password", "source_timezone":"Europe/London", "timezone_confirmed":true});
+    let response = app
+        .client
+        .post(format!("{base}/inspections"))
+        .bearer_auth(&token)
+        .json(&upload)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 201);
+    let inspection: serde_json::Value = response.json().await.unwrap();
+    let source = inspection["data"]["inventory"]["records"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| item["identity"]["kind"] == "person")
+        .unwrap()["identity"]
+        .clone();
+    let omissions: Vec<_> = inspection["data"]["inventory"]["omissions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| item["acknowledgement_id"].clone())
+        .collect();
+    let mut preview = upload.clone();
+    preview["inspection_id"] = inspection["data"]["id"].clone();
+    preview["mappings"] = json!([{"source":source,"destination":"NewDependent"}]);
+    preview["declarations"] = json!([]);
+    preview["recipient_consents"] = json!([]);
+    preview["acknowledged_omissions"] = json!(omissions);
+
+    for (route, input) in [("inspections", upload), ("previews", preview)] {
+        let before_inspections = data_import_inspections::Entity::find()
+            .filter(data_import_inspections::Column::HouseholdId.eq(household))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap();
+        let before_runs = data_import_runs::Entity::find()
+            .filter(data_import_runs::Column::HouseholdId.eq(household))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap();
+        let service = app
+            .context
+            .shared_store
+            .get::<med_tracker::models::identity::better_auth::IdentityService>()
+            .unwrap();
+        let key = service
+            .api_keys()
+            .unwrap()
+            .create(
+                &app.fixture.account.id.to_string(),
+                better_auth::server_api::CreateKeyOptions {
+                    config_id: Some("medtracker-personal".into()),
+                    name: Some("Upload revocation test".into()),
+                    expires_in: Some(chrono::Duration::days(1).num_seconds() as f64),
+                    metadata: Some(json!({"households":[household]})),
+                    permissions: Some(std::collections::HashMap::from([(
+                        "medtracker".into(),
+                        vec!["care:write".into()],
+                    )])),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap()
+            .key;
+        let bytes = serde_json::to_vec(&input).unwrap();
+        let address = app.origin.strip_prefix("http://").unwrap();
+        let mut socket = TcpStream::connect(address).await.unwrap();
+        socket.write_all(format!("POST /api/v1/households/{household}/data_imports/{route} HTTP/1.1\r\nHost: {address}\r\nAuthorization: Bearer {key}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n", bytes.len()).as_bytes()).await.unwrap();
+        socket.write_all(&bytes[..1]).await.unwrap();
+        let mut acquired = false;
+        for _ in 0..100 {
+            let check = app
+                .client
+                .post(format!("{base}/inspections"))
+                .bearer_auth(&token)
+                .header("content-type", "application/json")
+                .body("{")
+                .send()
+                .await
+                .unwrap();
+            if check.status().as_u16() == 503 {
+                acquired = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(
+            acquired,
+            "the original request must reach upload buffering before revocation"
+        );
+        identity_api_key::Entity::update_many()
+            .col_expr(identity_api_key::Column::Enabled, Expr::value(false))
+            .filter(identity_api_key::Column::ReferenceId.eq(app.fixture.account.id))
+            .exec(&app.fixture.admin)
+            .await
+            .unwrap();
+        socket.write_all(&bytes[1..]).await.unwrap();
+        let mut response = [0_u8; 512];
+        let size = timeout(Duration::from_secs(10), socket.read(&mut response))
+            .await
+            .unwrap()
+            .unwrap();
+        let status = std::str::from_utf8(&response[..size]).unwrap();
+        assert!(status.starts_with("HTTP/1.1 401") || status.starts_with("HTTP/1.1 403"));
+        assert_eq!(
+            data_import_inspections::Entity::find()
+                .filter(data_import_inspections::Column::HouseholdId.eq(household))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+            before_inspections
+        );
+        assert_eq!(
+            data_import_runs::Entity::find()
+                .filter(data_import_runs::Column::HouseholdId.eq(household))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+            before_runs
+        );
+    }
+    app.close().await;
+}
+
 fn archive_with_payload(payload: &serde_json::Value) -> String {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     zip.start_file("portable.json", SimpleFileOptions::default())

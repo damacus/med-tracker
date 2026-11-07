@@ -9,6 +9,7 @@ use super::contracts::{
     ArchivePreparation, ArchivePreparationError, PreparedArchive, SourceInventory, SourceSystem,
     SourceTimeZone,
 };
+use super::{consents, credential::ImportPrincipal};
 use crate::models::{
     _entities::data_import_inspections,
     access::{self, HouseholdScope, TenantTransaction},
@@ -143,8 +144,35 @@ pub async fn inspect(
     upload: Upload,
     timezone: SourceTimeZone,
 ) -> Result<Inspection, InspectionError> {
+    inspect_inner(ctx, scope, upload, timezone, None).await
+}
+
+pub async fn inspect_checked(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    upload: Upload,
+    timezone: SourceTimeZone,
+    principal: ImportPrincipal<'_>,
+) -> Result<Inspection, InspectionError> {
+    inspect_inner(ctx, scope, upload, timezone, Some(principal)).await
+}
+
+async fn inspect_inner(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    upload: Upload,
+    timezone: SourceTimeZone,
+    principal: Option<ImportPrincipal<'_>>,
+) -> Result<Inspection, InspectionError> {
     let prepared = prepare_upload(ctx, upload).await?;
-    let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    let tenant = if principal.is_some() {
+        consents::begin_for_actor(&ctx.db, scope, ctx.config.settings.as_ref()).await?
+    } else {
+        access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?
+    };
+    if let Some(principal) = principal {
+        principal.revalidate(&tenant).await?;
+    }
     access::recheck(&tenant).await?;
     if !access::can_manage_household(&tenant) {
         return Err(OperationError::Forbidden.into());

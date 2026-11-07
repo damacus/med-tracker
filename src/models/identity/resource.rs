@@ -214,6 +214,43 @@ impl ValidatedPrincipal {
         }
     }
 
+    pub(crate) async fn revalidate_household_locked(
+        &self,
+        tenant: &TenantTransaction,
+    ) -> Result<(), AuthenticationError> {
+        if self.account_id != tenant.scope().actor.account_id {
+            return Err(AuthenticationError::Forbidden);
+        }
+        access::recheck(tenant).await.map_err(operation_error)?;
+        match &self.credential {
+            Credential::PersonalKey(principal) => principal.revalidate(tenant).await,
+            Credential::OAuth {
+                authorization,
+                grant_id,
+            } => {
+                let row =
+                    validate(tenant.transaction(), authorization, true, tenant.settings()).await?;
+                if row.id == *grant_id && row.account_id == self.account_id {
+                    Ok(())
+                } else {
+                    Err(AuthenticationError::Unauthenticated)
+                }
+            }
+            Credential::Stored(principal) => {
+                let actor = principal
+                    .revalidate_locked(tenant.transaction(), tenant.settings())
+                    .await?;
+                if actor.account_id != self.account_id {
+                    Err(AuthenticationError::Unauthenticated)
+                } else if actor.household_id != tenant.scope().household_id {
+                    Err(AuthenticationError::Forbidden)
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
+
     pub fn provenance(&self) -> &CredentialProvenance {
         &self.provenance
     }

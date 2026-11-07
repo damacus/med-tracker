@@ -13,6 +13,7 @@ use crate::models::{
             ArchivePreparationError, ConsentInput, PersonMapping, SourceInventory,
             SourcePreparationDiagnostic, SourceSystem, SourceTimeZone,
         },
+        credential::ImportPrincipal,
         identity::RecipientConsent,
         inspection::{self, InspectionError, Upload},
         preview::{self as preview_service, PreviewInput},
@@ -190,7 +191,7 @@ pub(super) async fn inspect(
         if archive.len() > MAX_ARCHIVE_BYTES {
             return Err(response::Failure::validation("Import archive is too large"));
         }
-        let inspected = inspection::inspect(
+        let inspected = inspection::inspect_checked(
             &ctx,
             &scope,
             Upload {
@@ -199,6 +200,7 @@ pub(super) async fn inspect(
                 passphrase: input.passphrase,
             },
             timezone,
+            ImportPrincipal::Api(&principal),
         )
         .await
         .map_err(preparation_error)?;
@@ -294,7 +296,7 @@ pub(super) async fn preview(
         if archive.len() > MAX_ARCHIVE_BYTES {
             return Err(response::Failure::validation("Import archive is too large"));
         }
-        let output = preview_service::create(
+        let output = preview_service::create_checked(
             &ctx,
             &scope,
             PreviewInput {
@@ -310,6 +312,7 @@ pub(super) async fn preview(
                 recipient_consents: input.recipient_consents,
                 acknowledged_omissions: input.acknowledged_omissions,
             },
+            ImportPrincipal::Api(&principal),
         )
         .await
         .map_err(preparation_error)?;
