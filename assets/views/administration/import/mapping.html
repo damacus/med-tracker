@@ -4,6 +4,7 @@
   <a class="link" href="{{ back_url }}">{{ import_labels.back }}</a>
   <h1 class="text-3xl font-semibold mt-4">{{ import_labels.mapping_title }}</h1>
   <p class="mt-2">{{ import_labels.mapping_help }}</p>
+  <p class="mt-2">{{ import_labels.existing_person_help }}</p>
   <p class="mt-2">{{ import_labels.consent_help }}</p>
   {% include "components/form_errors.html" %}
   <form id="administration-form" action="{{ preview_url }}" method="post" enctype="multipart/form-data" class="space-y-5 mt-6">

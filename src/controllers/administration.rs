@@ -841,4 +841,35 @@ mod import_presentation_tests {
         assert!(html.contains("&lt;script&gt;"));
         assert!(!html.contains("<script>alert(1)</script>"));
     }
+
+    #[test]
+    fn report_renders_global_and_source_issues_with_escaped_details() {
+        let view = TeraView::build().expect("views load");
+        let preview: PreviewResult =
+            serde_json::from_str(include_str!("../models/data_imports/examples/preview.json"))
+                .expect("preview example");
+        let mut data = context(&preview.report, None, false);
+        data["report"]["issues"] = json!([
+            {"source": null, "field": null, "reason": "source_invalid", "detail": "<script>alert(1)</script>"},
+            {"source": {"source": "med_tracker05", "instance": "canary", "kind": "person", "id": "<source>"},
+             "field": "<field>", "reason": "identity_conflict", "detail": "Review <details>"}
+        ]);
+        let html = view
+            .render("administration/import/report.html", data)
+            .expect("report with issues");
+        let section = html
+            .split("id=\"import-issues-heading\"")
+            .nth(1)
+            .expect("issues heading");
+        let global = section.split("</li>").next().expect("global issue");
+        assert!(global.contains("Invalid source"));
+        assert!(global.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assert!(!global.contains("Source reference:"));
+        assert!(!global.contains("Field:"));
+        assert!(!html.contains("<script>alert(1)</script>"));
+        assert!(section.contains("Identity conflict"));
+        assert!(section.contains("&lt;source&gt;"));
+        assert!(section.contains("&lt;field&gt;"));
+        assert!(section.contains("Review &lt;details&gt;"));
+    }
 }

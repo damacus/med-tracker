@@ -20,6 +20,19 @@
       <div><dt>{{ import_labels.omissions }}</dt><dd>{{ report.totals.omissions }}</dd></div>
     </dl>
   </section>
+  {% if report.issues is defined %}{% if report.issues | length > 0 %}
+  <section aria-labelledby="import-issues-heading">
+    <h3 id="import-issues-heading" class="text-xl font-semibold">{{ import_labels.issues }}</h3>
+    <ul class="space-y-3 mt-3">
+      {% for issue in report.issues %}<li class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+        <p>{{ import_labels.reason }}: {{ import_labels.codes[issue.reason] }}</p>
+        {% if issue.source %}<p>{{ import_labels.source_reference }}: {{ import_labels.kinds[issue.source.kind] }} · {{ issue.source.source }} / {{ issue.source.instance }} / {{ issue.source.id }}</p>{% endif %}
+        {% if issue.field %}<p>{{ import_labels.field }}: {{ issue.field }}</p>{% endif %}
+        <p>{{ issue.detail }}</p>
+      </div></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}{% endif %}
   {% for person in report.people %}
   <section class="card bg-base-100 border border-base-300"><div class="card-body p-4 space-y-4">
     <h3 class="text-xl font-semibold">{% if person.person.details.name %}{{ person.person.details.name }}{% else %}{{ person.person.source.id }}{% endif %}</h3>

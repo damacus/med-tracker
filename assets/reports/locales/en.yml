@@ -3184,6 +3184,8 @@ en:
     action: "Assign or invite a carer"
   administration:
     import:
+      issues: "Import issues"
+      existing_person_help: "Selecting an existing person keeps their current name and contact details and does not change their sign-in credentials. Differences are shown in the preview."
       reupload_help: "Select the same export and enter its passphrase again. Changing the export requires a new inspection."
       household: "Household"
       self_consent: "I consent to this mapping for myself."

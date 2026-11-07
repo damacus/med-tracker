@@ -3217,6 +3217,8 @@ ga:
     action: "Sann cúramóir nó tabhair cuireadh dó"
   administration:
     import:
+      issues: "Fadhbanna iompórtála"
+      existing_person_help: "Má roghnaíonn tú duine atá ann cheana, coinnítear a ainm agus a shonraí teagmhála reatha agus ní athraítear a shonraí logála isteach. Taispeántar difríochtaí sa réamhamharc."
       reupload_help: "Roghnaigh an easpórtáil chéanna agus cuir a pasfhrása isteach arís. Má athraíonn tú an easpórtáil, ní mór í a scrúdú arís."
       household: "Teaghlach"
       self_consent: "Toilím leis an mapáil seo dom féin."
