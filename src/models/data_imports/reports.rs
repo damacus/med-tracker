@@ -110,43 +110,7 @@ fn subject_id(
     }
 }
 
-async fn checked_detail_inner(
-    ctx: &AppContext,
-    scope: &HouseholdScope,
-    id: &str,
-    principal: &ImportPrincipal<'_>,
-    include_confirmation: bool,
-) -> Result<PreviewResult, OperationError> {
-    let lookup = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
-    access::recheck(&lookup).await?;
-    if !access::can_manage_household(&lookup) {
-        return Err(OperationError::Forbidden);
-    }
-    let initial = persistence::find(&lookup, id)
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    let ids = request_ids(&initial);
-    lookup.rollback().await?;
-    let tenant =
-        consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &ids).await?;
-    principal.revalidate(&tenant).await?;
-    let current = persistence::find_locked(&tenant, id)
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    if !immutable_matches(&initial, &current)
-        || current.created_by_membership_id != tenant.membership().id
-        || !access::can_manage_household(&tenant)
-    {
-        return Err(OperationError::NotFound);
-    }
-    let actor = account::Entity::find_by_id(scope.actor.account_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::Unauthenticated)?;
-    let zone = crate::models::identity::time_zone::preferred(&actor.preferences, tenant.settings())
-        .map_err(|_| OperationError::Unavailable)?;
-    let today = Utc::now().with_timezone(&zone).date_naive();
-    let authority = PreparedImportAuthority::prepare(&tenant, today).await?;
+fn report_subjects(current: &persistence::StoredRun) -> Result<Vec<i64>, OperationError> {
     let report = &current.snapshot.report;
     let context = current
         .snapshot
@@ -158,8 +122,7 @@ async fn checked_detail_inner(
     {
         return Err(OperationError::NotFound);
     }
-    let mut subjects = vec![tenant.membership().person_id];
-    let mut resolved = Vec::with_capacity(report.people.len());
+    let mut subjects = Vec::new();
     for item in &report.people {
         let mut mappings = current
             .snapshot
@@ -174,9 +137,8 @@ async fn checked_detail_inner(
         if let Some(id) = subject {
             subjects.push(id);
         }
-        resolved.push((item, mapping, subject));
     }
-    if current.snapshot.mappings.len() != resolved.len() {
+    if current.snapshot.mappings.len() != report.people.len() {
         return Err(OperationError::NotFound);
     }
     if context.recipient_consents().iter().any(|entry| {
@@ -190,21 +152,77 @@ async fn checked_detail_inner(
     }) {
         return Err(OperationError::NotFound);
     }
+    Ok(subjects)
+}
+
+pub(crate) struct ReportDisclosureGuard<'a> {
+    authority: PreparedImportAuthority<'a>,
+    subjects: Vec<i64>,
+}
+
+pub(crate) async fn prepare_report_disclosure<'a>(
+    tenant: &'a TenantTransaction,
+    runs: &[&persistence::StoredRun],
+    today: chrono::NaiveDate,
+) -> Result<ReportDisclosureGuard<'a>, OperationError> {
+    let authority = PreparedImportAuthority::prepare(tenant, today).await?;
+    let mut subjects = vec![tenant.membership().person_id];
+    for run in runs {
+        subjects.extend(report_subjects(run)?);
+    }
     subjects.sort_unstable();
     subjects.dedup();
-    for id in subjects {
-        person::Entity::find_by_id(id)
+    for id in &subjects {
+        person::Entity::find_by_id(*id)
             .lock_shared()
             .one(tenant.transaction())
             .await?
             .ok_or(OperationError::NotFound)?;
     }
-    let eligible = match guardian_declarations::eligible_actor(&tenant, today).await {
+    Ok(ReportDisclosureGuard {
+        authority,
+        subjects,
+    })
+}
+
+pub(crate) async fn authorise_report_prepared(
+    guard: &ReportDisclosureGuard<'_>,
+    current: &persistence::StoredRun,
+    today: chrono::NaiveDate,
+) -> Result<(), OperationError> {
+    let authority = &guard.authority;
+    let tenant = authority.tenant();
+    if current.created_by_membership_id != tenant.membership().id
+        || !access::can_manage_household(tenant)
+    {
+        return Err(OperationError::NotFound);
+    }
+    authority.check_date(today)?;
+    if report_subjects(current)?
+        .iter()
+        .any(|id| guard.subjects.binary_search(id).is_err())
+    {
+        return Err(OperationError::Forbidden);
+    }
+    let report = &current.snapshot.report;
+    let context = current
+        .snapshot
+        .context
+        .as_ref()
+        .ok_or(OperationError::NotFound)?;
+    let eligible = match guardian_declarations::eligible_actor(tenant, today).await {
         Ok(_) => true,
         Err(OperationError::Forbidden) => false,
         Err(error) => return Err(error),
     };
-    for (item, mapping, subject) in resolved {
+    for item in &report.people {
+        let mapping = current
+            .snapshot
+            .mappings
+            .iter()
+            .find(|mapping| mapping.source == item.person.source)
+            .ok_or(OperationError::NotFound)?;
+        let subject = subject_id(report.state, mapping, item).ok_or(OperationError::NotFound)?;
         let Some(subject) = subject else {
             if context
                 .recipient_consents()
@@ -235,7 +253,7 @@ async fn checked_detail_inner(
                 source_person: mapping.source.clone(),
                 target_person: *target,
             };
-            match consents::current(&tenant, &recipient.request_id, &binding).await {
+            match consents::current(tenant, &recipient.request_id, &binding).await {
                 Ok(true) => (),
                 Ok(false)
                 | Err(
@@ -258,7 +276,49 @@ async fn checked_detail_inner(
             return Err(OperationError::NotFound);
         }
     }
-    let confirmation = if include_confirmation && report.state == ImportState::Ready {
+    access::recheck(tenant).await
+}
+
+async fn report_zone(tenant: &TenantTransaction) -> Result<chrono_tz::Tz, OperationError> {
+    let actor = account::Entity::find_by_id(tenant.scope().actor.account_id)
+        .one(tenant.transaction())
+        .await?
+        .ok_or(OperationError::Unauthenticated)?;
+    crate::models::identity::time_zone::preferred(&actor.preferences, tenant.settings())
+        .map_err(|_| OperationError::Unavailable)
+}
+
+async fn checked_detail_inner(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    id: &str,
+    principal: &ImportPrincipal<'_>,
+) -> Result<PreviewResult, OperationError> {
+    let lookup = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    access::recheck(&lookup).await?;
+    if !access::can_manage_household(&lookup) {
+        return Err(OperationError::Forbidden);
+    }
+    let initial = persistence::find(&lookup, id)
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    let ids = request_ids(&initial);
+    lookup.rollback().await?;
+    let tenant =
+        consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &ids).await?;
+    principal.revalidate(&tenant).await?;
+    let current = persistence::find_locked(&tenant, id)
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    if !immutable_matches(&initial, &current) {
+        return Err(OperationError::NotFound);
+    }
+    let zone = report_zone(&tenant).await?;
+    let today = Utc::now().with_timezone(&zone).date_naive();
+    let authority = prepare_report_disclosure(&tenant, &[&current], today).await?;
+    authorise_report_prepared(&authority, &current, today).await?;
+    let report = &current.snapshot.report;
+    let confirmation = if report.state == ImportState::Ready {
         match (&current.snapshot.context, &current.snapshot.confirmation) {
             (Some(context), Some(token))
                 if context.archive_sha256() == Some(report.source_sha256.as_str())
@@ -270,7 +330,7 @@ async fn checked_detail_inner(
             {
                 if let Some(expected) = context.expectation() {
                     if planning::check_expectation_prepared(
-                        &authority,
+                        &authority.authority,
                         expected,
                         ExpectationLock::Confirmation,
                         today,
@@ -292,7 +352,9 @@ async fn checked_detail_inner(
     };
     access::recheck(&tenant).await?;
     principal.revalidate(&tenant).await?;
-    authority.check_date(Utc::now().with_timezone(&zone).date_naive())?;
+    authority
+        .authority
+        .check_date(Utc::now().with_timezone(&zone).date_naive())?;
     let report = current.snapshot.report;
     tenant.commit().await?;
     Ok(PreviewResult {
@@ -307,7 +369,7 @@ pub async fn detail_checked(
     id: &str,
     principal: ImportPrincipal<'_>,
 ) -> Result<PreviewResult, OperationError> {
-    checked_detail_inner(ctx, scope, id, &principal, true).await
+    checked_detail_inner(ctx, scope, id, &principal).await
 }
 
 pub async fn list_checked(
@@ -322,16 +384,16 @@ pub async fn list_checked(
             details: serde_json::json!({"errors":{"limit":["must be between 1 and 100"]}}),
         });
     }
-    let tenant = consents::begin_for_actor(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
-    principal.revalidate(&tenant).await?;
-    if !access::can_manage_household(&tenant) {
+    let lookup = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    access::recheck(&lookup).await?;
+    if !access::can_manage_household(&lookup) {
         return Err(OperationError::Forbidden);
     }
     let mut query = data_import_runs::Entity::find()
         .select_only()
         .column(data_import_runs::Column::Id)
         .filter(data_import_runs::Column::HouseholdId.eq(scope.household_id))
-        .filter(data_import_runs::Column::CreatedByMembershipId.eq(tenant.membership().id))
+        .filter(data_import_runs::Column::CreatedByMembershipId.eq(lookup.membership().id))
         .order_by_asc(data_import_runs::Column::Id)
         .limit(limit);
     if let Some(id) = after_id {
@@ -339,7 +401,7 @@ pub async fn list_checked(
     }
     let ids: Vec<String> = query
         .into_tuple::<(String,)>()
-        .all(tenant.transaction())
+        .all(lookup.transaction())
         .await?
         .into_iter()
         .map(|(id,)| id)
@@ -350,15 +412,48 @@ pub async fn list_checked(
         } else {
             None
         };
-    tenant.rollback().await?;
-    let mut reports = Vec::new();
+    let mut initial = Vec::new();
+    let mut requests = Vec::new();
     for id in ids {
-        match checked_detail_inner(ctx, scope, &id, &principal, false).await {
-            Ok(result) => reports.push(result.report),
+        if let Some(run) = persistence::find(&lookup, &id).await? {
+            requests.extend(request_ids(&run));
+            initial.push(run);
+        }
+    }
+    lookup.rollback().await?;
+    requests.sort_unstable();
+    requests.dedup();
+    let tenant =
+        consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &requests)
+            .await?;
+    principal.revalidate(&tenant).await?;
+    let mut current = Vec::new();
+    for run in &initial {
+        if let Some(stored) = persistence::find_locked(&tenant, &run.snapshot.report.id).await?
+            && immutable_matches(run, &stored)
+            && report_subjects(&stored).is_ok()
+        {
+            current.push(stored);
+        }
+    }
+    let zone = report_zone(&tenant).await?;
+    let today = Utc::now().with_timezone(&zone).date_naive();
+    let refs: Vec<_> = current.iter().collect();
+    let authority = prepare_report_disclosure(&tenant, &refs, today).await?;
+    let mut reports = Vec::new();
+    for run in &current {
+        match authorise_report_prepared(&authority, run, today).await {
+            Ok(()) => reports.push(run.snapshot.report.clone()),
             Err(OperationError::NotFound) => (),
             Err(error) => return Err(error),
         }
     }
+    access::recheck(&tenant).await?;
+    principal.revalidate(&tenant).await?;
+    authority
+        .authority
+        .check_date(Utc::now().with_timezone(&zone).date_naive())?;
+    tenant.commit().await?;
     Ok(ReportPage {
         reports,
         next_cursor,

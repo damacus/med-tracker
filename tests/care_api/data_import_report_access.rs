@@ -1,6 +1,6 @@
 use super::Application;
 use med_tracker::models::{
-    _entities::{household_memberships, people},
+    _entities::{household_memberships, medications, people},
     access::{Actor, HouseholdScope},
     data_imports::{
         confirmation,
@@ -14,7 +14,7 @@ use med_tracker::models::{
     },
     identity::credentials::{CredentialMethod, CredentialProvenance},
 };
-use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, QuerySelect, Set, TransactionTrait};
 use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
@@ -56,6 +56,7 @@ fn profile_upload(comment: &str) -> Upload {
     let person = &mut records.get_mut("people").unwrap()[0];
     person["person_type"] = serde_json::json!("adult");
     person["has_capacity"] = serde_json::json!(true);
+    person["date_of_birth"] = serde_json::json!("1985-02-03");
     person["notification_preference_portable_id"] = serde_json::Value::Null;
     let mut manifest: serde_json::Value = serde_json::from_slice(include_bytes!(
         "../fixtures/portable_rails/prepared-history-v2.manifest.json"
@@ -244,6 +245,7 @@ async fn other_adult_profile_report_requires_consent_for_exact_archive_and_withd
     )
     .await
     .unwrap();
+    assert_eq!(result.report.state, ImportState::Ready);
     let token = app.token().await;
     let url = format!(
         "{}/api/v1/households/{}/data_imports/{}",
@@ -476,13 +478,144 @@ async fn other_adult_profile_report_requires_consent_for_exact_archive_and_withd
             .as_u16(),
         404
     );
-    let tenant = consents::begin_for_actor(&app.fixture.runtime, &recipient_scope, None)
+    let second = app.fixture.foreign_household().await;
+    household_memberships::ActiveModel {
+        household_id: Set(scope.household_id),
+        person_id: Set(second.account.person_id),
+        role: Set("member".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let second_scope = HouseholdScope {
+        actor: Actor {
+            account_id: second.account.id,
+        },
+        household_id: scope.household_id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let second_comment = uuid::Uuid::new_v4().to_string();
+    let second_inspected =
+        inspection::inspect(&app.context, &scope, profile_upload(&second_comment), zone)
+            .await
+            .unwrap();
+    let second_source = second_inspected
+        .inventory
+        .records
+        .iter()
+        .find(|row| row.identity.kind == RecordKind::Person)
+        .unwrap()
+        .identity
+        .clone();
+    let second_target =
+        med_tracker::models::data_imports::contracts::PersonId(second.account.person_id);
+    let second_binding = ConsentBinding {
+        source_sha256: second_inspected.archive_sha256.clone(),
+        source_person: second_source.clone(),
+        target_person: second_target,
+    };
+    let requester = consents::begin_for_target(&app.fixture.runtime, &scope, None, second_target)
         .await
         .unwrap();
-    consents::decide(&tenant, &consent_id, &binding, Decision::Rejected)
+    let second_id = consents::request(&requester, second_binding.clone())
+        .await
+        .unwrap();
+    requester.commit().await.unwrap();
+    let tenant = consents::begin_for_actor(&app.fixture.runtime, &second_scope, None)
+        .await
+        .unwrap();
+    consents::decide(&tenant, &second_id, &second_binding, Decision::Approved)
         .await
         .unwrap();
     tenant.commit().await.unwrap();
+    let mut later = None;
+    for _ in 0..32 {
+        let candidate = preview::create(
+            &app.context,
+            &scope,
+            PreviewInput {
+                inspection_id: second_inspected.id.clone(),
+                upload: profile_upload(&second_comment),
+                timezone: zone,
+                mappings: vec![PersonMapping {
+                    source: second_source.clone(),
+                    destination: PersonDestination::Existing(second_target),
+                }],
+                declarations: vec![],
+                recipient_consents: vec![RecipientConsent {
+                    source_person: second_source.clone(),
+                    request_id: second_id.clone(),
+                }],
+                acknowledged_omissions: second_inspected
+                    .inventory
+                    .omissions
+                    .iter()
+                    .map(|item| item.acknowledgement_id.clone())
+                    .collect(),
+            },
+        )
+        .await
+        .unwrap();
+        if candidate.report.id > result.report.id {
+            later = Some(candidate.report.id);
+            break;
+        }
+    }
+    let later = later.expect("a later report must be generated");
+    let blocker = app.fixture.admin.begin().await.unwrap();
+    let blocker_pid = super::data_import_consents::backend_pid(&blocker).await;
+    people::Entity::find_by_id(second.account.person_id)
+        .lock_exclusive()
+        .one(&blocker)
+        .await
+        .unwrap()
+        .unwrap();
+    let client = app.client.clone();
+    let page_url = format!(
+        "{base}?limit=100&after_id={}",
+        &result.report.id[..result.report.id.len() - 1]
+    );
+    let page_token = token.clone();
+    let page = tokio::spawn(async move {
+        client
+            .get(page_url)
+            .bearer_auth(page_token)
+            .send()
+            .await
+            .unwrap()
+    });
+    assert!(super::data_import_consents::wait_for_any_blocked_by(&app, blocker_pid).await);
+    let runtime = app.fixture.runtime.clone();
+    let withdraw_scope = recipient_scope.clone();
+    let withdraw_id = consent_id.clone();
+    let withdraw_binding = binding.clone();
+    let mut withdraw = tokio::spawn(async move {
+        let tenant = consents::begin_for_actor(&runtime, &withdraw_scope, None)
+            .await
+            .unwrap();
+        consents::decide(&tenant, &withdraw_id, &withdraw_binding, Decision::Rejected)
+            .await
+            .unwrap();
+        tenant.commit().await.unwrap();
+    });
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(150), &mut withdraw)
+            .await
+            .is_err()
+    );
+    blocker.commit().await.unwrap();
+    let page = page.await.unwrap();
+    assert_eq!(page.status().as_u16(), 200);
+    let page: serde_json::Value = page.json().await.unwrap();
+    let rows = page["data"]["reports"].as_array().unwrap();
+    assert!(rows.iter().any(|row| row["id"] == result.report.id));
+    assert!(rows.iter().any(|row| row["id"] == later));
+    withdraw.await.unwrap();
     assert_eq!(
         app.client
             .get(&url)
@@ -494,6 +627,7 @@ async fn other_adult_profile_report_requires_consent_for_exact_archive_and_withd
             .as_u16(),
         404
     );
+    second.close().await;
     recipient.close().await;
     app.close().await;
 }
@@ -557,6 +691,32 @@ async fn completed_created_dependent_report_is_hidden_after_guardian_withdrawal(
     .await
     .unwrap();
     assert_eq!(completed.state, ImportState::Completed);
+    let medication_id = completed
+        .people
+        .iter()
+        .flat_map(|person| &person.records)
+        .chain(completed.records.iter())
+        .find_map(|record| {
+            match record
+                .destination
+                .as_ref()
+                .map(|destination| &destination.id)
+            {
+                Some(med_tracker::models::data_imports::contracts::DestinationId::Medication(
+                    id,
+                )) => Some(id.0),
+                _ => None,
+            }
+        })
+        .unwrap();
+    let medication = medications::Entity::find_by_id(medication_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let mut changed = medication.into_active_model();
+    changed.friendly_name = Set(Some("Updated after import".into()));
+    changed.update(&app.fixture.admin).await.unwrap();
     let token = app.token().await;
     let report_url = format!(
         "{}/api/v1/households/{}/data_imports/{}",
