@@ -221,6 +221,13 @@ pub fn routes() -> Routes {
                 .layer(axum::extract::DefaultBodyLimit::max(90 * 1024 * 1024)),
         )
         .add(
+            "/{household_id}/data_imports/previews",
+            post(data_imports::preview)
+                .layer(axum::extract::DefaultBodyLimit::max(90 * 1024 * 1024)),
+        )
+        .add("/{household_id}/data_imports", get(data_imports::list))
+        .add("/{household_id}/data_imports/{id}", get(data_imports::detail))
+        .add(
             "/{household_id}/portable_imports/dry_run",
             post(portable_imports::dry_run)
                 .layer(axum::extract::DefaultBodyLimit::max(24 * 1024 * 1024)),

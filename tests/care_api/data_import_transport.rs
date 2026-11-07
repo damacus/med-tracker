@@ -5,6 +5,117 @@ use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
 #[tokio::test]
+async fn preview_and_reports_follow_inspection_and_household_boundaries() {
+    let app = Application::new().await;
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    for (name, bytes) in [
+        (
+            "portable.json",
+            include_bytes!("../fixtures/portable_rails/prepared-history-v2.json").as_slice(),
+        ),
+        (
+            "manifest.json",
+            include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json")
+                .as_slice(),
+        ),
+    ] {
+        zip.start_file(name, SimpleFileOptions::default()).unwrap();
+        zip.write_all(bytes).unwrap();
+    }
+    let archive = STANDARD.encode(zip.finish().unwrap().into_inner());
+    let token = app.token().await;
+    let base = format!(
+        "{}/api/v1/households/{}/data_imports",
+        app.origin, app.fixture.household.id
+    );
+    let upload = json!({"source":"med_tracker05", "archive_base64":archive,
+        "passphrase":"password", "source_timezone":"Europe/London", "timezone_confirmed":true});
+    let inspected = app
+        .client
+        .post(format!("{base}/inspections"))
+        .bearer_auth(&token)
+        .json(&upload)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(inspected.status().as_u16(), 201);
+    let inspected: serde_json::Value = inspected.json().await.unwrap();
+    let source = inspected["data"]["inventory"]["records"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["identity"]["kind"] == "person")
+        .unwrap()["identity"]
+        .clone();
+    let omissions: Vec<_> = inspected["data"]["inventory"]["omissions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| item["acknowledgement_id"].clone())
+        .collect();
+    let mut input = upload;
+    input["inspection_id"] = inspected["data"]["id"].clone();
+    input["mappings"] = json!([{"source":source,"destination":"NewDependent"}]);
+    input["declarations"] = json!([]);
+    input["recipient_consents"] = json!([]);
+    input["acknowledged_omissions"] = json!(omissions);
+    let preview = app
+        .client
+        .post(format!("{base}/previews"))
+        .bearer_auth(&token)
+        .json(&input)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(preview.status().as_u16(), 201);
+    let preview: serde_json::Value = preview.json().await.unwrap();
+    assert_eq!(preview["data"]["report"]["state"], "blocked");
+    assert!(preview["data"]["confirmation"].is_null());
+    let id = preview["data"]["report"]["id"].as_str().unwrap();
+    let listed = app
+        .client
+        .get(format!("{base}?limit=1"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(listed.status().as_u16(), 200);
+    let listed: serde_json::Value = listed.json().await.unwrap();
+    assert_eq!(listed["data"]["reports"][0]["id"], id);
+    let detail = app
+        .client
+        .get(format!("{base}/{id}"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(detail.status().as_u16(), 200);
+    let detail: serde_json::Value = detail.json().await.unwrap();
+    assert!(detail["data"]["confirmation"].is_null());
+    let invalid_limit = app
+        .client
+        .get(format!("{base}?limit=101"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(invalid_limit.status().as_u16(), 422);
+    let foreign = app.fixture.foreign_household().await;
+    let denied = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{}/data_imports/{id}",
+            app.origin, foreign.household.id
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert!(matches!(denied.status().as_u16(), 403 | 404));
+    app.close().await;
+}
+
+#[tokio::test]
 async fn inspection_returns_the_prepared_inventory() {
     let app = Application::new().await;
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
@@ -106,6 +217,19 @@ async fn inspection_authenticates_before_reading_invalid_or_oversized_body() {
             .unwrap();
         assert_eq!(response.status().as_u16(), 403);
     }
+    let preview = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/{}/data_imports/previews",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(&key)
+        .header("content-type", "application/json")
+        .body("{")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(preview.status().as_u16(), 403);
     app.close().await;
 }
 
