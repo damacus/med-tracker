@@ -52,6 +52,7 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
             manifest_sha256: "manifest".into(),
             target_sha256: "target".into(),
         },
+        context: None,
         encrypted_prepared: EncryptedPrepared::encrypt(
             &serde_json::json!({"synthetic":"prepared"}),
             "password",
@@ -95,6 +96,7 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
     );
     assert!(saved.encrypted_prepared.decrypt("wrong").is_err());
     assert_eq!(saved.receipt, run.receipt);
+    assert!(saved.context.is_none());
     assert_eq!(saved.mappings, run.mappings);
     assert_eq!(saved.consents, run.consents);
     assert_eq!(saved.acknowledged_omissions, vec!["omission-1"]);
@@ -128,6 +130,7 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
         .await
         .unwrap()
         .unwrap();
+    let original_receipt = original.receipt.clone();
     let foreign_scope = HouseholdScope {
         actor: Actor {
             account_id: foreign.account.id,
@@ -274,6 +277,12 @@ async fn data_import_runs_persist_snapshot_and_isolate_households() {
             .is_err()
     );
     tenant.commit().await.unwrap();
+    let after_transition = data_import_runs::Entity::find_by_id(preview.report.id.clone())
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(after_transition.receipt, original_receipt);
     let second = tokio::time::timeout(std::time::Duration::from_secs(10), competing)
         .await
         .unwrap()

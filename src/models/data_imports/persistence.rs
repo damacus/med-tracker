@@ -2,16 +2,61 @@ use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
     QueryOrder, QuerySelect,
 };
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 pub use super::contracts::SourceTimeZone;
 use super::contracts::{
     ConsentInput, ImportReport, ImportState, PersonMapping, PreparationReceipt, PreviewToken,
 };
+use super::identity::RecipientConsent;
 use crate::models::{
-    _entities::data_import_runs, access::TenantTransaction, care::portable_crypto,
+    _entities::data_import_runs,
+    access::TenantTransaction,
+    care::{portable_crypto, portable_imports::planning::DestinationExpectation},
     errors::OperationError,
 };
+
+#[derive(Clone, PartialEq)]
+pub struct PreviewContext(PreviewContextDocument);
+
+#[derive(Clone, Deserialize, PartialEq, Serialize)]
+struct PreviewContextDocument {
+    expectation: Option<DestinationExpectation>,
+    recipient_consents: Vec<RecipientConsent>,
+}
+
+impl PreviewContext {
+    pub(crate) fn new(
+        expectation: Option<DestinationExpectation>,
+        recipient_consents: Vec<RecipientConsent>,
+    ) -> Self {
+        Self(PreviewContextDocument {
+            expectation,
+            recipient_consents,
+        })
+    }
+
+    pub(crate) fn expectation(&self) -> Option<&DestinationExpectation> {
+        self.0.expectation.as_ref()
+    }
+
+    pub(crate) fn recipient_consents(&self) -> &[RecipientConsent] {
+        &self.0.recipient_consents
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+struct ReceiptEnvelope {
+    receipt: PreparationReceipt,
+    context: Option<PreviewContextDocument>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StoredReceipt {
+    Envelope(ReceiptEnvelope),
+    Legacy(PreparationReceipt),
+}
 
 #[derive(Clone, PartialEq)]
 pub struct EncryptedPrepared(Vec<u8>);
@@ -48,6 +93,7 @@ impl EncryptedPrepared {
 pub struct NewRun {
     pub report: ImportReport,
     pub receipt: PreparationReceipt,
+    pub context: Option<PreviewContext>,
     pub encrypted_prepared: EncryptedPrepared,
     pub source_timezone: SourceTimeZone,
     pub mappings: Vec<PersonMapping>,
@@ -86,7 +132,13 @@ pub async fn create(tenant: &TenantTransaction, run: &NewRun) -> Result<(), Oper
         source_timezone: Set(run.source_timezone.name().to_owned()),
         encrypted_prepared: Set(run.encrypted_prepared.0.clone()),
         report: Set(document(&run.report)?),
-        receipt: Set(document(&run.receipt)?),
+        receipt: Set(document(&ReceiptEnvelope {
+            receipt: run.receipt.clone(),
+            context: run.context.as_ref().map(|context| PreviewContextDocument {
+                expectation: context.expectation().cloned(),
+                recipient_consents: context.recipient_consents().to_vec(),
+            }),
+        })?),
         mappings: Set(document(&run.mappings)?),
         consents: Set(document(&run.consents)?),
         acknowledged_omissions: Set(document(&run.acknowledged_omissions)?),
@@ -113,11 +165,21 @@ pub async fn find(
     if report.source_timezone != source_timezone {
         return Err(OperationError::unavailable("import_timezone_mismatch"));
     }
+    let (receipt, context) = match read_document(row.receipt)? {
+        StoredReceipt::Envelope(envelope) => (
+            envelope.receipt,
+            envelope.context.map(|context| {
+                PreviewContext::new(context.expectation, context.recipient_consents)
+            }),
+        ),
+        StoredReceipt::Legacy(receipt) => (receipt, None),
+    };
     Ok(Some(StoredRun {
         created_by_membership_id: row.created_by_membership_id,
         snapshot: NewRun {
             report,
-            receipt: read_document(row.receipt)?,
+            receipt,
+            context,
             encrypted_prepared: EncryptedPrepared(row.encrypted_prepared),
             source_timezone,
             mappings: read_document(row.mappings)?,
@@ -200,4 +262,80 @@ pub async fn transition(
     update.confirmation = Set(None);
     update.update(tenant.transaction()).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{
+        care::portable_imports::planning::{NameExpectation, SlotExpectation, SourceCollection},
+        data_imports::contracts::{RecordKind, SourceIdentity, SourceSystem},
+        entities::membership,
+        ids::{AccountId, HouseholdId},
+    };
+
+    #[test]
+    fn receipt_document_roundtrips_private_context_and_accepts_legacy_receipts() {
+        let receipt = PreparationReceipt {
+            payload_sha256: "payload".into(),
+            manifest_sha256: "manifest".into(),
+            target_sha256: "target".into(),
+        };
+        let expectation = DestinationExpectation {
+            household_id: HouseholdId::from_database(1),
+            actor_id: AccountId::from_database(2),
+            actor_membership: membership::Model {
+                id: 3,
+                created_at: Default::default(),
+                household_id: 1,
+                joined_at: Default::default(),
+                permissions_version: 0,
+                person_id: 4,
+                revoked_at: None,
+                role: "owner".into(),
+                status: "active".into(),
+                updated_at: Default::default(),
+            },
+            aliases: vec![],
+            slots: vec![SlotExpectation {
+                collection: SourceCollection::Medications,
+                portable_id: "source-medication".into(),
+                occupied: false,
+                name: Some(NameExpectation {
+                    key: "medicine".into(),
+                    matching_portable_ids: vec!["existing".into()],
+                }),
+            }],
+        };
+        let recipient = RecipientConsent {
+            source_person: SourceIdentity {
+                source: SourceSystem::MedTracker05,
+                instance: "source-instance".into(),
+                kind: RecordKind::Person,
+                id: "source-person".into(),
+            },
+            request_id: "request-id".into(),
+        };
+        let context = PreviewContext::new(Some(expectation.clone()), vec![recipient.clone()]);
+        let encoded = document(&ReceiptEnvelope {
+            receipt: receipt.clone(),
+            context: Some(context.0.clone()),
+        })
+        .unwrap();
+        let StoredReceipt::Envelope(decoded) = read_document(encoded).unwrap() else {
+            panic!("expected context envelope");
+        };
+        let reloaded = PreviewContext(decoded.context.unwrap());
+        assert_eq!(decoded.receipt, receipt);
+        assert_eq!(reloaded.expectation(), Some(&expectation));
+        assert!(reloaded.recipient_consents() == [recipient]);
+
+        let legacy = document(&receipt).unwrap();
+        let StoredReceipt::Legacy(reloaded_receipt) = read_document(legacy).unwrap() else {
+            panic!("expected legacy receipt");
+        };
+        assert_eq!(reloaded_receipt, receipt);
+        let blocked = PreviewContext::new(None, vec![]);
+        assert!(blocked.expectation().is_none());
+    }
 }

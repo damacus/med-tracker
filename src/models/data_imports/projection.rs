@@ -131,6 +131,7 @@ pub fn project(
         records: Vec::new(),
         relationships: Vec::new(),
         omissions: Vec::new(),
+        issues: Vec::new(),
     };
     let mut person_indices = HashMap::new();
     for item in &inventory.records {

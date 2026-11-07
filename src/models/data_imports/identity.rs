@@ -26,6 +26,7 @@ use crate::models::{
 use loco_rs::app::AppContext;
 use sea_orm::{EntityTrait, QuerySelect};
 
+#[derive(Clone, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct RecipientConsent {
     pub source_person: SourceIdentity,
     pub request_id: String,

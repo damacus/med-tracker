@@ -235,6 +235,14 @@ pub struct PersonReport {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ImportIssue {
+    pub source: Option<SourceIdentity>,
+    pub field: Option<String>,
+    pub reason: ReasonCode,
+    pub detail: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ImportReport {
     pub id: String,
     pub state: ImportState,
@@ -247,6 +255,8 @@ pub struct ImportReport {
     pub records: Vec<RecordResult>,
     pub relationships: Vec<RelationshipResult>,
     pub omissions: Vec<Omission>,
+    #[serde(default)]
+    pub issues: Vec<ImportIssue>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -432,6 +442,7 @@ mod tests {
             serde_json::from_str(include_str!("examples/blocked.json")).expect("blocked document");
         assert!(preview.confirmation.is_some());
         assert!(blocked.confirmation.is_none());
+        assert!(blocked.report.issues.is_empty());
         assert_eq!(preview.report.state, ImportState::Ready);
         assert_eq!(blocked.report.state, ImportState::Blocked);
         assert_eq!(completed.state, ImportState::Completed);
@@ -466,6 +477,23 @@ mod tests {
         let blocked_again: PreviewResult =
             serde_json::from_str(&blocked_json).expect("reload blocked");
         assert!(blocked_again == blocked);
+    }
+
+    #[test]
+    fn global_issue_roundtrips_without_an_invented_source() {
+        let mut report: ImportReport = serde_json::from_str(include_str!("examples/blocked.json"))
+            .map(|preview: PreviewResult| preview.report)
+            .expect("blocked report");
+        report.issues.push(ImportIssue {
+            source: None,
+            field: None,
+            reason: ReasonCode::InsufficientAuthority,
+            detail: "Current authority is required".into(),
+        });
+        let document = serde_json::to_string(&report).expect("serialise report");
+        let decoded: ImportReport = serde_json::from_str(&document).expect("reload report");
+        assert_eq!(decoded, report);
+        assert!(decoded.issues[0].source.is_none());
     }
 
     #[test]
