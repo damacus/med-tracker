@@ -1,5 +1,6 @@
 mod audit_logs;
 mod bulk_members;
+mod imports;
 mod page;
 mod rendering;
 
@@ -111,6 +112,8 @@ pub fn routes() -> Routes {
         .add("/{slug}/admin/users/{id}/revoke", post(revoke_member))
         .add("/{slug}/admin/audit_logs", get(audit_logs::index))
         .add("/{slug}/admin/audit_logs/{id}", get(audit_logs::detail))
+        .add("/{slug}/admin/data_imports", get(imports::index))
+        .add("/{slug}/admin/data_imports/{id}", get(imports::detail))
         .add(
             "/{slug}/admin/carer_relationships",
             get(relationships).post(create_relationship),

@@ -3,6 +3,35 @@ use playwright_rs::expect;
 use playwright_rs::protocol::{Animations, AriaRole, Page, ScreenshotOptions, Viewport};
 use sea_orm::ConnectionTrait;
 
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn import_reports_require_sign_in_and_open_for_household_admin() {
+    harness::journey(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        |journey| {
+            Box::pin(async move {
+                let page = &journey.page;
+                let url = format!(
+                    "{}/households/persistence-fixture/admin/data_imports",
+                    journey.origin
+                );
+                page.goto(&url, None).await.unwrap();
+                assert!(page.url().ends_with("/login"));
+                harness::sign_in(journey).await;
+                page.goto(&url, None).await.unwrap();
+                expect(page.locator("main h1"))
+                    .to_contain_text("Import report")
+                    .await
+                    .unwrap();
+            })
+        },
+    )
+    .await;
+}
+
 async fn capture(page: &Page, name: &str) {
     if page.locator("body.app-household").count().await.unwrap() > 0 {
         expect(page.locator("body[data-navigation-ready]"))
