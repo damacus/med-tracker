@@ -105,6 +105,42 @@ pub(crate) async fn save_execution(
     configured_zone: Tz,
     provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
 ) -> Result<schedule::Model, OperationError> {
+    save_execution_inner(tenant, row, new_zone, configured_zone, provenance, None).await
+}
+
+pub(crate) async fn save_import_execution(
+    authority: &super::portable_imports::PreparedImportAuthority<'_>,
+    row: schedule::Model,
+    new_zone: Tz,
+    configured_zone: Tz,
+    provenance: &crate::models::identity::credentials::CredentialProvenance,
+) -> Result<schedule::Model, OperationError> {
+    if row.person_schedule_id.is_some()
+        || !authority
+            .allows(crate::models::ids::PersonId::from_database(row.person_id))
+            .await?
+    {
+        return Err(OperationError::Forbidden);
+    }
+    save_execution_inner(
+        authority.tenant(),
+        row,
+        Some(new_zone),
+        configured_zone,
+        Some(provenance),
+        Some(authority),
+    )
+    .await
+}
+
+async fn save_execution_inner(
+    tenant: &TenantTransaction,
+    row: schedule::Model,
+    new_zone: Option<Tz>,
+    configured_zone: Tz,
+    provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
+    import_authority: Option<&super::portable_imports::PreparedImportAuthority<'_>>,
+) -> Result<schedule::Model, OperationError> {
     let db = tenant.transaction();
     if row.execution_ended_at.is_some() {
         return Err(OperationError::NotFound);
@@ -330,7 +366,8 @@ pub(crate) async fn save_execution(
         },
     )
     .await?;
-    let history = adoption_history::capture(tenant, &row, &plan, provenance).await?;
+    let history =
+        adoption_history::capture(tenant, &row, &plan, provenance, import_authority).await?;
     let mut linked = row.into_active_model();
     linked.canonical_origin = Set(plan.origin_schedule_id == linked.id.clone().unwrap());
     linked.person_schedule_id = Set(Some(plan.id));

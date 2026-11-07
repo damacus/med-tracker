@@ -56,6 +56,19 @@ pub fn household_name(input: &str) -> Option<&str> {
 }
 
 impl BrowserPrincipal {
+    pub(crate) async fn revalidate_household_locked(
+        &self,
+        tenant: &TenantTransaction,
+    ) -> Result<(), AuthenticationError> {
+        if self.account_id() != tenant.scope().actor.account_id {
+            return Err(AuthenticationError::Forbidden);
+        }
+        validate(tenant.transaction(), &self.identity, false).await?;
+        access::recheck(tenant)
+            .await
+            .map_err(super::resource::operation_error)
+    }
+
     pub(crate) async fn guardian_declaration_transaction(
         &self,
         db: &DatabaseConnection,

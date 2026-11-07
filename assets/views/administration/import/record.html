@@ -1,0 +1,11 @@
+<div class="border-t border-base-300 pt-3">
+  <h4 class="font-semibold">{{ import_labels.kinds[record.source.kind] }}{% if record.details.name %} · {{ record.details.name }}{% endif %}</h4>
+  <p>{{ import_labels.source_reference }}: {{ record.source.source }} / {{ record.source.instance }} / {{ record.source.id }}</p>
+  <p>{{ import_labels.expected }}: {{ import_labels.codes[record.expected] }} · {{ import_labels.actual }}: {% if record.actual %}{{ import_labels.codes[record.actual] }}{% else %}{{ import_labels.not_checked }}{% endif %}</p>
+  {% if record.details.dose_amount %}<p>{{ import_labels.dose }}: {{ record.details.dose_amount }} {% if record.details.dose_unit %}{{ record.details.dose_unit }}{% endif %}{% if record.details.timing %} · {{ record.details.timing }}{% endif %}</p>{% elif record.details.timing %}<p>{{ record.details.timing }}</p>{% endif %}
+  {% if record.details.stock_quantity %}<p>{{ import_labels.stock }}: {{ record.details.stock_quantity }} {% if record.details.stock_unit %}{{ record.details.stock_unit }}{% endif %}</p>{% endif %}
+  {% if record.details.occurred_at %}<p>{{ import_labels.occurred_at }}: {{ record.details.occurred_at }}</p>{% endif %}
+  {% if record.reason %}<p>{{ import_labels.reason }}: {{ import_labels.codes[record.reason] }}</p>{% endif %}
+  {% if record.destination and record.destination.href %}<a class="link" href="{{ record.destination.href }}">{{ import_labels.open_record }}</a>{% endif %}
+  {% for field in record.details.source_fields %}<p>{{ import_labels.field }}: {{ field.field }} · {{ import_labels.field_source }}: {{ field.source_value }}{% if record.expected == "match" or field.destination_value %} · {{ import_labels.field_destination }}: {% if field.destination_value %}{{ field.destination_value }}{% else %}{{ import_labels.no_value }}{% endif %}{% endif %} · {{ import_labels.field_outcome }}: {{ import_labels.codes[field.outcome] }}{% if field.reason %} · {{ import_labels.reason }}: {{ import_labels.codes[field.reason] }}{% endif %}</p>{% endfor %}
+</div>

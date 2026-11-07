@@ -1,5 +1,50 @@
 use super::*;
 
+pub(crate) fn supported_medication_category(category: &str) -> bool {
+    [
+        "Analgesic",
+        "Antibiotic",
+        "Anticoagulant",
+        "Anticonvulsant",
+        "Antidepressant",
+        "Antidiabetic",
+        "Antiemetic",
+        "Antifungal",
+        "Antihistamine",
+        "Antihypertensive",
+        "Anti-Inflammatory",
+        "Antiparasitic",
+        "Antipsychotic",
+        "Antiviral",
+        "Anxiolytic",
+        "Cardiovascular",
+        "Cholesterol",
+        "Contraceptive",
+        "Dermatological",
+        "Gastrointestinal",
+        "Hormonal",
+        "Immunosuppressant",
+        "Migraine",
+        "Mineral",
+        "Muscle Relaxant",
+        "Neurological",
+        "Oncology",
+        "Ophthalmic",
+        "Osmotic Laxative",
+        "Opioid",
+        "Osteoporosis",
+        "Respiratory",
+        "Sleep Aid",
+        "Smoking Cessation",
+        "Supplement",
+        "Thyroid",
+        "Urological",
+        "Vitamin",
+        "Weight Management",
+    ]
+    .contains(&category)
+}
+
 pub(super) fn decimal(value: &Value) -> Option<Decimal> {
     match value {
         Value::Number(number) => Decimal::from_str(&number.to_string()).ok(),
@@ -9,6 +54,25 @@ pub(super) fn decimal(value: &Value) -> Option<Decimal> {
 }
 
 pub(super) fn validate_row(kind: &str, index: usize, row: &Value) -> Vec<String> {
+    validate_row_inner(kind, index, row, true)
+}
+
+pub(crate) fn validate_source_row(kind: &str, index: usize, row: &Value) -> Vec<String> {
+    let mut errors = validate_row_inner(kind, index, row, false);
+    for field in super::contracts::required_fields(kind) {
+        if row[*field].is_null() || row[*field].as_str().is_some_and(str::is_empty) {
+            errors.push(format!("{kind}[{index}].{field} is required"));
+        }
+    }
+    errors
+}
+
+fn validate_row_inner(
+    kind: &str,
+    index: usize,
+    row: &Value,
+    check_current_age: bool,
+) -> Vec<String> {
     let mut errors = Vec::new();
     let object = row.as_object().expect("validated object");
     let label = format!("{kind}[{index}]");
@@ -203,51 +267,10 @@ pub(super) fn validate_row(kind: &str, index: usize, row: &Value) -> Vec<String>
     {
         errors.push(format!("{label}.barcode is invalid"));
     }
-    if let Some(category) = row["category"].as_str().filter(|value| !value.is_empty()) {
-        const CATEGORIES: &[&str] = &[
-            "Analgesic",
-            "Antibiotic",
-            "Anticoagulant",
-            "Anticonvulsant",
-            "Antidepressant",
-            "Antidiabetic",
-            "Antiemetic",
-            "Antifungal",
-            "Antihistamine",
-            "Antihypertensive",
-            "Anti-Inflammatory",
-            "Antiparasitic",
-            "Antipsychotic",
-            "Antiviral",
-            "Anxiolytic",
-            "Cardiovascular",
-            "Cholesterol",
-            "Contraceptive",
-            "Dermatological",
-            "Gastrointestinal",
-            "Hormonal",
-            "Immunosuppressant",
-            "Migraine",
-            "Mineral",
-            "Muscle Relaxant",
-            "Neurological",
-            "Oncology",
-            "Ophthalmic",
-            "Osmotic Laxative",
-            "Opioid",
-            "Osteoporosis",
-            "Respiratory",
-            "Sleep Aid",
-            "Smoking Cessation",
-            "Supplement",
-            "Thyroid",
-            "Urological",
-            "Vitamin",
-            "Weight Management",
-        ];
-        if !CATEGORIES.contains(&category) {
-            errors.push(format!("{label}.category is unsupported"));
-        }
+    if let Some(category) = row["category"].as_str().filter(|value| !value.is_empty())
+        && !supported_medication_category(category)
+    {
+        errors.push(format!("{label}.category is unsupported"));
     }
     if let Some(unit) = row["dose_unit"].as_str().filter(|value| !value.is_empty())
         && ![
@@ -265,7 +288,8 @@ pub(super) fn validate_row(kind: &str, index: usize, row: &Value) -> Vec<String>
     {
         errors.push(format!("{label}.dmd_system is required with dmd_code"));
     }
-    if kind == "people"
+    if check_current_age
+        && kind == "people"
         && let Some(date) = row["date_of_birth"]
             .as_str()
             .and_then(|date| NaiveDate::parse_from_str(date, "%Y-%m-%d").ok())

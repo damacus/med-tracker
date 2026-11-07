@@ -145,17 +145,30 @@ pub(super) async fn capture(
     source: &schedule::Model,
     plan: &person_schedule::Model,
     provenance: Option<&crate::models::identity::credentials::CredentialProvenance>,
+    import_authority: Option<&crate::models::care::portable_imports::PreparedImportAuthority<'_>>,
 ) -> Result<CapturedHistory, OperationError> {
     if source.person_schedule_id.is_some() {
         return Ok(CapturedHistory(Vec::new()));
     }
     let db = tenant.transaction();
-    crate::models::access::require_person_access(
-        tenant,
-        source.person_id,
-        crate::models::access::PersonAccess::Manage,
-    )
-    .await?;
+    if let Some(authority) = import_authority {
+        if !std::ptr::eq(tenant, authority.tenant())
+            || !authority
+                .allows(crate::models::ids::PersonId::from_database(
+                    source.person_id,
+                ))
+                .await?
+        {
+            return Err(OperationError::Forbidden);
+        }
+    } else {
+        crate::models::access::require_person_access(
+            tenant,
+            source.person_id,
+            crate::models::access::PersonAccess::Manage,
+        )
+        .await?;
+    }
     let declaration = if tenant.membership().person_id == source.person_id {
         None
     } else {

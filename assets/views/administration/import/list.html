@@ -1,0 +1,11 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="admin-page">
+  <a class="link" href="{{ back_url }}">{{ import_labels.back }}</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ import_labels.report }}</h1>
+  <ul class="space-y-3 mt-6">
+    {% for item in reports %}<li class="card bg-base-100 border border-base-300"><div class="card-body p-4"><a class="link" href="{{ item.url }}">{{ item.id }}</a><p>{{ import_labels.status }}: {{ import_labels.codes[item.state] }} · {{ item.created_at }}</p></div></li>{% endfor %}
+  </ul>
+  {% if next_url %}<a class="link mt-4 inline-block" href="{{ next_url }}">{{ admin_labels.member_list.next }}</a>{% endif %}
+</section>
+{% endblock content %}

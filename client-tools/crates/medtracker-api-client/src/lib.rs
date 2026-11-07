@@ -2,6 +2,7 @@ pub mod auth;
 pub mod backup;
 pub mod capabilities;
 pub mod client;
+pub mod data_imports;
 pub mod error;
 pub mod models;
 pub mod portable;

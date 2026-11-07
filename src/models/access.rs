@@ -40,6 +40,7 @@ pub struct TenantTransaction {
     scope: HouseholdScope,
     membership: membership::Model,
     settings: Option<serde_json::Value>,
+    exclusive_accounts: Vec<i64>,
 }
 
 impl TenantTransaction {
@@ -59,6 +60,10 @@ impl TenantTransaction {
         self.settings.as_ref()
     }
 
+    pub(crate) fn holds_exclusive_account(&self, id: super::ids::AccountId) -> bool {
+        self.exclusive_accounts.binary_search(&id.get()).is_ok()
+    }
+
     pub async fn commit(self) -> Result<(), OperationError> {
         self.transaction.commit().await.map_err(Into::into)
     }
@@ -73,10 +78,36 @@ pub async fn begin(
     scope: &HouseholdScope,
     settings: Option<&serde_json::Value>,
 ) -> Result<TenantTransaction, OperationError> {
+    begin_inner(db, scope, settings, None).await
+}
+
+pub(crate) async fn begin_with_exclusive_accounts(
+    db: &DatabaseConnection,
+    scope: &HouseholdScope,
+    settings: Option<&serde_json::Value>,
+    accounts: &[super::ids::AccountId],
+) -> Result<TenantTransaction, OperationError> {
+    begin_inner(db, scope, settings, Some(accounts)).await
+}
+
+async fn begin_inner(
+    db: &DatabaseConnection,
+    scope: &HouseholdScope,
+    settings: Option<&serde_json::Value>,
+    accounts: Option<&[super::ids::AccountId]>,
+) -> Result<TenantTransaction, OperationError> {
     if scope.actor.account_id <= 0 {
         return Err(OperationError::Unauthenticated);
     }
     let transaction = db.begin().await?;
+    let mut exclusive_accounts: Vec<i64> = accounts.map_or_else(Vec::new, |ids| {
+        ids.iter()
+            .map(|id| id.get())
+            .chain(std::iter::once(scope.actor.account_id))
+            .collect()
+    });
+    exclusive_accounts.sort_unstable();
+    exclusive_accounts.dedup();
     let result = async {
         transaction
             .execute_unprepared("SET LOCAL ROLE med_tracker_app")
@@ -91,6 +122,19 @@ pub async fn begin(
                 [scope.actor.account_id.to_string().into()],
             ))
             .await?;
+        for id in &exclusive_accounts {
+            account::Entity::find_by_id(*id)
+                .lock_exclusive()
+                .one(&transaction)
+                .await?
+                .ok_or(OperationError::Forbidden)?;
+        }
+        for id in &exclusive_accounts {
+            account_lockout::Entity::find_by_id(*id)
+                .lock_shared()
+                .one(&transaction)
+                .await?;
+        }
         let membership = verify_membership(&transaction, scope).await?;
         transaction
             .query_one_raw(Statement::from_sql_and_values(
@@ -112,6 +156,7 @@ pub async fn begin(
             scope: scope.clone(),
             membership,
             settings: settings.cloned(),
+            exclusive_accounts,
         }),
         Err(error) => {
             transaction.rollback().await?;

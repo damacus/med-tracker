@@ -74,6 +74,11 @@ token through MedTracker. Interactive phone sign-in uses the application's brows
 The tools never print token material. API errors show the server `code`,
 `message`, `request_id`, and `retry_after` value when present.
 
+The Rust client returns `ApiError::ImportValidation` with typed diagnostics
+for supported clinical import validation errors. Other server errors retain
+the existing `ApiError::Server` fields. Downstream exhaustive matches on
+`ApiError` must handle the new variant or use a wildcard arm.
+
 ## Command Groups
 
 ```bash

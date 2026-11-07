@@ -18,6 +18,14 @@ pub fn print_value(value: &Value, format: OutputFormat) -> Result<()> {
 
 pub fn format_api_error(error: ApiError) -> anyhow::Error {
     match error {
+        ApiError::ImportValidation(error) => format_api_error(ApiError::Server {
+            status: error.status,
+            code: error.code,
+            message: error.message,
+            request_id: error.request_id,
+            trace_id: error.trace_id,
+            retry_after: error.retry_after,
+        }),
         ApiError::Server {
             code,
             message,
@@ -117,5 +125,38 @@ fn summary(value: &Value) -> String {
             .collect::<Vec<_>>()
             .join(", "),
         _ => compact(value),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use medtracker_api_client::error::{
+        ImportDiagnostic, ImportDiagnosticReason, ImportDiagnostics, ImportValidationError,
+    };
+
+    #[test]
+    fn import_validation_keeps_error_metadata_out_of_diagnostics() {
+        let error = ApiError::ImportValidation(Box::new(ImportValidationError {
+            status: 422,
+            code: "validation_failed".into(),
+            message: "Validation failed".into(),
+            request_id: Some("req-1".into()),
+            trace_id: Some("trace-1".into()),
+            retry_after: Some("5".into()),
+            diagnostics: ImportDiagnostics {
+                items: vec![ImportDiagnostic {
+                    path: "/synthetic-private-path".into(),
+                    reason: ImportDiagnosticReason::InvalidField,
+                }],
+                truncated: false,
+            },
+        }));
+        let formatted = format_api_error(error).to_string();
+        assert_eq!(
+            formatted,
+            "validation_failed: Validation failed request_id=req-1 trace_id=trace-1 retry_after=5"
+        );
+        assert!(!formatted.contains("synthetic-private-path"));
     }
 }

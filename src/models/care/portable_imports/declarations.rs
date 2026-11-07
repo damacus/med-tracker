@@ -18,6 +18,21 @@ pub(crate) struct PreparedDeclarations {
 }
 
 impl InitialDeclarations {
+    pub(crate) fn from_attestations(
+        declarations: impl IntoIterator<
+            Item = (String, guardian_declarations::InitialGuardianAttestation),
+        >,
+    ) -> Result<Self, OperationError> {
+        let mut accepted = HashMap::new();
+        for (portable_id, attestation) in declarations {
+            if portable_id.trim().is_empty() || accepted.insert(portable_id, attestation).is_some()
+            {
+                return Err(invalid());
+            }
+        }
+        Ok(Self { accepted })
+    }
+
     pub(crate) fn parse(value: Option<&Value>) -> Result<Self, OperationError> {
         let declarations: Vec<InitialDeclaration> = match value {
             Some(value) => serde_json::from_value(value.clone()).map_err(|_| invalid())?,
@@ -73,6 +88,10 @@ impl InitialDeclarations {
 }
 
 impl PreparedDeclarations {
+    pub(super) fn is_fresh(&self, today: NaiveDate) -> bool {
+        self.today == today
+    }
+
     pub(super) fn contains(&self, portable_id: &str) -> bool {
         self.commands.contains_key(portable_id)
     }
@@ -101,4 +120,31 @@ fn invalid() -> OperationError {
         "initial_guardian_declarations",
         "requires one fresh true declaration for each new dependent and none for existing people",
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn accepted() -> guardian_declarations::InitialGuardianAttestation {
+        guardian_declarations::InitialGuardianAttestation::parse(Some(true)).unwrap()
+    }
+
+    #[test]
+    fn typed_declarations_reject_empty_and_duplicate_source_ids() {
+        assert!(InitialDeclarations::from_attestations([(String::from(" "), accepted())]).is_err());
+        assert!(
+            InitialDeclarations::from_attestations([
+                (String::from("child"), accepted()),
+                (String::from("child"), accepted()),
+            ])
+            .is_err()
+        );
+        let declarations = InitialDeclarations::from_attestations([
+            (String::from("child"), accepted()),
+            (String::from("other"), accepted()),
+        ])
+        .unwrap();
+        assert_eq!(declarations.accepted.len(), 2);
+    }
 }

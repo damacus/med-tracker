@@ -10,7 +10,7 @@ max-threads = 1
 test-threads = 4
 
 [[profile.default.overrides]]
-filter = 'binary(=migration_roles)'
+filter = 'binary(=migration_roles) | test(=data_import_atomicity::late_health_event_failure_rolls_back_import_and_persists_failed_report)'
 priority = 100
 threads-required = "num-test-threads"
 
@@ -30,6 +30,7 @@ setup = 'api-fixtures'
 [[profile.api.overrides]]
 filter = '''
 binary(=migration_roles)
+| test(=data_import_atomicity::late_health_event_failure_rolls_back_import_and_persists_failed_report)
 | test(=fixture_acceptance::scenario_seed_rolls_back_identity_if_membership_insert_fails)
 | (binary(=requests) & test(=api_v1::administration_overview::member_administration_lists_inactive_identity_and_changes_membership_state))
 | test(=invitations::invitations_mail_committed_job_has_durable_attempt_and_provider_receipt)

@@ -1,0 +1,144 @@
+{
+  "report": {
+    "id": "import-1",
+    "state": "ready",
+    "source": "med_tracker05",
+    "source_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-11-06T12:00:00Z",
+    "totals": {
+      "expected_create": 4,
+      "expected_match": 0,
+      "expected_link": 1,
+      "created": 0,
+      "matched": 0,
+      "verified_links": 0,
+      "skipped": 0,
+      "rejected": 0,
+      "unlinked": 0,
+      "decisions_required": 0,
+      "omissions": 1
+    },
+    "people": [
+      {
+        "person": {
+          "source": {
+            "source": "med_tracker05",
+            "instance": "canary",
+            "kind": "person",
+            "id": "p1"
+          },
+          "expected": "create",
+          "actual": null,
+          "destination": null,
+          "reason": null,
+          "details": {
+            "name": "Alex Example"
+          }
+        },
+        "records": [
+          {
+            "source": {
+              "source": "med_tracker05",
+              "instance": "canary",
+              "kind": "medication",
+              "id": "m1"
+            },
+            "expected": "create",
+            "actual": null,
+            "destination": null,
+            "reason": null,
+            "details": {
+              "name": "Example medicine"
+            }
+          },
+          {
+            "source": {
+              "source": "med_tracker05",
+              "instance": "canary",
+              "kind": "schedule",
+              "id": "s1"
+            },
+            "expected": "create",
+            "actual": null,
+            "destination": null,
+            "reason": null,
+            "details": {
+              "dose_amount": "1.5",
+              "dose_unit": "tablet",
+              "timing": "08:00 daily",
+              "source_fields": [
+                {
+                  "field": "frequency",
+                  "source_value": "daily",
+                  "outcome": "preserved",
+                  "destination_value": "daily",
+                  "reason": null
+                }
+              ]
+            }
+          },
+          {
+            "source": {
+              "source": "med_tracker05",
+              "instance": "canary",
+              "kind": "stock",
+              "id": "stock1"
+            },
+            "expected": "create",
+            "actual": null,
+            "destination": null,
+            "reason": null,
+            "details": {
+              "stock_quantity": "20",
+              "stock_unit": "tablet"
+            }
+          }
+        ],
+        "relationships": [
+          {
+            "kind": "person_medication",
+            "source": {
+              "source": "med_tracker05",
+              "instance": "canary",
+              "kind": "person",
+              "id": "p1"
+            },
+            "target": {
+              "source": "med_tracker05",
+              "instance": "canary",
+              "kind": "medication",
+              "id": "m1"
+            },
+            "destination_source": null,
+            "destination_target": null,
+            "expected": "link",
+            "actual": null,
+            "reason": null
+          }
+        ],
+        "omissions": [
+          {
+            "item": {
+              "source": "med_tracker05",
+              "instance": "canary",
+              "kind": "person",
+              "id": "p1"
+            },
+            "field": "location_portable_ids",
+            "reason": "obsolete_person_location",
+            "acknowledgement_id": "omit-1",
+            "acknowledged": true
+          }
+        ]
+      }
+    ],
+    "records": [],
+    "relationships": [],
+    "omissions": [],
+    "source_timezone": {
+      "name": "Europe/London",
+      "provenance": "operator_confirmed"
+    }
+  },
+  "confirmation": "opaque-reviewed-snapshot-token"
+}

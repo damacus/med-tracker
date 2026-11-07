@@ -1,5 +1,71 @@
 # Prepare a clinical transfer
 
+## Household ZIP import
+
+The 0.6 Administration import journey is intended for a complete MedTracker
+0.5 household ZIP. Local synthetic API and browser acceptance passed on
+7 November 2026; a real hosted 0.5 export has not yet been tested. See the
+[evidence and remaining checks](clinical-portable-evidence.md#household-zip-acceptance-status).
+
+1. Sign in to 0.6 with a fresh account and create or join the destination
+   household. Keep the existing 0.6 login, profile and person IDs: importing
+   clinical data does not replace credentials or create authority from source
+   carers.
+2. In Administration, select import from MedTracker 0.5, upload the household
+   ZIP and enter its passphrase. Choose and explicitly confirm the source IANA
+   timezone, such as `Europe/London`; the export does not establish it.
+   Inspect the inventory and map each source person to the intended destination.
+3. A new dependent needs a fresh guardian declaration by an eligible guardian.
+   For another adult, review any profile differences; where consent is
+   required, the recipient responds through their own account. Current
+   household, clinical and consent authority still applies. A source carer
+   relationship cannot grant it.
+4. Upload the **same ZIP and passphrase** again to create the reviewed preview.
+   Check each person and shared record, relationships, blockers and omissions.
+   Acknowledge each exact omission you accept; do not proceed if required
+   decisions or dependencies remain unresolved.
+5. Re-enter the preparation passphrase, select the explicit confirmation
+   checkbox and confirm the ready preview. Read the resulting report: processing
+   can return a completed or failed state. Compare expected and actual records
+   per person and for shared data, and check that each expected relationship
+   has a verified outcome. The existence of both records alone does not prove
+   their relationship. Keep the report for review and use it to check replay.
+
+If the source, choices, consent or destination state changes, a stale preview
+must be replaced with a new preview and reviewed again. A failed apply rolls
+back clinical writes. Restored historical administrations do not deduct current
+stock again. If confirmation returns an uncertain response, read the report or
+safely retry the same confirmation; do not assume that a response failure means
+the import failed.
+
+The API uses the common `/api/v1/households/{household_id}/data_imports`
+prefix for inspection, preview, consent, confirmation and report operations.
+See the [OpenAPI contract](openapi.v1.yaml) and
+[client tools guide](client-tools.md). Personal keys need current care scopes;
+the recipient reads and decides their own consent request.
+
+The ZIP adapter accepts a bounded household export, not every possible 0.5
+dataset. Compressed and total expanded archive size are limited to 64 MiB,
+with at most 1,024 entries, a 16 MiB payload and a 1 MiB manifest. Attachments
+are checked against their manifest and itemised as unsupported omissions;
+obsolete person-location links and other unsupported fields are also itemised
+where supported by the adapter. Unknown fields, unsafe archive entries, invalid
+counts, unresolved required references and invalid values can block the import.
+Required clinical dependencies cannot be waived by acknowledging an omission.
+
+Decimal values must fit their destination precision without changing value.
+For example, some stock fields have two decimal places, while a medication dose
+stored as binary floating point must be exactly representable. Schedule
+configuration numbers have the fixed-point and 28-decimal-place limits
+described below. Review reported field outcomes and source dependencies; this
+is not a promise of arbitrary precision or universal compatibility.
+
+## Offline preparation
+
+This is a separate, strict workflow. The ZIP adapter's itemised omissions do
+not extend or relax `portable:prepare`; its extracted-file mapping and
+rejections below remain unchanged.
+
 The offline `portable:prepare` Task prepares extracted `portable.json` and
 `manifest.json` from a `medtracker.household-export.v1` archive for the existing
 Rust v3 import API. It reads no database and makes no network/API requests.
@@ -23,7 +89,7 @@ limit also enforced. Status and safe errors go to stderr; stdout is empty on
 preparation. The example executable supports `--help`. Exit codes: 0 prepared,
 1 validation/I/O failure, 2 usage error.
 
-## Exact supported mapping
+### Exact supported mapping
 
 Input must be a complete household `medtracker.portable.v2` document with all
 eleven arrays, their exact retained-serializer fields and matching manifest counts.
@@ -58,7 +124,7 @@ conversion; they do not authenticate an export or prove source database
 completeness. Counts remain private metadata; no clinical field values appear
 outside the encrypted bundle.
 
-## Dry-run, apply and replay
+### Dry-run, apply and replay
 
 Review the receipt and [field matrix](clinical-portable-evidence.md). Pass **only
 the package's `bundle`**, with the same passphrase, to the existing
@@ -74,7 +140,7 @@ immutable-history and atomicity checks remain server authority. Historical resto
 must not deduct stock, enqueue live notifications or replace clinical timestamps
 with conversion time. Replay uses the existing import rules.
 
-## Evidence and limits
+### Evidence and limits
 
 `prepared-history-v2` uses the retained Rails household serializer with all eleven
 collections and different current/historical stock labels. Its manifest and

@@ -1,21 +1,34 @@
 mod access;
+mod aliases;
+mod authority;
+mod canonical_restore;
 mod contracts;
+mod create_only;
 mod declarations;
 mod identity;
 mod links;
 mod mapping;
 mod pauses;
 mod person_schedules;
+pub(crate) mod planning;
 mod preflight;
 mod validation;
 mod writing;
 
 pub(crate) use contracts::ImportPlan;
+pub(crate) use create_only::{CreatedRecord, create_only_records};
 pub(crate) use declarations::{InitialDeclarations, PreparedDeclarations};
 
 pub(crate) use access::authorized;
+pub(crate) use aliases::{
+    AliasError, AliasSelection, IncompatibleField, NormalizedImport, ProfileDifference,
+    ResolvedAlias, normalize_aliases,
+};
+pub(crate) use authority::PreparedImportAuthority;
+pub(crate) use canonical_restore::{CanonicalRestoredSchedule, initialize_canonical_schedules};
 pub(crate) use identity::ExistingIndex;
 pub(crate) use preflight::preflight;
+pub(crate) use validation::{supported_medication_category, validate_source_row};
 pub(crate) use writing::write_records;
 
 use crate::models::{

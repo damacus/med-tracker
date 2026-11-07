@@ -181,6 +181,11 @@ impl<'a> Page<'a> {
         data["admin_section"] = json!(section);
         let template = match screen {
             Screen::Index => {
+                data["import_url"] = json!(format!(
+                    "/households/{}/admin/data_imports/new{}",
+                    self.slug,
+                    super::language_suffix(self.language, self.explicit_language)
+                ));
                 let overview = overview.ok_or(OperationError::Unavailable)?;
                 let heading = format!(
                     "{} {}",

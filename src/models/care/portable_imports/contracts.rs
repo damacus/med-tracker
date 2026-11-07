@@ -18,10 +18,12 @@ pub(super) const V2_TYPES: &[&str] = &[
     "health_events",
 ];
 
+#[derive(Clone)]
 pub(crate) struct ImportPlan {
     records: Map<String, Value>,
     pub(crate) counts: Value,
     pub(super) errors: Vec<String>,
+    pub(super) source_diagnostics: Vec<super::preflight::PreflightDiagnostic>,
     pub(super) format: PortableFormat,
 }
 
@@ -51,6 +53,7 @@ impl ImportPlan {
             .ok_or("Portable data records are required")?;
         let mut counts = Map::new();
         let mut errors = Vec::new();
+        let mut source_diagnostics = Vec::new();
         for (kind, rows) in records {
             if !BASE_TYPES.contains(&kind.as_str())
                 && !(format.includes_extended_records() && V2_TYPES.contains(&kind.as_str()))
@@ -100,10 +103,18 @@ impl ImportPlan {
                     .map(String::as_str)
                     .collect();
                 if !forbidden.is_empty() {
-                    errors.push(format!(
+                    let detail = format!(
                         "{kind}[{index}] includes Rails numeric IDs: {}",
                         forbidden.join(", ")
-                    ));
+                    );
+                    errors.push(detail.clone());
+                    source_diagnostics.push(super::preflight::PreflightDiagnostic {
+                        collection: Some(kind.clone()),
+                        portable_id: Some(portable_id.to_owned()),
+                        field: None,
+                        reason: super::preflight::DiagnosticReason::InvalidSource,
+                        detail,
+                    });
                 }
                 if object.keys().any(|key| {
                     !allowed.contains(&key.as_str()) && !forbidden.contains(&key.as_str())
@@ -122,6 +133,7 @@ impl ImportPlan {
             records: records.clone(),
             counts: Value::Object(counts),
             errors,
+            source_diagnostics,
             format,
         })
     }
@@ -302,7 +314,7 @@ fn allowed_fields(kind: &str) -> &'static [&'static str] {
     }
 }
 
-fn required_fields(kind: &str) -> &'static [&'static str] {
+pub(super) fn required_fields(kind: &str) -> &'static [&'static str] {
     match kind {
         "people" => &["name"],
         "locations" => &["name"],

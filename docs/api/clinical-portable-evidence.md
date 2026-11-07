@@ -5,6 +5,72 @@ It covers the retained Rails serializer against fresh Rust, using synthetic
 records only. It is not a live-data migration procedure or proof of complete
 Rails database export.
 
+## Household ZIP acceptance status
+
+The newer 0.5 household ZIP journey is described in the
+[transfer guide](clinical-transfer-preparation.md#household-zip-import).
+On 7 November 2026, local checks exercised it with synthetic ZIP data, not an
+export from a hosted 0.5 installation:
+
+- The final combined integration retry passed 61 of 61 cases: 36 new import
+  cases and 25 affected older portable-import cases. These cover RLS, consent
+  and withdrawal, self preview, pagination, create-only native values and
+  foreign keys, junctions, canonical history, stock, replay, concurrency
+  and rollback after a late write failure. See the
+  `tests/care_api/data_import_authority.rs`,
+  `tests/care_api/data_import_atomicity.rs` and
+  `tests/care_api/data_import_report_access.rs`.
+- The whole-application browser suite passed 75 journeys, including the
+  Administration import journeys in `tests/browser/administration_polish.rs`.
+  Its Ready and Completed pages were captured on
+  [desktop at Ready](../screenshots/clinical-data-import/ready-desktop.png),
+  [mobile at Ready](../screenshots/clinical-data-import/ready-mobile.png),
+  [desktop at Completed](../screenshots/clinical-data-import/completed-desktop.png)
+  and [mobile at Completed](../screenshots/clinical-data-import/completed-mobile.png).
+  The journey checked that both reports fit a 390 px mobile viewport.
+- Global Rust unit tests (359), JavaScript tests (34) and documentation checks
+  passed. The client-tools CI suite passed 33 tests. These are suite-wide
+  counts, not counts of import-specific tests.
+- Local synthetic canary boot and replay passed two cases; a separate ignored
+  template-concurrency case passed once.
+
+The first full native integration run completed 1,241 cases: 1,232 passed and
+nine new cases failed. After fixes, the combined 61-case retry above passed.
+This is not a clean full-suite rerun or a single passing `task ci` invocation.
+The final strict lint rerun passed. After the final index repair, all six
+targeted import browser journeys also passed.
+
+The older fixture evidence below was documented at revision
+`95a5e0722eab755d3d953c683bf68f254f51e1ee` and remains limited to its named
+tests and synthetic inputs. Neither the older fixtures nor the new local checks
+prove a hosted acceptance case or universal compatibility.
+
+The isolated Home Ops configuration in
+[PR #4716](https://github.com/damacus/home-ops/pull/4716) was reviewed with
+Flux suspended, the web deployment at zero replicas and the initialisation
+job suspended. It is configuration evidence, not a running source. This work
+has not provisioned, seeded or exported a real hosted 0.5 canary. Independent
+canary credentials, provisioning, seed and export remain pending. No production
+deployment is authorised, and no hosted address or operator access has been
+verified.
+
+The pending canary acceptance must capture and compare:
+
+1. The expected household records and relationships from the reviewed seed
+   specification, including values and dates at the actual seed time.
+2. The actual 0.5 export: archive identity and checksum, inventory, records,
+   relationships and omissions.
+3. The reviewed 0.6 preview: per-person and shared expected outcomes,
+   dependencies, consent decisions and exact omission acknowledgements.
+4. The completed 0.6 report and independently read destination records and
+   verified relationships, including replay and historical stock behaviour.
+
+Record discrepancies at each stage and preserve the source. Acceptance also
+needs authorised operator access to a separately provisioned source and a fresh
+0.6 destination, followed by a visual check of imported people, medicines and
+everyday care workflows. Until those steps occur, there is no real-canary or
+hosted acceptance result.
+
 ## Fixture provenance
 
 The fixtures live in `tests/fixtures/portable_rails/`. They were produced by a
@@ -62,9 +128,9 @@ are not cross-installation clinical provenance and must not be copied as local
 concurrency tokens. Decimal strings are compared numerically, without losing
 fractional stock; clinical timestamps are compared at microsecond precision.
 
-The fields below are emitted by the retained serializers and accepted by the
-current import contract. Acceptance of a field name alone does not establish
-all values or export-selection completeness.
+The fields below describe the retained serializers and the older portable
+import contract exercised by these fixtures. Acceptance of a field name alone
+does not establish all values, new ZIP behaviour or export-selection completeness.
 
 | Collection | Fields beyond common identity | Mapping / boundary |
 |---|---|---|
@@ -108,8 +174,8 @@ v3 export/import and obsolete-link rejection; they do not turn Rails v2 into v3.
 
 - A reviewed operator path for complete clinical transfer when Rails person-location
   links are non-empty, historical taken-from labels differ from current stock,
-  or health events are absent from the chosen export. No
-  automatic data removal or ZIP restoration is delivered here. The explicit
+  or health events are absent from the chosen export. This older fixture
+  evidence does not establish automatic data removal or ZIP restoration. The explicit
   [household preparation path](clinical-transfer-preparation.md) now addresses
   moved-stock history and included health events when obsolete links are empty;
   it deliberately rejects nonempty obsolete links and attachments.
@@ -125,3 +191,36 @@ v3 export/import and obsolete-link rejection; they do not turn Rails v2 into v3.
 Fresh accounts and authentication are configured separately. No Rails database
 adoption, credential migration, reverse migration, live export or deployment is
 included. Profile JSON/ZIP downloads remain a separate contract under #2513.
+
+## Local Rails 0.5.34 acceptance (7 November 2026)
+
+The actual synthetic Rails 0.5.34 household ZIP was downloaded and submitted to
+the Loco import form. After local decimal and unsupported-category fixes, the
+unchanged archive was inspected, previewed, confirmed and replayed with explicit
+adult consent and a guardian declaration. Native records and a Loco backup were
+compared with the source, including stock, dose history and relationships. A
+focused negative test confirms that omitting the category acknowledgement blocks
+confirmation; the related 17 unit and 36 integration tests passed locally.
+The original ZIP SHA-256 is
+`8ad6b1594b876b31a9ff26cb94d9c2ec94cee8e705b86b6089cb702dcd456e86`.
+The completed report recorded eight created records, two matched people and 12
+verified relationships, with none rejected or unlinked. Its 25 acknowledged
+omissions comprise 20 source update-time/etag fields, three obsolete
+person-location links and two unsupported medication categories. The original
+category values remain visible in the report.
+
+Native comparisons verified both medicines, daily schedule, as-needed assignment,
+two historical takes, their medicine/location links and Rowan's fresh guardian
+declaration. Stock remained 28 and 16; replay preserved the captured records.
+The stopped worker's queue count remained four, establishing no net increase
+rather than equality of every queued job. Loco's profile backup was downloaded
+and compared with the source; it is a different format from the Rails household
+ZIP. Existing adult identities and their portable IDs were retained deliberately.
+
+The controller reviewed the scoped fixes and the desktop/mobile completed-report
+screenshots. Strict native lint and documentation checks passed. Full CI has not
+been rerun for these local changes; the previously deferred browser failure was
+not investigated. This is local evidence for this source version only, with no
+attachments in the archive; it is not hosted or universal compatibility evidence.
+Detailed artifacts and comparisons are recorded in the local acceptance report
+under `.superpowers/sdd/clinical-data-import/`.

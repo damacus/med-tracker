@@ -1,0 +1,8 @@
+<div class="border-t border-base-300 pt-3">
+  <h4 class="font-semibold">{{ import_labels.relationship }}: {{ import_labels.kinds[relationship.kind] }}</h4>
+  <p>{{ import_labels.kinds[relationship.source.kind] }} {{ relationship.source.source }} / {{ relationship.source.instance }} / {{ relationship.source.id }} → {{ import_labels.kinds[relationship.target.kind] }} {{ relationship.target.source }} / {{ relationship.target.instance }} / {{ relationship.target.id }}</p>
+  <p>{{ import_labels.expected }}: {{ import_labels.codes[relationship.expected] }} · {{ import_labels.actual }}: {% if relationship.actual %}{{ import_labels.codes[relationship.actual] }}{% else %}{{ import_labels.not_checked }}{% endif %}</p>
+  {% if relationship.reason %}<p>{{ import_labels.reason }}: {{ import_labels.codes[relationship.reason] }}</p>{% endif %}
+  {% if relationship.destination_source and relationship.destination_source.href %}<a class="link" href="{{ relationship.destination_source.href }}">{{ import_labels.open_source }}</a>{% endif %}
+  {% if relationship.destination_target and relationship.destination_target.href %}<a class="link" href="{{ relationship.destination_target.href }}">{{ import_labels.open_target }}</a>{% endif %}
+</div>

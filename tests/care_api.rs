@@ -18,6 +18,24 @@ mod audit_logs;
 mod audit_logs_browser;
 #[path = "care_api/canonical_identity.rs"]
 mod canonical_identity;
+#[path = "care_api/data_import_atomicity.rs"]
+mod data_import_atomicity;
+#[path = "care_api/data_import_authority.rs"]
+mod data_import_authority;
+#[path = "care_api/data_import_confirmation_transport.rs"]
+mod data_import_confirmation_transport;
+#[path = "care_api/data_import_consent_transport.rs"]
+mod data_import_consent_transport;
+#[path = "care_api/data_import_consents.rs"]
+mod data_import_consents;
+#[path = "care_api/data_import_inspection.rs"]
+mod data_import_inspection;
+#[path = "care_api/data_import_projection.rs"]
+mod data_import_projection;
+#[path = "care_api/data_import_report_access.rs"]
+mod data_import_report_access;
+#[path = "care_api/data_import_transport.rs"]
+mod data_import_transport;
 
 #[path = "care_api/approved_sharing.rs"]
 mod approved_sharing;
@@ -47,6 +65,8 @@ mod crud;
 mod dashboard;
 #[path = "care_api/data_exports.rs"]
 mod data_exports;
+#[path = "care_api/data_import_runs.rs"]
+mod data_import_runs;
 #[path = "care_api/dosages.rs"]
 mod dosages;
 #[path = "care_api/dose_history.rs"]
@@ -119,6 +139,8 @@ mod profile_export;
 mod push_subscriptions;
 #[path = "care_api/reports.rs"]
 mod reports;
+#[path = "support/request_trace_capture.rs"]
+mod request_trace_capture;
 #[path = "care_api/resource_credentials.rs"]
 mod resource_credentials;
 #[path = "care_api/review_prompts.rs"]
@@ -176,6 +198,74 @@ use sea_orm::{
     PaginatorTrait, QueryFilter,
 };
 use serde_json::{Value, json};
+
+fn import_fixture_barcode(tag: &str) -> String {
+    let id = uuid::Uuid::parse_str(tag).unwrap();
+    format!("8{:012}", id.as_u128() % 1_000_000_000_000)
+}
+
+fn isolated_import_payload(tag: &str) -> String {
+    include_str!("fixtures/portable_rails/prepared-history-v2.json")
+        .replace(
+            "synthetic-rails-person-prepared-history-v2",
+            &format!("synthetic-rails-person-{tag}"),
+        )
+        .replace(
+            "portable-fixture-prepared-history-v2@example.test",
+            &format!("portable-fixture-{tag}@example.test"),
+        )
+        .replace("550e8400-e29b-41d4-a716-000000000006", tag)
+        .replace("2000000000060", &import_fixture_barcode(tag))
+}
+
+fn import_diagnostics(trace: &request_trace_capture::Captured) -> Vec<String> {
+    let fields = [
+        "medtracker.import.failure_stage=",
+        "medtracker.import.failure_category=",
+        "medtracker.import.preview_stage=",
+        "medtracker.import.preview_category=",
+        "medtracker.import.index_query=",
+        "medtracker.import.index_table=",
+        "medtracker.import.index_column=",
+        "medtracker.import.index_error=",
+        "medtracker.import.index_source_kind=",
+        "medtracker.import.invariant=",
+        "medtracker.import.record_kind=",
+        "medtracker.import.mismatch_column=",
+        "medtracker.import.linked_matches=",
+        "medtracker.import.canonical_origin=",
+        "medtracker.import.zone_matches=",
+        "medtracker.import.revision_matches=",
+        "medtracker.import.execution_link_matches=",
+        "medtracker.import.clinical_matches=",
+    ];
+    let categories = [
+        "error.type=\"constraint\"",
+        "error.type=\"connection\"",
+        "error.type=\"timeout\"",
+        "error.type=\"query\"",
+        "error.type=\"execution\"",
+        "error.type=\"other\"",
+        "error.type=\"import_result_verification\"",
+        "error.type=\"import_projection_mismatch\"",
+        "error.type=\"import_bridge_invalid\"",
+        "error.type=\"import_document_encode\"",
+        "error.type=\"import_snapshot_invalid\"",
+        "error.type=\"import_prepared_encode\"",
+        "error.type=\"import_token_random\"",
+        "error.type=\"import_identity_mapping_mismatch\"",
+        "error.type=\"import_identity_source_missing\"",
+    ];
+    trace
+        .events()
+        .iter()
+        .flat_map(|event| event.split_whitespace())
+        .filter(|field| {
+            fields.iter().any(|name| field.starts_with(name)) || categories.contains(field)
+        })
+        .map(str::to_owned)
+        .collect()
+}
 
 struct Application {
     fixture: Fixture,
