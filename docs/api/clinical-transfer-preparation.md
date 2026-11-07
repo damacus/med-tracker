@@ -24,7 +24,8 @@ the intended version has been verified and made available.
    Check each person and shared record, relationships, blockers and omissions.
    Acknowledge each exact omission you accept; do not proceed if required
    decisions or dependencies remain unresolved.
-5. Explicitly confirm the ready preview. Read the resulting report: processing
+5. Re-enter the preparation passphrase, select the explicit confirmation
+   checkbox and confirm the ready preview. Read the resulting report: processing
    can return a completed or failed state. Compare expected and actual records
    per person and for shared data, and check that each expected relationship
    has a verified outcome. The existence of both records alone does not prove

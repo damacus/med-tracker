@@ -4978,7 +4978,7 @@ paths:
       operationId: confirmClinicalImport
       tags: [Household, Portability]
       summary: Confirm a reviewed clinical import.
-      description: Requires care:write and current manager, clinical and consent authority. JSON body limit is 64 KiB. Processing can return a completed or persisted failed report; inspect its state. The HTTP transport is pending implementation.
+      description: Requires care:write and current manager, clinical and consent authority. JSON body limit is 64 KiB. Processing can return a completed or persisted failed report; inspect its state. The HTTP transport is implemented in source; integrated verification is pending.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - name: id

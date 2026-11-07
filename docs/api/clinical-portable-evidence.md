@@ -19,8 +19,8 @@ The isolated Home Ops configuration in
 [PR #4716](https://github.com/damacus/home-ops/pull/4716) was reviewed with
 Flux suspended, the web deployment at zero replicas and the initialisation
 job suspended. It is configuration evidence, not a running source. This work
-has not provisioned, seeded or exported a real hosted 0.5 canary: independent
-1Password credentials were deferred while the owner sleeps. No production
+has not provisioned, seeded or exported a real hosted 0.5 canary. Independent
+canary credentials, provisioning, seed and export remain pending. No production
 deployment is authorised, and no hosted address or operator access has been
 verified.
 
