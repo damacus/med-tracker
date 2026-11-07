@@ -8,4 +8,5 @@ pub(crate) mod plan_projection;
 pub mod preview;
 pub mod projection;
 pub mod reports;
+pub(crate) mod result_projection;
 pub(crate) mod upload_gate;

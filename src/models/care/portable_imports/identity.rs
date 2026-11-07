@@ -208,7 +208,7 @@ impl ExistingIndex {
                 .any(|row| row["portable_id"] == portable_id)
     }
 
-    pub(super) fn get(&self, kind: &str, portable_id: &str) -> Option<i64> {
+    pub(crate) fn get(&self, kind: &str, portable_id: &str) -> Option<i64> {
         self.ids
             .get(kind)
             .and_then(|ids| ids.get(portable_id))

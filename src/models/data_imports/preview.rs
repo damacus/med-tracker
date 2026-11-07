@@ -257,7 +257,14 @@ async fn create_inner(
     let run = NewRun {
         report: report.clone(),
         receipt: prepared.receipt,
-        context: Some(PreviewContext::new(expectation, recipient_consents)),
+        context: Some(PreviewContext::new(
+            expectation,
+            recipient_consents,
+            Some(prepared.inventory.clone()),
+            confirmation
+                .as_ref()
+                .map(super::result_projection::token_verifier),
+        )),
         encrypted_prepared,
         source_timezone: timezone,
         mappings,

@@ -4,7 +4,7 @@ use super::{
     consents::{self, ConsentBinding},
     contracts::{
         ConsentInput, PersonDestination, PersonMapping, PreparedArchive, RecordKind,
-        SourceIdentity, SourceTimeZone,
+        SourceIdentity, SourceInventory, SourceTimeZone,
     },
     inspection::{self, InspectionError, Upload},
 };
@@ -84,6 +84,27 @@ pub(crate) async fn validate<'a>(
     tenant: &'a TenantTransaction,
     prepared: &PreparedArchive,
     payload: serde_json::Value,
+    timezone: SourceTimeZone,
+    choices: IdentityChoices<'_>,
+    today: chrono::NaiveDate,
+) -> Result<ValidatedIdentity<'a>, IdentityValidationError> {
+    validate_stored(
+        tenant,
+        &prepared.inventory,
+        &prepared.archive_sha256,
+        payload,
+        timezone,
+        choices,
+        today,
+    )
+    .await
+}
+
+pub(crate) async fn validate_stored<'a>(
+    tenant: &'a TenantTransaction,
+    inventory: &SourceInventory,
+    archive_sha256: &str,
+    payload: serde_json::Value,
     _timezone: SourceTimeZone,
     choices: IdentityChoices<'_>,
     today: chrono::NaiveDate,
@@ -100,16 +121,14 @@ pub(crate) async fn validate<'a>(
     {
         return Err(OperationError::Forbidden.into());
     }
-    let source_people: HashSet<_> = prepared
-        .inventory
+    let source_people: HashSet<_> = inventory
         .records
         .iter()
         .filter(|record| record.identity.kind == RecordKind::Person)
         .map(|record| record.identity.clone())
         .collect();
     if source_people.len()
-        != prepared
-            .inventory
+        != inventory
             .records
             .iter()
             .filter(|record| record.identity.kind == RecordKind::Person)
@@ -254,7 +273,7 @@ pub(crate) async fn validate<'a>(
                         .find(|entry| entry.source_person == mapping.source)
                     {
                         let binding = ConsentBinding {
-                            source_sha256: prepared.archive_sha256.clone(),
+                            source_sha256: archive_sha256.to_owned(),
                             source_person: mapping.source.clone(),
                             target_person: *id,
                         };

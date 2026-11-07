@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 pub use super::contracts::SourceTimeZone;
 use super::contracts::{
     ConsentInput, ImportReport, ImportState, PersonMapping, PreparationReceipt, PreviewToken,
+    SourceInventory,
 };
 use super::identity::RecipientConsent;
 use crate::models::{
@@ -23,16 +24,24 @@ pub struct PreviewContext(PreviewContextDocument);
 struct PreviewContextDocument {
     expectation: Option<DestinationExpectation>,
     recipient_consents: Vec<RecipientConsent>,
+    #[serde(default)]
+    inventory: Option<SourceInventory>,
+    #[serde(default)]
+    token_verifier: Option<String>,
 }
 
 impl PreviewContext {
     pub(crate) fn new(
         expectation: Option<DestinationExpectation>,
         recipient_consents: Vec<RecipientConsent>,
+        inventory: Option<SourceInventory>,
+        token_verifier: Option<String>,
     ) -> Self {
         Self(PreviewContextDocument {
             expectation,
             recipient_consents,
+            inventory,
+            token_verifier,
         })
     }
 
@@ -42,6 +51,14 @@ impl PreviewContext {
 
     pub(crate) fn recipient_consents(&self) -> &[RecipientConsent] {
         &self.0.recipient_consents
+    }
+
+    pub(crate) fn inventory(&self) -> Option<&SourceInventory> {
+        self.0.inventory.as_ref()
+    }
+
+    pub(crate) fn token_verifier(&self) -> Option<&str> {
+        self.0.token_verifier.as_deref()
     }
 }
 
@@ -137,6 +154,8 @@ pub async fn create(tenant: &TenantTransaction, run: &NewRun) -> Result<(), Oper
             context: run.context.as_ref().map(|context| PreviewContextDocument {
                 expectation: context.expectation().cloned(),
                 recipient_consents: context.recipient_consents().to_vec(),
+                inventory: context.inventory().cloned(),
+                token_verifier: context.token_verifier().map(str::to_owned),
             }),
         })?),
         mappings: Set(document(&run.mappings)?),
@@ -166,12 +185,9 @@ pub async fn find(
         return Err(OperationError::unavailable("import_timezone_mismatch"));
     }
     let (receipt, context) = match read_document(row.receipt)? {
-        StoredReceipt::Envelope(envelope) => (
-            envelope.receipt,
-            envelope.context.map(|context| {
-                PreviewContext::new(context.expectation, context.recipient_consents)
-            }),
-        ),
+        StoredReceipt::Envelope(envelope) => {
+            (envelope.receipt, envelope.context.map(PreviewContext))
+        }
         StoredReceipt::Legacy(receipt) => (receipt, None),
     };
     Ok(Some(StoredRun {
@@ -316,7 +332,12 @@ mod tests {
             },
             request_id: "request-id".into(),
         };
-        let context = PreviewContext::new(Some(expectation.clone()), vec![recipient.clone()]);
+        let context = PreviewContext::new(
+            Some(expectation.clone()),
+            vec![recipient.clone()],
+            None,
+            None,
+        );
         let encoded = document(&ReceiptEnvelope {
             receipt: receipt.clone(),
             context: Some(context.0.clone()),
@@ -335,7 +356,31 @@ mod tests {
             panic!("expected legacy receipt");
         };
         assert_eq!(reloaded_receipt, receipt);
-        let blocked = PreviewContext::new(None, vec![]);
+        let blocked = PreviewContext::new(None, vec![], None, None);
         assert!(blocked.expectation().is_none());
+    }
+
+    #[test]
+    fn preview_context_retains_inventory_and_accepts_older_documents() {
+        let inventory = super::super::contracts::SourceInventory {
+            records: vec![],
+            relationships: vec![],
+            omissions: vec![],
+        };
+        let context = PreviewContext::new(
+            None,
+            vec![],
+            Some(inventory.clone()),
+            Some("verifier".into()),
+        );
+        let encoded = document(&context.0).unwrap();
+        let decoded: PreviewContextDocument = read_document(encoded).unwrap();
+        assert_eq!(decoded.inventory, Some(inventory));
+        assert_eq!(decoded.token_verifier.as_deref(), Some("verifier"));
+
+        let old = serde_json::json!({"expectation": null, "recipient_consents": []});
+        let decoded: PreviewContextDocument = read_document(old).unwrap();
+        assert!(decoded.inventory.is_none());
+        assert!(decoded.token_verifier.is_none());
     }
 }

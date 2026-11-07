@@ -23,6 +23,7 @@ destination_ids!(
     PauseId,
     OccurrenceId,
     HealthEventId,
+    NotificationPreferenceId,
     AttachmentId
 );
 
@@ -146,6 +147,7 @@ pub enum DestinationId {
     Pause(PauseId),
     Occurrence(OccurrenceId),
     HealthEvent(HealthEventId),
+    NotificationPreference(NotificationPreferenceId),
     Attachment(AttachmentId),
 }
 
