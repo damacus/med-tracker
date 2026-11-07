@@ -775,20 +775,40 @@ mod import_presentation_tests {
     }
 
     #[test]
+    fn preparation_diagnostics_escape_paths_and_never_fill_credentials() {
+        let view = TeraView::build().expect("views load");
+        let labels = labels();
+        let data = json!({"title":"Import", "lang":"en", "language_suffix":"", "labels":labels,
+            "import_labels":labels["administration"]["import"], "back_url":"/back", "inspect_url":"/inspect",
+            "authenticity_token":"csrf-test", "errors":[], "source_timezone":"Europe/Paris",
+            "preparation_diagnostics":{"items":[{"path":"/people/<script>alert(1)</script>","reason":"invalid_field"}],"truncated":true}});
+        let html = view
+            .render("administration/import/upload.html", data)
+            .expect("diagnostics");
+        assert!(html.contains("Europe/Paris"));
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(!html.contains("<script>alert(1)</script>"));
+        assert!(html.contains("Invalid field"));
+        assert!(html.contains("Only the first 100 fields"));
+        assert!(!html.contains("name=\"passphrase\" type=\"password\" value="));
+    }
+
+    #[test]
     fn mapping_and_personal_consent_forms_require_attributable_choices() {
         let view = TeraView::build().expect("views load");
         let labels = labels();
-        let shared = json!({"title": "Import", "lang": "en", "language_suffix": "", "labels": labels,
+        let shared = json!({"title": "Import", "lang": "es", "language_suffix": "", "labels": labels,
             "import_labels": labels["administration"]["import"], "back_url": "/back", "preview_url": "/preview",
             "decision_url": "/decision", "consent_url":"/request", "source_sha256":"a", "authenticity_token": "csrf-test", "inspection_token": "inspection-test",
             "source_timezone": "Europe/London", "errors": [], "omissions": [],
             "people": [{"name":"Alex", "key":"p1", "source":{"source":"med_tracker05", "instance":"canary", "id":"p1"},
-                "destinations": [{"value":"12", "name":"Alex", "selected":false}], "request_destinations":[], "consent_status":"pending", "consent_choices":["self_consent"], "may_request_consent":false, "may_create_dependent":true, "new_dependent_selected":false}],
+                "destinations": [{"value":"12", "name":"Alex", "selected":false}], "request_destinations":[{"value":"13","name":"Casey"}], "consent_status":"pending", "consent_choices":["self_consent"], "may_request_consent":false, "may_create_dependent":true, "new_dependent_selected":false}],
             "decision":"pending", "expected":"binding", "request": {"requester_name":"Admin", "household_name":"Household", "person_name":"Alex", "source_name":"Alex (source)", "source_sha256":"abc", "source":{"source":"med_tracker05", "instance":"canary", "id":"p1"}}});
         let mapping = view
             .render("administration/import/mapping.html", shared.clone())
             .expect("mapping");
         assert!(mapping.contains("name=\"mapping[p1]\""));
+        assert!(mapping.contains("name=\"lang\" value=\"es\""));
         assert!(mapping.contains("name=\"guardian[p1]\""));
         assert!(mapping.contains("name=\"timezone_confirmed\" value=\"true\" required"));
         assert!(mapping.contains("Select the same export"));
@@ -797,6 +817,7 @@ mod import_presentation_tests {
             .render("administration/import/consent.html", shared)
             .expect("personal consent");
         assert!(consent.contains("name=\"decision\" value=\"accept\" required"));
+        assert!(consent.contains("name=\"lang\" value=\"es\""));
         assert!(consent.contains("name=\"decision\" value=\"decline\" required"));
         assert!(consent.contains("Only your own request is shown"));
         assert!(!consent.contains("inspection-test"));

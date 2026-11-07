@@ -300,6 +300,7 @@ pub(crate) async fn create(
         None => language,
     };
     let explicit = fields.values.contains_key("lang");
+    let submitted_timezone = fields.values.get("source_timezone").cloned();
     if token
         .verify(
             fields
@@ -314,7 +315,7 @@ pub(crate) async fn create(
     let input = match preview_input(fields) {
         Ok(value) => value,
         Err(error) => {
-            return upload::upload_page(
+            return upload::upload_page_with_timezone(
                 &ctx,
                 &session,
                 &token,
@@ -324,6 +325,8 @@ pub(crate) async fn create(
                 selected_language,
                 explicit,
                 Some(error),
+                submitted_timezone.as_deref(),
+                None,
             )
             .await;
         }
@@ -338,8 +341,9 @@ pub(crate) async fn create(
             {
                 return presentation_error(&view, selected_language, error);
             }
-            Err(_) => {
-                return upload::upload_page(
+            Err(error) => {
+                let diagnostics = upload::preparation_diagnostics(&error);
+                return upload::upload_page_with_timezone(
                     &ctx,
                     &session,
                     &token,
@@ -349,6 +353,8 @@ pub(crate) async fn create(
                     selected_language,
                     explicit,
                     Some(invalid()),
+                    submitted_timezone.as_deref(),
+                    diagnostics,
                 )
                 .await;
             }

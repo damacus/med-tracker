@@ -6,6 +6,13 @@
   <p class="mt-2">{{ import_labels.intro }}</p>
   <p class="mt-2">{{ import_labels.credentials }}</p>
   {% include "components/form_errors.html" %}
+  {% if preparation_diagnostics is defined %}
+  <section class="mt-4" aria-labelledby="preparation-diagnostics-title">
+    <h2 id="preparation-diagnostics-title" class="font-semibold">{{ import_labels.preparation_diagnostics }}</h2>
+    <ul class="list-disc pl-6">{% for item in preparation_diagnostics.items %}<li>{{ item.path }}: {{ import_labels[item.reason] }}</li>{% endfor %}</ul>
+    {% if preparation_diagnostics.truncated %}<p>{{ import_labels.preparation_truncated }}</p>{% endif %}
+  </section>
+  {% endif %}
   <form id="administration-form" action="{{ inspect_url }}" method="post" enctype="multipart/form-data" class="card bg-base-100 border border-base-300 mt-6">
     <div class="card-body gap-4">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">

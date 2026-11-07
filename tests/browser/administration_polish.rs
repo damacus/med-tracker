@@ -38,16 +38,31 @@ async fn import_confirmation_uses_real_preview_and_replays_without_duplicate_peo
         page.locator("input[name^='guardian[']").click(None).await.unwrap();
         page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
         expect(page.locator("main")).to_contain_text("Ready").await.unwrap();
-        let wrong: bool = page.evaluate("async () => {const f=document.querySelector('#administration-form'); const d=new URLSearchParams(new FormData(f)); d.set('preview_token','AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'); d.set('passphrase','password'); d.set('confirm','true'); const r=await fetch(f.action,{method:'POST',body:d}); const h=await r.text(); return r.status===409 && !h.includes('password') && !h.includes('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');}", None::<&()>).await.unwrap();
+        let wrong: bool = page.evaluate("async () => {const f=document.querySelector('#administration-form'); const d=new URLSearchParams(new FormData(f)); d.set('preview_token','AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'); d.set('passphrase','password'); d.set('confirm','true'); const r=await fetch(f.action,{method:'POST',body:d}); const h=await r.text(); return r.status===403 && !h.includes('password') && !h.includes('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');}", None::<&()>).await.unwrap();
         assert!(wrong);
         let replay: serde_json::Value = page.evaluate("() => {const f=document.querySelector('#administration-form'); return {url:f.action,csrf:f.elements.authenticity_token.value,token:f.elements.preview_token.value};}", None::<&()>).await.unwrap();
         let ready_history: bool = page.evaluate("async x => {const r=await fetch(x.url.replace(/\\/confirm$/, '')); const h=await r.text(); return r.ok && h.includes('Ready') && h.includes('name=\"preview_token\"');}", Some(&replay)).await.unwrap();
         assert!(ready_history);
+        assert!(page.evaluate::<(), bool>("() => !!document.querySelector('label[for=passphrase]') && !!document.querySelector('label:has([name=confirm])')", None).await.unwrap());
+        page.locator("#passphrase").focus().await.unwrap();
+        page.keyboard().press("Tab", None).await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => document.activeElement.name === 'confirm'", None).await.unwrap());
+        let screenshots = std::path::Path::new("docs/screenshots/clinical-data-import");
+        std::fs::create_dir_all(screenshots).unwrap();
+        for (name, width, height) in [("ready-desktop.png", 1440, 1000), ("ready-mobile.png", 390, 844)] {
+            page.set_viewport_size(Viewport { width, height }).await.unwrap();
+            page.screenshot_to_file(&screenshots.join(name), ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
+        }
+        page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
         page.locator("#passphrase").fill("password", None).await.unwrap();
         page.locator("[name=confirm]").click(None).await.unwrap();
         page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
         expect(page.locator("main")).to_contain_text("Completed").await.unwrap();
         assert_eq!(page.locator("input[name=preview_token]").count().await.unwrap(), 0);
+        for (name, width, height) in [("completed-desktop.png", 1440, 1000), ("completed-mobile.png", 390, 844)] {
+            page.set_viewport_size(Viewport { width, height }).await.unwrap();
+            page.screenshot_to_file(&screenshots.join(name), ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
+        }
         let count = person::Entity::find().count(&journey.admin).await.unwrap();
         let replayed: bool = page.evaluate("async x => {const d=new URLSearchParams({authenticity_token:x.csrf,preview_token:x.token,passphrase:'password',confirm:'true'}); const r=await fetch(x.url,{method:'POST',body:d}); return r.ok && (await r.text()).includes('Completed');}", Some(&replay)).await.unwrap();
         assert!(replayed);
@@ -64,7 +79,10 @@ async fn import_confirmation_uses_real_preview_and_replays_without_duplicate_peo
         page.get_by_label("Email address", true).fill("foreign@example.test", None).await.unwrap();
         page.get_by_label("Password", true).fill("password", None).await.unwrap();
         page.get_by_role(AriaRole::Button, named("Sign in")).click(None).await.unwrap();
-        let denied: u16 = page.evaluate("async x => {const d=new URLSearchParams({authenticity_token:x.csrf,preview_token:x.token,passphrase:'password',confirm:'true'}); return (await fetch(x.url,{method:'POST',body:d})).status;}", Some(&replay)).await.unwrap();
+        page.goto(&format!("{}/account/security", journey.origin), None).await.unwrap();
+        let member_csrf: String = page.evaluate("() => document.querySelector('[name=authenticity_token]').value", None::<&()>).await.unwrap();
+        let denied_input = serde_json::json!({"url":replay["url"],"token":replay["token"],"csrf":member_csrf});
+        let denied: u16 = page.evaluate("async x => {const d=new URLSearchParams({authenticity_token:x.csrf,preview_token:x.token,passphrase:'password',confirm:'true'}); return (await fetch(x.url,{method:'POST',body:d})).status;}", Some(&denied_input)).await.unwrap();
         assert!(matches!(denied, 403 | 404));
         assert_eq!(person::Entity::find().count(&journey.admin).await.unwrap(), count);
     })).await;
@@ -120,6 +138,8 @@ async fn import_consent_recipient_approval_withdrawal_and_foreign_denial() {
         page.get_by_label("Email address", true).fill("foreign@example.test", None).await.unwrap();
         page.get_by_label("Password", true).fill("password", None).await.unwrap();
         page.get_by_role(AriaRole::Button, named("Sign in")).click(None).await.unwrap();
+        let locale_preserved: bool = page.evaluate("async path => { const r=await fetch(path,{headers:{'Accept-Language':'es'}}); const doc=new DOMParser().parseFromString(await r.text(),'text/html'); const f=doc.querySelector('#administration-form'); if(!f || f.elements.lang.value!=='es') return false; const d=new URLSearchParams(new FormData(f)); d.set('decision','invalid'); const response=await fetch(path,{method:'POST',body:d}); return response.status===403 && (await response.text()).includes('lang=\"es\"'); }", Some(&path)).await.unwrap();
+        assert!(locale_preserved);
         page.goto(&format!("{}{path}", journey.origin), None).await.unwrap();
         expect(page.locator("main h1")).to_contain_text("Import consent request").await.unwrap();
         page.locator("input[name=decision][value=accept]").click(None).await.unwrap();
@@ -207,7 +227,7 @@ async fn import_preview_post_requires_auth_and_rejects_invalid_mapping_input() {
         assert!(page.evaluate::<(), bool>("async () => { const r = await fetch('/households/persistence-fixture/admin/data_imports/preview', {method:'POST', body:new FormData()}); return r.url.endsWith('/login'); }", None).await.unwrap());
         harness::sign_in(journey).await;
         page.goto(&format!("{}/households/persistence-fixture/admin/data_imports/new", journey.origin), None).await.unwrap();
-        assert!(page.evaluate::<(), bool>("async () => { const f = new FormData(); f.append('authenticity_token', document.querySelector('[name=authenticity_token]').value); f.append('inspection_token', 'cfae5719-6509-4a7e-8e12-64b4e1684002'); f.append('source','other'); f.append('source_timezone','Europe/London'); f.append('timezone_confirmed','true'); f.append('passphrase','preview-secret'); f.append('archive',new Blob(['invalid']),'input.zip'); const r=await fetch('/households/persistence-fixture/admin/data_imports/preview',{method:'POST',body:f}); const body=await r.text(); return r.status===422 && !body.includes('preview-secret'); }", None).await.unwrap());
+        assert!(page.evaluate::<(), bool>("async () => { const f = new FormData(); f.append('authenticity_token', document.querySelector('[name=authenticity_token]').value); f.append('inspection_token', 'cfae5719-6509-4a7e-8e12-64b4e1684002'); f.append('source','other'); f.append('source_timezone','Europe/Paris'); f.append('timezone_confirmed','true'); f.append('passphrase','preview-secret'); f.append('archive',new Blob(['invalid']),'input.zip'); const r=await fetch('/households/persistence-fixture/admin/data_imports/preview',{method:'POST',body:f}); const body=await r.text(); return r.status===422 && body.includes('Europe/Paris') && !body.includes('preview-secret'); }", None).await.unwrap());
     })).await;
 }
 

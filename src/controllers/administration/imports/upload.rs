@@ -2,7 +2,7 @@ use super::*;
 use crate::models::{
     access::{self, PersonAccess},
     data_imports::{
-        contracts::{RecordKind, SourceSystem},
+        contracts::{ArchivePreparationError, RecordKind, SourceSystem},
         credential::ImportPrincipal,
         inspection::{self, Inspection, InspectionError, Upload},
         upload_gate::UploadLimiter,
@@ -239,6 +239,7 @@ pub(crate) async fn inspect(
                 explicit,
                 Some(error),
                 submitted_timezone.as_deref(),
+                None,
             )
             .await;
         }
@@ -258,7 +259,8 @@ pub(crate) async fn inspect(
         {
             return presentation_error(&view, selected_language, error);
         }
-        Err(_) => {
+        Err(error) => {
+            let diagnostics = preparation_diagnostics(&error);
             return upload_page_with_timezone(
                 &ctx,
                 &session,
@@ -270,6 +272,7 @@ pub(crate) async fn inspect(
                 explicit,
                 Some(invalid()),
                 submitted_timezone.as_deref(),
+                diagnostics,
             )
             .await;
         }
@@ -326,12 +329,12 @@ pub(super) async fn upload_page(
     error: Option<OperationError>,
 ) -> Response {
     upload_page_with_timezone(
-        ctx, session, token, view, slug, trace, language, explicit, error, None,
+        ctx, session, token, view, slug, trace, language, explicit, error, None, None,
     )
     .await
 }
 
-async fn upload_page_with_timezone(
+pub(super) async fn upload_page_with_timezone(
     ctx: &AppContext,
     session: &Session<SessionPgPool>,
     token: &CsrfToken,
@@ -342,6 +345,7 @@ async fn upload_page_with_timezone(
     explicit: bool,
     error: Option<OperationError>,
     submitted_timezone: Option<&str>,
+    diagnostics: Option<Value>,
 ) -> Response {
     let (_, tenant) = match begin(ctx, session, slug, trace).await {
         Ok(value) => value,
@@ -359,6 +363,9 @@ async fn upload_page_with_timezone(
     if let Some(timezone) = submitted_timezone {
         data["source_timezone"] = json!(timezone);
     }
+    if let Some(diagnostics) = diagnostics {
+        data["preparation_diagnostics"] = diagnostics;
+    }
     let response = rendering::render(
         view,
         token,
@@ -370,6 +377,32 @@ async fn upload_page_with_timezone(
         return presentation_error(view, language, OperationError::Unavailable);
     }
     response
+}
+
+pub(super) fn preparation_diagnostics(error: &InspectionError) -> Option<Value> {
+    let (items, reason, redact) = match error {
+        InspectionError::Preparation(ArchivePreparationError::UnsupportedFields(items)) => {
+            (items, "unsupported_field", true)
+        }
+        InspectionError::Preparation(ArchivePreparationError::InvalidFields(items)) => {
+            (items, "invalid_field", false)
+        }
+        _ => return None,
+    };
+    let entries: Vec<_> = items
+        .iter()
+        .take(100)
+        .map(|item| {
+            let path = if redact {
+                let parent = item.path.rsplit_once('/').map_or("", |(parent, _)| parent);
+                format!("{parent}/[unsupported]")
+            } else {
+                item.path.clone()
+            };
+            json!({"path": path.chars().take(256).collect::<String>(), "reason": reason})
+        })
+        .collect();
+    Some(json!({"items": entries, "truncated": items.len() > 100}))
 }
 
 async fn mapping_page(
@@ -491,5 +524,37 @@ mod tests {
         assert!(validated(&mut fields("med_tracker05", "Invalid/Timezone", "true")).is_err());
         assert!(validated(&mut fields("med_tracker05", "Europe/London", "false")).is_err());
         assert!(validated(&mut fields("med_tracker05", "Europe/London", "true")).is_ok());
+    }
+
+    #[test]
+    fn preparation_diagnostics_are_typed_bounded_and_redact_unsupported_leaf() {
+        use crate::models::data_imports::contracts::SourcePreparationDiagnostic;
+        let items = (0..101)
+            .map(|_| SourcePreparationDiagnostic {
+                path: format!("/{}/secret-leaf", "x".repeat(300)),
+            })
+            .collect();
+        let error = InspectionError::Preparation(ArchivePreparationError::UnsupportedFields(items));
+        let result = preparation_diagnostics(&error).expect("unsupported diagnostics");
+        assert_eq!(result["items"].as_array().unwrap().len(), 100);
+        assert_eq!(result["truncated"], true);
+        let path = result["items"][0]["path"].as_str().unwrap();
+        assert_eq!(path.chars().count(), 256);
+        assert!(!path.contains("secret-leaf"));
+        assert_eq!(result["items"][0]["reason"], "unsupported_field");
+        let invalid = InspectionError::Preparation(ArchivePreparationError::InvalidFields(vec![
+            SourcePreparationDiagnostic {
+                path: "/people/0/name".into(),
+            },
+        ]));
+        let result = preparation_diagnostics(&invalid).unwrap();
+        assert_eq!(result["items"][0]["path"], "/people/0/name");
+        assert_eq!(result["items"][0]["reason"], "invalid_field");
+        assert!(
+            preparation_diagnostics(&InspectionError::Preparation(
+                ArchivePreparationError::InvalidArchive
+            ))
+            .is_none()
+        );
     }
 }
