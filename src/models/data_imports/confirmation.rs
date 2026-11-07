@@ -5,24 +5,23 @@ use loco_rs::app::AppContext;
 use sea_orm::{EntityTrait, TransactionTrait};
 
 use super::{
-    consents::{self, ConsentBinding},
-    contracts::{DestinationId, ImportReport, ImportState, PersonDestination, PreviewToken},
+    consents,
+    contracts::{ImportReport, ImportState, PreviewToken},
     credential::ImportPrincipal,
     identity::{self, IdentityChoices, IdentityValidationError},
     inspection::{self, InspectionError},
     persistence::{self, NewRun, StoredRun},
-    plan_projection, projection, result_projection,
+    plan_projection, projection, reports, result_projection,
 };
 use crate::models::{
     access::{self, HouseholdScope, TenantTransaction},
     care::portable_imports::{
-        self, AliasError, ExistingIndex, PreparedImportAuthority,
+        self, AliasError, ExistingIndex,
         planning::{self, ExpectationLock},
     },
     entities::account,
     errors::OperationError,
     identity::credentials::CredentialProvenance,
-    ids::PersonId,
 };
 
 fn stale() -> OperationError {
@@ -105,52 +104,6 @@ async fn eligibility_zone(
         return Err(stale());
     }
     Ok(zone)
-}
-
-async fn authorise_replay(
-    tenant: &TenantTransaction,
-    snapshot: &NewRun,
-    zone: chrono_tz::Tz,
-) -> Result<(), OperationError> {
-    let today = Utc::now().with_timezone(&zone).date_naive();
-    let authority = PreparedImportAuthority::prepare(tenant, today).await?;
-    let context = snapshot.context.as_ref().ok_or_else(stale)?;
-    for person in &snapshot.report.people {
-        let Some(destination) = &person.person.destination else {
-            return Err(OperationError::Forbidden);
-        };
-        let DestinationId::Person(subject) = &destination.id else {
-            return Err(OperationError::Forbidden);
-        };
-        if authority.allows(PersonId::from_database(subject.0)).await? {
-            continue;
-        }
-        if !person.records.is_empty() || !person.relationships.is_empty() {
-            return Err(OperationError::Forbidden);
-        }
-        let mapping = snapshot
-            .mappings
-            .iter()
-            .find(|item| item.source == person.person.source)
-            .ok_or(OperationError::Forbidden)?;
-        if !matches!(&mapping.destination, PersonDestination::Existing(id) if id == subject) {
-            return Err(OperationError::Forbidden);
-        }
-        let recipient = context
-            .recipient_consents()
-            .iter()
-            .find(|item| item.source_person == mapping.source)
-            .ok_or(OperationError::Forbidden)?;
-        let binding = ConsentBinding {
-            source_sha256: snapshot.report.source_sha256.clone(),
-            source_person: mapping.source.clone(),
-            target_person: *subject,
-        };
-        if !consents::current(tenant, &recipient.request_id, &binding).await? {
-            return Err(OperationError::Forbidden);
-        }
-    }
-    access::recheck(tenant).await
 }
 
 pub async fn confirm(
@@ -254,8 +207,21 @@ async fn confirm_inner(
     access::recheck(&tenant).await?;
     let zone = eligibility_zone(&tenant, &current.snapshot).await?;
     if current.snapshot.report.state == ImportState::Completed {
-        authorise_replay(&tenant, &current.snapshot, zone).await?;
-        let report = current.snapshot.report;
+        let report = {
+            let today = Utc::now().with_timezone(&zone).date_naive();
+            let guard = reports::prepare_report_disclosure(&tenant, &[&current], today).await?;
+            reports::authorise_report_prepared(&guard, &current, today).await?;
+            if let Some(principal) = principal.as_ref() {
+                principal.revalidate(&tenant).await?;
+            }
+            reports::authorise_report_prepared(
+                &guard,
+                &current,
+                Utc::now().with_timezone(&zone).date_naive(),
+            )
+            .await?;
+            current.snapshot.report
+        };
         tenant.commit().await?;
         return Ok(report);
     }
@@ -466,8 +432,21 @@ async fn reload_completed(
         return Ok(None);
     }
     let zone = eligibility_zone(&tenant, &stored.snapshot).await?;
-    authorise_replay(&tenant, &stored.snapshot, zone).await?;
-    let report = stored.snapshot.report;
+    let report = {
+        let today = Utc::now().with_timezone(&zone).date_naive();
+        let guard = reports::prepare_report_disclosure(&tenant, &[&stored], today).await?;
+        reports::authorise_report_prepared(&guard, &stored, today).await?;
+        if let Some(principal) = principal {
+            principal.revalidate(&tenant).await?;
+        }
+        reports::authorise_report_prepared(
+            &guard,
+            &stored,
+            Utc::now().with_timezone(&zone).date_naive(),
+        )
+        .await?;
+        stored.snapshot.report
+    };
     tenant.commit().await?;
     Ok(Some(report))
 }

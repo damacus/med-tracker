@@ -672,6 +672,48 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
     .await
     .unwrap();
     assert_eq!(replay, completed);
+    let declarations_url = format!("{}/api/v1/auth/guardian-declarations", app.origin);
+    let declarations = app
+        .client
+        .get(&declarations_url)
+        .bearer_auth(&credential)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(declarations.status().as_u16(), 200);
+    let declarations: serde_json::Value = declarations.json().await.unwrap();
+    let destination = &completed.people[0].person.destination.as_ref().unwrap().id;
+    let person_id = match destination {
+        med_tracker::models::data_imports::contracts::DestinationId::Person(id) => id.0.to_string(),
+        _ => panic!("created dependent must have a person destination"),
+    };
+    let declaration = declarations["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["subject_person_id"].as_str() == Some(person_id.as_str()))
+        .unwrap();
+    let withdrawn = app.client.patch(format!("{declarations_url}/{}", declaration["id"].as_str().unwrap()))
+        .bearer_auth(&credential)
+        .json(&serde_json::json!({"guardian_declaration":{"withdrawn":true,"revision":declaration["revision"]}}))
+        .send().await.unwrap();
+    assert_eq!(withdrawn.status().as_u16(), 200);
+    assert!(matches!(
+        confirmation::confirm_checked(
+            &app.context,
+            &scope,
+            &ready.report.id,
+            token.clone(),
+            "password".into(),
+            &provenance,
+            &scope.request_id,
+            ImportPrincipal::Api(&principal)
+        )
+        .await,
+        Err(InspectionError::Operation(
+            OperationError::NotFound | OperationError::Forbidden
+        ))
+    ));
     oauth_grants::Entity::update_many()
         .col_expr(
             oauth_grants::Column::RevokedAt,
