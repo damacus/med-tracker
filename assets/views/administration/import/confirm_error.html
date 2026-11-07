@@ -1,0 +1,8 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="admin-page">
+  <h1 class="text-3xl font-semibold">{{ import_labels.title }}</h1>
+  <p role="alert" class="alert alert-warning mt-4">{{ import_labels.confirm_error }}</p>
+  <a class="link mt-4 inline-block" href="{{ back_url }}">{{ import_labels.back }}</a>
+</section>
+{% endblock content %}

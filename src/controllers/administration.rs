@@ -126,6 +126,10 @@ pub fn routes() -> Routes {
         )
         .add("/{slug}/admin/data_imports/{id}", get(imports::detail))
         .add(
+            "/{slug}/admin/data_imports/{id}/confirm",
+            post(imports::confirm::confirm).layer(axum::extract::DefaultBodyLimit::max(16 * 1024)),
+        )
+        .add(
             "/{slug}/admin/data_import_consents",
             post(imports::consent::request).layer(axum::extract::DefaultBodyLimit::max(16 * 1024)),
         )

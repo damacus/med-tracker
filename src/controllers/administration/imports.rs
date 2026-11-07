@@ -2,12 +2,14 @@ use super::*;
 use crate::models::data_imports::{
     contracts::{
         ActualRecord, ActualRelationship, DestinationId, DestinationRecord, ImportReport,
-        RecordResult, RelationshipResult,
+        ImportState, RecordResult, RelationshipResult,
     },
+    credential::ImportPrincipal,
     reports,
 };
 use axum::extract::RawQuery;
 
+pub(super) mod confirm;
 pub(super) mod consent;
 pub(super) mod preview;
 mod upload;
@@ -98,46 +100,52 @@ async fn show(
     explicit: bool,
     screen: Screen,
 ) -> Response {
-    let (_, tenant) = match begin(ctx, session, slug, &request).await {
+    let (principal, tenant) = match begin(ctx, session, slug, &request).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(view, language, error),
     };
-    let result = render_data(&tenant, slug, language, explicit, screen).await;
+    let scope = tenant.scope().clone();
+    let data = match upload::base_data(&tenant, slug, language, explicit).await {
+        Ok(value) => value,
+        Err(error) => return presentation_error(view, language, error),
+    };
+    if tenant.commit().await.is_err() {
+        return presentation_error(view, language, OperationError::Unavailable);
+    }
+    let result = render_data(
+        ctx, &scope, &principal, data, slug, language, explicit, screen,
+    )
+    .await;
     let (template, data) = match result {
         Ok(value) => value,
         Err(error) => return presentation_error(view, language, error),
     };
-    let response = rendering::render(view, token, template, data, None);
-    if tenant.commit().await.is_err() {
-        return presentation_error(view, language, OperationError::Unavailable);
-    }
-    response
+    rendering::render(view, token, template, data, None)
 }
 
 async fn render_data(
-    tenant: &TenantTransaction,
+    ctx: &AppContext,
+    scope: &crate::models::access::HouseholdScope,
+    principal: &crate::models::identity::browser::BrowserPrincipal,
+    mut data: Value,
     slug: &str,
     language: &str,
     explicit: bool,
     screen: Screen,
 ) -> Result<(&'static str, Value), OperationError> {
-    administration::authorize(tenant).await?;
-    let labels = crate::models::care::report_pdf::translations(language)
-        .map_err(|_| OperationError::Unavailable)?;
-    let mut data = rendering::context(slug, None);
     let safe_slug: String = url::form_urlencoded::byte_serialize(slug.as_bytes()).collect();
     let base = format!("/households/{safe_slug}/admin/data_imports");
     let suffix = language_suffix(language, explicit);
-    data["lang"] = json!(language);
-    data["language_suffix"] = json!(suffix);
-    data["labels"] = labels.clone();
-    data["admin_labels"] = labels["administration"].clone();
-    data["import_labels"] = labels["administration"]["import"].clone();
-    data["title"] = labels["administration"]["import"]["title"].clone();
-    data["household_name"] = json!(administration::overview::household_name(tenant).await?);
     match screen {
         Screen::List(cursor) => {
-            let page = reports::list(tenant, cursor.as_deref(), 50).await?;
+            let page = reports::list_checked(
+                ctx,
+                scope,
+                cursor.as_deref(),
+                50,
+                ImportPrincipal::Browser(principal),
+            )
+            .await?;
             data["reports"] = json!(page.reports.iter().map(|report| json!({"id": report.id, "state": report.state, "created_at": report.created_at, "url": format!("{base}/{}{}", report.id, suffix)})).collect::<Vec<_>>());
             data["next_url"] = json!(page.next_cursor.map(|cursor| {
                 let mut query = url::form_urlencoded::Serializer::new(String::new());
@@ -151,12 +159,16 @@ async fn render_data(
             Ok(("administration/import/list.html", data))
         }
         Screen::Detail(id) => {
-            let mut result = reports::detail(tenant, &id).await?;
+            let mut result =
+                reports::detail_checked(ctx, scope, &id, ImportPrincipal::Browser(principal))
+                    .await?;
             canonical_links(&mut result.report, &safe_slug);
             data["source_timezone"] = json!(result.report.source_timezone.name());
+            data["stale"] =
+                json!(result.report.state == ImportState::Ready && result.confirmation.is_none());
             data["report"] = json!(result.report);
-            data["confirmation"] = Value::Null;
-            data["stale"] = json!(false);
+            data["confirmation"] = json!(result.confirmation);
+            data["confirm_available"] = json!(true);
             data["back_url"] = json!(format!("{base}{suffix}"));
             data["confirm_url"] = json!(format!("{base}/{id}/confirm"));
             Ok(("administration/import/preview.html", data))

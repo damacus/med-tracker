@@ -328,7 +328,7 @@ pub(crate) async fn create(
             .await;
         }
     };
-    let mut result =
+    let result =
         match preview::create_checked(&ctx, &scope, input, ImportPrincipal::Browser(&principal))
             .await
         {
@@ -361,10 +361,21 @@ pub(crate) async fn create(
     if tenant.scope() != &scope {
         return presentation_error(&view, selected_language, OperationError::Forbidden);
     }
-    if let Err(error) = reports::detail(&tenant, &result.report.id).await {
-        return presentation_error(&view, selected_language, error);
-    }
     let mut data = match upload::base_data(&tenant, &slug, selected_language, explicit).await {
+        Ok(value) => value,
+        Err(error) => return presentation_error(&view, selected_language, error),
+    };
+    if tenant.commit().await.is_err() {
+        return presentation_error(&view, selected_language, OperationError::Unavailable);
+    }
+    let mut result = match reports::detail_checked(
+        &ctx,
+        &scope,
+        &result.report.id,
+        ImportPrincipal::Browser(&principal),
+    )
+    .await
+    {
         Ok(value) => value,
         Err(error) => return presentation_error(&view, selected_language, error),
     };
@@ -377,21 +388,20 @@ pub(crate) async fn create(
         "{base}/new{}",
         language_suffix(selected_language, explicit)
     ));
+    data["stale"] = json!(
+        result.report.state == crate::models::data_imports::contracts::ImportState::Ready
+            && result.confirmation.is_none()
+    );
     data["report"] = json!(result.report);
     data["confirmation"] = json!(result.confirmation);
-    data["confirm_available"] = json!(false);
-    data["stale"] = json!(false);
-    let response = rendering::render(
+    data["confirm_available"] = json!(true);
+    rendering::render(
         &view,
         &token,
         "administration/import/preview.html",
         data,
         None,
-    );
-    if tenant.commit().await.is_err() {
-        return presentation_error(&view, selected_language, OperationError::Unavailable);
-    }
-    response
+    )
 }
 
 #[cfg(test)]

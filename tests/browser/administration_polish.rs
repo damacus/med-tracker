@@ -7,6 +7,71 @@ use sea_orm::ConnectionTrait;
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn import_confirmation_uses_real_preview_and_replays_without_duplicate_people() {
+    use med_tracker::models::{_entities::household_memberships, entities::person};
+    use sea_orm::{ActiveValue::Set, EntityTrait, PaginatorTrait};
+    use std::io::{Cursor, Write};
+    use zip::{ZipWriter, write::SimpleFileOptions};
+
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/admin/data_imports/new", journey.origin), None).await.unwrap();
+        let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, bytes) in [("portable.json", include_bytes!("../fixtures/portable_rails/prepared-history-v2.json").as_slice()), ("manifest.json", include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json").as_slice())] {
+            zip.start_file(name, SimpleFileOptions::default()).unwrap();
+            zip.write_all(bytes).unwrap();
+        }
+        let bytes = zip.finish().unwrap().into_inner();
+        page.locator("#archive").set_input_files_payload(FilePayload::new("export.zip", "application/zip", bytes.clone()), None).await.unwrap();
+        page.locator("#passphrase").fill("password", None).await.unwrap();
+        page.locator("[name=timezone_confirmed]").click(None).await.unwrap();
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("main h1")).to_contain_text("Map people").await.unwrap();
+        page.locator("select[name^='mapping[']").select_option("new_dependent", None).await.unwrap();
+        page.locator("#archive").set_input_files_payload(FilePayload::new("export.zip", "application/zip", bytes), None).await.unwrap();
+        page.locator("#passphrase").fill("password", None).await.unwrap();
+        page.locator("[name=timezone_confirmed]").click(None).await.unwrap();
+        page.evaluate::<(), ()>("() => document.querySelectorAll('[name=acknowledgement]').forEach(c => c.checked=true)", None).await.unwrap();
+        let blocked: bool = page.evaluate("async () => {const f=document.querySelector('#administration-form'); const r=await fetch(f.action,{method:'POST',body:new FormData(f)}); const h=await r.text(); return h.includes('Blocked') && !h.includes('name=\"preview_token\"');}", None::<&()>).await.unwrap();
+        assert!(blocked);
+        page.locator("input[name^='guardian[']").click(None).await.unwrap();
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("main")).to_contain_text("Ready").await.unwrap();
+        let wrong: bool = page.evaluate("async () => {const f=document.querySelector('#administration-form'); const d=new URLSearchParams(new FormData(f)); d.set('preview_token','AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'); d.set('passphrase','password'); d.set('confirm','true'); const r=await fetch(f.action,{method:'POST',body:d}); const h=await r.text(); return r.status===409 && !h.includes('password') && !h.includes('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');}", None::<&()>).await.unwrap();
+        assert!(wrong);
+        let replay: serde_json::Value = page.evaluate("() => {const f=document.querySelector('#administration-form'); return {url:f.action,csrf:f.elements.authenticity_token.value,token:f.elements.preview_token.value};}", None::<&()>).await.unwrap();
+        let ready_history: bool = page.evaluate("async x => {const r=await fetch(x.url.replace(/\\/confirm$/, '')); const h=await r.text(); return r.ok && h.includes('Ready') && h.includes('name=\"preview_token\"');}", Some(&replay)).await.unwrap();
+        assert!(ready_history);
+        page.locator("#passphrase").fill("password", None).await.unwrap();
+        page.locator("[name=confirm]").click(None).await.unwrap();
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("main")).to_contain_text("Completed").await.unwrap();
+        assert_eq!(page.locator("input[name=preview_token]").count().await.unwrap(), 0);
+        let count = person::Entity::find().count(&journey.admin).await.unwrap();
+        let replayed: bool = page.evaluate("async x => {const d=new URLSearchParams({authenticity_token:x.csrf,preview_token:x.token,passphrase:'password',confirm:'true'}); const r=await fetch(x.url,{method:'POST',body:d}); return r.ok && (await r.text()).includes('Completed');}", Some(&replay)).await.unwrap();
+        assert!(replayed);
+        assert_eq!(person::Entity::find().count(&journey.admin).await.unwrap(), count);
+        let completed_history: bool = page.evaluate("async x => {const r=await fetch(x.url.replace(/\\/confirm$/, '')); const h=await r.text(); return r.ok && h.includes('Completed') && !h.includes('name=\"preview_token\"');}", Some(&replay)).await.unwrap();
+        assert!(completed_history);
+        let now = chrono::Utc::now().naive_utc();
+        household_memberships::Entity::insert(household_memberships::ActiveModel {
+            id: Set(74801), household_id: Set(72001), person_id: Set(73005), role: Set("member".into()),
+            status: Set("active".into()), joined_at: Set(now), created_at: Set(now), updated_at: Set(now), ..Default::default()
+        }).exec(&journey.admin).await.unwrap();
+        page.context().unwrap().clear_cookies(None).await.unwrap();
+        page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+        page.get_by_label("Email address", true).fill("foreign@example.test", None).await.unwrap();
+        page.get_by_label("Password", true).fill("password", None).await.unwrap();
+        page.get_by_role(AriaRole::Button, named("Sign in")).click(None).await.unwrap();
+        let denied: u16 = page.evaluate("async x => {const d=new URLSearchParams({authenticity_token:x.csrf,preview_token:x.token,passphrase:'password',confirm:'true'}); return (await fetch(x.url,{method:'POST',body:d})).status;}", Some(&replay)).await.unwrap();
+        assert!(matches!(denied, 403 | 404));
+        assert_eq!(person::Entity::find().count(&journey.admin).await.unwrap(), count);
+    })).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn import_consent_recipient_approval_withdrawal_and_foreign_denial() {
     use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
     use med_tracker::models::_entities::household_memberships;
