@@ -4736,6 +4736,136 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/data_imports/inspections:
+    post:
+      operationId: inspectClinicalImport
+      tags: [Household, Portability]
+      summary: Inspect an encrypted clinical import archive.
+      description: Requires household management access and an operator-confirmed IANA timezone. The JSON body is limited to 90 MiB and the decoded archive to 64 MiB.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClinicalImportInspectionRequest"
+      responses:
+        "201":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalImportInspectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/data_imports/previews:
+    post:
+      operationId: previewClinicalImport
+      tags: [Household, Portability]
+      summary: Create a clinical import preview.
+      description: Resubmit the inspected archive and supply mappings, consent choices and omission acknowledgements. The JSON body is limited to 90 MiB and the decoded archive to 64 MiB. Responses use Cache-Control no-store.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClinicalImportPreviewRequest"
+      responses:
+        "201":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalImportPreviewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/data_imports:
+    get:
+      operationId: listClinicalImports
+      tags: [Household, Portability]
+      summary: List clinical import reports.
+      description: Reports are subject to creator and person-access checks. Responses use Cache-Control no-store.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: after_id
+          in: query
+          schema: {type: string}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 25}
+      responses:
+        "200":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalImportReportPageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/data_imports/{id}:
+    get:
+      operationId: getClinicalImport
+      tags: [Household, Portability]
+      summary: Get a clinical import report.
+      description: Reports are subject to creator and person-access checks. Confirmation is currently null on detail responses. Responses use Cache-Control no-store.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalImportPreviewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/portable_imports/dry_run:
     post:
       operationId: dryRunPortableImport
@@ -5837,6 +5967,35 @@ components:
           schema:
             $ref: "#/components/schemas/RateLimitErrorEnvelope"
   schemas:
+    ClinicalImportSourceSystem: {"type":"string","enum":["med_tracker05"]}
+    ClinicalImportRecordKind: {"type":"string","enum":["person","medication","location","dosage_option","schedule","assignment","dose","stock","pause","occurrence","health_event","notification_preference","attachment","other"]}
+    ClinicalImportRelationshipKind: {"type":"string","enum":["person_medication","schedule_person","schedule_medication","assignment_person","assignment_medication","dose_source","dose_taken_from_medication","dose_taken_from_location","medication_location","stock_medication","health_event_medication","person_location","other"]}
+    ClinicalImportReason: {"type":"string","enum":["unsupported_field","unsupported_record","unsupported_relationship","obsolete_person_location","identity_conflict","consent_required","guardian_declaration_required","insufficient_authority","missing_dependency","historical_actor_unavailable","destination_changed","source_invalid","attachment_unsupported","other"]}
+    ClinicalImportSourceIdentity: {"type":"object","required":["source","instance","kind","id"],"properties":{"source":{"$ref":"#/components/schemas/ClinicalImportSourceSystem"},"instance":{"type":"string"},"kind":{"$ref":"#/components/schemas/ClinicalImportRecordKind"},"id":{"type":"string"}}}
+    ClinicalImportDestinationId: {"type":"object","required":["kind","id"],"properties":{"kind":{"type":"string","enum":["person","medication","location","dosage_option","schedule","assignment","dose","stock","pause","occurrence","health_event","attachment"]},"id":{"type":"integer","format":"int64"}}}
+    ClinicalImportDestinationRecord: {"type":"object","required":["id","href"],"properties":{"id":{"$ref":"#/components/schemas/ClinicalImportDestinationId"},"href":{"type":"string","nullable":true}}}
+    ClinicalImportSourceField: {"type":"object","required":["field","source_value","outcome","destination_value","reason"],"properties":{"field":{"type":"string"},"source_value":{"type":"string"},"outcome":{"type":"string","enum":["preserved","changed","unsupported","omitted"]},"destination_value":{"type":"string","nullable":true},"reason":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportReason"}],"nullable":true}}}
+    ClinicalImportRecordDetails: {"type":"object","required":[],"properties":{"name":{"type":"string","nullable":true},"dose_amount":{"type":"string","nullable":true},"dose_unit":{"type":"string","nullable":true},"timing":{"type":"string","nullable":true},"stock_quantity":{"type":"string","nullable":true},"stock_unit":{"type":"string","nullable":true},"occurred_at":{"type":"string","format":"date-time","nullable":true},"source_fields":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportSourceField"}}}}
+    ClinicalImportRecordResult: {"type":"object","required":["source","expected","actual","destination","reason","details"],"properties":{"source":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"expected":{"type":"string","enum":["create","match","skip","reject","decision_required"]},"actual":{"type":"string","enum":["created","matched","skipped","rejected","not_applied"],"nullable":true},"destination":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportDestinationRecord"}],"nullable":true},"reason":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportReason"}],"nullable":true},"details":{"$ref":"#/components/schemas/ClinicalImportRecordDetails"}}}
+    ClinicalImportRelationshipResult: {"type":"object","required":["kind","source","target","destination_source","destination_target","expected","actual","reason"],"properties":{"kind":{"$ref":"#/components/schemas/ClinicalImportRelationshipKind"},"field":{"type":"string","nullable":true},"source":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"target":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"destination_source":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportDestinationRecord"}],"nullable":true},"destination_target":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportDestinationRecord"}],"nullable":true},"expected":{"type":"string","enum":["link","omit","reject","decision_required"]},"actual":{"type":"string","enum":["verified","not_linked","omitted","rejected","not_applied"],"nullable":true},"reason":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportReason"}],"nullable":true}}}
+    ClinicalImportTotals: {"type":"object","required":["expected_create","expected_match","expected_link","created","matched","verified_links","skipped","rejected","unlinked","decisions_required","omissions"],"properties":{"expected_create":{"type":"integer","format":"int64","minimum":0},"expected_match":{"type":"integer","format":"int64","minimum":0},"expected_link":{"type":"integer","format":"int64","minimum":0},"created":{"type":"integer","format":"int64","minimum":0},"matched":{"type":"integer","format":"int64","minimum":0},"verified_links":{"type":"integer","format":"int64","minimum":0},"skipped":{"type":"integer","format":"int64","minimum":0},"rejected":{"type":"integer","format":"int64","minimum":0},"unlinked":{"type":"integer","format":"int64","minimum":0},"decisions_required":{"type":"integer","format":"int64","minimum":0},"omissions":{"type":"integer","format":"int64","minimum":0}}}
+    ClinicalImportOmission: {"type":"object","required":["item","field","reason","acknowledgement_id","acknowledged"],"properties":{"item":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"field":{"type":"string","nullable":true},"reason":{"$ref":"#/components/schemas/ClinicalImportReason"},"acknowledgement_id":{"type":"string"},"acknowledged":{"type":"boolean"}}}
+    ClinicalImportPersonReport: {"type":"object","required":["person","records","relationships","omissions"],"properties":{"person":{"$ref":"#/components/schemas/ClinicalImportRecordResult"},"records":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportRecordResult"}},"relationships":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportRelationshipResult"}},"omissions":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportOmission"}}}}
+    ClinicalImportIssue: {"type":"object","required":["source","field","reason","detail"],"properties":{"source":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"}],"nullable":true},"field":{"type":"string","nullable":true},"reason":{"$ref":"#/components/schemas/ClinicalImportReason"},"detail":{"type":"string"}}}
+    ClinicalImportTimeZone: {"type":"object","required":["name","provenance"],"properties":{"name":{"type":"string"},"provenance":{"type":"string","enum":["operator_confirmed"]}}}
+    ClinicalImportReport: {"type":"object","required":["id","state","source","source_sha256","source_timezone","created_at","totals","people","records","relationships","omissions"],"properties":{"id":{"type":"string"},"state":{"type":"string","enum":["preview","blocked","ready","applying","completed","failed"]},"source":{"$ref":"#/components/schemas/ClinicalImportSourceSystem"},"source_sha256":{"type":"string"},"source_timezone":{"$ref":"#/components/schemas/ClinicalImportTimeZone"},"created_at":{"type":"string","format":"date-time"},"totals":{"$ref":"#/components/schemas/ClinicalImportTotals"},"people":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportPersonReport"}},"records":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportRecordResult"}},"relationships":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportRelationshipResult"}},"omissions":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportOmission"}},"issues":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportIssue"}}}}
+    ClinicalImportSourceRecord: {"type":"object","required":["identity","details"],"properties":{"identity":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"details":{"$ref":"#/components/schemas/ClinicalImportRecordDetails"}}}
+    ClinicalImportSourceRelationship: {"type":"object","required":["kind","field","reason","source","target"],"properties":{"kind":{"$ref":"#/components/schemas/ClinicalImportRelationshipKind"},"field":{"type":"string"},"reason":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportReason"}],"nullable":true},"source":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"target":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"}}}
+    ClinicalImportInventory: {"type":"object","required":["records","relationships","omissions"],"properties":{"records":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportSourceRecord"}},"relationships":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportSourceRelationship"}},"omissions":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportOmission"}}}}
+    ClinicalImportPersonDestination: {"oneOf":[{"type":"object","required":["Existing"],"properties":{"Existing":{"type":"integer","format":"int64"}}},{"type":"string","enum":["NewDependent"]}]}
+    ClinicalImportPersonMapping: {"type":"object","required":["source","destination"],"properties":{"source":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"destination":{"$ref":"#/components/schemas/ClinicalImportPersonDestination"}}}
+    ClinicalImportConsentInput: {"oneOf":[{"type":"object","required":["ActingPerson"],"properties":{"ActingPerson":{"type":"object","required":["subject","accepted"],"properties":{"subject":{"type":"integer","format":"int64"},"accepted":{"type":"boolean"}}}}},{"type":"object","required":["ActingGuardian"],"properties":{"ActingGuardian":{"type":"object","required":["subject","accepted"],"properties":{"subject":{"type":"integer","format":"int64"},"accepted":{"type":"boolean"}}}}},{"type":"object","required":["InitialGuardianDeclaration"],"properties":{"InitialGuardianDeclaration":{"type":"object","required":["source_person","accepted"],"properties":{"source_person":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"accepted":{"type":"boolean"}}}}}]}
+    ClinicalImportRecipientConsent: {"type":"object","required":["source_person","request_id"],"properties":{"source_person":{"$ref":"#/components/schemas/ClinicalImportSourceIdentity"},"request_id":{"type":"string"}}}
+    ClinicalImportInspectionRequest: {"type":"object","required":["source","archive_base64","passphrase","source_timezone","timezone_confirmed"],"properties":{"source":{"$ref":"#/components/schemas/ClinicalImportSourceSystem"},"archive_base64":{"type":"string","format":"byte","writeOnly":true},"passphrase":{"type":"string","writeOnly":true},"source_timezone":{"type":"string"},"timezone_confirmed":{"type":"boolean"}},"additionalProperties":false}
+    ClinicalImportPreviewRequest: {"type":"object","required":["source","archive_base64","passphrase","source_timezone","timezone_confirmed","inspection_id","mappings","declarations","recipient_consents","acknowledged_omissions"],"properties":{"source":{"$ref":"#/components/schemas/ClinicalImportSourceSystem"},"archive_base64":{"type":"string","format":"byte","writeOnly":true},"passphrase":{"type":"string","writeOnly":true},"source_timezone":{"type":"string"},"timezone_confirmed":{"type":"boolean"},"inspection_id":{"type":"string"},"mappings":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportPersonMapping"}},"declarations":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportConsentInput"}},"recipient_consents":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportRecipientConsent"}},"acknowledged_omissions":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}
+    ClinicalImportInspectionResponse: {"type":"object","required":["data"],"properties":{"data":{"type":"object","required":["id","archive_sha256","timezone","inventory"],"properties":{"id":{"type":"string"},"archive_sha256":{"type":"string"},"timezone":{"$ref":"#/components/schemas/ClinicalImportTimeZone"},"inventory":{"$ref":"#/components/schemas/ClinicalImportInventory"}}}}}
+    ClinicalImportPreviewResponse: {"type":"object","required":["data"],"properties":{"data":{"type":"object","required":["report","confirmation"],"properties":{"report":{"$ref":"#/components/schemas/ClinicalImportReport"},"confirmation":{"type":"string","writeOnly":false,"description":"Secret confirmation token, when available.","nullable":true}}}}}
+    ClinicalImportReportPageResponse: {"type":"object","required":["data"],"properties":{"data":{"type":"object","required":["reports","next_cursor"],"properties":{"reports":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportReport"}},"next_cursor":{"type":"string","nullable":true}}}}}
     PersonalTakenDose:
       type: object
       additionalProperties: false
