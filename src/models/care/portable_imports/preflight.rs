@@ -4,15 +4,21 @@ pub(crate) struct Preflight {
     counts: Value,
     pub(crate) conflicts: Vec<NameConflict>,
     pub(crate) errors: Vec<String>,
-    original_errors: usize,
-    schedule_diagnostics: Vec<PreflightDiagnostic>,
+    diagnostics: Vec<PreflightDiagnostic>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum DiagnosticReason {
+    InvalidSource,
+    MissingDependency,
 }
 
 #[derive(Clone)]
 pub(crate) struct PreflightDiagnostic {
-    pub(crate) collection: Option<&'static str>,
+    pub(crate) collection: Option<String>,
     pub(crate) portable_id: Option<String>,
     pub(crate) field: Option<String>,
+    pub(crate) reason: DiagnosticReason,
     pub(crate) detail: String,
 }
 
@@ -31,64 +37,10 @@ impl Preflight {
 
     pub(crate) fn diagnostics(
         &self,
-        plan: &ImportPlan,
-        source: &Value,
+        _plan: &ImportPlan,
+        _source: &Value,
     ) -> Vec<PreflightDiagnostic> {
-        self.errors
-            .iter()
-            .enumerate()
-            .map(|(position, message)| {
-                if let Some(offset) = position.checked_sub(self.original_errors)
-                    && let Some(diagnostic) = self.schedule_diagnostics.get(offset)
-                {
-                    return diagnostic.clone();
-                }
-                let mut diagnostic = PreflightDiagnostic {
-                    collection: None,
-                    portable_id: None,
-                    field: None,
-                    detail: message.clone(),
-                };
-                let Some((kind, remainder)) = message.split_once('[') else {
-                    return diagnostic;
-                };
-                let Some(collection) = BASE_TYPES
-                    .iter()
-                    .chain(V2_TYPES)
-                    .copied()
-                    .find(|candidate| *candidate == kind)
-                else {
-                    return diagnostic;
-                };
-                let Some((identifier, suffix)) = remainder.split_once(']') else {
-                    return diagnostic;
-                };
-                let portable_id = if let Ok(row_index) = identifier.parse::<usize>() {
-                    let rows = if position < self.original_errors {
-                        source["records"][kind]
-                            .as_array()
-                            .map(Vec::as_slice)
-                            .unwrap_or(&[])
-                    } else {
-                        plan.rows(kind)
-                    };
-                    rows.get(row_index)
-                        .and_then(|row| row["portable_id"].as_str())
-                        .map(str::to_owned)
-                } else {
-                    None
-                };
-                let field = if let Some(suffix) = suffix.strip_prefix('.') {
-                    suffix.split_whitespace().next().map(str::to_owned)
-                } else {
-                    None
-                };
-                diagnostic.collection = Some(collection);
-                diagnostic.portable_id = portable_id;
-                diagnostic.field = field;
-                diagnostic
-            })
-            .collect()
+        self.diagnostics.clone()
     }
 }
 
@@ -107,8 +59,7 @@ mod typed_conflict_tests {
                 existing_portable_id: "destination".into(),
             }],
             errors: Vec::new(),
-            original_errors: 0,
-            schedule_diagnostics: Vec::new(),
+            diagnostics: Vec::new(),
         };
         assert_eq!(
             result.body(false)["conflicts"],
@@ -127,21 +78,46 @@ mod typed_conflict_tests {
             ]}}),
         )
         .unwrap();
-        let result = Preflight {
-            counts: json!({}),
-            conflicts: vec![],
-            errors: vec![
-                "people[0].email is invalid".into(),
-                "people[0].name is required".into(),
-            ],
-            original_errors: 1,
-            schedule_diagnostics: vec![],
+        let original = ImportPlan::parse(source).unwrap();
+        let a = row_diagnostic(
+            &original,
+            "people",
+            0,
+            Some("email"),
+            DiagnosticReason::InvalidSource,
+            "invalid".into(),
+        );
+        let b = row_diagnostic(
+            &plan,
+            "people",
+            0,
+            Some("name"),
+            DiagnosticReason::InvalidSource,
+            "invalid".into(),
+        );
+        assert_eq!(a.portable_id.as_deref(), Some("matched"));
+        assert_eq!(b.portable_id.as_deref(), Some("new"));
+    }
+
+    #[test]
+    fn schedule_diagnostics_do_not_infer_reason_or_invent_pause_rows() {
+        let clinical = super::super::person_schedules::RestoreConflict::Clinical {
+            source: "references unknown".into(),
+            field: "dose_amount",
         };
-        let diagnostics = result.diagnostics(&plan, &source);
-        assert_eq!(diagnostics[0].portable_id.as_deref(), Some("matched"));
-        assert_eq!(diagnostics[0].field.as_deref(), Some("email"));
-        assert_eq!(diagnostics[1].portable_id.as_deref(), Some("new"));
-        assert_eq!(diagnostics[1].field.as_deref(), Some("name"));
+        let diagnostic = schedule_diagnostic(&clinical);
+        assert_eq!(diagnostic.reason, DiagnosticReason::InvalidSource);
+        assert_eq!(
+            diagnostic.portable_id.as_deref(),
+            Some("references unknown")
+        );
+        let pause = super::super::person_schedules::RestoreConflict::Pause {
+            source: "destination-only".into(),
+        };
+        let diagnostic = schedule_diagnostic(&pause);
+        assert!(diagnostic.collection.is_none());
+        assert!(diagnostic.portable_id.is_none());
+        assert!(diagnostic.field.is_none());
     }
 }
 
@@ -149,6 +125,7 @@ fn reference(
     plan: &ImportPlan,
     index: &ExistingIndex,
     errors: &mut Vec<String>,
+    diagnostics: &mut Vec<PreflightDiagnostic>,
     target_field: (&str, usize, &str, &str, bool),
 ) {
     let (kind, row_index, field, target, required) = target_field;
@@ -157,9 +134,58 @@ fn reference(
     match value {
         Some(value) if index.has(plan, target, value) => {}
         None if !required && row[field].is_null() => {}
-        _ => errors.push(format!(
-            "{kind}[{row_index}].{field} references unknown {target} portable ID"
-        )),
+        _ => {
+            let detail =
+                format!("{kind}[{row_index}].{field} references unknown {target} portable ID");
+            errors.push(detail.clone());
+            diagnostics.push(row_diagnostic(
+                plan,
+                kind,
+                row_index,
+                Some(field),
+                DiagnosticReason::MissingDependency,
+                detail,
+            ));
+        }
+    }
+}
+
+fn row_diagnostic(
+    plan: &ImportPlan,
+    kind: &str,
+    index: usize,
+    field: Option<&str>,
+    reason: DiagnosticReason,
+    detail: String,
+) -> PreflightDiagnostic {
+    PreflightDiagnostic {
+        collection: Some(kind.to_owned()),
+        portable_id: plan
+            .rows(kind)
+            .get(index)
+            .and_then(|row| row["portable_id"].as_str())
+            .map(str::to_owned),
+        field: field.map(str::to_owned),
+        reason,
+        detail,
+    }
+}
+
+fn schedule_diagnostic(conflict: &super::person_schedules::RestoreConflict) -> PreflightDiagnostic {
+    let (collection, portable_id, field) = match conflict {
+        super::person_schedules::RestoreConflict::Clinical { source, field } => (
+            Some("schedules".into()),
+            Some(source.clone()),
+            Some((*field).into()),
+        ),
+        super::person_schedules::RestoreConflict::Pause { .. } => (None, None, None),
+    };
+    PreflightDiagnostic {
+        collection,
+        portable_id,
+        field,
+        reason: DiagnosticReason::InvalidSource,
+        detail: conflict.to_string(),
     }
 }
 
@@ -170,25 +196,23 @@ pub(crate) async fn preflight(
     index: &ExistingIndex,
 ) -> Result<Preflight, OperationError> {
     let mut errors = plan.errors.clone();
-    let original_errors = errors.len();
+    let mut diagnostics = plan.source_diagnostics.clone();
+    macro_rules! row_error {
+        ($kind:expr, $index:expr, $field:expr, $reason:expr, $detail:expr) => {{
+            let detail = $detail;
+            diagnostics.push(row_diagnostic(
+                plan,
+                $kind,
+                $index,
+                $field,
+                $reason,
+                detail.clone(),
+            ));
+            errors.push(detail);
+        }};
+    }
     let schedule_conflicts = super::person_schedules::conflicts(db, tenant, plan, index).await?;
-    let schedule_diagnostics = schedule_conflicts
-        .iter()
-        .map(|conflict| {
-            let (source, field) = match conflict {
-                super::person_schedules::RestoreConflict::Clinical { source, field } => {
-                    (source, *field)
-                }
-                super::person_schedules::RestoreConflict::Pause { source } => (source, "pause"),
-            };
-            PreflightDiagnostic {
-                collection: Some("schedules"),
-                portable_id: Some(source.clone()),
-                field: Some(field.into()),
-                detail: conflict.to_string(),
-            }
-        })
-        .collect();
+    diagnostics.extend(schedule_conflicts.iter().map(schedule_diagnostic));
     errors.extend(
         schedule_conflicts
             .into_iter()
@@ -197,7 +221,9 @@ pub(crate) async fn preflight(
     let mut conflicts = Vec::new();
     for kind in BASE_TYPES.iter().chain(V2_TYPES) {
         for (index, row) in plan.rows(kind).iter().enumerate() {
-            errors.extend(validate_row(kind, index, row));
+            for detail in validate_row(kind, index, row) {
+                row_error!(kind, index, None, DiagnosticReason::InvalidSource, detail);
+            }
         }
     }
     for kind in ["locations", "people", "medications"] {
@@ -234,9 +260,15 @@ pub(crate) async fn preflight(
             .is_some_and(|kind| matches!(kind, "minor" | "dependent_adult"))
             && row["has_capacity"] == true
         {
-            errors.push(format!(
-                "people[{row_index}].has_capacity must be false for minors and dependent adults"
-            ));
+            row_error!(
+                "people",
+                row_index,
+                Some("has_capacity"),
+                DiagnosticReason::InvalidSource,
+                format!(
+                    "people[{row_index}].has_capacity must be false for minors and dependent adults"
+                )
+            );
         }
     }
     for (kind, field, target, required) in [
@@ -295,7 +327,13 @@ pub(crate) async fn preflight(
         ("health_events", "person_portable_id", "people", true),
     ] {
         for i in 0..plan.rows(kind).len() {
-            reference(plan, index, &mut errors, (kind, i, field, target, required));
+            reference(
+                plan,
+                index,
+                &mut errors,
+                &mut diagnostics,
+                (kind, i, field, target, required),
+            );
         }
     }
     for kind in [
@@ -308,7 +346,13 @@ pub(crate) async fn preflight(
                 Some("schedule") => "schedules",
                 Some("person_medication") => "person_medications",
                 _ => {
-                    errors.push(format!("{kind}[{i}].source_type is unsupported"));
+                    row_error!(
+                        kind,
+                        i,
+                        Some("source_type"),
+                        DiagnosticReason::InvalidSource,
+                        format!("{kind}[{i}].source_type is unsupported")
+                    );
                     continue;
                 }
             };
@@ -316,6 +360,7 @@ pub(crate) async fn preflight(
                 plan,
                 index,
                 &mut errors,
+                &mut diagnostics,
                 (kind, i, "source_portable_id", target, true),
             );
         }
@@ -327,13 +372,25 @@ pub(crate) async fn preflight(
                     .as_str()
                     .is_none_or(|id| !index.has(plan, "medications", id))
                 {
-                    errors.push(format!("health_events[{i}].medication_portable_ids references unknown medications portable ID"));
+                    row_error!(
+                        "health_events",
+                        i,
+                        Some("medication_portable_ids"),
+                        DiagnosticReason::MissingDependency,
+                        format!(
+                            "health_events[{i}].medication_portable_ids references unknown medications portable ID"
+                        )
+                    );
                 }
             }
         } else if !row["medication_portable_ids"].is_null() {
-            errors.push(format!(
-                "health_events[{i}].medication_portable_ids must be an array"
-            ));
+            row_error!(
+                "health_events",
+                i,
+                Some("medication_portable_ids"),
+                DiagnosticReason::InvalidSource,
+                format!("health_events[{i}].medication_portable_ids must be an array")
+            );
         }
     }
     for kind in ["schedules", "person_medications"] {
@@ -343,15 +400,27 @@ pub(crate) async fn preflight(
             };
             if let Some(dosage_id) = row["source_dosage_option_portable_id"].as_str() {
                 if index.dosage_medication(plan, dosage_id) != Some(medication_id) {
-                    errors.push(format!(
-                        "{kind}[{i}].source_dosage_option_portable_id must belong to medication"
-                    ));
+                    row_error!(
+                        kind,
+                        i,
+                        Some("source_dosage_option_portable_id"),
+                        DiagnosticReason::InvalidSource,
+                        format!(
+                            "{kind}[{i}].source_dosage_option_portable_id must belong to medication"
+                        )
+                    );
                 }
                 if let Some((amount, unit)) = index.dosage_value(plan, dosage_id)
                     && (decimal(&row["dose_amount"]) != Some(amount)
                         || row["dose_unit"].as_str() != Some(unit))
                 {
-                    errors.push(format!("{kind}[{i}] dose must match source dosage option"));
+                    row_error!(
+                        kind,
+                        i,
+                        None,
+                        DiagnosticReason::InvalidSource,
+                        format!("{kind}[{i}] dose must match source dosage option")
+                    );
                 }
             }
         }
@@ -373,13 +442,29 @@ pub(crate) async fn preflight(
         };
         if let Some(stock_medication) = row["taken_from_medication_portable_id"].as_str() {
             if stock_medication != source_medication {
-                errors.push(format!("medication_takes[{i}].taken_from_medication_portable_id does not match source medication"));
+                row_error!(
+                    "medication_takes",
+                    i,
+                    Some("taken_from_medication_portable_id"),
+                    DiagnosticReason::InvalidSource,
+                    format!(
+                        "medication_takes[{i}].taken_from_medication_portable_id does not match source medication"
+                    )
+                );
             }
             if plan.format != crate::models::care::sync::PortableFormat::V3
                 && let Some(stock_location) = row["taken_from_location_portable_id"].as_str()
                 && index.medication_location(plan, stock_medication) != Some(stock_location)
             {
-                errors.push(format!("medication_takes[{i}].taken_from_location_portable_id does not match medication location"));
+                row_error!(
+                    "medication_takes",
+                    i,
+                    Some("taken_from_location_portable_id"),
+                    DiagnosticReason::InvalidSource,
+                    format!(
+                        "medication_takes[{i}].taken_from_location_portable_id does not match medication location"
+                    )
+                );
             }
         }
     }
@@ -391,9 +476,13 @@ pub(crate) async fn preflight(
                     row["source_portable_id"].as_str().unwrap_or_default(),
                 ))
         {
-            errors.push(format!(
-                "dose_occurrences[{i}].medication_take_portable_id does not match source"
-            ));
+            row_error!(
+                "dose_occurrences",
+                i,
+                Some("medication_take_portable_id"),
+                DiagnosticReason::InvalidSource,
+                format!("dose_occurrences[{i}].medication_take_portable_id does not match source")
+            );
         }
     }
     for kind in ["medication_takes", "dose_occurrences"] {
@@ -413,7 +502,13 @@ pub(crate) async fn preflight(
                             .get("error")
                             .and_then(Value::as_str)
                             .unwrap_or("is invalid");
-                        errors.push(format!("{kind}[{i}] {message}"));
+                        row_error!(
+                            kind,
+                            i,
+                            None,
+                            DiagnosticReason::InvalidSource,
+                            format!("{kind}[{i}] {message}")
+                        );
                     }
                     error => return Err(error),
                 }
@@ -449,9 +544,13 @@ pub(crate) async fn preflight(
                 .insert((kind.to_owned(), source.to_owned()), portable_id.to_owned())
                 .is_some_and(|existing| existing != portable_id)
         {
-            errors.push(format!(
-                "medication_pause_periods[{i}] source already has an open pause period"
-            ));
+            row_error!(
+                "medication_pause_periods",
+                i,
+                None,
+                DiagnosticReason::InvalidSource,
+                format!("medication_pause_periods[{i}] source already has an open pause period")
+            );
         }
         if let Some(portable_id) = row["portable_id"]
             .as_str()
@@ -465,7 +564,13 @@ pub(crate) async fn preflight(
                         .get("error")
                         .and_then(Value::as_str)
                         .unwrap_or("is invalid");
-                    errors.push(format!("medication_pause_periods[{i}] {message}"));
+                    row_error!(
+                        "medication_pause_periods",
+                        i,
+                        None,
+                        DiagnosticReason::InvalidSource,
+                        format!("medication_pause_periods[{i}] {message}")
+                    );
                 }
                 error => return Err(error),
             }
@@ -482,9 +587,13 @@ pub(crate) async fn preflight(
                     row["portable_id"].as_str().unwrap_or_default().to_owned(),
                 ));
                 if row["active"] == false && row["retired_at"].is_null() && !has_open {
-                    errors.push(format!(
-                        "{kind}[{i}] inactive source requires an open pause period"
-                    ));
+                    row_error!(
+                        kind,
+                        i,
+                        None,
+                        DiagnosticReason::InvalidSource,
+                        format!("{kind}[{i}] inactive source requires an open pause period")
+                    );
                 }
             }
         }
@@ -493,7 +602,6 @@ pub(crate) async fn preflight(
         counts: plan.counts.clone(),
         conflicts,
         errors,
-        original_errors,
-        schedule_diagnostics,
+        diagnostics,
     })
 }

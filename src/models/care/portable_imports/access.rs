@@ -9,10 +9,17 @@ pub(crate) async fn authorized(
     declarations: &PreparedDeclarations,
     today: NaiveDate,
 ) -> Result<bool, OperationError> {
-    let manager = crate::models::access::can_manage_household(tenant);
-    if !manager && !plan.rows("locations").is_empty() {
+    if !crate::models::access::can_manage_household(tenant) && !plan.rows("locations").is_empty() {
         return Ok(false);
     }
+    let manageable_ids = import_authority(tenant, today).await?;
+    authorized_with(tenant, plan, index, declarations, &manageable_ids, false).await
+}
+
+pub(super) async fn import_authority(
+    tenant: &TenantTransaction,
+    today: NaiveDate,
+) -> Result<HashSet<i64>, OperationError> {
     let mut manageable_ids: HashSet<i64> = crate::models::access::people_with_access(
         tenant,
         crate::models::access::PersonAccess::Manage,
@@ -25,6 +32,34 @@ pub(crate) async fn authorized(
         crate::models::care::guardian_declarations::import_manageable_subjects(tenant, today)
             .await?,
     );
+    Ok(manageable_ids)
+}
+
+pub(super) async fn authorized_with(
+    tenant: &TenantTransaction,
+    plan: &ImportPlan,
+    index: &ExistingIndex,
+    declarations: &PreparedDeclarations,
+    prepared_authority: &HashSet<i64>,
+    recheck_clinical: bool,
+) -> Result<bool, OperationError> {
+    crate::models::access::recheck(tenant).await?;
+    let manager = crate::models::access::can_manage_household(tenant);
+    if !manager && !plan.rows("locations").is_empty() {
+        return Ok(false);
+    }
+    let mut manageable_ids = HashSet::new();
+    for id in prepared_authority {
+        if !recheck_clinical
+            || super::super::person_schedules::sharing::clinical_authority(
+                tenant.transaction(),
+                crate::models::ids::PersonId::from_database(*id),
+            )
+            .await?
+        {
+            manageable_ids.insert(*id);
+        }
+    }
     let mut referenced_people = HashSet::new();
     for kind in [
         "people",
@@ -85,10 +120,11 @@ pub(crate) async fn authorized(
     }
     if (!manager && referenced_people.is_empty())
         || referenced_people.iter().any(|portable_id| {
-            !declarations.contains(portable_id)
-                && index
-                    .get("people", portable_id)
-                    .is_none_or(|id| !manageable_ids.contains(&id))
+            !subject_allowed(
+                index.get("people", portable_id),
+                declarations.contains(portable_id),
+                &manageable_ids,
+            )
         })
     {
         return Ok(false);
@@ -206,6 +242,10 @@ pub(crate) async fn authorized(
     Ok(true)
 }
 
+fn subject_allowed(person_id: Option<i64>, declared: bool, manageable: &HashSet<i64>) -> bool {
+    declared || person_id.is_some_and(|id| manageable.contains(&id))
+}
+
 fn delegated_medication_target_allowed(
     target: &str,
     existing_authorized: &HashSet<String>,
@@ -232,8 +272,17 @@ fn delegated_dosage_write_allowed(
 
 #[cfg(test)]
 mod tests {
-    use super::{delegated_dosage_write_allowed, delegated_medication_target_allowed};
+    use super::{
+        delegated_dosage_write_allowed, delegated_medication_target_allowed, subject_allowed,
+    };
     use std::collections::HashSet;
+
+    #[test]
+    fn self_authority_does_not_grant_another_person() {
+        let self_only = HashSet::from([7]);
+        assert!(subject_allowed(Some(7), false, &self_only));
+        assert!(!subject_allowed(Some(8), false, &self_only));
+    }
 
     #[test]
     fn delegated_import_cannot_bootstrap_existing_medication_or_reparent_dosage() {

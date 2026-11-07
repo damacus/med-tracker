@@ -241,14 +241,26 @@ fn normalize_resolved(
     }
     let mut plan = ImportPlan::parse(normalized).map_err(|_| AliasError::InvalidPayload)?;
     let mut errors = source_plan.errors.clone();
+    let mut diagnostics = source_plan.source_diagnostics.clone();
     for (index, row) in source_plan.rows("people").iter().enumerate() {
         if selections.iter().any(|selection| {
             row["portable_id"].as_str() == Some(selection.source_person_portable_id.as_str())
         }) {
-            errors.extend(super::validate_row("people", index, row));
+            let validation_errors = super::validate_row("people", index, row);
+            diagnostics.extend(validation_errors.iter().map(|detail| {
+                super::preflight::PreflightDiagnostic {
+                    collection: Some("people".into()),
+                    portable_id: row["portable_id"].as_str().map(str::to_owned),
+                    field: None,
+                    reason: super::preflight::DiagnosticReason::InvalidSource,
+                    detail: detail.clone(),
+                }
+            }));
+            errors.extend(validation_errors);
         }
     }
     plan.errors = errors;
+    plan.source_diagnostics = diagnostics;
     Ok(NormalizedImport {
         source_payload,
         aliases,

@@ -207,7 +207,14 @@ pub(crate) async fn import_manageable_subjects(
     tenant: &TenantTransaction,
     today: NaiveDate,
 ) -> Result<Vec<i64>, OperationError> {
-    let guardian = eligible_actor(tenant, today).await?;
+    let guardian = match eligible_actor(tenant, today).await {
+        Ok(guardian) => guardian,
+        Err(OperationError::Forbidden) => {
+            access::recheck(tenant).await?;
+            return Ok(Vec::new());
+        }
+        Err(error) => return Err(error),
+    };
     let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "SELECT d.subject_person_id,p.person_type,p.date_of_birth,p.has_capacity FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.people p ON p.id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=p.id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL ORDER BY d.id FOR SHARE OF d",

@@ -1,6 +1,6 @@
 use super::{
     ExistingIndex, ImportPlan, NormalizedImport, PreparedDeclarations, ProfileDifference,
-    ResolvedAlias, authorized, preflight,
+    ResolvedAlias, preflight,
 };
 use crate::models::{
     access::{self, TenantTransaction, person_queries},
@@ -160,6 +160,10 @@ pub(crate) async fn assess(
     today: NaiveDate,
     lock: ExpectationLock,
 ) -> Result<ImportAssessment, OperationError> {
+    if lock == ExpectationLock::Confirmation {
+        prelock_confirmation(tenant).await?;
+    }
+    let prepared_authority = super::access::import_authority(tenant, today).await?;
     let expectation =
         capture_expectation(tenant, &normalized.aliases, &normalized.plan, lock).await?;
     let index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id).await?;
@@ -225,13 +229,17 @@ pub(crate) async fn assess(
         }
     }
     for diagnostic in preflight.diagnostics(&normalized.plan, &normalized.source_payload) {
-        let reason = if diagnostic.detail.contains("references unknown") {
-            AssessmentReason::MissingDependency
-        } else {
-            AssessmentReason::InvalidSource
+        let reason = match diagnostic.reason {
+            super::preflight::DiagnosticReason::MissingDependency => {
+                AssessmentReason::MissingDependency
+            }
+            super::preflight::DiagnosticReason::InvalidSource => AssessmentReason::InvalidSource,
         };
         issues.push(AssessmentIssue {
-            collection: diagnostic.collection.and_then(SourceCollection::from_name),
+            collection: diagnostic
+                .collection
+                .as_deref()
+                .and_then(SourceCollection::from_name),
             portable_id: diagnostic.portable_id,
             field: diagnostic.field,
             reason,
@@ -305,7 +313,16 @@ pub(crate) async fn assess(
             issues.push(AssessmentIssue { collection: Some(SourceCollection::People), portable_id: Some(alias.source_person_portable_id.clone()), field: None, reason: AssessmentReason::IncompatiblePerson, detail: "The selected person is no longer an active household member or the source person is missing.".into() });
         }
     }
-    let allowed = match authorized(tenant, &normalized.plan, &index, declarations, today).await {
+    let allowed = match super::access::authorized_with(
+        tenant,
+        &normalized.plan,
+        &index,
+        declarations,
+        &prepared_authority,
+        true,
+    )
+    .await
+    {
         Ok(allowed) => allowed,
         Err(OperationError::Forbidden) => false,
         Err(error) => return Err(error),
@@ -677,11 +694,7 @@ async fn lock_destination(
     aliases: &[AliasExpectation],
     slots: &[SlotExpectation],
 ) -> Result<(), OperationError> {
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
+    prelock_confirmation(tenant).await?;
     let has_names = |collection| {
         slots
             .iter()
@@ -731,6 +744,18 @@ async fn lock_destination(
             .all(tenant.transaction())
             .await?;
     }
+    Ok(())
+}
+
+pub(crate) async fn prelock_confirmation(tenant: &TenantTransaction) -> Result<(), OperationError> {
+    super::super::guardian_declarations::lock_creator_account(tenant).await?;
+    household::Entity::find_by_id(tenant.scope().household_id)
+        .lock_exclusive()
+        .one(tenant.transaction())
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    super::super::guardian_declarations::manageable_subjects(tenant).await?;
+    access::recheck(tenant).await?;
     Ok(())
 }
 
