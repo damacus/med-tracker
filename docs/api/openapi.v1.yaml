@@ -4766,7 +4766,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
-          $ref: "#/components/responses/ValidationFailed"
+          $ref: "#/components/responses/ClinicalImportValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
   /households/{household_id}/data_imports/previews:
@@ -4799,7 +4799,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
-          $ref: "#/components/responses/ValidationFailed"
+          $ref: "#/components/responses/ClinicalImportValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
   /households/{household_id}/data_imports:
@@ -5924,6 +5924,14 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
+    ClinicalImportValidationFailed:
+      description: Invalid request or archive. Source-field diagnostics are bounded and unsupported leaf names are redacted.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/ErrorEnvelope"
+              - $ref: "#/components/schemas/ClinicalImportDiagnosticErrorEnvelope"
     Conflict:
       description: The resource or idempotency state conflicts with the requested mutation.
       content:
@@ -5972,7 +5980,47 @@ components:
     ClinicalImportRelationshipKind: {"type":"string","enum":["person_medication","schedule_person","schedule_medication","assignment_person","assignment_medication","dose_source","dose_taken_from_medication","dose_taken_from_location","medication_location","stock_medication","health_event_medication","person_location","other"]}
     ClinicalImportReason: {"type":"string","enum":["unsupported_field","unsupported_record","unsupported_relationship","obsolete_person_location","identity_conflict","consent_required","guardian_declaration_required","insufficient_authority","missing_dependency","historical_actor_unavailable","destination_changed","source_invalid","attachment_unsupported","other"]}
     ClinicalImportSourceIdentity: {"type":"object","required":["source","instance","kind","id"],"properties":{"source":{"$ref":"#/components/schemas/ClinicalImportSourceSystem"},"instance":{"type":"string"},"kind":{"$ref":"#/components/schemas/ClinicalImportRecordKind"},"id":{"type":"string"}}}
-    ClinicalImportDestinationId: {"type":"object","required":["kind","id"],"properties":{"kind":{"type":"string","enum":["person","medication","location","dosage_option","schedule","assignment","dose","stock","pause","occurrence","health_event","attachment"]},"id":{"type":"integer","format":"int64"}}}
+    ClinicalImportDestinationId: {"type":"object","required":["kind","id"],"properties":{"kind":{"type":"string","enum":["person","medication","location","dosage_option","schedule","assignment","dose","stock","pause","occurrence","health_event","notification_preference","attachment"]},"id":{"type":"integer","format":"int64"}}}
+    ClinicalImportDiagnosticErrorEnvelope:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id, errors]
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              enum: [validation_failed]
+            message:
+              type: string
+            request_id:
+              type: string
+            trace_id:
+              type: string
+            errors:
+              type: object
+              required: [items, truncated]
+              additionalProperties: false
+              properties:
+                items:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    required: [path, reason]
+                    additionalProperties: false
+                    properties:
+                      path:
+                        type: string
+                        maxLength: 256
+                      reason:
+                        type: string
+                        enum: [unsupported_field, invalid_field]
+                truncated:
+                  type: boolean
     ClinicalImportDestinationRecord: {"type":"object","required":["id","href"],"properties":{"id":{"$ref":"#/components/schemas/ClinicalImportDestinationId"},"href":{"type":"string","nullable":true}}}
     ClinicalImportSourceField: {"type":"object","required":["field","source_value","outcome","destination_value","reason"],"properties":{"field":{"type":"string"},"source_value":{"type":"string"},"outcome":{"type":"string","enum":["preserved","changed","unsupported","omitted"]},"destination_value":{"type":"string","nullable":true},"reason":{"allOf":[{"$ref":"#/components/schemas/ClinicalImportReason"}],"nullable":true}}}
     ClinicalImportRecordDetails: {"type":"object","required":[],"properties":{"name":{"type":"string","nullable":true},"dose_amount":{"type":"string","nullable":true},"dose_unit":{"type":"string","nullable":true},"timing":{"type":"string","nullable":true},"stock_quantity":{"type":"string","nullable":true},"stock_unit":{"type":"string","nullable":true},"occurred_at":{"type":"string","format":"date-time","nullable":true},"source_fields":{"type":"array","items":{"$ref":"#/components/schemas/ClinicalImportSourceField"}}}}

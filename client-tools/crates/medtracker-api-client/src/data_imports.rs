@@ -122,6 +122,7 @@ pub enum DestinationId {
     Pause(i64),
     Occurrence(i64),
     HealthEvent(i64),
+    NotificationPreference(i64),
     Attachment(i64),
 }
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -393,22 +394,27 @@ mod tests {
         let prefix = "/api/v1/households/42/data_imports";
         let identity =
             json!({"source":"med_tracker05","instance":"synthetic","kind":"person","id":"p1"});
-        let report = json!({
-            "id":"run-1","state":"ready","source":"med_tracker05","source_sha256":"abc",
-            "source_timezone":{"name":"Europe/London","provenance":"operator_confirmed"},
-            "created_at":"2026-11-06T12:00:00Z",
-            "totals":{"expected_create":1,"expected_match":0,"expected_link":0,"created":0,"matched":0,"verified_links":0,"skipped":0,"rejected":0,"unlinked":0,"decisions_required":0,"omissions":0},
-            "people":[],"records":[],"relationships":[],"omissions":[],"issues":[]
-        });
-        Mock::given(method("POST")).and(path(format!("{prefix}/inspections")))
+        let inspection_response: serde_json::Value =
+            serde_json::from_str(include_str!("fixtures/clinical-import-inspection.json"))?;
+        let blocked: serde_json::Value =
+            serde_json::from_str(include_str!("fixtures/clinical-import-blocked.json"))?;
+        let completed: serde_json::Value =
+            serde_json::from_str(include_str!("fixtures/clinical-import-completed.json"))?;
+        let failed: serde_json::Value =
+            serde_json::from_str(include_str!("fixtures/clinical-import-failed.json"))?;
+        Mock::given(method("POST"))
+            .and(path(format!("{prefix}/inspections")))
             .and(header("authorization", "Bearer synthetic-token"))
-            .respond_with(ResponseTemplate::new(201).set_body_json(json!({"data":{"id":"inspection-1","archive_sha256":"abc","timezone":{"name":"Europe/London","provenance":"operator_confirmed"},"inventory":{"records":[],"relationships":[],"omissions":[]}}}))).mount(&server).await;
+            .respond_with(
+                ResponseTemplate::new(201).set_body_json(json!({"data":inspection_response})),
+            )
+            .mount(&server)
+            .await;
         Mock::given(method("POST"))
             .and(path(format!("{prefix}/previews")))
             .respond_with(
-                ResponseTemplate::new(201).set_body_json(
-                    json!({"data":{"report":report,"confirmation":"synthetic-token"}}),
-                ),
+                ResponseTemplate::new(201)
+                    .set_body_json(json!({"data":{"report":blocked,"confirmation":null}})),
             )
             .mount(&server)
             .await;
@@ -416,17 +422,16 @@ mod tests {
             .and(path(prefix))
             .and(query_param("after_id", "cursor +"))
             .and(query_param("limit", "25"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(json!({"data":{"reports":[report],"next_cursor":null}})),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                json!({"data":{"reports":[blocked,completed,failed],"next_cursor":null}}),
+            ))
             .mount(&server)
             .await;
         Mock::given(method("GET"))
             .and(path(format!("{prefix}/run-1")))
             .respond_with(
                 ResponseTemplate::new(200)
-                    .set_body_json(json!({"data":{"report":report,"confirmation":null}})),
+                    .set_body_json(json!({"data":{"report":completed,"confirmation":null}})),
             )
             .mount(&server)
             .await;
@@ -438,9 +443,36 @@ mod tests {
             source_timezone: "Europe/London".into(),
             timezone_confirmed: true,
         };
+        let inventory = client
+            .inspect_data_import("42", &inspection)
+            .await?
+            .inventory;
+        assert_eq!(inventory.records.len(), 2);
         assert_eq!(
-            client.inspect_data_import("42", &inspection).await?.id,
-            "inspection-1"
+            inventory
+                .relationships
+                .first()
+                .ok_or("missing source edge")?
+                .kind,
+            RelationshipKind::PersonMedication
+        );
+        assert_eq!(
+            inventory
+                .omissions
+                .first()
+                .ok_or("missing omission")?
+                .acknowledgement_id,
+            "omit-1"
+        );
+        assert_eq!(
+            inventory
+                .records
+                .get(1)
+                .ok_or("missing schedule")?
+                .details
+                .dose_amount
+                .as_deref(),
+            Some("1.50")
         );
         let source = SourceIdentity {
             source: SourceSystem::MedTracker05,
@@ -469,28 +501,91 @@ mod tests {
             }],
             acknowledged_omissions: vec!["omission-1".into()],
         };
+        let blocked_report = client.preview_data_import("42", &preview).await?.report;
+        assert_eq!(blocked_report.state, ImportState::Blocked);
+        let person = blocked_report.people.first().ok_or("missing person")?;
+        assert_eq!(person.person.expected, ExpectedRecord::DecisionRequired);
+        assert_eq!(person.person.actual, None);
         assert_eq!(
-            client
-                .preview_data_import("42", &preview)
-                .await?
-                .report
-                .state,
-            ImportState::Ready
+            person.relationships.first().ok_or("missing edge")?.actual,
+            None
         );
         assert_eq!(
-            client
-                .data_import_reports("42", Some("cursor +"), Some(25))
-                .await?
-                .reports
-                .len(),
-            1
+            blocked_report
+                .relationships
+                .first()
+                .ok_or("missing blocked edge")?
+                .actual,
+            None
+        );
+        assert_eq!(
+            blocked_report.issues.first().ok_or("missing issue")?.reason,
+            ReasonCode::ConsentRequired
         );
         assert!(
-            client
-                .data_import_report("42", "run-1")
-                .await?
-                .confirmation
-                .is_none()
+            !person
+                .omissions
+                .first()
+                .ok_or("missing omission")?
+                .acknowledged
+        );
+        let page = client
+            .data_import_reports("42", Some("cursor +"), Some(25))
+            .await?;
+        assert_eq!(page.reports.len(), 3);
+        let failed_report = page.reports.get(2).ok_or("missing failed report")?;
+        assert_eq!(failed_report.state, ImportState::Failed);
+        assert_eq!(
+            failed_report
+                .relationships
+                .first()
+                .ok_or("missing unlinked edge")?
+                .actual,
+            Some(ActualRelationship::NotLinked)
+        );
+        let detail = client.data_import_report("42", "run-1").await?;
+        assert!(detail.confirmation.is_none());
+        let completed_report = detail.report;
+        assert_eq!(completed_report.state, ImportState::Completed);
+        let person = completed_report.people.first().ok_or("missing person")?;
+        assert_eq!(person.person.actual, Some(ActualRecord::Matched));
+        assert_eq!(
+            person
+                .relationships
+                .first()
+                .ok_or("missing verified edge")?
+                .actual,
+            Some(ActualRelationship::Verified)
+        );
+        assert_eq!(
+            completed_report
+                .relationships
+                .first()
+                .ok_or("missing omitted edge")?
+                .actual,
+            Some(ActualRelationship::Omitted)
+        );
+        let schedule = person.records.first().ok_or("missing schedule")?;
+        assert_eq!(schedule.details.stock_quantity.as_deref(), Some("20.25"));
+        let preference = person.records.get(1).ok_or("missing preference")?;
+        assert_eq!(
+            preference.destination.as_ref().map(|d| &d.id),
+            Some(&DestinationId::NotificationPreference(91))
+        );
+        assert!(
+            person
+                .omissions
+                .first()
+                .ok_or("missing omission")?
+                .acknowledged
+        );
+        assert_eq!(
+            completed_report
+                .issues
+                .first()
+                .ok_or("missing issue")?
+                .reason,
+            ReasonCode::UnsupportedField
         );
         let requests = server.received_requests().await.ok_or("capture disabled")?;
         let request = requests

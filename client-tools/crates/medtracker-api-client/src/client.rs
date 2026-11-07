@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 use url::Url;
 
 use crate::USER_AGENT;
-use crate::error::{ApiError, ErrorEnvelope};
+use crate::error::{ApiError, ErrorEnvelope, ImportDiagnostics};
 use crate::models::DataEnvelope;
 
 #[derive(Clone)]
@@ -188,6 +188,15 @@ impl ApiClient {
             Err(error) => return ApiError::Http(error),
         };
         if let Ok(envelope) = serde_json::from_slice::<ErrorEnvelope>(&body) {
+            let import_diagnostics = if status == 422 && envelope.error.code == "validation_failed"
+            {
+                serde_json::from_slice::<serde_json::Value>(&body)
+                    .ok()
+                    .and_then(|value| value.pointer("/error/errors").cloned())
+                    .and_then(|value| serde_json::from_value::<ImportDiagnostics>(value).ok())
+            } else {
+                None
+            };
             ApiError::Server {
                 status,
                 code: envelope.error.code,
@@ -195,6 +204,7 @@ impl ApiClient {
                 request_id: envelope.error.request_id,
                 trace_id: envelope.error.trace_id,
                 retry_after,
+                import_diagnostics,
             }
         } else {
             let value: serde_json::Value = serde_json::from_slice(&body).unwrap_or_default();
@@ -234,6 +244,7 @@ impl ApiClient {
                 request_id: recognised.then(|| text("request_id")).flatten(),
                 trace_id: recognised.then(|| text("trace_id")).flatten(),
                 retry_after,
+                import_diagnostics: None,
             }
         }
     }
@@ -314,6 +325,96 @@ mod tests {
     }
     use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn import_diagnostics_preserve_error_metadata_and_other_error_shapes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use crate::error::ImportDiagnosticReason;
+        let server = MockServer::start().await;
+        for (endpoint, errors) in [
+            (
+                "/api/v1/households/1/data_imports/inspections",
+                serde_json::json!({
+                    "items": [{"path": "/people/0/[unsupported]", "reason": "unsupported_field"},
+                              {"path": "/people/0/name", "reason": "invalid_field"}],
+                    "truncated": true
+                }),
+            ),
+            (
+                "/api/v1/households/1/data_imports/previews",
+                serde_json::json!({"name": ["Invalid"]}),
+            ),
+            (
+                "/future",
+                serde_json::json!({"items":[{"path":"/x","reason":"future_reason"}],"truncated":false}),
+            ),
+        ] {
+            Mock::given(method("POST"))
+                .and(path(endpoint))
+                .respond_with(
+                    ResponseTemplate::new(422)
+                        .insert_header("Retry-After", "5")
+                        .set_body_json(serde_json::json!({"error":{
+                            "code":"validation_failed", "message":"Validation failed",
+                            "request_id":"req-1", "trace_id":"trace-1", "errors":errors
+                        }})),
+                )
+                .mount(&server)
+                .await;
+        }
+        let client = ApiClient::new(server.uri(), None)?;
+        for (endpoint, expected) in [
+            ("/api/v1/households/1/data_imports/inspections", true),
+            ("/api/v1/households/1/data_imports/previews", false),
+            ("/future", false),
+        ] {
+            let error = client
+                .post_json::<_, serde_json::Value>(endpoint, &serde_json::json!({}))
+                .await
+                .err()
+                .ok_or("expected error")?;
+            match error {
+                ApiError::Server {
+                    status,
+                    code,
+                    message,
+                    request_id,
+                    trace_id,
+                    retry_after,
+                    import_diagnostics,
+                } => {
+                    assert_eq!(status, 422);
+                    assert_eq!(code, "validation_failed");
+                    assert_eq!(message, "Validation failed");
+                    assert_eq!(request_id.as_deref(), Some("req-1"));
+                    assert_eq!(trace_id.as_deref(), Some("trace-1"));
+                    assert_eq!(retry_after.as_deref(), Some("5"));
+                    assert_eq!(import_diagnostics.is_some(), expected);
+                    if let Some(diagnostics) = import_diagnostics {
+                        assert!(diagnostics.truncated);
+                        assert_eq!(
+                            diagnostics
+                                .items
+                                .first()
+                                .ok_or("missing diagnostic")?
+                                .reason,
+                            ImportDiagnosticReason::UnsupportedField
+                        );
+                        assert_eq!(
+                            diagnostics.items.get(1).ok_or("missing diagnostic")?.reason,
+                            ImportDiagnosticReason::InvalidField
+                        );
+                        assert_eq!(
+                            diagnostics.items.first().ok_or("missing diagnostic")?.path,
+                            "/people/0/[unsupported]"
+                        );
+                    }
+                }
+                other => return Err(other.into()),
+            }
+        }
+        Ok(())
+    }
 
     #[tokio::test]
     async fn portable_redirects_never_forward_passphrase_or_bundle()

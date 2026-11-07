@@ -1,6 +1,25 @@
 use reqwest::header::ToStrError;
 use serde::Deserialize;
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ImportDiagnosticReason {
+    UnsupportedField,
+    InvalidField,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ImportDiagnostic {
+    pub path: String,
+    pub reason: ImportDiagnosticReason,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ImportDiagnostics {
+    pub items: Vec<ImportDiagnostic>,
+    pub truncated: bool,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ErrorEnvelope {
     pub error: ErrorBody,
@@ -36,5 +55,6 @@ pub enum ApiError {
         request_id: Option<String>,
         trace_id: Option<String>,
         retry_after: Option<String>,
+        import_diagnostics: Option<ImportDiagnostics>,
     },
 }

@@ -1,0 +1,79 @@
+{
+  "id": "inspection-1",
+  "archive_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "timezone": {
+    "name": "Europe/London",
+    "provenance": "operator_confirmed"
+  },
+  "inventory": {
+    "records": [
+      {
+        "identity": {
+          "source": "med_tracker05",
+          "instance": "synthetic",
+          "kind": "person",
+          "id": "p1"
+        },
+        "details": {
+          "name": "Example Person"
+        }
+      },
+      {
+        "identity": {
+          "source": "med_tracker05",
+          "instance": "synthetic",
+          "kind": "schedule",
+          "id": "s1"
+        },
+        "details": {
+          "dose_amount": "1.50",
+          "dose_unit": "tablet",
+          "stock_quantity": "20.25",
+          "stock_unit": "tablet",
+          "source_fields": [
+            {
+              "field": "frequency",
+              "source_value": "daily",
+              "outcome": "preserved",
+              "destination_value": "daily",
+              "reason": null
+            }
+          ]
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "kind": "person_medication",
+        "field": "medications",
+        "reason": null,
+        "source": {
+          "source": "med_tracker05",
+          "instance": "synthetic",
+          "kind": "person",
+          "id": "p1"
+        },
+        "target": {
+          "source": "med_tracker05",
+          "instance": "synthetic",
+          "kind": "medication",
+          "id": "m1"
+        }
+      }
+    ],
+    "omissions": [
+      {
+        "item": {
+          "source": "med_tracker05",
+          "instance": "synthetic",
+          "kind": "medication",
+          "id": "m1"
+        },
+        "field": "legacy_note",
+        "reason": "unsupported_field",
+        "acknowledgement_id": "omit-1",
+        "acknowledged": false
+      }
+    ]
+  }
+}
