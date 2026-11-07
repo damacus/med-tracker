@@ -352,10 +352,12 @@ fn upload(comment: &str) -> Upload {
 
 #[tokio::test]
 async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
+    use med_tracker::models::_entities::oauth_grants;
     use med_tracker::models::{
-        data_imports::{confirmation, contracts::PreviewToken},
-        identity::credentials::{CredentialMethod, CredentialProvenance},
+        data_imports::{confirmation, contracts::PreviewToken, credential::ImportPrincipal},
+        identity::resource,
     };
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, sea_query::Expr};
     let app = Application::new().await;
     let scope = app.fixture.scenario.scope();
     let comment = uuid::Uuid::new_v4().to_string();
@@ -398,10 +400,72 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
     .await
     .unwrap();
     let token = ready.confirmation.unwrap();
-    let provenance = CredentialProvenance {
-        method: CredentialMethod::BrowserSession,
-        reference: "synthetic-session".into(),
-    };
+    let credential = app.token().await;
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert(
+        "authorization",
+        format!("Bearer {credential}").parse().unwrap(),
+    );
+    let principal = resource::authenticate(&app.fixture.runtime, &headers, None)
+        .await
+        .unwrap();
+    let provenance = principal.provenance().clone();
+    let grants = oauth_grants::Entity::find()
+        .filter(oauth_grants::Column::AccountId.eq(scope.actor.account_id))
+        .filter(oauth_grants::Column::RevokedAt.is_null())
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert!(!grants.is_empty());
+    let ids: Vec<_> = grants.iter().map(|grant| grant.id).collect();
+    oauth_grants::Entity::update_many()
+        .col_expr(
+            oauth_grants::Column::RevokedAt,
+            Expr::value(Some(chrono::Utc::now().naive_utc())),
+        )
+        .filter(oauth_grants::Column::Id.is_in(ids.clone()))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert!(matches!(
+        confirmation::confirm_checked(
+            &app.context,
+            &scope,
+            &ready.report.id,
+            token.clone(),
+            "password".into(),
+            &provenance,
+            &scope.request_id,
+            ImportPrincipal::Api(&principal)
+        )
+        .await,
+        Err(InspectionError::Operation(
+            OperationError::Unauthenticated | OperationError::Forbidden
+        ))
+    ));
+    let check = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        persistence::find(&check, &ready.report.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .snapshot
+            .report
+            .state,
+        ImportState::Ready
+    );
+    check.rollback().await.unwrap();
+    oauth_grants::Entity::update_many()
+        .col_expr(
+            oauth_grants::Column::RevokedAt,
+            Expr::value(Option::<chrono::NaiveDateTime>::None),
+        )
+        .filter(oauth_grants::Column::Id.is_in(ids.clone()))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
     assert!(
         confirmation::confirm(
             &app.context,
@@ -428,7 +492,7 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
         .await
         .is_err()
     );
-    let completed = confirmation::confirm(
+    let completed = confirmation::confirm_checked(
         &app.context,
         &scope,
         &ready.report.id,
@@ -436,6 +500,7 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
         "password".into(),
         &provenance,
         &scope.request_id,
+        ImportPrincipal::Api(&principal),
     )
     .await
     .unwrap();
@@ -448,18 +513,44 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
         completed.totals.verified_links,
         ready.report.totals.expected_link
     );
-    let replay = confirmation::confirm(
+    let replay = confirmation::confirm_checked(
         &app.context,
         &scope,
         &ready.report.id,
-        token,
+        token.clone(),
         "password".into(),
         &provenance,
         &scope.request_id,
+        ImportPrincipal::Api(&principal),
     )
     .await
     .unwrap();
     assert_eq!(replay, completed);
+    oauth_grants::Entity::update_many()
+        .col_expr(
+            oauth_grants::Column::RevokedAt,
+            Expr::value(Some(chrono::Utc::now().naive_utc())),
+        )
+        .filter(oauth_grants::Column::Id.is_in(ids))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert!(matches!(
+        confirmation::confirm_checked(
+            &app.context,
+            &scope,
+            &ready.report.id,
+            token.clone(),
+            "password".into(),
+            &provenance,
+            &scope.request_id,
+            ImportPrincipal::Api(&principal)
+        )
+        .await,
+        Err(InspectionError::Operation(
+            OperationError::Unauthenticated | OperationError::Forbidden
+        ))
+    ));
     assert!(
         confirmation::confirm(
             &app.context,

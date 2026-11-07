@@ -7,6 +7,7 @@ use sea_orm::{EntityTrait, TransactionTrait};
 use super::{
     consents::{self, ConsentBinding},
     contracts::{DestinationId, ImportReport, ImportState, PersonDestination, PreviewToken},
+    credential::ImportPrincipal,
     identity::{self, IdentityChoices, IdentityValidationError},
     inspection::{self, InspectionError},
     persistence::{self, NewRun, StoredRun},
@@ -161,6 +162,47 @@ pub async fn confirm(
     provenance: &CredentialProvenance,
     request_id: &str,
 ) -> Result<ImportReport, InspectionError> {
+    confirm_inner(
+        ctx, scope, id, token, passphrase, provenance, request_id, None,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn confirm_checked(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    id: &str,
+    token: PreviewToken,
+    passphrase: String,
+    provenance: &CredentialProvenance,
+    request_id: &str,
+    principal: ImportPrincipal<'_>,
+) -> Result<ImportReport, InspectionError> {
+    confirm_inner(
+        ctx,
+        scope,
+        id,
+        token,
+        passphrase,
+        provenance,
+        request_id,
+        Some(principal),
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn confirm_inner(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    id: &str,
+    token: PreviewToken,
+    passphrase: String,
+    provenance: &CredentialProvenance,
+    request_id: &str,
+    principal: Option<ImportPrincipal<'_>>,
+) -> Result<ImportReport, InspectionError> {
     if request_id != scope.request_id {
         return Err(OperationError::Forbidden.into());
     }
@@ -193,7 +235,9 @@ pub async fn confirm(
     let tenant =
         consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &request_ids)
             .await?;
-    // The transport's checked-principal gate belongs here, after strong account locks and before persistence.
+    if let Some(principal) = principal.as_ref() {
+        principal.revalidate(&tenant).await?;
+    }
     let current = persistence::find_locked(&tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;
@@ -368,7 +412,17 @@ pub async fn confirm(
     match tenant.commit().await {
         Ok(()) => Ok(report),
         Err(error) => {
-            match reload_completed(ctx, scope, id, &token, &initial.snapshot, &request_ids).await {
+            match reload_completed(
+                ctx,
+                scope,
+                id,
+                &token,
+                &initial.snapshot,
+                &request_ids,
+                principal.as_ref(),
+            )
+            .await
+            {
                 Ok(Some(completed)) => Ok(completed),
                 Ok(None) => Err(error.into()),
                 Err(reload_error) => {
@@ -387,10 +441,14 @@ async fn reload_completed(
     token: &PreviewToken,
     initial: &NewRun,
     request_ids: &[String],
+    principal: Option<&ImportPrincipal<'_>>,
 ) -> Result<Option<ImportReport>, OperationError> {
     let tenant =
         consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), request_ids)
             .await?;
+    if let Some(principal) = principal {
+        principal.revalidate(&tenant).await?;
+    }
     let stored = persistence::find_locked(&tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;

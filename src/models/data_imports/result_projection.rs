@@ -24,20 +24,30 @@ fn invalid() -> OperationError {
 }
 
 pub(crate) fn token_verifier(token: &PreviewToken) -> String {
+    hex::encode(token_digest(token))
+}
+
+fn token_digest(token: &PreviewToken) -> hmac::digest::Output<Sha256> {
     let mut digest = Sha256::new();
     digest.update(b"medtracker.import.confirmation.v1\0");
     digest.update(token.0.as_bytes());
-    hex::encode(digest.finalize())
+    digest.finalize()
 }
 
 pub(crate) fn token_matches(expected: &str, token: &PreviewToken) -> bool {
-    let actual = token_verifier(token);
-    expected.len() == actual.len()
-        && expected
+    if expected.len() != 64
+        || !expected
             .bytes()
-            .zip(actual.bytes())
-            .fold(0_u8, |diff, (a, b)| diff | (a ^ b))
-            == 0
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return false;
+    }
+    let mut decoded = hmac::digest::Output::<Sha256>::default();
+    if hex::decode_to_slice(expected, &mut decoded[..]).is_err() {
+        return false;
+    }
+    hmac::digest::CtOutput::<Sha256>::new(decoded)
+        == hmac::digest::CtOutput::<Sha256>::new(token_digest(token))
 }
 
 fn checked_link(verified: bool) -> Result<ActualRelationship, OperationError> {
@@ -599,6 +609,10 @@ mod tests {
             &PreviewToken("other-token".into())
         ));
         assert!(!token_matches("invalid", &token));
+        assert!(!token_matches(&"00".repeat(31), &token));
+        assert!(!token_matches(&"zz".repeat(32), &token));
+        assert!(!token_matches(&verifier.to_uppercase(), &token));
+        assert!(!token_matches(&(verifier.clone() + "00"), &token));
     }
 
     #[test]
