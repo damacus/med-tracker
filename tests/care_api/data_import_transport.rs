@@ -4,6 +4,75 @@ use serde_json::json;
 use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
+fn archive_with_payload(payload: &serde_json::Value) -> String {
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    zip.start_file("portable.json", SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(&serde_json::to_vec(payload).unwrap())
+        .unwrap();
+    zip.start_file("manifest.json", SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(include_bytes!(
+        "../fixtures/portable_rails/prepared-history-v2.manifest.json"
+    ))
+    .unwrap();
+    STANDARD.encode(zip.finish().unwrap().into_inner())
+}
+
+#[tokio::test]
+async fn inspection_reports_bounded_safe_item_diagnostics() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/{}/data_imports/inspections",
+        app.origin, app.fixture.household.id
+    );
+    let original: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../fixtures/portable_rails/prepared-history-v2.json"
+    ))
+    .unwrap();
+    let mut unknown = original.clone();
+    for index in 0..101 {
+        unknown["records"]["people"][0][format!("secret-field-{index}")] = json!("clinical-secret");
+    }
+    let mut invalid = original;
+    invalid["records"]["schedules"][0]["dose_amount"] = json!("0.001");
+    for (payload, path, reason, truncated) in [
+        (
+            unknown,
+            "/records/people/0/[unsupported]",
+            "unsupported_field",
+            true,
+        ),
+        (
+            invalid,
+            "/records/schedules/0/dose_amount",
+            "invalid_field",
+            false,
+        ),
+    ] {
+        let response = app.client.post(&endpoint).bearer_auth(&token).json(&json!({
+            "source":"med_tracker05", "archive_base64":archive_with_payload(&payload),
+            "passphrase":"password", "source_timezone":"Europe/London", "timezone_confirmed":true
+        })).send().await.unwrap();
+        assert_eq!(response.status().as_u16(), 422);
+        let body: serde_json::Value = response.json().await.unwrap();
+        let errors = &body["error"]["errors"];
+        let items = errors["items"].as_array().unwrap();
+        assert!(
+            items
+                .iter()
+                .any(|item| item["path"] == path && item["reason"] == reason)
+        );
+        assert!(items.len() <= 100);
+        assert_eq!(errors["truncated"], truncated);
+        assert!(!body.to_string().contains("clinical-secret"));
+        assert!(!body.to_string().contains("secret-field"));
+        assert!(!body.to_string().contains("password"));
+    }
+    app.close().await;
+}
+
 #[tokio::test]
 async fn preview_and_reports_follow_inspection_and_household_boundaries() {
     let app = Application::new().await;
@@ -205,7 +274,7 @@ async fn inspection_authenticates_before_reading_invalid_or_oversized_body() {
         .await
         .unwrap()
         .key;
-    for body in ["{".to_owned(), "x".repeat(90 * 1024 * 1024)] {
+    for body in ["{".to_owned(), "x".repeat(90 * 1024 * 1024 + 1)] {
         let response = app
             .client
             .post(&endpoint)
@@ -230,6 +299,91 @@ async fn inspection_authenticates_before_reading_invalid_or_oversized_body() {
         .await
         .unwrap();
     assert_eq!(preview.status().as_u16(), 403);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn authorised_inspection_rejects_invalid_base64_and_body_over_limit() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/{}/data_imports/inspections",
+        app.origin, app.fixture.household.id
+    );
+    let invalid = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .json(&json!({
+            "source":"med_tracker05", "archive_base64":"%%%", "passphrase":"password",
+            "source_timezone":"Europe/London", "timezone_confirmed":true
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(invalid.status().as_u16(), 422);
+    let oversized = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .header("content-type", "application/json")
+        .body(vec![b'x'; 90 * 1024 * 1024 + 1])
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(oversized.status().as_u16(), 422);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn inspection_rejects_before_body_and_limits_concurrent_uploads() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
+    use tokio::time::{Duration, timeout};
+
+    let app = Application::new().await;
+    let address = app.origin.strip_prefix("http://").unwrap();
+    let path = format!(
+        "/api/v1/households/{}/data_imports/inspections",
+        app.fixture.household.id
+    );
+    let mut anonymous = TcpStream::connect(address).await.unwrap();
+    anonymous.write_all(format!("POST {path} HTTP/1.1\r\nHost: {address}\r\nContent-Length: 1024\r\nContent-Type: application/json\r\n\r\n").as_bytes()).await.unwrap();
+    let mut reply = [0_u8; 512];
+    let read = timeout(Duration::from_secs(5), anonymous.read(&mut reply))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        std::str::from_utf8(&reply[..read])
+            .unwrap()
+            .starts_with("HTTP/1.1 401")
+    );
+    drop(anonymous);
+
+    let token = app.token().await;
+    let mut stalled = TcpStream::connect(address).await.unwrap();
+    stalled.write_all(format!("POST {path} HTTP/1.1\r\nHost: {address}\r\nAuthorization: Bearer {token}\r\nContent-Length: 1024\r\nContent-Type: application/json\r\n\r\n").as_bytes()).await.unwrap();
+    let endpoint = format!("{}{path}", app.origin);
+    let mut busy = false;
+    for _ in 0..100 {
+        let response = app
+            .client
+            .post(&endpoint)
+            .bearer_auth(&token)
+            .header("content-type", "application/json")
+            .body("{")
+            .send()
+            .await
+            .unwrap();
+        if response.status().as_u16() == 503 {
+            busy = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(busy, "a stalled upload must hold the shared permit");
+    drop(stalled);
     app.close().await;
 }
 

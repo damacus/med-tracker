@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 use crate::models::{
     access,
     data_imports::{
-        contracts::{ConsentInput, PersonMapping, SourceInventory, SourceSystem, SourceTimeZone},
+        contracts::{
+            ArchivePreparationError, ConsentInput, PersonMapping, SourceInventory,
+            SourcePreparationDiagnostic, SourceSystem, SourceTimeZone,
+        },
         identity::RecipientConsent,
         inspection::{self, InspectionError, Upload},
         preview::{self as preview_service, PreviewInput},
@@ -21,6 +24,55 @@ use crate::models::{
 const MAX_BODY_BYTES: usize = 90 * 1024 * 1024;
 const MAX_ARCHIVE_BYTES: usize = 64 * 1024 * 1024;
 const MAX_ENCODED_BYTES: usize = MAX_ARCHIVE_BYTES.div_ceil(3) * 4;
+const MAX_DIAGNOSTICS: usize = 100;
+const MAX_DIAGNOSTIC_PATH_CHARS: usize = 256;
+
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum DiagnosticReason {
+    UnsupportedField,
+    InvalidField,
+}
+
+#[derive(Serialize)]
+struct Diagnostic {
+    path: String,
+    reason: DiagnosticReason,
+}
+
+fn preparation_error(error: InspectionError) -> response::Failure {
+    let (items, reason) = match error {
+        InspectionError::Operation(error) => return response::operation(error),
+        InspectionError::Preparation(ArchivePreparationError::UnsupportedFields(items)) => {
+            (items, DiagnosticReason::UnsupportedField)
+        }
+        InspectionError::Preparation(ArchivePreparationError::InvalidFields(items)) => {
+            (items, DiagnosticReason::InvalidField)
+        }
+        InspectionError::Preparation(_) => {
+            return response::Failure::validation("Import archive could not be prepared");
+        }
+    };
+    let truncated = items.len() > MAX_DIAGNOSTICS;
+    let items: Vec<_> = items
+        .into_iter()
+        .take(MAX_DIAGNOSTICS)
+        .map(|SourcePreparationDiagnostic { path }| {
+            let safe_path = match reason {
+                DiagnosticReason::UnsupportedField => {
+                    let parent = path.rsplit_once('/').map_or("", |(parent, _)| parent);
+                    format!("{parent}/[unsupported]")
+                }
+                DiagnosticReason::InvalidField => path,
+            };
+            Diagnostic {
+                path: safe_path.chars().take(MAX_DIAGNOSTIC_PATH_CHARS).collect(),
+                reason,
+            }
+        })
+        .collect();
+    response::Failure::fields(json!({"items": items, "truncated": truncated}))
+}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -149,12 +201,7 @@ pub(super) async fn inspect(
             timezone,
         )
         .await
-        .map_err(|error| match error {
-            InspectionError::Operation(error) => response::operation(error),
-            InspectionError::Preparation(_) => {
-                response::Failure::validation("Import archive could not be prepared")
-            }
-        })?;
+        .map_err(preparation_error)?;
         let data = InspectionResponse {
             id: inspected.id,
             archive_sha256: inspected.archive_sha256,
@@ -265,12 +312,7 @@ pub(super) async fn preview(
             },
         )
         .await
-        .map_err(|error| match error {
-            InspectionError::Operation(error) => response::operation(error),
-            InspectionError::Preparation(_) => {
-                response::Failure::validation("Import archive could not be prepared")
-            }
-        })?;
+        .map_err(preparation_error)?;
         Ok((StatusCode::CREATED, json!({"data": output}), None))
     }
     .await;
