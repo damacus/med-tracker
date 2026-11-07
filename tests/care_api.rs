@@ -14,6 +14,8 @@ mod data_import_atomicity;
 mod data_import_inspection;
 #[path = "care_api/data_import_projection.rs"]
 mod data_import_projection;
+#[path = "care_api/data_import_report_access.rs"]
+mod data_import_report_access;
 #[path = "care_api/data_import_transport.rs"]
 mod data_import_transport;
 #[path = "care_api/administration.rs"]
