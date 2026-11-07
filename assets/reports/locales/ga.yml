@@ -3217,6 +3217,9 @@ ga:
     action: "Sann cúramóir nó tabhair cuireadh dó"
   administration:
     import:
+      request_created: "Iarratas ar thoiliú cruthaithe"
+      request_share: "Roinn an nasc seo leis an duine. Is féidir leis síniú isteach chun athbhreithniú agus cinneadh a dhéanamh. Coinnigh an tagairt don réamhamharc."
+      withdraw_approval: "Tarraing siar an ceadú"
       choose_consent: "Gan toiliú tugtha"
       recipient_reference: "Tagairt iarratais ar thoiliú, má tá sí ar fáil"
       confirm_unavailable: "Níl deimhniú ar fáil fós."

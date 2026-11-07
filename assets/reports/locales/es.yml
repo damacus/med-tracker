@@ -3218,6 +3218,9 @@ es:
     action: "Asignar o invitar a un cuidador"
   administration:
     import:
+      request_created: "Solicitud de consentimiento creada"
+      request_share: "Comparta este enlace con la persona. Puede iniciar sesión para revisarla y decidir. Guarde la referencia para la vista previa."
+      withdraw_approval: "Retirar aprobación"
       choose_consent: "Sin consentimiento proporcionado"
       recipient_reference: "Referencia de solicitud de consentimiento, si está disponible"
       confirm_unavailable: "La confirmación aún no está disponible."

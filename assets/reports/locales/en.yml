@@ -3184,6 +3184,9 @@ en:
     action: "Assign or invite a carer"
   administration:
     import:
+      request_created: "Consent request created"
+      request_share: "Share this link with the person. They can sign in to review and decide. Keep the reference for your preview."
+      withdraw_approval: "Withdraw approval"
       choose_consent: "No consent supplied"
       recipient_reference: "Consent request reference, if available"
       confirm_unavailable: "Confirmation is not yet available."

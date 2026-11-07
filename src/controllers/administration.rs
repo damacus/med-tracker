@@ -126,6 +126,16 @@ pub fn routes() -> Routes {
         )
         .add("/{slug}/admin/data_imports/{id}", get(imports::detail))
         .add(
+            "/{slug}/admin/data_import_consents",
+            post(imports::consent::request).layer(axum::extract::DefaultBodyLimit::max(16 * 1024)),
+        )
+        .add(
+            "/{slug}/data_import_consents/{id}",
+            get(imports::consent::show)
+                .post(imports::consent::decide)
+                .layer(axum::extract::DefaultBodyLimit::max(16 * 1024)),
+        )
+        .add(
             "/{slug}/admin/carer_relationships",
             get(relationships).post(create_relationship),
         )
@@ -766,11 +776,11 @@ mod import_presentation_tests {
         let labels = labels();
         let shared = json!({"title": "Import", "lang": "en", "language_suffix": "", "labels": labels,
             "import_labels": labels["administration"]["import"], "back_url": "/back", "preview_url": "/preview",
-            "decision_url": "/decision", "authenticity_token": "csrf-test", "inspection_token": "inspection-test",
+            "decision_url": "/decision", "consent_url":"/request", "source_sha256":"a", "authenticity_token": "csrf-test", "inspection_token": "inspection-test",
             "source_timezone": "Europe/London", "errors": [], "omissions": [],
             "people": [{"name":"Alex", "key":"p1", "source":{"source":"med_tracker05", "instance":"canary", "id":"p1"},
-                "destinations": [{"value":"12", "name":"Alex", "selected":false}], "consent_status":"pending", "consent_choices":["self_consent"], "may_request_consent":false, "may_create_dependent":true, "new_dependent_selected":false}],
-            "request": {"requester_name":"Admin", "household_name":"Household", "person_name":"Alex", "source_name":"Alex (source)", "source":{"source":"med_tracker05", "instance":"canary", "id":"p1"}}});
+                "destinations": [{"value":"12", "name":"Alex", "selected":false}], "request_destinations":[], "consent_status":"pending", "consent_choices":["self_consent"], "may_request_consent":false, "may_create_dependent":true, "new_dependent_selected":false}],
+            "decision":"pending", "expected":"binding", "request": {"requester_name":"Admin", "household_name":"Household", "person_name":"Alex", "source_name":"Alex (source)", "source_sha256":"abc", "source":{"source":"med_tracker05", "instance":"canary", "id":"p1"}}});
         let mapping = view
             .render("administration/import/mapping.html", shared.clone())
             .expect("mapping");

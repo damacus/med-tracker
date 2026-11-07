@@ -101,7 +101,7 @@ async fn read_fields(mut form: Multipart) -> Result<Fields, OperationError> {
     })
 }
 
-fn source_for_key(key: &str) -> Result<SourceIdentity, OperationError> {
+pub(super) fn source_for_key(key: &str) -> Result<SourceIdentity, OperationError> {
     let bytes = URL_SAFE_NO_PAD.decode(key).map_err(|_| invalid())?;
     let source: SourceIdentity = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
     if source.source != SourceSystem::MedTracker05 || source.kind != RecordKind::Person {

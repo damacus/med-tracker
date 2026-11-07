@@ -10,6 +10,9 @@ use crate::models::{
 };
 use axum::extract::{FromRequest, Multipart};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use sea_orm::{
+    ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
+};
 
 const MAX_BODY: usize = 64 * 1024 * 1024;
 const MAX_TEXT: usize = 4096;
@@ -391,21 +394,28 @@ async fn mapping_page(
     let result = async {
         let mut data = base_data(&tenant, slug, language, explicit).await?;
         let destinations = access::people_with_access(&tenant, PersonAccess::Manage).await?;
-        let choices: Vec<Value> = destinations.iter().map(|person| json!({"value":person.id, "name":person.name, "selected":false})).collect();
+        let mut choices = std::collections::BTreeMap::new();
+        for person in destinations { choices.insert(person.id, person.name); }
+        let account_people = profile_choices(&tenant).await?;
+        let request_destinations: Vec<Value> = account_people.iter().filter(|(id, _)| *id != tenant.membership().person_id).map(|(id,name)| json!({"value":id, "name":name})).collect();
+        for (id, name) in account_people { choices.entry(id).or_insert(name); }
+        let choices: Vec<Value> = choices.into_iter().map(|(id,name)| json!({"value":id, "name":name, "selected":false})).collect();
         let mut people = Vec::new();
         for record in &inspected.inventory.records {
             if record.identity.kind != RecordKind::Person { continue; }
             let encoded = serde_json::to_vec(&record.identity).map_err(|_| OperationError::Unavailable)?;
             people.push(json!({"name":record.details.name.as_deref().unwrap_or(&record.identity.id), "source":record.identity,
-                "key":URL_SAFE_NO_PAD.encode(encoded), "destinations":choices, "consent_status":null,
+                "key":URL_SAFE_NO_PAD.encode(encoded), "destinations":choices, "request_destinations":request_destinations, "consent_status":null,
                 "consent_choices":[], "may_request_consent":false, "may_create_dependent":true, "new_dependent_selected":false}));
         }
         data["people"] = json!(people);
         data["omissions"] = json!(inspected.inventory.omissions);
         data["inspection_token"] = json!(inspected.id);
+        data["source_sha256"] = json!(inspected.archive_sha256);
         data["source_timezone"] = json!(inspected.timezone.name());
         let safe_slug: String = url::form_urlencoded::byte_serialize(slug.as_bytes()).collect();
         data["preview_url"] = json!(format!("/households/{safe_slug}/admin/data_imports/preview"));
+        data["consent_url"] = json!(format!("/households/{safe_slug}/admin/data_import_consents"));
         Ok::<_, OperationError>(data)
     }.await;
     let data = match result {
@@ -423,6 +433,40 @@ async fn mapping_page(
         return presentation_error(view, language, OperationError::Unavailable);
     }
     response
+}
+
+async fn profile_choices(tenant: &TenantTransaction) -> Result<Vec<(i64, String)>, OperationError> {
+    use crate::models::entities::{account, person};
+    let cutoff = chrono::Utc::now()
+        .date_naive()
+        .checked_sub_months(chrono::Months::new(216))
+        .ok_or(OperationError::Unavailable)?;
+    access::person_queries::household_people(tenant.scope())
+        .select_only()
+        .column(person::Column::Id)
+        .column(person::Column::Name)
+        .filter(person::Column::PersonType.eq(0))
+        .filter(person::Column::HasCapacity.eq(true))
+        .filter(
+            Condition::any()
+                .add(person::Column::DateOfBirth.is_null())
+                .add(person::Column::DateOfBirth.lte(cutoff)),
+        )
+        .filter(
+            person::Column::Id.in_subquery(
+                account::Entity::find()
+                    .select_only()
+                    .column(account::Column::PersonId)
+                    .filter(account::Column::Active.eq(true))
+                    .filter(account::Column::Status.eq(2))
+                    .into_query(),
+            ),
+        )
+        .order_by_asc(person::Column::Name)
+        .into_tuple::<(i64, String)>()
+        .all(tenant.transaction())
+        .await
+        .map_err(OperationError::from)
 }
 
 #[cfg(test)]

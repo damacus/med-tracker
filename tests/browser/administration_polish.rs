@@ -7,6 +7,76 @@ use sea_orm::ConnectionTrait;
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn import_consent_recipient_approval_withdrawal_and_foreign_denial() {
+    use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+    use med_tracker::models::_entities::household_memberships;
+    use sea_orm::{ActiveValue::Set, EntityTrait};
+    use std::io::{Cursor, Write};
+    use zip::{ZipWriter, write::SimpleFileOptions};
+
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        let now = chrono::Utc::now().naive_utc();
+        household_memberships::Entity::insert(household_memberships::ActiveModel {
+            id: Set(74801), household_id: Set(72001), person_id: Set(73005), role: Set("member".into()),
+            status: Set("active".into()), joined_at: Set(now), created_at: Set(now), updated_at: Set(now), ..Default::default()
+        }).exec(&journey.admin).await.unwrap();
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/admin/data_imports/new", journey.origin), None).await.unwrap();
+        let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, bytes) in [("portable.json", include_bytes!("../fixtures/portable_rails/prepared-history-v2.json").as_slice()), ("manifest.json", include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json").as_slice())] {
+            zip.start_file(name, SimpleFileOptions::default()).unwrap();
+            zip.write_all(bytes).unwrap();
+        }
+        page.locator("#archive").set_input_files_payload(FilePayload::new("export.zip", "application/zip", zip.finish().unwrap().into_inner()), None).await.unwrap();
+        page.locator("#passphrase").fill("password", None).await.unwrap();
+        page.locator("[name=timezone_confirmed]").click(None).await.unwrap();
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("main h1")).to_contain_text("Map people").await.unwrap();
+        let request_form = page.locator("form[action$='/admin/data_import_consents']").nth(0);
+        expect(request_form.locator("select")).to_contain_text("Synthetic foreign adult").await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => [...document.querySelectorAll('#administration-form select[name^=mapping] option')].some(o => o.value==='73005' && o.textContent.includes('Synthetic foreign adult'))", None).await.unwrap());
+        request_form.locator("select").select_option("73005", None).await.unwrap();
+        let binding: serde_json::Value = page.evaluate("() => {const f=document.querySelector('form[action$=\"/admin/data_import_consents\"]'); const k=f.elements.source_key.value.replace(/-/g,'+').replace(/_/g,'/'); return {source_sha256:f.elements.source_sha256.value,source_person:JSON.parse(atob(k)),target_person:73005};}", None::<&()>).await.unwrap();
+        let expected = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&binding).unwrap());
+        let csrf: String = page.evaluate("() => document.querySelector('form[action$=\"/admin/data_import_consents\"] [name=authenticity_token]').value", None::<&()>).await.unwrap();
+        let cookies = page.context().unwrap().cookies(None).await.unwrap().into_iter().map(|cookie| format!("{}={}", cookie.name, cookie.value)).collect::<Vec<_>>().join("; ");
+        request_form.locator("button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("main h1")).to_contain_text("Consent request created").await.unwrap();
+        let path = page.locator("main a[href*='/data_import_consents/']").get_attribute("href").await.unwrap().unwrap();
+        let denied_get = reqwest::Client::new().get(format!("{}{path}", journey.origin)).header("cookie", &cookies).send().await.unwrap();
+        assert!(matches!(denied_get.status().as_u16(), 403 | 404));
+        let mut form = url::form_urlencoded::Serializer::new(String::new());
+        form.append_pair("authenticity_token", &csrf).append_pair("expected", &expected).append_pair("decision", "accept");
+        let denied = reqwest::Client::new().post(format!("{}{path}", journey.origin)).header("cookie", &cookies).header("content-type", "application/x-www-form-urlencoded").body(form.finish()).send().await.unwrap();
+        assert!(matches!(denied.status().as_u16(), 403 | 404));
+        page.context().unwrap().clear_cookies(None).await.unwrap();
+        page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+        page.get_by_label("Email address", true).fill("foreign@example.test", None).await.unwrap();
+        page.get_by_label("Password", true).fill("password", None).await.unwrap();
+        page.get_by_role(AriaRole::Button, named("Sign in")).click(None).await.unwrap();
+        page.goto(&format!("{}{path}", journey.origin), None).await.unwrap();
+        expect(page.locator("main h1")).to_contain_text("Import consent request").await.unwrap();
+        page.locator("input[name=decision][value=accept]").click(None).await.unwrap();
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("main")).to_contain_text("Accepted").await.unwrap();
+        let foreign_path = path.replace("persistence-fixture", "foreign-fixture");
+        let denied: u16 = page.evaluate("async p => (await fetch(p)).status", Some(&foreign_path)).await.unwrap();
+        assert!(matches!(denied, 403 | 404));
+        let recipient_csrf: String = page.evaluate("() => document.querySelector('#administration-form [name=authenticity_token]').value", None::<&()>).await.unwrap();
+        let recipient_cookies = page.context().unwrap().cookies(None).await.unwrap().into_iter().map(|cookie| format!("{}={}", cookie.name, cookie.value)).collect::<Vec<_>>().join("; ");
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("main")).to_contain_text("Rejected").await.unwrap();
+        assert_eq!(page.locator("#administration-form").count().await.unwrap(), 0);
+        let mut replay = url::form_urlencoded::Serializer::new(String::new());
+        replay.append_pair("authenticity_token", &recipient_csrf).append_pair("expected", &expected).append_pair("decision", "accept");
+        let denied_replay = reqwest::Client::new().post(format!("{}{path}", journey.origin)).header("cookie", recipient_cookies).header("content-type", "application/x-www-form-urlencoded").body(replay.finish()).send().await.unwrap();
+        assert_eq!(denied_replay.status().as_u16(), 409);
+    })).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn revoked_browser_session_during_upload_cannot_persist_inspection() {
     use med_tracker::models::{_entities::data_import_inspections, entities::identity_session};
     use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, sea_query::Expr};

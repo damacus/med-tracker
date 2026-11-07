@@ -7,6 +7,14 @@
   <p class="mt-2">{{ import_labels.existing_person_help }}</p>
   <p class="mt-2">{{ import_labels.consent_help }}</p>
   {% include "components/form_errors.html" %}
+  {% for person in people %}{% if person.request_destinations | length > 0 %}<form action="{{ consent_url }}" method="post" class="card bg-base-100 border border-base-300 mt-4"><div class="card-body gap-3">
+    <h2 class="font-semibold">{{ import_labels.request_consent }} · {{ person.name }}</h2>
+    <p>{{ import_labels.request_consent_help }}</p>
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="inspection_token" value="{{ inspection_token }}"><input type="hidden" name="source_sha256" value="{{ source_sha256 }}"><input type="hidden" name="source_timezone" value="{{ source_timezone }}"><input type="hidden" name="source_key" value="{{ person.key }}">
+    {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+    <label for="request-target-{{ loop.index }}">{{ import_labels.choose_mapping }}</label><select class="select w-full" id="request-target-{{ loop.index }}" name="target_person" required><option value="">{{ import_labels.choose_mapping }}</option>{% for destination in person.request_destinations %}<option value="{{ destination.value }}">{{ destination.name }}</option>{% endfor %}</select>
+    <button class="btn btn-outline w-fit" type="submit">{{ import_labels.request_consent }}</button>
+  </div></form>{% endif %}{% endfor %}
   <form id="administration-form" action="{{ preview_url }}" method="post" enctype="multipart/form-data" class="space-y-5 mt-6">
     <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
     <input type="hidden" name="inspection_token" value="{{ inspection_token }}">

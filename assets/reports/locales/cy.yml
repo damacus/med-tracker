@@ -3209,6 +3209,9 @@ cy:
     action: "Aseiniwch neu wahoddwch ofalwr"
   administration:
     import:
+      request_created: "Cais am gydsyniad wedi'i greu"
+      request_share: "Rhannwch y ddolen hon gyda'r person. Gall fewngofnodi i adolygu a phenderfynu. Cadwch y cyfeirnod ar gyfer y rhagolwg."
+      withdraw_approval: "Tynnu cymeradwyaeth yn ôl"
       choose_consent: "Heb ddarparu cydsyniad"
       recipient_reference: "Cyfeirnod cais am gydsyniad, os yw ar gael"
       confirm_unavailable: "Nid yw cadarnhau ar gael eto."

@@ -1,0 +1,10 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="admin-page">
+  <a class="link" href="{{ back_url }}">{{ import_labels.back }}</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ import_labels.request_created }}</h1>
+  <p class="mt-3">{{ import_labels.request_share }}</p>
+  <p class="mt-3">{{ import_labels.recipient_reference }}: <code>{{ reference }}</code></p>
+  <p class="mt-3"><a class="link break-all" href="{{ recipient_url }}">{{ recipient_url }}</a></p>
+</section>
+{% endblock content %}
