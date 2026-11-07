@@ -5,6 +5,42 @@ It covers the retained Rails serializer against fresh Rust, using synthetic
 records only. It is not a live-data migration procedure or proof of complete
 Rails database export.
 
+## Household ZIP acceptance status
+
+The newer 0.5 household ZIP journey is described in the
+[transfer guide](clinical-transfer-preparation.md#household-zip-import).
+Its application, API and browser acceptance source is currently unexecuted;
+one integrated verification pipeline is pending. The older fixture evidence
+below was documented at revision `95a5e0722eab755d3d953c683bf68f254f51e1ee`
+and remains limited to the named tests and synthetic inputs. It does not prove
+the new ZIP adapter, Administration journey or a hosted acceptance case.
+
+The isolated Home Ops configuration in
+[PR #4716](https://github.com/damacus/home-ops/pull/4716) was reviewed with
+Flux suspended, the web deployment at zero replicas and the initialisation
+job suspended. It is configuration evidence, not a running source. This work
+has not provisioned, seeded or exported a real hosted 0.5 canary: independent
+1Password credentials were deferred while the owner sleeps. No production
+deployment is authorised, and no hosted address or operator access has been
+verified.
+
+The pending canary acceptance must capture and compare:
+
+1. The expected household records and relationships from the reviewed seed
+   specification, including values and dates at the actual seed time.
+2. The actual 0.5 export: archive identity and checksum, inventory, records,
+   relationships and omissions.
+3. The reviewed 0.6 preview: per-person and shared expected outcomes,
+   dependencies, consent decisions and exact omission acknowledgements.
+4. The completed 0.6 report and independently read destination records and
+   verified relationships, including replay and historical stock behaviour.
+
+Record discrepancies at each stage and preserve the source. Acceptance also
+needs authorised operator access to a separately provisioned source and a fresh
+0.6 destination, followed by a visual check of imported people, medicines and
+everyday care workflows. Until those steps occur, there is no real-canary or
+hosted acceptance result.
+
 ## Fixture provenance
 
 The fixtures live in `tests/fixtures/portable_rails/`. They were produced by a
@@ -62,9 +98,9 @@ are not cross-installation clinical provenance and must not be copied as local
 concurrency tokens. Decimal strings are compared numerically, without losing
 fractional stock; clinical timestamps are compared at microsecond precision.
 
-The fields below are emitted by the retained serializers and accepted by the
-current import contract. Acceptance of a field name alone does not establish
-all values or export-selection completeness.
+The fields below describe the retained serializers and the older portable
+import contract exercised by these fixtures. Acceptance of a field name alone
+does not establish all values, new ZIP behaviour or export-selection completeness.
 
 | Collection | Fields beyond common identity | Mapping / boundary |
 |---|---|---|
@@ -108,8 +144,8 @@ v3 export/import and obsolete-link rejection; they do not turn Rails v2 into v3.
 
 - A reviewed operator path for complete clinical transfer when Rails person-location
   links are non-empty, historical taken-from labels differ from current stock,
-  or health events are absent from the chosen export. No
-  automatic data removal or ZIP restoration is delivered here. The explicit
+  or health events are absent from the chosen export. This older fixture
+  evidence does not establish automatic data removal or ZIP restoration. The explicit
   [household preparation path](clinical-transfer-preparation.md) now addresses
   moved-stock history and included health events when obsolete links are empty;
   it deliberately rejects nonempty obsolete links and attachments.
