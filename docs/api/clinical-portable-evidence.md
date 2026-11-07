@@ -9,11 +9,41 @@ Rails database export.
 
 The newer 0.5 household ZIP journey is described in the
 [transfer guide](clinical-transfer-preparation.md#household-zip-import).
-Its application, API and browser acceptance source is currently unexecuted;
-one integrated verification pipeline is pending. The older fixture evidence
-below was documented at revision `95a5e0722eab755d3d953c683bf68f254f51e1ee`
-and remains limited to the named tests and synthetic inputs. It does not prove
-the new ZIP adapter, Administration journey or a hosted acceptance case.
+On 7 November 2026, local checks exercised it with synthetic ZIP data, not an
+export from a hosted 0.5 installation:
+
+- The final combined integration retry passed 61 of 61 cases: 36 new import
+  cases and 25 affected older portable-import cases. These cover RLS, consent
+  and withdrawal, self preview, pagination, create-only native values and
+  foreign keys, junctions, canonical history, stock, replay, concurrency
+  and rollback after a late write failure. See the
+  `tests/care_api/data_import_authority.rs`,
+  `tests/care_api/data_import_atomicity.rs` and
+  `tests/care_api/data_import_report_access.rs`.
+- The whole-application browser suite passed 75 journeys, including the
+  Administration import journeys in `tests/browser/administration_polish.rs`.
+  Its Ready and Completed pages were captured on
+  [desktop at Ready](../screenshots/clinical-data-import/ready-desktop.png),
+  [mobile at Ready](../screenshots/clinical-data-import/ready-mobile.png),
+  [desktop at Completed](../screenshots/clinical-data-import/completed-desktop.png)
+  and [mobile at Completed](../screenshots/clinical-data-import/completed-mobile.png).
+  The journey checked that both reports fit a 390 px mobile viewport.
+- Global Rust unit tests (359), JavaScript tests (34) and documentation checks
+  passed. The client-tools CI suite passed 33 tests. These are suite-wide
+  counts, not counts of import-specific tests.
+- Local synthetic canary boot and replay passed two cases; a separate ignored
+  template-concurrency case passed once.
+
+The first full native integration run completed 1,241 cases: 1,232 passed and
+nine new cases failed. After fixes, the combined 61-case retry above passed.
+This is not a clean full-suite rerun or a single passing `task ci` invocation.
+The final strict lint rerun passed. After the final index repair, all six
+targeted import browser journeys also passed.
+
+The older fixture evidence below was documented at revision
+`95a5e0722eab755d3d953c683bf68f254f51e1ee` and remains limited to its named
+tests and synthetic inputs. Neither the older fixtures nor the new local checks
+prove a hosted acceptance case or universal compatibility.
 
 The isolated Home Ops configuration in
 [PR #4716](https://github.com/damacus/home-ops/pull/4716) was reviewed with

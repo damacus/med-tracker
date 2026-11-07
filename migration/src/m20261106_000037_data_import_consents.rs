@@ -8,17 +8,52 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let mut table = Table::create();
         table.table(Alias::new("data_import_consents"));
-        table.col(ColumnDef::new(Alias::new("id")).string().not_null().primary_key());
-        for name in ["household_id", "requester_account_id", "requester_membership_id", "recipient_account_id", "recipient_membership_id", "target_person_id"] {
+        table.col(
+            ColumnDef::new(Alias::new("id"))
+                .string()
+                .not_null()
+                .primary_key(),
+        );
+        for name in [
+            "household_id",
+            "requester_account_id",
+            "requester_membership_id",
+            "recipient_account_id",
+            "recipient_membership_id",
+            "target_person_id",
+        ] {
             table.col(ColumnDef::new(Alias::new(name)).big_integer().not_null());
         }
-        table.col(ColumnDef::new(Alias::new("source_sha256")).string().not_null());
-        table.col(ColumnDef::new(Alias::new("source_person")).json_binary().not_null());
+        table.col(
+            ColumnDef::new(Alias::new("source_sha256"))
+                .string()
+                .not_null(),
+        );
+        table.col(
+            ColumnDef::new(Alias::new("source_person"))
+                .json_binary()
+                .not_null(),
+        );
         table.col(ColumnDef::new(Alias::new("decision")).string().not_null());
-        table.col(ColumnDef::new(Alias::new("created_at")).timestamp().not_null());
+        table.col(
+            ColumnDef::new(Alias::new("created_at"))
+                .timestamp()
+                .not_null(),
+        );
         table.col(ColumnDef::new(Alias::new("decided_at")).timestamp());
-        for (column, target) in [("household_id", "households"), ("requester_account_id", "accounts"), ("recipient_account_id", "accounts"), ("requester_membership_id", "household_memberships"), ("recipient_membership_id", "household_memberships"), ("target_person_id", "people")] {
-            table.foreign_key(ForeignKey::create().from(Alias::new("data_import_consents"), Alias::new(column)).to(Alias::new(target), Alias::new("id")));
+        for (column, target) in [
+            ("household_id", "households"),
+            ("requester_account_id", "accounts"),
+            ("recipient_account_id", "accounts"),
+            ("requester_membership_id", "household_memberships"),
+            ("recipient_membership_id", "household_memberships"),
+            ("target_person_id", "people"),
+        ] {
+            table.foreign_key(
+                ForeignKey::create()
+                    .from(Alias::new("data_import_consents"), Alias::new(column))
+                    .to(Alias::new(target), Alias::new("id")),
+            );
         }
         manager.create_table(table.to_owned()).await?;
         // SeaQuery has no PostgreSQL RLS policy or role GRANT builders.

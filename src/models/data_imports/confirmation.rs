@@ -31,6 +31,22 @@ fn stale() -> OperationError {
     }
 }
 
+fn trace_apply_failure(stage: &'static str, error: &OperationError) {
+    let category = match error {
+        OperationError::Unauthenticated => "unauthenticated",
+        OperationError::Forbidden => "forbidden",
+        OperationError::NotFound => "not_found",
+        OperationError::Conflict { .. } => "conflict",
+        OperationError::Unavailable => "unavailable",
+        OperationError::Validation { .. } => "validation",
+    };
+    tracing::warn!(
+        medtracker.import.failure_stage = stage,
+        medtracker.import.failure_category = category,
+        "Clinical import apply stage failed"
+    );
+}
+
 fn immutable_matches(a: &NewRun, b: &NewRun) -> bool {
     a.receipt == b.receipt
         && a.context == b.context
@@ -322,7 +338,9 @@ async fn confirm_inner(
     let mut authority = validated.authority;
     let mut declarations = validated.declarations;
     let operation: Result<ImportReport, OperationError> = async {
-        let mut index = ExistingIndex::load(tenant.transaction(), scope.household_id).await?;
+        let mut index = ExistingIndex::load(tenant.transaction(), scope.household_id)
+            .await
+            .inspect_err(|error| trace_apply_failure("load_index", error))?;
         let created = portable_imports::create_only_records(
             &mut authority,
             &validated.normalized.plan,
@@ -332,7 +350,8 @@ async fn confirm_inner(
             request_id,
             zone,
         )
-        .await?;
+        .await
+        .inspect_err(|error| trace_apply_failure("create_only", error))?;
         let canonical = portable_imports::initialize_canonical_schedules(
             &authority,
             &created,
@@ -340,7 +359,8 @@ async fn confirm_inner(
             zone,
             provenance,
         )
-        .await?;
+        .await
+        .inspect_err(|error| trace_apply_failure("canonical", error))?;
         let report = result_projection::completed(
             &tenant,
             &applying,
@@ -350,12 +370,22 @@ async fn confirm_inner(
             &created,
             &canonical,
         )
-        .await?;
-        access::recheck(&tenant).await?;
-        if eligibility_zone(&tenant, snapshot).await? != zone {
+        .await
+        .inspect_err(|error| trace_apply_failure("result_projection", error))?;
+        access::recheck(&tenant)
+            .await
+            .inspect_err(|error| trace_apply_failure("access_recheck", error))?;
+        if eligibility_zone(&tenant, snapshot)
+            .await
+            .inspect_err(|error| trace_apply_failure("eligibility_zone", error))?
+            != zone
+        {
+            trace_apply_failure("eligibility_zone", &stale());
             return Err(stale());
         }
-        authority.check_date(Utc::now().with_timezone(&zone).date_naive())?;
+        authority
+            .check_date(Utc::now().with_timezone(&zone).date_naive())
+            .inspect_err(|error| trace_apply_failure("authority_date", error))?;
         Ok(report)
     }
     .await;

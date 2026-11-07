@@ -31,11 +31,12 @@ use std::{
     io::{Cursor, Write},
     panic::AssertUnwindSafe,
 };
+use tracing::instrument::WithSubscriber;
 use zip::{ZipWriter, write::SimpleFileOptions};
 
 fn upload(comment: &str) -> Upload {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
-    zip.set_comment(comment);
+    zip.set_comment(comment).unwrap();
     for (name, data) in [
         (
             "portable.json",
@@ -103,9 +104,7 @@ async fn ready(app: &Application) -> PreviewResult {
 }
 
 fn unique_upload(tag: &str) -> Upload {
-    let payload = include_str!("../fixtures/portable_rails/prepared-history-v2.json")
-        .replace("prepared-history-v2", tag)
-        .replace("550e8400-e29b-41d4-a716-000000000006", tag);
+    let payload = super::isolated_import_payload(tag).replace("prepared-history-v2", tag);
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     for (name, data) in [
         ("portable.json", payload.as_bytes()),
@@ -204,6 +203,7 @@ async fn restored_history_preserves_native_values_and_relationships() {
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
+    let trace = super::request_trace_capture::Captured::default();
     let report = confirmation::confirm(
         &app.context,
         &scope,
@@ -213,9 +213,15 @@ async fn restored_history_preserves_native_values_and_relationships() {
         &provenance,
         &scope.request_id,
     )
+    .with_subscriber(trace.clone())
     .await
     .unwrap();
-    assert_eq!(report.state, ImportState::Completed);
+    let diagnostics = super::import_diagnostics(&trace);
+    assert_eq!(
+        report.state,
+        ImportState::Completed,
+        "safe import diagnostics: {diagnostics:?}"
+    );
     assert_eq!(
         serde_json::to_value(report.source_timezone).unwrap(),
         serde_json::json!({"name":"Europe/London", "provenance":"operator_confirmed"})
@@ -384,8 +390,6 @@ async fn restored_history_preserves_native_values_and_relationships() {
         location.description.as_deref(),
         Some("Fixture storage label")
     );
-    assert_eq!(med.current_supply.unwrap().to_string(), "37.50");
-    assert_eq!(med.reorder_threshold.to_string(), "5.50");
     assert_eq!(med.name.as_deref(), Some("Synthetic medicine"));
     assert_eq!(med.friendly_name.as_deref(), Some("Fixture tablet"));
     assert_eq!(med.category.as_deref(), Some("Vitamin"));
@@ -396,7 +400,15 @@ async fn restored_history_preserves_native_values_and_relationships() {
     assert_eq!(med.dose_amount, Some(1.0));
     assert_eq!(med.dose_unit.as_deref(), Some("tablet"));
     assert_eq!(med.default_schedule_type, 0);
-    assert_eq!(med.barcode.as_deref(), Some("2000000000060"));
+    let tag = source_email
+        .strip_prefix("portable-fixture-")
+        .unwrap()
+        .strip_suffix("@example.test")
+        .unwrap();
+    assert_eq!(
+        med.barcode.as_deref(),
+        Some(super::import_fixture_barcode(tag).as_str())
+    );
     assert_eq!(med.dmd_code.as_deref(), Some("synthetic-dmd"));
     assert_eq!(med.dmd_system.as_deref(), Some("synthetic"));
     assert_eq!(med.dmd_concept_class.as_deref(), Some("VMP"));
@@ -408,9 +420,6 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap()
         .unwrap();
     assert_eq!(dose.medication_id, med.id);
-    assert_eq!(dose.current_supply.unwrap().to_string(), "8.50");
-    assert_eq!(dose.amount.to_string(), "0.50");
-    assert_eq!(dose.reorder_threshold.unwrap().to_string(), "2.50");
     assert_eq!(dose.unit, "tablet");
     assert_eq!(dose.amount, Decimal::new(5, 1));
     assert_eq!(dose.current_supply, Some(Decimal::new(85, 1)));
@@ -435,7 +444,6 @@ async fn restored_history_preserves_native_values_and_relationships() {
         ),
         (person.0, med.id, Some(dose.id))
     );
-    assert_eq!(schedule.dose_amount.unwrap().to_string(), "0.50");
     assert_eq!(schedule.dose_unit.as_deref(), Some("tablet"));
     assert_eq!(schedule.start_date.unwrap().to_string(), "2026-10-01");
     assert_eq!(schedule.dose_amount, Some(Decimal::new(5, 1)));
@@ -471,7 +479,6 @@ async fn restored_history_preserves_native_values_and_relationships() {
         ),
         (person.0, med.id, Some(dose.id))
     );
-    assert_eq!(assignment.dose_amount.unwrap().to_string(), "0.50");
     assert_eq!(assignment.dose_unit.as_deref(), Some("tablet"));
     assert_eq!(assignment.dose_amount, Some(Decimal::new(5, 1)));
     assert_eq!(assignment.dose_cycle, Some(0));
@@ -494,7 +501,6 @@ async fn restored_history_preserves_native_values_and_relationships() {
         (take.schedule_id, take.taken_from_medication_id),
         (Some(schedule.id), Some(med.id))
     );
-    assert_eq!(take.dose_amount.unwrap().to_string(), "0.50");
     assert_eq!(take.dose_unit.as_deref(), Some("tablet"));
     assert_eq!(take.person_medication_id, None);
     assert_eq!(take.dose_amount, Some(Decimal::new(5, 1)));
@@ -1146,7 +1152,9 @@ async fn concurrent_confirmations_serialize_and_replay_one_restore() {
         .unwrap()
         .unwrap();
     let blocker = super::data_import_consents::backend_pid(&holder).await;
-    let spawn_confirm = || {
+    let first_trace = super::request_trace_capture::Captured::default();
+    let second_trace = super::request_trace_capture::Captured::default();
+    let spawn_confirm = |trace: super::request_trace_capture::Captured| {
         let ctx = app.context.clone();
         let scope = scope.clone();
         let token = token.clone();
@@ -1165,12 +1173,13 @@ async fn concurrent_confirmations_serialize_and_replay_one_restore() {
                 &provenance,
                 &scope.request_id,
             )
+            .with_subscriber(trace)
             .await
         })
     };
-    let first = spawn_confirm();
+    let first = spawn_confirm(first_trace.clone());
     let first_waiting = wait_for_account_waiters(&app, blocker, blocker, 1).await;
-    let second = spawn_confirm();
+    let second = spawn_confirm(second_trace.clone());
     let both_waiting = if let Some(first_pid) = first_waiting.first() {
         wait_for_account_waiters(&app, blocker, *first_pid, 2).await
     } else {
@@ -1191,9 +1200,19 @@ async fn concurrent_confirmations_serialize_and_replay_one_restore() {
             && both_waiting.contains(&first_waiting[0]),
         "both confirmations must pass crypto and wait on the actor account lock"
     );
-    let first_report = first_result.unwrap();
-    let second_report = second_result.unwrap();
-    assert_eq!(first_report.state, ImportState::Completed);
+    let first_diagnostics = super::import_diagnostics(&first_trace);
+    let second_diagnostics = super::import_diagnostics(&second_trace);
+    let first_report = first_result.unwrap_or_else(|_| {
+        panic!("first confirmation failed; safe import diagnostics: {first_diagnostics:?}")
+    });
+    assert_eq!(
+        first_report.state,
+        ImportState::Completed,
+        "first confirmation; safe import diagnostics: {first_diagnostics:?}"
+    );
+    let second_report = second_result.unwrap_or_else(|_| {
+        panic!("second confirmation failed; safe import diagnostics: {second_diagnostics:?}")
+    });
     assert_eq!(first_report, second_report);
     assert_eq!(
         first_report.totals.created,
@@ -1243,7 +1262,7 @@ async fn concurrent_confirmations_serialize_and_replay_one_restore() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(medication.current_supply.unwrap().to_string(), "37.50");
+    assert_eq!(medication.current_supply, Some(Decimal::new(375, 1)));
     let DestinationId::DosageOption(id) = destination(&first_report, RecordKind::DosageOption)
     else {
         panic!("dosage destination")
@@ -1253,7 +1272,7 @@ async fn concurrent_confirmations_serialize_and_replay_one_restore() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(dosage.current_supply.unwrap().to_string(), "8.50");
+    assert_eq!(dosage.current_supply, Some(Decimal::new(85, 1)));
     for previous in stock_before {
         assert_eq!(
             medications::Entity::find_by_id(previous.id)

@@ -14,16 +14,19 @@ use med_tracker::models::{
 };
 use sea_orm::{ActiveModelTrait, IntoActiveModel, Set, TransactionTrait};
 use std::io::{Cursor, Write};
+use tracing::instrument::WithSubscriber;
 use zip::{ZipWriter, write::SimpleFileOptions};
 
 fn archive(comment: &str) -> Vec<u8> {
+    let payload = if uuid::Uuid::parse_str(comment).is_ok() {
+        super::isolated_import_payload(comment)
+    } else {
+        include_str!("../fixtures/portable_rails/prepared-history-v2.json").to_owned()
+    };
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
-    zip.set_comment(comment);
+    zip.set_comment(comment).unwrap();
     for (name, data) in [
-        (
-            "portable.json",
-            include_bytes!("../fixtures/portable_rails/prepared-history-v2.json").as_slice(),
-        ),
+        ("portable.json", payload.as_bytes()),
         (
             "manifest.json",
             include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json")
@@ -605,6 +608,7 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
         .await
         .is_err()
     );
+    let trace = super::request_trace_capture::Captured::default();
     let completed = confirmation::confirm_checked(
         &app.context,
         &scope,
@@ -615,9 +619,15 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
         &scope.request_id,
         ImportPrincipal::Api(&principal),
     )
+    .with_subscriber(trace.clone())
     .await
     .unwrap();
-    assert_eq!(completed.state, ImportState::Completed);
+    assert_eq!(
+        completed.state,
+        ImportState::Completed,
+        "safe import diagnostics: {:?}",
+        super::import_diagnostics(&trace)
+    );
     let versions = version::Entity::find()
         .filter(version::Column::HouseholdId.eq(scope.household_id))
         .filter(version::Column::RequestId.eq(scope.request_id.clone()))

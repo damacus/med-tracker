@@ -164,7 +164,7 @@ async fn missing_and_pending_adult_consent_return_source_only_preview() {
         )
         .await;
         assert_eq!(result["report"]["state"], "blocked");
-        assert!(result["confirmation"].is_null());
+        assert!(Value::is_null(&result["confirmation"]));
         assert!(
             result["report"]["issues"]
                 .as_array()
@@ -173,7 +173,9 @@ async fn missing_and_pending_adult_consent_return_source_only_preview() {
                 .any(|issue| issue["reason"] == "consent_required")
         );
         assert!(!result.to_string().contains("private destination sentinel"));
-        assert!(result["report"]["people"][0]["person"]["destination"].is_null());
+        assert!(Value::is_null(
+            &result["report"]["people"][0]["person"]["destination"]
+        ));
         let id = result["report"]["id"].as_str().unwrap();
         let response = app
             .client
@@ -227,7 +229,7 @@ async fn dependent_adult_self_preview_succeeds_but_other_adult_consent_does_not_
         "synthetic-rails-person-prepared-history-v2"
     );
     assert_eq!(own_person["person"]["expected"], "match");
-    assert!(own_person["person"]["actual"].is_null());
+    assert!(Value::is_null(&own_person["person"]["actual"]));
     assert_eq!(own["report"]["totals"]["created"], 0);
     assert!(
         own_person["records"]
@@ -344,13 +346,13 @@ async fn dependent_adult_self_preview_succeeds_but_other_adult_consent_does_not_
     )
     .await;
     assert_eq!(other["report"]["state"], "blocked", "{other}");
-    assert!(other["confirmation"].is_null());
+    assert!(Value::is_null(&other["confirmation"]));
     let person = &other["report"]["people"][0];
     assert_eq!(
         person["person"]["source"]["id"],
         "synthetic-rails-person-prepared-history-v2"
     );
-    assert!(person["person"]["actual"].is_null());
+    assert!(Value::is_null(&person["person"]["actual"]));
     assert!(
         other["report"]["issues"]
             .as_array()
@@ -582,7 +584,7 @@ async fn self_preview_denies_membership_revoked_during_account_lock_wait() {
         matches!(status, 403 | 404),
         "revoked membership must refuse preview: {status}: {body}"
     );
-    assert!(body["data"]["confirmation"].is_null());
+    assert!(Value::is_null(&body["data"]["confirmation"]));
     assert_eq!(
         import_run_count(&app).await,
         before,
@@ -745,7 +747,7 @@ async fn preview_and_recovery_preserve_declaration_before_person_lock_order() {
     let body: Value = response.json().await.unwrap();
     if code == 201 {
         assert_eq!(body["data"]["report"]["state"], "blocked", "{body}");
-        assert!(body["data"]["confirmation"].is_null());
+        assert!(Value::is_null(&body["data"]["confirmation"]));
     } else {
         assert!(matches!(code, 403 | 404), "{code}: {body}");
     }

@@ -20,6 +20,18 @@ enum Screen {
     Detail(String),
 }
 
+#[derive(Clone, Copy)]
+struct PageContext<'a> {
+    ctx: &'a AppContext,
+    session: &'a Session<SessionPgPool>,
+    token: &'a CsrfToken,
+    view: &'a TeraView,
+    slug: &'a str,
+    trace: &'a str,
+    language: &'a str,
+    explicit: bool,
+}
+
 pub(super) async fn index(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
@@ -45,18 +57,18 @@ pub(super) async fn index(
     }
     let explicit = language.is_some();
     let language = language.unwrap_or_else(|| fallback_language(&headers));
-    show(
-        &ctx,
-        &session,
-        &token,
-        &view,
-        &slug,
-        request_id(request),
+    let trace = request_id(request);
+    let page = PageContext {
+        ctx: &ctx,
+        session: &session,
+        token: &token,
+        view: &view,
+        slug: &slug,
+        trace: &trace,
         language,
         explicit,
-        Screen::List(cursor),
-    )
-    .await
+    };
+    show(&page, Screen::List(cursor)).await
 }
 
 pub(super) async fn detail(
@@ -75,32 +87,32 @@ pub(super) async fn detail(
     if uuid::Uuid::parse_str(&id).is_err() {
         return presentation_invalid_link(&view, &headers);
     }
-    show(
-        &ctx,
-        &session,
-        &token,
-        &view,
-        &slug,
-        request_id(request),
+    let trace = request_id(request);
+    let page = PageContext {
+        ctx: &ctx,
+        session: &session,
+        token: &token,
+        view: &view,
+        slug: &slug,
+        trace: &trace,
         language,
-        raw.is_some(),
-        Screen::Detail(id),
-    )
-    .await
+        explicit: raw.is_some(),
+    };
+    show(&page, Screen::Detail(id)).await
 }
 
-async fn show(
-    ctx: &AppContext,
-    session: &Session<SessionPgPool>,
-    token: &CsrfToken,
-    view: &TeraView,
-    slug: &str,
-    request: String,
-    language: &str,
-    explicit: bool,
-    screen: Screen,
-) -> Response {
-    let (principal, tenant) = match begin(ctx, session, slug, &request).await {
+async fn show(page: &PageContext<'_>, screen: Screen) -> Response {
+    let PageContext {
+        ctx,
+        session,
+        token,
+        view,
+        slug,
+        trace,
+        language,
+        explicit,
+    } = *page;
+    let (principal, tenant) = match begin(ctx, session, slug, trace).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(view, language, error),
     };
@@ -112,10 +124,7 @@ async fn show(
     if tenant.commit().await.is_err() {
         return presentation_error(view, language, OperationError::Unavailable);
     }
-    let result = render_data(
-        ctx, &scope, &principal, data, slug, language, explicit, screen,
-    )
-    .await;
+    let result = render_data(page, &scope, &principal, data, screen).await;
     let (template, data) = match result {
         Ok(value) => value,
         Err(error) => return presentation_error(view, language, error),
@@ -124,15 +133,19 @@ async fn show(
 }
 
 async fn render_data(
-    ctx: &AppContext,
+    page: &PageContext<'_>,
     scope: &crate::models::access::HouseholdScope,
     principal: &crate::models::identity::browser::BrowserPrincipal,
     mut data: Value,
-    slug: &str,
-    language: &str,
-    explicit: bool,
     screen: Screen,
 ) -> Result<(&'static str, Value), OperationError> {
+    let PageContext {
+        ctx,
+        slug,
+        language,
+        explicit,
+        ..
+    } = *page;
     let safe_slug: String = url::form_urlencoded::byte_serialize(slug.as_bytes()).collect();
     let base = format!("/households/{safe_slug}/admin/data_imports");
     let suffix = language_suffix(language, explicit);

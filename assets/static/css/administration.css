@@ -1,5 +1,6 @@
 .admin-page { max-width:68rem; margin-inline:auto; min-width:0; }
 .admin-page h1 { overflow-wrap:anywhere; }
+.import-report, .import-report * { min-width:0; overflow-wrap:anywhere; }
 .admin-page > .link:first-child { font-size:.75rem; color:var(--on-surface-variant); }
 .admin-page > p { color:var(--on-surface-variant); font-size:.875rem; }
 .admin-navigation { display:flex; flex-wrap:wrap; gap:.25rem; margin-block:1.5rem; padding-bottom:.75rem; border-bottom:1px solid var(--border-color); }

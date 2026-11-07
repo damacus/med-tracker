@@ -76,7 +76,6 @@ impl SourceCollection {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ExpectationLock {
-    None,
     Confirmation,
 }
 
@@ -169,9 +168,20 @@ pub(crate) async fn assess(
         lock,
         today,
     )
-    .await?;
-    let index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id).await?;
-    let preflight = preflight(tenant.transaction(), tenant, &normalized.plan, &index).await?;
+    .await
+    .inspect_err(|error| {
+        crate::models::data_imports::preview::trace_preview_failure("planning_expectation", error)
+    })?;
+    let index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id)
+        .await
+        .inspect_err(|error| {
+            crate::models::data_imports::preview::trace_preview_failure("planning_index", error)
+        })?;
+    let preflight = preflight(tenant.transaction(), tenant, &normalized.plan, &index)
+        .await
+        .inspect_err(|error| {
+            crate::models::data_imports::preview::trace_preview_failure("planning_preflight", error)
+        })?;
     let mut rows: Vec<PlannedRow> = expectation
         .slots
         .iter()
@@ -537,17 +547,6 @@ fn reject_affected_rows(rows: &mut [PlannedRow], issues: &[AssessmentIssue]) {
     }
 }
 
-pub(crate) async fn capture_expectation(
-    tenant: &TenantTransaction,
-    aliases: &[ResolvedAlias],
-    plan: &ImportPlan,
-    lock: ExpectationLock,
-    today: NaiveDate,
-) -> Result<DestinationExpectation, OperationError> {
-    let authority = super::PreparedImportAuthority::prepare(tenant, today).await?;
-    capture_expectation_prepared(&authority, aliases, plan, lock, today).await
-}
-
 pub(crate) async fn capture_expectation_prepared(
     authority: &super::PreparedImportAuthority<'_>,
     aliases: &[ResolvedAlias],
@@ -593,16 +592,6 @@ pub(crate) async fn capture_expectation_prepared(
     }
     slots.sort_by(|a, b| (a.collection, &a.portable_id).cmp(&(b.collection, &b.portable_id)));
     capture(authority, selected, slots, lock).await
-}
-
-pub(crate) async fn check_expectation(
-    tenant: &TenantTransaction,
-    expected: &DestinationExpectation,
-    lock: ExpectationLock,
-    today: NaiveDate,
-) -> Result<bool, OperationError> {
-    let authority = super::PreparedImportAuthority::prepare(tenant, today).await?;
-    check_expectation_prepared(&authority, expected, lock, today).await
 }
 
 pub(crate) async fn check_expectation_prepared(

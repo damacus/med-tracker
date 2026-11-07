@@ -126,18 +126,18 @@ pub(crate) async fn upload(
         Ok(value) => value,
         Err(_) => return presentation_invalid_link(&view, &headers),
     };
-    upload_page(
-        &ctx,
-        &session,
-        &token,
-        &view,
-        &slug,
-        &request_id(request),
+    let trace = request_id(request);
+    let page = PageContext {
+        ctx: &ctx,
+        session: &session,
+        token: &token,
+        view: &view,
+        slug: &slug,
+        trace: &trace,
         language,
-        raw.is_some(),
-        None,
-    )
-    .await
+        explicit: raw.is_some(),
+    };
+    upload_page(&page, None).await
 }
 
 pub(crate) async fn inspect(
@@ -151,6 +151,16 @@ pub(crate) async fn inspect(
 ) -> Response {
     let language = fallback_language(incoming.headers());
     let trace = request_id(request_id_ext);
+    let page = PageContext {
+        ctx: &ctx,
+        session: &session,
+        token: &token,
+        view: &view,
+        slug: &slug,
+        trace: &trace,
+        language,
+        explicit: false,
+    };
     let (principal, tenant) = match begin(&ctx, &session, &slug, &trace).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(&view, language, error),
@@ -174,35 +184,13 @@ pub(crate) async fn inspect(
     let form = match Multipart::from_request(incoming, &ctx).await {
         Ok(form) => form,
         Err(_) => {
-            return upload_page(
-                &ctx,
-                &session,
-                &token,
-                &view,
-                &slug,
-                &trace,
-                language,
-                false,
-                Some(invalid()),
-            )
-            .await;
+            return upload_page(&page, Some(invalid())).await;
         }
     };
     let mut fields = match read_fields(form).await {
         Ok(fields) => fields,
         Err(error) => {
-            return upload_page(
-                &ctx,
-                &session,
-                &token,
-                &view,
-                &slug,
-                &trace,
-                language,
-                false,
-                Some(error),
-            )
-            .await;
+            return upload_page(&page, Some(error)).await;
         }
     };
     let selected_language = match fields.values.get("lang") {
@@ -213,6 +201,11 @@ pub(crate) async fn inspect(
         None => language,
     };
     let explicit = fields.values.contains_key("lang");
+    let page = PageContext {
+        language: selected_language,
+        explicit,
+        ..page
+    };
     let submitted_timezone = fields.values.get("source_timezone").cloned();
     if token
         .verify(
@@ -229,14 +222,7 @@ pub(crate) async fn inspect(
         Ok(value) => value,
         Err(error) => {
             return upload_page_with_timezone(
-                &ctx,
-                &session,
-                &token,
-                &view,
-                &slug,
-                &trace,
-                selected_language,
-                explicit,
+                &page,
                 Some(error),
                 submitted_timezone.as_deref(),
                 None,
@@ -262,14 +248,7 @@ pub(crate) async fn inspect(
         Err(error) => {
             let diagnostics = preparation_diagnostics(&error);
             return upload_page_with_timezone(
-                &ctx,
-                &session,
-                &token,
-                &view,
-                &slug,
-                &trace,
-                selected_language,
-                explicit,
+                &page,
                 Some(invalid()),
                 submitted_timezone.as_deref(),
                 diagnostics,
@@ -278,19 +257,7 @@ pub(crate) async fn inspect(
         }
     };
     drop(permit);
-    mapping_page(
-        &ctx,
-        &session,
-        &token,
-        &view,
-        &slug,
-        &trace,
-        selected_language,
-        explicit,
-        &scope,
-        inspected,
-    )
-    .await
+    mapping_page(&page, &scope, inspected).await
 }
 
 pub(super) async fn base_data(
@@ -317,36 +284,26 @@ pub(super) async fn base_data(
     Ok(data)
 }
 
-pub(super) async fn upload_page(
-    ctx: &AppContext,
-    session: &Session<SessionPgPool>,
-    token: &CsrfToken,
-    view: &TeraView,
-    slug: &str,
-    trace: &str,
-    language: &str,
-    explicit: bool,
-    error: Option<OperationError>,
-) -> Response {
-    upload_page_with_timezone(
-        ctx, session, token, view, slug, trace, language, explicit, error, None, None,
-    )
-    .await
+pub(super) async fn upload_page(page: &PageContext<'_>, error: Option<OperationError>) -> Response {
+    upload_page_with_timezone(page, error, None, None).await
 }
 
 pub(super) async fn upload_page_with_timezone(
-    ctx: &AppContext,
-    session: &Session<SessionPgPool>,
-    token: &CsrfToken,
-    view: &TeraView,
-    slug: &str,
-    trace: &str,
-    language: &str,
-    explicit: bool,
+    page: &PageContext<'_>,
     error: Option<OperationError>,
     submitted_timezone: Option<&str>,
     diagnostics: Option<Value>,
 ) -> Response {
+    let PageContext {
+        ctx,
+        session,
+        token,
+        view,
+        slug,
+        trace,
+        language,
+        explicit,
+    } = *page;
     let (_, tenant) = match begin(ctx, session, slug, trace).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(view, language, error),
@@ -406,17 +363,20 @@ pub(super) fn preparation_diagnostics(error: &InspectionError) -> Option<Value> 
 }
 
 async fn mapping_page(
-    ctx: &AppContext,
-    session: &Session<SessionPgPool>,
-    token: &CsrfToken,
-    view: &TeraView,
-    slug: &str,
-    trace: &str,
-    language: &str,
-    explicit: bool,
+    page: &PageContext<'_>,
     scope: &access::HouseholdScope,
     inspected: Inspection,
 ) -> Response {
+    let PageContext {
+        ctx,
+        session,
+        token,
+        view,
+        slug,
+        trace,
+        language,
+        explicit,
+    } = *page;
     let (_, tenant) = match begin(ctx, session, slug, trace).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(view, language, error),

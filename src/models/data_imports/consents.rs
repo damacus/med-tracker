@@ -302,6 +302,25 @@ pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<PersonalReques
     personal(&row)
 }
 
+async fn recipient_request(
+    tenant: &TenantTransaction,
+    id: &str,
+    lock: bool,
+) -> Result<Option<consent::Model>, OperationError> {
+    let query = consent::Entity::find_by_id(id.to_owned())
+        .filter(consent::Column::RecipientAccountId.eq(tenant.scope().actor.account_id))
+        .filter(consent::Column::RecipientMembershipId.eq(tenant.membership().id));
+    let query = if lock { query.lock_exclusive() } else { query };
+    Ok(query.one(tenant.transaction()).await?)
+}
+
+fn consent_changed() -> OperationError {
+    OperationError::Conflict {
+        code: "import_consent_changed".into(),
+        details: serde_json::json!({}),
+    }
+}
+
 pub async fn decide(
     tenant: &TenantTransaction,
     id: &str,
@@ -312,23 +331,35 @@ pub async fn decide(
     if decision == Decision::Pending || !valid(expected) {
         return Err(OperationError::Forbidden);
     }
-    let row = consent::Entity::find_by_id(id.to_owned())
-        .filter(consent::Column::RecipientAccountId.eq(tenant.scope().actor.account_id))
-        .filter(consent::Column::RecipientMembershipId.eq(tenant.membership().id))
-        .lock_exclusive()
-        .one(tenant.transaction())
+    let visible = recipient_request(tenant, id, false)
         .await?
         .ok_or(OperationError::NotFound)?;
+    eligible_recipient(tenant, &visible).await?;
+    access::recheck(tenant).await?;
+    if binding(&visible)? != *expected || visible.decision == "rejected" {
+        return Err(consent_changed());
+    }
+    let row = match recipient_request(tenant, id, true).await? {
+        Some(row) => row,
+        None => {
+            let current = recipient_request(tenant, id, false)
+                .await?
+                .ok_or(OperationError::NotFound)?;
+            eligible_recipient(tenant, &current).await?;
+            access::recheck(tenant).await?;
+            if binding(&current)? != *expected || current.decision == "rejected" {
+                return Err(consent_changed());
+            }
+            return Err(OperationError::NotFound);
+        }
+    };
     eligible_recipient(tenant, &row).await?;
     access::recheck(tenant).await?;
     if binding(&row)? != *expected
         || !(row.decision == "pending"
             || (row.decision == "approved" && decision == Decision::Rejected))
     {
-        return Err(OperationError::Conflict {
-            code: "import_consent_changed".into(),
-            details: serde_json::json!({}),
-        });
+        return Err(consent_changed());
     }
     let mut update = row.into_active_model();
     update.decision = Set(match decision {

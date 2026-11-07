@@ -1,17 +1,14 @@
 use super::*;
-use crate::models::{
-    access,
-    data_imports::{
-        contracts::{
-            ConsentInput, PersonDestination, PersonId, PersonMapping, RecordKind, SourceIdentity,
-            SourceSystem,
-        },
-        credential::ImportPrincipal,
-        identity::RecipientConsent,
-        inspection::{self, InspectionError, Upload},
-        preview::{self, PreviewInput},
-        upload_gate::UploadLimiter,
+use crate::models::data_imports::{
+    contracts::{
+        ConsentInput, PersonDestination, PersonId, PersonMapping, RecordKind, SourceIdentity,
+        SourceSystem,
     },
+    credential::ImportPrincipal,
+    identity::RecipientConsent,
+    inspection::{self, InspectionError, Upload},
+    preview::{self, PreviewInput},
+    upload_gate::UploadLimiter,
 };
 use axum::extract::{FromRequest, Multipart};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -251,6 +248,16 @@ pub(crate) async fn create(
 ) -> Response {
     let language = fallback_language(incoming.headers());
     let trace = request_id(request_ext);
+    let page = PageContext {
+        ctx: &ctx,
+        session: &session,
+        token: &token,
+        view: &view,
+        slug: &slug,
+        trace: &trace,
+        language,
+        explicit: false,
+    };
     let (principal, tenant) = match begin(&ctx, &session, &slug, &trace).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(&view, language, error),
@@ -278,18 +285,7 @@ pub(crate) async fn create(
     let fields = match fields {
         Ok(value) => value,
         Err(error) => {
-            return upload::upload_page(
-                &ctx,
-                &session,
-                &token,
-                &view,
-                &slug,
-                &trace,
-                language,
-                false,
-                Some(error),
-            )
-            .await;
+            return upload::upload_page(&page, Some(error)).await;
         }
     };
     let selected_language = match fields.values.get("lang") {
@@ -300,6 +296,11 @@ pub(crate) async fn create(
         None => language,
     };
     let explicit = fields.values.contains_key("lang");
+    let page = PageContext {
+        language: selected_language,
+        explicit,
+        ..page
+    };
     let submitted_timezone = fields.values.get("source_timezone").cloned();
     if token
         .verify(
@@ -316,14 +317,7 @@ pub(crate) async fn create(
         Ok(value) => value,
         Err(error) => {
             return upload::upload_page_with_timezone(
-                &ctx,
-                &session,
-                &token,
-                &view,
-                &slug,
-                &trace,
-                selected_language,
-                explicit,
+                &page,
                 Some(error),
                 submitted_timezone.as_deref(),
                 None,
@@ -344,14 +338,7 @@ pub(crate) async fn create(
             Err(error) => {
                 let diagnostics = upload::preparation_diagnostics(&error);
                 return upload::upload_page_with_timezone(
-                    &ctx,
-                    &session,
-                    &token,
-                    &view,
-                    &slug,
-                    &trace,
-                    selected_language,
-                    explicit,
+                    &page,
                     Some(invalid()),
                     submitted_timezone.as_deref(),
                     diagnostics,

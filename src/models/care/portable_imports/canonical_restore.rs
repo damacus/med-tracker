@@ -18,15 +18,10 @@ use crate::models::{
 
 pub(crate) struct VerifiedCanonicalTake {
     pub(crate) take: medication_take::Model,
-    pub(crate) capture: adoption_fact::Model,
-    pub(crate) safety_index: shared_administration::Model,
 }
 
 pub(crate) struct CanonicalRestoredSchedule {
     pub(crate) execution: schedule::Model,
-    pub(crate) plan: person_schedule::Model,
-    pub(crate) shared_state: shared_schedule::Model,
-    pub(crate) execution_link: shared_execution::Model,
     pub(crate) takes: Vec<VerifiedCanonicalTake>,
 }
 
@@ -185,10 +180,8 @@ pub(crate) async fn initialize_canonical_schedules(
                     return Err(import_invalid("Duplicate imported schedule"));
                 }
             }
-            CreatedRecord::Dose(take) => {
-                if takes.insert(take.id, take.as_ref()).is_some() {
-                    return Err(import_invalid("Duplicate imported take"));
-                }
+            CreatedRecord::Dose(take) if takes.insert(take.id, take.as_ref()).is_some() => {
+                return Err(import_invalid("Duplicate imported take"));
             }
             _ => {}
         }
@@ -352,9 +345,27 @@ pub(crate) async fn initialize_canonical_schedules(
             || execution_link.household_id != source.household_id
             || execution_link.person_id != source.person_id
             || execution_link.person_schedule_id != plan.id
-            || execution_link.approval_id != approval.map(|row| row.id)
+            || execution_link.approval_id != approval.as_ref().map(|row| row.id)
             || !clinical_matches(&source, &plan, &shared, source_zone)
         {
+            tracing::warn!(
+                medtracker.import.invariant = "canonical_schedule",
+                medtracker.import.linked_matches = linked == before,
+                medtracker.import.canonical_origin = linked.canonical_origin,
+                medtracker.import.zone_matches =
+                    linked.origin_time_zone.as_deref() == Some(source_zone.name()),
+                medtracker.import.revision_matches =
+                    linked.clinical_revision == Some(plan.clinical_revision),
+                medtracker.import.execution_link_matches = execution_link.schedule_id == source.id
+                    && execution_link.portable_id == source.portable_id
+                    && execution_link.household_id == source.household_id
+                    && execution_link.person_id == source.person_id
+                    && execution_link.person_schedule_id == plan.id
+                    && execution_link.approval_id == approval.as_ref().map(|row| row.id),
+                medtracker.import.clinical_matches =
+                    clinical_matches(&source, &plan, &shared, source_zone),
+                "Clinical import verification failed"
+            );
             return Err(import_invalid("Canonical schedule verification failed"));
         }
         let stock_after = medication::Entity::find_by_id(stock.id)
@@ -446,11 +457,7 @@ pub(crate) async fn initialize_canonical_schedules(
             if current != take || !history_matches(&context, &take, &fact, &safety) {
                 return Err(import_invalid("Imported take capture verification failed"));
             }
-            verified.push(VerifiedCanonicalTake {
-                take,
-                capture: fact,
-                safety_index: safety,
-            });
+            verified.push(VerifiedCanonicalTake { take });
         }
         if shared.latest_taken_at
             != verified
@@ -477,9 +484,6 @@ pub(crate) async fn initialize_canonical_schedules(
         }
         output.push(CanonicalRestoredSchedule {
             execution: linked,
-            plan,
-            shared_state: shared,
-            execution_link,
             takes: verified,
         });
     }

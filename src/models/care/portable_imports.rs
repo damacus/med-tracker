@@ -25,9 +25,7 @@ pub(crate) use aliases::{
     ResolvedAlias, normalize_aliases,
 };
 pub(crate) use authority::PreparedImportAuthority;
-pub(crate) use canonical_restore::{
-    CanonicalRestoredSchedule, VerifiedCanonicalTake, initialize_canonical_schedules,
-};
+pub(crate) use canonical_restore::{CanonicalRestoredSchedule, initialize_canonical_schedules};
 pub(crate) use identity::ExistingIndex;
 pub(crate) use preflight::preflight;
 pub(crate) use validation::validate_source_row;

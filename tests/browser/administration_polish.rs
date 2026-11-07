@@ -5,6 +5,20 @@ use playwright_rs::protocol::{
 };
 use sea_orm::ConnectionTrait;
 
+async fn prepare_foreign_login(journey: &harness::Journey) {
+    use med_tracker::models::_entities::people;
+    use sea_orm::{ActiveModelTrait, ActiveValue::Set};
+
+    people::ActiveModel {
+        id: Set(73005),
+        date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(1982, 1, 1)),
+        ..Default::default()
+    }
+    .update(&journey.admin)
+    .await
+    .unwrap();
+}
+
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
 async fn import_confirmation_uses_real_preview_and_replays_without_duplicate_people() {
@@ -51,6 +65,9 @@ async fn import_confirmation_uses_real_preview_and_replays_without_duplicate_peo
         std::fs::create_dir_all(screenshots).unwrap();
         for (name, width, height) in [("ready-desktop.png", 1440, 1000), ("ready-mobile.png", 390, 844)] {
             page.set_viewport_size(Viewport { width, height }).await.unwrap();
+            if width == 390 {
+                assert!(page.evaluate::<(), bool>("() => document.documentElement.scrollWidth <= window.innerWidth", None).await.unwrap(), "ready report must fit the mobile viewport");
+            }
             page.screenshot_to_file(&screenshots.join(name), ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
         }
         page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
@@ -61,6 +78,9 @@ async fn import_confirmation_uses_real_preview_and_replays_without_duplicate_peo
         assert_eq!(page.locator("input[name=preview_token]").count().await.unwrap(), 0);
         for (name, width, height) in [("completed-desktop.png", 1440, 1000), ("completed-mobile.png", 390, 844)] {
             page.set_viewport_size(Viewport { width, height }).await.unwrap();
+            if width == 390 {
+                assert!(page.evaluate::<(), bool>("() => document.documentElement.scrollWidth <= window.innerWidth", None).await.unwrap(), "completed report must fit the mobile viewport");
+            }
             page.screenshot_to_file(&screenshots.join(name), ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
         }
         let count = person::Entity::find().count(&journey.admin).await.unwrap();
@@ -74,11 +94,13 @@ async fn import_confirmation_uses_real_preview_and_replays_without_duplicate_peo
             id: Set(74801), household_id: Set(72001), person_id: Set(73005), role: Set("member".into()),
             status: Set("active".into()), joined_at: Set(now), created_at: Set(now), updated_at: Set(now), ..Default::default()
         }).exec(&journey.admin).await.unwrap();
+        prepare_foreign_login(journey).await;
         page.context().unwrap().clear_cookies(None).await.unwrap();
         page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
         page.get_by_label("Email address", true).fill("foreign@example.test", None).await.unwrap();
         page.get_by_label("Password", true).fill("password", None).await.unwrap();
         page.get_by_role(AriaRole::Button, named("Sign in")).click(None).await.unwrap();
+        assert!(page.evaluate::<(), bool>("async () => { const r=await fetch('/account/security'); return r.ok && !r.redirected; }", None).await.unwrap(), "foreign sign-in must succeed");
         page.goto(&format!("{}/account/security", journey.origin), None).await.unwrap();
         let member_csrf: String = page.evaluate("() => document.querySelector('[name=authenticity_token]').value", None::<&()>).await.unwrap();
         let denied_input = serde_json::json!({"url":replay["url"],"token":replay["token"],"csrf":member_csrf});
@@ -103,6 +125,7 @@ async fn import_consent_recipient_approval_withdrawal_and_foreign_denial() {
             id: Set(74801), household_id: Set(72001), person_id: Set(73005), role: Set("member".into()),
             status: Set("active".into()), joined_at: Set(now), created_at: Set(now), updated_at: Set(now), ..Default::default()
         }).exec(&journey.admin).await.unwrap();
+        prepare_foreign_login(journey).await;
         harness::sign_in(journey).await;
         let page = &journey.page;
         page.goto(&format!("{}/households/persistence-fixture/admin/data_imports/new", journey.origin), None).await.unwrap();
@@ -138,7 +161,8 @@ async fn import_consent_recipient_approval_withdrawal_and_foreign_denial() {
         page.get_by_label("Email address", true).fill("foreign@example.test", None).await.unwrap();
         page.get_by_label("Password", true).fill("password", None).await.unwrap();
         page.get_by_role(AriaRole::Button, named("Sign in")).click(None).await.unwrap();
-        let locale_preserved: bool = page.evaluate("async path => { const r=await fetch(path,{headers:{'Accept-Language':'es'}}); const doc=new DOMParser().parseFromString(await r.text(),'text/html'); const f=doc.querySelector('#administration-form'); if(!f || f.elements.lang.value!=='es') return false; const d=new URLSearchParams(new FormData(f)); d.set('decision','invalid'); const response=await fetch(path,{method:'POST',body:d}); return response.status===403 && (await response.text()).includes('lang=\"es\"'); }", Some(&path)).await.unwrap();
+        assert!(page.evaluate::<(), bool>("async () => { const r=await fetch('/account/security'); return r.ok && !r.redirected; }", None).await.unwrap(), "foreign sign-in must succeed");
+        let locale_preserved: bool = page.evaluate("async path => { const url=new URL(path,location.origin); url.search=''; const r=await fetch(url,{headers:{'Accept-Language':'es'}}); const doc=new DOMParser().parseFromString(await r.text(),'text/html'); const f=doc.querySelector('#administration-form'); if(!f || f.elements.lang.value!=='es') return false; const d=new URLSearchParams(new FormData(f)); d.set('decision','invalid'); const response=await fetch(f.action,{method:'POST',body:d}); return response.status===403 && (await response.text()).includes('lang=\"es\"'); }", Some(&path)).await.unwrap();
         assert!(locale_preserved);
         page.goto(&format!("{}{path}", journey.origin), None).await.unwrap();
         expect(page.locator("main h1")).to_contain_text("Import consent request").await.unwrap();

@@ -38,12 +38,41 @@ pub struct PreviewInput {
     pub acknowledged_omissions: Vec<String>,
 }
 
+pub(crate) fn trace_preview_failure(stage: &'static str, error: &OperationError) {
+    let category = match error {
+        OperationError::Unauthenticated => "unauthenticated",
+        OperationError::Forbidden => "forbidden",
+        OperationError::NotFound => "not_found",
+        OperationError::Validation { .. } => "validation",
+        OperationError::Conflict { .. } => "conflict",
+        OperationError::Unavailable => "unavailable",
+    };
+    tracing::warn!(
+        medtracker.import.preview_stage = stage,
+        medtracker.import.preview_category = category,
+        "Clinical import preview stage failed"
+    );
+}
+
+fn trace_inspection_failure(stage: &'static str, error: &InspectionError) {
+    match error {
+        InspectionError::Operation(error) => trace_preview_failure(stage, error),
+        InspectionError::Preparation(_) => tracing::warn!(
+            medtracker.import.preview_stage = stage,
+            medtracker.import.preview_category = "preparation",
+            "Clinical import preview stage failed"
+        ),
+    }
+}
+
 pub async fn create(
     ctx: &AppContext,
     scope: &HouseholdScope,
     input: PreviewInput,
 ) -> Result<PreviewResult, InspectionError> {
-    create_inner(ctx, scope, input, None).await
+    create_inner(ctx, scope, input, None)
+        .await
+        .inspect_err(|error| trace_inspection_failure("preview", error))
 }
 
 pub async fn create_checked(
@@ -52,7 +81,9 @@ pub async fn create_checked(
     input: PreviewInput,
     principal: ImportPrincipal<'_>,
 ) -> Result<PreviewResult, InspectionError> {
-    create_inner(ctx, scope, input, Some(principal)).await
+    create_inner(ctx, scope, input, Some(principal))
+        .await
+        .inspect_err(|error| trace_inspection_failure("preview", error))
 }
 
 fn source_only_blocked(
@@ -155,7 +186,9 @@ async fn create_inner(
         acknowledged_omissions,
     } = input;
     let source = upload.source;
-    let (prepared, payload) = inspection::prepare_assessment(ctx, upload).await?;
+    let (prepared, payload) = inspection::prepare_assessment(ctx, upload)
+        .await
+        .inspect_err(|error| trace_inspection_failure("prepare", error))?;
     let required: HashSet<_> = prepared
         .inventory
         .omissions
@@ -174,133 +207,153 @@ async fn create_inner(
         .iter()
         .map(|item| item.request_id.clone())
         .collect();
-    let tenant =
-        consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &ids).await?;
+    let tenant = consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &ids)
+        .await
+        .inspect_err(|error| trace_preview_failure("begin", error))?;
     if let Some(principal) = principal {
         principal.revalidate(&tenant).await?;
     }
-    inspection::verify(&tenant, &inspection_id, &prepared.archive_sha256, timezone).await?;
+    inspection::verify(&tenant, &inspection_id, &prepared.archive_sha256, timezone)
+        .await
+        .inspect_err(|error| trace_preview_failure("inspection_binding", error))?;
     let actor = account::Entity::find_by_id(scope.actor.account_id)
         .one(tenant.transaction())
         .await
         .map_err(OperationError::from)?
         .ok_or(OperationError::Unauthenticated)?;
     let zone = crate::models::identity::time_zone::preferred(&actor.preferences, tenant.settings())
-        .map_err(|_| OperationError::Unavailable)?;
+        .map_err(|_| OperationError::Unavailable)
+        .inspect_err(|error| trace_preview_failure("actor_timezone", error))?;
     let today = Utc::now().with_timezone(&zone).date_naive();
     let choices = IdentityChoices {
         mappings: &mappings,
         declarations: &declarations,
         recipient_consents: &recipient_consents,
     };
-    let (bridge, expectation, planner_blocked) =
-        match identity::validate(&tenant, &prepared, payload, timezone, choices, today).await {
-            Ok(validated) => {
-                let mut findings = Vec::new();
-                for person in &validated.people {
-                    if !person.declaration_satisfied {
-                        findings.push(PersonFinding {
-                            person: person.source.clone(),
-                            field: None,
-                            reason: ReasonCode::GuardianDeclarationRequired,
-                            detail: "A current guardian declaration is required.".into(),
-                        });
-                    } else if !person.consent_current {
-                        findings.push(PersonFinding {
-                            person: person.source.clone(),
-                            field: None,
-                            reason: ReasonCode::ConsentRequired,
-                            detail: "Current consent is required.".into(),
-                        });
-                    }
-                }
-                let assessment = planning::assess(
-                    &validated.authority,
-                    validated.normalized,
-                    &validated.declarations,
-                    today,
-                    ExpectationLock::Confirmation,
-                )
-                .await?;
-                let blocked = assessment.has_blockers || !assessment.source_compatible;
-                let bridge =
-                    plan_projection::bridge(&prepared.inventory, &assessment, &findings, &[])
-                        .map_err(|_| OperationError::unavailable("import_bridge_invalid"))?;
-                (bridge, Some(assessment.expectation), blocked)
-            }
-            Err(IdentityValidationError::MissingDeclarations(people)) => {
-                let findings: Vec<_> = people
-                    .into_iter()
-                    .map(|person| PersonFinding {
-                        person,
+    let (bridge, expectation, planner_blocked) = match identity::validate(
+        &tenant, &prepared, payload, timezone, choices, today,
+    )
+    .await
+    .inspect_err(|error| {
+        if let IdentityValidationError::Operation(error)
+        | IdentityValidationError::Alias(AliasError::Database(error)) = error
+        {
+            trace_preview_failure("identity", error);
+        }
+    }) {
+        Ok(validated) => {
+            let mut findings = Vec::new();
+            for person in &validated.people {
+                if !person.declaration_satisfied {
+                    findings.push(PersonFinding {
+                        person: person.source.clone(),
                         field: None,
                         reason: ReasonCode::GuardianDeclarationRequired,
                         detail: "A current guardian declaration is required.".into(),
-                    })
-                    .collect();
-                let bridge = plan_projection::blocked_inventory(
-                    &prepared.inventory,
-                    &findings,
-                    &[],
-                    BridgeIssue {
-                        source: None,
+                    });
+                } else if !person.consent_current {
+                    findings.push(PersonFinding {
+                        person: person.source.clone(),
                         field: None,
-                        reason: ReasonCode::GuardianDeclarationRequired,
-                        detail: "Identity assessment could not be completed.".into(),
-                    },
-                )
-                .map_err(|_| OperationError::unavailable("import_bridge_invalid"))?;
-                (bridge, None, true)
+                        reason: ReasonCode::ConsentRequired,
+                        detail: "Current consent is required.".into(),
+                    });
+                }
             }
-            Err(IdentityValidationError::Alias(AliasError::IncompatiblePerson {
-                source_person_portable_id,
-                field,
-                ..
-            })) => {
-                let person = prepared
-                    .inventory
-                    .records
-                    .iter()
-                    .find(|record| {
-                        record.identity.kind == RecordKind::Person
-                            && record.identity.id == source_person_portable_id
-                    })
-                    .ok_or_else(|| OperationError::unavailable("import_identity_source_missing"))?
-                    .identity
-                    .clone();
-                let field = match field {
-                    IncompatibleField::DateOfBirth => "date_of_birth",
-                    IncompatibleField::PersonType => "person_type",
-                    IncompatibleField::HasCapacity => "has_capacity",
-                };
-                let findings = [PersonFinding {
+            let assessment = planning::assess(
+                &validated.authority,
+                validated.normalized,
+                &validated.declarations,
+                today,
+                ExpectationLock::Confirmation,
+            )
+            .await
+            .inspect_err(|error| trace_preview_failure("planning", error))?;
+            let blocked = assessment.has_blockers || !assessment.source_compatible;
+            let bridge = plan_projection::bridge(&prepared.inventory, &assessment, &findings, &[])
+                .map_err(|_| OperationError::unavailable("import_bridge_invalid"))
+                .inspect_err(|error| trace_preview_failure("bridge", error))?;
+            (bridge, Some(assessment.expectation), blocked)
+        }
+        Err(IdentityValidationError::MissingDeclarations(people)) => {
+            let findings: Vec<_> = people
+                .into_iter()
+                .map(|person| PersonFinding {
                     person,
-                    field: Some(field.into()),
+                    field: None,
+                    reason: ReasonCode::GuardianDeclarationRequired,
+                    detail: "A current guardian declaration is required.".into(),
+                })
+                .collect();
+            let bridge = plan_projection::blocked_inventory(
+                &prepared.inventory,
+                &findings,
+                &[],
+                BridgeIssue {
+                    source: None,
+                    field: None,
+                    reason: ReasonCode::GuardianDeclarationRequired,
+                    detail: "Identity assessment could not be completed.".into(),
+                },
+            )
+            .map_err(|_| OperationError::unavailable("import_bridge_invalid"))?;
+            (bridge, None, true)
+        }
+        Err(IdentityValidationError::Alias(AliasError::IncompatiblePerson {
+            source_person_portable_id,
+            destination_person_id,
+            field,
+        })) => {
+            if !mappings.iter().any(|mapping| {
+                    mapping.source.id == source_person_portable_id
+                        && matches!(&mapping.destination, super::contracts::PersonDestination::Existing(id) if id.0 == destination_person_id.get())
+                }) {
+                    return Err(OperationError::unavailable("import_identity_mapping_mismatch").into());
+                }
+            let person = prepared
+                .inventory
+                .records
+                .iter()
+                .find(|record| {
+                    record.identity.kind == RecordKind::Person
+                        && record.identity.id == source_person_portable_id
+                })
+                .ok_or_else(|| OperationError::unavailable("import_identity_source_missing"))?
+                .identity
+                .clone();
+            let field = match field {
+                IncompatibleField::DateOfBirth => "date_of_birth",
+                IncompatibleField::PersonType => "person_type",
+                IncompatibleField::HasCapacity => "has_capacity",
+            };
+            let findings = [PersonFinding {
+                person,
+                field: Some(field.into()),
+                reason: ReasonCode::IdentityConflict,
+                detail: "The source and destination profiles are incompatible.".into(),
+            }];
+            let bridge = plan_projection::blocked_inventory(
+                &prepared.inventory,
+                &findings,
+                &[],
+                BridgeIssue {
+                    source: None,
+                    field: None,
                     reason: ReasonCode::IdentityConflict,
-                    detail: "The source and destination profiles are incompatible.".into(),
-                }];
-                let bridge = plan_projection::blocked_inventory(
-                    &prepared.inventory,
-                    &findings,
-                    &[],
-                    BridgeIssue {
-                        source: None,
-                        field: None,
-                        reason: ReasonCode::IdentityConflict,
-                        detail: "Identity assessment could not be completed.".into(),
-                    },
-                )
-                .map_err(|_| OperationError::unavailable("import_bridge_invalid"))?;
-                (bridge, None, true)
-            }
-            Err(
-                IdentityValidationError::Operation(error)
-                | IdentityValidationError::Alias(AliasError::Database(error)),
-            ) => return Err(error.into()),
-            Err(IdentityValidationError::Alias(
-                AliasError::InvalidPayload | AliasError::InvalidSelection,
-            )) => return Err(OperationError::Forbidden.into()),
-        };
+                    detail: "Identity assessment could not be completed.".into(),
+                },
+            )
+            .map_err(|_| OperationError::unavailable("import_bridge_invalid"))?;
+            (bridge, None, true)
+        }
+        Err(
+            IdentityValidationError::Operation(error)
+            | IdentityValidationError::Alias(AliasError::Database(error)),
+        ) => return Err(error.into()),
+        Err(IdentityValidationError::Alias(
+            AliasError::InvalidPayload | AliasError::InvalidSelection,
+        )) => return Err(OperationError::Forbidden.into()),
+    };
     let mut report = projection::project(
         ProjectionMeta {
             id: uuid::Uuid::new_v4().to_string(),
@@ -312,7 +365,8 @@ async fn create_inner(
         &prepared.inventory,
         bridge.outcomes,
         &acknowledged_omissions,
-    )?;
+    )
+    .inspect_err(|error| trace_preview_failure("projection", error))?;
     report.issues = bridge
         .issues
         .into_iter()
@@ -337,7 +391,8 @@ async fn create_inner(
         None
     };
     let encrypted_prepared = EncryptedPrepared::from_prepared(&prepared.transfer)
-        .map_err(|_| OperationError::unavailable("import_prepared_encode"))?;
+        .map_err(|_| OperationError::unavailable("import_prepared_encode"))
+        .inspect_err(|error| trace_preview_failure("prepared_encode", error))?;
     let response = if checked && report.state == ImportState::Blocked {
         Some(source_only_blocked(
             &report,
@@ -367,9 +422,16 @@ async fn create_inner(
         acknowledged_omissions,
         confirmation: confirmation.clone(),
     };
-    access::recheck(&tenant).await?;
-    persistence::create(&tenant, &run).await?;
-    tenant.commit().await?;
+    access::recheck(&tenant)
+        .await
+        .inspect_err(|error| trace_preview_failure("final_access", error))?;
+    persistence::create(&tenant, &run)
+        .await
+        .inspect_err(|error| trace_preview_failure("persistence", error))?;
+    tenant
+        .commit()
+        .await
+        .inspect_err(|error| trace_preview_failure("commit", error))?;
     Ok(response.unwrap_or(PreviewResult {
         report,
         confirmation,

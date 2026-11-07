@@ -44,83 +44,6 @@ impl Preflight {
     }
 }
 
-#[cfg(test)]
-mod typed_conflict_tests {
-    use super::*;
-
-    #[test]
-    fn name_conflict_retains_the_existing_response_shape() {
-        let result = Preflight {
-            counts: json!({}),
-            conflicts: vec![NameConflict {
-                record_type: "medications",
-                portable_id: "source".into(),
-                field: "name",
-                existing_portable_id: "destination".into(),
-            }],
-            errors: Vec::new(),
-            diagnostics: Vec::new(),
-        };
-        assert_eq!(
-            result.body(false)["conflicts"],
-            json!([{"record_type":"medications", "portable_id":"source", "field":"name", "existing_portable_id":"destination"}])
-        );
-    }
-
-    #[test]
-    fn diagnostics_distinguish_original_and_normalized_people_indices() {
-        let source = json!({"format":"medtracker.portable.v3","records":{"people":[
-            {"portable_id":"matched", "name":"A"}, {"portable_id":"new", "name":"B"}
-        ]}});
-        let plan = ImportPlan::parse(
-            json!({"format":"medtracker.portable.v3","records":{"people":[
-                {"portable_id":"new", "name":"B"}
-            ]}}),
-        )
-        .unwrap();
-        let original = ImportPlan::parse(source).unwrap();
-        let a = row_diagnostic(
-            &original,
-            "people",
-            0,
-            Some("email"),
-            DiagnosticReason::InvalidSource,
-            "invalid".into(),
-        );
-        let b = row_diagnostic(
-            &plan,
-            "people",
-            0,
-            Some("name"),
-            DiagnosticReason::InvalidSource,
-            "invalid".into(),
-        );
-        assert_eq!(a.portable_id.as_deref(), Some("matched"));
-        assert_eq!(b.portable_id.as_deref(), Some("new"));
-    }
-
-    #[test]
-    fn schedule_diagnostics_do_not_infer_reason_or_invent_pause_rows() {
-        let clinical = super::super::person_schedules::RestoreConflict::Clinical {
-            source: "references unknown".into(),
-            field: "dose_amount",
-        };
-        let diagnostic = schedule_diagnostic(&clinical);
-        assert_eq!(diagnostic.reason, DiagnosticReason::InvalidSource);
-        assert_eq!(
-            diagnostic.portable_id.as_deref(),
-            Some("references unknown")
-        );
-        let pause = super::super::person_schedules::RestoreConflict::Pause {
-            source: "destination-only".into(),
-        };
-        let diagnostic = schedule_diagnostic(&pause);
-        assert!(diagnostic.collection.is_none());
-        assert!(diagnostic.portable_id.is_none());
-        assert!(diagnostic.field.is_none());
-    }
-}
-
 fn reference(
     plan: &ImportPlan,
     index: &ExistingIndex,
@@ -187,6 +110,16 @@ fn schedule_diagnostic(conflict: &super::person_schedules::RestoreConflict) -> P
         reason: DiagnosticReason::InvalidSource,
         detail: conflict.to_string(),
     }
+}
+
+fn unavailable_pause(
+    period_id: Option<&str>,
+    source: Option<(&str, i64)>,
+    periods: &HashSet<String>,
+    sources: &HashSet<(String, i64)>,
+) -> bool {
+    period_id.is_some_and(|id| periods.contains(id))
+        || source.is_some_and(|(kind, id)| sources.contains(&(kind.to_owned(), id)))
 }
 
 pub(crate) async fn preflight(
@@ -516,18 +449,61 @@ pub(crate) async fn preflight(
         }
     }
     let open_periods = db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT period.portable_id, CASE WHEN period.schedule_id IS NOT NULL THEN 'schedule' ELSE 'person_medication' END AS source_type, COALESCE(schedule.portable_id, assignment.portable_id) AS source_portable_id FROM medication_pause_periods period LEFT JOIN schedules schedule ON schedule.id = period.schedule_id AND schedule.household_id = period.household_id LEFT JOIN person_medications assignment ON assignment.id = period.person_medication_id AND assignment.household_id = period.household_id WHERE period.household_id = $1 AND period.ended_at IS NULL",
+        "SELECT period.portable_id, period.schedule_id, period.person_medication_id, CASE WHEN period.schedule_id IS NOT NULL THEN 'schedule' ELSE 'person_medication' END AS source_type, COALESCE(schedule.portable_id, assignment.portable_id) AS source_portable_id FROM medication_pause_periods period LEFT JOIN schedules schedule ON schedule.id = period.schedule_id AND schedule.household_id = period.household_id LEFT JOIN person_medications assignment ON assignment.id = period.person_medication_id AND assignment.household_id = period.household_id WHERE period.household_id = $1 AND period.ended_at IS NULL",
         [tenant.scope().household_id.into()])).await?;
     let mut open_by_source = HashMap::new();
     let mut open_period_sources = HashMap::new();
+    let mut unavailable_periods = HashSet::new();
+    let mut unavailable_sources = HashSet::new();
     for row in open_periods {
         let kind: String = row.try_get("", "source_type")?;
-        let id: String = row.try_get("", "source_portable_id")?;
+        let id: Option<String> = row.try_get("", "source_portable_id")?;
         let period_id: String = row.try_get("", "portable_id")?;
+        let Some(id) = id else {
+            unavailable_periods.insert(period_id);
+            let native_id: Option<i64> = if kind == "schedule" {
+                row.try_get("", "schedule_id")?
+            } else {
+                row.try_get("", "person_medication_id")?
+            };
+            if let Some(native_id) = native_id {
+                unavailable_sources.insert((kind, native_id));
+            }
+            continue;
+        };
         open_by_source.insert((kind.clone(), id.clone()), period_id.clone());
         open_period_sources.insert(period_id, (kind, id));
     }
     for (i, row) in plan.rows("medication_pause_periods").iter().enumerate() {
+        let selected_source = match (
+            row["source_type"].as_str(),
+            row["source_portable_id"].as_str(),
+        ) {
+            (Some(kind @ ("schedule" | "person_medication")), Some(source)) => {
+                let collection = if kind == "schedule" {
+                    "schedules"
+                } else {
+                    "person_medications"
+                };
+                index.get(collection, source).map(|id| (kind, id))
+            }
+            _ => None,
+        };
+        if unavailable_pause(
+            row["portable_id"].as_str(),
+            selected_source,
+            &unavailable_periods,
+            &unavailable_sources,
+        ) {
+            row_error!(
+                "medication_pause_periods",
+                i,
+                Some("source_portable_id"),
+                DiagnosticReason::MissingDependency,
+                format!("medication_pause_periods[{i}] source is unavailable")
+            );
+            continue;
+        }
         if !row["ended_at"].is_null()
             && let Some(portable_id) = row["portable_id"].as_str()
             && let Some(source) = open_period_sources.get(portable_id)
@@ -604,4 +580,111 @@ pub(crate) async fn preflight(
         errors,
         diagnostics,
     })
+}
+
+#[cfg(test)]
+mod typed_conflict_tests {
+    use super::*;
+
+    #[test]
+    fn unavailable_open_pause_only_blocks_selected_period_or_source() {
+        let periods = HashSet::from(["hidden-pause".to_owned()]);
+        let sources = HashSet::from([("schedule".to_owned(), 42)]);
+        assert!(unavailable_pause(
+            Some("hidden-pause"),
+            None,
+            &periods,
+            &sources
+        ));
+        assert!(unavailable_pause(
+            Some("new"),
+            Some(("schedule", 42)),
+            &periods,
+            &sources
+        ));
+        assert!(!unavailable_pause(
+            Some("new"),
+            Some(("schedule", 43)),
+            &periods,
+            &sources
+        ));
+        assert!(!unavailable_pause(
+            Some("new"),
+            Some(("person_medication", 42)),
+            &periods,
+            &sources
+        ));
+    }
+
+    #[test]
+    fn name_conflict_retains_the_existing_response_shape() {
+        let result = Preflight {
+            counts: json!({}),
+            conflicts: vec![NameConflict {
+                record_type: "medications",
+                portable_id: "source".into(),
+                field: "name",
+                existing_portable_id: "destination".into(),
+            }],
+            errors: Vec::new(),
+            diagnostics: Vec::new(),
+        };
+        assert_eq!(
+            result.body(false)["conflicts"],
+            json!([{"record_type":"medications", "portable_id":"source", "field":"name", "existing_portable_id":"destination"}])
+        );
+    }
+
+    #[test]
+    fn diagnostics_distinguish_original_and_normalized_people_indices() {
+        let source = json!({"format":"medtracker.portable.v3","records":{"people":[
+            {"portable_id":"matched", "name":"A"}, {"portable_id":"new", "name":"B"}
+        ]}});
+        let plan = ImportPlan::parse(
+            json!({"format":"medtracker.portable.v3","records":{"people":[
+                {"portable_id":"new", "name":"B"}
+            ]}}),
+        )
+        .unwrap();
+        let original = ImportPlan::parse(source).unwrap();
+        let a = row_diagnostic(
+            &original,
+            "people",
+            0,
+            Some("email"),
+            DiagnosticReason::InvalidSource,
+            "invalid".into(),
+        );
+        let b = row_diagnostic(
+            &plan,
+            "people",
+            0,
+            Some("name"),
+            DiagnosticReason::InvalidSource,
+            "invalid".into(),
+        );
+        assert_eq!(a.portable_id.as_deref(), Some("matched"));
+        assert_eq!(b.portable_id.as_deref(), Some("new"));
+    }
+
+    #[test]
+    fn schedule_diagnostics_do_not_infer_reason_or_invent_pause_rows() {
+        let clinical = super::super::person_schedules::RestoreConflict::Clinical {
+            source: "references unknown".into(),
+            field: "dose_amount",
+        };
+        let diagnostic = schedule_diagnostic(&clinical);
+        assert_eq!(diagnostic.reason, DiagnosticReason::InvalidSource);
+        assert_eq!(
+            diagnostic.portable_id.as_deref(),
+            Some("references unknown")
+        );
+        let pause = super::super::person_schedules::RestoreConflict::Pause {
+            source: "destination-only".into(),
+        };
+        let diagnostic = schedule_diagnostic(&pause);
+        assert!(diagnostic.collection.is_none());
+        assert!(diagnostic.portable_id.is_none());
+        assert!(diagnostic.field.is_none());
+    }
 }

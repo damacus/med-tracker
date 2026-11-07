@@ -3,7 +3,9 @@ use crate::models::entities::{
     dosage, dose_occurrence, health_event, health_event_medication, location, medication,
     medication_take, notification_preference, pause_period, person, person_medication, schedule,
 };
-use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, Iterable, QueryFilter};
+use sea_orm::{
+    ActiveValue, ColumnTrait, EntityTrait, IdenStatic, IntoActiveModel, Iterable, QueryFilter,
+};
 
 pub(crate) enum CreatedRecord {
     Person(Box<person::Model>),
@@ -33,11 +35,23 @@ enum ExpectedRecord {
     HealthEvent(i64, Box<health_event::ActiveModel>),
 }
 
+fn same_value(expected: &sea_orm::Value, actual: &sea_orm::Value) -> bool {
+    match (expected, actual) {
+        (sea_orm::Value::Json(expected), sea_orm::Value::Json(actual)) => expected == actual,
+        _ => expected == actual,
+    }
+}
+
 fn same_fields<A: ActiveModelTrait>(expected: &A, actual: &A) -> bool {
     <<<A as ActiveModelTrait>::Entity as EntityTrait>::Column as Iterable>::iter().all(|column| {
         match expected.get(column) {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
-                matches!(actual.get(column), ActiveValue::Set(current) | ActiveValue::Unchanged(current) if current == value)
+                let actual_value = actual.get(column);
+                let matches = matches!(&actual_value, ActiveValue::Set(current) | ActiveValue::Unchanged(current) if same_value(&value, current));
+                if !matches {
+                    tracing::warn!(medtracker.import.mismatch_column = column.as_str(), "Clinical import field verification failed");
+                }
+                matches
             }
             ActiveValue::NotSet => true,
         }
@@ -364,6 +378,11 @@ pub(crate) async fn create_only_records(
                     .await?
                     .ok_or(OperationError::Unavailable)?;
                 if !same_fields($expected.as_ref(), &row.clone().into_active_model()) {
+                    tracing::warn!(
+                        medtracker.import.invariant = "restored_record_fields",
+                        medtracker.import.record_kind = stringify!($variant),
+                        "Clinical import verification failed"
+                    );
                     return Err(import_invalid("Restored record differs from the source"));
                 }
                 CreatedRecord::$variant(Box::new(row))
@@ -449,6 +468,48 @@ mod tests {
         actual.source_dosage_option_id = Set(Some(4));
         actual.active = Set(false);
         assert!(!same_fields(&expected, &actual));
+    }
+
+    #[test]
+    fn verifies_json_structure_without_requiring_object_key_order() {
+        let expected = pause_period::ActiveModel {
+            imported_actor_references: Set(json!({
+                "recorded_by_person_portable_id": "recorded",
+                "resumed_by_person_portable_id": "resumed",
+                "details": {"first": 1, "second": ["a", "b"]}
+            })),
+            ..Default::default()
+        };
+        let mut actual = expected.clone();
+        actual.imported_actor_references = Set(json!({
+            "details": {"second": ["a", "b"], "first": 1},
+            "resumed_by_person_portable_id": "resumed",
+            "recorded_by_person_portable_id": "recorded"
+        }));
+        assert!(
+            expected
+                .get(pause_period::Column::ImportedActorReferences)
+                .into_value()
+                != actual
+                    .get(pause_period::Column::ImportedActorReferences)
+                    .into_value()
+        );
+        assert!(same_fields(&expected, &actual));
+        for changed in [
+            json!({"recorded_by_person_portable_id": "changed", "resumed_by_person_portable_id": "resumed", "details": {"first": 1, "second": ["a", "b"]}}),
+            json!({"recorded_by_person_portable_id": "recorded", "details": {"first": 1, "second": ["a", "b"]}}),
+            json!({"recorded_by_person_portable_id": "recorded", "resumed_by_person_portable_id": "resumed", "extra": null, "details": {"first": 1, "second": ["a", "b"]}}),
+            json!({"recorded_by_person_portable_id": "recorded", "resumed_by_person_portable_id": "resumed", "details": {"first": 1, "second": ["b", "a"]}}),
+            json!({"recorded_by_person_portable_id": "recorded", "resumed_by_person_portable_id": "resumed", "details": {"first": 1, "second": ["a", "changed"]}}),
+            json!({"recorded_by_person_portable_id": "recorded", "resumed_by_person_portable_id": "resumed", "details": {"first": "1", "second": ["a", "b"]}}),
+        ] {
+            actual.imported_actor_references = Set(changed);
+            assert!(!same_fields(&expected, &actual));
+        }
+        assert!(!same_value(
+            &sea_orm::Value::Json(None),
+            &sea_orm::Value::Json(Some(Box::new(serde_json::Value::Null)))
+        ));
     }
 
     #[test]

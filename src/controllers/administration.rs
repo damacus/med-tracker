@@ -711,6 +711,30 @@ mod import_presentation_tests {
     }
 
     #[test]
+    fn import_field_destination_is_shown_for_comparisons_only() {
+        let view = TeraView::build().expect("views load");
+        let labels = labels();
+        let mut record = json!({
+            "source": {"kind":"person", "source":"med_tracker05", "instance":"fixture", "id":"person"},
+            "expected":"create", "actual":"created", "destination":null, "reason":null,
+            "details": {"name":null, "dose_amount":null, "timing":null, "stock_quantity":null, "occurred_at":null,
+                "source_fields":[{"field":"name", "source_value":"source", "destination_value":null, "outcome":"preserved", "reason":null}]}
+        });
+        let render = |record: &Value| {
+            view.render(
+                "administration/import/record.html",
+                json!({"record":record, "import_labels":labels["administration"]["import"]}),
+            )
+            .expect("record renders")
+        };
+        assert!(!render(&record).contains("Destination value"));
+        record["expected"] = json!("match");
+        assert!(render(&record).contains("Destination value: No value"));
+        record["details"]["source_fields"][0]["destination_value"] = json!("existing");
+        assert!(render(&record).contains("Destination value: existing"));
+    }
+
+    #[test]
     fn completed_and_blocked_reports_show_actual_outcomes_and_confirmation_gate() {
         let view = TeraView::build().expect("views load");
         let completed: ImportReport = serde_json::from_str(include_str!(

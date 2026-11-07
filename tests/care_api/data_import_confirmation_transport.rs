@@ -13,12 +13,11 @@ use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
 async fn ready(app: &Application, token: &str) -> (String, String) {
+    let tag = uuid::Uuid::new_v4().to_string();
+    let payload = super::isolated_import_payload(&tag);
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     for (name, data) in [
-        (
-            "portable.json",
-            include_bytes!("../fixtures/portable_rails/prepared-history-v2.json").as_slice(),
-        ),
+        ("portable.json", payload.as_bytes()),
         (
             "manifest.json",
             include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json")
@@ -229,7 +228,7 @@ async fn confirmation_denies_stale_destination_read_only_and_revoked_credentials
                     better_auth::server_api::CreateKeyOptions {
                         config_id: Some("medtracker-personal".into()),
                         name: Some("Confirmation test".into()),
-                        expires_in: Some(3600.0),
+                        expires_in: Some(chrono::Duration::days(1).num_seconds() as f64),
                         metadata: Some(json!({"households":[household]})),
                         permissions: Some(std::collections::HashMap::from([(
                             "medtracker".into(),

@@ -16,7 +16,7 @@ struct ConfirmForm {
     lang: Option<String>,
 }
 
-pub(super) async fn confirm(
+pub(in crate::controllers::administration) async fn confirm(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,

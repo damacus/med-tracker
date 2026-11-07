@@ -3,9 +3,9 @@
 ## Household ZIP import
 
 The 0.6 Administration import journey is intended for a complete MedTracker
-0.5 household ZIP. Its application acceptance source has not yet been
-executed; the integrated verification pipeline is pending. Use it only after
-the intended version has been verified and made available.
+0.5 household ZIP. Local synthetic API and browser acceptance passed on
+7 November 2026; a real hosted 0.5 export has not yet been tested. See the
+[evidence and remaining checks](clinical-portable-evidence.md#household-zip-acceptance-status).
 
 1. Sign in to 0.6 with a fresh account and create or join the destination
    household. Keep the existing 0.6 login, profile and person IDs: importing

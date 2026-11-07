@@ -19,16 +19,15 @@ use sea_orm::{
     TransactionTrait,
 };
 use std::io::{Cursor, Write};
+use tracing::instrument::WithSubscriber;
 use zip::{ZipWriter, write::SimpleFileOptions};
 
 fn upload(comment: &str) -> Upload {
+    let payload = super::isolated_import_payload(comment);
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
-    zip.set_comment(comment);
+    zip.set_comment(comment).unwrap();
     for (name, data) in [
-        (
-            "portable.json",
-            include_bytes!("../fixtures/portable_rails/prepared-history-v2.json").as_slice(),
-        ),
+        ("portable.json", payload.as_bytes()),
         (
             "manifest.json",
             include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json")
@@ -69,7 +68,7 @@ fn profile_upload(comment: &str) -> Upload {
         *count = serde_json::json!(if key == "people" { 1 } else { 0 });
     }
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
-    zip.set_comment(comment);
+    zip.set_comment(comment).unwrap();
     for (name, bytes) in [
         ("portable.json", serde_json::to_vec(&payload).unwrap()),
         ("manifest.json", serde_json::to_vec(&manifest).unwrap()),
@@ -85,10 +84,8 @@ fn profile_upload(comment: &str) -> Upload {
 }
 
 fn mixed_upload(comment: &str) -> Upload {
-    let mut payload: serde_json::Value = serde_json::from_slice(include_bytes!(
-        "../fixtures/portable_rails/prepared-history-v2.json"
-    ))
-    .unwrap();
+    let mut payload: serde_json::Value =
+        serde_json::from_str(&super::isolated_import_payload(comment)).unwrap();
     let records = &mut payload["records"];
     let mut adult = records["people"][0].clone();
     adult["portable_id"] = serde_json::json!("synthetic-profile-adult");
@@ -111,7 +108,7 @@ fn mixed_upload(comment: &str) -> Upload {
     .unwrap();
     manifest["record_counts"]["people"] = serde_json::json!(2);
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
-    zip.set_comment(comment);
+    zip.set_comment(comment).unwrap();
     for (name, bytes) in [
         ("portable.json", serde_json::to_vec(&payload).unwrap()),
         ("manifest.json", serde_json::to_vec(&manifest).unwrap()),
@@ -168,7 +165,7 @@ async fn mixed_profile_and_dependent_report_remains_readable_until_consent_withd
             .clone()
     };
     let adult = source("synthetic-profile-adult");
-    let dependent = source("synthetic-rails-person-prepared-history-v2");
+    let dependent = source(&format!("synthetic-rails-person-{comment}"));
     let target =
         med_tracker::models::data_imports::contracts::PersonId(recipient.account.person_id);
     let binding = ConsentBinding {
@@ -304,6 +301,7 @@ async fn mixed_profile_and_dependent_report_remains_readable_until_consent_withd
         reference: "synthetic-session".into(),
     };
     let confirmation = ready.confirmation.unwrap();
+    let trace = super::request_trace_capture::Captured::default();
     let completed = confirmation::confirm(
         &app.context,
         &scope,
@@ -313,9 +311,15 @@ async fn mixed_profile_and_dependent_report_remains_readable_until_consent_withd
         &provenance,
         &scope.request_id,
     )
+    .with_subscriber(trace.clone())
     .await
     .unwrap();
-    assert_eq!(completed.state, ImportState::Completed);
+    assert_eq!(
+        completed.state,
+        ImportState::Completed,
+        "safe import diagnostics: {:?}",
+        super::import_diagnostics(&trace)
+    );
     assert_eq!(
         app.client
             .get(&url)
@@ -1015,6 +1019,7 @@ async fn completed_created_dependent_report_is_hidden_after_guardian_withdrawal(
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
+    let trace = super::request_trace_capture::Captured::default();
     let completed = confirmation::confirm(
         &app.context,
         &scope,
@@ -1024,9 +1029,15 @@ async fn completed_created_dependent_report_is_hidden_after_guardian_withdrawal(
         &provenance,
         &scope.request_id,
     )
+    .with_subscriber(trace.clone())
     .await
     .unwrap();
-    assert_eq!(completed.state, ImportState::Completed);
+    assert_eq!(
+        completed.state,
+        ImportState::Completed,
+        "safe import diagnostics: {:?}",
+        super::import_diagnostics(&trace)
+    );
     let medication_id = completed
         .people
         .iter()
@@ -1053,6 +1064,50 @@ async fn completed_created_dependent_report_is_hidden_after_guardian_withdrawal(
     let mut changed = medication.into_active_model();
     changed.friendly_name = Set(Some("Updated after import".into()));
     changed.update(&app.fixture.admin).await.unwrap();
+    let schedule_id = completed
+        .people
+        .iter()
+        .flat_map(|person| &person.records)
+        .chain(completed.records.iter())
+        .find_map(|record| {
+            match record
+                .destination
+                .as_ref()
+                .map(|destination| &destination.id)
+            {
+                Some(med_tracker::models::data_imports::contracts::DestinationId::Schedule(id)) => {
+                    Some(id.0)
+                }
+                _ => None,
+            }
+        })
+        .unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    med_tracker::models::care::pause_periods::pause_schedule(
+        &tenant,
+        &schedule_id.to_string(),
+        &med_tracker::models::care::pause_periods::EmptyChangeInput::empty(),
+        Some(&provenance),
+    )
+    .await
+    .unwrap();
+    let open_pause = med_tracker::models::_entities::medication_pause_periods::Entity::find()
+        .filter(
+            med_tracker::models::_entities::medication_pause_periods::Column::HouseholdId
+                .eq(scope.household_id),
+        )
+        .filter(
+            med_tracker::models::_entities::medication_pause_periods::Column::ScheduleId
+                .eq(schedule_id),
+        )
+        .filter(med_tracker::models::_entities::medication_pause_periods::Column::EndedAt.is_null())
+        .one(tenant.transaction())
+        .await
+        .unwrap()
+        .unwrap();
+    tenant.commit().await.unwrap();
     let token = app.token().await;
     let report_url = format!(
         "{}/api/v1/households/{}/data_imports/{}",
@@ -1134,6 +1189,13 @@ async fn completed_created_dependent_report_is_hidden_after_guardian_withdrawal(
             .unwrap()
             .is_none()
     );
+    assert!(
+        med_tracker::models::_entities::medication_pause_periods::Entity::find_by_id(open_pause.id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_some()
+    );
     tenant.rollback().await.unwrap();
     let profile_comment = uuid::Uuid::new_v4().to_string();
     let profile = inspection::inspect(&app.context, &scope, profile_upload(&profile_comment), zone)
@@ -1148,6 +1210,7 @@ async fn completed_created_dependent_report_is_hidden_after_guardian_withdrawal(
         .identity
         .clone();
     let own = med_tracker::models::data_imports::contracts::PersonId(app.fixture.account.person_id);
+    let trace = super::request_trace_capture::Captured::default();
     let readable = preview::create(
         &app.context,
         &scope,
@@ -1172,8 +1235,14 @@ async fn completed_created_dependent_report_is_hidden_after_guardian_withdrawal(
                 .collect(),
         },
     )
+    .with_subscriber(trace.clone())
     .await
-    .unwrap();
+    .unwrap_or_else(|_| {
+        panic!(
+            "self preview failed; safe import diagnostics: {:?}",
+            super::import_diagnostics(&trace)
+        )
+    });
     let base = format!(
         "{}/api/v1/households/{}/data_imports",
         app.origin, scope.household_id
@@ -1338,7 +1407,7 @@ async fn ready_report_reload_requires_unchanged_expectation_and_creator() {
             better_auth::server_api::CreateKeyOptions {
                 config_id: Some("medtracker-personal".into()),
                 name: Some("Report creator isolation".into()),
-                expires_in: Some(3600.0),
+                expires_in: Some(chrono::Duration::days(1).num_seconds() as f64),
                 metadata: Some(serde_json::json!({"households":[scope.household_id]})),
                 permissions: Some(std::collections::HashMap::from([(
                     "medtracker".into(),

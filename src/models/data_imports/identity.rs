@@ -203,7 +203,9 @@ pub(crate) async fn validate_stored<'a>(
     if !missing.is_empty() {
         return Err(IdentityValidationError::MissingDeclarations(missing));
     }
-    let authority = PreparedImportAuthority::prepare(tenant, today).await?;
+    let authority = PreparedImportAuthority::prepare(tenant, today)
+        .await
+        .inspect_err(|error| super::preview::trace_preview_failure("identity_authority", error))?;
     let mut target_ids: Vec<_> = targets.iter().copied().collect();
     target_ids.push(tenant.membership().person_id);
     target_ids.sort_unstable();
@@ -236,10 +238,15 @@ pub(crate) async fn validate_stored<'a>(
         })
         .collect::<Result<Vec<_>, _>>()?;
     let initial = InitialDeclarations::from_attestations(attestations)?;
-    let index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id).await?;
+    let index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id)
+        .await
+        .inspect_err(|error| super::preview::trace_preview_failure("identity_index", error))?;
     let prepared_declarations = initial
         .prepare(tenant, &normalized.plan, &index, today)
-        .await?;
+        .await
+        .inspect_err(|error| {
+            super::preview::trace_preview_failure("identity_declarations", error)
+        })?;
     let mut people = Vec::new();
     for mapping in mappings {
         match &mapping.destination {

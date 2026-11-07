@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 use url::Url;
 
 use crate::USER_AGENT;
-use crate::error::{ApiError, ErrorEnvelope, ImportDiagnostics};
+use crate::error::{ApiError, ErrorEnvelope, ImportDiagnostics, ImportValidationError};
 use crate::models::DataEnvelope;
 
 #[derive(Clone)]
@@ -197,14 +197,25 @@ impl ApiClient {
             } else {
                 None
             };
-            ApiError::Server {
-                status,
-                code: envelope.error.code,
-                message: envelope.error.message,
-                request_id: envelope.error.request_id,
-                trace_id: envelope.error.trace_id,
-                retry_after,
-                import_diagnostics,
+            if let Some(diagnostics) = import_diagnostics {
+                ApiError::ImportValidation(Box::new(ImportValidationError {
+                    status,
+                    code: envelope.error.code,
+                    message: envelope.error.message,
+                    request_id: envelope.error.request_id,
+                    trace_id: envelope.error.trace_id,
+                    retry_after,
+                    diagnostics,
+                }))
+            } else {
+                ApiError::Server {
+                    status,
+                    code: envelope.error.code,
+                    message: envelope.error.message,
+                    request_id: envelope.error.request_id,
+                    trace_id: envelope.error.trace_id,
+                    retry_after,
+                }
             }
         } else {
             let value: serde_json::Value = serde_json::from_slice(&body).unwrap_or_default();
@@ -244,7 +255,6 @@ impl ApiClient {
                 request_id: recognised.then(|| text("request_id")).flatten(),
                 trace_id: recognised.then(|| text("trace_id")).flatten(),
                 retry_after,
-                import_diagnostics: None,
             }
         }
     }
@@ -326,10 +336,72 @@ mod tests {
     use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
+    fn assert_import_error(
+        error: ApiError,
+        expected: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use crate::error::ImportDiagnosticReason;
+        assert!(!format!("{error:?}").contains("/people/0/"));
+        let (status, code, message, request_id, trace_id, retry_after, diagnostics) = match error {
+            ApiError::ImportValidation(error) => (
+                error.status,
+                error.code,
+                error.message,
+                error.request_id,
+                error.trace_id,
+                error.retry_after,
+                Some(error.diagnostics),
+            ),
+            ApiError::Server {
+                status,
+                code,
+                message,
+                request_id,
+                trace_id,
+                retry_after,
+            } => (
+                status,
+                code,
+                message,
+                request_id,
+                trace_id,
+                retry_after,
+                None,
+            ),
+            other => return Err(other.into()),
+        };
+        assert_eq!(status, 422);
+        assert_eq!(code, "validation_failed");
+        assert_eq!(message, "Validation failed");
+        assert_eq!(request_id.as_deref(), Some("req-1"));
+        assert_eq!(trace_id.as_deref(), Some("trace-1"));
+        assert_eq!(retry_after.as_deref(), Some("5"));
+        assert_eq!(diagnostics.is_some(), expected);
+        if let Some(diagnostics) = diagnostics {
+            assert!(diagnostics.truncated);
+            assert_eq!(
+                diagnostics
+                    .items
+                    .first()
+                    .ok_or("missing diagnostic")?
+                    .reason,
+                ImportDiagnosticReason::UnsupportedField
+            );
+            assert_eq!(
+                diagnostics.items.get(1).ok_or("missing diagnostic")?.reason,
+                ImportDiagnosticReason::InvalidField
+            );
+            assert_eq!(
+                diagnostics.items.first().ok_or("missing diagnostic")?.path,
+                "/people/0/[unsupported]"
+            );
+        }
+        Ok(())
+    }
+
     #[tokio::test]
     async fn import_diagnostics_preserve_error_metadata_and_other_error_shapes()
     -> Result<(), Box<dyn std::error::Error>> {
-        use crate::error::ImportDiagnosticReason;
         let server = MockServer::start().await;
         for (endpoint, errors) in [
             (
@@ -373,45 +445,7 @@ mod tests {
                 .await
                 .err()
                 .ok_or("expected error")?;
-            match error {
-                ApiError::Server {
-                    status,
-                    code,
-                    message,
-                    request_id,
-                    trace_id,
-                    retry_after,
-                    import_diagnostics,
-                } => {
-                    assert_eq!(status, 422);
-                    assert_eq!(code, "validation_failed");
-                    assert_eq!(message, "Validation failed");
-                    assert_eq!(request_id.as_deref(), Some("req-1"));
-                    assert_eq!(trace_id.as_deref(), Some("trace-1"));
-                    assert_eq!(retry_after.as_deref(), Some("5"));
-                    assert_eq!(import_diagnostics.is_some(), expected);
-                    if let Some(diagnostics) = import_diagnostics {
-                        assert!(diagnostics.truncated);
-                        assert_eq!(
-                            diagnostics
-                                .items
-                                .first()
-                                .ok_or("missing diagnostic")?
-                                .reason,
-                            ImportDiagnosticReason::UnsupportedField
-                        );
-                        assert_eq!(
-                            diagnostics.items.get(1).ok_or("missing diagnostic")?.reason,
-                            ImportDiagnosticReason::InvalidField
-                        );
-                        assert_eq!(
-                            diagnostics.items.first().ok_or("missing diagnostic")?.path,
-                            "/people/0/[unsupported]"
-                        );
-                    }
-                }
-                other => return Err(other.into()),
-            }
+            assert_import_error(error, expected)?;
         }
         Ok(())
     }

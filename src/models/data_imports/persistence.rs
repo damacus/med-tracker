@@ -86,7 +86,7 @@ struct ReceiptEnvelope {
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum StoredReceipt {
-    Envelope(ReceiptEnvelope),
+    Envelope(Box<ReceiptEnvelope>),
     Legacy(PreparationReceipt),
 }
 

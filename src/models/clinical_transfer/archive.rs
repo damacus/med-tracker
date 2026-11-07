@@ -347,7 +347,7 @@ fn exactly_representable_as_f64(value: Decimal) -> bool {
     let value = value.normalize();
     let mut numerator = value.mantissa().unsigned_abs();
     for _ in 0..value.scale() {
-        if numerator % 5 != 0 {
+        if !numerator.is_multiple_of(5) {
             return false;
         }
         numerator /= 5;
@@ -356,7 +356,7 @@ fn exactly_representable_as_f64(value: Decimal) -> bool {
         return true;
     }
     numerator >>= numerator.trailing_zeros();
-    numerator <= (1_u128 << 53) - 1
+    numerator < (1_u128 << 53)
 }
 
 fn validate_source(

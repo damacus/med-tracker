@@ -479,10 +479,10 @@ mod tests {
     use wiremock::matchers::{header, method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    #[tokio::test]
-    async fn consent_and_confirmation_contracts() -> Result<(), Box<dyn std::error::Error>> {
+    async fn mount_consent_and_confirmation(
+        server: &MockServer,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         use wiremock::matchers::body_json;
-        let server = MockServer::start().await;
         let root = "/api/v1/households/42/data_imports";
         let source =
             json!({"source":"med_tracker05","instance":"synthetic","kind":"person","id":"p1"});
@@ -496,14 +496,14 @@ mod tests {
             .respond_with(
                 ResponseTemplate::new(201).set_body_json(json!({"data":{"id":"consent-1"}})),
             )
-            .mount(&server)
+            .mount(server)
             .await;
         Mock::given(method("GET"))
             .and(path(format!("{root}/consents/consent-1")))
             .respond_with(
                 ResponseTemplate::new(200).set_body_json(json!({"data":personal("pending")})),
             )
-            .mount(&server)
+            .mount(server)
             .await;
         for decision in ["approved", "rejected"] {
             Mock::given(method("POST"))
@@ -512,7 +512,7 @@ mod tests {
                 .respond_with(
                     ResponseTemplate::new(200).set_body_json(json!({"data":personal(decision)})),
                 )
-                .mount(&server)
+                .mount(server)
                 .await;
         }
         let completed: serde_json::Value =
@@ -521,7 +521,7 @@ mod tests {
             serde_json::from_str(include_str!("fixtures/clinical-import-failed.json"))?;
         let mut ready: serde_json::Value =
             serde_json::from_str(include_str!("fixtures/clinical-import-blocked.json"))?;
-        ready["state"] = json!("ready");
+        *ready.get_mut("state").ok_or("missing state")? = json!("ready");
         for (id, report) in [("run-completed", completed.clone()), ("run-failed", failed)] {
             Mock::given(method("POST"))
                 .and(path(format!("{root}/{id}/confirm")))
@@ -532,7 +532,7 @@ mod tests {
                 .respond_with(
                     ResponseTemplate::new(200).set_body_json(json!({"data":{"report":report}})),
                 )
-                .mount(&server)
+                .mount(server)
                 .await;
         }
         Mock::given(method("GET"))
@@ -540,10 +540,10 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(
                 json!({"data":{"report":ready,"confirmation":"synthetic-ready-token"}}),
             ))
-            .mount(&server)
+            .mount(server)
             .await;
         Mock::given(method("POST")).and(path(format!("{root}/run-stale/confirm")))
-            .respond_with(ResponseTemplate::new(409).set_body_json(json!({"error":{"code":"conflict","message":"Stale preview","request_id":"req-stale"}}))).mount(&server).await;
+            .respond_with(ResponseTemplate::new(409).set_body_json(json!({"error":{"code":"conflict","message":"Stale preview","request_id":"req-stale"}}))).mount(server).await;
         let denied_root = "/api/v1/households/43/data_imports";
         for (verb, endpoint) in [
             ("POST", format!("{denied_root}/consents")),
@@ -552,8 +552,15 @@ mod tests {
         ] {
             Mock::given(method(verb)).and(path(endpoint)).respond_with(
                 ResponseTemplate::new(403).set_body_json(json!({"error":{"code":"forbidden","message":"Denied","request_id":"req-denied","trace_id":"trace-denied"}}))
-            ).mount(&server).await;
+            ).mount(server).await;
         }
+        Ok(binding)
+    }
+
+    #[tokio::test]
+    async fn consent_and_confirmation_contracts() -> Result<(), Box<dyn std::error::Error>> {
+        let server = MockServer::start().await;
+        let binding = mount_consent_and_confirmation(&server).await?;
         let client = ApiClient::new(server.uri(), Some("synthetic-token".into()))?;
         let binding: ConsentBinding = serde_json::from_value(binding)?;
         assert_eq!(
@@ -647,13 +654,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn four_routes_use_the_documented_wire_contract() -> Result<(), Box<dyn std::error::Error>>
-    {
-        let server = MockServer::start().await;
+    async fn mount_import_routes(server: &MockServer) -> Result<(), Box<dyn std::error::Error>> {
         let prefix = "/api/v1/households/42/data_imports";
-        let identity =
-            json!({"source":"med_tracker05","instance":"synthetic","kind":"person","id":"p1"});
         let inspection_response: serde_json::Value =
             serde_json::from_str(include_str!("fixtures/clinical-import-inspection.json"))?;
         let blocked: serde_json::Value =
@@ -668,7 +670,7 @@ mod tests {
             .respond_with(
                 ResponseTemplate::new(201).set_body_json(json!({"data":inspection_response})),
             )
-            .mount(&server)
+            .mount(server)
             .await;
         Mock::given(method("POST"))
             .and(path(format!("{prefix}/previews")))
@@ -676,7 +678,7 @@ mod tests {
                 ResponseTemplate::new(201)
                     .set_body_json(json!({"data":{"report":blocked,"confirmation":null}})),
             )
-            .mount(&server)
+            .mount(server)
             .await;
         Mock::given(method("GET"))
             .and(path(prefix))
@@ -685,7 +687,7 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(
                 json!({"data":{"reports":[blocked,completed,failed],"next_cursor":null}}),
             ))
-            .mount(&server)
+            .mount(server)
             .await;
         Mock::given(method("GET"))
             .and(path(format!("{prefix}/run-1")))
@@ -693,75 +695,14 @@ mod tests {
                 ResponseTemplate::new(200)
                     .set_body_json(json!({"data":{"report":completed,"confirmation":null}})),
             )
-            .mount(&server)
+            .mount(server)
             .await;
-        let client = ApiClient::new(server.uri(), Some("synthetic-token".into()))?;
-        let inspection = InspectionRequest {
-            source: SourceSystem::MedTracker05,
-            archive_base64: "YWJj".into(),
-            passphrase: "synthetic-passphrase".into(),
-            source_timezone: "Europe/London".into(),
-            timezone_confirmed: true,
-        };
-        let inventory = client
-            .inspect_data_import("42", &inspection)
-            .await?
-            .inventory;
-        assert_eq!(inventory.records.len(), 2);
-        assert_eq!(
-            inventory
-                .relationships
-                .first()
-                .ok_or("missing source edge")?
-                .kind,
-            RelationshipKind::PersonMedication
-        );
-        assert_eq!(
-            inventory
-                .omissions
-                .first()
-                .ok_or("missing omission")?
-                .acknowledgement_id,
-            "omit-1"
-        );
-        assert_eq!(
-            inventory
-                .records
-                .get(1)
-                .ok_or("missing schedule")?
-                .details
-                .dose_amount
-                .as_deref(),
-            Some("1.50")
-        );
-        let source = SourceIdentity {
-            source: SourceSystem::MedTracker05,
-            instance: "synthetic".into(),
-            kind: RecordKind::Person,
-            id: "p1".into(),
-        };
-        let preview = PreviewRequest {
-            inspection_id: "inspection-1".into(),
-            source: inspection.source,
-            archive_base64: inspection.archive_base64.clone(),
-            passphrase: inspection.passphrase.clone(),
-            source_timezone: inspection.source_timezone.clone(),
-            timezone_confirmed: true,
-            mappings: vec![PersonMapping {
-                source: source.clone(),
-                destination: PersonDestination::Existing(7),
-            }],
-            declarations: vec![ConsentInput::ActingPerson {
-                subject: 7,
-                accepted: true,
-            }],
-            recipient_consents: vec![RecipientConsent {
-                source_person: source,
-                request_id: "consent-1".into(),
-            }],
-            acknowledged_omissions: vec!["omission-1".into()],
-        };
-        let blocked_report = client.preview_data_import("42", &preview).await?.report;
+        Ok(())
+    }
+
+    fn check_blocked_report(
+        blocked_report: &ImportReport,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         assert_eq!(blocked_report.state, ImportState::Blocked);
         let person = blocked_report.people.first().ok_or("missing person")?;
         assert_eq!(person.person.expected, ExpectedRecord::DecisionRequired);
@@ -789,23 +730,12 @@ mod tests {
                 .ok_or("missing omission")?
                 .acknowledged
         );
-        let page = client
-            .data_import_reports("42", Some("cursor +"), Some(25))
-            .await?;
-        assert_eq!(page.reports.len(), 3);
-        let failed_report = page.reports.get(2).ok_or("missing failed report")?;
-        assert_eq!(failed_report.state, ImportState::Failed);
-        assert_eq!(
-            failed_report
-                .relationships
-                .first()
-                .ok_or("missing unlinked edge")?
-                .actual,
-            Some(ActualRelationship::NotLinked)
-        );
-        let detail = client.data_import_report("42", "run-1").await?;
-        assert!(detail.confirmation.is_none());
-        let completed_report = detail.report;
+        Ok(())
+    }
+
+    fn check_completed_report(
+        completed_report: &ImportReport,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         assert_eq!(completed_report.state, ImportState::Completed);
         let person = completed_report.people.first().ok_or("missing person")?;
         assert_eq!(person.person.actual, Some(ActualRecord::Matched));
@@ -847,6 +777,107 @@ mod tests {
                 .reason,
             ReasonCode::UnsupportedField
         );
+        Ok(())
+    }
+
+    fn check_inventory(inventory: &SourceInventory) -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(inventory.records.len(), 2);
+        assert_eq!(
+            inventory
+                .relationships
+                .first()
+                .ok_or("missing source edge")?
+                .kind,
+            RelationshipKind::PersonMedication
+        );
+        assert_eq!(
+            inventory
+                .omissions
+                .first()
+                .ok_or("missing omission")?
+                .acknowledgement_id,
+            "omit-1"
+        );
+        assert_eq!(
+            inventory
+                .records
+                .get(1)
+                .ok_or("missing schedule")?
+                .details
+                .dose_amount
+                .as_deref(),
+            Some("1.50")
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn four_routes_use_the_documented_wire_contract() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let server = MockServer::start().await;
+        mount_import_routes(&server).await?;
+        let identity =
+            json!({"source":"med_tracker05","instance":"synthetic","kind":"person","id":"p1"});
+        let client = ApiClient::new(server.uri(), Some("synthetic-token".into()))?;
+        let inspection = InspectionRequest {
+            source: SourceSystem::MedTracker05,
+            archive_base64: "YWJj".into(),
+            passphrase: "synthetic-passphrase".into(),
+            source_timezone: "Europe/London".into(),
+            timezone_confirmed: true,
+        };
+        let inventory = client
+            .inspect_data_import("42", &inspection)
+            .await?
+            .inventory;
+        check_inventory(&inventory)?;
+        let source = SourceIdentity {
+            source: SourceSystem::MedTracker05,
+            instance: "synthetic".into(),
+            kind: RecordKind::Person,
+            id: "p1".into(),
+        };
+        let preview = PreviewRequest {
+            inspection_id: "inspection-1".into(),
+            source: inspection.source,
+            archive_base64: inspection.archive_base64.clone(),
+            passphrase: inspection.passphrase.clone(),
+            source_timezone: inspection.source_timezone.clone(),
+            timezone_confirmed: true,
+            mappings: vec![PersonMapping {
+                source: source.clone(),
+                destination: PersonDestination::Existing(7),
+            }],
+            declarations: vec![ConsentInput::ActingPerson {
+                subject: 7,
+                accepted: true,
+            }],
+            recipient_consents: vec![RecipientConsent {
+                source_person: source,
+                request_id: "consent-1".into(),
+            }],
+            acknowledged_omissions: vec!["omission-1".into()],
+        };
+        let blocked_report = client.preview_data_import("42", &preview).await?.report;
+        check_blocked_report(&blocked_report)?;
+        let page = client
+            .data_import_reports("42", Some("cursor +"), Some(25))
+            .await?;
+        assert_eq!(page.reports.len(), 3);
+        let failed_report = page.reports.get(2).ok_or("missing failed report")?;
+        assert_eq!(failed_report.state, ImportState::Failed);
+        assert_eq!(
+            failed_report
+                .relationships
+                .first()
+                .ok_or("missing unlinked edge")?
+                .actual,
+            Some(ActualRelationship::NotLinked)
+        );
+        let detail = client.data_import_report("42", "run-1").await?;
+        assert!(detail.confirmation.is_none());
+        let completed_report = detail.report;
+        check_completed_report(&completed_report)?;
         let requests = server.received_requests().await.ok_or("capture disabled")?;
         let request = requests
             .iter()
@@ -854,19 +885,25 @@ mod tests {
             .ok_or("missing preview")?;
         let body: serde_json::Value = serde_json::from_slice(&request.body)?;
         assert_eq!(
-            body["mappings"],
-            json!([{"source":identity,"destination":{"Existing":7}}])
+            body.get("mappings"),
+            Some(&json!([{"source":identity,"destination":{"Existing":7}}]))
         );
         assert_eq!(
-            body["declarations"],
-            json!([{"ActingPerson":{"subject":7,"accepted":true}}])
+            body.get("declarations"),
+            Some(&json!([{"ActingPerson":{"subject":7,"accepted":true}}]))
         );
         assert_eq!(
-            body["recipient_consents"],
-            json!([{"source_person":identity,"request_id":"consent-1"}])
+            body.get("recipient_consents"),
+            Some(&json!([{"source_person":identity,"request_id":"consent-1"}]))
         );
-        assert_eq!(body["acknowledged_omissions"], json!(["omission-1"]));
-        assert_eq!(body["passphrase"], "synthetic-passphrase");
+        assert_eq!(
+            body.get("acknowledged_omissions"),
+            Some(&json!(["omission-1"]))
+        );
+        assert_eq!(
+            body.get("passphrase").and_then(serde_json::Value::as_str),
+            Some("synthetic-passphrase")
+        );
         Ok(())
     }
 }
