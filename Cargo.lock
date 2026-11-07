@@ -4178,7 +4178,7 @@ dependencies = [
 
 [[package]]
 name = "med-tracker"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "aes-gcm 0.11.1",
  "async-trait",
@@ -4295,7 +4295,7 @@ dependencies = [
 
 [[package]]
 name = "migration"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "sea-orm-migration",
 ]
