@@ -374,16 +374,22 @@ pub(crate) async fn create(
     if tenant.commit().await.is_err() {
         return presentation_error(&view, selected_language, OperationError::Unavailable);
     }
-    let mut result = match reports::detail_checked(
-        &ctx,
-        &scope,
-        &result.report.id,
-        ImportPrincipal::Browser(&principal),
-    )
-    .await
-    {
-        Ok(value) => value,
-        Err(error) => return presentation_error(&view, selected_language, error),
+    let source_only =
+        result.report.state == crate::models::data_imports::contracts::ImportState::Blocked;
+    let mut result = if source_only {
+        result
+    } else {
+        match reports::detail_checked(
+            &ctx,
+            &scope,
+            &result.report.id,
+            ImportPrincipal::Browser(&principal),
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(error) => return presentation_error(&view, selected_language, error),
+        }
     };
     let safe_slug: String = url::form_urlencoded::byte_serialize(slug.as_bytes()).collect();
     canonical_links(&mut result.report, &safe_slug);

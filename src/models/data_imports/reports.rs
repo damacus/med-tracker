@@ -1,7 +1,8 @@
 use super::{
     consents::{self, ConsentBinding},
     contracts::{
-        ActualRecord, DestinationId, ImportReport, ImportState, PersonDestination, PreviewResult,
+        ActualRecord, DestinationId, ExpectedRelationship, ImportReport, ImportState,
+        PersonDestination, PreviewResult, ReasonCode, RelationshipKind,
     },
     credential::ImportPrincipal,
     persistence, result_projection,
@@ -61,15 +62,22 @@ fn immutable_matches(a: &persistence::StoredRun, b: &persistence::StoredRun) -> 
 
 fn profile_only(report: &ImportReport, person: &super::contracts::PersonReport) -> bool {
     let source = &person.person.source;
+    let clinical = |edge: &super::contracts::RelationshipResult| {
+        !(edge.expected == ExpectedRelationship::Omit
+            && (edge.kind == RelationshipKind::PersonLocation
+                && edge.reason == Some(ReasonCode::ObsoletePersonLocation)
+                || matches!(
+                    edge.field.as_deref(),
+                    Some("recorded_by_person_portable_id" | "resumed_by_person_portable_id")
+                )))
+    };
     person.records.is_empty()
-        && person.relationships.is_empty()
-        && report.records.is_empty()
-        && report.relationships.is_empty()
+        && person.relationships.iter().all(|edge| !clinical(edge))
         && !report
-            .people
+            .relationships
             .iter()
-            .flat_map(|row| &row.relationships)
-            .any(|row| &row.source == source || &row.target == source)
+            .chain(report.people.iter().flat_map(|row| &row.relationships))
+            .any(|edge| (&edge.source == source || &edge.target == source) && clinical(edge))
 }
 
 fn subject_id(
@@ -593,4 +601,47 @@ pub async fn detail(tenant: &TenantTransaction, id: &str) -> Result<PreviewResul
         report: stored.snapshot.report,
         confirmation: None,
     })
+}
+
+#[cfg(test)]
+mod disclosure_tests {
+    use super::*;
+    use crate::models::data_imports::contracts::{
+        ExpectedRelationship, ReasonCode, RecordKind, RelationshipKind,
+    };
+
+    #[test]
+    fn profile_scope_ignores_omitted_location_and_unrelated_inventory() {
+        let result: PreviewResult =
+            serde_json::from_str(include_str!("examples/preview.json")).expect("preview");
+        let mut report = result.report;
+        let mut adult = report.people[0].clone();
+        adult.records.clear();
+        adult.relationships.clear();
+        let mut edge = report.people[0].relationships[0].clone();
+        edge.kind = RelationshipKind::PersonLocation;
+        edge.source = adult.person.source.clone();
+        edge.target.kind = RecordKind::Location;
+        edge.expected = ExpectedRelationship::Omit;
+        edge.reason = Some(ReasonCode::ObsoletePersonLocation);
+        adult.relationships.push(edge);
+        report.records = report.people[0].records.clone();
+        report.people.clear();
+        assert!(profile_only(&report, &adult));
+        adult.relationships[0].expected = ExpectedRelationship::Link;
+        assert!(!profile_only(&report, &adult));
+        adult.relationships[0].expected = ExpectedRelationship::Omit;
+        let mut actor = adult.relationships[0].clone();
+        actor.kind = RelationshipKind::Other;
+        actor.field = Some("recorded_by_person_portable_id".into());
+        actor.source.kind = RecordKind::Pause;
+        actor.target = adult.person.source.clone();
+        report.relationships.push(actor);
+        assert!(profile_only(&report, &adult));
+        report.relationships[0].expected = ExpectedRelationship::Link;
+        assert!(!profile_only(&report, &adult));
+        report.relationships.clear();
+        adult.records.push(report.records[0].clone());
+        assert!(!profile_only(&report, &adult));
+    }
 }

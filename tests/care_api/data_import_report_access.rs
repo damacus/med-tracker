@@ -84,6 +84,330 @@ fn profile_upload(comment: &str) -> Upload {
     }
 }
 
+fn mixed_upload(comment: &str) -> Upload {
+    let mut payload: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../fixtures/portable_rails/prepared-history-v2.json"
+    ))
+    .unwrap();
+    let records = &mut payload["records"];
+    let mut adult = records["people"][0].clone();
+    adult["portable_id"] = serde_json::json!("synthetic-profile-adult");
+    adult["name"] = serde_json::json!("Synthetic adult profile");
+    adult["email"] = serde_json::json!("synthetic-profile-adult@example.test");
+    adult["person_type"] = serde_json::json!("adult");
+    adult["has_capacity"] = serde_json::json!(true);
+    adult["date_of_birth"] = serde_json::json!("1985-02-03");
+    adult["notification_preference_portable_id"] = serde_json::Value::Null;
+    adult["location_portable_ids"] =
+        serde_json::json!(["synthetic-rails-location-prepared-history-v2"]);
+    records["people"].as_array_mut().unwrap().push(adult);
+    records["medication_pause_periods"][0]["recorded_by_person_portable_id"] =
+        serde_json::json!("synthetic-profile-adult");
+    records["medication_pause_periods"][0]["resumed_by_person_portable_id"] =
+        serde_json::json!("synthetic-profile-adult");
+    let mut manifest: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../fixtures/portable_rails/prepared-history-v2.manifest.json"
+    ))
+    .unwrap();
+    manifest["record_counts"]["people"] = serde_json::json!(2);
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    zip.set_comment(comment);
+    for (name, bytes) in [
+        ("portable.json", serde_json::to_vec(&payload).unwrap()),
+        ("manifest.json", serde_json::to_vec(&manifest).unwrap()),
+    ] {
+        zip.start_file(name, SimpleFileOptions::default()).unwrap();
+        zip.write_all(&bytes).unwrap();
+    }
+    Upload {
+        source: SourceSystem::MedTracker05,
+        archive: zip.finish().unwrap().into_inner(),
+        passphrase: "password".into(),
+    }
+}
+
+#[tokio::test]
+async fn mixed_profile_and_dependent_report_remains_readable_until_consent_withdrawal() {
+    let app = Application::new().await;
+    let recipient = app.fixture.foreign_household().await;
+    let scope = app.fixture.scenario.scope();
+    let now = chrono::Utc::now().naive_utc();
+    household_memberships::ActiveModel {
+        household_id: Set(scope.household_id),
+        person_id: Set(recipient.account.person_id),
+        role: Set("member".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let recipient_scope = HouseholdScope {
+        actor: Actor {
+            account_id: recipient.account.id,
+        },
+        household_id: scope.household_id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let comment = uuid::Uuid::new_v4().to_string();
+    let zone = inspection::confirmed_timezone("Europe/London", true).unwrap();
+    let inspected = inspection::inspect(&app.context, &scope, mixed_upload(&comment), zone)
+        .await
+        .unwrap();
+    let source = |id: &str| {
+        inspected
+            .inventory
+            .records
+            .iter()
+            .find(|row| row.identity.kind == RecordKind::Person && row.identity.id == id)
+            .unwrap()
+            .identity
+            .clone()
+    };
+    let adult = source("synthetic-profile-adult");
+    let dependent = source("synthetic-rails-person-prepared-history-v2");
+    let target =
+        med_tracker::models::data_imports::contracts::PersonId(recipient.account.person_id);
+    let binding = ConsentBinding {
+        source_sha256: inspected.archive_sha256.clone(),
+        source_person: adult.clone(),
+        target_person: target,
+    };
+    let tenant = consents::begin_for_target(&app.fixture.runtime, &scope, None, target)
+        .await
+        .unwrap();
+    let consent_id = consents::request(&tenant, binding.clone()).await.unwrap();
+    tenant.commit().await.unwrap();
+    let tenant = consents::begin_for_actor(&app.fixture.runtime, &recipient_scope, None)
+        .await
+        .unwrap();
+    consents::decide(&tenant, &consent_id, &binding, Decision::Approved)
+        .await
+        .unwrap();
+    tenant.commit().await.unwrap();
+    let ready = preview::create(
+        &app.context,
+        &scope,
+        PreviewInput {
+            inspection_id: inspected.id.clone(),
+            upload: mixed_upload(&comment),
+            timezone: zone,
+            mappings: vec![
+                PersonMapping {
+                    source: adult.clone(),
+                    destination: PersonDestination::Existing(target),
+                },
+                PersonMapping {
+                    source: dependent.clone(),
+                    destination: PersonDestination::NewDependent,
+                },
+            ],
+            declarations: vec![ConsentInput::InitialGuardianDeclaration {
+                source_person: dependent,
+                accepted: true,
+            }],
+            recipient_consents: vec![RecipientConsent {
+                source_person: adult.clone(),
+                request_id: consent_id.clone(),
+            }],
+            acknowledged_omissions: inspected
+                .inventory
+                .omissions
+                .iter()
+                .map(|item| item.acknowledgement_id.clone())
+                .collect(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        ready.report.state,
+        ImportState::Ready,
+        "{:?}",
+        ready.report.issues
+    );
+    let adult_report = ready
+        .report
+        .people
+        .iter()
+        .find(|p| p.person.source == adult)
+        .unwrap();
+    assert!(adult_report.records.is_empty());
+    assert!(
+        ready
+            .report
+            .relationships
+            .iter()
+            .chain(ready.report.people.iter().flat_map(|p| &p.relationships))
+            .any(|edge| edge.kind
+                == med_tracker::models::data_imports::contracts::RelationshipKind::PersonLocation)
+    );
+    assert!(
+        ready
+            .report
+            .people
+            .iter()
+            .flat_map(|p| &p.relationships)
+            .any(
+                |edge| edge.field.as_deref() == Some("recorded_by_person_portable_id")
+                    && edge.target == adult
+            )
+    );
+    assert!(
+        ready
+            .report
+            .people
+            .iter()
+            .flat_map(|p| &p.records)
+            .chain(ready.report.records.iter())
+            .any(|row| row.source.kind == RecordKind::Medication)
+    );
+    let token = app.token().await;
+    let base = format!(
+        "{}/api/v1/households/{}/data_imports",
+        app.origin, scope.household_id
+    );
+    let url = format!("{base}/{}", ready.report.id);
+    assert_eq!(
+        app.client
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap()
+            .status()
+            .as_u16(),
+        200
+    );
+    let page: serde_json::Value = app
+        .client
+        .get(format!("{base}?limit=100"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(
+        page["data"]["reports"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == ready.report.id)
+    );
+    let provenance = CredentialProvenance {
+        method: CredentialMethod::BrowserSession,
+        reference: "synthetic-session".into(),
+    };
+    let confirmation = ready.confirmation.unwrap();
+    let completed = confirmation::confirm(
+        &app.context,
+        &scope,
+        &ready.report.id,
+        confirmation.clone(),
+        "password".into(),
+        &provenance,
+        &scope.request_id,
+    )
+    .await
+    .unwrap();
+    assert_eq!(completed.state, ImportState::Completed);
+    assert_eq!(
+        app.client
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap()
+            .status()
+            .as_u16(),
+        200
+    );
+    let page: serde_json::Value = app
+        .client
+        .get(format!("{base}?limit=100"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(
+        page["data"]["reports"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == ready.report.id && row["state"] == "completed")
+    );
+    let replay = confirmation::confirm(
+        &app.context,
+        &scope,
+        &ready.report.id,
+        confirmation.clone(),
+        "password".into(),
+        &provenance,
+        &scope.request_id,
+    )
+    .await
+    .unwrap();
+    assert_eq!(replay, completed);
+    let tenant = consents::begin_for_actor(&app.fixture.runtime, &recipient_scope, None)
+        .await
+        .unwrap();
+    consents::decide(&tenant, &consent_id, &binding, Decision::Rejected)
+        .await
+        .unwrap();
+    tenant.commit().await.unwrap();
+    assert_eq!(
+        app.client
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap()
+            .status()
+            .as_u16(),
+        404
+    );
+    let page: serde_json::Value = app
+        .client
+        .get(format!("{base}?limit=100"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(
+        !page["data"]["reports"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == ready.report.id)
+    );
+    assert!(
+        confirmation::confirm(
+            &app.context,
+            &scope,
+            &ready.report.id,
+            confirmation,
+            "password".into(),
+            &provenance,
+            &scope.request_id
+        )
+        .await
+        .is_err()
+    );
+    recipient.close().await;
+    app.close().await;
+}
+
 #[tokio::test]
 async fn dependent_adult_can_reload_own_report_without_guardian_eligibility() {
     let app = Application::new().await;

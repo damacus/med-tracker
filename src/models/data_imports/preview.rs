@@ -8,8 +8,8 @@ use sea_orm::EntityTrait;
 use super::{
     consents,
     contracts::{
-        ConsentInput, ImportIssue, ImportState, PersonMapping, PreviewResult, PreviewToken,
-        ReasonCode, RecordKind, SourceTimeZone,
+        ConsentInput, ImportIssue, ImportReport, ImportState, PersonMapping, PreviewResult,
+        PreviewToken, ReasonCode, RecordKind, SourceInventory, SourceTimeZone,
     },
     credential::ImportPrincipal,
     identity::{self, IdentityChoices, IdentityValidationError, RecipientConsent},
@@ -55,12 +55,96 @@ pub async fn create_checked(
     create_inner(ctx, scope, input, Some(principal)).await
 }
 
+fn source_only_blocked(
+    report: &ImportReport,
+    inventory: &SourceInventory,
+    acknowledgements: &[String],
+) -> Result<PreviewResult, OperationError> {
+    let bridge = plan_projection::blocked_inventory(
+        inventory,
+        &[],
+        &[],
+        BridgeIssue {
+            source: None,
+            field: None,
+            reason: ReasonCode::Other,
+            detail: String::new(),
+        },
+    )
+    .map_err(|_| OperationError::unavailable("import_source_projection_invalid"))?;
+    let mut safe = projection::project(
+        ProjectionMeta {
+            id: report.id.clone(),
+            source: report.source,
+            source_sha256: report.source_sha256.clone(),
+            timezone: report.source_timezone,
+            created_at: report.created_at,
+        },
+        inventory,
+        bridge.outcomes,
+        acknowledgements,
+    )?;
+    let reasons: std::collections::HashMap<_, _> = report
+        .people
+        .iter()
+        .flat_map(|person| std::iter::once(&person.person).chain(&person.records))
+        .chain(&report.records)
+        .filter_map(|record| {
+            (record.expected == super::contracts::ExpectedRecord::Reject)
+                .then(|| record.reason.map(|reason| (record.source.clone(), reason)))
+                .flatten()
+        })
+        .collect();
+    for record in safe
+        .people
+        .iter_mut()
+        .flat_map(|person| std::iter::once(&mut person.person).chain(&mut person.records))
+        .chain(&mut safe.records)
+    {
+        if let Some(reason) = reasons.get(&record.source) {
+            record.reason = Some(*reason);
+            record.expected = super::contracts::ExpectedRecord::Reject;
+        }
+    }
+    safe.issues = report
+        .issues
+        .iter()
+        .map(|issue| ImportIssue {
+            source: issue.source.clone(),
+            field: issue.field.clone(),
+            reason: issue.reason,
+            detail: match issue.reason {
+                ReasonCode::ConsentRequired => "Current consent is required.",
+                ReasonCode::GuardianDeclarationRequired => {
+                    "A current guardian declaration is required."
+                }
+                ReasonCode::InsufficientAuthority => "Current authority is required.",
+                ReasonCode::MissingDependency => "A source dependency is unavailable.",
+                ReasonCode::IdentityConflict => {
+                    "An identity or destination conflict requires review."
+                }
+                ReasonCode::SourceInvalid => "A source record is invalid.",
+                ReasonCode::DestinationChanged => {
+                    "The destination changed; review another preview."
+                }
+                _ => "Review this issue before continuing.",
+            }
+            .into(),
+        })
+        .collect();
+    Ok(PreviewResult {
+        report: safe,
+        confirmation: None,
+    })
+}
+
 async fn create_inner(
     ctx: &AppContext,
     scope: &HouseholdScope,
     input: PreviewInput,
     principal: Option<ImportPrincipal<'_>>,
 ) -> Result<PreviewResult, InspectionError> {
+    let checked = principal.is_some();
     let PreviewInput {
         inspection_id,
         upload,
@@ -254,6 +338,15 @@ async fn create_inner(
     };
     let encrypted_prepared = EncryptedPrepared::from_prepared(&prepared.transfer)
         .map_err(|_| OperationError::unavailable("import_prepared_encode"))?;
+    let response = if checked && report.state == ImportState::Blocked {
+        Some(source_only_blocked(
+            &report,
+            &prepared.inventory,
+            &acknowledged_omissions,
+        )?)
+    } else {
+        None
+    };
     let run = NewRun {
         report: report.clone(),
         receipt: prepared.receipt,
@@ -277,8 +370,69 @@ async fn create_inner(
     access::recheck(&tenant).await?;
     persistence::create(&tenant, &run).await?;
     tenant.commit().await?;
-    Ok(PreviewResult {
+    Ok(response.unwrap_or(PreviewResult {
         report,
         confirmation,
-    })
+    }))
+}
+
+#[cfg(test)]
+mod disclosure_tests {
+    use super::*;
+    use crate::models::data_imports::contracts::{
+        Omission, RecordDetails, SourceInventory, SourceRecord,
+    };
+
+    #[test]
+    fn source_projection_keeps_blockers_without_destination_details() {
+        let mut report: super::super::contracts::ImportReport =
+            serde_json::from_str::<PreviewResult>(include_str!("examples/preview.json"))
+                .unwrap()
+                .report;
+        report.state = ImportState::Blocked;
+        let source = report.people[0].person.source.clone();
+        let inventory = SourceInventory {
+            records: vec![SourceRecord {
+                identity: source.clone(),
+                details: RecordDetails::default(),
+            }],
+            relationships: vec![],
+            omissions: vec![Omission {
+                item: source.clone(),
+                field: Some("legacy_field".into()),
+                reason: ReasonCode::UnsupportedField,
+                acknowledgement_id: "source-omission".into(),
+                acknowledged: false,
+            }],
+        };
+        report.issues = vec![
+            ImportIssue {
+                source: Some(source.clone()),
+                field: None,
+                reason: ReasonCode::ConsentRequired,
+                detail: "private destination name".into(),
+            },
+            ImportIssue {
+                source: Some(source),
+                field: Some("dependency".into()),
+                reason: ReasonCode::MissingDependency,
+                detail: "private destination id".into(),
+            },
+        ];
+        let projected = source_only_blocked(&report, &inventory, &[]).unwrap();
+        assert!(projected.confirmation.is_none());
+        assert_eq!(projected.report.issues.len(), 2);
+        assert_eq!(
+            projected.report.issues[1].reason,
+            ReasonCode::MissingDependency
+        );
+        assert!(projected.report.people[0].person.destination.is_none());
+        assert_eq!(
+            projected.report.people[0].omissions[0].acknowledgement_id,
+            "source-omission"
+        );
+        assert!(!projected.report.people[0].omissions[0].acknowledged);
+        let json = serde_json::to_string(&projected).unwrap();
+        assert!(!json.contains("private destination"));
+    }
 }

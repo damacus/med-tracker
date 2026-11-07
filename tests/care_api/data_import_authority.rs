@@ -96,6 +96,102 @@ async fn preview(
 }
 
 #[tokio::test]
+async fn missing_and_pending_adult_consent_return_source_only_preview() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let recipient = app.fixture.foreign_household().await;
+    let mut person = people::Entity::find_by_id(recipient.account.person_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    person.name = Set("private destination sentinel".into());
+    person.date_of_birth = Set(Some("1990-01-15".parse().unwrap()));
+    person.person_type = Set(0);
+    person.has_capacity = Set(true);
+    person.update(&app.fixture.admin).await.unwrap();
+    let now = chrono::Utc::now().naive_utc();
+    household_memberships::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        person_id: Set(recipient.account.person_id),
+        role: Set("member".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let archive = archive_for("adult");
+    let inspected = inspect(&app, &token, &archive).await;
+    let source: SourceIdentity = serde_json::from_value(
+        inspected["inventory"]["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["identity"]["kind"] == "person")
+            .unwrap()["identity"]
+            .clone(),
+    )
+    .unwrap();
+    let scope = app.fixture.scenario.scope();
+    let binding = ConsentBinding {
+        source_sha256: inspected["archive_sha256"].as_str().unwrap().into(),
+        source_person: source.clone(),
+        target_person: PersonId(recipient.account.person_id),
+    };
+    let tenant =
+        consents::begin_for_target(&app.fixture.runtime, &scope, None, binding.target_person)
+            .await
+            .unwrap();
+    let consent_id = consents::request(&tenant, binding).await.unwrap();
+    tenant.commit().await.unwrap();
+    for recipients in [
+        json!([]),
+        json!([{"source_person": source, "request_id": consent_id}]),
+    ] {
+        let result = preview(
+            &app,
+            &token,
+            &archive,
+            &inspected,
+            recipient.account.person_id,
+            json!([]),
+            recipients,
+        )
+        .await;
+        assert_eq!(result["report"]["state"], "blocked");
+        assert!(result["confirmation"].is_null());
+        assert!(
+            result["report"]["issues"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|issue| issue["reason"] == "consent_required")
+        );
+        assert!(!result.to_string().contains("private destination sentinel"));
+        assert!(result["report"]["people"][0]["person"]["destination"].is_null());
+        let id = result["report"]["id"].as_str().unwrap();
+        let response = app
+            .client
+            .get(format!(
+                "{}/api/v1/households/{}/data_imports/{id}",
+                app.origin, scope.household_id
+            ))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 404);
+    }
+    recipient.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
 async fn dependent_adult_self_preview_succeeds_but_other_adult_consent_does_not_grant_authority() {
     let app = Application::new().await;
     let token = app.token().await;
@@ -272,6 +368,19 @@ async fn dependent_adult_self_preview_succeeds_but_other_adult_consent_does_not_
                     && record["reason"] == "insufficient_authority"
             )
     );
+    let denied = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{}/data_imports/{}",
+            app.origin,
+            app.fixture.household.id,
+            other["report"]["id"].as_str().unwrap()
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(denied.status().as_u16(), 404);
     app.close().await;
 }
 

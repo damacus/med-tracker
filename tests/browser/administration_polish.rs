@@ -162,6 +162,61 @@ async fn import_consent_recipient_approval_withdrawal_and_foreign_denial() {
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn adult_preview_explains_absent_and_pending_consent() {
+    use med_tracker::models::_entities::{household_memberships, people};
+    use sea_orm::{ActiveModelTrait, ActiveValue::Set, EntityTrait};
+    use std::io::{Cursor, Write};
+    use zip::{ZipWriter, write::SimpleFileOptions};
+
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        let now = chrono::Utc::now().naive_utc();
+        household_memberships::Entity::insert(household_memberships::ActiveModel {
+            id: Set(74801), household_id: Set(72001), person_id: Set(73005), role: Set("member".into()),
+            status: Set("active".into()), joined_at: Set(now), created_at: Set(now), updated_at: Set(now), ..Default::default()
+        }).exec(&journey.admin).await.unwrap();
+        people::ActiveModel { id: Set(73005), date_of_birth: Set(chrono::NaiveDate::from_ymd_opt(1982, 1, 1)), ..Default::default() }
+            .update(&journey.admin).await.unwrap();
+        let mut payload: serde_json::Value = serde_json::from_slice(include_bytes!("../fixtures/portable_rails/prepared-history-v2.json")).unwrap();
+        let records = payload["records"].as_object_mut().unwrap();
+        for (key, value) in records.iter_mut() { if key != "people" { *value = serde_json::json!([]); } }
+        let person = &mut records.get_mut("people").unwrap()[0];
+        person["person_type"] = serde_json::json!("adult");
+        person["has_capacity"] = serde_json::json!(true);
+        person["date_of_birth"] = serde_json::json!("1982-01-01");
+        person["notification_preference_portable_id"] = serde_json::Value::Null;
+        let mut manifest: serde_json::Value = serde_json::from_slice(include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json")).unwrap();
+        for (key, count) in manifest["record_counts"].as_object_mut().unwrap() { *count = serde_json::json!(if key == "people" { 1 } else { 0 }); }
+        let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, bytes) in [("portable.json", serde_json::to_vec(&payload).unwrap()), ("manifest.json", serde_json::to_vec(&manifest).unwrap())] {
+            zip.start_file(name, SimpleFileOptions::default()).unwrap();
+            zip.write_all(&bytes).unwrap();
+        }
+        let archive = zip.finish().unwrap().into_inner();
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/admin/data_imports/new", journey.origin), None).await.unwrap();
+        page.locator("#archive").set_input_files_payload(FilePayload::new("export.zip", "application/zip", archive.clone()), None).await.unwrap();
+        page.locator("#passphrase").fill("password", None).await.unwrap();
+        page.locator("[name=timezone_confirmed]").click(None).await.unwrap();
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("main h1")).to_contain_text("Map people").await.unwrap();
+        page.locator("select[name^='mapping[']").select_option("73005", None).await.unwrap();
+        page.locator("#archive").set_input_files_payload(FilePayload::new("export.zip", "application/zip", archive), None).await.unwrap();
+        page.locator("#passphrase").fill("password", None).await.unwrap();
+        page.locator("[name=timezone_confirmed]").click(None).await.unwrap();
+        let absent: bool = page.evaluate("async () => {const f=document.querySelector('#administration-form'); const r=await fetch(f.action,{method:'POST',body:new FormData(f)}); const h=await r.text(); return r.status===200 && h.includes('Blocked') && h.includes('Current consent is required.') && !h.includes('name=\"preview_token\"') && !h.includes('Synthetic foreign adult');}", None::<&()>).await.unwrap();
+        assert!(absent);
+        page.locator("form[action$='/admin/data_import_consents'] select").select_option("73005", None).await.unwrap();
+        let reference: String = page.evaluate("async () => {const f=document.querySelector('form[action$=\"/admin/data_import_consents\"]'); const r=await fetch(f.action,{method:'POST',body:new URLSearchParams(new FormData(f))}); if(!r.ok) return ''; const doc=new DOMParser().parseFromString(await r.text(),'text/html'); return doc.querySelector('main code')?.textContent.trim() ?? '';}", None::<&()>).await.unwrap();
+        assert!(!reference.is_empty());
+        page.locator("input[name^='recipient_ref[']").fill(&reference, None).await.unwrap();
+        let pending: bool = page.evaluate("async () => {const f=document.querySelector('#administration-form'); const r=await fetch(f.action,{method:'POST',body:new FormData(f)}); const h=await r.text(); return r.status===200 && h.includes('Blocked') && h.includes('Current consent is required.') && !h.includes('name=\"preview_token\"') && !h.includes('Synthetic foreign adult');}", None::<&()>).await.unwrap();
+        assert!(pending);
+    })).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn revoked_browser_session_during_upload_cannot_persist_inspection() {
     use med_tracker::models::{_entities::data_import_inspections, entities::identity_session};
     use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, sea_query::Expr};
