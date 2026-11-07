@@ -13,7 +13,7 @@ pub(crate) async fn authorized(
         return Ok(false);
     }
     let manageable_ids = import_authority(tenant, today).await?;
-    authorized_with(tenant, plan, index, declarations, &manageable_ids, false).await
+    authorized_with(tenant, plan, index, declarations, &manageable_ids).await
 }
 
 pub(super) async fn import_authority(
@@ -35,30 +35,27 @@ pub(super) async fn import_authority(
     Ok(manageable_ids)
 }
 
-pub(super) async fn authorized_with(
+pub(super) async fn authorized_prepared(
+    authority: &super::PreparedImportAuthority<'_>,
+    plan: &ImportPlan,
+    index: &ExistingIndex,
+    declarations: &PreparedDeclarations,
+) -> Result<bool, OperationError> {
+    let subjects = authority.current_subjects().await?;
+    authorized_with(authority.tenant(), plan, index, declarations, &subjects).await
+}
+
+async fn authorized_with(
     tenant: &TenantTransaction,
     plan: &ImportPlan,
     index: &ExistingIndex,
     declarations: &PreparedDeclarations,
-    prepared_authority: &HashSet<i64>,
-    recheck_clinical: bool,
+    manageable_ids: &HashSet<i64>,
 ) -> Result<bool, OperationError> {
     crate::models::access::recheck(tenant).await?;
     let manager = crate::models::access::can_manage_household(tenant);
     if !manager && !plan.rows("locations").is_empty() {
         return Ok(false);
-    }
-    let mut manageable_ids = HashSet::new();
-    for id in prepared_authority {
-        if !recheck_clinical
-            || super::super::person_schedules::sharing::clinical_authority(
-                tenant.transaction(),
-                crate::models::ids::PersonId::from_database(*id),
-            )
-            .await?
-        {
-            manageable_ids.insert(*id);
-        }
     }
     let mut referenced_people = HashSet::new();
     for kind in [
@@ -123,7 +120,7 @@ pub(super) async fn authorized_with(
             !subject_allowed(
                 index.get("people", portable_id),
                 declarations.contains(portable_id),
-                &manageable_ids,
+                manageable_ids,
             )
         })
     {

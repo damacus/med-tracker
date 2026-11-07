@@ -1,5 +1,6 @@
 mod access;
 mod aliases;
+mod authority;
 mod canonical_restore;
 mod contracts;
 mod create_only;
@@ -23,6 +24,7 @@ pub(crate) use aliases::{
     AliasError, AliasSelection, IncompatibleField, NormalizedImport, ProfileDifference,
     ResolvedAlias, normalize_aliases,
 };
+pub(crate) use authority::PreparedImportAuthority;
 pub(crate) use canonical_restore::{
     CanonicalRestoredSchedule, VerifiedCanonicalTake, initialize_canonical_schedules,
 };

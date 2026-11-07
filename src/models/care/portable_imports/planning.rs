@@ -4,7 +4,7 @@ use super::{
 };
 use crate::models::{
     access::{self, TenantTransaction, person_queries},
-    entities::{household, location, medication, membership, person},
+    entities::{location, medication, membership, person},
     errors::OperationError,
     ids::{AccountId, HouseholdId, PersonId},
 };
@@ -154,18 +154,22 @@ pub(crate) struct ImportAssessment {
 }
 
 pub(crate) async fn assess(
-    tenant: &TenantTransaction,
+    authority: &super::PreparedImportAuthority<'_>,
     mut normalized: NormalizedImport,
     declarations: &PreparedDeclarations,
     today: NaiveDate,
     lock: ExpectationLock,
 ) -> Result<ImportAssessment, OperationError> {
-    if lock == ExpectationLock::Confirmation {
-        prelock_confirmation(tenant).await?;
-    }
-    let prepared_authority = super::access::import_authority(tenant, today).await?;
-    let expectation =
-        capture_expectation(tenant, &normalized.aliases, &normalized.plan, lock).await?;
+    authority.check_date(today)?;
+    let tenant = authority.tenant();
+    let expectation = capture_expectation_prepared(
+        authority,
+        &normalized.aliases,
+        &normalized.plan,
+        lock,
+        today,
+    )
+    .await?;
     let index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id).await?;
     let preflight = preflight(tenant.transaction(), tenant, &normalized.plan, &index).await?;
     let mut rows: Vec<PlannedRow> = expectation
@@ -313,20 +317,14 @@ pub(crate) async fn assess(
             issues.push(AssessmentIssue { collection: Some(SourceCollection::People), portable_id: Some(alias.source_person_portable_id.clone()), field: None, reason: AssessmentReason::IncompatiblePerson, detail: "The selected person is no longer an active household member or the source person is missing.".into() });
         }
     }
-    let allowed = match super::access::authorized_with(
-        tenant,
-        &normalized.plan,
-        &index,
-        declarations,
-        &prepared_authority,
-        true,
-    )
-    .await
-    {
-        Ok(allowed) => allowed,
-        Err(OperationError::Forbidden) => false,
-        Err(error) => return Err(error),
-    };
+    let allowed =
+        match super::access::authorized_prepared(authority, &normalized.plan, &index, declarations)
+            .await
+        {
+            Ok(allowed) => allowed,
+            Err(OperationError::Forbidden) => false,
+            Err(error) => return Err(error),
+        };
     if !allowed {
         issues.push(AssessmentIssue {
             collection: None,
@@ -344,11 +342,7 @@ pub(crate) async fn assess(
             continue;
         };
         let permitted = if let Some(id) = index.get("people", subject) {
-            super::super::person_schedules::sharing::clinical_authority(
-                tenant.transaction(),
-                PersonId::from_database(id),
-            )
-            .await?
+            authority.allows(PersonId::from_database(id)).await?
         } else {
             declarations.contains(subject)
         };
@@ -548,7 +542,20 @@ pub(crate) async fn capture_expectation(
     aliases: &[ResolvedAlias],
     plan: &ImportPlan,
     lock: ExpectationLock,
+    today: NaiveDate,
 ) -> Result<DestinationExpectation, OperationError> {
+    let authority = super::PreparedImportAuthority::prepare(tenant, today).await?;
+    capture_expectation_prepared(&authority, aliases, plan, lock, today).await
+}
+
+pub(crate) async fn capture_expectation_prepared(
+    authority: &super::PreparedImportAuthority<'_>,
+    aliases: &[ResolvedAlias],
+    plan: &ImportPlan,
+    lock: ExpectationLock,
+    today: NaiveDate,
+) -> Result<DestinationExpectation, OperationError> {
+    authority.check_date(today)?;
     let mut selected: Vec<_> = aliases
         .iter()
         .map(|alias| AliasExpectation {
@@ -585,21 +592,34 @@ pub(crate) async fn capture_expectation(
         }
     }
     slots.sort_by(|a, b| (a.collection, &a.portable_id).cmp(&(b.collection, &b.portable_id)));
-    capture(tenant, selected, slots, lock).await
+    capture(authority, selected, slots, lock).await
 }
 
 pub(crate) async fn check_expectation(
     tenant: &TenantTransaction,
     expected: &DestinationExpectation,
     lock: ExpectationLock,
+    today: NaiveDate,
 ) -> Result<bool, OperationError> {
+    let authority = super::PreparedImportAuthority::prepare(tenant, today).await?;
+    check_expectation_prepared(&authority, expected, lock, today).await
+}
+
+pub(crate) async fn check_expectation_prepared(
+    authority: &super::PreparedImportAuthority<'_>,
+    expected: &DestinationExpectation,
+    lock: ExpectationLock,
+    today: NaiveDate,
+) -> Result<bool, OperationError> {
+    authority.check_date(today)?;
+    let tenant = authority.tenant();
     if expected.household_id.get() != tenant.scope().household_id
         || expected.actor_id.get() != tenant.scope().actor.account_id
     {
         return Ok(false);
     }
     let current = capture(
-        tenant,
+        authority,
         expected.aliases.clone(),
         expected.slots.clone(),
         lock,
@@ -609,11 +629,12 @@ pub(crate) async fn check_expectation(
 }
 
 async fn capture(
-    tenant: &TenantTransaction,
+    authority: &super::PreparedImportAuthority<'_>,
     mut aliases: Vec<AliasExpectation>,
     mut slots: Vec<SlotExpectation>,
     lock: ExpectationLock,
 ) -> Result<DestinationExpectation, OperationError> {
+    let tenant = authority.tenant();
     access::recheck(tenant).await?;
     if lock == ExpectationLock::Confirmation {
         lock_destination(tenant, &aliases, &slots).await?;
@@ -694,7 +715,6 @@ async fn lock_destination(
     aliases: &[AliasExpectation],
     slots: &[SlotExpectation],
 ) -> Result<(), OperationError> {
-    prelock_confirmation(tenant).await?;
     let has_names = |collection| {
         slots
             .iter()
@@ -744,18 +764,6 @@ async fn lock_destination(
             .all(tenant.transaction())
             .await?;
     }
-    Ok(())
-}
-
-pub(crate) async fn prelock_confirmation(tenant: &TenantTransaction) -> Result<(), OperationError> {
-    super::super::guardian_declarations::lock_creator_account(tenant).await?;
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    super::super::guardian_declarations::manageable_subjects(tenant).await?;
-    access::recheck(tenant).await?;
     Ok(())
 }
 

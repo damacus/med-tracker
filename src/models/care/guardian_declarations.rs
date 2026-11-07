@@ -240,6 +240,16 @@ pub(crate) async fn import_manageable_subjects(
 pub(crate) async fn manageable_subjects(
     tenant: &TenantTransaction,
 ) -> Result<Vec<i64>, OperationError> {
+    Ok(manageable_subject_declarations(tenant)
+        .await?
+        .into_iter()
+        .map(|(subject, _)| subject)
+        .collect())
+}
+
+pub(crate) async fn manageable_subject_declarations(
+    tenant: &TenantTransaction,
+) -> Result<Vec<(i64, i64)>, OperationError> {
     access::recheck(tenant).await?;
     let owner = account::Entity::find_by_id(tenant.scope().actor.account_id)
         .one(tenant.transaction())
@@ -290,7 +300,7 @@ pub(crate) async fn manageable_subjects(
     }
     let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        "SELECT d.subject_person_id,p.person_type,p.date_of_birth,p.has_capacity FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.people p ON p.id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=p.id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL AND d.id=ANY($3::bigint[]) ORDER BY d.id",
+        "SELECT d.id,d.subject_person_id,p.person_type,p.date_of_birth,p.has_capacity FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.people p ON p.id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=p.id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL AND d.id=ANY($3::bigint[]) ORDER BY d.id",
         [guardian.id.into(),tenant.scope().household_id.into(),ids.into()],
     )).await?;
     let mut subjects = Vec::new();
@@ -304,7 +314,10 @@ pub(crate) async fn manageable_subjects(
                 years >= 0 && matches!((kind, years < 18), (1, true) | (2, false))
             })
         {
-            subjects.push(row.try_get("", "subject_person_id")?);
+            subjects.push((
+                row.try_get("", "subject_person_id")?,
+                row.try_get("", "id")?,
+            ));
         }
     }
     Ok(subjects)

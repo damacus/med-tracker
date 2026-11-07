@@ -10,13 +10,11 @@ use super::{
 };
 use crate::models::{
     access::{self, HouseholdScope, TenantTransaction},
-    authorization,
     care::{
         guardian_declarations,
-        person_schedules::sharing,
         portable_imports::{
             self, AliasError, AliasSelection, ExistingIndex, InitialDeclarations, NormalizedImport,
-            PreparedDeclarations, ProfileDifference as AliasDifference,
+            PreparedDeclarations, PreparedImportAuthority, ProfileDifference as AliasDifference,
         },
     },
     entities::{account, person},
@@ -62,7 +60,8 @@ pub enum ProfileDifference {
     },
 }
 
-pub(crate) struct ValidatedIdentity {
+pub(crate) struct ValidatedIdentity<'a> {
+    pub(crate) authority: PreparedImportAuthority<'a>,
     pub(crate) normalized: NormalizedImport,
     pub(crate) declarations: PreparedDeclarations,
     pub(crate) people: Vec<PersonAssessment>,
@@ -81,14 +80,14 @@ impl From<OperationError> for IdentityValidationError {
     }
 }
 
-pub(crate) async fn validate(
-    tenant: &TenantTransaction,
+pub(crate) async fn validate<'a>(
+    tenant: &'a TenantTransaction,
     prepared: &PreparedArchive,
     payload: serde_json::Value,
     _timezone: SourceTimeZone,
     choices: IdentityChoices<'_>,
     today: chrono::NaiveDate,
-) -> Result<ValidatedIdentity, IdentityValidationError> {
+) -> Result<ValidatedIdentity<'a>, IdentityValidationError> {
     let IdentityChoices {
         mappings,
         declarations,
@@ -185,8 +184,7 @@ pub(crate) async fn validate(
     if !missing.is_empty() {
         return Err(IdentityValidationError::MissingDeclarations(missing));
     }
-    portable_imports::planning::prelock_confirmation(tenant).await?;
-    let manageable = guardian_declarations::manageable_subjects(tenant).await?;
+    let authority = PreparedImportAuthority::prepare(tenant, today).await?;
     let mut target_ids: Vec<_> = targets.iter().copied().collect();
     target_ids.sort_unstable();
     for id in target_ids {
@@ -231,14 +229,7 @@ pub(crate) async fn validate(
                     .await
                     .map_err(OperationError::from)?
                     .ok_or(OperationError::Forbidden)?;
-                let may_manage = authorization::own_person_manage(tenant.membership(), &subject)
-                    || manageable.contains(&id.0);
-                let clinical_authority = may_manage
-                    && sharing::clinical_authority(
-                        tenant.transaction(),
-                        PersonId::from_database(id.0),
-                    )
-                    .await?;
+                let clinical_authority = authority.allows(PersonId::from_database(id.0)).await?;
                 if declarations.iter().any(|item| matches!(item, ConsentInput::ActingGuardian { subject, accepted: true } if subject == id))
                     && ((subject.person_type == 0 && subject.has_capacity) || !clinical_authority)
                 {
@@ -331,6 +322,7 @@ pub(crate) async fn validate(
     }
     access::recheck(tenant).await?;
     Ok(ValidatedIdentity {
+        authority,
         normalized,
         declarations: prepared_declarations,
         people,
@@ -362,14 +354,17 @@ pub async fn assess(
     let zone = crate::models::identity::time_zone::preferred(&actor.preferences, tenant.settings())
         .map_err(|_| OperationError::Unavailable)?;
     let today = chrono::Utc::now().with_timezone(&zone).date_naive();
-    let result = validate(&tenant, &prepared, payload, timezone, choices, today).await.map_err(|error| match error {
+    let people = {
+        let result = validate(&tenant, &prepared, payload, timezone, choices, today).await.map_err(|error| match error {
         IdentityValidationError::Operation(error) | IdentityValidationError::Alias(AliasError::Database(error)) => InspectionError::Operation(error),
         IdentityValidationError::Alias(AliasError::IncompatiblePerson { .. } | AliasError::InvalidPayload | AliasError::InvalidSelection) => InspectionError::Operation(OperationError::Conflict { code: "import_identity_conflict".into(), details: serde_json::json!({}) }),
         IdentityValidationError::MissingDeclarations(_) => InspectionError::Operation(OperationError::Validation { details: serde_json::json!({"errors":{"initial_guardian_declarations":["required for each new dependent"]}}) }),
     })?;
+        result.people
+    };
     tenant.commit().await?;
     Ok(IdentityAssessment {
         archive_sha256: prepared.archive_sha256,
-        people: result.people,
+        people,
     })
 }

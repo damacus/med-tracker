@@ -164,12 +164,18 @@ async fn local_create_version(
 }
 
 pub(crate) async fn initialize_canonical_schedules(
-    tenant: &TenantTransaction,
+    authority: &super::PreparedImportAuthority<'_>,
     created: &[CreatedRecord],
     source_zone: Tz,
     eligibility_zone: Tz,
     provenance: &CredentialProvenance,
 ) -> Result<Vec<CanonicalRestoredSchedule>, OperationError> {
+    let tenant = authority.tenant();
+    authority.check_date(
+        chrono::Utc::now()
+            .with_timezone(&eligibility_zone)
+            .date_naive(),
+    )?;
     let mut schedules = BTreeMap::new();
     let mut takes = BTreeMap::new();
     for record in created {
@@ -230,11 +236,9 @@ pub(crate) async fn initialize_canonical_schedules(
             ));
         }
         local_create_version(tenant, "Schedule", source.id).await?;
-        if !person_schedules::sharing::clinical_authority(
-            db,
-            PersonId::from_database(source.person_id),
-        )
-        .await?
+        if !authority
+            .allows(PersonId::from_database(source.person_id))
+            .await?
         {
             return Err(import_invalid(
                 "Canonical schedule requires current self or guardian authority",
@@ -300,12 +304,12 @@ pub(crate) async fn initialize_canonical_schedules(
     }
     let mut output = Vec::with_capacity(work.len());
     for (source, source_takes, pause, stock, guardian) in work {
-        let linked = person_schedules::save_execution(
-            tenant,
+        let linked = person_schedules::save_import_execution(
+            authority,
             source.clone(),
-            Some(source_zone),
+            source_zone,
             eligibility_zone,
-            Some(provenance),
+            provenance,
         )
         .await?;
         let linked = schedule::Entity::find_by_id(linked.id)
@@ -456,11 +460,9 @@ pub(crate) async fn initialize_canonical_schedules(
         {
             return Err(import_invalid("Canonical latest take verification failed"));
         }
-        if !person_schedules::sharing::clinical_authority(
-            db,
-            PersonId::from_database(source.person_id),
-        )
-        .await?
+        if !authority
+            .allows(PersonId::from_database(source.person_id))
+            .await?
             || (guardian.is_some()
                 && person_schedules::sharing::guardian(
                     db,

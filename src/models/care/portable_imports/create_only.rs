@@ -147,7 +147,7 @@ fn ensure_new(plan: &ImportPlan, index: &ExistingIndex) -> Result<(), OperationE
 }
 
 async fn clinical_authority(
-    tenant: &TenantTransaction,
+    authority: &super::PreparedImportAuthority<'_>,
     plan: &ImportPlan,
     index: &ExistingIndex,
     declarations: &PreparedDeclarations,
@@ -164,11 +164,9 @@ async fn clinical_authority(
             let id = index
                 .get("people", portable)
                 .ok_or_else(|| import_invalid("Clinical person is unavailable"))?;
-            if !super::super::person_schedules::sharing::clinical_authority(
-                tenant.transaction(),
-                crate::models::ids::PersonId::from_database(id),
-            )
-            .await?
+            if !authority
+                .allows(crate::models::ids::PersonId::from_database(id))
+                .await?
             {
                 return Err(import_invalid("Current clinical authority is required"));
             }
@@ -178,7 +176,7 @@ async fn clinical_authority(
 }
 
 pub(crate) async fn create_only_records(
-    tenant: &TenantTransaction,
+    authority: &mut super::PreparedImportAuthority<'_>,
     plan: &ImportPlan,
     index: &mut ExistingIndex,
     declarations: &mut PreparedDeclarations,
@@ -186,11 +184,9 @@ pub(crate) async fn create_only_records(
     request_id: &str,
     eligibility_zone: chrono_tz::Tz,
 ) -> Result<Vec<CreatedRecord>, OperationError> {
-    if !plan.rows("people").is_empty() {
-        super::super::guardian_declarations::lock_creator_account(tenant).await?;
-    }
-    super::super::sync::lock(tenant).await?;
+    let tenant = authority.tenant();
     let today = Utc::now().with_timezone(&eligibility_zone).date_naive();
+    authority.check_date(today)?;
     if !declarations.is_fresh(today) {
         return Err(import_invalid(
             "Initial declarations require a fresh preview",
@@ -198,7 +194,7 @@ pub(crate) async fn create_only_records(
     }
     *index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id).await?;
     ensure_new(plan, index)?;
-    if !authorized(tenant, plan, index, declarations, today).await? {
+    if !super::access::authorized_prepared(authority, plan, index, declarations).await? {
         return Err(OperationError::Forbidden);
     }
     let result = preflight(tenant.transaction(), tenant, plan, index).await?;
@@ -207,7 +203,7 @@ pub(crate) async fn create_only_records(
             "Portable import has conflicts or invalid records",
         ));
     }
-    clinical_authority(tenant, plan, index, declarations).await?;
+    clinical_authority(authority, plan, index, declarations).await?;
 
     let db = tenant.transaction();
     let mut expected = Vec::new();
@@ -253,6 +249,9 @@ pub(crate) async fn create_only_records(
                         .map_err(|_| import_invalid("Portable person cannot be decoded"))?;
                     let id = declarations
                         .create(tenant, &portable_id, provenance)
+                        .await?;
+                    authority
+                        .register_created_dependent(crate::models::ids::PersonId::from_database(id))
                         .await?;
                     let created = person::Entity::find_by_id(id)
                         .one(db)
@@ -351,9 +350,6 @@ pub(crate) async fn create_only_records(
                 },
             )
             .await?;
-            if kind == "medication_takes" {
-                super::writing::index_restored_take(db, tenant, provenance, id).await?;
-            }
         }
         if kind == "medication_pause_periods" && plan.format.includes_extended_records() {
             reconcile_pauses(db, tenant, provenance, plan, index, request_id).await?;
