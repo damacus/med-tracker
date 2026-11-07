@@ -67,6 +67,15 @@ impl RequestAudit {
             },
         }
     }
+    pub fn data_import_inspection() -> Self {
+        Self {
+            method: "POST",
+            controller: "api/v1/data_import_inspections",
+            action: "create",
+            policy: "HouseholdPolicy",
+            query: "create?",
+        }
+    }
     pub fn mobile_snapshot() -> Self {
         Self {
             method: "GET",

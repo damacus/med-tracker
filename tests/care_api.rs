@@ -8,6 +8,8 @@ mod data_import_consents;
 mod data_import_inspection;
 #[path = "care_api/data_import_projection.rs"]
 mod data_import_projection;
+#[path = "care_api/data_import_transport.rs"]
+mod data_import_transport;
 #[path = "care_api/administration.rs"]
 mod administration;
 #[path = "care_api/ai_suggestions.rs"]

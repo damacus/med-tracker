@@ -335,6 +335,8 @@ impl Hooks for App {
         let mut ctx = ctx;
         ctx.shared_store
             .insert(crate::models::data_imports::inspection::CryptoLimiter::new());
+        ctx.shared_store
+            .insert(crate::models::data_imports::upload_gate::UploadLimiter::new());
         crate::telemetry::db::install(&mut ctx.db);
         crate::telemetry::metrics::observe_pool(&ctx.db);
         crate::models::canary::configure(&ctx).await?;

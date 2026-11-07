@@ -4,6 +4,7 @@ mod assignments;
 mod audit;
 pub(super) mod avatar;
 mod data_exports;
+mod data_imports;
 mod dosages;
 mod dose_history;
 mod dose_occurrences;
@@ -213,6 +214,11 @@ pub fn routes() -> Routes {
             "/{household_id}/portable_imports",
             post(portable_imports::apply)
                 .layer(axum::extract::DefaultBodyLimit::max(24 * 1024 * 1024)),
+        )
+        .add(
+            "/{household_id}/data_imports/inspections",
+            post(data_imports::inspect)
+                .layer(axum::extract::DefaultBodyLimit::max(90 * 1024 * 1024)),
         )
         .add(
             "/{household_id}/portable_imports/dry_run",
