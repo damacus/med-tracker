@@ -9,10 +9,12 @@ use serde::{Deserialize, Serialize};
 use crate::models::{
     access,
     data_imports::{
+        confirmation,
         consents::{self, ConsentBinding, Decision},
         contracts::{
-            ArchivePreparationError, ConsentInput, PersonId, PersonMapping, SourceIdentity,
-            SourceInventory, SourcePreparationDiagnostic, SourceSystem, SourceTimeZone,
+            ArchivePreparationError, ConsentInput, PersonId, PersonMapping, PreviewToken,
+            SourceIdentity, SourceInventory, SourcePreparationDiagnostic, SourceSystem,
+            SourceTimeZone,
         },
         credential::ImportPrincipal,
         identity::RecipientConsent,
@@ -140,6 +142,13 @@ impl From<ConsentRequest> for ConsentBinding {
 struct ConsentDecisionRequest {
     binding: ConsentBinding,
     decision: ConsentDecision,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ConfirmationRequest {
+    preview_token: String,
+    passphrase: String,
 }
 
 #[derive(Deserialize)]
@@ -385,11 +394,17 @@ pub(super) async fn list(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
+    let scope = tenant.scope().clone();
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
     let result = match query {
-        Ok(Query(query)) => reports::list(
-            &tenant,
+        Ok(Query(query)) => reports::list_checked(
+            &ctx,
+            &scope,
             query.after_id.as_deref(),
             query.limit.unwrap_or(25),
+            ImportPrincipal::Api(&principal),
         )
         .await
         .map(|page| {
@@ -405,10 +420,12 @@ pub(super) async fn list(
         )),
     };
     no_store(
-        finish(
-            tenant,
-            principal.provenance(),
-            audit::RequestAudit::data_import("GET", "index"),
+        finish_import_service(
+            &ctx,
+            &principal,
+            &scope,
+            "GET",
+            "index",
             result,
             &request_id,
         )
@@ -430,15 +447,137 @@ pub(super) async fn detail(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
-    let result = reports::detail(&tenant, &id)
+    let scope = tenant.scope().clone();
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    let result = reports::detail_checked(&ctx, &scope, &id, ImportPrincipal::Api(&principal))
         .await
         .map(|data| (StatusCode::OK, json!({"data": data}), None))
         .map_err(response::operation);
     no_store(
-        finish(
-            tenant,
-            principal.provenance(),
-            audit::RequestAudit::data_import("GET", "show"),
+        finish_import_service(&ctx, &principal, &scope, "GET", "show", result, &request_id).await,
+    )
+}
+
+async fn finish_import_service(
+    ctx: &AppContext,
+    principal: &ValidatedPrincipal,
+    scope: &access::HouseholdScope,
+    method: &'static str,
+    action: &'static str,
+    result: Reply,
+    request_id: &str,
+) -> Response {
+    let tenant = match principal
+        .begin_household(
+            &ctx.db,
+            scope.household_id,
+            request_id.to_owned(),
+            ctx.config.settings.as_ref(),
+        )
+        .await
+    {
+        Ok(tenant) => tenant,
+        Err(error) => return response::error(response::authentication(error), request_id),
+    };
+    finish(
+        tenant,
+        principal.provenance(),
+        audit::RequestAudit::data_import(method, action),
+        result,
+        request_id,
+    )
+    .await
+}
+
+pub(super) async fn confirm(
+    State(ctx): State<AppContext>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
+    request_id: Option<Extension<LocoRequestId>>,
+    request: Request,
+) -> Response {
+    let request_id = request_id.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let (principal, tenant) = match begin(&ctx, request.headers(), household_id, &request_id).await
+    {
+        Ok(value) => value,
+        Err(error) => return response::error(error, &request_id),
+    };
+    if !access::can_manage_household(&tenant) {
+        return no_store(
+            finish(
+                tenant,
+                principal.provenance(),
+                audit::RequestAudit::data_import("POST", "confirm"),
+                Err(response::operation(OperationError::Forbidden)),
+                &request_id,
+            )
+            .await,
+        );
+    }
+    let scope = tenant.scope().clone();
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    let input: ConfirmationRequest =
+        match to_bytes(request.into_body(), MAX_CONSENT_BODY_BYTES).await {
+            Ok(bytes) => match serde_json::from_slice(&bytes) {
+                Ok(input) => input,
+                Err(_) => {
+                    return no_store(
+                        finish_import_service(
+                            &ctx,
+                            &principal,
+                            &scope,
+                            "POST",
+                            "confirm",
+                            Err(response::Failure::bad_request("Invalid JSON request body")),
+                            &request_id,
+                        )
+                        .await,
+                    );
+                }
+            },
+            Err(_) => {
+                return no_store(
+                    finish_import_service(
+                        &ctx,
+                        &principal,
+                        &scope,
+                        "POST",
+                        "confirm",
+                        Err(response::Failure::validation(
+                            "Confirmation request is too large or could not be read",
+                        )),
+                        &request_id,
+                    )
+                    .await,
+                );
+            }
+        };
+    let result = confirmation::confirm_checked(
+        &ctx,
+        &scope,
+        &id,
+        PreviewToken(input.preview_token),
+        input.passphrase,
+        principal.provenance(),
+        &request_id,
+        ImportPrincipal::Api(&principal),
+    )
+    .await
+    .map(|report| (StatusCode::OK, json!({"data":{"report":report}}), None))
+    .map_err(preparation_error);
+    no_store(
+        finish_import_service(
+            &ctx,
+            &principal,
+            &scope,
+            "POST",
+            "confirm",
             result,
             &request_id,
         )

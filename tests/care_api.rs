@@ -10,6 +10,8 @@ mod data_import_consent_transport;
 mod data_import_consents;
 #[path = "care_api/data_import_atomicity.rs"]
 mod data_import_atomicity;
+#[path = "care_api/data_import_confirmation_transport.rs"]
+mod data_import_confirmation_transport;
 #[path = "care_api/data_import_inspection.rs"]
 mod data_import_inspection;
 #[path = "care_api/data_import_projection.rs"]

@@ -243,6 +243,10 @@ pub fn routes() -> Routes {
             get(data_imports::detail),
         )
         .add(
+            "/{household_id}/data_imports/{id}/confirm",
+            post(data_imports::confirm),
+        )
+        .add(
             "/{household_id}/portable_imports/dry_run",
             post(portable_imports::dry_run)
                 .layer(axum::extract::DefaultBodyLimit::max(24 * 1024 * 1024)),
