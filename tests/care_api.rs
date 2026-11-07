@@ -2,6 +2,8 @@
 mod account_closure_mail;
 #[path = "care_api/account_sessions.rs"]
 mod account_sessions;
+#[path = "care_api/data_import_authority.rs"]
+mod data_import_authority;
 #[path = "care_api/data_import_consents.rs"]
 mod data_import_consents;
 #[path = "care_api/data_import_inspection.rs"]
