@@ -3,22 +3,25 @@ use std::collections::HashSet;
 use super::{
     consents::{self, ConsentBinding},
     contracts::{
-        ConsentInput, PersonDestination, PersonMapping, RecordKind, SourceIdentity, SourceTimeZone,
+        ConsentInput, PersonDestination, PersonMapping, PreparedArchive, RecordKind,
+        SourceIdentity, SourceTimeZone,
     },
     inspection::{self, InspectionError, Upload},
 };
 use crate::models::{
-    access::{self, HouseholdScope, PersonAccess},
+    access::{self, HouseholdScope, TenantTransaction},
+    authorization,
     care::{
         guardian_declarations,
         person_schedules::sharing,
         portable_imports::{
-            self, AliasError, AliasSelection, ProfileDifference as AliasDifference,
+            self, AliasError, AliasSelection, ExistingIndex, InitialDeclarations, NormalizedImport,
+            PreparedDeclarations, ProfileDifference as AliasDifference,
         },
     },
-    entities::person,
+    entities::{account, person},
     errors::OperationError,
-    ids::PersonId,
+    ids::{AccountId, PersonId},
 };
 use loco_rs::app::AppContext;
 use sea_orm::{EntityTrait, QuerySelect};
@@ -58,20 +61,45 @@ pub enum ProfileDifference {
     },
 }
 
-pub async fn assess(
-    ctx: &AppContext,
-    scope: &HouseholdScope,
-    upload: Upload,
-    inspection_id: &str,
-    timezone: SourceTimeZone,
+pub(crate) struct ValidatedIdentity {
+    pub(crate) normalized: NormalizedImport,
+    pub(crate) declarations: PreparedDeclarations,
+    pub(crate) people: Vec<PersonAssessment>,
+}
+
+#[derive(Debug)]
+pub(crate) enum IdentityValidationError {
+    Alias(AliasError),
+    MissingDeclarations(Vec<SourceIdentity>),
+    Operation(OperationError),
+}
+
+impl From<OperationError> for IdentityValidationError {
+    fn from(error: OperationError) -> Self {
+        Self::Operation(error)
+    }
+}
+
+pub(crate) async fn validate(
+    tenant: &TenantTransaction,
+    prepared: &PreparedArchive,
+    payload: serde_json::Value,
+    _timezone: SourceTimeZone,
     choices: IdentityChoices<'_>,
-) -> Result<IdentityAssessment, InspectionError> {
+    today: chrono::NaiveDate,
+) -> Result<ValidatedIdentity, IdentityValidationError> {
     let IdentityChoices {
         mappings,
         declarations,
         recipient_consents,
     } = choices;
-    let (prepared, payload) = inspection::prepare_assessment(ctx, upload).await?;
+    access::recheck(tenant).await?;
+    if !access::can_manage_household(tenant)
+        || !tenant
+            .holds_exclusive_account(AccountId::from_database(tenant.scope().actor.account_id))
+    {
+        return Err(OperationError::Forbidden.into());
+    }
     let source_people: HashSet<_> = prepared
         .inventory
         .records
@@ -79,6 +107,16 @@ pub async fn assess(
         .filter(|record| record.identity.kind == RecordKind::Person)
         .map(|record| record.identity.clone())
         .collect();
+    if source_people.len()
+        != prepared
+            .inventory
+            .records
+            .iter()
+            .filter(|record| record.identity.kind == RecordKind::Person)
+            .count()
+    {
+        return Err(OperationError::Forbidden.into());
+    }
     let mut seen = HashSet::new();
     let mut targets = HashSet::new();
     let mut aliases = Vec::new();
@@ -110,44 +148,26 @@ pub async fn assess(
     }) {
         return Err(OperationError::Forbidden.into());
     }
-    let ids: Vec<_> = recipient_consents
-        .iter()
-        .map(|consent| consent.request_id.clone())
-        .collect();
-    let tenant =
-        consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &ids).await?;
-    inspection::verify(&tenant, inspection_id, &prepared.archive_sha256, timezone).await?;
     let mut declared = HashSet::new();
     for declaration in declarations {
         let key = match declaration {
-            ConsentInput::ActingPerson { subject, accepted } => {
-                if !accepted
-                    || subject.0 != tenant.membership().person_id
-                    || !targets.contains(&subject.0)
-                {
+            ConsentInput::ActingPerson { subject, .. } => {
+                if subject.0 != tenant.membership().person_id || !targets.contains(&subject.0) {
                     return Err(OperationError::Forbidden.into());
                 }
                 (0_u8, Some(subject.0), None)
             }
-            ConsentInput::ActingGuardian { subject, accepted } => {
-                if !accepted
-                    || !targets.contains(&subject.0)
-                    || subject.0 == tenant.membership().person_id
-                {
+            ConsentInput::ActingGuardian { subject, .. } => {
+                if !targets.contains(&subject.0) || subject.0 == tenant.membership().person_id {
                     return Err(OperationError::Forbidden.into());
                 }
                 (1, Some(subject.0), None)
             }
-            ConsentInput::InitialGuardianDeclaration {
-                source_person,
-                accepted,
-            } => {
-                if !accepted
-                    || !mappings.iter().any(|mapping| {
-                        mapping.source == *source_person
-                            && matches!(&mapping.destination, PersonDestination::NewDependent)
-                    })
-                {
+            ConsentInput::InitialGuardianDeclaration { source_person, .. } => {
+                if !mappings.iter().any(|mapping| {
+                    mapping.source == *source_person
+                        && matches!(&mapping.destination, PersonDestination::NewDependent)
+                }) {
                     return Err(OperationError::Forbidden.into());
                 }
                 (2, None, Some(source_person.clone()))
@@ -160,20 +180,46 @@ pub async fn assess(
     if recipient_consents.iter().any(|entry| !mappings.iter().any(|mapping| mapping.source == entry.source_person && matches!(&mapping.destination, PersonDestination::Existing(id) if id.0 != tenant.membership().person_id))) {
         return Err(OperationError::Forbidden.into());
     }
-    let normalized =
-        portable_imports::normalize_aliases(&tenant, payload, &aliases, &new_dependents)
+    let missing: Vec<_> = mappings.iter().filter(|mapping| matches!(&mapping.destination, PersonDestination::NewDependent) && !declarations.iter().any(|item| matches!(item, ConsentInput::InitialGuardianDeclaration { source_person, accepted: true } if *source_person == mapping.source))).map(|mapping| mapping.source.clone()).collect();
+    if !missing.is_empty() {
+        return Err(IdentityValidationError::MissingDeclarations(missing));
+    }
+    portable_imports::planning::prelock_confirmation(tenant).await?;
+    let manageable = guardian_declarations::manageable_subjects(tenant).await?;
+    let mut target_ids: Vec<_> = targets.iter().copied().collect();
+    target_ids.sort_unstable();
+    for id in target_ids {
+        person::Entity::find_by_id(id)
+            .lock_shared()
+            .one(tenant.transaction())
             .await
-            .map_err(|error| match error {
-                AliasError::Database(error) => InspectionError::Operation(error),
-                AliasError::InvalidPayload
-                | AliasError::InvalidSelection
-                | AliasError::IncompatiblePerson => {
-                    InspectionError::Operation(OperationError::Conflict {
-                        code: "import_identity_conflict".into(),
-                        details: serde_json::json!({}),
-                    })
-                }
-            })?;
+            .map_err(OperationError::from)?
+            .ok_or(OperationError::Forbidden)?;
+    }
+    access::recheck(tenant).await?;
+    let normalized =
+        portable_imports::normalize_aliases(tenant, payload, &aliases, &new_dependents)
+            .await
+            .map_err(IdentityValidationError::Alias)?;
+    let attestations = declarations
+        .iter()
+        .filter_map(|item| match item {
+            ConsentInput::InitialGuardianDeclaration {
+                source_person,
+                accepted: true,
+            } => Some(source_person.id.clone()),
+            _ => None,
+        })
+        .map(|id| {
+            guardian_declarations::InitialGuardianAttestation::parse(Some(true))
+                .map(|attestation| (id, attestation))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let initial = InitialDeclarations::from_attestations(attestations)?;
+    let index = ExistingIndex::load(tenant.transaction(), tenant.scope().household_id).await?;
+    let prepared_declarations = initial
+        .prepare(tenant, &normalized.plan, &index, today)
+        .await?;
     let mut people = Vec::new();
     for mapping in mappings {
         match &mapping.destination {
@@ -184,23 +230,28 @@ pub async fn assess(
                     .await
                     .map_err(OperationError::from)?
                     .ok_or(OperationError::Forbidden)?;
-                let may_manage = match access::require_person_access(
-                    &tenant,
-                    id.0,
-                    PersonAccess::Manage,
-                )
-                .await
-                {
-                    Ok(()) => true,
-                    Err(OperationError::Forbidden) => false,
-                    Err(error) => return Err(error.into()),
-                };
+                let may_manage = authorization::own_person_manage(tenant.membership(), &subject)
+                    || manageable.contains(&id.0);
                 let clinical_authority = may_manage
                     && sharing::clinical_authority(
                         tenant.transaction(),
                         PersonId::from_database(id.0),
                     )
                     .await?;
+                if declarations.iter().any(|item| matches!(item, ConsentInput::ActingGuardian { subject, accepted: true } if subject == id))
+                    && ((subject.person_type == 0 && subject.has_capacity) || !clinical_authority)
+                {
+                    return Err(OperationError::Forbidden.into());
+                }
+                if recipient_consents
+                    .iter()
+                    .any(|entry| entry.source_person == mapping.source)
+                    && !(subject.person_type == 0
+                        && subject.has_capacity
+                        && subject.id != tenant.membership().person_id)
+                {
+                    return Err(OperationError::Forbidden.into());
+                }
                 let consent_current = if subject.id == tenant.membership().person_id {
                     declarations.iter().any(|item| matches!(item, ConsentInput::ActingPerson { subject, accepted: true } if subject == id))
                 } else if subject.person_type == 0 && subject.has_capacity {
@@ -213,7 +264,7 @@ pub async fn assess(
                             source_person: mapping.source.clone(),
                             target_person: *id,
                         };
-                        match consents::current(&tenant, &recipient.request_id, &binding).await {
+                        match consents::current(tenant, &recipient.request_id, &binding).await {
                             Ok(value) => value,
                             Err(
                                 OperationError::Forbidden
@@ -261,12 +312,7 @@ pub async fn assess(
                 });
             }
             PersonDestination::NewDependent => {
-                let eligible = match guardian_declarations::eligible_actor(
-                    &tenant,
-                    chrono::Utc::now().date_naive(),
-                )
-                .await
-                {
+                let eligible = match guardian_declarations::eligible_actor(tenant, today).await {
                     Ok(_) => true,
                     Err(OperationError::Forbidden) => false,
                     Err(error) => return Err(error.into()),
@@ -282,10 +328,47 @@ pub async fn assess(
             }
         }
     }
-    access::recheck(&tenant).await?;
+    access::recheck(tenant).await?;
+    Ok(ValidatedIdentity {
+        normalized,
+        declarations: prepared_declarations,
+        people,
+    })
+}
+
+pub async fn assess(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    upload: Upload,
+    inspection_id: &str,
+    timezone: SourceTimeZone,
+    choices: IdentityChoices<'_>,
+) -> Result<IdentityAssessment, InspectionError> {
+    let (prepared, payload) = inspection::prepare_assessment(ctx, upload).await?;
+    let ids: Vec<_> = choices
+        .recipient_consents
+        .iter()
+        .map(|consent| consent.request_id.clone())
+        .collect();
+    let tenant =
+        consents::begin_for_requests(&ctx.db, scope, ctx.config.settings.as_ref(), &ids).await?;
+    inspection::verify(&tenant, inspection_id, &prepared.archive_sha256, timezone).await?;
+    let actor = account::Entity::find_by_id(scope.actor.account_id)
+        .one(tenant.transaction())
+        .await
+        .map_err(OperationError::from)?
+        .ok_or(OperationError::Unauthenticated)?;
+    let zone = crate::models::identity::time_zone::preferred(&actor.preferences, tenant.settings())
+        .map_err(|_| OperationError::Unavailable)?;
+    let today = chrono::Utc::now().with_timezone(&zone).date_naive();
+    let result = validate(&tenant, &prepared, payload, timezone, choices, today).await.map_err(|error| match error {
+        IdentityValidationError::Operation(error) | IdentityValidationError::Alias(AliasError::Database(error)) => InspectionError::Operation(error),
+        IdentityValidationError::Alias(AliasError::IncompatiblePerson { .. } | AliasError::InvalidPayload | AliasError::InvalidSelection) => InspectionError::Operation(OperationError::Conflict { code: "import_identity_conflict".into(), details: serde_json::json!({}) }),
+        IdentityValidationError::MissingDeclarations(_) => InspectionError::Operation(OperationError::Validation { details: serde_json::json!({"errors":{"initial_guardian_declarations":["required for each new dependent"]}}) }),
+    })?;
     tenant.commit().await?;
     Ok(IdentityAssessment {
         archive_sha256: prepared.archive_sha256,
-        people,
+        people: result.people,
     })
 }

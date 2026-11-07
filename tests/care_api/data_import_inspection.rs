@@ -2,10 +2,13 @@ use super::Application;
 use med_tracker::models::{
     access,
     data_imports::{
-        contracts::SourceSystem,
+        contracts::{
+            ConsentInput, PersonDestination, PersonId, PersonMapping, RecordKind, SourceSystem,
+        },
         identity,
-        inspection::{self, Upload},
+        inspection::{self, InspectionError, Upload},
     },
+    errors::OperationError,
 };
 use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -28,6 +31,114 @@ fn archive(comment: &str) -> Vec<u8> {
         zip.write_all(data).unwrap();
     }
     zip.finish().unwrap().into_inner()
+}
+
+#[tokio::test]
+async fn identity_checks_exact_people_and_requires_new_dependent_declaration() {
+    let app = Application::new().await;
+    let scope = app.fixture.scenario.scope();
+    let zone = inspection::confirmed_timezone("Europe/London", true).unwrap();
+    let inspected = inspection::inspect(&app.context, &scope, upload("identity"), zone)
+        .await
+        .unwrap();
+    let source = inspected
+        .inventory
+        .records
+        .iter()
+        .find(|record| record.identity.kind == RecordKind::Person)
+        .unwrap()
+        .identity
+        .clone();
+    let new_dependent = PersonMapping {
+        source: source.clone(),
+        destination: PersonDestination::NewDependent,
+    };
+    let choices = identity::IdentityChoices {
+        mappings: std::slice::from_ref(&new_dependent),
+        declarations: &[],
+        recipient_consents: &[],
+    };
+    let result = identity::assess(
+        &app.context,
+        &scope,
+        upload("identity"),
+        &inspected.id,
+        zone,
+        choices,
+    )
+    .await;
+    assert!(matches!(
+        result,
+        Err(InspectionError::Operation(
+            OperationError::Validation { .. }
+        ))
+    ));
+    let duplicates = [new_dependent.clone(), new_dependent];
+    let declaration = ConsentInput::InitialGuardianDeclaration {
+        source_person: source.clone(),
+        accepted: true,
+    };
+    let choices = identity::IdentityChoices {
+        mappings: &duplicates,
+        declarations: std::slice::from_ref(&declaration),
+        recipient_consents: &[],
+    };
+    let result = identity::assess(
+        &app.context,
+        &scope,
+        upload("identity"),
+        &inspected.id,
+        zone,
+        choices,
+    )
+    .await;
+    assert!(matches!(
+        result,
+        Err(InspectionError::Operation(OperationError::Forbidden))
+    ));
+    let mapped = PersonMapping {
+        source: source.clone(),
+        destination: PersonDestination::NewDependent,
+    };
+    let choices = identity::IdentityChoices {
+        mappings: std::slice::from_ref(&mapped),
+        declarations: std::slice::from_ref(&declaration),
+        recipient_consents: &[],
+    };
+    let accepted = identity::assess(
+        &app.context,
+        &scope,
+        upload("identity"),
+        &inspected.id,
+        zone,
+        choices,
+    )
+    .await
+    .unwrap();
+    assert_eq!(accepted.people.len(), 1);
+    assert!(accepted.people[0].declaration_satisfied);
+    assert!(!accepted.people[0].clinical_authority);
+    let mismatch = PersonMapping {
+        source,
+        destination: PersonDestination::Existing(PersonId(app.fixture.adult.id)),
+    };
+    let choices = identity::IdentityChoices {
+        mappings: std::slice::from_ref(&mismatch),
+        declarations: &[],
+        recipient_consents: &[],
+    };
+    let result = identity::assess(
+        &app.context,
+        &scope,
+        upload("identity"),
+        &inspected.id,
+        zone,
+        choices,
+    )
+    .await;
+    assert!(
+        matches!(result, Err(InspectionError::Operation(OperationError::Conflict { ref code, .. })) if code == "import_identity_conflict")
+    );
 }
 
 fn upload(comment: &str) -> Upload {
