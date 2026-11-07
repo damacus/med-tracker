@@ -3,6 +3,7 @@ use crate::models::{
     access::{self, PersonAccess},
     data_imports::{
         contracts::{RecordKind, SourceSystem},
+        credential::ImportPrincipal,
         inspection::{self, Inspection, InspectionError, Upload},
         upload_gate::UploadLimiter,
     },
@@ -147,7 +148,7 @@ pub(crate) async fn inspect(
 ) -> Response {
     let language = fallback_language(incoming.headers());
     let trace = request_id(request_id_ext);
-    let (_, tenant) = match begin(&ctx, &session, &slug, &trace).await {
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &trace).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(&view, language, error),
     };
@@ -209,6 +210,7 @@ pub(crate) async fn inspect(
         None => language,
     };
     let explicit = fields.values.contains_key("lang");
+    let submitted_timezone = fields.values.get("source_timezone").cloned();
     if token
         .verify(
             fields
@@ -223,7 +225,7 @@ pub(crate) async fn inspect(
     let (upload, timezone) = match validated(&mut fields) {
         Ok(value) => value,
         Err(error) => {
-            return upload_page(
+            return upload_page_with_timezone(
                 &ctx,
                 &session,
                 &token,
@@ -233,11 +235,20 @@ pub(crate) async fn inspect(
                 selected_language,
                 explicit,
                 Some(error),
+                submitted_timezone.as_deref(),
             )
             .await;
         }
     };
-    let inspected = match inspection::inspect(&ctx, &scope, upload, timezone).await {
+    let inspected = match inspection::inspect_checked(
+        &ctx,
+        &scope,
+        upload,
+        timezone,
+        ImportPrincipal::Browser(&principal),
+    )
+    .await
+    {
         Ok(value) => value,
         Err(InspectionError::Operation(error))
             if !matches!(&error, OperationError::Validation { .. }) =>
@@ -245,7 +256,7 @@ pub(crate) async fn inspect(
             return presentation_error(&view, selected_language, error);
         }
         Err(_) => {
-            return upload_page(
+            return upload_page_with_timezone(
                 &ctx,
                 &session,
                 &token,
@@ -255,6 +266,7 @@ pub(crate) async fn inspect(
                 selected_language,
                 explicit,
                 Some(invalid()),
+                submitted_timezone.as_deref(),
             )
             .await;
         }
@@ -310,6 +322,24 @@ pub(super) async fn upload_page(
     explicit: bool,
     error: Option<OperationError>,
 ) -> Response {
+    upload_page_with_timezone(
+        ctx, session, token, view, slug, trace, language, explicit, error, None,
+    )
+    .await
+}
+
+async fn upload_page_with_timezone(
+    ctx: &AppContext,
+    session: &Session<SessionPgPool>,
+    token: &CsrfToken,
+    view: &TeraView,
+    slug: &str,
+    trace: &str,
+    language: &str,
+    explicit: bool,
+    error: Option<OperationError>,
+    submitted_timezone: Option<&str>,
+) -> Response {
     let (_, tenant) = match begin(ctx, session, slug, trace).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(view, language, error),
@@ -322,6 +352,9 @@ pub(super) async fn upload_page(
         data["errors"] =
             json!([{"field":"administration-form", "message":data["import_labels"]["invalid"]}]);
         data["form_error_heading"] = data["import_labels"]["invalid"].clone();
+    }
+    if let Some(timezone) = submitted_timezone {
+        data["source_timezone"] = json!(timezone);
     }
     let response = rendering::render(
         view,

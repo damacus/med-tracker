@@ -6,6 +6,7 @@ use crate::models::{
             ConsentInput, PersonDestination, PersonId, PersonMapping, RecordKind, SourceIdentity,
             SourceSystem,
         },
+        credential::ImportPrincipal,
         identity::RecipientConsent,
         inspection::{self, InspectionError, Upload},
         preview::{self, PreviewInput},
@@ -250,7 +251,7 @@ pub(crate) async fn create(
 ) -> Response {
     let language = fallback_language(incoming.headers());
     let trace = request_id(request_ext);
-    let (_, tenant) = match begin(&ctx, &session, &slug, &trace).await {
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &trace).await {
         Ok(value) => value,
         Err(error) => return presentation_authentication_error(&view, language, error),
     };
@@ -327,28 +328,31 @@ pub(crate) async fn create(
             .await;
         }
     };
-    let mut result = match preview::create(&ctx, &scope, input).await {
-        Ok(value) => value,
-        Err(InspectionError::Operation(error))
-            if !matches!(&error, OperationError::Validation { .. }) =>
+    let mut result =
+        match preview::create_checked(&ctx, &scope, input, ImportPrincipal::Browser(&principal))
+            .await
         {
-            return presentation_error(&view, selected_language, error);
-        }
-        Err(_) => {
-            return upload::upload_page(
-                &ctx,
-                &session,
-                &token,
-                &view,
-                &slug,
-                &trace,
-                selected_language,
-                explicit,
-                Some(invalid()),
-            )
-            .await;
-        }
-    };
+            Ok(value) => value,
+            Err(InspectionError::Operation(error))
+                if !matches!(&error, OperationError::Validation { .. }) =>
+            {
+                return presentation_error(&view, selected_language, error);
+            }
+            Err(_) => {
+                return upload::upload_page(
+                    &ctx,
+                    &session,
+                    &token,
+                    &view,
+                    &slug,
+                    &trace,
+                    selected_language,
+                    explicit,
+                    Some(invalid()),
+                )
+                .await;
+            }
+        };
     drop(permit);
     let (_, tenant) = match begin(&ctx, &session, &slug, &trace).await {
         Ok(value) => value,

@@ -7,6 +7,64 @@ use sea_orm::ConnectionTrait;
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn revoked_browser_session_during_upload_cannot_persist_inspection() {
+    use med_tracker::models::{_entities::data_import_inspections, entities::identity_session};
+    use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, sea_query::Expr};
+    use std::io::{Cursor, Write};
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::TcpStream,
+        time::{Duration, timeout},
+    };
+    use zip::{ZipWriter, write::SimpleFileOptions};
+
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/admin/data_imports/new", journey.origin), None).await.unwrap();
+        let csrf: String = page.evaluate("() => document.querySelector('[name=authenticity_token]').value", None::<&()>).await.unwrap();
+        let cookies = page.context().unwrap().cookies(None).await.unwrap().into_iter().map(|cookie| format!("{}={}", cookie.name, cookie.value)).collect::<Vec<_>>().join("; ");
+        let before = data_import_inspections::Entity::find().filter(data_import_inspections::Column::HouseholdId.eq(72001)).count(&journey.admin).await.unwrap();
+        let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, bytes) in [("portable.json", include_bytes!("../fixtures/portable_rails/prepared-history-v2.json").as_slice()), ("manifest.json", include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json").as_slice())] {
+            zip.start_file(name, SimpleFileOptions::default()).unwrap();
+            zip.write_all(bytes).unwrap();
+        }
+        let archive = zip.finish().unwrap().into_inner();
+        let boundary = "test-import-boundary";
+        let mut body = Vec::new();
+        for (name, value) in [("authenticity_token", csrf.as_str()), ("source", "med_tracker05"), ("passphrase", "password"), ("source_timezone", "Europe/London"), ("timezone_confirmed", "true")] {
+            body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n").as_bytes());
+        }
+        body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"archive\"; filename=\"fixture.zip\"\r\nContent-Type: application/zip\r\n\r\n").as_bytes());
+        body.extend_from_slice(&archive);
+        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+        let address = journey.origin.strip_prefix("http://").unwrap();
+        let path = "/households/persistence-fixture/admin/data_imports/new";
+        let mut socket = TcpStream::connect(address).await.unwrap();
+        socket.write_all(format!("POST {path} HTTP/1.1\r\nHost: {address}\r\nCookie: {cookies}\r\nContent-Type: multipart/form-data; boundary={boundary}\r\nContent-Length: {}\r\n\r\n", body.len()).as_bytes()).await.unwrap();
+        socket.write_all(&body[..1]).await.unwrap();
+        let client = reqwest::Client::new();
+        let mut acquired = false;
+        for _ in 0..100 {
+            let response = client.post(format!("{}{path}", journey.origin)).header("cookie", &cookies).header("content-type", "multipart/form-data; boundary=probe").body("--probe--\r\n").send().await.unwrap();
+            if response.status().as_u16() == 503 { acquired = true; break; }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(acquired, "the upload must be paused after acquiring the permit");
+        identity_session::Entity::update_many().col_expr(identity_session::Column::Active, Expr::value(false)).filter(identity_session::Column::UserId.eq(71001)).filter(identity_session::Column::Active.eq(true)).exec(&journey.admin).await.unwrap();
+        socket.write_all(&body[1..]).await.unwrap();
+        let mut reply = [0_u8; 512];
+        let size = timeout(Duration::from_secs(10), socket.read(&mut reply)).await.unwrap().unwrap();
+        let status = std::str::from_utf8(&reply[..size]).unwrap();
+        assert!(status.starts_with("HTTP/1.1 401") || status.starts_with("HTTP/1.1 403"));
+        let after = data_import_inspections::Entity::find().filter(data_import_inspections::Column::HouseholdId.eq(72001)).count(&journey.admin).await.unwrap();
+        assert_eq!(after, before);
+    })).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn import_preview_post_requires_auth_and_rejects_invalid_mapping_input() {
     harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
         let page = &journey.page;
@@ -30,10 +88,19 @@ async fn import_upload_authentication_and_failed_archive_do_not_expose_passphras
         page.goto(&url, None).await.unwrap();
         page.locator("#archive").set_input_files_payload(FilePayload::new("invalid.zip", "application/zip", vec![1, 2, 3]), None).await.unwrap();
         page.locator("#passphrase").fill("synthetic-secret", None).await.unwrap();
+        page.locator("#source_timezone").fill("America/New_York", None).await.unwrap();
         page.locator("[name=timezone_confirmed]").click(None).await.unwrap();
         page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
         expect(page.locator("[role=alert]")).to_be_visible().await.unwrap();
-        assert!(page.evaluate::<(), bool>("() => document.querySelector('#passphrase').value === '' && !document.body.textContent.includes('synthetic-secret')", None).await.unwrap());
+        assert!(page.evaluate::<(), bool>("() => document.querySelector('#source_timezone').value === 'America/New_York' && document.querySelector('#passphrase').value === '' && document.querySelector('#archive').files.length === 0 && !document.querySelector('[name=timezone_confirmed]').checked && !document.body.textContent.includes('synthetic-secret')", None).await.unwrap());
+        page.locator("#archive").set_input_files_payload(FilePayload::new("invalid.zip", "application/zip", vec![1, 2, 3]), None).await.unwrap();
+        page.locator("#passphrase").fill("validation-secret", None).await.unwrap();
+        page.locator("#source_timezone").fill("Europe/Paris", None).await.unwrap();
+        page.locator("[name=timezone_confirmed]").click(None).await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => { const s=document.querySelector('#source'); s.add(new Option('Other','other',true,true)); return s.value==='other'; }", None).await.unwrap());
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("[role=alert]")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => document.querySelector('#source_timezone').value === 'Europe/Paris' && document.querySelector('#passphrase').value === '' && document.querySelector('#archive').files.length === 0 && !document.querySelector('[name=timezone_confirmed]').checked && !document.body.textContent.includes('validation-secret')", None).await.unwrap());
     })).await;
 }
 
