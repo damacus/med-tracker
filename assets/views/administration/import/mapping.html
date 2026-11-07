@@ -35,7 +35,7 @@
       <label for="passphrase" class="font-semibold">{{ import_labels.passphrase }}</label><input class="input w-full" id="passphrase" name="passphrase" type="password" autocomplete="off" required>
       <label for="source_timezone" class="font-semibold">{{ import_labels.timezone }}</label><p id="timezone-help">{{ import_labels.timezone_help }}</p><input class="input w-full" id="source_timezone" name="source_timezone" value="{{ source_timezone }}" aria-describedby="timezone-help" required>
       <label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="timezone_confirmed" value="true" required> <span>{{ import_labels.timezone_confirm }}</span></label>
-      <button class="btn btn-neutral w-fit" type="submit">{{ import_labels.preview_action }}</button>
+      <p>{{ import_labels.preview_unavailable }}</p><button class="btn btn-neutral w-fit" type="submit" disabled>{{ import_labels.preview_action }}</button>
     </div></div>
   </form>
 </section>

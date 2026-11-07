@@ -3209,6 +3209,7 @@ cy:
     action: "Aseiniwch neu wahoddwch ofalwr"
   administration:
     import:
+      preview_unavailable: "Nid yw'r cam rhagolwg ar gael eto."
       issues: "Problemau mewnforio"
       existing_person_help: "Mae dewis person presennol yn cadw ei enw a'i fanylion cyswllt cyfredol ac nid yw'n newid ei fanylion mewngofnodi. Dangosir unrhyw wahaniaethau yn y rhagolwg."
       reupload_help: "Dewiswch yr un allforiad a rhowch ei gyfrinymadrodd eto. Os byddwch yn newid yr allforiad, rhaid ei archwilio eto."

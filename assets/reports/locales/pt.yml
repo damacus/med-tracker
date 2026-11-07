@@ -3215,6 +3215,7 @@ pt:
     action: "Atribuir ou convidar um cuidador"
   administration:
     import:
+      preview_unavailable: "A pré-visualização ainda não está disponível."
       issues: "Problemas de importação"
       existing_person_help: "Ao selecionar uma pessoa existente, mantêm-se o nome e os contactos atuais e não se alteram as credenciais de acesso. As diferenças são apresentadas na pré-visualização."
       reupload_help: "Selecione a mesma exportação e introduza novamente a frase-passe. Alterar a exportação exige uma nova inspeção."

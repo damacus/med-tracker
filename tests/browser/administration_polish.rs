@@ -1,7 +1,28 @@
 use crate::harness::{self, named};
 use playwright_rs::expect;
-use playwright_rs::protocol::{Animations, AriaRole, Page, ScreenshotOptions, Viewport};
+use playwright_rs::protocol::{
+    Animations, AriaRole, FilePayload, Page, ScreenshotOptions, Viewport,
+};
 use sea_orm::ConnectionTrait;
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn import_upload_authentication_and_failed_archive_do_not_expose_passphrase() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        let page = &journey.page;
+        let url = format!("{}/households/persistence-fixture/admin/data_imports/new", journey.origin);
+        page.goto(&url, None).await.unwrap();
+        assert!(page.url().ends_with("/login"));
+        harness::sign_in(journey).await;
+        page.goto(&url, None).await.unwrap();
+        page.locator("#archive").set_input_files_payload(FilePayload::new("invalid.zip", "application/zip", vec![1, 2, 3]), None).await.unwrap();
+        page.locator("#passphrase").fill("synthetic-secret", None).await.unwrap();
+        page.locator("[name=timezone_confirmed]").click(None).await.unwrap();
+        page.locator("#administration-form button[type=submit]").click(None).await.unwrap();
+        expect(page.locator("[role=alert]")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => document.querySelector('#passphrase').value === '' && !document.body.textContent.includes('synthetic-secret')", None).await.unwrap());
+    })).await;
+}
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
@@ -76,7 +97,7 @@ async fn administration_polish_overview_and_forms() {
         expect(page.locator(".admin-metrics")).to_contain_text("ACTIVE MEMBERS").await.unwrap();
         expect(page.locator(".admin-metrics")).to_contain_text("PENDING INVITATIONS").await.unwrap();
         expect(page.locator(".admin-metrics")).to_contain_text("PEOPLE NEEDING CARERS").await.unwrap();
-        assert_eq!(page.locator(".admin-action-row").count().await.unwrap(),6);
+        assert_eq!(page.locator(".admin-action-row").count().await.unwrap(),7);
         assert!(!page.locator("main").text_content().await.unwrap().unwrap().contains("private clinical sentinel"));
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         harness::device_appearance(page, "dark").await;
