@@ -1,7 +1,7 @@
 use super::Application;
 use med_tracker::models::{
     _entities::{household_memberships, medications, people},
-    access::{Actor, HouseholdScope},
+    access::{self, Actor, HouseholdScope},
     data_imports::{
         confirmation,
         consents::{self, ConsentBinding, Decision},
@@ -14,7 +14,10 @@ use med_tracker::models::{
     },
     identity::credentials::{CredentialMethod, CredentialProvenance},
 };
-use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, QuerySelect, Set, TransactionTrait};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, Set,
+    TransactionTrait,
+};
 use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
@@ -533,43 +536,55 @@ async fn other_adult_profile_report_requires_consent_for_exact_archive_and_withd
         .await
         .unwrap();
     tenant.commit().await.unwrap();
-    let mut later = None;
-    for _ in 0..32 {
-        let candidate = preview::create(
-            &app.context,
-            &scope,
-            PreviewInput {
-                inspection_id: second_inspected.id.clone(),
-                upload: profile_upload(&second_comment),
-                timezone: zone,
-                mappings: vec![PersonMapping {
-                    source: second_source.clone(),
-                    destination: PersonDestination::Existing(second_target),
-                }],
-                declarations: vec![],
-                recipient_consents: vec![RecipientConsent {
-                    source_person: second_source.clone(),
-                    request_id: second_id.clone(),
-                }],
-                acknowledged_omissions: second_inspected
-                    .inventory
-                    .omissions
-                    .iter()
-                    .map(|item| item.acknowledgement_id.clone())
-                    .collect(),
-            },
-        )
-        .await
-        .unwrap();
-        if candidate.report.id > result.report.id {
-            later = Some(candidate.report.id);
-            break;
-        }
-    }
-    let later = later.expect("a later report must be generated");
+    let candidate = preview::create(
+        &app.context,
+        &scope,
+        PreviewInput {
+            inspection_id: second_inspected.id.clone(),
+            upload: profile_upload(&second_comment),
+            timezone: zone,
+            mappings: vec![PersonMapping {
+                source: second_source.clone(),
+                destination: PersonDestination::Existing(second_target),
+            }],
+            declarations: vec![],
+            recipient_consents: vec![RecipientConsent {
+                source_person: second_source.clone(),
+                request_id: second_id.clone(),
+            }],
+            acknowledged_omissions: second_inspected
+                .inventory
+                .omissions
+                .iter()
+                .map(|item| item.acknowledgement_id.clone())
+                .collect(),
+        },
+    )
+    .await
+    .unwrap();
+    let (earlier, later, blocked_person, withdraw_scope, withdraw_id, withdraw_binding) =
+        if result.report.id < candidate.report.id {
+            (
+                result.report.id.clone(),
+                candidate.report.id.clone(),
+                second.account.person_id,
+                recipient_scope.clone(),
+                consent_id.clone(),
+                binding.clone(),
+            )
+        } else {
+            (
+                candidate.report.id.clone(),
+                result.report.id.clone(),
+                recipient.account.person_id,
+                second_scope.clone(),
+                second_id.clone(),
+                second_binding.clone(),
+            )
+        };
     let blocker = app.fixture.admin.begin().await.unwrap();
     let blocker_pid = super::data_import_consents::backend_pid(&blocker).await;
-    people::Entity::find_by_id(second.account.person_id)
+    people::Entity::find_by_id(blocked_person)
         .lock_exclusive()
         .one(&blocker)
         .await
@@ -578,7 +593,7 @@ async fn other_adult_profile_report_requires_consent_for_exact_archive_and_withd
     let client = app.client.clone();
     let page_url = format!(
         "{base}?limit=100&after_id={}",
-        &result.report.id[..result.report.id.len() - 1]
+        &earlier[..earlier.len() - 1]
     );
     let page_token = token.clone();
     let page = tokio::spawn(async move {
@@ -591,9 +606,6 @@ async fn other_adult_profile_report_requires_consent_for_exact_archive_and_withd
     });
     assert!(super::data_import_consents::wait_for_any_blocked_by(&app, blocker_pid).await);
     let runtime = app.fixture.runtime.clone();
-    let withdraw_scope = recipient_scope.clone();
-    let withdraw_id = consent_id.clone();
-    let withdraw_binding = binding.clone();
     let mut withdraw = tokio::spawn(async move {
         let tenant = consents::begin_for_actor(&runtime, &withdraw_scope, None)
             .await
@@ -613,12 +625,12 @@ async fn other_adult_profile_report_requires_consent_for_exact_archive_and_withd
     assert_eq!(page.status().as_u16(), 200);
     let page: serde_json::Value = page.json().await.unwrap();
     let rows = page["data"]["reports"].as_array().unwrap();
-    assert!(rows.iter().any(|row| row["id"] == result.report.id));
+    assert!(rows.iter().any(|row| row["id"] == earlier));
     assert!(rows.iter().any(|row| row["id"] == later));
     withdraw.await.unwrap();
     assert_eq!(
         app.client
-            .get(&url)
+            .get(format!("{base}/{earlier}"))
             .bearer_auth(&token)
             .send()
             .await
@@ -773,6 +785,108 @@ async fn completed_created_dependent_report_is_hidden_after_guardian_withdrawal(
         .await
         .unwrap();
     assert_eq!(denied.status().as_u16(), 404);
+    let subject_id: i64 = person_id.parse().unwrap();
+    household_memberships::Entity::update_many()
+        .col_expr(
+            household_memberships::Column::Status,
+            sea_orm::sea_query::Expr::value("revoked"),
+        )
+        .col_expr(
+            household_memberships::Column::RevokedAt,
+            sea_orm::sea_query::Expr::value(Some(chrono::Utc::now().naive_utc())),
+        )
+        .filter(household_memberships::Column::HouseholdId.eq(scope.household_id))
+        .filter(household_memberships::Column::PersonId.eq(subject_id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    assert!(
+        people::Entity::find_by_id(subject_id)
+            .one(tenant.transaction())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    tenant.rollback().await.unwrap();
+    let profile_comment = uuid::Uuid::new_v4().to_string();
+    let profile = inspection::inspect(&app.context, &scope, profile_upload(&profile_comment), zone)
+        .await
+        .unwrap();
+    let source = profile
+        .inventory
+        .records
+        .iter()
+        .find(|row| row.identity.kind == RecordKind::Person)
+        .unwrap()
+        .identity
+        .clone();
+    let own = med_tracker::models::data_imports::contracts::PersonId(app.fixture.account.person_id);
+    let readable = preview::create(
+        &app.context,
+        &scope,
+        PreviewInput {
+            inspection_id: profile.id,
+            upload: profile_upload(&profile_comment),
+            timezone: zone,
+            mappings: vec![PersonMapping {
+                source,
+                destination: PersonDestination::Existing(own),
+            }],
+            declarations: vec![ConsentInput::ActingPerson {
+                subject: own,
+                accepted: true,
+            }],
+            recipient_consents: vec![],
+            acknowledged_omissions: profile
+                .inventory
+                .omissions
+                .iter()
+                .map(|item| item.acknowledgement_id.clone())
+                .collect(),
+        },
+    )
+    .await
+    .unwrap();
+    let base = format!(
+        "{}/api/v1/households/{}/data_imports",
+        app.origin, scope.household_id
+    );
+    let mut cursor = None;
+    let mut visible = Vec::new();
+    let mut filtered_cursor = false;
+    for _ in 0..3 {
+        let page_url = match &cursor {
+            Some(id) => format!("{base}?limit=1&after_id={id}"),
+            None => format!("{base}?limit=1"),
+        };
+        let response = app
+            .client
+            .get(page_url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 200);
+        let page: serde_json::Value = response.json().await.unwrap();
+        let rows = page["data"]["reports"].as_array().unwrap();
+        visible.extend(
+            rows.iter()
+                .map(|row| row["id"].as_str().unwrap().to_owned()),
+        );
+        cursor = page["data"]["next_cursor"].as_str().map(str::to_owned);
+        if rows.is_empty() && cursor.as_deref() == Some(completed.id.as_str()) {
+            filtered_cursor = true;
+        }
+        if cursor.is_none() {
+            break;
+        }
+    }
+    assert!(filtered_cursor);
+    assert!(visible.contains(&readable.report.id));
+    assert!(!visible.contains(&completed.id));
     app.close().await;
 }
 

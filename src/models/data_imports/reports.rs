@@ -7,7 +7,7 @@ use super::{
     persistence, result_projection,
 };
 use crate::models::{
-    _entities::data_import_runs,
+    _entities::{data_import_consents, data_import_runs},
     access::{self, HouseholdScope, PersonAccess, TenantTransaction},
     care::{
         guardian_declarations,
@@ -158,6 +158,7 @@ fn report_subjects(current: &persistence::StoredRun) -> Result<Vec<i64>, Operati
 pub(crate) struct ReportDisclosureGuard<'a> {
     authority: PreparedImportAuthority<'a>,
     subjects: Vec<i64>,
+    unavailable: Vec<i64>,
 }
 
 pub(crate) async fn prepare_report_disclosure<'a>(
@@ -172,16 +173,24 @@ pub(crate) async fn prepare_report_disclosure<'a>(
     }
     subjects.sort_unstable();
     subjects.dedup();
+    let mut unavailable = Vec::new();
     for id in &subjects {
-        person::Entity::find_by_id(*id)
+        if person::Entity::find_by_id(*id)
             .lock_shared()
             .one(tenant.transaction())
             .await?
-            .ok_or(OperationError::NotFound)?;
+            .is_none()
+        {
+            if *id == tenant.membership().person_id {
+                return Err(OperationError::Forbidden);
+            }
+            unavailable.push(*id);
+        }
     }
     Ok(ReportDisclosureGuard {
         authority,
         subjects,
+        unavailable,
     })
 }
 
@@ -198,11 +207,13 @@ pub(crate) async fn authorise_report_prepared(
         return Err(OperationError::NotFound);
     }
     authority.check_date(today)?;
-    if report_subjects(current)?
-        .iter()
-        .any(|id| guard.subjects.binary_search(id).is_err())
-    {
-        return Err(OperationError::Forbidden);
+    for id in report_subjects(current)? {
+        if guard.subjects.binary_search(&id).is_err() {
+            return Err(OperationError::Forbidden);
+        }
+        if guard.unavailable.binary_search(&id).is_ok() {
+            return Err(OperationError::NotFound);
+        }
     }
     let report = &current.snapshot.report;
     let context = current
@@ -414,10 +425,36 @@ pub async fn list_checked(
         };
     let mut initial = Vec::new();
     let mut requests = Vec::new();
+    let mut visible_requests = std::collections::HashMap::new();
     for id in ids {
         if let Some(run) = persistence::find(&lookup, &id).await? {
-            requests.extend(request_ids(&run));
-            initial.push(run);
+            let ids = request_ids(&run);
+            let mut available = true;
+            for request in &ids {
+                let visible = if let Some(visible) = visible_requests.get(request) {
+                    *visible
+                } else {
+                    let visible = data_import_consents::Entity::find_by_id(request.clone())
+                        .filter(
+                            data_import_consents::Column::RequesterAccountId
+                                .eq(scope.actor.account_id),
+                        )
+                        .filter(
+                            data_import_consents::Column::RequesterMembershipId
+                                .eq(lookup.membership().id),
+                        )
+                        .one(lookup.transaction())
+                        .await?
+                        .is_some();
+                    visible_requests.insert(request.clone(), visible);
+                    visible
+                };
+                available &= visible;
+            }
+            if available {
+                requests.extend(ids);
+                initial.push(run);
+            }
         }
     }
     lookup.rollback().await?;
