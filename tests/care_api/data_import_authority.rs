@@ -1,7 +1,7 @@
 use super::Application;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use med_tracker::models::{
-    _entities::{household_memberships, people},
+    _entities::{accounts, data_import_runs, household_memberships, people},
     access::{self, Actor, HouseholdScope},
     care::administration::recovery::{
         self, RecoveryAction, RecoveryCommand, RecoveryGuardianId, RecoveryOutcome,
@@ -13,8 +13,8 @@ use med_tracker::models::{
     },
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, QueryFilter,
-    QuerySelect, Set, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, PaginatorTrait,
+    QueryFilter, QuerySelect, Set, TransactionTrait,
     sea_query::{Expr, ExprTrait, Func, Query},
 };
 use serde_json::{Value, json};
@@ -321,8 +321,169 @@ async fn wait_for_lock(app: &Application, waiter: Option<i32>, blocker: i32) -> 
     false
 }
 
+async fn account_lock_waiter(app: &Application, blocker: i32) -> Option<i32> {
+    let query = Query::select()
+        .column("pid")
+        .from("pg_stat_activity")
+        .and_where(Expr::col("datname").eq(Func::cust("current_database")))
+        .and_where(Expr::col("wait_event_type").eq("Lock"))
+        .and_where(Expr::col("query").like("%\"accounts\"%FOR UPDATE%"))
+        .and_where(
+            Expr::expr(Func::cust("array_position").args([
+                Expr::expr(Func::cust("pg_blocking_pids").arg(Expr::col("pid"))),
+                Expr::val(blocker),
+            ]))
+            .is_not_null(),
+        )
+        .to_owned();
+    for _ in 0..140 {
+        if let Some(row) = app
+            .fixture
+            .admin
+            .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+            .unwrap()
+        {
+            return Some(row.try_get("", "pid").unwrap());
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    }
+    None
+}
+
+async fn import_run_count(app: &Application) -> u64 {
+    data_import_runs::Entity::find()
+        .filter(data_import_runs::Column::HouseholdId.eq(app.fixture.household.id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap()
+}
+
 #[tokio::test]
-async fn preview_waits_before_person_lock_and_rechecks_after_other_household_recovery() {
+async fn self_preview_denies_membership_revoked_during_account_lock_wait() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let actor_id = app.fixture.account.person_id;
+    let mut person = people::Entity::find_by_id(actor_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    person.person_type = Set(2);
+    person.has_capacity = Set(false);
+    person.date_of_birth = Set(Some("1990-01-15".parse().unwrap()));
+    person.update(&app.fixture.admin).await.unwrap();
+    let archive = archive_for("dependent_adult");
+    let inspected = inspect(&app, &token, &archive).await;
+    let control = preview(
+        &app,
+        &token,
+        &archive,
+        &inspected,
+        actor_id,
+        json!([{"ActingPerson":{"subject":actor_id,"accepted":true}}]),
+        json!([]),
+    )
+    .await;
+    assert_eq!(control["report"]["state"], "ready", "{control}");
+    assert!(control["confirmation"].is_string());
+    assert_eq!(
+        control["report"]["people"][0]["person"]["source"]["id"],
+        "synthetic-rails-person-prepared-history-v2"
+    );
+    assert_eq!(
+        control["report"]["people"][0]["person"]["expected"],
+        "match"
+    );
+    let before = import_run_count(&app).await;
+    assert!(before > 0, "the ready control must have been persisted");
+
+    let source = inspected["inventory"]["records"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["identity"]["kind"] == "person")
+        .unwrap()["identity"]
+        .clone();
+    let omissions: Vec<Value> = inspected["inventory"]["omissions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| item["acknowledgement_id"].clone())
+        .collect();
+    let request = json!({"inspection_id":inspected["id"], "source":"med_tracker05", "archive_base64":archive,
+        "passphrase":"password", "source_timezone":"Europe/London", "timezone_confirmed":true,
+        "mappings":[{"source":source,"destination":{"Existing":actor_id}}],
+        "declarations":[{"ActingPerson":{"subject":actor_id,"accepted":true}}],
+        "recipient_consents":[], "acknowledged_omissions":omissions});
+
+    let blocker = app.fixture.admin.begin().await.unwrap();
+    let blocker_pid = pid(&blocker).await;
+    accounts::Entity::find_by_id(app.fixture.account.id)
+        .lock_exclusive()
+        .one(&blocker)
+        .await
+        .unwrap()
+        .unwrap();
+    let client = app.client.clone();
+    let url = format!(
+        "{}/api/v1/households/{}/data_imports/previews",
+        app.origin, app.fixture.household.id
+    );
+    let attempt = tokio::spawn(async move {
+        client
+            .post(url)
+            .bearer_auth(token)
+            .json(&request)
+            .send()
+            .await
+    });
+    let waiter = account_lock_waiter(&app, blocker_pid).await;
+    if waiter.is_none() {
+        blocker.rollback().await.unwrap();
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(8), attempt).await;
+        panic!("preview did not wait on the fixture actor account lock");
+    }
+    assert_ne!(waiter.unwrap(), blocker_pid);
+    let revoked = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        household_memberships::Entity::update_many()
+            .col_expr(
+                household_memberships::Column::RevokedAt,
+                Expr::value(Some(chrono::Utc::now().naive_utc())),
+            )
+            .filter(household_memberships::Column::HouseholdId.eq(app.fixture.household.id))
+            .filter(household_memberships::Column::PersonId.eq(actor_id))
+            .exec(&app.fixture.admin),
+    )
+    .await
+    .expect("membership revocation must commit without the account lock")
+    .unwrap();
+    assert_eq!(revoked.rows_affected, 1);
+    blocker.commit().await.unwrap();
+    let response = tokio::time::timeout(std::time::Duration::from_secs(8), attempt)
+        .await
+        .expect("preview did not finish after releasing the account lock")
+        .unwrap()
+        .unwrap();
+    let status = response.status().as_u16();
+    let body: Value = response.json().await.unwrap();
+    assert!(
+        matches!(status, 403 | 404),
+        "revoked membership must refuse preview: {status}: {body}"
+    );
+    assert!(body["data"]["confirmation"].is_null());
+    assert_eq!(
+        import_run_count(&app).await,
+        before,
+        "a denied preview must not create an import run"
+    );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn preview_and_recovery_preserve_declaration_before_person_lock_order() {
     let app = Application::new().await;
     let token = app.token().await;
     let response = app.client.post(format!("{}/api/v1/households/{}/people", app.origin, app.fixture.household.id))
