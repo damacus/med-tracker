@@ -3,6 +3,7 @@ use crate::models::{
     errors::OperationError,
     identity::{
         browser::BrowserPrincipal,
+        credentials::CredentialProvenance,
         resource::{AuthenticationError, ValidatedPrincipal},
     },
     ids::AccountId,
@@ -14,6 +15,13 @@ pub enum ImportPrincipal<'a> {
 }
 
 impl ImportPrincipal<'_> {
+    pub(crate) fn provenance(&self) -> &CredentialProvenance {
+        match self {
+            Self::Api(principal) => principal.provenance(),
+            Self::Browser(principal) => principal.provenance(),
+        }
+    }
+
     pub async fn revalidate(&self, tenant: &TenantTransaction) -> Result<(), OperationError> {
         if !tenant
             .holds_exclusive_account(AccountId::from_database(tenant.scope().actor.account_id))

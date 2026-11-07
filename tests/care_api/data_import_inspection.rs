@@ -353,11 +353,15 @@ fn upload(comment: &str) -> Upload {
 #[tokio::test]
 async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
     use med_tracker::models::_entities::oauth_grants;
+    use med_tracker::models::entities::{adoption_fact, medication, membership, schedule, version};
     use med_tracker::models::{
         data_imports::{confirmation, contracts::PreviewToken, credential::ImportPrincipal},
-        identity::resource,
+        identity::{
+            credentials::{CredentialMethod, CredentialProvenance},
+            resource,
+        },
     };
-    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, sea_query::Expr};
+    use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, sea_query::Expr};
     let app = Application::new().await;
     let scope = app.fixture.scenario.scope();
     let comment = uuid::Uuid::new_v4().to_string();
@@ -410,6 +414,115 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
         .await
         .unwrap();
     let provenance = principal.provenance().clone();
+    let before_memberships = membership::Entity::find()
+        .filter(membership::Column::HouseholdId.eq(scope.household_id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let before_medications = medication::Entity::find()
+        .filter(medication::Column::HouseholdId.eq(scope.household_id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let before_schedules = schedule::Entity::find()
+        .filter(schedule::Column::HouseholdId.eq(scope.household_id))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let before_versions = version::Entity::find()
+        .filter(version::Column::HouseholdId.eq(scope.household_id))
+        .filter(version::Column::RequestId.eq(scope.request_id.clone()))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let before_facts = adoption_fact::Entity::find()
+        .filter(adoption_fact::Column::HouseholdId.eq(scope.household_id))
+        .filter(adoption_fact::Column::RequestId.eq(scope.request_id.clone()))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    let forged = [
+        CredentialProvenance {
+            method: CredentialMethod::BrowserSession,
+            reference: "forged-browser".into(),
+        },
+        CredentialProvenance {
+            method: provenance.method,
+            reference: "different-credential".into(),
+        },
+    ];
+    for attribution in forged {
+        assert!(matches!(
+            confirmation::confirm_checked(
+                &app.context,
+                &scope,
+                &ready.report.id,
+                token.clone(),
+                "password".into(),
+                &attribution,
+                &scope.request_id,
+                ImportPrincipal::Api(&principal)
+            )
+            .await,
+            Err(InspectionError::Operation(OperationError::Forbidden))
+        ));
+    }
+    let check = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        persistence::find(&check, &ready.report.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .snapshot
+            .report
+            .state,
+        ImportState::Ready
+    );
+    check.rollback().await.unwrap();
+    assert_eq!(
+        version::Entity::find()
+            .filter(version::Column::HouseholdId.eq(scope.household_id))
+            .filter(version::Column::RequestId.eq(scope.request_id.clone()))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        before_versions
+    );
+    assert_eq!(
+        adoption_fact::Entity::find()
+            .filter(adoption_fact::Column::HouseholdId.eq(scope.household_id))
+            .filter(adoption_fact::Column::RequestId.eq(scope.request_id.clone()))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        before_facts
+    );
+    assert_eq!(
+        medication::Entity::find()
+            .filter(medication::Column::HouseholdId.eq(scope.household_id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        before_medications
+    );
+    assert_eq!(
+        schedule::Entity::find()
+            .filter(schedule::Column::HouseholdId.eq(scope.household_id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        before_schedules
+    );
+    assert_eq!(
+        membership::Entity::find()
+            .filter(membership::Column::HouseholdId.eq(scope.household_id))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        before_memberships
+    );
     let grants = oauth_grants::Entity::find()
         .filter(oauth_grants::Column::AccountId.eq(scope.actor.account_id))
         .filter(oauth_grants::Column::RevokedAt.is_null())
@@ -505,6 +618,39 @@ async fn confirmation_rejects_wrong_tokens_and_replays_completed_result() {
     .await
     .unwrap();
     assert_eq!(completed.state, ImportState::Completed);
+    let versions = version::Entity::find()
+        .filter(version::Column::HouseholdId.eq(scope.household_id))
+        .filter(version::Column::RequestId.eq(scope.request_id.clone()))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    for item_type in ["GuardianDeclaration", "Schedule"] {
+        let audit = versions
+            .iter()
+            .find(|row| row.item_type == item_type && row.event == "create")
+            .unwrap();
+        assert_eq!(audit.audit_context["authentication_method"], "oauth");
+        assert_eq!(
+            audit.audit_context["session_reference"],
+            format!("oauth_grant:{}", provenance.reference)
+        );
+        assert_eq!(
+            audit.audit_context["actor_account_id"],
+            scope.actor.account_id
+        );
+    }
+    let facts = adoption_fact::Entity::find()
+        .filter(adoption_fact::Column::HouseholdId.eq(scope.household_id))
+        .filter(adoption_fact::Column::RequestId.eq(scope.request_id.clone()))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert!(!facts.is_empty());
+    assert!(facts.iter().all(
+        |fact| fact.authentication_method.as_deref() == Some("oauth")
+            && fact.credential_reference.as_deref() == Some(provenance.reference.as_str())
+            && fact.captured_by_account_id == scope.actor.account_id
+    ));
     assert_eq!(
         completed.totals.created,
         ready.report.totals.expected_create

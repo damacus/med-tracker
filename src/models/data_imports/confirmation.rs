@@ -179,13 +179,19 @@ pub async fn confirm_checked(
     request_id: &str,
     principal: ImportPrincipal<'_>,
 ) -> Result<ImportReport, InspectionError> {
+    let actual = principal.provenance().clone();
+    if std::mem::discriminant(&actual.method) != std::mem::discriminant(&provenance.method)
+        || actual.reference != provenance.reference
+    {
+        return Err(OperationError::Forbidden.into());
+    }
     confirm_inner(
         ctx,
         scope,
         id,
         token,
         passphrase,
-        provenance,
+        &actual,
         request_id,
         Some(principal),
     )
