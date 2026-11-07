@@ -2,9 +2,12 @@ use super::Application;
 use futures_util::FutureExt;
 use med_tracker::models::{
     _entities::{
-        accounts, dosages, health_event_medications, health_events, household_memberships,
-        locations, medication_dose_occurrences, medication_pause_periods, medication_takes,
-        medications, notification_preferences, people, person_medications, schedules,
+        accounts, carer_relationships, dosages, health_event_medications, health_events,
+        household_memberships, locations, medication_dose_occurrences, medication_pause_periods,
+        medication_takes, medications, notification_preferences, people, person_medications,
+        person_schedules, schedules, shared_schedule_administrations,
+        shared_schedule_adoption_facts, shared_schedule_executions, shared_schedule_states,
+        versions,
     },
     data_imports::{
         confirmation,
@@ -20,6 +23,7 @@ use med_tracker::models::{
 };
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, TransactionTrait,
     sea_query::{Alias, ColumnDef, Expr, ExprTrait, Func, Query, Table},
 };
 use std::{
@@ -97,6 +101,75 @@ async fn ready(app: &Application) -> PreviewResult {
     preview
 }
 
+fn unique_upload(tag: &str) -> Upload {
+    let payload = include_str!("../fixtures/portable_rails/prepared-history-v2.json")
+        .replace("prepared-history-v2", tag)
+        .replace("550e8400-e29b-41d4-a716-000000000006", tag);
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    for (name, data) in [
+        ("portable.json", payload.as_bytes()),
+        (
+            "manifest.json",
+            include_bytes!("../fixtures/portable_rails/prepared-history-v2.manifest.json")
+                .as_slice(),
+        ),
+    ] {
+        zip.start_file(name, SimpleFileOptions::default()).unwrap();
+        zip.write_all(data).unwrap();
+    }
+    Upload {
+        source: SourceSystem::MedTracker05,
+        archive: zip.finish().unwrap().into_inner(),
+        passphrase: "password".into(),
+    }
+}
+
+async fn ready_unique(app: &Application) -> (PreviewResult, String) {
+    let tag = uuid::Uuid::new_v4().to_string();
+    let source_email = format!("portable-fixture-{tag}@example.test");
+    let scope = app.fixture.scenario.scope();
+    let timezone = inspection::confirmed_timezone("Europe/London", true).unwrap();
+    let inspected = inspection::inspect(&app.context, &scope, unique_upload(&tag), timezone)
+        .await
+        .unwrap();
+    let person = inspected
+        .inventory
+        .records
+        .iter()
+        .find(|row| row.identity.kind == RecordKind::Person)
+        .unwrap()
+        .identity
+        .clone();
+    let result = preview::create(
+        &app.context,
+        &scope,
+        preview::PreviewInput {
+            inspection_id: inspected.id,
+            upload: unique_upload(&tag),
+            timezone,
+            mappings: vec![PersonMapping {
+                source: person.clone(),
+                destination: PersonDestination::NewDependent,
+            }],
+            declarations: vec![ConsentInput::InitialGuardianDeclaration {
+                source_person: person,
+                accepted: true,
+            }],
+            recipient_consents: vec![],
+            acknowledged_omissions: inspected
+                .inventory
+                .omissions
+                .iter()
+                .map(|row| row.acknowledgement_id.clone())
+                .collect(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(result.report.state, ImportState::Ready);
+    (result, source_email)
+}
+
 fn destination(report: &ImportReport, kind: RecordKind) -> DestinationId {
     report
         .people
@@ -114,7 +187,18 @@ fn destination(report: &ImportReport, kind: RecordKind) -> DestinationId {
 async fn restored_history_preserves_native_values_and_relationships() {
     let app = Application::new().await;
     let scope = app.fixture.scenario.scope();
-    let ready = ready(&app).await;
+    let (ready, source_email) = ready_unique(&app).await;
+    let live_before = live_effects(&app, &source_email).await;
+    let stock_before = medications::Entity::find()
+        .filter(medications::Column::HouseholdId.eq(scope.household_id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let dosage_before = dosages::Entity::find()
+        .filter(dosages::Column::HouseholdId.eq(scope.household_id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
     let provenance = CredentialProvenance {
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
@@ -211,6 +295,16 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap();
     assert_eq!(subject.name, "Synthetic Dependent");
     assert!(!subject.has_capacity);
+    assert_eq!(subject.date_of_birth.unwrap().to_string(), "1990-01-15");
+    assert_eq!(subject.email.as_deref(), Some(source_email.as_str()));
+    let participation = household_memberships::Entity::find()
+        .filter(household_memberships::Column::HouseholdId.eq(scope.household_id))
+        .filter(household_memberships::Column::PersonId.eq(person.0))
+        .all(db)
+        .await
+        .unwrap();
+    assert_eq!(participation.len(), 1);
+    assert_eq!(participation[0].status, "active");
     let med = medications::Entity::find_by_id(medication.0)
         .one(db)
         .await
@@ -223,6 +317,8 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap();
     assert_eq!(location.name, "Synthetic current cupboard");
     assert_eq!(med.current_supply.unwrap().to_string(), "37.50");
+    assert_eq!(med.reorder_threshold.to_string(), "5.50");
+    assert_eq!(med.name.as_deref(), Some("Synthetic medicine"));
     let dose = dosages::Entity::find_by_id(dosage.0)
         .one(db)
         .await
@@ -230,6 +326,9 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap();
     assert_eq!(dose.medication_id, med.id);
     assert_eq!(dose.current_supply.unwrap().to_string(), "8.50");
+    assert_eq!(dose.amount.to_string(), "0.50");
+    assert_eq!(dose.reorder_threshold.unwrap().to_string(), "2.50");
+    assert_eq!(dose.unit, "tablet");
     let schedule = schedules::Entity::find_by_id(schedule.0)
         .one(db)
         .await
@@ -243,6 +342,9 @@ async fn restored_history_preserves_native_values_and_relationships() {
         ),
         (person.0, med.id, Some(dose.id))
     );
+    assert_eq!(schedule.dose_amount.unwrap().to_string(), "0.50");
+    assert_eq!(schedule.dose_unit.as_deref(), Some("tablet"));
+    assert_eq!(schedule.start_date.unwrap().to_string(), "2026-10-01");
     let assignment = person_medications::Entity::find_by_id(assignment.0)
         .one(db)
         .await
@@ -256,6 +358,8 @@ async fn restored_history_preserves_native_values_and_relationships() {
         ),
         (person.0, med.id, Some(dose.id))
     );
+    assert_eq!(assignment.dose_amount.unwrap().to_string(), "0.50");
+    assert_eq!(assignment.dose_unit.as_deref(), Some("tablet"));
     let take = medication_takes::Entity::find_by_id(take.0)
         .one(db)
         .await
@@ -266,6 +370,14 @@ async fn restored_history_preserves_native_values_and_relationships() {
         (Some(schedule.id), Some(med.id))
     );
     assert_eq!(take.dose_amount.unwrap().to_string(), "0.50");
+    assert_eq!(take.dose_unit.as_deref(), Some("tablet"));
+    assert_eq!(take.person_medication_id, None);
+    assert_eq!(
+        take.client_uuid.as_deref(),
+        source_email
+            .strip_prefix("portable-fixture-")
+            .and_then(|value| value.strip_suffix("@example.test"))
+    );
     assert_eq!(
         take.taken_at.unwrap().to_string(),
         "2026-10-10 08:15:00.123456"
@@ -282,15 +394,36 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap()
         .unwrap();
     assert_eq!(pause.schedule_id, Some(schedule.id));
+    assert_eq!(pause.person_medication_id, None);
+    assert_eq!(pause.recorded_by_membership_id, None);
+    assert_eq!(pause.resumed_by_membership_id, None);
     assert_eq!(pause.reason, "out_of_supply");
+    assert_eq!(
+        pause.started_at.unwrap().to_string(),
+        "2026-10-05 10:00:00.123456"
+    );
+    assert_eq!(
+        pause.ended_at.unwrap().to_string(),
+        "2026-10-06 11:00:00.234567"
+    );
     let occurrence = medication_dose_occurrences::Entity::find_by_id(occurrence.0)
         .one(db)
         .await
         .unwrap()
         .unwrap();
     assert_eq!(occurrence.schedule_id, Some(schedule.id));
+    assert_eq!(occurrence.person_medication_id, None);
+    assert_eq!(occurrence.medication_take_id, None);
     assert_eq!(occurrence.outcome, "not_taken");
     assert_eq!(occurrence.reason.as_deref(), Some("refused"));
+    assert_eq!(
+        occurrence.scheduled_at.unwrap().to_string(),
+        "2026-10-11 08:15:00"
+    );
+    assert_eq!(
+        occurrence.resolved_at.unwrap().to_string(),
+        "2026-10-11 08:20:00.345678"
+    );
     let preference = notification_preferences::Entity::find_by_id(preference.0)
         .one(db)
         .await
@@ -298,6 +431,8 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap();
     assert_eq!(preference.person_id, person.0);
     assert!(preference.enabled && preference.missed_dose_enabled && !preference.dose_due_enabled);
+    assert_eq!(preference.morning_time.unwrap().to_string(), "08:15:00");
+    assert_eq!(preference.evening_time.unwrap().to_string(), "19:30:00");
     let event = health_events::Entity::find_by_id(event.0)
         .one(db)
         .await
@@ -315,7 +450,251 @@ async fn restored_history_preserves_native_values_and_relationships() {
         .unwrap();
     assert_eq!(links.len(), 1);
     assert_eq!(links[0].medication_id, Some(med.id));
+    assert_eq!(event.started_on.to_string(), "2026-10-09");
+    assert_eq!(event.ended_on.unwrap().to_string(), "2026-10-10");
+    assert_guardian_and_canonical(
+        &app,
+        person.0,
+        &schedule,
+        &med,
+        &take,
+        former.id,
+        &scope.request_id,
+    )
+    .await;
+    for previous in stock_before {
+        assert_eq!(
+            medications::Entity::find_by_id(previous.id)
+                .one(db)
+                .await
+                .unwrap()
+                .unwrap()
+                .current_supply,
+            previous.current_supply
+        );
+    }
+    for previous in dosage_before {
+        assert_eq!(
+            dosages::Entity::find_by_id(previous.id)
+                .one(db)
+                .await
+                .unwrap()
+                .unwrap()
+                .current_supply,
+            previous.current_supply
+        );
+    }
+    assert_eq!(live_effects(&app, &source_email).await, live_before);
     app.close().await;
+}
+
+async fn assert_guardian_and_canonical(
+    app: &Application,
+    person: i64,
+    schedule: &schedules::Model,
+    medication: &medications::Model,
+    take: &medication_takes::Model,
+    former_location: i64,
+    request_id: &str,
+) {
+    let db = &app.fixture.admin;
+    let household = app.fixture.household.id;
+    let query = Query::select()
+        .columns(["id", "guardian_person_id", "declared_by_account_id"])
+        .from("guardian_declarations")
+        .and_where(Expr::col("subject_person_id").eq(person))
+        .and_where(Expr::col("origin_household_id").eq(household))
+        .to_owned();
+    let declarations = db
+        .query_all_raw(db.get_database_backend().build(&query))
+        .await
+        .unwrap();
+    assert_eq!(declarations.len(), 1);
+    let declaration_id: i64 = declarations[0].try_get("", "id").unwrap();
+    assert_eq!(
+        declarations[0]
+            .try_get::<i64>("", "guardian_person_id")
+            .unwrap(),
+        app.fixture.adult.id
+    );
+    assert_eq!(
+        declarations[0]
+            .try_get::<i64>("", "declared_by_account_id")
+            .unwrap(),
+        app.fixture.account.id
+    );
+    let carers = carer_relationships::Entity::find()
+        .filter(carer_relationships::Column::HouseholdId.eq(household))
+        .filter(carer_relationships::Column::PatientId.eq(person))
+        .all(db)
+        .await
+        .unwrap();
+    assert_eq!(carers.len(), 1);
+    assert_eq!(carers[0].carer_id, app.fixture.adult.id);
+    assert_eq!(carers[0].guardian_declaration_id, Some(declaration_id));
+    let plan_id = schedule.person_schedule_id.as_ref().unwrap();
+    let plan = person_schedules::Entity::find_by_id(plan_id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (
+            plan.person_id,
+            plan.origin_household_id,
+            plan.origin_schedule_id,
+            plan.origin_stock_id
+        ),
+        (person, household, schedule.id, medication.id)
+    );
+    let execution = shared_schedule_executions::Entity::find_by_id(schedule.id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (
+            execution.person_schedule_id.as_str(),
+            execution.person_id,
+            execution.household_id
+        ),
+        (plan_id.as_str(), person, household)
+    );
+    let fact = shared_schedule_adoption_facts::Entity::find_by_id(take.id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (
+            fact.person_schedule_id.as_deref(),
+            fact.source_schedule_id,
+            fact.person_id,
+            fact.household_id
+        ),
+        (Some(plan_id.as_str()), schedule.id, person, household)
+    );
+    assert_eq!(
+        (
+            fact.captured_by_account_id,
+            fact.captured_by_person_id,
+            fact.captured_by_membership_id,
+            fact.guardian_declaration_id
+        ),
+        (
+            app.fixture.account.id,
+            app.fixture.adult.id,
+            app.fixture.membership.id,
+            Some(declaration_id)
+        )
+    );
+    assert_eq!(fact.request_id, request_id);
+    assert_eq!(fact.source_portable_id, schedule.portable_id);
+    assert_eq!(fact.take_portable_id, take.portable_id);
+    assert_eq!(
+        fact.authentication_method.as_deref(),
+        Some("browser_session")
+    );
+    assert_eq!(
+        fact.credential_reference.as_deref(),
+        Some("synthetic-session")
+    );
+    let version = versions::Entity::find_by_id(fact.original_version_id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (
+            version.item_type.as_str(),
+            version.item_id,
+            version.household_id,
+            version.actor_membership_id
+        ),
+        (
+            "MedicationTake",
+            take.id,
+            Some(household),
+            Some(app.fixture.membership.id)
+        )
+    );
+    assert_eq!(fact.taken_at, take.taken_at.unwrap());
+    assert_eq!(fact.taken_from_medication_id, Some(medication.id));
+    assert_eq!(fact.taken_from_location_id, Some(former_location));
+    let safety = shared_schedule_administrations::Entity::find()
+        .filter(shared_schedule_administrations::Column::PersonScheduleId.eq(plan_id))
+        .filter(shared_schedule_administrations::Column::MedicationTakeId.eq(take.id))
+        .all(db)
+        .await
+        .unwrap();
+    assert_eq!(safety.len(), 1);
+    assert_eq!(safety[0].household_id, household);
+    let state = shared_schedule_states::Entity::find_by_id(plan_id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(state.latest_taken_at, take.taken_at);
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct LiveEffects {
+    notifications: i64,
+    deliveries: i64,
+    household_jobs: i64,
+    mail: Vec<(String, i64)>,
+}
+
+async fn live_effects(app: &Application, source_email: &str) -> LiveEffects {
+    let household = app.fixture.household.id;
+    let people = household_memberships::Entity::find()
+        .filter(household_memberships::Column::HouseholdId.eq(household))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| row.person_id)
+        .collect::<Vec<_>>();
+    let mut addresses = accounts::Entity::find()
+        .filter(accounts::Column::PersonId.is_in(people))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| row.email)
+        .collect::<Vec<_>>();
+    addresses.push(source_email.into());
+    addresses.sort();
+    addresses.dedup();
+    let mut mail = Vec::new();
+    for address in addresses {
+        let count = queued_mail_count(app, &address).await;
+        mail.push((address, count));
+    }
+    let jobs = Query::select()
+        .expr_as(Expr::col("id").count(), "count")
+        .from("pg_loco_queue")
+        .and_where(
+            Func::cust("jsonb_extract_path_text")
+                .args([Expr::col("task_data"), Expr::val("household_id")])
+                .eq(household.to_string()),
+        )
+        .to_owned();
+    let household_jobs = app
+        .fixture
+        .admin
+        .query_one_raw(app.fixture.admin.get_database_backend().build(&jobs))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "count")
+        .unwrap();
+    LiveEffects {
+        notifications: scoped_count(app, "notification_events", "household_id").await,
+        deliveries: scoped_count(app, "notification_deliveries", "household_id").await,
+        household_jobs,
+        mail,
+    }
 }
 
 async fn scoped_count(app: &Application, table: &str, column: &str) -> i64 {
@@ -370,6 +749,285 @@ async fn health_sequence(app: &Application) -> (i64, bool) {
         row.try_get("", "last_value").unwrap(),
         row.try_get("", "is_called").unwrap(),
     )
+}
+
+async fn wait_for_account_waiters(
+    app: &Application,
+    blocker: i32,
+    predecessor: i32,
+    minimum: usize,
+) -> Vec<i32> {
+    let blocked_by = |pid| {
+        Expr::expr(Func::cust("array_position").args([
+            Expr::expr(Func::cust("pg_blocking_pids").arg(Expr::col("pid"))),
+            Expr::val(pid),
+        ]))
+        .is_not_null()
+    };
+    let query = Query::select()
+        .column("pid")
+        .from("pg_stat_activity")
+        .and_where(Expr::col("wait_event_type").eq("Lock"))
+        .and_where(blocked_by(blocker).or(blocked_by(predecessor)))
+        .to_owned();
+    for _ in 0..300 {
+        let waiters = app
+            .fixture
+            .admin
+            .query_all_raw(app.fixture.admin.get_database_backend().build(&query))
+            .await
+            .unwrap();
+        if waiters.len() >= minimum {
+            return waiters
+                .into_iter()
+                .map(|row| row.try_get("", "pid").unwrap())
+                .collect();
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    Vec::new()
+}
+
+#[tokio::test]
+async fn concurrent_confirmations_serialize_and_replay_one_restore() {
+    let app = Application::new().await;
+    let scope = app.fixture.scenario.scope();
+    let (ready, source_email) = ready_unique(&app).await;
+    let token = ready.confirmation.clone().unwrap();
+    let run_id = ready.report.id.clone();
+    let live_before = live_effects(&app, &source_email).await;
+    let stock_before = medications::Entity::find()
+        .filter(medications::Column::HouseholdId.eq(scope.household_id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let dosage_before = dosages::Entity::find()
+        .filter(dosages::Column::HouseholdId.eq(scope.household_id))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let tables = [
+        ("locations", 2),
+        ("medications", 1),
+        ("dosages", 1),
+        ("schedules", 1),
+        ("person_medications", 1),
+        ("medication_pause_periods", 1),
+        ("medication_takes", 1),
+        ("medication_dose_occurrences", 1),
+        ("notification_preferences", 1),
+        ("health_events", 1),
+        ("health_event_medications", 1),
+        ("guardian_declarations", 1),
+        ("household_memberships", 1),
+        ("carer_relationships", 1),
+        ("person_schedules", 1),
+        ("shared_schedule_executions", 1),
+        ("shared_schedule_adoption_facts", 1),
+        ("shared_schedule_administrations", 1),
+    ];
+    let mut before = Vec::new();
+    for (table, _) in tables {
+        before.push(
+            scoped_count(
+                &app,
+                table,
+                if table == "guardian_declarations" || table == "person_schedules" {
+                    "origin_household_id"
+                } else {
+                    "household_id"
+                },
+            )
+            .await,
+        );
+    }
+    let holder = app.fixture.admin.begin().await.unwrap();
+    accounts::Entity::find_by_id(app.fixture.account.id)
+        .lock_exclusive()
+        .one(&holder)
+        .await
+        .unwrap()
+        .unwrap();
+    let blocker = super::data_import_consents::backend_pid(&holder).await;
+    let spawn_confirm = || {
+        let ctx = app.context.clone();
+        let scope = scope.clone();
+        let token = token.clone();
+        let run_id = run_id.clone();
+        tokio::spawn(async move {
+            let provenance = CredentialProvenance {
+                method: CredentialMethod::BrowserSession,
+                reference: "synthetic-session".into(),
+            };
+            confirmation::confirm(
+                &ctx,
+                &scope,
+                &run_id,
+                token,
+                "password".into(),
+                &provenance,
+                &scope.request_id,
+            )
+            .await
+        })
+    };
+    let first = spawn_confirm();
+    let first_waiting = wait_for_account_waiters(&app, blocker, blocker, 1).await;
+    let second = spawn_confirm();
+    let both_waiting = if let Some(first_pid) = first_waiting.first() {
+        wait_for_account_waiters(&app, blocker, *first_pid, 2).await
+    } else {
+        Vec::new()
+    };
+    holder.rollback().await.unwrap();
+    let first_result = tokio::time::timeout(std::time::Duration::from_secs(30), first)
+        .await
+        .unwrap()
+        .unwrap();
+    let second_result = tokio::time::timeout(std::time::Duration::from_secs(30), second)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        first_waiting.len() == 1
+            && both_waiting.len() >= 2
+            && both_waiting.contains(&first_waiting[0]),
+        "both confirmations must pass crypto and wait on the actor account lock"
+    );
+    let first_report = first_result.unwrap();
+    let second_report = second_result.unwrap();
+    assert_eq!(first_report.state, ImportState::Completed);
+    assert_eq!(first_report, second_report);
+    assert_eq!(
+        first_report.totals.created,
+        ready.report.totals.expected_create
+    );
+    assert_eq!(
+        first_report.totals.verified_links,
+        ready.report.totals.expected_link
+    );
+    assert!(first_report.totals.created > 0 && first_report.totals.verified_links > 0);
+    let records = first_report
+        .people
+        .iter()
+        .flat_map(|p| std::iter::once(&p.person).chain(p.records.iter()))
+        .chain(first_report.records.iter());
+    assert!(
+        records
+            .filter(|row| row.expected == ExpectedRecord::Create)
+            .all(|row| row.actual == Some(ActualRecord::Created) && row.destination.is_some())
+    );
+    let edges = first_report
+        .people
+        .iter()
+        .flat_map(|p| p.relationships.iter())
+        .chain(first_report.relationships.iter());
+    assert!(
+        edges
+            .filter(|row| row.expected == ExpectedRelationship::Link)
+            .all(|row| row.actual == Some(ActualRelationship::Verified))
+    );
+    let mut after = Vec::new();
+    for ((table, expected), original) in tables.into_iter().zip(before) {
+        let column = if table == "guardian_declarations" || table == "person_schedules" {
+            "origin_household_id"
+        } else {
+            "household_id"
+        };
+        let actual = scoped_count(&app, table, column).await;
+        assert_eq!(actual, original + expected, "one created set in {table}");
+        after.push(actual);
+    }
+    let DestinationId::Medication(id) = destination(&first_report, RecordKind::Medication) else {
+        panic!("medication destination")
+    };
+    let medication = medications::Entity::find_by_id(id.0)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(medication.current_supply.unwrap().to_string(), "37.50");
+    let DestinationId::DosageOption(id) = destination(&first_report, RecordKind::DosageOption)
+    else {
+        panic!("dosage destination")
+    };
+    let dosage = dosages::Entity::find_by_id(id.0)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(dosage.current_supply.unwrap().to_string(), "8.50");
+    for previous in stock_before {
+        assert_eq!(
+            medications::Entity::find_by_id(previous.id)
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .unwrap()
+                .current_supply,
+            previous.current_supply
+        );
+    }
+    for previous in dosage_before {
+        assert_eq!(
+            dosages::Entity::find_by_id(previous.id)
+                .one(&app.fixture.admin)
+                .await
+                .unwrap()
+                .unwrap()
+                .current_supply,
+            previous.current_supply
+        );
+    }
+    assert_eq!(live_effects(&app, &source_email).await, live_before);
+    let provenance = CredentialProvenance {
+        method: CredentialMethod::BrowserSession,
+        reference: "synthetic-session".into(),
+    };
+    let replay = confirmation::confirm(
+        &app.context,
+        &scope,
+        &run_id,
+        token,
+        "password".into(),
+        &provenance,
+        &scope.request_id,
+    )
+    .await
+    .unwrap();
+    assert_eq!(replay, first_report);
+    assert_eq!(
+        medications::Entity::find_by_id(medication.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .current_supply,
+        medication.current_supply
+    );
+    assert_eq!(
+        dosages::Entity::find_by_id(dosage.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .current_supply,
+        dosage.current_supply
+    );
+    for ((table, _), expected) in tables.into_iter().zip(after) {
+        let column = if table == "guardian_declarations" || table == "person_schedules" {
+            "origin_household_id"
+        } else {
+            "household_id"
+        };
+        assert_eq!(
+            scoped_count(&app, table, column).await,
+            expected,
+            "replay must not create another {table} row"
+        );
+    }
+    assert_eq!(live_effects(&app, &source_email).await, live_before);
+    app.close().await;
 }
 
 #[tokio::test]
