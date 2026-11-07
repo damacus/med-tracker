@@ -4,6 +4,8 @@ mod account_closure_mail;
 mod account_sessions;
 #[path = "care_api/data_import_authority.rs"]
 mod data_import_authority;
+#[path = "care_api/data_import_consent_transport.rs"]
+mod data_import_consent_transport;
 #[path = "care_api/data_import_consents.rs"]
 mod data_import_consents;
 #[path = "care_api/data_import_atomicity.rs"]

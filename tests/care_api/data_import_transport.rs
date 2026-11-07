@@ -4,6 +4,23 @@ use serde_json::json;
 use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
+async fn read_status_line(socket: &mut tokio::net::TcpStream) -> String {
+    use tokio::io::AsyncReadExt;
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        let mut line = Vec::new();
+        while line.len() < 1024 {
+            let byte = socket.read_u8().await.unwrap();
+            line.push(byte);
+            if line.ends_with(b"\r\n") {
+                return String::from_utf8(line).unwrap();
+            }
+        }
+        panic!("HTTP status line exceeded limit");
+    })
+    .await
+    .unwrap()
+}
+
 #[tokio::test]
 async fn revoked_key_during_upload_cannot_persist_inspection_or_preview() {
     use med_tracker::models::{
@@ -11,9 +28,9 @@ async fn revoked_key_during_upload_cannot_persist_inspection_or_preview() {
         entities::identity_api_key,
     };
     use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, sea_query::Expr};
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     use tokio::net::TcpStream;
-    use tokio::time::{Duration, timeout};
+    use tokio::time::Duration;
 
     let app = Application::new().await;
     let household = app.fixture.household.id;
@@ -124,12 +141,7 @@ async fn revoked_key_during_upload_cannot_persist_inspection_or_preview() {
             .await
             .unwrap();
         socket.write_all(&bytes[1..]).await.unwrap();
-        let mut response = [0_u8; 512];
-        let size = timeout(Duration::from_secs(10), socket.read(&mut response))
-            .await
-            .unwrap()
-            .unwrap();
-        let status = std::str::from_utf8(&response[..size]).unwrap();
+        let status = read_status_line(&mut socket).await;
         assert!(status.starts_with("HTTP/1.1 401") || status.starts_with("HTTP/1.1 403"));
         assert_eq!(
             data_import_inspections::Entity::find()
@@ -483,10 +495,33 @@ async fn authorised_inspection_rejects_invalid_base64_and_body_over_limit() {
 }
 
 #[tokio::test]
+async fn inspection_enforces_decoded_archive_boundary() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/{}/data_imports/inspections",
+        app.origin, app.fixture.household.id
+    );
+    for (size, message) in [
+        (64 * 1024 * 1024, "Import archive could not be prepared"),
+        (64 * 1024 * 1024 + 1, "Import archive is too large"),
+    ] {
+        let response = app.client.post(&endpoint).bearer_auth(&token).json(&json!({
+            "source":"med_tracker05", "archive_base64":STANDARD.encode(vec![0_u8; size]),
+            "passphrase":"password", "source_timezone":"Europe/London", "timezone_confirmed":true
+        })).send().await.unwrap();
+        assert_eq!(response.status().as_u16(), 422);
+        let body: serde_json::Value = response.json().await.unwrap();
+        assert_eq!(body["error"]["message"], message);
+    }
+    app.close().await;
+}
+
+#[tokio::test]
 async fn inspection_rejects_before_body_and_limits_concurrent_uploads() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     use tokio::net::TcpStream;
-    use tokio::time::{Duration, timeout};
+    use tokio::time::Duration;
 
     let app = Application::new().await;
     let address = app.origin.strip_prefix("http://").unwrap();
@@ -496,17 +531,46 @@ async fn inspection_rejects_before_body_and_limits_concurrent_uploads() {
     );
     let mut anonymous = TcpStream::connect(address).await.unwrap();
     anonymous.write_all(format!("POST {path} HTTP/1.1\r\nHost: {address}\r\nContent-Length: 1024\r\nContent-Type: application/json\r\n\r\n").as_bytes()).await.unwrap();
-    let mut reply = [0_u8; 512];
-    let read = timeout(Duration::from_secs(5), anonymous.read(&mut reply))
-        .await
-        .unwrap()
-        .unwrap();
     assert!(
-        std::str::from_utf8(&reply[..read])
-            .unwrap()
+        read_status_line(&mut anonymous)
+            .await
             .starts_with("HTTP/1.1 401")
     );
     drop(anonymous);
+
+    let service = app
+        .context
+        .shared_store
+        .get::<med_tracker::models::identity::better_auth::IdentityService>()
+        .unwrap();
+    let read_only = service
+        .api_keys()
+        .unwrap()
+        .create(
+            &app.fixture.account.id.to_string(),
+            better_auth::server_api::CreateKeyOptions {
+                config_id: Some("medtracker-personal".into()),
+                name: Some("Stalled read-only key".into()),
+                expires_in: Some(chrono::Duration::days(1).num_seconds() as f64),
+                metadata: Some(json!({"households":[app.fixture.household.id]})),
+                permissions: Some(std::collections::HashMap::from([(
+                    "medtracker".into(),
+                    vec!["care:read".into()],
+                )])),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .key;
+    let mut rejected = TcpStream::connect(address).await.unwrap();
+    rejected.write_all(format!("POST {path} HTTP/1.1\r\nHost: {address}\r\nAuthorization: Bearer {read_only}\r\nContent-Length: 1024\r\nContent-Type: application/json\r\n\r\n").as_bytes()).await.unwrap();
+    assert!(
+        read_status_line(&mut rejected)
+            .await
+            .starts_with("HTTP/1.1 403")
+    );
+    drop(rejected);
 
     let token = app.token().await;
     let mut stalled = TcpStream::connect(address).await.unwrap();

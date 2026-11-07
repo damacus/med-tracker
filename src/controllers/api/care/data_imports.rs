@@ -9,9 +9,10 @@ use serde::{Deserialize, Serialize};
 use crate::models::{
     access,
     data_imports::{
+        consents::{self, ConsentBinding, Decision},
         contracts::{
-            ArchivePreparationError, ConsentInput, PersonMapping, SourceInventory,
-            SourcePreparationDiagnostic, SourceSystem, SourceTimeZone,
+            ArchivePreparationError, ConsentInput, PersonId, PersonMapping, SourceIdentity,
+            SourceInventory, SourcePreparationDiagnostic, SourceSystem, SourceTimeZone,
         },
         credential::ImportPrincipal,
         identity::RecipientConsent,
@@ -23,6 +24,7 @@ use crate::models::{
 };
 
 const MAX_BODY_BYTES: usize = 90 * 1024 * 1024;
+const MAX_CONSENT_BODY_BYTES: usize = 64 * 1024;
 const MAX_ARCHIVE_BYTES: usize = 64 * 1024 * 1024;
 const MAX_ENCODED_BYTES: usize = MAX_ARCHIVE_BYTES.div_ceil(3) * 4;
 const MAX_DIAGNOSTICS: usize = 100;
@@ -106,6 +108,38 @@ struct PreviewRequest {
     declarations: Vec<ConsentInput>,
     recipient_consents: Vec<RecipientConsent>,
     acknowledged_omissions: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ConsentDecision {
+    Approved,
+    Rejected,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ConsentRequest {
+    source_sha256: String,
+    source_person: SourceIdentity,
+    target_person: PersonId,
+}
+
+impl From<ConsentRequest> for ConsentBinding {
+    fn from(input: ConsentRequest) -> Self {
+        Self {
+            source_sha256: input.source_sha256,
+            source_person: input.source_person,
+            target_person: input.target_person,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ConsentDecisionRequest {
+    binding: ConsentBinding,
+    decision: ConsentDecision,
 }
 
 #[derive(Deserialize)]
@@ -405,6 +439,220 @@ pub(super) async fn detail(
             tenant,
             principal.provenance(),
             audit::RequestAudit::data_import("GET", "show"),
+            result,
+            &request_id,
+        )
+        .await,
+    )
+}
+
+pub(super) async fn request_consent(
+    State(ctx): State<AppContext>,
+    ApiPath(household_id): ApiPath<i64>,
+    request_id: Option<Extension<LocoRequestId>>,
+    request: Request,
+) -> Response {
+    let request_id = request_id.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let (principal, tenant) = match begin(&ctx, request.headers(), household_id, &request_id).await
+    {
+        Ok(value) => value,
+        Err(error) => return response::error(error, &request_id),
+    };
+    if !access::can_manage_household(&tenant) {
+        return no_store(
+            finish(
+                tenant,
+                principal.provenance(),
+                audit::RequestAudit::data_import("POST", "consent_request"),
+                Err(response::operation(OperationError::Forbidden)),
+                &request_id,
+            )
+            .await,
+        );
+    }
+    let input: ConsentRequest = match to_bytes(request.into_body(), MAX_CONSENT_BODY_BYTES).await {
+        Ok(bytes) => match serde_json::from_slice(&bytes) {
+            Ok(value) => value,
+            Err(_) => {
+                return no_store(
+                    finish(
+                        tenant,
+                        principal.provenance(),
+                        audit::RequestAudit::data_import("POST", "consent_request"),
+                        Err(response::Failure::bad_request("Invalid JSON request body")),
+                        &request_id,
+                    )
+                    .await,
+                );
+            }
+        },
+        Err(_) => {
+            return no_store(
+                finish(
+                    tenant,
+                    principal.provenance(),
+                    audit::RequestAudit::data_import("POST", "consent_request"),
+                    Err(response::Failure::validation(
+                        "Consent request is too large or could not be read",
+                    )),
+                    &request_id,
+                )
+                .await,
+            );
+        }
+    };
+    let binding = ConsentBinding::from(input);
+    let scope = tenant.scope().clone();
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    let tenant = match consents::begin_for_target(
+        &ctx.db,
+        &scope,
+        ctx.config.settings.as_ref(),
+        binding.target_person,
+    )
+    .await
+    {
+        Ok(tenant) => tenant,
+        Err(error) => return response::error(response::operation(error), &request_id),
+    };
+    let result = match ImportPrincipal::Api(&principal).revalidate(&tenant).await {
+        Ok(()) => consents::request(&tenant, binding)
+            .await
+            .map(|id| (StatusCode::CREATED, json!({"data":{"id":id}}), None))
+            .map_err(response::operation),
+        Err(error) => Err(response::operation(error)),
+    };
+    no_store(
+        finish(
+            tenant,
+            principal.provenance(),
+            audit::RequestAudit::data_import("POST", "consent_request"),
+            result,
+            &request_id,
+        )
+        .await,
+    )
+}
+
+pub(super) async fn read_consent(
+    State(ctx): State<AppContext>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
+    headers: HeaderMap,
+    request_id: Option<Extension<LocoRequestId>>,
+) -> Response {
+    let request_id = request_id.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
+        Ok(value) => value,
+        Err(error) => return response::error(error, &request_id),
+    };
+    let scope = tenant.scope().clone();
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    let tenant =
+        match consents::begin_for_actor(&ctx.db, &scope, ctx.config.settings.as_ref()).await {
+            Ok(tenant) => tenant,
+            Err(error) => return response::error(response::operation(error), &request_id),
+        };
+    let result = match ImportPrincipal::Api(&principal).revalidate(&tenant).await {
+        Ok(()) => consents::read(&tenant, &id)
+            .await
+            .map(|data| (StatusCode::OK, json!({"data":data}), None))
+            .map_err(response::operation),
+        Err(error) => Err(response::operation(error)),
+    };
+    no_store(
+        finish(
+            tenant,
+            principal.provenance(),
+            audit::RequestAudit::data_import("GET", "consent_read"),
+            result,
+            &request_id,
+        )
+        .await,
+    )
+}
+
+pub(super) async fn decide_consent(
+    State(ctx): State<AppContext>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
+    request_id: Option<Extension<LocoRequestId>>,
+    request: Request,
+) -> Response {
+    let request_id = request_id.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let (principal, tenant) = match begin(&ctx, request.headers(), household_id, &request_id).await
+    {
+        Ok(value) => value,
+        Err(error) => return response::error(error, &request_id),
+    };
+    let input: ConsentDecisionRequest =
+        match to_bytes(request.into_body(), MAX_CONSENT_BODY_BYTES).await {
+            Ok(bytes) => match serde_json::from_slice(&bytes) {
+                Ok(value) => value,
+                Err(_) => {
+                    return no_store(
+                        finish(
+                            tenant,
+                            principal.provenance(),
+                            audit::RequestAudit::data_import("POST", "consent_decision"),
+                            Err(response::Failure::bad_request("Invalid JSON request body")),
+                            &request_id,
+                        )
+                        .await,
+                    );
+                }
+            },
+            Err(_) => {
+                return no_store(
+                    finish(
+                        tenant,
+                        principal.provenance(),
+                        audit::RequestAudit::data_import("POST", "consent_decision"),
+                        Err(response::Failure::validation(
+                            "Consent request is too large or could not be read",
+                        )),
+                        &request_id,
+                    )
+                    .await,
+                );
+            }
+        };
+    let scope = tenant.scope().clone();
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    let tenant =
+        match consents::begin_for_actor(&ctx.db, &scope, ctx.config.settings.as_ref()).await {
+            Ok(tenant) => tenant,
+            Err(error) => return response::error(response::operation(error), &request_id),
+        };
+    let decision = match input.decision {
+        ConsentDecision::Approved => Decision::Approved,
+        ConsentDecision::Rejected => Decision::Rejected,
+    };
+    let result = match ImportPrincipal::Api(&principal).revalidate(&tenant).await {
+        Ok(()) => consents::decide(&tenant, &id, &input.binding, decision)
+            .await
+            .map(|data| (StatusCode::OK, json!({"data":data}), None))
+            .map_err(response::operation),
+        Err(error) => Err(response::operation(error)),
+    };
+    no_store(
+        finish(
+            tenant,
+            principal.provenance(),
+            audit::RequestAudit::data_import("POST", "consent_decision"),
             result,
             &request_id,
         )
