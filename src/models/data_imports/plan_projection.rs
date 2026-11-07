@@ -249,9 +249,10 @@ fn project_inventory(
             }
         }
         for edge in &inventory.relationships {
-            if clinical(edge.source.kind)
+            if dependency_source(edge.source.kind)
                 && !actor(&edge.field)
                 && edge.kind != RelationshipKind::PersonLocation
+                && edge.target.kind != RecordKind::Attachment
                 && edge.reason.is_none()
                 && !records.contains_key(&edge.target)
             {
@@ -275,7 +276,7 @@ fn project_inventory(
             && edge.kind != RelationshipKind::PersonLocation
             && edge.reason.is_none()
             && edge.target.kind != RecordKind::Attachment
-            && clinical(edge.source.kind)
+            && dependency_source(edge.source.kind)
         {
             dependants
                 .entry(edge.target.clone())
@@ -306,28 +307,24 @@ fn project_inventory(
             .then(|| aliases.get(identity.id.as_str()))
             .flatten();
         if let Some(alias) = alias {
+            record_alias_field(
+                &mut details.source_fields,
+                "portable_id",
+                Some(&identity.id),
+                Some(&alias.destination_person_portable_id),
+            );
             for difference in &alias.profile_differences {
                 let (field, source, destination) = match difference {
                     ProfileDifference::Name {
                         source,
                         destination,
-                    } => ("name", source.clone(), Some(destination.clone())),
+                    } => ("name", Some(source.as_str()), Some(destination.as_str())),
                     ProfileDifference::Email {
                         source,
                         destination,
-                    } => (
-                        "email",
-                        source.clone().unwrap_or_default(),
-                        destination.clone(),
-                    ),
+                    } => ("email", source.as_deref(), destination.as_deref()),
                 };
-                details.source_fields.push(SourceField {
-                    field: field.into(),
-                    source_value: source,
-                    outcome: FieldOutcome::Changed,
-                    destination_value: destination,
-                    reason: Some(ReasonCode::UnsupportedField),
-                });
+                record_alias_field(&mut details.source_fields, field, source, destination);
             }
         }
         let blocker = row_reasons.get(identity).copied().or_else(|| {
@@ -471,6 +468,52 @@ fn clinical(kind: RecordKind) -> bool {
     )
 }
 
+fn dependency_source(kind: RecordKind) -> bool {
+    clinical(kind) || matches!(kind, RecordKind::Medication | RecordKind::DosageOption)
+}
+
+fn record_alias_field(
+    fields: &mut Vec<SourceField>,
+    name: &str,
+    source: Option<&str>,
+    destination: Option<&str>,
+) {
+    let mut seen = false;
+    fields.retain_mut(|field| {
+        if field.field != name {
+            return true;
+        }
+        if seen {
+            return false;
+        }
+        seen = true;
+        field.outcome = if source == destination {
+            FieldOutcome::Preserved
+        } else {
+            FieldOutcome::Changed
+        };
+        field.destination_value = destination.map(str::to_owned);
+        field.reason = (source != destination).then_some(ReasonCode::UnsupportedField);
+        true
+    });
+    if !seen {
+        fields.push(SourceField {
+            field: name.into(),
+            source_value: source.map_or_else(
+                || "null".into(),
+                |value| serde_json::Value::String(value.into()).to_string(),
+            ),
+            outcome: if source == destination {
+                FieldOutcome::Preserved
+            } else {
+                FieldOutcome::Changed
+            },
+            destination_value: destination.map(str::to_owned),
+            reason: (source != destination).then_some(ReasonCode::UnsupportedField),
+        });
+    }
+}
+
 fn ownership(
     inventory: &SourceInventory,
     attachment_parents: &[AttachmentParent],
@@ -483,7 +526,11 @@ fn ownership(
         if !unique.insert((edge.source.clone(), edge.target.clone(), edge.field.clone())) {
             return Err(BridgeError::DuplicateRelationship);
         }
-        if actor(&edge.field) || edge.kind == RelationshipKind::PersonLocation {
+        if actor(&edge.field)
+            || edge.kind == RelationshipKind::PersonLocation
+            || edge.source.kind == RecordKind::Attachment
+            || edge.target.kind == RecordKind::Attachment
+        {
             continue;
         }
         let subject = edge.field == "person_portable_id" && edge.target.kind == RecordKind::Person;
@@ -523,10 +570,6 @@ fn ownership(
         {
             return Err(BridgeError::UnknownAttachmentParent);
         }
-        edges
-            .entry(link.parent.clone())
-            .or_default()
-            .push(link.attachment.clone());
     }
     let mut owners: HashMap<SourceIdentity, Vec<SourceIdentity>> = HashMap::new();
     let mut queue = VecDeque::new();
@@ -638,7 +681,7 @@ mod tests {
         .unwrap();
         assert_eq!(owners[&pause], vec![p.clone()]);
         assert_eq!(owners[&dose], vec![q.clone()]);
-        assert_eq!(owners[&attachment], vec![p.clone()]);
+        assert!(!owners.contains_key(&attachment));
         assert_eq!(owners[&used], vec![p.clone()]);
         assert!(!owners.contains_key(&unused));
         assert_eq!(owners[&medication].len(), 2);
@@ -816,15 +859,6 @@ mod tests {
                 RelationshipKind::PersonLocation,
                 None,
             ),
-            (
-                RecordKind::Attachment,
-                "attachment",
-                RecordKind::Schedule,
-                "s",
-                "parent",
-                RelationshipKind::Other,
-                None,
-            ),
         ] {
             inventory.relationships.push(SourceRelationship {
                 source: id(sk, s),
@@ -989,9 +1023,10 @@ mod tests {
             result(&output, RecordKind::Attachment, "attachment").expected,
             ExpectedRecord::Skip
         );
-        assert_eq!(
-            result(&output, RecordKind::Attachment, "attachment").people,
-            vec![id(RecordKind::Person, "p")]
+        assert!(
+            result(&output, RecordKind::Attachment, "attachment")
+                .people
+                .is_empty()
         );
         assert_eq!(
             edge_result(&output, "pause", "recorded_by_person_portable_id").expected,
@@ -1008,10 +1043,6 @@ mod tests {
         assert_eq!(
             edge_result(&output, "p", "location_portable_ids").reason,
             Some(ReasonCode::ObsoletePersonLocation)
-        );
-        assert_eq!(
-            edge_result(&output, "attachment", "parent").reason,
-            Some(ReasonCode::AttachmentUnsupported)
         );
         assert_eq!(
             edge_result(&output, "s", "medication_portable_id").people,
@@ -1198,14 +1229,14 @@ mod tests {
             person.destination.as_ref().map(|record| &record.id),
             Some(&DestinationId::Person(PersonId(42)))
         );
-        assert_eq!(
-            person.details.source_fields[0].outcome,
-            FieldOutcome::Changed
-        );
-        assert_eq!(
-            person.details.source_fields[0].destination_value.as_deref(),
-            Some("Current")
-        );
+        let name = person
+            .details
+            .source_fields
+            .iter()
+            .find(|field| field.field == "name")
+            .unwrap();
+        assert_eq!(name.outcome, FieldOutcome::Changed);
+        assert_eq!(name.destination_value.as_deref(), Some("Current"));
         assert_eq!(
             result(&output, RecordKind::Schedule, "s").reason,
             Some(ReasonCode::MissingDependency)
@@ -1262,5 +1293,370 @@ mod tests {
                 .any(|issue| issue.source == Some(id(RecordKind::Schedule, "s"))
                     && issue.field.as_deref() == Some("additional_medication"))
         );
+    }
+
+    #[test]
+    fn unproved_and_conflicting_attachment_claims_leave_omissions_global() {
+        let mut inventory = fixture();
+        inventory.omissions.push(Omission {
+            item: id(RecordKind::Attachment, "attachment"),
+            field: None,
+            reason: ReasonCode::AttachmentUnsupported,
+            acknowledgement_id: "attachment-ack".into(),
+            acknowledged: false,
+        });
+        for claims in [
+            vec![AttachmentParent {
+                attachment: id(RecordKind::Attachment, "attachment"),
+                parent: id(RecordKind::Assignment, "a"),
+            }],
+            vec![
+                AttachmentParent {
+                    attachment: id(RecordKind::Attachment, "attachment"),
+                    parent: id(RecordKind::Assignment, "a"),
+                },
+                AttachmentParent {
+                    attachment: id(RecordKind::Attachment, "attachment"),
+                    parent: id(RecordKind::Schedule, "s"),
+                },
+            ],
+        ] {
+            let output = bridge(
+                &inventory,
+                &assessment(assessment_rows(), vec![], vec![]),
+                &[],
+                &claims,
+            )
+            .unwrap();
+            assert!(
+                result(&output, RecordKind::Attachment, "attachment")
+                    .people
+                    .is_empty()
+            );
+            let report = super::super::projection::project(
+                super::super::projection::ProjectionMeta {
+                    id: "preview".into(),
+                    source: SourceSystem::MedTracker05,
+                    source_sha256: "digest".into(),
+                    timezone: SourceTimeZone::parse("UTC").unwrap(),
+                    created_at: chrono::Utc::now(),
+                },
+                &inventory,
+                output.outcomes,
+                &[],
+            )
+            .unwrap();
+            assert_eq!(report.omissions.len(), 1);
+            assert_eq!(report.omissions[0].acknowledgement_id, "attachment-ack");
+            assert!(
+                report
+                    .people
+                    .iter()
+                    .all(|person| person.omissions.is_empty())
+            );
+        }
+    }
+
+    #[test]
+    fn alias_replaces_archive_field_outcomes_and_preserves_null_email() {
+        let mut inventory = fixture();
+        let source = inventory
+            .records
+            .iter_mut()
+            .find(|record| record.identity == id(RecordKind::Person, "q"))
+            .unwrap();
+        source.details.source_fields = [
+            ("portable_id", "\"q\""),
+            ("name", "\"Old\""),
+            ("email", "null"),
+        ]
+        .into_iter()
+        .map(|(field, value)| SourceField {
+            field: field.into(),
+            source_value: value.into(),
+            outcome: FieldOutcome::Preserved,
+            destination_value: None,
+            reason: None,
+        })
+        .collect();
+        let mut rows = assessment_rows();
+        rows.iter_mut()
+            .find(|row| row.collection == SourceCollection::People && row.portable_id == "q")
+            .unwrap()
+            .action = PlannedAction::Match;
+        let aliases = vec![ResolvedAlias {
+            source_person_portable_id: "q".into(),
+            destination_person_id: crate::models::ids::PersonId::from_database(42),
+            destination_person_portable_id: "existing-id".into(),
+            profile_differences: vec![
+                ProfileDifference::Name {
+                    source: "Old".into(),
+                    destination: "Current".into(),
+                },
+                ProfileDifference::Email {
+                    source: None,
+                    destination: Some("current@example.test".into()),
+                },
+            ],
+        }];
+        let output = bridge(&inventory, &assessment(rows, vec![], aliases), &[], &[]).unwrap();
+        let fields = &result(&output, RecordKind::Person, "q")
+            .details
+            .source_fields;
+        for (key, raw, destination) in [
+            ("portable_id", "\"q\"", "existing-id"),
+            ("name", "\"Old\"", "Current"),
+            ("email", "null", "current@example.test"),
+        ] {
+            let matches: Vec<_> = fields.iter().filter(|field| field.field == key).collect();
+            assert_eq!(matches.len(), 1);
+            assert_eq!(matches[0].source_value, raw);
+            assert_eq!(matches[0].outcome, FieldOutcome::Changed);
+            assert_eq!(matches[0].destination_value.as_deref(), Some(destination));
+        }
+    }
+
+    #[test]
+    fn rejected_inventory_dependencies_block_dependants_not_people() {
+        let mut inventory = fixture();
+        for (source, target, field, kind) in [
+            (
+                id(RecordKind::Medication, "m"),
+                id(RecordKind::Location, "location"),
+                "location_portable_id",
+                RelationshipKind::MedicationLocation,
+            ),
+            (
+                id(RecordKind::DosageOption, "used"),
+                id(RecordKind::Medication, "m"),
+                "medication_portable_id",
+                RelationshipKind::Other,
+            ),
+        ] {
+            inventory.relationships.push(SourceRelationship {
+                source,
+                target,
+                field: field.into(),
+                kind,
+                reason: None,
+            });
+        }
+        for (collection, rejected, affected) in [
+            (
+                SourceCollection::Locations,
+                "location",
+                vec![
+                    (RecordKind::Medication, "m"),
+                    (RecordKind::DosageOption, "used"),
+                    (RecordKind::Schedule, "s"),
+                    (RecordKind::Pause, "pause"),
+                    (RecordKind::Assignment, "a"),
+                    (RecordKind::Dose, "d"),
+                ],
+            ),
+            (
+                SourceCollection::Medications,
+                "m",
+                vec![
+                    (RecordKind::DosageOption, "used"),
+                    (RecordKind::DosageOption, "unused"),
+                    (RecordKind::Schedule, "s"),
+                    (RecordKind::Pause, "pause"),
+                    (RecordKind::Assignment, "a"),
+                    (RecordKind::Dose, "d"),
+                ],
+            ),
+        ] {
+            let issues = vec![AssessmentIssue {
+                collection: Some(collection),
+                portable_id: Some(rejected.into()),
+                field: None,
+                reason: AssessmentReason::MissingDependency,
+                detail: "Dependency rejected".into(),
+            }];
+            let output = bridge(
+                &inventory,
+                &assessment(assessment_rows(), issues, vec![]),
+                &[],
+                &[],
+            )
+            .unwrap();
+            for (kind, name) in affected {
+                assert_eq!(
+                    result(&output, kind, name).reason,
+                    Some(ReasonCode::MissingDependency)
+                );
+            }
+            assert_eq!(
+                result(&output, RecordKind::Person, "p").expected,
+                ExpectedRecord::Create
+            );
+            assert_eq!(
+                result(&output, RecordKind::Person, "q").expected,
+                ExpectedRecord::Create
+            );
+        }
+        let finding = PersonFinding {
+            person: id(RecordKind::Person, "p"),
+            field: None,
+            reason: ReasonCode::ConsentRequired,
+            detail: "Consent required".into(),
+        };
+        let output = bridge(
+            &inventory,
+            &assessment(assessment_rows(), vec![], vec![]),
+            &[finding],
+            &[],
+        )
+        .unwrap();
+        for (kind, name) in [
+            (RecordKind::Medication, "m"),
+            (RecordKind::Location, "location"),
+            (RecordKind::DosageOption, "used"),
+            (RecordKind::Person, "q"),
+            (RecordKind::Assignment, "a"),
+            (RecordKind::Dose, "d"),
+        ] {
+            assert_eq!(result(&output, kind, name).expected, ExpectedRecord::Create);
+        }
+    }
+
+    #[test]
+    fn health_preferences_and_taken_from_storage_follow_actual_subjects() {
+        let mut inventory = fixture();
+        for (kind, name) in [
+            (RecordKind::HealthEvent, "health"),
+            (RecordKind::NotificationPreference, "preference"),
+            (RecordKind::Location, "taken-from"),
+        ] {
+            inventory.records.push(SourceRecord {
+                identity: id(kind, name),
+                details: RecordDetails::default(),
+            });
+        }
+        for (source, target, field, kind) in [
+            (
+                id(RecordKind::HealthEvent, "health"),
+                id(RecordKind::Person, "p"),
+                "person_portable_id",
+                RelationshipKind::Other,
+            ),
+            (
+                id(RecordKind::HealthEvent, "health"),
+                id(RecordKind::Medication, "m"),
+                "medication_portable_ids",
+                RelationshipKind::HealthEventMedication,
+            ),
+            (
+                id(RecordKind::NotificationPreference, "preference"),
+                id(RecordKind::Person, "q"),
+                "person_portable_id",
+                RelationshipKind::Other,
+            ),
+            (
+                id(RecordKind::Medication, "m"),
+                id(RecordKind::Location, "location"),
+                "location_portable_id",
+                RelationshipKind::MedicationLocation,
+            ),
+            (
+                id(RecordKind::Dose, "d"),
+                id(RecordKind::Location, "taken-from"),
+                "taken_from_location_portable_id",
+                RelationshipKind::DoseTakenFromLocation,
+            ),
+        ] {
+            inventory.relationships.push(SourceRelationship {
+                source,
+                target,
+                field: field.into(),
+                kind,
+                reason: None,
+            });
+        }
+        let mut rows = assessment_rows();
+        for (collection, portable_id) in [
+            (SourceCollection::HealthEvents, "health"),
+            (SourceCollection::NotificationPreferences, "preference"),
+            (SourceCollection::Locations, "taken-from"),
+        ] {
+            rows.push(PlannedRow {
+                collection,
+                portable_id: portable_id.into(),
+                action: PlannedAction::Create,
+            });
+        }
+        let output = bridge(&inventory, &assessment(rows, vec![], vec![]), &[], &[]).unwrap();
+        assert_eq!(
+            result(&output, RecordKind::HealthEvent, "health").people,
+            vec![id(RecordKind::Person, "p")]
+        );
+        assert_eq!(
+            result(&output, RecordKind::NotificationPreference, "preference").people,
+            vec![id(RecordKind::Person, "q")]
+        );
+        assert_eq!(
+            result(&output, RecordKind::Location, "taken-from").people,
+            vec![id(RecordKind::Person, "q")]
+        );
+        assert_eq!(
+            result(&output, RecordKind::Location, "location")
+                .people
+                .len(),
+            2
+        );
+        assert_eq!(
+            edge_result(&output, "health", "medication_portable_ids").people,
+            vec![id(RecordKind::Person, "p")]
+        );
+        assert_eq!(
+            edge_result(&output, "d", "taken_from_location_portable_id").people,
+            vec![id(RecordKind::Person, "q")]
+        );
+    }
+
+    #[test]
+    fn alias_with_absent_destination_email_retains_source_json_null_distinction() {
+        let mut inventory = fixture();
+        let person = inventory
+            .records
+            .iter_mut()
+            .find(|record| record.identity == id(RecordKind::Person, "q"))
+            .unwrap();
+        person.details.source_fields.push(SourceField {
+            field: "email".into(),
+            source_value: "\"source@example.test\"".into(),
+            outcome: FieldOutcome::Preserved,
+            destination_value: None,
+            reason: None,
+        });
+        let mut rows = assessment_rows();
+        rows.iter_mut()
+            .find(|row| row.collection == SourceCollection::People && row.portable_id == "q")
+            .unwrap()
+            .action = PlannedAction::Match;
+        let alias = ResolvedAlias {
+            source_person_portable_id: "q".into(),
+            destination_person_id: crate::models::ids::PersonId::from_database(42),
+            destination_person_portable_id: "q".into(),
+            profile_differences: vec![ProfileDifference::Email {
+                source: Some("source@example.test".into()),
+                destination: None,
+            }],
+        };
+        let output = bridge(&inventory, &assessment(rows, vec![], vec![alias]), &[], &[]).unwrap();
+        let fields = &result(&output, RecordKind::Person, "q")
+            .details
+            .source_fields;
+        let email = fields.iter().find(|field| field.field == "email").unwrap();
+        assert_eq!(email.source_value, "\"source@example.test\"");
+        assert_eq!(email.outcome, FieldOutcome::Changed);
+        assert!(email.destination_value.is_none());
+        let portable = fields
+            .iter()
+            .find(|field| field.field == "portable_id")
+            .unwrap();
+        assert_eq!(portable.outcome, FieldOutcome::Preserved);
+        assert_eq!(portable.destination_value.as_deref(), Some("q"));
     }
 }
