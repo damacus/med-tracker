@@ -4840,7 +4840,7 @@ paths:
       operationId: getClinicalImport
       tags: [Household, Portability]
       summary: Get a clinical import report.
-      description: Reports are subject to creator and person-access checks. Confirmation is currently null on detail responses. Responses use Cache-Control no-store.
+      description: Checked report access requires current household management and applicable creator, consent and clinical authority. A confirmation token is returned only for a currently ready report when authorised; otherwise it is null. Responses use Cache-Control no-store.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - name: id
@@ -4862,6 +4862,152 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/data_imports/consents:
+    post:
+      operationId: createClinicalImportConsent
+      tags: [Household, Portability]
+      summary: Request consent for a clinical import.
+      description: A household manager requests consent for a recipient. Personal keys require care:write. JSON body limit is 64 KiB.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClinicalImportConsentBinding"
+      responses:
+        "201":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalImportConsentCreatedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/data_imports/consents/{id}:
+    get:
+      operationId: getClinicalImportConsent
+      tags: [Household, Portability]
+      summary: Read a personal clinical import consent request.
+      description: The ordinary recipient can read their own request; personal keys require care:read. Current credential and household checks apply.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalImportPersonalConsentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/data_imports/consents/{id}/decision:
+    post:
+      operationId: decideClinicalImportConsent
+      tags: [Household, Portability]
+      summary: Approve or reject a clinical import consent request.
+      description: The recipient decides their own request. A rejection after approval withdraws consent. Personal keys require care:write. JSON body limit is 64 KiB.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClinicalImportConsentDecisionRequest"
+      responses:
+        "200":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalImportPersonalConsentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/data_imports/{id}/confirm:
+    post:
+      operationId: confirmClinicalImport
+      tags: [Household, Portability]
+      summary: Confirm a reviewed clinical import.
+      description: Requires care:write and current manager, clinical and consent authority. JSON body limit is 64 KiB. Processing can return a completed or persisted failed report; inspect its state. The HTTP transport is pending implementation.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClinicalImportConfirmationRequest"
+      responses:
+        "200":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalImportConfirmationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "429":
@@ -5975,6 +6121,75 @@ components:
           schema:
             $ref: "#/components/schemas/RateLimitErrorEnvelope"
   schemas:
+    ClinicalImportConsentBinding:
+      type: object
+      additionalProperties: false
+      required: [source_sha256, source_person, target_person]
+      properties:
+        source_sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        source_person:
+          allOf:
+            - $ref: "#/components/schemas/ClinicalImportSourceIdentity"
+          description: The identity of a person in the source archive.
+        target_person:
+          type: integer
+          format: int64
+    ClinicalImportConsentCreatedResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [id]
+          properties:
+            id: {type: string}
+    ClinicalImportPersonalConsent:
+      type: object
+      required: [id, household_id, requester_account_id, binding, decision]
+      properties:
+        id: {type: string}
+        household_id: {type: integer, format: int64}
+        requester_account_id: {type: integer, format: int64}
+        binding:
+          $ref: "#/components/schemas/ClinicalImportConsentBinding"
+        decision:
+          type: string
+          enum: [pending, approved, rejected]
+    ClinicalImportPersonalConsentResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ClinicalImportPersonalConsent"
+    ClinicalImportConsentDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [binding, decision]
+      properties:
+        binding:
+          $ref: "#/components/schemas/ClinicalImportConsentBinding"
+        decision:
+          type: string
+          enum: [approved, rejected]
+    ClinicalImportConfirmationRequest:
+      type: object
+      additionalProperties: false
+      required: [preview_token, passphrase]
+      properties:
+        preview_token: {type: string, writeOnly: true}
+        passphrase: {type: string, writeOnly: true}
+    ClinicalImportConfirmationResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [report]
+          properties:
+            report:
+              $ref: "#/components/schemas/ClinicalImportReport"
     ClinicalImportSourceSystem: {"type":"string","enum":["med_tracker05"]}
     ClinicalImportRecordKind: {"type":"string","enum":["person","medication","location","dosage_option","schedule","assignment","dose","stock","pause","occurrence","health_event","notification_preference","attachment","other"]}
     ClinicalImportRelationshipKind: {"type":"string","enum":["person_medication","schedule_person","schedule_medication","assignment_person","assignment_medication","dose_source","dose_taken_from_medication","dose_taken_from_location","medication_location","stock_medication","health_event_medication","person_location","other"]}
