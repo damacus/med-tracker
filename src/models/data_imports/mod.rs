@@ -1,8 +1,9 @@
-pub mod contracts;
 pub mod consents;
-pub mod inspection;
+pub mod contracts;
 pub mod identity;
+pub mod inspection;
 pub mod persistence;
 pub(crate) mod plan_projection;
+pub mod preview;
 pub mod projection;
 pub mod reports;

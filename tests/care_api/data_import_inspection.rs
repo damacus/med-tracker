@@ -3,13 +3,16 @@ use med_tracker::models::{
     access,
     data_imports::{
         contracts::{
-            ConsentInput, PersonDestination, PersonId, PersonMapping, RecordKind, SourceSystem,
+            ConsentInput, ImportState, PersonDestination, PersonId, PersonMapping, RecordKind,
+            SourceSystem,
         },
         identity,
         inspection::{self, InspectionError, Upload},
+        persistence, preview,
     },
     errors::OperationError,
 };
+use sea_orm::{ActiveModelTrait, IntoActiveModel, Set};
 use std::io::{Cursor, Write};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
@@ -31,6 +34,204 @@ fn archive(comment: &str) -> Vec<u8> {
         zip.write_all(data).unwrap();
     }
     zip.finish().unwrap().into_inner()
+}
+
+#[tokio::test]
+async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() {
+    let app = Application::new().await;
+    let scope = app.fixture.scenario.scope();
+    let zone = inspection::confirmed_timezone("Europe/London", true).unwrap();
+    let inspected = inspection::inspect(&app.context, &scope, upload("preview"), zone)
+        .await
+        .unwrap();
+    let source = inspected
+        .inventory
+        .records
+        .iter()
+        .find(|record| record.identity.kind == RecordKind::Person)
+        .unwrap()
+        .identity
+        .clone();
+    let mapping = PersonMapping {
+        source: source.clone(),
+        destination: PersonDestination::NewDependent,
+    };
+    let declaration = ConsentInput::InitialGuardianDeclaration {
+        source_person: source.clone(),
+        accepted: true,
+    };
+    let acknowledgements: Vec<_> = inspected
+        .inventory
+        .omissions
+        .iter()
+        .map(|item| item.acknowledgement_id.clone())
+        .collect();
+    let make_input =
+        |comment: &str, declarations: Vec<ConsentInput>, acknowledged_omissions: Vec<String>| {
+            preview::PreviewInput {
+                inspection_id: inspected.id.clone(),
+                upload: upload(comment),
+                timezone: zone,
+                mappings: vec![mapping.clone()],
+                declarations,
+                recipient_consents: vec![],
+                acknowledged_omissions,
+            }
+        };
+    let blocked = preview::create(
+        &app.context,
+        &scope,
+        make_input("preview", vec![], acknowledgements.clone()),
+    )
+    .await
+    .unwrap();
+    assert_eq!(blocked.report.state, ImportState::Blocked);
+    assert!(blocked.confirmation.is_none());
+    assert!(
+        blocked
+            .report
+            .issues
+            .iter()
+            .any(|issue| issue.source.as_ref() == Some(&source))
+    );
+    assert_eq!(blocked.report.people.len(), 1);
+    let missing_ack = preview::create(
+        &app.context,
+        &scope,
+        make_input("preview", vec![declaration.clone()], vec![]),
+    )
+    .await
+    .unwrap();
+    assert_eq!(missing_ack.report.state, ImportState::Blocked);
+    assert!(missing_ack.confirmation.is_none());
+    assert!(missing_ack.report.totals.decisions_required > 0);
+    let ready = preview::create(
+        &app.context,
+        &scope,
+        make_input("preview", vec![declaration], acknowledgements.clone()),
+    )
+    .await
+    .unwrap();
+    assert_eq!(ready.report.state, ImportState::Ready);
+    assert!(ready.confirmation.is_some());
+    assert_eq!(ready.report.source_sha256, inspected.archive_sha256);
+    assert_eq!(
+        usize::try_from(ready.report.totals.omissions).unwrap(),
+        inspected.inventory.omissions.len()
+    );
+    assert_eq!(ready.report.totals.created, 0);
+    assert_eq!(ready.report.totals.verified_links, 0);
+    assert_eq!(ready.report.people.len(), 1);
+    assert_eq!(
+        usize::try_from(ready.report.totals.expected_create + ready.report.totals.expected_match)
+            .unwrap(),
+        inspected.inventory.records.len()
+    );
+    assert_eq!(
+        ready.report.people[0].relationships.len() + ready.report.relationships.len(),
+        inspected.inventory.relationships.len()
+    );
+    assert!(
+        ready.report.people[0]
+            .records
+            .iter()
+            .all(|item| item.actual.is_none())
+    );
+    assert!(
+        ready
+            .report
+            .records
+            .iter()
+            .all(|item| item.actual.is_none())
+    );
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    let saved = persistence::find(&tenant, &ready.report.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(saved.snapshot.report, ready.report);
+    assert!(saved.snapshot.context.is_some());
+    let blocked_saved = persistence::find(&tenant, &blocked.report.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(blocked_saved.snapshot.confirmation.is_none());
+    tenant.rollback().await.unwrap();
+    assert!(
+        preview::create(
+            &app.context,
+            &scope,
+            make_input("changed", vec![], acknowledgements.clone())
+        )
+        .await
+        .is_err()
+    );
+    let mut wrong_zone = make_input("preview", vec![], acknowledgements.clone());
+    wrong_zone.timezone = inspection::confirmed_timezone("UTC", true).unwrap();
+    assert!(
+        preview::create(&app.context, &scope, wrong_zone)
+            .await
+            .is_err()
+    );
+    let mut forged = acknowledgements.clone();
+    forged.push("not-an-omission".into());
+    assert!(
+        preview::create(&app.context, &scope, make_input("preview", vec![], forged))
+            .await
+            .is_err()
+    );
+    let mut duplicate = acknowledgements.clone();
+    duplicate.push(acknowledgements[0].clone());
+    assert!(
+        preview::create(
+            &app.context,
+            &scope,
+            make_input("preview", vec![], duplicate)
+        )
+        .await
+        .is_err()
+    );
+    let mut conflict_input = make_input("preview", vec![], acknowledgements.clone());
+    conflict_input.mappings[0].destination =
+        PersonDestination::Existing(PersonId(app.fixture.minor.id));
+    let conflict = preview::create(&app.context, &scope, conflict_input)
+        .await
+        .unwrap();
+    assert_eq!(conflict.report.state, ImportState::Blocked);
+    assert!(conflict.confirmation.is_none());
+    assert!(
+        conflict
+            .report
+            .issues
+            .iter()
+            .any(|issue| issue.source.as_ref() == Some(&source))
+    );
+
+    let mut person = app.fixture.minor.clone().into_active_model();
+    person.person_type = Set(2);
+    person.has_capacity = Set(false);
+    person.date_of_birth = Set(Some("1990-01-15".parse().unwrap()));
+    person.update(&app.fixture.admin).await.unwrap();
+    let mut no_consent_input = make_input("preview", vec![], acknowledgements);
+    no_consent_input.mappings[0].destination =
+        PersonDestination::Existing(PersonId(app.fixture.minor.id));
+    let no_consent = preview::create(&app.context, &scope, no_consent_input)
+        .await
+        .unwrap();
+    assert_eq!(no_consent.report.state, ImportState::Blocked);
+    assert!(no_consent.confirmation.is_none());
+    assert!(
+        no_consent
+            .report
+            .issues
+            .iter()
+            .any(|issue| issue.source.as_ref() == Some(&source)
+                && issue.reason
+                    == med_tracker::models::data_imports::contracts::ReasonCode::ConsentRequired)
+    );
+    app.close().await;
 }
 
 #[tokio::test]
