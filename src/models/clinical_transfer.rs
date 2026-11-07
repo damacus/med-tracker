@@ -220,6 +220,16 @@ fn prepare_inner(
             }
         }
     }
+    if archive_mode {
+        for row in payload["records"]["medications"]
+            .as_array_mut()
+            .ok_or(PreparationError::InvalidGraph)?
+        {
+            if unsupported_medication_category(row).is_some() {
+                row["category"] = Value::Null;
+            }
+        }
+    }
     let people = payload["records"]["people"]
         .as_array_mut()
         .ok_or(PreparationError::InvalidGraph)?;
@@ -260,6 +270,13 @@ fn prepare_inner(
             record_counts,
             empty_person_location_fields_removed: removed,
         },
+    })
+}
+
+fn unsupported_medication_category(row: &Value) -> Option<&str> {
+    row["category"].as_str().filter(|category| {
+        !category.is_empty()
+            && !crate::models::care::portable_imports::supported_medication_category(category)
     })
 }
 
@@ -424,6 +441,9 @@ fn fields(kind: &str) -> &'static str {
 enum JsonScope {
     Payload,
     Records,
+    Medications,
+    Medication,
+    MedicationDose,
     Schedules,
     Schedule,
     Configuration,
@@ -434,6 +454,8 @@ impl JsonScope {
     fn member(self, key: &str) -> Self {
         match (self, key) {
             (Self::Payload, "records") => Self::Records,
+            (Self::Records, "medications") => Self::Medications,
+            (Self::Medication, "dose_amount") => Self::MedicationDose,
             (Self::Records, "schedules") => Self::Schedules,
             (Self::Schedule, "schedule_config") | (Self::Configuration, _) => Self::Configuration,
             _ => Self::Other,
@@ -442,6 +464,7 @@ impl JsonScope {
 
     fn element(self) -> Self {
         match self {
+            Self::Medications => Self::Medication,
             Self::Schedules => Self::Schedule,
             Self::Configuration => Self::Configuration,
             _ => Self::Other,
@@ -512,6 +535,17 @@ fn parse_unique(raw: &RawValue, scope: JsonScope, depth: usize) -> Result<Value,
                 .map(|value| parse_unique(value, scope.element(), depth + 1))
                 .collect::<Result<Vec<_>, _>>()
                 .map(Value::Array)
+        }
+        Some(b'-' | b'0'..=b'9') if matches!(scope, JsonScope::MedicationDose) => {
+            if token.contains(['e', 'E'])
+                || token
+                    .split_once('.')
+                    .is_some_and(|(_, digits)| digits.len() > 28)
+            {
+                return Err(PreparationError::UnsupportedNumber);
+            }
+            Decimal::from_str_exact(token).map_err(|_| PreparationError::UnsupportedNumber)?;
+            Ok(Value::String(token.to_owned()))
         }
         Some(b'-' | b'0'..=b'9') if matches!(scope, JsonScope::Configuration) => {
             if token.contains(['e', 'E'])
@@ -656,17 +690,6 @@ mod tests {
                 "must reject unsupported number {token}"
             );
         }
-        let mut clinical: Value = serde_json::from_str(source).unwrap();
-        clinical["records"]["medications"][0]["dose_amount"] = json!(0.5);
-        assert_eq!(
-            prepare(
-                &serde_json::to_vec(&clinical).unwrap(),
-                manifest,
-                "fixture secret"
-            )
-            .err(),
-            Some(PreparationError::InvalidDocument)
-        );
         for replacement in [
             "\"amount\": 0.5, \"amount\": 1.0".to_owned(),
             r#""amount": {"nested": {"key": 1, "\u006bey": 2}}"#.to_owned(),
@@ -695,6 +718,66 @@ mod tests {
             parse(source.as_bytes(), MANIFEST_LIMIT, JsonScope::Other),
             Err(PreparationError::InvalidDocument)
         );
+    }
+
+    #[test]
+    fn rails_medication_numeric_doses_are_exact_and_path_scoped() {
+        for token in ["1.0", "0.5"] {
+            let input = format!(r#"{{"records":{{"medications":[{{"dose_amount":{token}}}]}}}}"#);
+            let value = parse(input.as_bytes(), PAYLOAD_LIMIT, JsonScope::Payload).unwrap();
+            assert_eq!(value["records"]["medications"][0]["dose_amount"], token);
+        }
+        for token in [
+            "0.12345678901234567890123456789",
+            "79228162514264337593543950336.0",
+            "1e-400",
+            "01.0",
+        ] {
+            let input = format!(r#"{{"records":{{"medications":[{{"dose_amount":{token}}}]}}}}"#);
+            assert!(
+                parse(input.as_bytes(), PAYLOAD_LIMIT, JsonScope::Payload).is_err(),
+                "accepted {token}"
+            );
+        }
+        for input in [
+            r#"{"records":{"medications":[{"current_supply":0.5}]}}"#,
+            r#"{"records":{"medications":{"dose_amount":0.5}}}"#,
+            r#"{"records":{"people":[{"dose_amount":0.5}]}}"#,
+            r#"{"records":{"medications":[{"dose_amount":0.5,"dose_amount":1.0}]}}"#,
+        ] {
+            assert!(parse(input.as_bytes(), PAYLOAD_LIMIT, JsonScope::Payload).is_err());
+        }
+    }
+
+    #[test]
+    fn rails_numeric_medication_dose_survives_archive_preparation() {
+        use crate::models::data_imports::contracts::{ArchivePreparation, SourceSystem};
+        use std::io::Cursor;
+        use zip::{ZipWriter, write::SimpleFileOptions};
+
+        for amount in ["1.0", "0.5"] {
+            let payload = std::str::from_utf8(PAYLOAD).unwrap().replacen(
+                "\"dose_amount\": \"1.0\"",
+                &format!("\"dose_amount\": {amount}"),
+                1,
+            );
+            let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+            zip.start_file("portable.json", SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(payload.as_bytes()).unwrap();
+            zip.start_file("manifest.json", SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(MANIFEST).unwrap();
+            let archive = zip.finish().unwrap().into_inner();
+            let prepared = prepare_archive(ArchivePreparation {
+                source: SourceSystem::MedTracker05,
+                archive: &archive,
+                passphrase: "secret",
+            })
+            .unwrap();
+            let restored = portable_crypto::decrypt(&prepared.transfer.bundle, "secret").unwrap();
+            assert_eq!(restored["records"]["medications"][0]["dose_amount"], amount);
+        }
     }
 
     #[test]

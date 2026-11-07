@@ -191,3 +191,36 @@ v3 export/import and obsolete-link rejection; they do not turn Rails v2 into v3.
 Fresh accounts and authentication are configured separately. No Rails database
 adoption, credential migration, reverse migration, live export or deployment is
 included. Profile JSON/ZIP downloads remain a separate contract under #2513.
+
+## Local Rails 0.5.34 acceptance (7 November 2026)
+
+The actual synthetic Rails 0.5.34 household ZIP was downloaded and submitted to
+the Loco import form. After local decimal and unsupported-category fixes, the
+unchanged archive was inspected, previewed, confirmed and replayed with explicit
+adult consent and a guardian declaration. Native records and a Loco backup were
+compared with the source, including stock, dose history and relationships. A
+focused negative test confirms that omitting the category acknowledgement blocks
+confirmation; the related 17 unit and 36 integration tests passed locally.
+The original ZIP SHA-256 is
+`8ad6b1594b876b31a9ff26cb94d9c2ec94cee8e705b86b6089cb702dcd456e86`.
+The completed report recorded eight created records, two matched people and 12
+verified relationships, with none rejected or unlinked. Its 25 acknowledged
+omissions comprise 20 source update-time/etag fields, three obsolete
+person-location links and two unsupported medication categories. The original
+category values remain visible in the report.
+
+Native comparisons verified both medicines, daily schedule, as-needed assignment,
+two historical takes, their medicine/location links and Rowan's fresh guardian
+declaration. Stock remained 28 and 16; replay preserved the captured records.
+The stopped worker's queue count remained four, establishing no net increase
+rather than equality of every queued job. Loco's profile backup was downloaded
+and compared with the source; it is a different format from the Rails household
+ZIP. Existing adult identities and their portable IDs were retained deliberately.
+
+The controller reviewed the scoped fixes and the desktop/mobile completed-report
+screenshots. Strict native lint and documentation checks passed. Full CI has not
+been rerun for these local changes; the previously deferred browser failure was
+not investigated. This is local evidence for this source version only, with no
+attachments in the archive; it is not hosted or universal compatibility evidence.
+Detailed artifacts and comparisons are recorded in the local acceptance report
+under `.superpowers/sdd/clinical-data-import/`.

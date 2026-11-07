@@ -10,7 +10,7 @@ use zip::ZipArchive;
 
 use super::{
     COLLECTIONS, JsonScope, MANIFEST_LIMIT, PAYLOAD_LIMIT, PreparationError, digest, fields, parse,
-    prepare_inner, references, text,
+    prepare_inner, references, text, unsupported_medication_category,
 };
 use crate::models::data_imports::contracts::{
     ArchivePreparation, ArchivePreparationError, FieldOutcome, Omission, PreparationReceipt,
@@ -128,7 +128,7 @@ pub fn prepare_archive(
         );
         inventory.records.push(SourceRecord {
             identity: identity.clone(),
-            details: details(item, true, false)?,
+            details: details(item, true, false, false)?,
         });
         inventory.omissions.push(Omission {
             item: identity,
@@ -156,8 +156,29 @@ pub fn prepare_archive(
             let subject = collection_identity(input.source, &instance, collection, id);
             inventory.records.push(SourceRecord {
                 identity: subject.clone(),
-                details: details(row, false, collection == "people")?,
+                details: details(
+                    row,
+                    false,
+                    collection == "people",
+                    collection == "medications",
+                )?,
             });
+            if collection == "medications"
+                && let Some(category) = unsupported_medication_category(row)
+            {
+                inventory.omissions.push(Omission {
+                    item: subject.clone(),
+                    field: Some("category".to_owned()),
+                    reason: ReasonCode::UnsupportedField,
+                    acknowledgement_id: omission_id(
+                        &instance,
+                        "unsupported-category",
+                        id,
+                        category,
+                    ),
+                    acknowledged: false,
+                });
+            }
             for field in ["updated_at", "etag"] {
                 inventory.omissions.push(Omission {
                     item: subject.clone(),
@@ -374,8 +395,14 @@ fn validate_source(
                     PreparationError::InvalidGraph,
                 ));
             }
+            let mut validation_row = row.clone();
+            if collection == "medications" && unsupported_medication_category(row).is_some() {
+                validation_row["category"] = Value::Null;
+            }
             source_errors.extend(crate::models::care::portable_imports::validate_source_row(
-                collection, index, row,
+                collection,
+                index,
+                &validation_row,
             ));
             for field in [
                 "amount",
@@ -615,6 +642,7 @@ fn details(
     row: &Value,
     attachment: bool,
     person: bool,
+    medication: bool,
 ) -> Result<RecordDetails, ArchivePreparationError> {
     let decimal = |field: &str| -> Result<Option<Decimal>, ArchivePreparationError> {
         match &row[field] {
@@ -634,7 +662,12 @@ fn details(
         .map(|(field, value)| SourceField {
             field: field.clone(),
             source_value: value.to_string(),
-            outcome: if attachment || field == "updated_at" || field == "etag" {
+            outcome: if medication
+                && field == "category"
+                && unsupported_medication_category(row).is_some()
+            {
+                FieldOutcome::Omitted
+            } else if attachment || field == "updated_at" || field == "etag" {
                 FieldOutcome::Unsupported
             } else if person && field == "location_portable_ids" {
                 FieldOutcome::Omitted
@@ -646,7 +679,10 @@ fn details(
             destination_value: None,
             reason: if attachment {
                 Some(ReasonCode::AttachmentUnsupported)
-            } else if field == "updated_at"
+            } else if (medication
+                && field == "category"
+                && unsupported_medication_category(row).is_some())
+                || field == "updated_at"
                 || field == "etag"
                 || (field == "imported_context" && value != true)
             {
@@ -712,6 +748,65 @@ mod tests {
             ("portable.json", &serde_json::to_vec(payload).unwrap()),
             ("manifest.json", &serde_json::to_vec(manifest).unwrap()),
         ])
+    }
+
+    #[test]
+    fn unsupported_optional_category_is_itemised_and_supported_category_survives() {
+        let mut payload: Value = serde_json::from_slice(PAYLOAD).unwrap();
+        let manifest: Value = serde_json::from_slice(MANIFEST).unwrap();
+        payload["records"]["medications"][0]["category"] = json!("Demonstration");
+        let archive = documents(&payload, &manifest);
+        let prepared = prepare(&archive).unwrap();
+        let omission = prepared
+            .inventory
+            .omissions
+            .iter()
+            .find(|item| {
+                item.item.kind == RecordKind::Medication
+                    && item.field.as_deref() == Some("category")
+            })
+            .unwrap();
+        assert_eq!(omission.reason, ReasonCode::UnsupportedField);
+        assert!(!omission.acknowledged);
+        let medication = prepared
+            .inventory
+            .records
+            .iter()
+            .find(|item| item.identity == omission.item)
+            .unwrap();
+        let field = medication
+            .details
+            .source_fields
+            .iter()
+            .find(|item| item.field == "category")
+            .unwrap();
+        assert_eq!(field.source_value, "\"Demonstration\"");
+        assert_eq!(field.outcome, FieldOutcome::Omitted);
+        let restored =
+            crate::models::care::portable_crypto::decrypt(&prepared.transfer.bundle, "test secret")
+                .unwrap();
+        assert!(restored["records"]["medications"][0]["category"].is_null());
+        payload["records"]["medications"][0]["category"] = json!("Analgesic");
+        let supported = prepare(&documents(&payload, &manifest)).unwrap();
+        assert!(
+            !supported
+                .inventory
+                .omissions
+                .iter()
+                .any(|item| item.item.kind == RecordKind::Medication
+                    && item.field.as_deref() == Some("category"))
+        );
+        let restored = crate::models::care::portable_crypto::decrypt(
+            &supported.transfer.bundle,
+            "test secret",
+        )
+        .unwrap();
+        assert_eq!(
+            restored["records"]["medications"][0]["category"],
+            "Analgesic"
+        );
+        payload["records"]["medications"][0]["dose_amount"] = json!("-1");
+        assert!(prepare(&documents(&payload, &manifest)).is_err());
     }
 
     #[test]

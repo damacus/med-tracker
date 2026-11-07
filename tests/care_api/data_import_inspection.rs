@@ -18,7 +18,13 @@ use tracing::instrument::WithSubscriber;
 use zip::{ZipWriter, write::SimpleFileOptions};
 
 fn archive(comment: &str) -> Vec<u8> {
-    let payload = if uuid::Uuid::parse_str(comment).is_ok() {
+    let payload = if let Some(id) = comment.strip_prefix("category:") {
+        super::isolated_import_payload(id).replacen(
+            "\"category\": \"Vitamin\"",
+            "\"category\": \"Demonstration\"",
+            1,
+        )
+    } else if uuid::Uuid::parse_str(comment).is_ok() {
         super::isolated_import_payload(comment)
     } else {
         include_str!("../fixtures/portable_rails/prepared-history-v2.json").to_owned()
@@ -44,7 +50,8 @@ async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() 
     let app = Application::new().await;
     let scope = app.fixture.scenario.scope();
     let zone = inspection::confirmed_timezone("Europe/London", true).unwrap();
-    let inspected = inspection::inspect(&app.context, &scope, upload("preview"), zone)
+    let scenario = format!("category:{}", uuid::Uuid::new_v4());
+    let inspected = inspection::inspect(&app.context, &scope, upload(&scenario), zone)
         .await
         .unwrap();
     let source = inspected
@@ -69,6 +76,19 @@ async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() 
         .iter()
         .map(|item| item.acknowledgement_id.clone())
         .collect();
+    let category_omission = inspected
+        .inventory
+        .omissions
+        .iter()
+        .find(|item| {
+            item.item.kind == RecordKind::Medication && item.field.as_deref() == Some("category")
+        })
+        .unwrap();
+    let without_category: Vec<_> = acknowledgements
+        .iter()
+        .filter(|id| **id != category_omission.acknowledgement_id)
+        .cloned()
+        .collect();
     let make_input =
         |comment: &str, declarations: Vec<ConsentInput>, acknowledged_omissions: Vec<String>| {
             preview::PreviewInput {
@@ -84,7 +104,7 @@ async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() 
     let blocked = preview::create(
         &app.context,
         &scope,
-        make_input("preview", vec![], acknowledgements.clone()),
+        make_input(&scenario, vec![], acknowledgements.clone()),
     )
     .await
     .unwrap();
@@ -101,17 +121,26 @@ async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() 
     let missing_ack = preview::create(
         &app.context,
         &scope,
-        make_input("preview", vec![declaration.clone()], vec![]),
+        make_input(&scenario, vec![declaration.clone()], vec![]),
     )
     .await
     .unwrap();
     assert_eq!(missing_ack.report.state, ImportState::Blocked);
     assert!(missing_ack.confirmation.is_none());
     assert!(missing_ack.report.totals.decisions_required > 0);
+    let missing_category = preview::create(
+        &app.context,
+        &scope,
+        make_input(&scenario, vec![declaration.clone()], without_category),
+    )
+    .await
+    .unwrap();
+    assert_eq!(missing_category.report.state, ImportState::Blocked);
+    assert!(missing_category.confirmation.is_none());
     let ready = preview::create(
         &app.context,
         &scope,
-        make_input("preview", vec![declaration], acknowledgements.clone()),
+        make_input(&scenario, vec![declaration], acknowledgements.clone()),
     )
     .await
     .unwrap();
@@ -171,7 +200,7 @@ async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() 
         .await
         .is_err()
     );
-    let mut wrong_zone = make_input("preview", vec![], acknowledgements.clone());
+    let mut wrong_zone = make_input(&scenario, vec![], acknowledgements.clone());
     wrong_zone.timezone = inspection::confirmed_timezone("UTC", true).unwrap();
     assert!(
         preview::create(&app.context, &scope, wrong_zone)
@@ -181,7 +210,7 @@ async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() 
     let mut forged = acknowledgements.clone();
     forged.push("not-an-omission".into());
     assert!(
-        preview::create(&app.context, &scope, make_input("preview", vec![], forged))
+        preview::create(&app.context, &scope, make_input(&scenario, vec![], forged))
             .await
             .is_err()
     );
@@ -191,12 +220,12 @@ async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() 
         preview::create(
             &app.context,
             &scope,
-            make_input("preview", vec![], duplicate)
+            make_input(&scenario, vec![], duplicate)
         )
         .await
         .is_err()
     );
-    let mut conflict_input = make_input("preview", vec![], acknowledgements.clone());
+    let mut conflict_input = make_input(&scenario, vec![], acknowledgements.clone());
     conflict_input.mappings[0].destination =
         PersonDestination::Existing(PersonId(app.fixture.minor.id));
     let conflict = preview::create(&app.context, &scope, conflict_input)
@@ -217,7 +246,7 @@ async fn preview_persists_ready_and_blocked_metadata_for_the_exact_inspection() 
     person.has_capacity = Set(false);
     person.date_of_birth = Set(Some("1990-01-15".parse().unwrap()));
     person.update(&app.fixture.admin).await.unwrap();
-    let mut no_consent_input = make_input("preview", vec![], acknowledgements);
+    let mut no_consent_input = make_input(&scenario, vec![], acknowledgements);
     no_consent_input.mappings[0].destination =
         PersonDestination::Existing(PersonId(app.fixture.minor.id));
     let no_consent = preview::create(&app.context, &scope, no_consent_input)
