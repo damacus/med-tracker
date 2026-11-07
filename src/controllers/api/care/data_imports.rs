@@ -446,6 +446,36 @@ pub(super) async fn detail(
     )
 }
 
+async fn consent_failure(
+    ctx: &AppContext,
+    principal: &ValidatedPrincipal,
+    scope: &access::HouseholdScope,
+    action: &'static str,
+    failure: response::Failure,
+    request_id: &str,
+) -> Response {
+    let tenant = match principal
+        .begin_household(
+            &ctx.db,
+            scope.household_id,
+            request_id.to_owned(),
+            ctx.config.settings.as_ref(),
+        )
+        .await
+    {
+        Ok(tenant) => tenant,
+        Err(error) => return response::error(response::authentication(error), request_id),
+    };
+    finish(
+        tenant,
+        principal.provenance(),
+        audit::RequestAudit::data_import("POST", action),
+        Err(failure),
+        request_id,
+    )
+    .await
+}
+
 pub(super) async fn request_consent(
     State(ctx): State<AppContext>,
     ApiPath(household_id): ApiPath<i64>,
@@ -473,16 +503,21 @@ pub(super) async fn request_consent(
             .await,
         );
     }
+    let scope = tenant.scope().clone();
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
     let input: ConsentRequest = match to_bytes(request.into_body(), MAX_CONSENT_BODY_BYTES).await {
         Ok(bytes) => match serde_json::from_slice(&bytes) {
             Ok(value) => value,
             Err(_) => {
                 return no_store(
-                    finish(
-                        tenant,
-                        principal.provenance(),
-                        audit::RequestAudit::data_import("POST", "consent_request"),
-                        Err(response::Failure::bad_request("Invalid JSON request body")),
+                    consent_failure(
+                        &ctx,
+                        &principal,
+                        &scope,
+                        "consent_request",
+                        response::Failure::bad_request("Invalid JSON request body"),
                         &request_id,
                     )
                     .await,
@@ -491,13 +526,14 @@ pub(super) async fn request_consent(
         },
         Err(_) => {
             return no_store(
-                finish(
-                    tenant,
-                    principal.provenance(),
-                    audit::RequestAudit::data_import("POST", "consent_request"),
-                    Err(response::Failure::validation(
+                consent_failure(
+                    &ctx,
+                    &principal,
+                    &scope,
+                    "consent_request",
+                    response::Failure::validation(
                         "Consent request is too large or could not be read",
-                    )),
+                    ),
                     &request_id,
                 )
                 .await,
@@ -505,10 +541,6 @@ pub(super) async fn request_consent(
         }
     };
     let binding = ConsentBinding::from(input);
-    let scope = tenant.scope().clone();
-    if tenant.commit().await.is_err() {
-        return response::error(response::unavailable(), &request_id);
-    }
     let tenant = match consents::begin_for_target(
         &ctx.db,
         &scope,
@@ -518,7 +550,19 @@ pub(super) async fn request_consent(
     .await
     {
         Ok(tenant) => tenant,
-        Err(error) => return response::error(response::operation(error), &request_id),
+        Err(error) => {
+            return no_store(
+                consent_failure(
+                    &ctx,
+                    &principal,
+                    &scope,
+                    "consent_request",
+                    response::operation(error),
+                    &request_id,
+                )
+                .await,
+            );
+        }
     };
     let result = match ImportPrincipal::Api(&principal).revalidate(&tenant).await {
         Ok(()) => consents::request(&tenant, binding)
@@ -596,17 +640,22 @@ pub(super) async fn decide_consent(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
+    let scope = tenant.scope().clone();
+    if tenant.commit().await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
     let input: ConsentDecisionRequest =
         match to_bytes(request.into_body(), MAX_CONSENT_BODY_BYTES).await {
             Ok(bytes) => match serde_json::from_slice(&bytes) {
                 Ok(value) => value,
                 Err(_) => {
                     return no_store(
-                        finish(
-                            tenant,
-                            principal.provenance(),
-                            audit::RequestAudit::data_import("POST", "consent_decision"),
-                            Err(response::Failure::bad_request("Invalid JSON request body")),
+                        consent_failure(
+                            &ctx,
+                            &principal,
+                            &scope,
+                            "consent_decision",
+                            response::Failure::bad_request("Invalid JSON request body"),
                             &request_id,
                         )
                         .await,
@@ -615,23 +664,20 @@ pub(super) async fn decide_consent(
             },
             Err(_) => {
                 return no_store(
-                    finish(
-                        tenant,
-                        principal.provenance(),
-                        audit::RequestAudit::data_import("POST", "consent_decision"),
-                        Err(response::Failure::validation(
+                    consent_failure(
+                        &ctx,
+                        &principal,
+                        &scope,
+                        "consent_decision",
+                        response::Failure::validation(
                             "Consent request is too large or could not be read",
-                        )),
+                        ),
                         &request_id,
                     )
                     .await,
                 );
             }
         };
-    let scope = tenant.scope().clone();
-    if tenant.commit().await.is_err() {
-        return response::error(response::unavailable(), &request_id);
-    }
     let tenant =
         match consents::begin_for_actor(&ctx.db, &scope, ctx.config.settings.as_ref()).await {
             Ok(tenant) => tenant,

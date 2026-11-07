@@ -1,7 +1,156 @@
 use super::Application;
-use med_tracker::models::_entities::household_memberships;
-use sea_orm::{ActiveModelTrait, Set};
+use med_tracker::models::_entities::{
+    data_import_consents, household_memberships, security_audit_events,
+};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 use serde_json::json;
+
+async fn response_head(socket: &mut tokio::net::TcpStream) -> String {
+    use tokio::io::AsyncReadExt;
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        let mut bytes = Vec::new();
+        while bytes.len() < 8192 {
+            bytes.push(socket.read_u8().await.unwrap());
+            if bytes.ends_with(b"\r\n\r\n") {
+                return String::from_utf8(bytes).unwrap();
+            }
+        }
+        panic!("HTTP response head exceeded limit");
+    })
+    .await
+    .unwrap()
+}
+
+#[tokio::test]
+async fn stalled_consent_upload_does_not_block_revocation_or_mutate_consent() {
+    use med_tracker::models::entities::identity_api_key;
+    use sea_orm::sea_query::Expr;
+    use tokio::io::AsyncWriteExt;
+    use tokio::net::TcpStream;
+    use tokio::time::{Duration, timeout};
+
+    let app = Application::new().await;
+    let recipient = app.fixture.foreign_household().await;
+    let household = app.fixture.household.id;
+    let now = chrono::Utc::now().naive_utc();
+    household_memberships::ActiveModel {
+        household_id: Set(household),
+        person_id: Set(recipient.account.person_id),
+        role: Set("member".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let service = app
+        .context
+        .shared_store
+        .get::<med_tracker::models::identity::better_auth::IdentityService>()
+        .unwrap();
+    let issue = |account: i64| {
+        let service = service.clone();
+        async move {
+            service
+                .api_keys()
+                .unwrap()
+                .create(
+                    &account.to_string(),
+                    better_auth::server_api::CreateKeyOptions {
+                        config_id: Some("medtracker-personal".into()),
+                        name: Some("Stalled consent revocation".into()),
+                        expires_in: Some(chrono::Duration::days(1).num_seconds() as f64),
+                        metadata: Some(json!({"households":[household]})),
+                        permissions: Some(std::collections::HashMap::from([(
+                            "medtracker".into(),
+                            vec!["care:write".into()],
+                        )])),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .unwrap()
+                .key
+        }
+    };
+    let manager_key = issue(app.fixture.account.id).await;
+    let recipient_key = issue(recipient.account.id).await;
+    let token = app.token().await;
+    let binding = json!({"source_sha256":"a".repeat(64),
+        "source_person":{"source":"med_tracker05","instance":"synthetic","kind":"person","id":"source-person"},
+        "target_person":recipient.account.person_id});
+    let base = format!(
+        "{}/api/v1/households/{household}/data_imports/consents",
+        app.origin
+    );
+    let created = app
+        .client
+        .post(&base)
+        .bearer_auth(&token)
+        .json(&binding)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let created: serde_json::Value = created.json().await.unwrap();
+    let id = created["data"]["id"].as_str().unwrap();
+    let address = app.origin.strip_prefix("http://").unwrap();
+    for (account, key, suffix, input) in [
+        (
+            app.fixture.account.id,
+            &manager_key,
+            String::new(),
+            binding.clone(),
+        ),
+        (
+            recipient.account.id,
+            &recipient_key,
+            format!("/{id}/decision"),
+            json!({"binding":binding,"decision":"approved"}),
+        ),
+    ] {
+        let before = data_import_consents::Entity::find()
+            .filter(data_import_consents::Column::HouseholdId.eq(household))
+            .count(&app.fixture.admin)
+            .await
+            .unwrap();
+        let bytes = serde_json::to_vec(&input).unwrap();
+        let mut socket = TcpStream::connect(address).await.unwrap();
+        socket.write_all(format!("POST /api/v1/households/{household}/data_imports/consents{suffix} HTTP/1.1\r\nHost: {address}\r\nAuthorization: Bearer {key}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nExpect: 100-continue\r\n\r\n", bytes.len()).as_bytes()).await.unwrap();
+        assert!(response_head(&mut socket).await.starts_with("HTTP/1.1 100"));
+        timeout(
+            Duration::from_secs(3),
+            identity_api_key::Entity::update_many()
+                .col_expr(identity_api_key::Column::Enabled, Expr::value(false))
+                .filter(identity_api_key::Column::ReferenceId.eq(account))
+                .exec(&app.fixture.admin),
+        )
+        .await
+        .expect("revocation must complete while the body is stalled")
+        .unwrap();
+        socket.write_all(&bytes).await.unwrap();
+        let response = response_head(&mut socket).await;
+        assert!(response.starts_with("HTTP/1.1 401") || response.starts_with("HTTP/1.1 403"));
+        assert_eq!(
+            data_import_consents::Entity::find()
+                .filter(data_import_consents::Column::HouseholdId.eq(household))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+            before
+        );
+        let row = data_import_consents::Entity::find_by_id(id.to_owned())
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.decision, "pending");
+    }
+    app.close().await;
+}
 
 #[tokio::test]
 async fn consent_is_recipient_only_bound_and_withdrawable_over_api() {
@@ -83,6 +232,51 @@ async fn consent_is_recipient_only_bound_and_withdrawable_over_api() {
     let binding = json!({"source_sha256":"a".repeat(64),
         "source_person":{"source":"med_tracker05", "instance":"synthetic", "kind":"person", "id":"source-person"},
         "target_person":recipient.account.person_id});
+    let initial_count = data_import_consents::Entity::find()
+        .filter(data_import_consents::Column::HouseholdId.eq(household))
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    for target in [app.fixture.account.person_id, stranger.account.person_id] {
+        let mut invalid = binding.clone();
+        invalid["target_person"] = json!(target);
+        let refused = app
+            .client
+            .post(&base)
+            .bearer_auth(&requester)
+            .json(&invalid)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(refused.status().as_u16(), 403);
+        let trace = refused
+            .headers()
+            .get("x-request-id")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let audit = security_audit_events::Entity::find()
+            .filter(security_audit_events::Column::HouseholdId.eq(household))
+            .filter(security_audit_events::Column::RequestId.eq(trace))
+            .filter(security_audit_events::Column::EventType.eq("api.request"))
+            .all(&app.fixture.admin)
+            .await
+            .unwrap();
+        assert_eq!(audit.len(), 1);
+        assert_eq!(audit[0].actor_account_id, Some(app.fixture.account.id));
+        assert_eq!(audit[0].metadata["action"], "consent_request");
+        assert_eq!(audit[0].metadata["outcome"], "failure");
+        assert_eq!(audit[0].metadata["status"], 403);
+        assert_eq!(
+            data_import_consents::Entity::find()
+                .filter(data_import_consents::Column::HouseholdId.eq(household))
+                .count(&app.fixture.admin)
+                .await
+                .unwrap(),
+            initial_count
+        );
+    }
     let oversized = app
         .client
         .post(&base)
