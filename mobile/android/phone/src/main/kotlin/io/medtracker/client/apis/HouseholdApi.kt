@@ -21,6 +21,17 @@ import okhttp3.HttpUrl
 
 import io.medtracker.client.models.AiMedicationSuggestionRequest
 import io.medtracker.client.models.AiMedicationSuggestionResponse
+import io.medtracker.client.models.ClinicalImportConfirmationRequest
+import io.medtracker.client.models.ClinicalImportConfirmationResponse
+import io.medtracker.client.models.ClinicalImportConsentBinding
+import io.medtracker.client.models.ClinicalImportConsentCreatedResponse
+import io.medtracker.client.models.ClinicalImportConsentDecisionRequest
+import io.medtracker.client.models.ClinicalImportInspectionRequest
+import io.medtracker.client.models.ClinicalImportInspectionResponse
+import io.medtracker.client.models.ClinicalImportPersonalConsentResponse
+import io.medtracker.client.models.ClinicalImportPreviewRequest
+import io.medtracker.client.models.ClinicalImportPreviewResponse
+import io.medtracker.client.models.ClinicalImportReportPageResponse
 import io.medtracker.client.models.DataExportResponse
 import io.medtracker.client.models.DosageOptionCollectionResponse
 import io.medtracker.client.models.DosageOptionCreateRequest
@@ -39,6 +50,7 @@ import io.medtracker.client.models.HealthEventUpdateRequest
 import io.medtracker.client.models.HealthHistoryReportResponse
 import io.medtracker.client.models.HouseholdProfileResponse
 import io.medtracker.client.models.HouseholdUiCapabilitiesResponse
+import io.medtracker.client.models.InspectClinicalImport422Response
 import io.medtracker.client.models.LocationCollectionResponse
 import io.medtracker.client.models.LocationCreateRequest
 import io.medtracker.client.models.LocationMembershipRequest
@@ -444,6 +456,163 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/shared_schedules/{id}/medicine".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/{id}/confirm
+     * Confirm a reviewed clinical import.
+     * Requires care:write and current manager, clinical and consent authority. JSON body limit is 64 KiB. Processing can return a completed or persisted failed report; inspect its state. The HTTP transport is implemented in source; integrated verification is pending.
+     * @param householdId 
+     * @param id 
+     * @param clinicalImportConfirmationRequest 
+     * @return ClinicalImportConfirmationResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun confirmClinicalImport(householdId: kotlin.Int, id: kotlin.String, clinicalImportConfirmationRequest: ClinicalImportConfirmationRequest) : ClinicalImportConfirmationResponse {
+        val localVarResponse = confirmClinicalImportWithHttpInfo(householdId = householdId, id = id, clinicalImportConfirmationRequest = clinicalImportConfirmationRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ClinicalImportConfirmationResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/{id}/confirm
+     * Confirm a reviewed clinical import.
+     * Requires care:write and current manager, clinical and consent authority. JSON body limit is 64 KiB. Processing can return a completed or persisted failed report; inspect its state. The HTTP transport is implemented in source; integrated verification is pending.
+     * @param householdId 
+     * @param id 
+     * @param clinicalImportConfirmationRequest 
+     * @return ApiResponse<ClinicalImportConfirmationResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun confirmClinicalImportWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, clinicalImportConfirmationRequest: ClinicalImportConfirmationRequest) : ApiResponse<ClinicalImportConfirmationResponse?> {
+        val localVariableConfig = confirmClinicalImportRequestConfig(householdId = householdId, id = id, clinicalImportConfirmationRequest = clinicalImportConfirmationRequest)
+
+        return request<ClinicalImportConfirmationRequest, ClinicalImportConfirmationResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation confirmClinicalImport
+     *
+     * @param householdId 
+     * @param id 
+     * @param clinicalImportConfirmationRequest 
+     * @return RequestConfig
+     */
+    fun confirmClinicalImportRequestConfig(householdId: kotlin.Int, id: kotlin.String, clinicalImportConfirmationRequest: ClinicalImportConfirmationRequest) : RequestConfig<ClinicalImportConfirmationRequest> {
+        val localVariableBody = clinicalImportConfirmationRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/data_imports/{id}/confirm".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/consents
+     * Request consent for a clinical import.
+     * A household manager requests consent for a recipient. Personal keys require care:write. JSON body limit is 64 KiB.
+     * @param householdId 
+     * @param clinicalImportConsentBinding 
+     * @return ClinicalImportConsentCreatedResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun createClinicalImportConsent(householdId: kotlin.Int, clinicalImportConsentBinding: ClinicalImportConsentBinding) : ClinicalImportConsentCreatedResponse {
+        val localVarResponse = createClinicalImportConsentWithHttpInfo(householdId = householdId, clinicalImportConsentBinding = clinicalImportConsentBinding)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ClinicalImportConsentCreatedResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/consents
+     * Request consent for a clinical import.
+     * A household manager requests consent for a recipient. Personal keys require care:write. JSON body limit is 64 KiB.
+     * @param householdId 
+     * @param clinicalImportConsentBinding 
+     * @return ApiResponse<ClinicalImportConsentCreatedResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun createClinicalImportConsentWithHttpInfo(householdId: kotlin.Int, clinicalImportConsentBinding: ClinicalImportConsentBinding) : ApiResponse<ClinicalImportConsentCreatedResponse?> {
+        val localVariableConfig = createClinicalImportConsentRequestConfig(householdId = householdId, clinicalImportConsentBinding = clinicalImportConsentBinding)
+
+        return request<ClinicalImportConsentBinding, ClinicalImportConsentCreatedResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation createClinicalImportConsent
+     *
+     * @param householdId 
+     * @param clinicalImportConsentBinding 
+     * @return RequestConfig
+     */
+    fun createClinicalImportConsentRequestConfig(householdId: kotlin.Int, clinicalImportConsentBinding: ClinicalImportConsentBinding) : RequestConfig<ClinicalImportConsentBinding> {
+        val localVariableBody = clinicalImportConsentBinding
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/data_imports/consents".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -1621,6 +1790,86 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * POST /households/{household_id}/data_imports/consents/{id}/decision
+     * Approve or reject a clinical import consent request.
+     * The recipient decides their own request. A rejection after approval withdraws consent. Personal keys require care:write. JSON body limit is 64 KiB.
+     * @param householdId 
+     * @param id 
+     * @param clinicalImportConsentDecisionRequest 
+     * @return ClinicalImportPersonalConsentResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun decideClinicalImportConsent(householdId: kotlin.Int, id: kotlin.String, clinicalImportConsentDecisionRequest: ClinicalImportConsentDecisionRequest) : ClinicalImportPersonalConsentResponse {
+        val localVarResponse = decideClinicalImportConsentWithHttpInfo(householdId = householdId, id = id, clinicalImportConsentDecisionRequest = clinicalImportConsentDecisionRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ClinicalImportPersonalConsentResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/consents/{id}/decision
+     * Approve or reject a clinical import consent request.
+     * The recipient decides their own request. A rejection after approval withdraws consent. Personal keys require care:write. JSON body limit is 64 KiB.
+     * @param householdId 
+     * @param id 
+     * @param clinicalImportConsentDecisionRequest 
+     * @return ApiResponse<ClinicalImportPersonalConsentResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun decideClinicalImportConsentWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, clinicalImportConsentDecisionRequest: ClinicalImportConsentDecisionRequest) : ApiResponse<ClinicalImportPersonalConsentResponse?> {
+        val localVariableConfig = decideClinicalImportConsentRequestConfig(householdId = householdId, id = id, clinicalImportConsentDecisionRequest = clinicalImportConsentDecisionRequest)
+
+        return request<ClinicalImportConsentDecisionRequest, ClinicalImportPersonalConsentResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation decideClinicalImportConsent
+     *
+     * @param householdId 
+     * @param id 
+     * @param clinicalImportConsentDecisionRequest 
+     * @return RequestConfig
+     */
+    fun decideClinicalImportConsentRequestConfig(householdId: kotlin.Int, id: kotlin.String, clinicalImportConsentDecisionRequest: ClinicalImportConsentDecisionRequest) : RequestConfig<ClinicalImportConsentDecisionRequest> {
+        val localVariableBody = clinicalImportConsentDecisionRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/data_imports/consents/{id}/decision".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * DELETE /households/{household_id}/profile/avatar
      * Remove the current-person avatar.
      * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
@@ -2550,6 +2799,158 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/households/{household_id}/ai_medication_suggestions".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/data_imports/{id}
+     * Get a clinical import report.
+     * Checked report access requires current household management and applicable creator, consent and clinical authority. A confirmation token is returned only for a currently ready report when authorised; otherwise it is null. Responses use Cache-Control no-store.
+     * @param householdId 
+     * @param id 
+     * @return ClinicalImportPreviewResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getClinicalImport(householdId: kotlin.Int, id: kotlin.String) : ClinicalImportPreviewResponse {
+        val localVarResponse = getClinicalImportWithHttpInfo(householdId = householdId, id = id)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ClinicalImportPreviewResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/data_imports/{id}
+     * Get a clinical import report.
+     * Checked report access requires current household management and applicable creator, consent and clinical authority. A confirmation token is returned only for a currently ready report when authorised; otherwise it is null. Responses use Cache-Control no-store.
+     * @param householdId 
+     * @param id 
+     * @return ApiResponse<ClinicalImportPreviewResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getClinicalImportWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<ClinicalImportPreviewResponse?> {
+        val localVariableConfig = getClinicalImportRequestConfig(householdId = householdId, id = id)
+
+        return request<Unit, ClinicalImportPreviewResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getClinicalImport
+     *
+     * @param householdId 
+     * @param id 
+     * @return RequestConfig
+     */
+    fun getClinicalImportRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/data_imports/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/data_imports/consents/{id}
+     * Read a personal clinical import consent request.
+     * The ordinary recipient can read their own request; personal keys require care:read. Current credential and household checks apply.
+     * @param householdId 
+     * @param id 
+     * @return ClinicalImportPersonalConsentResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getClinicalImportConsent(householdId: kotlin.Int, id: kotlin.String) : ClinicalImportPersonalConsentResponse {
+        val localVarResponse = getClinicalImportConsentWithHttpInfo(householdId = householdId, id = id)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ClinicalImportPersonalConsentResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/data_imports/consents/{id}
+     * Read a personal clinical import consent request.
+     * The ordinary recipient can read their own request; personal keys require care:read. Current credential and household checks apply.
+     * @param householdId 
+     * @param id 
+     * @return ApiResponse<ClinicalImportPersonalConsentResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getClinicalImportConsentWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<ClinicalImportPersonalConsentResponse?> {
+        val localVariableConfig = getClinicalImportConsentRequestConfig(householdId = householdId, id = id)
+
+        return request<Unit, ClinicalImportPersonalConsentResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getClinicalImportConsent
+     *
+     * @param householdId 
+     * @param id 
+     * @return RequestConfig
+     */
+    fun getClinicalImportConsentRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/data_imports/consents/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -3990,6 +4391,170 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.GET,
             path = "/households/{household_id}/sync/snapshot".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/inspections
+     * Inspect an encrypted clinical import archive.
+     * Requires household management access and an operator-confirmed IANA timezone. The JSON body is limited to 90 MiB and the decoded archive to 64 MiB.
+     * @param householdId 
+     * @param clinicalImportInspectionRequest 
+     * @return ClinicalImportInspectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun inspectClinicalImport(householdId: kotlin.Int, clinicalImportInspectionRequest: ClinicalImportInspectionRequest) : ClinicalImportInspectionResponse {
+        val localVarResponse = inspectClinicalImportWithHttpInfo(householdId = householdId, clinicalImportInspectionRequest = clinicalImportInspectionRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ClinicalImportInspectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/inspections
+     * Inspect an encrypted clinical import archive.
+     * Requires household management access and an operator-confirmed IANA timezone. The JSON body is limited to 90 MiB and the decoded archive to 64 MiB.
+     * @param householdId 
+     * @param clinicalImportInspectionRequest 
+     * @return ApiResponse<ClinicalImportInspectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun inspectClinicalImportWithHttpInfo(householdId: kotlin.Int, clinicalImportInspectionRequest: ClinicalImportInspectionRequest) : ApiResponse<ClinicalImportInspectionResponse?> {
+        val localVariableConfig = inspectClinicalImportRequestConfig(householdId = householdId, clinicalImportInspectionRequest = clinicalImportInspectionRequest)
+
+        return request<ClinicalImportInspectionRequest, ClinicalImportInspectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation inspectClinicalImport
+     *
+     * @param householdId 
+     * @param clinicalImportInspectionRequest 
+     * @return RequestConfig
+     */
+    fun inspectClinicalImportRequestConfig(householdId: kotlin.Int, clinicalImportInspectionRequest: ClinicalImportInspectionRequest) : RequestConfig<ClinicalImportInspectionRequest> {
+        val localVariableBody = clinicalImportInspectionRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/data_imports/inspections".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/data_imports
+     * List clinical import reports.
+     * Reports are subject to creator and person-access checks. Responses use Cache-Control no-store.
+     * @param householdId 
+     * @param afterId  (optional)
+     * @param limit  (optional, default to 25)
+     * @return ClinicalImportReportPageResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listClinicalImports(householdId: kotlin.Int, afterId: kotlin.String? = null, limit: kotlin.Int? = 25) : ClinicalImportReportPageResponse {
+        val localVarResponse = listClinicalImportsWithHttpInfo(householdId = householdId, afterId = afterId, limit = limit)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ClinicalImportReportPageResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/data_imports
+     * List clinical import reports.
+     * Reports are subject to creator and person-access checks. Responses use Cache-Control no-store.
+     * @param householdId 
+     * @param afterId  (optional)
+     * @param limit  (optional, default to 25)
+     * @return ApiResponse<ClinicalImportReportPageResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listClinicalImportsWithHttpInfo(householdId: kotlin.Int, afterId: kotlin.String?, limit: kotlin.Int?) : ApiResponse<ClinicalImportReportPageResponse?> {
+        val localVariableConfig = listClinicalImportsRequestConfig(householdId = householdId, afterId = afterId, limit = limit)
+
+        return request<Unit, ClinicalImportReportPageResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listClinicalImports
+     *
+     * @param householdId 
+     * @param afterId  (optional)
+     * @param limit  (optional, default to 25)
+     * @return RequestConfig
+     */
+    fun listClinicalImportsRequestConfig(householdId: kotlin.Int, afterId: kotlin.String?, limit: kotlin.Int?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (afterId != null) {
+                    put("after_id", listOf(afterId.toString()))
+                }
+                if (limit != null) {
+                    put("limit", listOf(limit.toString()))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/data_imports".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -5666,6 +6231,83 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/schedules/{id}/pause".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/previews
+     * Create a clinical import preview.
+     * Resubmit the inspected archive and supply mappings, consent choices and omission acknowledgements. The JSON body is limited to 90 MiB and the decoded archive to 64 MiB. Responses use Cache-Control no-store.
+     * @param householdId 
+     * @param clinicalImportPreviewRequest 
+     * @return ClinicalImportPreviewResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun previewClinicalImport(householdId: kotlin.Int, clinicalImportPreviewRequest: ClinicalImportPreviewRequest) : ClinicalImportPreviewResponse {
+        val localVarResponse = previewClinicalImportWithHttpInfo(householdId = householdId, clinicalImportPreviewRequest = clinicalImportPreviewRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ClinicalImportPreviewResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/data_imports/previews
+     * Create a clinical import preview.
+     * Resubmit the inspected archive and supply mappings, consent choices and omission acknowledgements. The JSON body is limited to 90 MiB and the decoded archive to 64 MiB. Responses use Cache-Control no-store.
+     * @param householdId 
+     * @param clinicalImportPreviewRequest 
+     * @return ApiResponse<ClinicalImportPreviewResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun previewClinicalImportWithHttpInfo(householdId: kotlin.Int, clinicalImportPreviewRequest: ClinicalImportPreviewRequest) : ApiResponse<ClinicalImportPreviewResponse?> {
+        val localVariableConfig = previewClinicalImportRequestConfig(householdId = householdId, clinicalImportPreviewRequest = clinicalImportPreviewRequest)
+
+        return request<ClinicalImportPreviewRequest, ClinicalImportPreviewResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation previewClinicalImport
+     *
+     * @param householdId 
+     * @param clinicalImportPreviewRequest 
+     * @return RequestConfig
+     */
+    fun previewClinicalImportRequestConfig(householdId: kotlin.Int, clinicalImportPreviewRequest: ClinicalImportPreviewRequest) : RequestConfig<ClinicalImportPreviewRequest> {
+        val localVariableBody = clinicalImportPreviewRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/data_imports/previews".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
