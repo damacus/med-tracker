@@ -10,6 +10,51 @@ use sea_orm::{
 };
 use serde_json::json;
 
+#[cfg(test)]
+mod prepared_subject_query_tests {
+    use super::*;
+
+    #[test]
+    fn captured_declarations_are_bound_and_the_recheck_takes_no_locks() {
+        let query = prepared_subject_query(17, 23, &[31, 32]);
+        let statement = DbBackend::Postgres.build(&query);
+        let sql = &statement.sql;
+        for clause in [
+            "\"c\".\"guardian_declaration_id\" = \"d\".\"id\"",
+            "\"c\".\"carer_id\" = \"d\".\"guardian_person_id\"",
+            "\"c\".\"patient_id\" = \"d\".\"subject_person_id\"",
+            "\"m\".\"person_id\" = \"p\".\"id\"",
+            "\"m\".\"household_id\" = \"c\".\"household_id\"",
+            "\"p\".\"id\" = \"d\".\"subject_person_id\"",
+            "\"d\".\"guardian_person_id\" = $",
+            "\"c\".\"household_id\" = $",
+            "\"c\".\"active\" = $",
+            "\"m\".\"status\" = $",
+            "\"d\".\"withdrawn_at\" IS NULL",
+            "\"d\".\"superseded_at\" IS NULL",
+            "\"m\".\"revoked_at\" IS NULL",
+            "\"d\".\"id\" = ANY(",
+            "ORDER BY \"d\".\"id\" ASC",
+        ] {
+            assert!(sql.contains(clause), "missing query condition: {clause}");
+        }
+        assert!(!sql.contains("FOR UPDATE"));
+        assert!(!sql.contains("FOR SHARE"));
+        let values = &statement.values.as_ref().unwrap().0;
+        for value in [17_i64, 23] {
+            assert!(values.contains(&value.into()));
+        }
+        assert!(values.iter().any(|value| match value {
+            sea_orm::Value::Array(_, Some(ids)) => {
+                ids.as_slice() == [31_i64.into(), 32_i64.into()]
+            }
+            _ => false,
+        }));
+        assert!(values.contains(&true.into()));
+        assert!(values.contains(&"active".to_owned().into()));
+    }
+}
+
 #[derive(serde::Serialize)]
 pub(crate) struct OwnDeclaration {
     pub id: String,
@@ -247,6 +292,64 @@ pub(crate) async fn manageable_subjects(
         .collect())
 }
 
+fn prepared_subject_query(
+    guardian_id: i64,
+    household_id: i64,
+    declaration_ids: &[i64],
+) -> sea_orm::sea_query::SelectStatement {
+    use sea_orm::sea_query::{
+        Alias, Expr, ExprTrait, JoinType, Order, Query, extension::postgres::PgExpr,
+    };
+
+    Query::select()
+        .columns([
+            ("d", "id"),
+            ("d", "subject_person_id"),
+            ("p", "person_type"),
+            ("p", "date_of_birth"),
+            ("p", "has_capacity"),
+        ])
+        .from_as(
+            (Alias::new("public"), Alias::new("guardian_declarations")),
+            "d",
+        )
+        .join_as(
+            JoinType::InnerJoin,
+            (Alias::new("public"), Alias::new("carer_relationships")),
+            "c",
+            Expr::col(("c", "guardian_declaration_id"))
+                .equals(("d", "id"))
+                .and(Expr::col(("c", "carer_id")).equals(("d", "guardian_person_id")))
+                .and(Expr::col(("c", "patient_id")).equals(("d", "subject_person_id"))),
+        )
+        .join_as(
+            JoinType::InnerJoin,
+            (Alias::new("public"), Alias::new("people")),
+            "p",
+            Expr::col(("p", "id")).equals(("d", "subject_person_id")),
+        )
+        .join_as(
+            JoinType::InnerJoin,
+            (Alias::new("public"), Alias::new("household_memberships")),
+            "m",
+            Expr::col(("m", "person_id"))
+                .equals(("p", "id"))
+                .and(Expr::col(("m", "household_id")).equals(("c", "household_id"))),
+        )
+        .and_where(Expr::col(("d", "guardian_person_id")).eq(guardian_id))
+        .and_where(Expr::col(("d", "withdrawn_at")).is_null())
+        .and_where(Expr::col(("d", "superseded_at")).is_null())
+        .and_where(Expr::col(("c", "household_id")).eq(household_id))
+        .and_where(Expr::col(("c", "active")).eq(true))
+        .and_where(Expr::col(("m", "status")).eq("active"))
+        .and_where(Expr::col(("m", "revoked_at")).is_null())
+        // SeaQuery's PostgreSQL array predicate keeps one bound value; is_in
+        // can exceed PostgreSQL's parameter limit for a large captured set.
+        .and_where(Expr::col(("d", "id")).eq_any(declaration_ids.iter().copied()))
+        .order_by(("d", "id"), Order::Asc)
+        .to_owned()
+}
+
 pub(crate) async fn manageable_subject_declarations(
     tenant: &TenantTransaction,
 ) -> Result<Vec<(i64, i64)>, OperationError> {
@@ -298,11 +401,11 @@ pub(crate) async fn manageable_subject_declarations(
     {
         return Ok(Vec::new());
     }
-    let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT d.id,d.subject_person_id,p.person_type,p.date_of_birth,p.has_capacity FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.people p ON p.id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=p.id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL AND d.id=ANY($3::bigint[]) ORDER BY d.id",
-        [guardian.id.into(),tenant.scope().household_id.into(),ids.into()],
-    )).await?;
+    let query = prepared_subject_query(guardian.id, tenant.scope().household_id, &ids);
+    let rows = tenant
+        .transaction()
+        .query_all_raw(tenant.transaction().get_database_backend().build(&query))
+        .await?;
     let mut subjects = Vec::new();
     for row in rows {
         let kind: i32 = row.try_get("", "person_type")?;
