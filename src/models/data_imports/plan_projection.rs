@@ -9,8 +9,11 @@ use super::{
     projection::{PlannedOutcomes, PlannedRecord, PlannedRelationship},
 };
 use crate::models::care::portable_imports::{
-    ProfileDifference,
-    planning::{AssessmentReason, ImportAssessment, PlannedAction, SourceCollection},
+    ProfileDifference, ResolvedAlias,
+    planning::{
+        AssessmentIssue, AssessmentReason, ImportAssessment, PlannedAction, PlannedRow,
+        SourceCollection,
+    },
 };
 
 /// A finding attributed by the caller to a real source person.
@@ -34,6 +37,12 @@ pub(crate) struct BridgeIssue {
     pub(crate) detail: String,
 }
 
+struct AssessmentView<'a> {
+    rows: &'a [PlannedRow],
+    issues: &'a [AssessmentIssue],
+    aliases: &'a [ResolvedAlias],
+}
+
 pub(crate) struct BridgeOutput {
     pub(crate) outcomes: PlannedOutcomes,
     pub(crate) issues: Vec<BridgeIssue>,
@@ -47,6 +56,8 @@ pub(crate) enum BridgeError {
     UnknownAttachmentParent,
     DuplicatePlannerRow,
     UnknownPlannerRow,
+    InvalidGlobalIssue,
+    MissingAlias,
 }
 
 fn kind(collection: SourceCollection) -> RecordKind {
@@ -90,6 +101,45 @@ pub(crate) fn bridge(
     findings: &[PersonFinding],
     attachment_parents: &[AttachmentParent],
 ) -> Result<BridgeOutput, BridgeError> {
+    project_inventory(
+        inventory,
+        Some(AssessmentView {
+            rows: &assessment.rows,
+            issues: &assessment.issues,
+            aliases: &assessment.aliases,
+        }),
+        findings,
+        attachment_parents,
+        None,
+    )
+}
+
+/// Project an inventory when identity normalisation stopped before assessment.
+pub(crate) fn blocked_inventory(
+    inventory: &SourceInventory,
+    findings: &[PersonFinding],
+    attachment_parents: &[AttachmentParent],
+    global_issue: BridgeIssue,
+) -> Result<BridgeOutput, BridgeError> {
+    if global_issue.source.is_some() {
+        return Err(BridgeError::InvalidGlobalIssue);
+    }
+    project_inventory(
+        inventory,
+        None,
+        findings,
+        attachment_parents,
+        Some(global_issue),
+    )
+}
+
+fn project_inventory(
+    inventory: &SourceInventory,
+    assessment: Option<AssessmentView<'_>>,
+    findings: &[PersonFinding],
+    attachment_parents: &[AttachmentParent],
+    global_issue: Option<BridgeIssue>,
+) -> Result<BridgeOutput, BridgeError> {
     let mut records = HashMap::new();
     let mut by_key = HashMap::new();
     for record in &inventory.records {
@@ -105,7 +155,11 @@ pub(crate) fn bridge(
         }
     }
     let mut rows = HashMap::new();
-    for row in &assessment.rows {
+    for row in assessment
+        .as_ref()
+        .into_iter()
+        .flat_map(|assessment| assessment.rows)
+    {
         let Some(identity) = by_key.get(&(kind(row.collection), row.portable_id.as_str())) else {
             return Err(BridgeError::UnknownPlannerRow);
         };
@@ -113,9 +167,13 @@ pub(crate) fn bridge(
             return Err(BridgeError::DuplicatePlannerRow);
         }
     }
-    let mut issues = Vec::new();
+    let mut issues: Vec<_> = global_issue.into_iter().collect();
     let mut row_reasons = HashMap::new();
-    for issue in &assessment.issues {
+    for issue in assessment
+        .as_ref()
+        .into_iter()
+        .flat_map(|assessment| assessment.issues)
+    {
         let source = issue
             .collection
             .zip(issue.portable_id.as_deref())
@@ -154,10 +212,91 @@ pub(crate) fn bridge(
     }
     let owners = ownership(inventory, attachment_parents, &records)?;
     let aliases: HashMap<_, _> = assessment
-        .aliases
-        .iter()
+        .as_ref()
+        .into_iter()
+        .flat_map(|assessment| assessment.aliases)
         .map(|alias| (alias.source_person_portable_id.as_str(), alias))
         .collect();
+    for (source, action) in &rows {
+        if *action == PlannedAction::Match
+            && (source.kind != RecordKind::Person || !aliases.contains_key(source.id.as_str()))
+        {
+            return Err(BridgeError::MissingAlias);
+        }
+    }
+    for (source, action) in &rows {
+        if *action == PlannedAction::Reject {
+            row_reasons
+                .entry(source.clone())
+                .or_insert(ReasonCode::SourceInvalid);
+        }
+    }
+    for (person, why) in &blocked_people {
+        row_reasons.entry(person.clone()).or_insert(*why);
+    }
+    if assessment.is_some() {
+        for item in &inventory.records {
+            if item.identity.kind != RecordKind::Attachment && !rows.contains_key(&item.identity) {
+                row_reasons
+                    .entry(item.identity.clone())
+                    .or_insert(ReasonCode::MissingDependency);
+                issues.push(BridgeIssue {
+                    source: Some(item.identity.clone()),
+                    field: None,
+                    reason: ReasonCode::MissingDependency,
+                    detail: "No planner row for source record".into(),
+                });
+            }
+        }
+        for edge in &inventory.relationships {
+            if clinical(edge.source.kind)
+                && !actor(&edge.field)
+                && edge.kind != RelationshipKind::PersonLocation
+                && edge.reason.is_none()
+                && !records.contains_key(&edge.target)
+            {
+                row_reasons
+                    .entry(edge.source.clone())
+                    .or_insert(ReasonCode::MissingDependency);
+                issues.push(BridgeIssue {
+                    source: records
+                        .contains_key(&edge.source)
+                        .then(|| edge.source.clone()),
+                    field: Some(edge.field.clone()),
+                    reason: ReasonCode::MissingDependency,
+                    detail: "Source dependency is unavailable".into(),
+                });
+            }
+        }
+    }
+    let mut dependants: HashMap<SourceIdentity, Vec<SourceIdentity>> = HashMap::new();
+    for edge in &inventory.relationships {
+        if !actor(&edge.field)
+            && edge.kind != RelationshipKind::PersonLocation
+            && edge.reason.is_none()
+            && edge.target.kind != RecordKind::Attachment
+            && clinical(edge.source.kind)
+        {
+            dependants
+                .entry(edge.target.clone())
+                .or_default()
+                .push(edge.source.clone());
+        }
+    }
+    let mut pending: VecDeque<_> = row_reasons
+        .iter()
+        .map(|(source, why)| (source.clone(), *why))
+        .collect();
+    while let Some((source, why)) = pending.pop_front() {
+        if let Some(dependent) = dependants.get(&source) {
+            for target in dependent {
+                if !row_reasons.contains_key(target) {
+                    row_reasons.insert(target.clone(), why);
+                    pending.push_back((target.clone(), why));
+                }
+            }
+        }
+    }
     let mut planned = Vec::with_capacity(inventory.records.len());
     for record in &inventory.records {
         let identity = &record.identity;
@@ -210,13 +349,15 @@ pub(crate) fn bridge(
             })
             .flatten()
         });
-        let (expected, why) = if let Some(reason) = blocker {
-            (ExpectedRecord::Reject, Some(reason))
-        } else if identity.kind == RecordKind::Attachment {
+        let (expected, why) = if identity.kind == RecordKind::Attachment {
             (
                 ExpectedRecord::Skip,
                 Some(ReasonCode::AttachmentUnsupported),
             )
+        } else if let Some(reason) = blocker {
+            (ExpectedRecord::Reject, Some(reason))
+        } else if assessment.is_none() {
+            (ExpectedRecord::DecisionRequired, None)
         } else {
             match rows.get(identity) {
                 Some(PlannedAction::Create) => (ExpectedRecord::Create, None),
@@ -224,15 +365,7 @@ pub(crate) fn bridge(
                 Some(PlannedAction::Reject) => {
                     (ExpectedRecord::Reject, Some(ReasonCode::SourceInvalid))
                 }
-                None => {
-                    issues.push(BridgeIssue {
-                        source: Some(identity.clone()),
-                        field: None,
-                        reason: ReasonCode::MissingDependency,
-                        detail: "No planner row for source record".into(),
-                    });
-                    (ExpectedRecord::Reject, Some(ReasonCode::MissingDependency))
-                }
+                None => (ExpectedRecord::Reject, Some(ReasonCode::MissingDependency)),
             }
         };
         let destination = alias.map(|a| DestinationRecord {
@@ -259,6 +392,13 @@ pub(crate) fn bridge(
             (
                 ExpectedRelationship::Omit,
                 Some(ReasonCode::ObsoletePersonLocation),
+            )
+        } else if edge.source.kind == RecordKind::Attachment
+            || edge.target.kind == RecordKind::Attachment
+        {
+            (
+                ExpectedRelationship::Omit,
+                Some(ReasonCode::AttachmentUnsupported),
             )
         } else if actor(&edge.field) {
             (
@@ -288,6 +428,15 @@ pub(crate) fn bridge(
                 ExpectedRelationship::Reject,
                 Some(ReasonCode::MissingDependency),
             )
+        } else if assessment.is_none()
+            || planned_index
+                .get(&edge.source)
+                .is_some_and(|item| item.expected == ExpectedRecord::DecisionRequired)
+            || planned_index
+                .get(&edge.target)
+                .is_some_and(|item| item.expected == ExpectedRecord::DecisionRequired)
+        {
+            (ExpectedRelationship::DecisionRequired, None)
         } else {
             (ExpectedRelationship::Link, None)
         };
@@ -307,6 +456,19 @@ pub(crate) fn bridge(
         },
         issues,
     })
+}
+
+fn clinical(kind: RecordKind) -> bool {
+    matches!(
+        kind,
+        RecordKind::Schedule
+            | RecordKind::Assignment
+            | RecordKind::Dose
+            | RecordKind::Pause
+            | RecordKind::Occurrence
+            | RecordKind::HealthEvent
+            | RecordKind::NotificationPreference
+    )
 }
 
 fn ownership(
@@ -392,7 +554,7 @@ fn ownership(
 mod tests {
     use super::*;
     use crate::models::data_imports::contracts::{
-        RecordDetails, SourceRecord, SourceRelationship, SourceSystem,
+        Omission, RecordDetails, SourceRecord, SourceRelationship, SourceSystem, SourceTimeZone,
     };
 
     fn id(kind: RecordKind, value: &str) -> SourceIdentity {
@@ -498,5 +660,607 @@ mod tests {
         assert!(actor("recorded_by_person_portable_id"));
         assert!(actor("resumed_by_person_portable_id"));
         assert!(!actor("person_portable_id"));
+    }
+
+    fn fixture() -> SourceInventory {
+        let mut inventory = SourceInventory {
+            records: Vec::new(),
+            relationships: Vec::new(),
+            omissions: Vec::new(),
+        };
+        for (kind, name) in [
+            (RecordKind::Person, "p"),
+            (RecordKind::Person, "q"),
+            (RecordKind::Person, "carer"),
+            (RecordKind::Schedule, "s"),
+            (RecordKind::Assignment, "a"),
+            (RecordKind::Dose, "d"),
+            (RecordKind::Pause, "pause"),
+            (RecordKind::Pause, "pause_missing"),
+            (RecordKind::Occurrence, "occ"),
+            (RecordKind::Medication, "m"),
+            (RecordKind::DosageOption, "used"),
+            (RecordKind::DosageOption, "unused"),
+            (RecordKind::Location, "location"),
+            (RecordKind::Attachment, "attachment"),
+        ] {
+            inventory.records.push(SourceRecord {
+                identity: id(kind, name),
+                details: RecordDetails::default(),
+            });
+        }
+        for (sk, s, tk, t, field, relation, why) in [
+            (
+                RecordKind::Schedule,
+                "s",
+                RecordKind::Person,
+                "p",
+                "person_portable_id",
+                RelationshipKind::SchedulePerson,
+                None,
+            ),
+            (
+                RecordKind::Assignment,
+                "a",
+                RecordKind::Person,
+                "q",
+                "person_portable_id",
+                RelationshipKind::AssignmentPerson,
+                None,
+            ),
+            (
+                RecordKind::Schedule,
+                "s",
+                RecordKind::Medication,
+                "m",
+                "medication_portable_id",
+                RelationshipKind::ScheduleMedication,
+                None,
+            ),
+            (
+                RecordKind::Assignment,
+                "a",
+                RecordKind::Medication,
+                "m",
+                "medication_portable_id",
+                RelationshipKind::AssignmentMedication,
+                None,
+            ),
+            (
+                RecordKind::Schedule,
+                "s",
+                RecordKind::DosageOption,
+                "used",
+                "source_dosage_option_portable_id",
+                RelationshipKind::Other,
+                None,
+            ),
+            (
+                RecordKind::DosageOption,
+                "unused",
+                RecordKind::Medication,
+                "m",
+                "medication_portable_id",
+                RelationshipKind::Other,
+                None,
+            ),
+            (
+                RecordKind::Dose,
+                "d",
+                RecordKind::Assignment,
+                "a",
+                "source_portable_id",
+                RelationshipKind::DoseSource,
+                None,
+            ),
+            (
+                RecordKind::Pause,
+                "pause",
+                RecordKind::Schedule,
+                "s",
+                "source_portable_id",
+                RelationshipKind::DoseSource,
+                None,
+            ),
+            (
+                RecordKind::Pause,
+                "pause_missing",
+                RecordKind::Assignment,
+                "a",
+                "source_portable_id",
+                RelationshipKind::DoseSource,
+                None,
+            ),
+            (
+                RecordKind::Occurrence,
+                "occ",
+                RecordKind::Schedule,
+                "s",
+                "source_portable_id",
+                RelationshipKind::DoseSource,
+                None,
+            ),
+            (
+                RecordKind::Pause,
+                "pause",
+                RecordKind::Person,
+                "carer",
+                "recorded_by_person_portable_id",
+                RelationshipKind::Other,
+                None,
+            ),
+            (
+                RecordKind::Pause,
+                "pause",
+                RecordKind::Person,
+                "carer",
+                "resumed_by_person_portable_id",
+                RelationshipKind::Other,
+                None,
+            ),
+            (
+                RecordKind::Pause,
+                "pause_missing",
+                RecordKind::Person,
+                "missing",
+                "recorded_by_person_portable_id",
+                RelationshipKind::Other,
+                Some(ReasonCode::HistoricalActorUnavailable),
+            ),
+            (
+                RecordKind::Person,
+                "p",
+                RecordKind::Location,
+                "location",
+                "location_portable_ids",
+                RelationshipKind::PersonLocation,
+                None,
+            ),
+            (
+                RecordKind::Attachment,
+                "attachment",
+                RecordKind::Schedule,
+                "s",
+                "parent",
+                RelationshipKind::Other,
+                None,
+            ),
+        ] {
+            inventory.relationships.push(SourceRelationship {
+                source: id(sk, s),
+                target: id(tk, t),
+                field: field.into(),
+                kind: relation,
+                reason: why,
+            });
+        }
+        inventory
+    }
+
+    fn assessment_rows() -> Vec<PlannedRow> {
+        [
+            (SourceCollection::People, "p"),
+            (SourceCollection::People, "q"),
+            (SourceCollection::People, "carer"),
+            (SourceCollection::Schedules, "s"),
+            (SourceCollection::PersonMedications, "a"),
+            (SourceCollection::MedicationTakes, "d"),
+            (SourceCollection::MedicationPausePeriods, "pause"),
+            (SourceCollection::MedicationPausePeriods, "pause_missing"),
+            (SourceCollection::DoseOccurrences, "occ"),
+            (SourceCollection::Medications, "m"),
+            (SourceCollection::DosageOptions, "used"),
+            (SourceCollection::DosageOptions, "unused"),
+            (SourceCollection::Locations, "location"),
+        ]
+        .into_iter()
+        .map(|(collection, portable_id)| PlannedRow {
+            collection,
+            portable_id: portable_id.into(),
+            action: PlannedAction::Create,
+        })
+        .collect()
+    }
+
+    fn assessment(
+        rows: Vec<PlannedRow>,
+        issues: Vec<AssessmentIssue>,
+        aliases: Vec<ResolvedAlias>,
+    ) -> ImportAssessment {
+        use crate::models::{
+            care::portable_imports::planning::DestinationExpectation,
+            entities::membership,
+            ids::{AccountId, HouseholdId},
+        };
+        ImportAssessment {
+            rows,
+            issues,
+            aliases,
+            expectation: DestinationExpectation {
+                household_id: HouseholdId::from_database(1),
+                actor_id: AccountId::from_database(1),
+                actor_membership: membership::Model {
+                    id: 1,
+                    created_at: Default::default(),
+                    household_id: 1,
+                    joined_at: Default::default(),
+                    permissions_version: 0,
+                    person_id: 1,
+                    revoked_at: None,
+                    role: "owner".into(),
+                    status: "active".into(),
+                    updated_at: Default::default(),
+                },
+                aliases: vec![],
+                slots: vec![],
+            },
+            source_compatible: true,
+            has_blockers: false,
+        }
+    }
+
+    fn result<'a>(output: &'a BridgeOutput, kind: RecordKind, name: &str) -> &'a PlannedRecord {
+        output
+            .outcomes
+            .records
+            .iter()
+            .find(|row| row.source == id(kind, name))
+            .unwrap()
+    }
+
+    fn edge_result<'a>(
+        output: &'a BridgeOutput,
+        source: &str,
+        field: &str,
+    ) -> &'a PlannedRelationship {
+        output
+            .outcomes
+            .relationships
+            .iter()
+            .find(|row| row.source.id == source && row.field == field)
+            .unwrap()
+    }
+
+    #[test]
+    fn assessed_bridge_covers_inventory_edges_omissions_and_subjects() {
+        let mut inventory = fixture();
+        inventory.omissions.push(Omission {
+            item: id(RecordKind::Person, "p"),
+            field: Some("location_portable_ids:location".into()),
+            reason: ReasonCode::ObsoletePersonLocation,
+            acknowledgement_id: "exact-acknowledgement".into(),
+            acknowledged: false,
+        });
+        let rows = assessment_rows();
+        let output = bridge(
+            &inventory,
+            &assessment(rows, vec![], vec![]),
+            &[],
+            &[AttachmentParent {
+                attachment: id(RecordKind::Attachment, "attachment"),
+                parent: id(RecordKind::Schedule, "s"),
+            }],
+        )
+        .unwrap();
+        assert_eq!(output.outcomes.records.len(), inventory.records.len());
+        assert_eq!(
+            output.outcomes.relationships.len(),
+            inventory.relationships.len()
+        );
+        for item in &inventory.records {
+            assert_eq!(
+                output
+                    .outcomes
+                    .records
+                    .iter()
+                    .filter(|p| p.source == item.identity)
+                    .count(),
+                1
+            );
+        }
+        for edge in &inventory.relationships {
+            assert_eq!(
+                output
+                    .outcomes
+                    .relationships
+                    .iter()
+                    .filter(|p| p.source == edge.source
+                        && p.target == edge.target
+                        && p.field == edge.field)
+                    .count(),
+                1
+            );
+        }
+        assert_eq!(result(&output, RecordKind::Medication, "m").people.len(), 2);
+        assert!(
+            result(&output, RecordKind::DosageOption, "unused")
+                .people
+                .is_empty()
+        );
+        assert_eq!(
+            result(&output, RecordKind::Dose, "d").people,
+            vec![id(RecordKind::Person, "q")]
+        );
+        assert_eq!(
+            result(&output, RecordKind::Pause, "pause").people,
+            vec![id(RecordKind::Person, "p")]
+        );
+        assert_eq!(
+            result(&output, RecordKind::Attachment, "attachment").expected,
+            ExpectedRecord::Skip
+        );
+        assert_eq!(
+            result(&output, RecordKind::Attachment, "attachment").people,
+            vec![id(RecordKind::Person, "p")]
+        );
+        assert_eq!(
+            edge_result(&output, "pause", "recorded_by_person_portable_id").expected,
+            ExpectedRelationship::Omit
+        );
+        assert_eq!(
+            edge_result(&output, "pause", "resumed_by_person_portable_id").reason,
+            Some(ReasonCode::UnsupportedRelationship)
+        );
+        assert_eq!(
+            edge_result(&output, "pause_missing", "recorded_by_person_portable_id").reason,
+            Some(ReasonCode::HistoricalActorUnavailable)
+        );
+        assert_eq!(
+            edge_result(&output, "p", "location_portable_ids").reason,
+            Some(ReasonCode::ObsoletePersonLocation)
+        );
+        assert_eq!(
+            edge_result(&output, "attachment", "parent").reason,
+            Some(ReasonCode::AttachmentUnsupported)
+        );
+        assert_eq!(
+            edge_result(&output, "s", "medication_portable_id").people,
+            vec![id(RecordKind::Person, "p")]
+        );
+        let expected_creates = u64::try_from(
+            output
+                .outcomes
+                .records
+                .iter()
+                .filter(|item| item.expected == ExpectedRecord::Create)
+                .count(),
+        )
+        .unwrap();
+        let report = super::super::projection::project(
+            super::super::projection::ProjectionMeta {
+                id: "preview".into(),
+                source: SourceSystem::MedTracker05,
+                source_sha256: "digest".into(),
+                timezone: SourceTimeZone::parse("UTC").unwrap(),
+                created_at: chrono::Utc::now(),
+            },
+            &inventory,
+            output.outcomes,
+            &[],
+        )
+        .unwrap();
+        assert_eq!(report.totals.expected_create, expected_creates);
+        assert_eq!(report.totals.omissions, 1);
+        assert_eq!(
+            report
+                .people
+                .iter()
+                .flat_map(|person| &person.omissions)
+                .next()
+                .unwrap()
+                .acknowledgement_id,
+            "exact-acknowledgement"
+        );
+    }
+
+    #[test]
+    fn identified_blocker_does_not_reject_other_patient_or_shared_medicine() {
+        let inventory = fixture();
+        let rows = assessment_rows();
+        let findings = [PersonFinding {
+            person: id(RecordKind::Person, "p"),
+            field: Some("date_of_birth".into()),
+            reason: ReasonCode::IdentityConflict,
+            detail: "Date of birth differs".into(),
+        }];
+        let output = bridge(
+            &inventory,
+            &assessment(rows, vec![], vec![]),
+            &findings,
+            &[],
+        )
+        .unwrap();
+        for (kind, name) in [
+            (RecordKind::Person, "p"),
+            (RecordKind::Schedule, "s"),
+            (RecordKind::Pause, "pause"),
+            (RecordKind::Occurrence, "occ"),
+        ] {
+            assert_eq!(result(&output, kind, name).expected, ExpectedRecord::Reject);
+        }
+        for (kind, name) in [
+            (RecordKind::Person, "q"),
+            (RecordKind::Assignment, "a"),
+            (RecordKind::Dose, "d"),
+            (RecordKind::Medication, "m"),
+        ] {
+            assert_eq!(result(&output, kind, name).expected, ExpectedRecord::Create);
+        }
+        assert_eq!(output.issues.len(), 1);
+        assert_eq!(output.issues[0].source, Some(id(RecordKind::Person, "p")));
+        assert_eq!(
+            edge_result(&output, "a", "medication_portable_id").expected,
+            ExpectedRelationship::Link
+        );
+    }
+
+    #[test]
+    fn failed_identity_before_assessment_preserves_every_real_row() {
+        let inventory = fixture();
+        let finding = PersonFinding {
+            person: id(RecordKind::Person, "p"),
+            field: Some("has_capacity".into()),
+            reason: ReasonCode::IdentityConflict,
+            detail: "Capacity differs".into(),
+        };
+        let global = BridgeIssue {
+            source: None,
+            field: None,
+            reason: ReasonCode::IdentityConflict,
+            detail: "Assessment could not be performed".into(),
+        };
+        let output = blocked_inventory(&inventory, &[finding], &[], global).unwrap();
+        assert_eq!(output.outcomes.records.len(), inventory.records.len());
+        assert_eq!(
+            output.outcomes.relationships.len(),
+            inventory.relationships.len()
+        );
+        assert_eq!(
+            result(&output, RecordKind::Person, "p").expected,
+            ExpectedRecord::Reject
+        );
+        assert_eq!(
+            result(&output, RecordKind::Pause, "pause").expected,
+            ExpectedRecord::Reject
+        );
+        assert_eq!(
+            result(&output, RecordKind::Person, "q").expected,
+            ExpectedRecord::DecisionRequired
+        );
+        assert_eq!(
+            result(&output, RecordKind::Dose, "d").expected,
+            ExpectedRecord::DecisionRequired
+        );
+        assert_eq!(
+            result(&output, RecordKind::Medication, "m").expected,
+            ExpectedRecord::DecisionRequired
+        );
+        assert_eq!(
+            edge_result(&output, "a", "medication_portable_id").expected,
+            ExpectedRelationship::DecisionRequired
+        );
+        assert_eq!(
+            result(&output, RecordKind::Attachment, "attachment").expected,
+            ExpectedRecord::Skip
+        );
+        assert!(
+            result(&output, RecordKind::Attachment, "attachment")
+                .people
+                .is_empty()
+        );
+        assert_eq!(output.issues.len(), 2);
+        assert!(output.issues.iter().any(|issue| issue.source.is_none()));
+    }
+
+    #[test]
+    fn alias_and_typed_dependency_issue_preserve_native_destinations_and_propagate() {
+        let inventory = fixture();
+        let mut rows = assessment_rows();
+        rows.iter_mut()
+            .find(|row| row.collection == SourceCollection::People && row.portable_id == "q")
+            .unwrap()
+            .action = PlannedAction::Match;
+        let aliases = [ResolvedAlias {
+            source_person_portable_id: "q".into(),
+            destination_person_id: crate::models::ids::PersonId::from_database(42),
+            destination_person_portable_id: "native".into(),
+            profile_differences: vec![ProfileDifference::Name {
+                source: "Old".into(),
+                destination: "Current".into(),
+            }],
+        }];
+        let issues = [
+            AssessmentIssue {
+                collection: Some(SourceCollection::Schedules),
+                portable_id: Some("s".into()),
+                field: Some("medication_portable_id".into()),
+                reason: AssessmentReason::MissingDependency,
+                detail: "Missing medicine".into(),
+            },
+            AssessmentIssue {
+                collection: None,
+                portable_id: None,
+                field: None,
+                reason: AssessmentReason::InsufficientAuthority,
+                detail: "Global restriction".into(),
+            },
+        ];
+        let output = bridge(
+            &inventory,
+            &assessment(rows, Vec::from(issues), Vec::from(aliases)),
+            &[],
+            &[],
+        )
+        .unwrap();
+        let person = result(&output, RecordKind::Person, "q");
+        assert_eq!(person.expected, ExpectedRecord::Match);
+        assert_eq!(
+            person.destination.as_ref().map(|record| &record.id),
+            Some(&DestinationId::Person(PersonId(42)))
+        );
+        assert_eq!(
+            person.details.source_fields[0].outcome,
+            FieldOutcome::Changed
+        );
+        assert_eq!(
+            person.details.source_fields[0].destination_value.as_deref(),
+            Some("Current")
+        );
+        assert_eq!(
+            result(&output, RecordKind::Schedule, "s").reason,
+            Some(ReasonCode::MissingDependency)
+        );
+        assert_eq!(
+            result(&output, RecordKind::Pause, "pause").reason,
+            Some(ReasonCode::MissingDependency)
+        );
+        assert_eq!(
+            result(&output, RecordKind::Dose, "d").expected,
+            ExpectedRecord::Create
+        );
+        assert_eq!(output.issues[0].source, Some(id(RecordKind::Schedule, "s")));
+        assert!(output.issues[1].source.is_none());
+    }
+
+    #[test]
+    fn missing_clinical_dependency_blocks_its_history() {
+        let mut inventory = fixture();
+        inventory.relationships.push(SourceRelationship {
+            kind: RelationshipKind::ScheduleMedication,
+            field: "additional_medication".into(),
+            source: id(RecordKind::Schedule, "s"),
+            target: id(RecordKind::Medication, "missing"),
+            reason: None,
+        });
+        let output = bridge(
+            &inventory,
+            &assessment(assessment_rows(), vec![], vec![]),
+            &[],
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            result(&output, RecordKind::Schedule, "s").reason,
+            Some(ReasonCode::MissingDependency)
+        );
+        assert_eq!(
+            result(&output, RecordKind::Pause, "pause").reason,
+            Some(ReasonCode::MissingDependency)
+        );
+        assert_eq!(
+            result(&output, RecordKind::Assignment, "a").expected,
+            ExpectedRecord::Create
+        );
+        assert_eq!(
+            edge_result(&output, "s", "additional_medication").expected,
+            ExpectedRelationship::Reject
+        );
+        assert!(
+            output
+                .issues
+                .iter()
+                .any(|issue| issue.source == Some(id(RecordKind::Schedule, "s"))
+                    && issue.field.as_deref() == Some("additional_medication"))
+        );
     }
 }
