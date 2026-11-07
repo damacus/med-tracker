@@ -12,10 +12,36 @@
   const start = root.querySelector('[data-camera-start]');
   const stop = root.querySelector('[data-camera-stop]');
   const cameraStatus = root.querySelector('[data-camera-status]');
+  const canAdjust = root.dataset.canAdjust === 'true';
   let request;
   let generation = 0;
   let camera;
   let cameraGeneration = 0;
+  let audio;
+
+  function prepareSound() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      if (!audio || audio.state === 'closed') audio = new AudioContext();
+      audio.resume().catch(() => {});
+    } catch {}
+  }
+
+  function scanSound() {
+    try {
+      if (!audio || audio.state === 'suspended') return;
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      oscillator.frequency.setValueAtTime(880, audio.currentTime);
+      gain.gain.setValueAtTime(0.12, audio.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.12);
+      oscillator.connect(gain);
+      gain.connect(audio.destination);
+      oscillator.start();
+      oscillator.stop(audio.currentTime + 0.12);
+    } catch {}
+  }
 
   const link = (label, href, primary = false) => {
     const element = document.createElement('a');
@@ -32,7 +58,12 @@
     request?.abort();
     request = new AbortController();
     results.replaceChildren();
+    if (manual) manual.hidden = false;
     const query = mode === 'barcode' ? input.value.trim() : medicineForm.elements.q.value.trim();
+    if (mode === 'barcode' && !/^\d{13,14}$/.test(query)) {
+      status.textContent = 'This barcode cannot be used. Enter the 13- or 14-digit number printed on the pack, or search by medicine name.';
+      return;
+    }
     const params = new URLSearchParams({ q: query });
     if (mode === 'medicine') {
       if (medicineForm.elements.form.value) params.set('form', medicineForm.elements.form.value);
@@ -42,14 +73,17 @@
     status.textContent = 'Searching medicines…';
     try {
       const response = await fetch(`${prefix}/lookup?${params}`, { signal: request.signal, headers: { Accept: 'application/json' } });
-      if (!response.ok || response.redirected) throw new Error('lookup');
+      if (response.redirected || response.status === 401) throw new Error('sign-in');
+      if (response.status === 403) throw new Error('permission');
+      if (!response.ok) throw new Error('lookup');
       const found = await response.json();
       if (sequence !== generation) return;
       const matches = found.matches || [];
+      if (manual && mode === 'barcode' && matches.length) manual.hidden = true;
       if (matches.length || found.results.length) {
         form.querySelector('[type="submit"]').className = 'btn btn-outline';
       }
-      status.textContent = matches.length > 1 ? 'Choose the medicine and location to refill.' : matches.length === 1 ? 'Medicine found in your household.' : found.results.length ? 'Product found. Review the details before adding it.' : 'No matching product. You can enter the medication manually.';
+      status.textContent = matches.length > 1 ? 'Possible matches found in your household. Check the medicine and location before adding stock.' : matches.length === 1 ? 'Medicine found in your household. Check it is the same product before adding stock.' : found.results.length ? found.permissions.can_create ? 'Product found. Review the details before adding it.' : 'Product found, but only a household manager can add it. Ask a manager to add this medicine.' : manual ? 'No matching product. You can enter the medication manually.' : 'No matching product. Ask a household manager to add the medicine.';
       for (const match of matches) {
         const card = document.createElement('div');
         card.className = 'card card-body border border-base-300';
@@ -58,10 +92,16 @@
         heading.textContent = match.name;
         const detail = document.createElement('p');
         detail.textContent = `${match.location} · Current supply: ${match.current_supply || 'not tracked'}`;
-        card.append(heading, detail, link('Refill this medicine', `${prefix}/${match.id}?refill=true`, true));
+        card.append(heading, detail);
+        if (canAdjust) card.append(link('Add stock', `${prefix}/${match.id}?refill=true`, true));
+        else {
+          const note = document.createElement('p');
+          note.textContent = 'Ask a household manager to add stock.';
+          card.append(note);
+        }
         results.append(card);
       }
-      for (const product of found.results) {
+      for (const product of mode === 'barcode' && matches.length ? [] : found.results) {
         const card = document.createElement('div');
         card.className = 'card card-body border border-base-300';
         const heading = document.createElement('h2');
@@ -106,7 +146,7 @@
         results.append(card);
       }
     } catch (error) {
-      if (error.name !== 'AbortError' && sequence === generation) status.textContent = 'Medication search is temporarily unavailable. Try again or enter the medication manually.';
+      if (error.name !== 'AbortError' && sequence === generation) status.textContent = error.message === 'sign-in' ? 'Your session has ended. Sign in again and retry the scan.' : error.message === 'permission' ? 'You no longer have access to search this household. Ask a household manager for access.' : 'Medication search is temporarily unavailable. Check your connection and try again.';
     }
   }
 
@@ -136,6 +176,7 @@
   }
 
   start.addEventListener('click', async () => {
+    prepareSound();
     const sequence = ++cameraGeneration;
     start.disabled = true;
     stop.hidden = false;
@@ -151,10 +192,12 @@
       camera = active;
       await active.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 150 } }, async value => {
         if (sequence !== cameraGeneration) return;
+        scanSound();
         input.value = value;
         await stopCamera();
         cameraStatus.textContent = 'Barcode scanned.';
         await find();
+        if (!root.closest('dialog') || root.closest('dialog').open) status.focus();
       }, () => {});
       if (sequence !== cameraGeneration) {
         try { await active.stop(); } catch {}
@@ -189,7 +232,7 @@
   dialog?.addEventListener('cancel', closeScanner);
   dialog?.addEventListener('close', closeScanner);
   dialog?.querySelector('[data-dialog-close]')?.addEventListener('click', closeScanner);
-  window.addEventListener('pagehide', () => { request?.abort(); stopCamera(); });
+  window.addEventListener('pagehide', () => { request?.abort(); stopCamera(); audio?.close().catch(() => {}); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
   for (const control of root.querySelectorAll('[type="submit"], [data-camera-start]')) control.disabled = false;
 })();
