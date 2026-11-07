@@ -3215,6 +3215,9 @@ pt:
     action: "Atribuir ou convidar um cuidador"
   administration:
     import:
+      choose_consent: "Sem consentimento fornecido"
+      recipient_reference: "Referência do pedido de consentimento, se disponível"
+      confirm_unavailable: "A confirmação ainda não está disponível."
       preview_unavailable: "A pré-visualização ainda não está disponível."
       issues: "Problemas de importação"
       existing_person_help: "Ao selecionar uma pessoa existente, mantêm-se o nome e os contactos atuais e não se alteram as credenciais de acesso. As diferenças são apresentadas na pré-visualização."

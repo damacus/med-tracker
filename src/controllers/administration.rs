@@ -119,6 +119,11 @@ pub fn routes() -> Routes {
                 .post(imports::inspect)
                 .layer(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024)),
         )
+        .add(
+            "/{slug}/admin/data_imports/preview",
+            post(imports::preview::create)
+                .layer(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024)),
+        )
         .add("/{slug}/admin/data_imports/{id}", get(imports::detail))
         .add(
             "/{slug}/admin/carer_relationships",

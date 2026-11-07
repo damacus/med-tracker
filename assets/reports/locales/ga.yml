@@ -3217,6 +3217,9 @@ ga:
     action: "Sann cúramóir nó tabhair cuireadh dó"
   administration:
     import:
+      choose_consent: "Gan toiliú tugtha"
+      recipient_reference: "Tagairt iarratais ar thoiliú, má tá sí ar fáil"
+      confirm_unavailable: "Níl deimhniú ar fáil fós."
       preview_unavailable: "Níl an chéim réamhamhairc ar fáil fós."
       issues: "Fadhbanna iompórtála"
       existing_person_help: "Má roghnaíonn tú duine atá ann cheana, coinnítear a ainm agus a shonraí teagmhála reatha agus ní athraítear a shonraí logála isteach. Taispeántar difríochtaí sa réamhamharc."

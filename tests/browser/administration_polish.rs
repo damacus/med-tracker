@@ -7,6 +7,19 @@ use sea_orm::ConnectionTrait;
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn import_preview_post_requires_auth_and_rejects_invalid_mapping_input() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        let page = &journey.page;
+        page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+        assert!(page.evaluate::<(), bool>("async () => { const r = await fetch('/households/persistence-fixture/admin/data_imports/preview', {method:'POST', body:new FormData()}); return r.url.endsWith('/login'); }", None).await.unwrap());
+        harness::sign_in(journey).await;
+        page.goto(&format!("{}/households/persistence-fixture/admin/data_imports/new", journey.origin), None).await.unwrap();
+        assert!(page.evaluate::<(), bool>("async () => { const f = new FormData(); f.append('authenticity_token', document.querySelector('[name=authenticity_token]').value); f.append('inspection_token', 'cfae5719-6509-4a7e-8e12-64b4e1684002'); f.append('source','other'); f.append('source_timezone','Europe/London'); f.append('timezone_confirmed','true'); f.append('passphrase','preview-secret'); f.append('archive',new Blob(['invalid']),'input.zip'); const r=await fetch('/households/persistence-fixture/admin/data_imports/preview',{method:'POST',body:f}); const body=await r.text(); return r.status===422 && !body.includes('preview-secret'); }", None).await.unwrap());
+    })).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn import_upload_authentication_and_failed_archive_do_not_expose_passphrase() {
     harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
         let page = &journey.page;

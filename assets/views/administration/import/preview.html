@@ -14,7 +14,7 @@
     {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
     <label for="passphrase" class="font-semibold">{{ import_labels.passphrase }}</label><input class="input w-full" id="passphrase" name="passphrase" type="password" autocomplete="off" required>
     <label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="confirm" value="true" required> <span>{{ import_labels.confirm_ack }}</span></label>
-    <button class="btn btn-neutral w-fit" type="submit">{{ import_labels.confirm_action }}</button>
+    {% if confirm_available %}<button class="btn btn-neutral w-fit" type="submit">{{ import_labels.confirm_action }}</button>{% else %}<p>{{ import_labels.confirm_unavailable }}</p><button class="btn btn-neutral w-fit" type="submit" disabled>{{ import_labels.confirm_action }}</button>{% endif %}
   </div></form>
   {% endif %}
 </section>

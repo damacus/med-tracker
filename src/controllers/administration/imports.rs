@@ -8,6 +8,7 @@ use crate::models::data_imports::{
 };
 use axum::extract::RawQuery;
 
+pub(super) mod preview;
 mod upload;
 pub(super) use upload::{inspect, upload};
 

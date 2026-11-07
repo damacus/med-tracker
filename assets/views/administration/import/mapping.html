@@ -10,6 +10,7 @@
   <form id="administration-form" action="{{ preview_url }}" method="post" enctype="multipart/form-data" class="space-y-5 mt-6">
     <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
     <input type="hidden" name="inspection_token" value="{{ inspection_token }}">
+    <input type="hidden" name="source" value="med_tracker05">
     {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
     {% for person in people %}
     <fieldset class="card bg-base-100 border border-base-300"><legend class="font-semibold text-lg">{{ person.name }}</legend><div class="card-body gap-3">
@@ -21,7 +22,8 @@
         {% if person.may_create_dependent %}<option value="new_dependent" {% if person.new_dependent_selected %}selected{% endif %}>{{ import_labels.new_dependent }}</option>{% endif %}
       </select>
       {% if person.consent_status %}<p>{{ import_labels.consent_title }}: {{ import_labels.codes[person.consent_status] }}</p>{% endif %}
-      {% for choice in person.consent_choices %}<label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="consent[{{ person.key }}]" value="{{ choice }}"> <span>{{ import_labels[choice] }}</span></label>{% endfor %}
+      <label for="consent-{{ loop.index }}">{{ import_labels.consent_title }}</label><select class="select w-full" id="consent-{{ loop.index }}" name="consent[{{ person.key }}]"><option value="">{{ import_labels.choose_consent }}</option><option value="self_consent">{{ import_labels.self_consent }}</option><option value="guardian_consent">{{ import_labels.guardian_consent }}</option></select>
+      <label for="recipient-{{ loop.index }}">{{ import_labels.recipient_reference }}</label><input class="input w-full" id="recipient-{{ loop.index }}" name="recipient_ref[{{ person.key }}]" type="text" autocomplete="off">
       {% if person.may_request_consent %}<p>{{ import_labels.request_consent_help }}</p><label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="request_consent[{{ person.key }}]" value="true"> <span>{{ import_labels.request_consent }}</span></label>{% endif %}
       {% if person.may_create_dependent %}<p>{{ import_labels.guardian_help }}</p><label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="guardian[{{ person.key }}]" value="true"> <span>{{ import_labels.guardian_declaration }}</span></label>{% endif %}
     </div></fieldset>
@@ -35,7 +37,7 @@
       <label for="passphrase" class="font-semibold">{{ import_labels.passphrase }}</label><input class="input w-full" id="passphrase" name="passphrase" type="password" autocomplete="off" required>
       <label for="source_timezone" class="font-semibold">{{ import_labels.timezone }}</label><p id="timezone-help">{{ import_labels.timezone_help }}</p><input class="input w-full" id="source_timezone" name="source_timezone" value="{{ source_timezone }}" aria-describedby="timezone-help" required>
       <label class="flex items-start gap-2"><input class="checkbox" type="checkbox" name="timezone_confirmed" value="true" required> <span>{{ import_labels.timezone_confirm }}</span></label>
-      <p>{{ import_labels.preview_unavailable }}</p><button class="btn btn-neutral w-fit" type="submit" disabled>{{ import_labels.preview_action }}</button>
+      <button class="btn btn-neutral w-fit" type="submit">{{ import_labels.preview_action }}</button>
     </div></div>
   </form>
 </section>

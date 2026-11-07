@@ -275,7 +275,7 @@ pub(crate) async fn inspect(
     .await
 }
 
-async fn base_data(
+pub(super) async fn base_data(
     tenant: &TenantTransaction,
     slug: &str,
     language: &str,
@@ -299,7 +299,7 @@ async fn base_data(
     Ok(data)
 }
 
-async fn upload_page(
+pub(super) async fn upload_page(
     ctx: &AppContext,
     session: &Session<SessionPgPool>,
     token: &CsrfToken,
@@ -371,7 +371,8 @@ async fn mapping_page(
         data["omissions"] = json!(inspected.inventory.omissions);
         data["inspection_token"] = json!(inspected.id);
         data["source_timezone"] = json!(inspected.timezone.name());
-        data["preview_url"] = json!("");
+        let safe_slug: String = url::form_urlencoded::byte_serialize(slug.as_bytes()).collect();
+        data["preview_url"] = json!(format!("/households/{safe_slug}/admin/data_imports/preview"));
         Ok::<_, OperationError>(data)
     }.await;
     let data = match result {
