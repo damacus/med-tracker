@@ -36,6 +36,9 @@ fn person_carer_pages_render_in_every_supported_locale() {
                     .unwrap_or_else(|error| {
                         panic!("{locale}, manager={manager}, populated={populated}: {error:?}")
                     });
+                assert!(!rendered.contains("class=\"app-household\""));
+                assert!(!rendered.contains("data-global-search-trigger"));
+                assert!(!rendered.contains("data-household-selector"));
                 assert!(
                     rendered.contains(
                         labels["people"]["carer_relationships"]["new_title"]

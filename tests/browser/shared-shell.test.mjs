@@ -19,12 +19,21 @@ test('profile keeps its navigation fallback only without the complete shared she
   assert.match(profile, /{% if not shell %}\s*{% include "profile\/navigation\.html" %}\s*{% endif %}/);
 });
 
+test('profile session dates retain semantic timestamps and System Information is always open', () => {
+  const security = read('assets/views/profile/security.html');
+  assert.match(security, /<time datetime="{{ session.created.datetime }}"/);
+  assert.match(security, /<time datetime="{{ session.expires.datetime }}"/);
+  const profile = read('assets/views/profile/show.html');
+  assert.match(profile, /<section[^>]*class="[^"]*profile-system-info/);
+  assert.doesNotMatch(profile, /<summary[^>]*>(?:(?!<\/summary>)[\s\S])*version_info\.title/);
+});
+
 test('shared profile exposes protected security controls without another index or profile-form interception', () => {
   const security = read('assets/views/profile/security.html');
   for (const action of ['unlink_provider', 'remove_password', 'remove_passkey', 'close_account']) {
     assert.ok(security.includes(`value="${action}"`), `${action} is absent from the profile`);
   }
-  assert.match(security, /action="\/account\/security\/totp\/backup-codes"/);
+  assert.match(security, /action="\/account\/security\/totp\/backup-codes\?profile_flow=totp/);
   assert.match(security, /data-passkey-id=/);
   assert.match(security, /{% if security.zitadel %}<p[^>]*>{{ labels.profiles.security.provider_linked }}<\/p>{% endif %}/);
   assert.doesNotMatch(security, /data-profile-form|href="\/account\/security"/);

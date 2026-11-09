@@ -1,6 +1,7 @@
 use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 pub(crate) mod account_profile;
 pub(crate) mod avatar;
+pub(crate) mod dialogs;
 mod export;
 mod notifications;
 mod push;
@@ -68,6 +69,20 @@ async fn show(
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
+    if view
+        .profile_presentation()
+        .is_some_and(|value| !value.complete)
+    {
+        return dialogs::open(dialogs::Open {
+            ctx,
+            session,
+            headers,
+            token,
+            view,
+            request,
+        })
+        .await;
+    }
     Page {
         ctx: &ctx,
         slug: &slug,
@@ -484,7 +499,12 @@ impl Page<'_> {
                 Ok(value) => json!(value),
                 Err(error) => return operation_error(error),
             };
-        data["security"] = json!(security);
+        data["security"] = json!(crate::views::profile_security::context(
+            &security,
+            principal.time_zone(),
+            &labels,
+            chrono::Utc::now()
+        ));
         let (_, tenant) = match begin(ctx, session, slug, &request_id).await {
             Ok(value) => value,
             Err(error) => return authentication_error(error),

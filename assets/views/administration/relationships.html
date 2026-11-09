@@ -1,9 +1,8 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="admin-page">
-  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ admin_labels.nav.overview }}</a>
-  {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.nav.relationships }}</h1>
+  <p class="mt-2">{{ labels.admin.carer_relationships.index.subtitle }}</p>
   {% include "administration/navigation.html" %}
   <a class="btn btn-primary mt-5" href="/households/{{ slug }}/admin/carer_relationships/recover{{ language_suffix }}">{{ admin_labels.recovery.open }}</a>
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
@@ -13,7 +12,7 @@
       <h2 class="card-title">{% if relationship.carer_name %}{{ relationship.carer_name }}{% else %}{{ unavailable_person }} #{{ relationship.carer_id }}{% endif %} · {% if relationship.patient_name %}{{ relationship.patient_name }}{% else %}{{ unavailable_person }} #{{ relationship.patient_id }}{% endif %}</h2>
       <p>{% if relationship.relationship_type == "professional_carer" or relationship.relationship_type == "self" %}{{ admin_labels.polish[relationship.relationship_type] }}{% else %}{{ labels.admin.labels.relationship_types[relationship.relationship_type] }}{% endif %} · {% if relationship.active %}{{ labels.admin.carer_relationships.index.active }}{% else %}{{ labels.admin.carer_relationships.index.inactive }}{% endif %}</p>
       {% if relationship.active %}
-        <button class="btn btn-outline" type="button" data-dialog-open="deactivate-{{ relationship.id }}">{{ labels.admin.carer_relationships.index.deactivate }}</button>
+        <button class="btn btn-outline admin-relationship-action" type="button" data-dialog-open="deactivate-{{ relationship.id }}">{{ labels.admin.carer_relationships.index.deactivate }}</button>
         <dialog id="deactivate-{{ relationship.id }}" class="modal" aria-labelledby="deactivate-title-{{ relationship.id }}">
           <div class="modal-box">
             <h3 id="deactivate-title-{{ relationship.id }}" class="text-xl font-semibold">{{ labels.admin.carer_relationships.index.deactivate_dialog.title }}</h3>

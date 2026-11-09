@@ -1,7 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="admin-page">
-  <a class="link" href="{{ member_return_url }}">{{ admin_labels.nav.members }}</a>
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.polish.edit_role | replace(from='%{name}',to=member.name) }}</h1>
   {% include "administration/navigation.html" %}

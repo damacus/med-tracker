@@ -18,7 +18,7 @@ use crate::models::{
 
 use super::rendering;
 
-pub(super) async fn page(
+pub(crate) async fn page(
     State(ctx): State<AppContext>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
@@ -107,6 +107,9 @@ pub(super) async fn approve(
     ViewEngine(view): ViewEngine<TeraView>,
     Form(form): Form<ApproveForm>,
 ) -> Response {
+    if token.verify(&form.authenticity_token).is_err() {
+        return view.profile_rejection(StatusCode::FORBIDDEN);
+    }
     crate::controllers::platform::proof(
         &service,
         &headers,
@@ -129,6 +132,7 @@ pub(super) struct EndForm {
 }
 
 pub(super) async fn end(
+    ViewEngine(view): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
@@ -136,6 +140,9 @@ pub(super) async fn end(
     token: CsrfToken,
     Form(form): Form<EndForm>,
 ) -> Response {
+    if token.verify(&form.authenticity_token).is_err() {
+        return view.profile_rejection(StatusCode::FORBIDDEN);
+    }
     crate::controllers::platform::end_support(
         &ctx,
         &service,
@@ -144,7 +151,7 @@ pub(super) async fn end(
         token,
         form.support_id,
         &form.authenticity_token,
-        "/account/support",
+        &view.profile_destination("/account/support"),
     )
     .await
 }

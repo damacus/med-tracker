@@ -51,6 +51,22 @@ async fn register_and_sign_out(journey: &harness::Journey) {
 }
 
 async fn sign_out(page: &Page) {
+    if page
+        .locator("dialog.profile-flow-dialog[open]")
+        .count()
+        .await
+        .unwrap()
+        > 0
+    {
+        expect(page.locator("dialog [data-flow-outcome=complete]"))
+            .to_be_visible()
+            .await
+            .unwrap();
+        page.locator("dialog [data-profile-flow-done]")
+            .click(None)
+            .await
+            .unwrap();
+    }
     page.get_by_role(AriaRole::Button, named("Sign out"))
         .click(None)
         .await
@@ -113,10 +129,7 @@ async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static 
                 .to_be_visible()
                 .await
                 .unwrap();
-            page.get_by_role(AriaRole::Button, named("Sign out"))
-                .click(None)
-                .await
-                .unwrap();
+            sign_out(page).await;
             expect(page.get_by_role(AriaRole::Heading, named("Welcome back")))
                 .to_be_visible()
                 .await
@@ -314,7 +327,7 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             expect(page.get_by_text("Browser acceptance key", true)).to_be_visible().await.unwrap();
             let credentials = cdp.send("WebAuthn.getCredentials", Some(json!({"authenticatorId":authenticator_id}))).await.unwrap();
             assert_eq!(credentials["result"]["credentials"].as_array().unwrap().len(), 1);
-            page.get_by_role(AriaRole::Button, named("Sign out")).click(None).await.unwrap();
+            sign_out(page).await;
             expect(page.get_by_role(AriaRole::Heading, named("Welcome back"))).to_be_visible().await.unwrap();
             page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
             capture_sizes(page, "sign-in").await;

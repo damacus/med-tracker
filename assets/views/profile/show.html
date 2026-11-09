@@ -2,7 +2,7 @@
 {% block content %}
 {% set personal = personal_profile | default(value=false) %}
 {% if personal %}{% set profile_path = '/profile' %}{% set sections = ['profile', 'security', 'advanced'] %}{% else %}{% set profile_path = '/households/' ~ slug ~ '/profile' %}{% set sections = ['profile', 'security', 'notifications', 'advanced'] %}{% endif %}
-<div class="profile-page grid gap-6">
+<div class="profile-page grid gap-6" data-profile-dialog-host data-flow-close="{{ labels.profiles.dialogs.close | default(value='Close setting') }}" data-flow-loading="{{ labels.profiles.dialogs.loading | default(value='Loading setting…') }}" data-flow-failed="{{ labels.profiles.dialogs.failed | default(value='The setting could not be loaded. Try again or open it inline.') }}" data-flow-uncertain="{{ labels.profiles.dialogs.uncertain | default(value='The request may have completed. Check the current setting before trying again.') }}" data-flow-inline="{{ labels.profiles.dialogs.inline | default(value='Open setting inline') }}" data-flow-title="{{ labels.profiles.dialogs.title | default(value='Profile setting') }}" data-profile-url="{{ profile_path }}">
   {% if not shell %}{% include "profile/navigation.html" %}{% endif %}
   <noscript><link rel="stylesheet" href="/static/css/profile-no-script.css"><nav class="profile-summary flex flex-wrap gap-2 mt-2 text-sm text-base-content/70" aria-label="{{ labels.profiles.sections.profile.title }}"><a class="link" href="#profile-avatar">{{ labels.profiles.avatar.title }}</a><a class="link" href="#profile-timezone">{{ labels.profiles.time_zone.title }}</a><a class="link" href="#profile-shortcuts">{{ labels.profiles.mobile_shortcuts.title }}</a></nav></noscript>
   <p role="status" aria-live="polite" data-profile-status data-saved-label="{{ labels.profiles.updated }}" data-failure-label="{{ labels.profiles.browser.failure }}"></p>
@@ -39,8 +39,8 @@
           <label for="account-display-name">{{ labels.profiles.personal.account_name }}</label><input id="account-display-name" name="name" value="{{ account_name_draft }}" class="input w-full" required maxlength="100" autocomplete="name" {% if name_error %}aria-invalid="true"{% endif %}>
           <button class="btn justify-self-start" type="submit">{{ labels.people.form.save }}</button>
         </form>
-        <a class="link" href="/profile/history">{{ labels.profiles.personal.history }}</a>
-        <a class="link" href="/profile/schedules">{{ labels.profiles.personal.plans }}</a>
+        <a class="link" href="{{ profile_path }}?panel=history#profile" data-profile-flow-entry="history">{{ labels.profiles.personal.history }}</a>
+        <a class="link" href="{{ profile_path }}?panel=plans#profile" data-profile-flow-entry="plans">{{ labels.profiles.personal.plans }}</a>
         <form id="profile-clinical-form" method="post" action="{{ profile_path }}" class="grid gap-3 mt-4" data-profile-form data-profile-form-region>
           <h4 class="font-semibold">{{ labels.profiles.personal.clinical }}</h4>
           <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="clinical">
@@ -137,9 +137,9 @@
         </form>
       </div>
     </details>
-    {% endif %}<details name="profile-advanced" class="collapse collapse-arrow bg-base-100 border border-base-300">
-      <summary class="collapse-title"><strong>{{ labels.profiles.version_info.title }}</strong><span>{{ labels.profiles.version_info.description }}</span></summary>
-      <dl class="collapse-content grid gap-4">
+    {% endif %}<section class="profile-system-info card card-body bg-base-100 border border-base-300">
+      <header><h3 class="card-title">{{ labels.profiles.version_info.title }}</h3><p class="shell-muted">{{ labels.profiles.version_info.description }}</p></header>
+      <dl class="profile-system-facts">
         {% if system_info.development %}
         <div class="flex flex-wrap justify-between gap-3 py-2"><dt class="font-semibold">{{ labels.profiles.version_info.worktree }}</dt><dd class="break-all">{{ system_info.worktree }}</dd></div>
         <div class="flex flex-wrap justify-between gap-3 py-2"><dt class="font-semibold">{{ labels.profiles.version_info.commit }}</dt><dd>{{ system_info.commit }}</dd></div>
@@ -149,7 +149,7 @@
         {% endif %}
         <div class="flex flex-wrap justify-between gap-3 py-2"><dt class="font-semibold">{{ labels.profiles.version_info.documentation }}</dt><dd><a class="link" href="https://damacus.github.io/med-tracker" target="_blank" rel="noopener">{{ labels.profiles.version_info.view_docs }}</a></dd></div>
       </dl>
-    </details>
+    </section>
     <section class="card card-body bg-base-100 border border-base-300 gap-4"><h3 class="card-title">{{ labels.profiles.browser.danger_zone }}</h3>
       <p>{{ labels.profiles.browser.closure_description }}</p>
       <a class="btn btn-neutral" href="#security">{{ labels.profiles.browser.close_account }}</a>
@@ -159,6 +159,7 @@
 </div>
 
 <script src="/static/js/profile.js" defer></script>
+<script type="module" src="/static/js/profile-dialogs.js"></script>
 <script src="/static/js/profile-push.js" defer></script>
 {% endblock content %}
 {% block appearance %}

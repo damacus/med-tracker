@@ -1,7 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="admin-page">
-  <a class="link" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}">{{ admin_labels.nav.relationships }}</a>
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.polish.new_relationship }}</h1>
   {% include "administration/navigation.html" %}

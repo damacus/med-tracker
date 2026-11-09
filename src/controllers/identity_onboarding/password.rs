@@ -81,7 +81,7 @@ pub(crate) fn render_named(
     }
 }
 
-pub(super) async fn show(
+pub(crate) async fn show(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     token: CsrfToken,
@@ -127,7 +127,7 @@ pub(super) async fn start(
     Form(form): Form<Start>,
 ) -> Response {
     if token.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     if let Err(message) = validate_new_password(&form.new_password) {
         return render(
@@ -152,7 +152,7 @@ pub(super) async fn start(
     .await
     {
         Ok(response) if response.status < 400 => {
-            let mut redirect = super::rendering::redirect("/account/security");
+            let mut redirect = view.profile_redirect("/account/security");
             for value in response.headers.get_all("set-cookie") {
                 let Ok(value) = value.parse() else {
                     return super::rendering::unavailable();
@@ -181,7 +181,7 @@ pub(super) async fn confirm(
     Form(form): Form<Confirm>,
 ) -> Response {
     if token.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let request = request(
         &headers,
@@ -198,11 +198,10 @@ pub(super) async fn confirm(
         Ok(response) if response.status == 200 => {
             let body = response.body.json().ok().flatten().unwrap_or_default();
             if body["apiKey"].is_string() {
-                return super::keys::result(&view, &body);
+                return super::keys::result_with_cookies(&view, &body, &response);
             }
-            let mut redirect = super::rendering::redirect(
-                body["redirect"].as_str().unwrap_or("/account/security"),
-            );
+            let mut redirect =
+                view.profile_redirect(body["redirect"].as_str().unwrap_or("/account/security"));
             for cookie in response.headers.get_all("set-cookie") {
                 let Ok(value) = cookie.parse() else {
                     return super::rendering::unavailable();

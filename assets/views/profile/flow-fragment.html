@@ -1,0 +1,5 @@
+<section data-profile-flow-root data-flow-kind="{{ profile_flow.kind }}" data-flow-outcome="{{ profile_flow.outcome }}" data-flow-secret="{{ profile_flow.secret }}" data-flow-profile="{{ profile_flow.profile }}">
+  {% if profile_flow.body == 'provider_link' or oidc_proof | default(value=false) %}<p class="shell-muted">{{ labels.profiles.dialogs.external }}</p>{% endif %}
+  {% include "profile/flow-body.html" %}
+  <a class="btn btn-ghost" href="{{ profile_flow.profile }}#{% if profile_flow.kind == 'history' or profile_flow.kind == 'plans' %}profile{% else %}security{% endif %}" data-profile-flow-done>{{ labels.profiles.dialogs.done }}</a>
+</section>

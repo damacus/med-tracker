@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use axum::{
     Extension,
     extract::Form,
@@ -29,6 +30,7 @@ pub(super) struct Revoke {
 }
 
 pub(super) async fn revoke(
+    ViewEngine(view): ViewEngine<TeraView>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     request_id: Option<Extension<loco_rs::controller::middleware::request_id::LocoRequestId>>,
@@ -36,7 +38,7 @@ pub(super) async fn revoke(
     Form(form): Form<Revoke>,
 ) -> Response {
     if csrf.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let mut request = super::passkeys::request(&headers);
     request.method = better_auth_core::HttpMethod::Post;
@@ -54,12 +56,11 @@ pub(super) async fn revoke(
     {
         Ok(response) if response.status == 200 => {
             let body = response.body.json().ok().flatten().unwrap_or_default();
-            let mut redirect =
-                super::rendering::redirect(if body["current"].as_bool() == Some(true) {
-                    "/login"
-                } else {
-                    "/account/security"
-                });
+            let mut redirect = view.profile_redirect(if body["current"].as_bool() == Some(true) {
+                "/login"
+            } else {
+                "/account/security"
+            });
             for cookie in response.headers.get_all("set-cookie") {
                 let Ok(value) = cookie.parse() else {
                     return super::rendering::unavailable();
@@ -68,6 +69,6 @@ pub(super) async fn revoke(
             }
             redirect
         }
-        _ => StatusCode::UNAUTHORIZED.into_response(),
+        _ => view.profile_rejection(StatusCode::UNAUTHORIZED),
     }
 }

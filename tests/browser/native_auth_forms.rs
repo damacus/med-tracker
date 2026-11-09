@@ -142,7 +142,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .await
                     .unwrap();
                 capture_sizes_at(page, "profile-security", Some("#security h2")).await;
-                page.locator("#security a[href='/account/security/keys']")
+                page.locator("#security [data-profile-flow-entry='keys']")
                     .click(None)
                     .await
                     .unwrap();
@@ -159,7 +159,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                 )
                 .await
                 .unwrap();
-                page.locator("#security a[href='/account/security/email']")
+                page.locator("#security [data-profile-flow-entry='email']")
                     .click(None)
                     .await
                     .unwrap();
@@ -176,7 +176,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                 )
                 .await
                 .unwrap();
-                page.locator("#security a[href='/account/security/keys']")
+                page.locator("#security [data-profile-flow-entry='keys']")
                     .click(None)
                     .await
                     .unwrap();
@@ -271,7 +271,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .to_be_visible()
                     .await
                     .unwrap();
-                expect(page.locator("#security form[action='/account/security/totp/disable']"))
+                expect(page.locator("#security form[action^='/account/security/totp/disable']"))
                     .to_be_visible()
                     .await
                     .unwrap();

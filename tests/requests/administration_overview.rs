@@ -1080,6 +1080,7 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
     })
     .await;
     let slug = fixture.household.slug.clone();
+    let household_id = fixture.household.id;
 
     let person_id = fixture.account.person_id;
     let foreign_slug = fixture.foreign.household.slug.clone();
@@ -1252,14 +1253,39 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
     }
     assert!(html.contains("id=\"expired-invitations\""));
     assert!(html.contains(format!("href=\"/households/{slug}/admin/invitations\"").as_str()));
-    assert!(!html.contains("Other household"));
+    let main = scraper::Selector::parse("#main").map_err(|_| "main content selector")?;
+    let main_text = document
+        .select(&main)
+        .next()
+        .ok_or("main content missing")?
+        .text()
+        .collect::<String>();
+    assert!(!main_text.contains("Other household"));
+    let options = scraper::Selector::parse("[data-household-selector] input[name='household_id']")
+        .map_err(|_| "household option selector")?;
+    let household_options = document
+        .select(&options)
+        .filter_map(|input| input.value().attr("value"))
+        .map(str::to_owned)
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        household_options,
+        std::collections::BTreeSet::from([household_id.to_string(), other.id.to_string()])
+    );
     assert!(!html.contains(other_invitation.email.as_str()));
     assert_eq!(other_status, 200, "{other_html}");
     assert!(other_html.contains("Other household administration"));
     assert!(other_html.contains("2 active members"));
     assert!(other_html.contains("2 people"));
     assert!(other_html.contains("1 pending invitation"));
-    assert!(!other_html.contains("Synthetic household"));
+    let other_document = scraper::Html::parse_document(&other_html);
+    let other_main = other_document
+        .select(&main)
+        .next()
+        .ok_or("other main content missing")?
+        .text()
+        .collect::<String>();
+    assert!(!other_main.contains("Synthetic household"));
     assert_eq!(shared_person, person_id);
     assert_eq!(shared_households, 2);
     assert!([403, 404].contains(&foreign_status));
@@ -1269,7 +1295,7 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
 }
 
 #[tokio::test]
-async fn administration_overview_shows_five_recent_scoped_safe_events() -> TestResult {
+async fn administration_overview_retains_scoped_audit_metric_without_activity_feed() -> TestResult {
     let (fixture, boot) = boot_request_fixture_with(|config| {
         let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
@@ -1307,11 +1333,13 @@ async fn administration_overview_shows_five_recent_scoped_safe_events() -> TestR
     close_request(fixture, boot).await;
     let (empty_status, empty_html, populated_status, populated_cache, populated_html) = result?;
     assert_eq!(empty_status, 200, "{empty_html}");
-    assert!(empty_html.contains("Recent activity"));
-    assert!(empty_html.contains("No recent administrative activity"));
+    assert!(!empty_html.contains("recent-activity-heading"));
+    assert!(!empty_html.contains("No recent administrative activity"));
     assert_eq!(populated_status, 200, "{populated_html}");
     assert_eq!(populated_cache, "no-store");
-    assert!(populated_html.contains("Recent activity"));
+    assert!(!populated_html.contains("recent-activity-heading"));
+    assert!(!populated_html.contains("admin-activity"));
+    assert!(populated_html.contains(&format!("href=\"/households/{slug}/admin/audit_logs\"")));
     let document = scraper::Html::parse_document(&populated_html);
     let metric = scraper::Selector::parse("[data-admin-metric='recent-audit-events'] dd")
         .map_err(|_| "audit metric selector")?;
@@ -1326,14 +1354,17 @@ async fn administration_overview_shows_five_recent_scoped_safe_events() -> TestR
         "1",
         "future and foreign events are outside the 24-hour window"
     );
-    assert_eq!(populated_html.matches("View audit event").count(), 5);
-    assert!(populated_html.contains(&format!("/admin/audit_logs/{}", recent[5].id)));
-    assert!(!populated_html.contains(&format!("/admin/audit_logs/{}", recent[0].id)));
+    assert_eq!(populated_html.matches("View audit event").count(), 0);
+    assert!(
+        recent
+            .iter()
+            .all(|event| !populated_html.contains(&format!("/admin/audit_logs/{}", event.id)))
+    );
     assert!(!populated_html.contains(&format!("/admin/audit_logs/{}", foreign_recent.unwrap().id)));
-    assert!(populated_html.contains(
+    assert!(!populated_html.contains(
         format!("Account ID #{account_id}, household membership ID #{actor_member_id}").as_str()
     ));
-    assert!(populated_html.contains("Household role changed"));
+    assert!(!populated_html.contains("Household role changed"));
     assert!(!populated_html.contains("private-clinical-note"));
     assert!(!populated_html.contains("private-session"));
     assert!(!populated_html.contains("foreign-clinical-note"));

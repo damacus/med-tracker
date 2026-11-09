@@ -6,7 +6,7 @@ use crate::models::care::{
 };
 use axum::extract::Path;
 
-pub(super) async fn index(
+pub(crate) async fn index(
     State(ctx): State<AppContext>,
     session: Session<SessionPgPool>,
     headers: HeaderMap,
@@ -79,8 +79,11 @@ pub(super) async fn save(
             Ok(()) => (
                 StatusCode::SEE_OTHER,
                 [
-                    (header::LOCATION, "/profile/schedules"),
-                    (header::CACHE_CONTROL, "no-store"),
+                    (
+                        header::LOCATION,
+                        view.profile_destination("/profile/schedules"),
+                    ),
+                    (header::CACHE_CONTROL, "no-store".to_owned()),
                 ],
             )
                 .into_response(),

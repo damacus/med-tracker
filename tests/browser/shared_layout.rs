@@ -389,8 +389,8 @@ async fn shared_layout_platform_and_account_frames_do_not_invent_household_navig
             page.reload(None).await.unwrap();
             page.locator("[data-app-profile]").click(None).await.unwrap();
             page.locator("#profile-tab-security").click(None).await.unwrap();
-            expect(page.locator("#security a[href='/platform/users']")).to_be_visible().await.unwrap();
-            page.locator("#security a[href='/platform/users']").click(None).await.unwrap();
+            expect(page.locator("a[href='/platform/users']")).to_be_visible().await.unwrap();
+            page.locator("a[href='/platform/users']").click(None).await.unwrap();
             expect(page.locator(".platform-nav")).to_be_visible().await.unwrap();
             assert_eq!(page.locator(".app-sidebar").count().await.unwrap(),0);
             capture(page,"platform-desktop").await;

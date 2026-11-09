@@ -6,14 +6,19 @@ use serde::Deserialize;
 
 #[derive(Default, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Pagination {
+pub(crate) struct Pagination {
     before_id: Option<i64>,
     before_taken_at: Option<chrono::NaiveDateTime>,
+    #[serde(rename = "profile_flow")]
+    _profile_flow: Option<String>,
+    #[serde(rename = "profile_household")]
+    _profile_household: Option<String>,
 }
 
-pub(super) async fn index(
+pub(crate) async fn index(
     State(ctx): State<AppContext>,
     session: Session<SessionPgPool>,
+    token: CsrfToken,
     headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
     request: Option<Extension<LocoRequestId>>,
@@ -28,7 +33,7 @@ pub(super) async fn index(
     if let Ok(value) = axum::http::HeaderValue::from_str(&request_id) {
         response.headers_mut().insert("x-request-id", value);
     }
-    response
+    (token, response).into_response()
 }
 
 async fn read(

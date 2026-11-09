@@ -186,7 +186,7 @@ pub(super) async fn proof(
 ) -> Response {
     let (action, label) = operation;
     if token.verify(authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let session = session_request(headers);
     if !matches!(
@@ -224,15 +224,15 @@ pub(super) async fn proof(
                 label,
             )
         }
-        Ok(response) => (
-            if response.status == 403 {
+        Ok(response) => {
+            let status = if response.status == 403 {
                 StatusCode::FORBIDDEN
             } else {
                 StatusCode::BAD_REQUEST
-            },
-            "This platform change is unavailable.",
-        )
-            .into_response(),
+            };
+            view.profile_error(status, "This platform change is unavailable.")
+                .unwrap_or_else(|| (status, "This platform change is unavailable.").into_response())
+        }
         Err(_) => unavailable(),
     }
 }

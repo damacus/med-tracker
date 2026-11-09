@@ -13,11 +13,14 @@ use serde_json::{Value, json};
 
 use super::medications::{authentication_error, begin, operation_error, unavailable};
 use crate::models::{
-    access::PersonAccess,
+    access::{PersonAccess, TenantTransaction},
     care::{administration, report_pdf},
     entities::account,
     errors::OperationError,
-    identity::browser::BrowserHousehold,
+    identity::{
+        browser::{BrowserHousehold, BrowserPrincipal},
+        resource::AuthenticationError,
+    },
     platform, profile,
 };
 
@@ -95,6 +98,18 @@ pub(super) async fn load(
     let (principal, tenant) = begin(ctx, session, slug, request_id)
         .await
         .map_err(authentication_error)?;
+    load_authorized(ctx, (principal, tenant), slug, headers, token, path).await
+}
+
+async fn load_authorized(
+    ctx: &AppContext,
+    authority: (BrowserPrincipal, TenantTransaction),
+    slug: &str,
+    headers: &HeaderMap,
+    token: &CsrfToken,
+    path: &str,
+) -> std::result::Result<ShellContext, Box<Response>> {
+    let (principal, tenant) = authority;
     let account = account::Entity::find_by_id(principal.account_id())
         .one(tenant.transaction())
         .await
@@ -243,9 +258,23 @@ pub(super) async fn load(
     })
 }
 
+fn optional_shell_error(
+    error: AuthenticationError,
+) -> std::result::Result<Option<ShellContext>, Box<Response>> {
+    match error {
+        AuthenticationError::Unauthenticated
+        | AuthenticationError::Forbidden
+        | AuthenticationError::NotFound
+        | AuthenticationError::InsufficientScope { .. } => Ok(None),
+        AuthenticationError::Unavailable => Err(Box::new(authentication_error(error))),
+    }
+}
+
 pub(crate) struct ShellView {
     engine: TeraView,
     shell: Option<ShellContext>,
+    presentation: Option<super::profile::dialogs::Presentation>,
+    flow: Option<super::profile::dialogs::Frame>,
 }
 
 pub(crate) struct ShellViewEngine<E>(pub E);
@@ -253,6 +282,58 @@ pub(crate) struct ShellViewEngine<E>(pub E);
 impl ShellView {
     pub(crate) fn document_engine(&self) -> TeraView {
         self.engine.clone()
+    }
+    pub(crate) fn profile_presentation(&self) -> Option<&super::profile::dialogs::Presentation> {
+        self.presentation.as_ref()
+    }
+    pub(crate) fn profile_destination(&self, path: &str) -> String {
+        self.profile_presentation().map_or_else(
+            || path.to_owned(),
+            |presentation| presentation.destination(path),
+        )
+    }
+    pub(crate) fn profile_redirect(&self, path: &str) -> Response {
+        use axum::response::IntoResponse;
+        (
+            axum::http::StatusCode::SEE_OTHER,
+            [
+                (header::LOCATION, self.profile_destination(path)),
+                (header::CACHE_CONTROL, "no-store".into()),
+            ],
+        )
+            .into_response()
+    }
+    pub(crate) fn profile_error(
+        &self,
+        status: axum::http::StatusCode,
+        message: &str,
+    ) -> Option<Response> {
+        use axum::response::IntoResponse;
+        self.flow.as_ref().map(|flow| {
+            match flow.render(
+                &self.engine,
+                "profile/flow-error.html",
+                json!({"title":"Profile","error":message}),
+            ) {
+                Ok(html) => (
+                    status,
+                    [
+                        (header::CACHE_CONTROL, "no-store"),
+                        (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+                    ],
+                    html,
+                )
+                    .into_response(),
+                Err(_) => unavailable(),
+            }
+        })
+    }
+    pub(crate) fn profile_rejection(&self, status: axum::http::StatusCode) -> Response {
+        use axum::response::IntoResponse;
+        self.flow
+            .as_ref()
+            .and_then(|flow| self.profile_error(status, flow.rejected()))
+            .unwrap_or_else(|| status.into_response())
     }
 }
 
@@ -274,6 +355,8 @@ impl FromRequestParts<AppContext> for ShellViewEngine<ShellView> {
         let ViewEngine(engine) = ViewEngine::<TeraView>::from_request_parts(parts, state)
             .await
             .map_err(|_| unavailable())?;
+        let presentation = super::profile::dialogs::Presentation::from_request(parts)
+            .map_err(|response| *response)?;
         let mut segments = parts.uri.path().split('/');
         let slug = match (
             segments.next(),
@@ -283,7 +366,12 @@ impl FromRequestParts<AppContext> for ShellViewEngine<ShellView> {
         ) {
             (Some(""), Some("households"), Some(slug), Some(_)) => Some(slug.to_owned()),
             _ => None,
-        };
+        }
+        .or_else(|| {
+            presentation
+                .as_ref()
+                .and_then(|value| value.household.clone())
+        });
         let shell = if let Some(slug) = slug {
             let session = Session::<SessionPgPool>::from_request_parts(parts, state)
                 .await
@@ -296,29 +384,53 @@ impl FromRequestParts<AppContext> for ShellViewEngine<ShellView> {
                 .get::<loco_rs::controller::middleware::request_id::LocoRequestId>()
                 .map(|id| id.get().to_owned())
                 .unwrap_or_default();
-            Some(
-                load(
-                    state,
-                    &session,
-                    &slug,
-                    &parts.headers,
-                    &token,
-                    &request_id,
-                    parts.uri.path(),
-                )
-                .await
-                .map_err(|response| *response)?,
-            )
+            match begin(state, &session, &slug, &request_id).await {
+                Ok(authority) => Some(
+                    load_authorized(
+                        state,
+                        authority,
+                        &slug,
+                        &parts.headers,
+                        &token,
+                        parts.uri.path(),
+                    )
+                    .await
+                    .map_err(|response| *response)?,
+                ),
+                Err(error) => optional_shell_error(error).map_err(|response| *response)?,
+            }
         } else {
             None
         };
-        Ok(Self(ShellView { engine, shell }))
+        let flow = if let Some(presentation) = presentation.clone() {
+            let session = Session::<SessionPgPool>::from_request_parts(parts, state)
+                .await
+                .map_err(|_| unavailable())?;
+            super::profile::dialogs::Frame::load(state, &session, &parts.headers, presentation)
+                .await
+                .map_err(|response| *response)?
+        } else {
+            None
+        };
+        Ok(Self(ShellView {
+            engine,
+            shell,
+            presentation,
+            flow,
+        }))
     }
 }
 
 impl ViewRenderer for ShellView {
     fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String> {
         let mut data = serde_json::to_value(data)?;
+        if let Some(slug) = self
+            .presentation
+            .as_ref()
+            .and_then(|presentation| presentation.household.as_ref())
+        {
+            data["slug"] = json!(slug);
+        }
         if let Some(shell) = &self.shell
             && data.get("slug").and_then(Value::as_str) == Some(shell.slug.as_str())
         {
@@ -329,11 +441,20 @@ impl ViewRenderer for ShellView {
                 data["lang"] = json!(shell.locale);
             }
             let labels = &data["labels"];
-            let choices = choices(
+            let mut choices = choices(
                 &shell.slug,
                 labels,
                 shell.choices.iter().any(|link| link.id == "administration"),
             );
+            let language_suffix = data
+                .get("language_suffix")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            for link in &mut choices {
+                if link.id == "administration" {
+                    link.href.push_str(language_suffix);
+                }
+            }
             let sidebar = choices
                 .iter()
                 .filter(|link| link.id != "profile")
@@ -360,6 +481,10 @@ impl ViewRenderer for ShellView {
                 labels["profiles"]["mobile_shortcuts"]["title"].clone();
             data["shell"] = presentation;
         }
-        self.engine.render(key, data)
+        if let Some(flow) = &self.flow {
+            flow.render(&self.engine, key, data)
+        } else {
+            self.engine.render(key, data)
+        }
     }
 }

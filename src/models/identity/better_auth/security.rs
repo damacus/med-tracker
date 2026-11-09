@@ -71,14 +71,11 @@ pub(crate) struct SecurityPasskeyId(i64);
 #[derive(Serialize)]
 pub(crate) struct SecurityKeyId(String);
 
-#[derive(Serialize)]
 pub(crate) struct SecuritySession {
-    id: SecuritySessionId,
-    current: bool,
-    #[serde(serialize_with = "display_timestamp")]
-    created: DateTime<Utc>,
-    #[serde(serialize_with = "display_timestamp")]
-    expires: DateTime<Utc>,
+    pub(crate) id: SecuritySessionId,
+    pub(crate) current: bool,
+    pub(crate) created: DateTime<Utc>,
+    pub(crate) expires: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -97,34 +94,21 @@ pub(crate) struct SecurityKey {
     last_used: Option<DateTime<Utc>>,
 }
 
-#[derive(Serialize)]
 pub(crate) struct SecurityOverview {
     pub account_id: AccountId,
-    totp: bool,
-    password: bool,
-    zitadel: bool,
-    provider_available: bool,
-    can_unlink_provider: bool,
-    #[serde(serialize_with = "display_count")]
-    passkey_count: usize,
-    keys: Vec<SecurityKey>,
-    passkeys: Vec<SecurityPasskey>,
-    sessions: Vec<SecuritySession>,
-}
-
-fn display_timestamp<S: Serializer>(
-    value: &DateTime<Utc>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    serializer.collect_str(&value.format("%d %b %Y %H:%M UTC"))
+    pub(crate) totp: bool,
+    pub(crate) password: bool,
+    pub(crate) zitadel: bool,
+    pub(crate) provider_available: bool,
+    pub(crate) can_unlink_provider: bool,
+    pub(crate) passkey_count: usize,
+    pub(crate) keys: Vec<SecurityKey>,
+    pub(crate) passkeys: Vec<SecurityPasskey>,
+    pub(crate) sessions: Vec<SecuritySession>,
 }
 
 fn display_date<S: Serializer>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.collect_str(&value.format("%d %b %Y"))
-}
-
-fn display_count<S: Serializer>(value: &usize, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.collect_str(value)
 }
 
 pub(crate) async fn overview(
@@ -244,10 +228,14 @@ mod tests {
                 expires: created,
             }],
         };
+        let labels =
+            crate::models::care::report_pdf::translations("en").expect("translations load");
+        let security =
+            crate::views::profile_security::context(&security, chrono_tz::UTC, &labels, created);
         TeraView::build().expect("templates load").render("profile/security.html", json!({
-            "labels": crate::models::care::report_pdf::translations("en").expect("translations load"),
+            "labels": labels,
             "security": security, "account_access": {"platform_admin":false,"support_access":false},
-            "authenticity_token":"synthetic-csrf"
+            "authenticity_token":"synthetic-csrf", "profile_path":"/profile", "slug":""
         })).expect("shared security panel renders")
     }
 
@@ -255,10 +243,10 @@ mod tests {
     fn provider_only_profile_keeps_status_and_add_password_without_unlink() {
         let html = render(false, true, false, false);
         assert!(html.contains("ZITADEL is linked."));
-        assert!(html.contains("href=\"/reset-password\""));
+        assert!(html.contains("panel=reset"));
         assert!(!html.contains("value=\"unlink_provider\""));
         assert!(!html.contains("value=\"remove_password\""));
-        assert!(!html.contains("href=\"/account/security/totp\""));
+        assert!(!html.contains("panel=totp"));
         assert!(html.contains("data-passkey-id=\"2\""));
         assert!(html.contains("data-passkey-id=\"3\""));
         assert!(html.contains("Named test key"));
@@ -270,16 +258,21 @@ mod tests {
     #[test]
     fn password_profile_keeps_native_authenticator_and_multiple_method_controls() {
         let password_only = render(true, false, false, false);
-        assert!(password_only.contains("href=\"/account/security/password\""));
-        assert!(password_only.contains("href=\"/account/security/totp\""));
+        assert!(password_only.contains("panel=password"));
+        assert!(password_only.contains("panel=totp"));
         assert!(!password_only.contains("value=\"remove_password\""));
         let multiple_methods = render(true, true, true, true);
         for action in ["unlink_provider", "remove_password"] {
             assert!(multiple_methods.contains(&format!("value=\"{action}\"")));
         }
-        assert!(multiple_methods.contains("action=\"/account/security/totp/backup-codes\""));
+        assert!(
+            multiple_methods
+                .contains("action=\"/account/security/totp/backup-codes?profile_flow=totp")
+        );
         assert!(multiple_methods.contains("autocomplete=\"current-password\" required"));
-        assert!(multiple_methods.contains("action=\"/account/security/totp/disable\""));
+        assert!(
+            multiple_methods.contains("action=\"/account/security/totp/disable?profile_flow=totp")
+        );
         assert!(!multiple_methods.contains("name=\"session_id\""));
         assert!(multiple_methods.contains("action=\"/logout\""));
     }

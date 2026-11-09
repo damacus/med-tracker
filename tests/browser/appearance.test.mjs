@@ -6,7 +6,7 @@ import test from 'node:test';
 const source = () => readFileSync('assets/static/js/appearance.js', 'utf8');
 const classes = new Set();
 
-function searchControls(platform, translated) {
+function searchControls(platform, translated, existingSidebarHint = false) {
   class Element {
     constructor(text = '') { this.text = text; this.attributes = {}; this.children = []; this.listeners = {}; }
     get textContent() { return this.text + this.children.map(child => child.textContent).join(''); }
@@ -18,6 +18,14 @@ function searchControls(platform, translated) {
     querySelector(selector) { return this.children.find(child => child.tag === selector); }
   }
   const triggers = [new Element('Search'), new Element('Search')];
+  if (existingSidebarHint) {
+    const spacing = readFileSync('assets/views/components/app-sidebar.html', 'utf8').match(/<\/span>(\s*)<kbd/)?.[1] || '';
+    for (const trigger of triggers) {
+      const hint = new Element('Ctrl K');
+      hint.tag = 'kbd';
+      trigger.append(new Element(spacing), hint);
+    }
+  }
   for (const trigger of triggers) trigger.setAttribute('aria-label', 'Open global search');
   const fields = new Map();
   const panel = new Element();
@@ -40,6 +48,14 @@ function searchControls(platform, translated) {
   });
   return { triggers, panel };
 }
+
+test('existing server sidebar hints keep words separated in the accessible search name', () => {
+  for (const [platform, hint] of [['MacIntel', '⌘K'], ['Win32', 'Ctrl+K']]) {
+    for (const trigger of searchControls(platform, undefined, true).triggers) {
+      assert.equal(trigger.attributes['aria-label'], `Open global search — Search ${hint}`);
+    }
+  }
+});
 
 for (const [platform, hint, shortcut] of [['MacIntel', '⌘K', 'Meta+K'], ['Win32', 'Ctrl+K', 'Control+K']]) {
   test(`search keeps descriptive names separate from ${platform} shortcut hints`, () => {

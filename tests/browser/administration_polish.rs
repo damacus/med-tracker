@@ -62,7 +62,7 @@ async fn administration_polish_overview_and_forms() {
         for (path,label) in [("","overview"),("/users","members"),("/invitations","invitations"),("/household/edit","settings"),("/users/74001/edit","role"),("/carer_relationships","care"),("/carer_relationships/new","care-form"),("/audit_logs","audit")] {
             page.goto(&format!("{}/households/persistence-fixture/admin{path}",journey.origin),None).await.unwrap();
             expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
-            if label == "overview" { expect(page.locator(".admin-activity")).to_contain_text("Invitation created").await.unwrap(); }
+            if label == "overview" { assert_eq!(page.locator("#recent-activity-heading, .admin-activity").count().await.unwrap(), 0); }
             for width in [1440,390,320] {
                 page.set_viewport_size(Viewport {width,height:if width==1440 {1000}else{844}}).await.unwrap();
                 capture(page,&format!("{label}-{width}")).await;

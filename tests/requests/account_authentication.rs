@@ -20,6 +20,135 @@ fn is_auth_session_cookie(header: &str) -> bool {
     )
 }
 
+#[tokio::test]
+async fn account_authentication_profile_flows_keep_native_errors_and_fragment_outcomes() {
+    let (fixture, boot) = boot_request_fixture().await;
+    enable_completed_onboarding(&fixture, fixture.account.id).await;
+    let mut request = server(&boot);
+    request.save_cookies();
+    let signed_in = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
+        .await;
+    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+    let profile = format!("/households/{}/profile", fixture.household.slug);
+    for panel in [
+        "email", "password", "reset", "totp", "passkey", "keys", "support", "history", "plans",
+    ] {
+        let response = request
+            .get(&format!("{profile}?panel={panel}"))
+            .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+            .await;
+        assert_eq!(response.status_code(), 200, "{panel}: {}", response.text());
+        assert_eq!(response.header("cache-control"), "no-store");
+        assert!(
+            response
+                .text()
+                .contains(&format!("data-flow-kind=\"{panel}\"")),
+            "{panel}: {}",
+            response.text()
+        );
+        assert!(
+            response
+                .text()
+                .contains(&format!("data-flow-profile=\"{profile}\""))
+        );
+        assert!(!response.text().contains("<html"));
+        assert!(!response.text().contains("<script"));
+    }
+    let native = request.get(&format!("{profile}?panel=email")).await;
+    assert_eq!(native.status_code(), 200, "{}", native.text());
+    assert!(native.text().contains("data-profile-dialog-host"));
+    assert!(native.text().contains("Change email"));
+    assert!(
+        native
+            .text()
+            .contains(&format!("href=\"{profile}#security\""))
+    );
+    let csrf = native
+        .text()
+        .split("name=\"authenticity_token\" value=\"")
+        .nth(1)
+        .unwrap()
+        .split('"')
+        .next()
+        .unwrap()
+        .to_owned();
+    let suffix = format!(
+        "?profile_flow=email&profile_household={}",
+        fixture.household.slug
+    );
+    let rejected = request
+        .post(&format!("/account/security/email{suffix}"))
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .form(&[
+            ("authenticity_token", csrf.as_str()),
+            ("new_email", "invalid-address"),
+        ])
+        .await;
+    assert_eq!(rejected.status_code(), 400, "{}", rejected.text());
+    assert!(rejected.text().contains("data-profile-dialog-host"));
+    assert!(rejected.text().contains("data-flow-outcome=\"invalid\""));
+    let csrf_denied = request
+        .post(&format!("/account/security/email{suffix}"))
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .form(&[
+            ("authenticity_token", "invalid"),
+            ("new_email", "synthetic@example.test"),
+        ])
+        .await;
+    assert_eq!(csrf_denied.status_code(), 403);
+    assert!(csrf_denied.text().contains("data-flow-outcome=\"invalid\""));
+    for (path, fields, expected) in [
+        (
+            "/account/security/password?profile_flow=password",
+            vec![
+                ("current_password", "incorrect"),
+                ("new_password", "Synthetic-unaccepted-passphrase-42"),
+            ],
+            400,
+        ),
+        (
+            "/account/security/totp?profile_flow=totp",
+            vec![("password", "incorrect")],
+            200,
+        ),
+        (
+            "/account/security/password/confirm?profile_flow=operation",
+            vec![
+                ("operation_id", "invalid-operation"),
+                ("password", "incorrect"),
+            ],
+            401,
+        ),
+    ] {
+        let mut fields = fields;
+        fields.push(("authenticity_token", csrf.as_str()));
+        let invalid = request
+            .post(path)
+            .add_header("origin", boot.app_context.config.server.full_url())
+            .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+            .form(&fields)
+            .await;
+        assert_eq!(
+            invalid.status_code(),
+            expected,
+            "{path}: {}",
+            invalid.text()
+        );
+        assert!(
+            invalid.text().contains("data-flow-outcome=\"invalid\""),
+            "{path}: {}",
+            invalid.text()
+        );
+        assert!(!invalid.text().contains("<html"));
+        assert!(!invalid.text().contains("Profile updated"));
+    }
+    drop(request);
+    close_request(fixture, boot).await;
+}
+
 async fn enable_completed_onboarding(fixture: &RequestFixture, account_id: i64) {
     let active = identity_onboarding::ActiveModel {
         account_id: Set(account_id),
@@ -553,11 +682,7 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .await;
     assert_eq!(profile.status_code(), 200, "{}", profile.text());
     assert!(!profile.text().contains("href=\"/account/security\""));
-    assert!(
-        profile
-            .text()
-            .contains("href=\"/account/security/passkey\"")
-    );
+    assert!(profile.text().contains("panel=passkey"));
     assert!(!profile.text().contains("regenerate_recovery"));
     let center = request
         .get("/account/security")
@@ -584,7 +709,7 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
     assert!(
         profile
             .text()
-            .contains("action=\"/account/security/operation\"")
+            .contains("action=\"/account/security/operation?profile_flow=operation")
     );
     let foreign_sign_in = request
         .post("/api/auth/sign-in/email")
@@ -790,11 +915,7 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
         .await;
     assert_eq!(security.status_code(), 200);
     assert!(security.text().contains("id=\"profile-security-content\""));
-    assert!(
-        security
-            .text()
-            .contains("href=\"/account/security/password\"")
-    );
+    assert!(security.text().contains("panel=password"));
     assert!(security.text().contains("value=\"close_account\""));
     assert!(security.text().contains("action=\"/logout\""));
     let registration = request

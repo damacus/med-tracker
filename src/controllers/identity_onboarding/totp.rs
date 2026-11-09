@@ -88,7 +88,7 @@ async fn execute(
     dispatch(service, request, uuid::Uuid::new_v4().to_string()).await
 }
 
-pub(super) async fn show(
+pub(crate) async fn show(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     csrf: CsrfToken,
@@ -117,7 +117,7 @@ pub(super) async fn start(
     Form(input): Form<Input>,
 ) -> Response {
     if csrf.verify(&input.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     match execute(
         &service,
@@ -151,7 +151,7 @@ pub(super) async fn finish(
     Form(input): Form<Input>,
 ) -> Response {
     if csrf.verify(&input.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     if input.saved.as_deref() != Some("yes") {
         return render(
@@ -173,7 +173,7 @@ pub(super) async fn finish(
     .await
     {
         Ok(native) if native.status < 400 => {
-            cookies(super::rendering::redirect("/account/security"), &native)
+            cookies(view.profile_redirect("/account/security"), &native)
         }
         Ok(native) => cookies(
             render(
@@ -204,7 +204,7 @@ pub(super) async fn login(
     Form(input): Form<Input>,
 ) -> Response {
     if csrf.verify(&input.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     match execute(
         &service,
@@ -248,7 +248,7 @@ pub(super) async fn disable_start(
     Form(input): Form<Input>,
 ) -> Response {
     if csrf.verify(&input.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     match browser_identity(&service, &super::passkeys::request(&headers)).await {
         Ok(BrowserIdentity::Authenticated { user, .. })
@@ -256,7 +256,13 @@ pub(super) async fn disable_start(
         {
             render(&view, csrf, "disable", None, None)
         }
-        _ => super::rendering::redirect("/account/security"),
+        Ok(BrowserIdentity::Authenticated { .. }) => view
+            .profile_error(
+                StatusCode::BAD_REQUEST,
+                "Authenticator settings changed. Check the current setting before trying again.",
+            )
+            .unwrap_or_else(|| super::rendering::redirect("/account/security")),
+        _ => super::rendering::redirect("/login"),
     }
 }
 
@@ -268,7 +274,7 @@ pub(super) async fn disable_confirm(
     Form(input): Form<Input>,
 ) -> Response {
     if csrf.verify(&input.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     match execute(
         &service,
@@ -279,7 +285,7 @@ pub(super) async fn disable_confirm(
     .await
     {
         Ok(native) if native.status < 400 => {
-            cookies(super::rendering::redirect("/account/security"), &native)
+            cookies(view.profile_redirect("/account/security"), &native)
         }
         _ => render(
             &view,
@@ -299,7 +305,7 @@ pub(super) async fn regenerate(
     Form(input): Form<Input>,
 ) -> Response {
     if csrf.verify(&input.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     match execute(
         &service,

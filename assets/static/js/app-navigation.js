@@ -69,6 +69,10 @@
   document.addEventListener('submit', event => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !authPaths.has(new URL(form.action).pathname)) return;
+    if (new URL(form.action).pathname === '/reset-password') {
+      const enhanced = new CustomEvent('profile-flow-auth-submit', { bubbles: true, cancelable: true, detail: { submitter: event.submitter } });
+      if (!form.dispatchEvent(enhanced)) { event.preventDefault(); return; }
+    }
     event.preventDefault();
     void (async () => {
       try {
@@ -78,7 +82,16 @@
         return;
       }
       if (!form.isConnected) document.body.append(form);
-      HTMLFormElement.prototype.submit.call(form);
+      let submitter;
+      if (event.submitter?.name) {
+        submitter = document.createElement('input');
+        submitter.type = 'hidden';
+        submitter.name = event.submitter.name;
+        submitter.value = event.submitter.value;
+        form.append(submitter);
+      }
+      try { HTMLFormElement.prototype.submit.call(form); }
+      finally { submitter?.remove(); }
     })();
   }, true);
   const sidebar = document.querySelector("[data-sidebar-expanded]");

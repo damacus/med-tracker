@@ -1,7 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section id="administration-form" tabindex="-1" class="admin-page">
-  <a class="link" href="{{ member_return_url }}">{{ admin_labels.nav.members }}</a>
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ member.name }}</h1>
   {% include "administration/navigation.html" %}

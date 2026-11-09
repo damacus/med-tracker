@@ -214,10 +214,22 @@ async fn begin_operation(
     authenticated: &str,
     operation: Option<&str>,
 ) -> (url::Url, String) {
+    if mode == "operation" {
+        let legacy = app
+            .client
+            .get(format!("{}/account/security", app.origin))
+            .header("cookie", authenticated)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(legacy.status(), reqwest::StatusCode::SEE_OTHER);
+        assert_eq!(legacy.headers()["location"], "/profile#security");
+        assert_eq!(legacy.headers()["cache-control"], "no-store");
+    }
     let page_path = match mode {
         "register" => "/auth/zitadel/register",
         "link" => "/account/security/provider/link",
-        "operation" => "/account/security",
+        "operation" => "/profile",
         _ => "/login",
     };
     let page = app

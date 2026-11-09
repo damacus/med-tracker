@@ -2,7 +2,9 @@
 @import "./fonts.css";
 @import "./themes.css";
 @import "./dashboard.css";
+@import "./section-switcher.css";
 @import "./profile.css";
+@import "./profile-dialogs.css";
 @import "./platform.css";
 @import "./shared-layout.css";
 @import "./administration.css";
