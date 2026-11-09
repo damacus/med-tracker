@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::{
     authorization::{AuthorizationInput, DisplayedConsent},
     browser,
@@ -44,7 +45,7 @@ pub struct Choose {
     switch: Option<String>,
 }
 
-pub async fn choose(
+pub(crate) async fn choose(
     State(ctx): State<AppContext>,
     session: Session<SessionPgPool>,
     token: CsrfToken,
@@ -122,7 +123,7 @@ pub struct Creation {
     authenticity_token: String,
 }
 
-pub async fn create(
+pub(crate) async fn create(
     State(ctx): State<AppContext>,
     session: Session<SessionPgPool>,
     token: CsrfToken,

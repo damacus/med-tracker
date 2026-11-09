@@ -1,0 +1,1 @@
+{{ shell.initials }}{% if shell.avatar_attached %}<img src="/households/{{ slug }}/profile/avatar" alt="" data-avatar-image>{% elif shell.gravatar_url %}<img src="{{ shell.gravatar_url }}" alt="" referrerpolicy="no-referrer" data-avatar-image>{% endif %}

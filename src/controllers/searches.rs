@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::{
     controllers::medications::{
         authentication_error, begin, operation_error, request_id, unavailable,
@@ -10,6 +11,7 @@ use axum::{
     http::{HeaderMap, header},
     response::IntoResponse,
 };
+use axum_csrf::CsrfToken;
 use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
 use chrono::Utc;
@@ -37,6 +39,7 @@ async fn show(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     headers: HeaderMap,
+    token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Query(input): Query<SearchQuery>,
 ) -> Response {
@@ -84,7 +87,7 @@ async fn show(
     data["query"] = json!(query);
     data["results"] = json!(results);
     match format::render().view(&view, "searches/show.html", data) {
-        Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => unavailable(),
     }
 }

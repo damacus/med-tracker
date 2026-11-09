@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{
     access,
     care::{assignments, dosages, medication_lookup, treatments},

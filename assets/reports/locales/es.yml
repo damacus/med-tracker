@@ -2335,6 +2335,7 @@ es:
       people: Personas
       medication_finder: Buscador de Medicamentos
     profile_menu:
+      platform_administration: Administración de la plataforma
       my_account: Mi Cuenta
       dashboard: Panel
       profile: Perfil
@@ -2354,6 +2355,7 @@ es:
       administration: Administración
       logout: Cerrar sesión
     sidebar:
+      toggle: Alternar barra lateral
       dashboard: Panel
       inventory: Inventario
       locations: Ubicaciones

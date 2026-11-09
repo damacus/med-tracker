@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{
     access::{self, Actor},
     identity::{browser, resource::AuthenticationError},

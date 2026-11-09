@@ -1,3 +1,4 @@
+use crate::controllers::shell::ShellView as TeraView;
 use crate::models::identity::authorization::{
     AuthorizationFailure, AuthorizationInput, AuthorizationResponse,
 };

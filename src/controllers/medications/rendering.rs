@@ -1,3 +1,4 @@
+use crate::controllers::shell::ShellView as TeraView;
 use crate::models::care::{
     browser_query::{Detail, Inventory},
     medications::StockSnapshot,

@@ -2674,6 +2674,7 @@ en:
       people: People
       medication_finder: Medication Finder
     profile_menu:
+      platform_administration: Platform administration
       my_account: My Account
       dashboard: Dashboard
       profile: Profile
@@ -2698,6 +2699,7 @@ en:
       inventory: Inventory
       finder: Medicine Finder
     sidebar:
+      toggle: Toggle sidebar
       dashboard: Dashboard
       inventory: Inventory
       locations: Locations

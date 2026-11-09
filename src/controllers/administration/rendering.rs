@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::ShellView as TeraView;
 
 pub(super) fn error_page(view: &TeraView, language: &str, error: &OperationError) -> Response {
     let key = match error {

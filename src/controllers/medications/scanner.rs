@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::care::medication_lookup;
 use serde_json::json;
 

@@ -1,3 +1,4 @@
+use crate::controllers::shell::ShellView as TeraView;
 use axum::{extract::Request, middleware::Next, response::Response};
 use loco_rs::prelude::*;
 use serde_json::{Value, json};

@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 pub(crate) mod account_profile;
 pub(crate) mod avatar;
 mod export;
@@ -13,7 +14,7 @@ use crate::{
         care::{administration, report_pdf},
         entities::account,
         errors::OperationError,
-        platform, profile,
+        profile,
     },
 };
 use axum::{
@@ -212,32 +213,13 @@ fn parse_preferences(
 }
 
 pub(super) fn shortcut_choices(slug: &str, labels: &Value, can_manage: bool) -> Vec<Value> {
-    [
-        ("dashboard", "dashboard"),
-        ("inventory", "medications"),
-        ("locations", "locations"),
-        ("people", "people"),
-        ("finder", "medications/finder"),
-        ("medicine_reviews", "medicine-reviews"),
-        ("reports", "reports"),
-        ("profile", "profile"),
-        ("administration", "admin"),
-    ]
-    .into_iter()
-    .filter(|(id, _)| *id != "administration" || can_manage)
-    .map(|(id, path)| {
-        let label = match id {
-            "profile" => &labels["layouts"]["profile_menu"]["profile"],
-            "dashboard" => &labels["layouts"]["mobile_rail"]["home"],
-            "finder" => &labels["layouts"]["mobile_rail"]["finder"],
-            _ => &labels["layouts"]["sidebar"][id],
-        };
-        json!({"id":id,"label":label,"href":format!("/households/{slug}/{path}")})
-    })
-    .collect()
+    super::shell::choices(slug, labels, can_manage)
+        .into_iter()
+        .map(|link| json!(link))
+        .collect()
 }
 
-fn stored_shortcuts(account: &account::Model) -> Vec<String> {
+pub(super) fn stored_shortcuts(account: &account::Model) -> Vec<String> {
     account.preferences["mobile_shortcuts"]
         .as_array()
         .map(|values| {
@@ -257,121 +239,25 @@ async fn navigation(
     (headers, request): (HeaderMap, Option<Extension<LocoRequestId>>),
     token: CsrfToken,
 ) -> Response {
-    let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
-        Ok(value) => value,
-        Err(error) => return authentication_error(error),
-    };
-    let account = match account::Entity::find_by_id(principal.account_id())
-        .one(tenant.transaction())
-        .await
+    let shell = match super::shell::load(
+        &ctx,
+        &session,
+        &slug,
+        &headers,
+        &token,
+        &request_id(request),
+        "",
+    )
+    .await
     {
-        Ok(Some(value)) => value,
-        _ => return unavailable(),
+        Ok(shell) => shell,
+        Err(response) => return response,
     };
-    let can_manage = match administration::can_manage(&tenant).await {
-        Ok(value) => value,
-        Err(error) => return operation_error(error),
-    };
-    let locale = report_pdf::locale(
-        headers
-            .get(header::ACCEPT_LANGUAGE)
-            .and_then(|value| value.to_str().ok())
-            .unwrap_or("en"),
-    );
-    let labels = match report_pdf::translations(locale) {
-        Ok(value) => value,
-        Err(_) => return unavailable(),
-    };
-    let choices = shortcut_choices(&slug, &labels, can_manage);
-    let links = stored_shortcuts(&account)
-        .into_iter()
-        .filter_map(|id| choices.iter().find(|choice| choice["id"] == id).cloned())
-        .collect::<Vec<_>>();
-    let person =
-        match profile::linked_person(&tenant, principal.account_id(), PersonAccess::View).await {
-            Ok(person) => Some(person),
-            Err(OperationError::Forbidden | OperationError::NotFound) => None,
-            Err(error) => return operation_error(error),
-        };
-    let name = person
-        .as_ref()
-        .map_or(account.email.as_str(), |person| person.name.as_str());
-    let initials = name
-        .split_whitespace()
-        .filter_map(|word| word.chars().next())
-        .take(2)
-        .flat_map(char::to_uppercase)
-        .collect::<String>();
-    let avatar_attached = if person.is_some() {
-        match profile::avatar::attachment(&tenant, principal.account_id(), PersonAccess::View).await
-        {
-            Ok(value) => value.is_some(),
-            Err(error) => return operation_error(error),
-        }
-    } else {
-        false
-    };
-    let gravatar_url = if let Some(person) = &person {
-        match profile::gravatar::for_person(&tenant, person.id, avatar_attached).await {
-            Ok(value) => value,
-            Err(error) => return operation_error(error),
-        }
-    } else {
-        None
-    };
-    let Ok(authenticity_token) = token.authenticity_token() else {
-        return unavailable();
-    };
-    let sidebar = choices
-        .iter()
-        .filter(|link| link["id"] != "profile")
-        .map(|link| {
-            let mut link = link.clone();
-            link["label"] =
-                labels["layouts"]["sidebar"][link["id"].as_str().unwrap_or_default()].clone();
-            link
-        })
-        .collect::<Vec<_>>();
-    if tenant.commit().await.is_err() {
-        return unavailable();
-    }
-    let households = match principal.households(&ctx.db).await {
-        Ok(households) => households,
-        Err(error) => return authentication_error(error),
-    };
-    if !households.iter().any(|household| household.slug == slug) {
-        return operation_error(OperationError::Forbidden);
-    }
-    let active_household_id = match principal.active_household(&ctx.db).await {
-        Ok(active) => active.map(|household| household.id.to_string()),
-        Err(error) => return authentication_error(error),
-    };
-    let platform_transaction = match platform::begin(&ctx.db).await {
-        Ok(transaction) => transaction,
-        Err(error) => return operation_error(error),
-    };
-    let platform_url =
-        match platform::administrator(&platform_transaction, principal.account_id()).await {
-            Ok(_) => {
-                if platform_transaction.commit().await.is_err() {
-                    return unavailable();
-                }
-                Some("/platform/users")
-            }
-            Err(OperationError::Forbidden | OperationError::Unauthenticated) => {
-                if platform_transaction.rollback().await.is_err() {
-                    return unavailable();
-                }
-                None
-            }
-            Err(error) => return operation_error(error),
-        };
-    let shell = json!({"name":name,"initials":initials,"avatar_attached":avatar_attached,"gravatar_url":gravatar_url,"authenticity_token":authenticity_token,"sidebar":sidebar,"choices":choices,"households":households,"active_household_id":active_household_id,"platform_url":platform_url,"labels":labels["layouts"],"navigation_label":labels["ruby_ui"]["common"]["navigation_menu"]});
     (
         StatusCode::OK,
         token,
         [(header::CACHE_CONTROL, "no-store")],
-        axum::Json(json!({"label":labels["profiles"]["mobile_shortcuts"]["title"],"links":links,"shell":shell})),
+        axum::Json(json!({"label":shell.shortcut_label,"links":shell.links,"shell":shell})),
     )
         .into_response()
 }

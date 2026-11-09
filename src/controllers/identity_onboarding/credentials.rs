@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::better_auth::{IdentityService, dispatch};
 use axum::{
     Extension,

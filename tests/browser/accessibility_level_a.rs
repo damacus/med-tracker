@@ -53,22 +53,21 @@ pub fn assert_no_violations(reports: &[Value]) {
 }
 
 async fn navigation(viewport: Viewport, size: &'static str) {
-    let desktop = viewport.width >= 1024;
     harness::journey(viewport, |journey| Box::pin(async move {
         harness::sign_in(journey).await;
         let page = &journey.page;
         let report = audit(page, &format!("navigation-{size}")).await;
         assert!(page.evaluate::<(), bool>("() => [...document.querySelectorAll('[data-global-search-trigger]')].every(trigger => trigger.getAttribute('aria-label').startsWith('Open global search — Search ') && ['Meta+K', 'Control+K'].includes(trigger.getAttribute('aria-keyshortcuts')) && trigger.querySelector('kbd[aria-hidden=\"true\"]'))", None).await.unwrap());
-        expect(page.get_by_role(AriaRole::Button, harness::named("SA Synthetic adult My Account"))).to_be_visible().await.unwrap();
+        expect(page.get_by_role(AriaRole::Button, harness::named("Synthetic adult · My Account"))).to_be_visible().await.unwrap();
         let directory = std::path::Path::new("docs/screenshots/accessibility-level-a");
         std::fs::create_dir_all(directory).unwrap();
         page.screenshot_to_file(&directory.join(format!("navigation-{size}.png")), ScreenshotOptions::builder().animations(Animations::Disabled).build()).await.unwrap();
-        let trigger = page.locator(if desktop { "[data-sidebar-account]" } else { "[data-app-account]" });
+        let trigger = page.locator("[data-app-account]");
         trigger.focus().await.unwrap();
         page.keyboard().press("Enter", None).await.unwrap();
         let account = page.get_by_role(AriaRole::Navigation, harness::named("My Account"));
         expect(account.clone()).to_be_visible().await.unwrap();
-        expect(page.locator("#app-account:popover-open")).to_be_visible().await.unwrap();
+        expect(page.locator("[data-account-menu][open]")).to_be_visible().await.unwrap();
         expect(trigger.clone()).to_have_attribute("aria-expanded", "true").await.unwrap();
         page.keyboard().press("ArrowDown", None).await.unwrap();
         assert!(page.evaluate::<(), bool>("() => document.querySelector('#app-account').querySelector('button, a[href]') === document.activeElement", None).await.unwrap());

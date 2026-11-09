@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::ShellView as TeraView;
 use crate::models::identity::browser::BrowserPrincipal;
 use sea_orm::TransactionTrait;
 

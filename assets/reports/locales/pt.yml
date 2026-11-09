@@ -2669,6 +2669,7 @@ pt:
       people: Pessoas
       medication_finder: Pesquisador de Medicamentos
     profile_menu:
+      platform_administration: Administração da plataforma
       my_account: A Minha Conta
       dashboard: Painel
       profile: Perfil
@@ -2688,6 +2689,7 @@ pt:
       administration: Administração
       logout: Terminar sessão
     sidebar:
+      toggle: Alternar barra lateral
       dashboard: Painel
       inventory: Inventário
       locations: Localizações

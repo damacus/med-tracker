@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::care::{
     person_schedules::{self, ClinicalRevision, PersonScheduleId, PersonalAction, PersonalPlan},
     treatments,

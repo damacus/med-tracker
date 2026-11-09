@@ -1,5 +1,4 @@
 (() => {
-  let installed = false;
   const authPaths = new Set(['/login', '/logout', '/reset-password', '/auth/totp', '/auth/zitadel']);
   const transitionKey = 'medtracker.push.transition';
   function workerMessage(worker, type, id, timeoutMs = 5000) {
@@ -82,309 +81,91 @@
       HTMLFormElement.prototype.submit.call(form);
     })();
   }, true);
-  const element = (tag, text, className) => {
-    const node = document.createElement(tag);
-    if (text) node.textContent = text;
-    if (className) node.className = className;
-    return node;
-  };
-  document.addEventListener('app-navigation', event => {
-    const data = event.detail;
-    const header = document.querySelector('.shell-header');
-    const sidebar = document.querySelector('.app-sidebar');
-    const sidebarTrigger = document.querySelector('[data-sidebar-account]');
-    const layout = document.querySelector('[data-app-drawer-layout]');
-    if (!header || !layout || !data?.labels || installed) return;
-    const labels = data.labels;
-    const securityLink = document.querySelector('[data-account-security-fallback]')?.cloneNode(true);
-    const selected = data.selected_section;
-    const menu = controls => {
-      const list = element('ul', null, 'menu w-full');
-      for (const control of controls) {
-        const item = element('li');
-        item.append(control);
-        list.append(item);
+  const sidebar = document.querySelector("[data-sidebar-expanded]");
+  if (sidebar) {
+    sidebar.addEventListener("change", () => {
+      document.body.dataset.sidebarCollapsed = String(!sidebar.checked);
+      document.cookie = "medtracker.sidebar=" + (sidebar.checked ? "expanded" : "collapsed") + "; Path=/; Max-Age=31536000; SameSite=Lax";
+    });
+    requestAnimationFrame(() => document.body.classList.add("sidebar-interactive"));
+  }
+  for (const disclosure of document.querySelectorAll("[data-account-menu]")) {
+    const summary = disclosure.querySelector("summary");
+    const panel = disclosure.querySelector('#app-account');
+    const close = () => { disclosure.open = false; summary.focus({ preventScroll: true }); };
+    panel.close = () => {
+      disclosure.open = false;
+      panel.removeAttribute('open');
+      summary.setAttribute('aria-expanded', 'false');
+      panel.dispatchEvent(new Event('close'));
+    };
+    summary.setAttribute('aria-controls', panel.id);
+    summary.setAttribute('aria-expanded', String(disclosure.open));
+    disclosure.addEventListener('toggle', () => {
+      panel.toggleAttribute('open', disclosure.open);
+      summary.setAttribute('aria-expanded', String(disclosure.open));
+    });
+    disclosure.addEventListener("keydown", event => {
+      if (event.key === "Escape" && disclosure.open) { event.preventDefault(); close(); }
+      if (event.key === 'ArrowDown' && event.target === summary) {
+        event.preventDefault();
+        disclosure.open = true;
+        panel.querySelector('a[href], button')?.focus({ preventScroll: true });
       }
-      return list;
-    };
-    const link = item => {
-      const anchor = element('a', null, 'min-w-0 whitespace-normal wrap-anywhere');
-      anchor.append(element('span', item.label, 'min-w-0 wrap-anywhere'));
-      anchor.href = item.href;
-      anchor.dataset.section = item.id;
-      if (item.id === selected) anchor.setAttribute('aria-current', 'page');
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('width', '24');
-      svg.setAttribute('height', '24');
-      svg.setAttribute('aria-hidden', 'true');
-      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-      use.setAttribute('href', `/static/profile-icons.svg#${item.id}`);
-      svg.append(use);
-      anchor.prepend(svg);
-      return anchor;
-    };
-    const logout = () => {
-      const form = element('form');
-      form.method = 'post';
-      form.action = '/logout';
-      const token = element('input');
-      token.type = 'hidden';
-      token.name = 'authenticity_token';
-      token.value = data.authenticity_token;
-      const button = element('button', labels.sidebar.sign_out, 'min-w-0 whitespace-normal wrap-anywhere');
-      button.type = 'submit';
-      form.append(token, menu([button]));
-      return form;
-    };
-    const heading = (panel, title, closePanel) => {
-      const top = element('div', null, 'app-navigation-heading');
-      top.append(element('h2', title));
-      const close = element('button', '×', 'btn btn-ghost');
-      close.type = 'button';
-      close.setAttribute('aria-label', labels.mobile_menu.close_menu);
-      close.addEventListener('click', closePanel);
-      top.append(close);
-      panel.append(top);
-    };
-    const drawer = trigger => {
-      const toggle = layout.querySelector('.drawer-toggle');
-      const content = layout.querySelector('.drawer-content');
-      const side = layout.querySelector('.drawer-side');
-      const overlay = layout.querySelector('.drawer-overlay');
-      const panel = layout.querySelector('#app-drawer');
-      overlay.setAttribute('aria-label', labels.mobile_menu.close_menu);
-      panel.setAttribute('role', 'dialog');
-      panel.setAttribute('aria-modal', 'true');
-      panel.setAttribute('aria-label', data.navigation_label);
-      side.inert = true;
-      let focusFrame;
-      const focusWhenVisible = () => {
-        if (!toggle.checked) return;
-        const button = panel.querySelector('button');
-        if (getComputedStyle(button).visibility === 'visible') button.focus({ preventScroll: true });
-        else focusFrame = requestAnimationFrame(focusWhenVisible);
-      };
-      const sync = () => {
-        cancelAnimationFrame(focusFrame);
-        const open = toggle.checked;
-        trigger.setAttribute('aria-expanded', String(open));
-        panel.toggleAttribute('open', open);
-        side.inert = !open;
-        content.inert = open;
-        if (open) focusFrame = requestAnimationFrame(focusWhenVisible);
-        else if (panel.contains(document.activeElement) || document.activeElement === document.body) trigger.focus({ preventScroll: true });
-      };
-      panel.close = () => {
-        toggle.checked = false;
-        sync();
-        panel.dispatchEvent(new Event('close'));
-      };
-      heading(panel, labels.mobile_menu.brand, panel.close);
-      trigger.addEventListener('click', () => { toggle.checked = !toggle.checked; sync(); });
-      toggle.addEventListener('change', sync);
-      document.addEventListener('keydown', event => {
-        if (!toggle.checked) return;
-        if (event.key === 'Escape') { event.preventDefault(); panel.close(); }
-        if (event.key !== 'Tab') return;
-        const controls = [...panel.querySelectorAll('a[href], button:not([disabled]), [tabindex="0"]')].filter(node => node.getClientRects().length);
-        const first = controls[0];
-        const last = controls.at(-1);
-        if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) { event.preventDefault(); last?.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-      });
-      return panel;
-    };
-    const dropdown = triggers => {
-      const panel = element('nav', null, 'dropdown app-navigation-panel app-account');
-      panel.id = 'app-account';
-      panel.popover = 'auto';
-      panel.setAttribute('aria-label', labels.profile_menu.my_account);
-      let activeTrigger;
-      const finishClose = () => {
-        if (!panel.hasAttribute('open')) return;
-        panel.removeAttribute('open');
-        activeTrigger?.setAttribute('aria-expanded', 'false');
-        panel.dispatchEvent(new Event('close'));
-      };
-      panel.close = () => {
-        if (panel.matches(':popover-open')) panel.hidePopover();
-        finishClose();
-      };
-      const anchorSupported = CSS.supports('position-anchor: --account-trigger') && CSS.supports('position-area: bottom');
-      if (!anchorSupported) {
-        panel.style.positionArea = 'none';
-        panel.style.inset = 'auto';
-        panel.style.margin = '0';
-      }
-      const position = () => {
-        if (!activeTrigger) return;
-        if (!activeTrigger.getClientRects().length) { panel.close(); return; }
-        if (anchorSupported) return;
-        const bounds = activeTrigger.getBoundingClientRect();
-        const sidebar = activeTrigger === sidebarTrigger;
-        panel.style.maxHeight = Math.max(0, sidebar ? bounds.top - 16 : innerHeight - bounds.bottom - 16) + 'px';
-        panel.style.left = Math.max(8, Math.min(sidebar ? bounds.left : bounds.right - panel.offsetWidth, innerWidth - panel.offsetWidth - 8)) + 'px';
-        panel.style.top = Math.max(8, sidebar ? bounds.top - panel.offsetHeight - 8 : bounds.bottom + 8) + 'px';
-      };
-      for (const [index, trigger] of triggers.entries()) {
-        const anchor = '--account-trigger-' + index;
-        trigger.style.anchorName = anchor;
-        trigger.setAttribute('popovertarget', panel.id);
-        trigger.removeAttribute('aria-haspopup');
-        trigger.addEventListener('click', () => {
-          activeTrigger = trigger;
-          panel.style.positionAnchor = anchor;
-          panel.classList.toggle('dropdown-top', trigger === sidebarTrigger);
-          panel.classList.toggle('dropdown-start', trigger === sidebarTrigger);
-          panel.classList.toggle('dropdown-bottom', trigger !== sidebarTrigger);
-          panel.classList.toggle('dropdown-end', trigger !== sidebarTrigger);
-        });
-        if (trigger.tagName === 'A') {
-          trigger.setAttribute('role', 'button');
-          trigger.setAttribute('aria-controls', panel.id);
-          trigger.addEventListener('click', event => {
-            event.preventDefault();
-            if (panel.matches(':popover-open')) panel.close();
-            else panel.showPopover({ source: trigger });
-          });
-          trigger.addEventListener('keydown', event => {
-            if (event.key !== ' ') return;
-            event.preventDefault();
-            trigger.click();
-          });
+    });
+    document.addEventListener("click", event => {
+      if (disclosure.open && !disclosure.contains(event.target)) disclosure.open = false;
+    });
+    disclosure.addEventListener("focusout", event => {
+      if (disclosure.open && event.relatedTarget && !disclosure.contains(event.relatedTarget)) disclosure.open = false;
+    });
+  }
+  const drawer = document.querySelector("[data-mobile-drawer]");
+  if (drawer) {
+    const summary = drawer.querySelector("summary");
+    const panel = drawer.querySelector("#app-drawer");
+    const closeButton = drawer.querySelector("[data-drawer-close]");
+    const overlay = drawer.querySelector('[data-drawer-overlay]');
+    const close = () => { drawer.open = false; summary.focus({ preventScroll: true }); };
+    panel.close = () => { drawer.open = false; panel.removeAttribute('open'); panel.dispatchEvent(new Event('close')); };
+    summary.setAttribute('aria-controls', panel.id);
+    summary.setAttribute('aria-expanded', String(drawer.open));
+    const controls = () => [...panel.querySelectorAll('a[href], button:not([disabled]), [tabindex="0"]')].filter(node => node.getClientRects().length);
+    const outside = new Map();
+    drawer.addEventListener("toggle", () => {
+      summary.setAttribute("aria-expanded", String(drawer.open));
+      panel.toggleAttribute('open', drawer.open);
+      if (drawer.open) {
+        panel.setAttribute("role", "dialog");
+        panel.setAttribute("aria-modal", "true");
+        for (const node of document.querySelectorAll('.app-sidebar, .shell-main, .shell-footer, [data-mobile-shortcuts], .app-header > :not([data-mobile-drawer])')) {
+          if (!outside.has(node)) outside.set(node, node.inert);
+          node.inert = true;
         }
-        trigger.addEventListener('keydown', event => {
-          if (event.key !== 'ArrowDown') return;
-          event.preventDefault();
-          if (!panel.matches(':popover-open')) trigger.click();
-          panel.querySelector('button, a[href]')?.focus({ preventScroll: true });
-        });
-        trigger.hidden = false;
-        trigger.disabled = false;
+        controls()[0]?.focus({ preventScroll: true });
+      } else {
+        panel.removeAttribute("role");
+        panel.removeAttribute("aria-modal");
+        for (const [node, inert] of outside) node.inert = inert;
+        outside.clear();
       }
-      panel.addEventListener('beforetoggle', event => {
-        if (event.newState !== 'open') return;
-        panel.setAttribute('open', '');
-        activeTrigger?.setAttribute('aria-expanded', 'true');
-      });
-      panel.addEventListener('toggle', event => {
-        if (event.newState === 'closed') finishClose();
-        else position();
-      });
-      document.addEventListener('focusin', event => {
-        if (panel.matches(':popover-open') && !panel.contains(event.target) && event.target !== activeTrigger) panel.close();
-      });
-      window.addEventListener('resize', position);
-      document.addEventListener('scroll', position, true);
-      document.body.append(panel);
-      return panel;
-    };
-    if (header) {
-      const drawerTrigger = header.querySelector('[data-app-drawer]');
-      const navigationDrawer = drawer(drawerTrigger);
-      drawerTrigger.setAttribute('aria-label', labels.mobile_menu.open_menu);
-      drawerTrigger.disabled = false;
-      const navigation = element('nav');
-      navigation.setAttribute('aria-label', labels.mobile_rail.primary_navigation);
-      const profile = data.choices.find(item => item.id === 'profile');
-      const destinations = [...data.sidebar, ...(profile ? [profile] : [])];
-      navigation.append(menu(destinations.map(link)));
-      if (sidebar) sidebar.querySelector('[data-sidebar-navigation]').replaceChildren(menu(destinations.map(link)));
-      navigationDrawer.append(navigation, logout());
-      header.querySelector('[data-account-name]').textContent = data.name;
-      const avatar = header.querySelector('[data-profile-avatar]');
-      avatar.classList.add('relative');
-      if (data.initials) avatar.replaceChildren(element('span', data.initials));
-      if (data.avatar_attached || data.gravatar_url) {
-        const image = element('img');
-        image.src = data.avatar_attached ? `/households/${data.slug}/profile/avatar` : data.gravatar_url;
-        image.alt = '';
-        image.dataset.avatarImage = '';
-        image.referrerPolicy = 'no-referrer';
-        image.className = 'absolute inset-0';
-        avatar.append(image);
-      }
-    }
-    if (sidebarTrigger) {
-      sidebar.setAttribute("aria-label", labels.mobile_rail.primary_navigation);
-      sidebar.querySelector("[data-sidebar-navigation]").setAttribute("aria-label", labels.mobile_rail.primary_navigation);
-      const switcher = sidebar.querySelector('a[href="/households/choose?switch=1"]');
-      const selectedHousehold = data.households?.find(household => String(household.id) === String(data.active_household_id) && typeof household.name === 'string');
-      const householdName = element('span', null, 'grid min-w-0 wrap-anywhere');
-      householdName.append(element('span', labels.profile_menu.households));
-      switcher.replaceChildren(householdName);
-      if (selectedHousehold) {
-        householdName.append(element('span', selectedHousehold.name, 'text-xs shell-muted'));
-      }
-      sidebar.querySelector('[data-sidebar-name]').textContent = data.name;
-      sidebar.querySelector('[data-sidebar-avatar]').replaceChildren(...[...header.querySelector('[data-profile-avatar]').childNodes].map(node => node.cloneNode(true)));
-      sidebar.querySelector('[data-sidebar-profile]').hidden = true;
-      sidebar.querySelector('[data-sidebar-security]').hidden = true;
-      const signOut = sidebar.querySelector('form[action="/logout"]');
-      if (signOut) {
-        signOut.querySelector("button").textContent = labels.sidebar.sign_out;
-        signOut.querySelector('[name="authenticity_token"]').value = data.authenticity_token;
-      } else sidebar.querySelector('.app-sidebar-account').append(logout());
-    }
-    const accountTriggers = [header.querySelector('[data-app-account]'), ...(sidebarTrigger ? [sidebarTrigger] : [])];
-    const account = dropdown(accountTriggers);
-    const accountControls = [];
-    for (const trigger of accountTriggers) trigger.setAttribute('aria-label', [data.initials, data.name, labels.profile_menu.my_account].filter(Boolean).join(' '));
-    if (securityLink) {
-      securityLink.className = 'min-w-0 whitespace-normal wrap-anywhere';
-      accountControls.push(securityLink);
-    }
-    for (const id of ['dashboard', 'profile', 'administration']) {
-      const item = data.choices.find(item => item.id === id);
-      if (item) accountControls.push(link({ ...item, label: labels.profile_menu[id] }));
-    }
-    if (data.platform_url === '/platform/users') accountControls.push(link({ id: 'administration', label: 'Platform administration', href: '/platform/users' }));
-    account.append(menu(accountControls));
-    if (Array.isArray(data.households) && data.households.length) {
-      const section = element('section', null, 'border-t border-base-300 mt-2 pt-3');
-      section.append(element('h3', labels.profile_menu.households, 'menu-title'));
-      for (const household of data.households) {
-        if (!Number.isSafeInteger(household.id) || household.id <= 0 || typeof household.name !== 'string') continue;
-        const form = element('form');
-        form.method = 'post';
-        form.action = '/households/select';
-        for (const [name, value] of [['authenticity_token', data.authenticity_token], ['household_id', String(household.id)]]) {
-          const input = element('input');
-          input.type = 'hidden';
-          input.name = name;
-          input.value = value;
-          form.append(input);
-        }
-        const button = element('button', `${labels.profile_menu.switch_to} ${household.name}`, 'min-w-0 whitespace-normal wrap-anywhere');
-        button.type = 'submit';
-        if (String(household.id) === data.active_household_id) button.setAttribute('aria-current', 'true');
-        form.append(menu([button]));
-        section.append(form);
-      }
-      account.append(section);
-    }
-    account.append(logout());
-    document.querySelector('[data-profile-navigation-fallback]')?.remove();
-    document.body.dataset.navigationReady = 'true';
-    delete document.body.dataset.navigationFailed;
-    installed = true;
-  });
-  const standalone = document.querySelector('[data-standalone-navigation]');
-  if (standalone) {
-    const header = document.querySelector('.shell-header');
-    const accountName = header.querySelector('[data-account-name]').textContent;
-    document.dispatchEvent(new CustomEvent('app-navigation', { detail: {
-      labels: {
-        sidebar: { sign_out: standalone.querySelector('button[type="submit"]').textContent },
-        mobile_menu: { brand: header.querySelector('.app-brand').textContent, open_menu: header.querySelector('[data-app-drawer]').getAttribute('aria-label'), close_menu: standalone.dataset.closeMenu },
-        mobile_rail: { primary_navigation: standalone.getAttribute('aria-label') },
-        profile_menu: { my_account: accountName },
-      },
-      name: accountName,
-      navigation_label: standalone.getAttribute('aria-label'),
-      authenticity_token: standalone.querySelector('[name="authenticity_token"]').value,
-      sidebar: [...standalone.querySelectorAll('[data-section]')].map(anchor => ({ id: anchor.dataset.section, href: anchor.getAttribute('href'), label: anchor.textContent })),
-      choices: [],
-    } }));
+    });
+    closeButton.addEventListener("click", close);
+    overlay.addEventListener('click', close);
+    drawer.addEventListener("keydown", event => {
+      if (!drawer.open) return;
+      if (event.key === "Escape") { event.preventDefault(); close(); return; }
+      if (event.key !== "Tab") return;
+      const focusable = controls();
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === summary)) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    });
+    document.addEventListener("click", event => { if (drawer.open && !drawer.contains(event.target)) drawer.open = false; });
+    window.matchMedia("(min-width: 1024px)").addEventListener("change", event => { if (event.matches) drawer.open = false; });
+    closeButton.hidden = false;
+    overlay.hidden = false;
+    drawer.classList.add('drawer-enhanced');
   }
 })();

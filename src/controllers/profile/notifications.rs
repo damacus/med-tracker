@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{access::TenantTransaction, notification_preferences};
 
 const FLAGS: [&str; 5] = [

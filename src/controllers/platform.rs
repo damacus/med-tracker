@@ -1,4 +1,5 @@
 use super::medications::{operation_error, unavailable};
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{
     errors::OperationError,
     identity::better_auth::{

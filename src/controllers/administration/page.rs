@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::ShellView as TeraView;
 use crate::models::care::administration::recovery::{
     self, RecoveryAction, RecoveryCommand, RecoveryGuardianId, RecoverySnapshot, RecoverySubjectId,
 };

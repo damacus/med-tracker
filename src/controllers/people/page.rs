@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::ShellView as TeraView;
 
 pub(super) struct Page<'a> {
     ctx: &'a AppContext,

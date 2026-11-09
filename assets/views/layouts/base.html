@@ -9,13 +9,12 @@
     <script src="/static/js/appearance.js"></script>
     <script src="/static/js/avatar-image.js"></script>
     <link rel="stylesheet" href="/static/css/compiled.css">
-    <noscript><link rel="stylesheet" href="/static/css/navigation-fallback.css"></noscript>
     <script src="/static/js/interaction.js" defer></script>
     <script src="/static/js/mobile-shortcuts.js" defer></script>
     <script src="/static/js/app-navigation.js" defer></script>
     {% if canary_enabled | default(value=false) %}<script src="/static/js/canary.js" defer></script>{% endif %}
   </head>
-  <body{% if slug %} class="app-household"{% endif %}>
+  <body{% if slug %} class="app-household"{% if shell %} data-sidebar-collapsed="{{ shell.sidebar_collapsed }}" data-navigation-ready="true"{% endif %}{% endif %}>
     {% if slug or standalone_navigation | default(value=false) %}<div class="drawer" data-app-drawer-layout><input id="app-drawer-toggle" type="checkbox" class="drawer-toggle" tabindex="-1" aria-hidden="true"><div class="drawer-content">{% endif %}
     <a href="#main" class="skip-link">{% if labels %}{{ labels.layouts.navigation.skip_to_content }}{% else %}Skip to content{% endif %}</a>
     {% block header %}
@@ -43,6 +42,7 @@
     <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% if canary_enabled | default(value=false) %}{% include "components/canary-notice.html" %}{% endif %}{% block content %}{% endblock content %}</main>
     {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · {% if labels %}{{ labels.layouts.navigation.care_tagline }}{% else %}Care, kept together.{% endif %}</div></footer>{% endblock footer %}
     {% block appearance %}{% endblock appearance %}
-    {% if slug or standalone_navigation | default(value=false) %}</div><div class="drawer-side app-drawer-side" inert><label for="app-drawer-toggle" class="drawer-overlay" aria-hidden="true"></label><div id="app-drawer" class="app-navigation-panel app-drawer" role="dialog" aria-modal="true" tabindex="-1"></div></div></div>{% endif %}
+    {% if shell %}<nav class="dock lg:hidden" data-mobile-shortcuts aria-label="{{ shell.shortcut_label }}">{% for link in shell.links %}<a href="{{ link.href }}" aria-label="{{ link.label }}" {% if shell.selected_section == link.id %}aria-current="page"{% endif %}><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#{{ link.id }}"/></svg><span class="dock-label">{{ link.label }}</span></a>{% endfor %}</nav>{% endif %}
+    {% if slug or standalone_navigation | default(value=false) %}</div></div>{% endif %}
   </body>
 </html>

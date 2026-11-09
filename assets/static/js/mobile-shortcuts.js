@@ -55,12 +55,6 @@ async function refreshMobileShortcuts() {
     }));
     if (!navigation.isConnected) (document.querySelector('.drawer-content') || document.body).append(navigation);
     document.body.classList.add('pb-[calc(4rem+env(safe-area-inset-bottom))]', 'lg:pb-0');
-    document.dispatchEvent(new CustomEvent('app-navigation', { detail: { ...data.shell, slug: match[1], selected_section: selectedSection } }));
-    if (document.body && !document.body.hasAttribute('data-navigation-ready')) {
-      document.body.dataset.navigationFailed = 'true';
-      for (const link of document.querySelectorAll('[data-sidebar-profile], [data-sidebar-security]')) link.hidden = false;
-    }
   } catch { document.body?.setAttribute('data-navigation-failed', 'true'); }
 }
-document.addEventListener('DOMContentLoaded', refreshMobileShortcuts);
 document.addEventListener('profile-saved', refreshMobileShortcuts);

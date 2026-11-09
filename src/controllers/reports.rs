@@ -2,6 +2,7 @@ use super::medications::{
     authentication_error, begin, operation_error, rendering::appearance_context, request_id,
     unavailable,
 };
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     care::{report_pdf, reports as report_data},
@@ -450,7 +451,7 @@ async fn download(
     if tenant.commit().await.is_err() {
         return unavailable();
     }
-    let view = view.clone();
+    let view = view.document_engine();
     let language = language.to_owned();
     let rendered =
         tokio::task::spawn_blocking(move || report_pdf::render(&view, data, &language)).await;

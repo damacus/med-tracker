@@ -63,10 +63,10 @@ async fn polish_profile_avatar_refreshes_all_existing_surfaces_without_navigatio
         expect(page.locator("form[action$='/profile/avatar/remove']")).to_have_count(0).await.unwrap();
         assert_eq!(page.locator("[data-profile-avatar] img, [data-sidebar-avatar] img").count().await.unwrap(),0);
         assert!(page.evaluate::<(),bool>("() => window.polishDocument===document && window.polishAccount===document.querySelector('#app-account') && [...document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')].every(avatar=>avatar.textContent.trim().length>0)",None).await.unwrap());
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
+        page.locator("[data-app-account]").click(None).await.unwrap();
         expect(page.locator("#app-account[open]")).to_be_visible().await.unwrap();
         page.keyboard().press("Escape",None).await.unwrap();
-        expect(page.locator(".app-sidebar [data-sidebar-account]")).to_be_focused().await.unwrap();
+        expect(page.locator("[data-app-account]")).to_be_focused().await.unwrap();
     })).await;
 }
 

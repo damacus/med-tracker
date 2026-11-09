@@ -2334,6 +2334,7 @@ ga:
       people: Daoine
       medication_finder: Aimsitheoir Leigheas
     profile_menu:
+      platform_administration: Riarachán an ardáin
       my_account: Mo Chuntas
       dashboard: Dashboard
       profile: Próifíl
@@ -2353,6 +2354,7 @@ ga:
       administration: Riarachán
       logout: Logáil amach
     sidebar:
+      toggle: Scoránaigh an barra taoibh
       dashboard: Dashboard
       inventory: Stoc
       locations: Suíomhanna

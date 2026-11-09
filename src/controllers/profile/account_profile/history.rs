@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::resource::{HistoryActor, deny_personal_history};
 use axum::extract::{Query, rejection::QueryRejection};
 use serde::Deserialize;

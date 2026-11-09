@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::ShellView as TeraView;
 
 const FIELDS: &[(&str, &str, &str, bool)] = &[
     ("name", "Name", "text", true),

@@ -4,9 +4,11 @@ document.addEventListener('click', event => {
   });
   const option = event.target.closest('[data-person-id]');
   if (!option) return;
-  const form = option.closest('form[data-dashboard-selector]');
-  form.elements.dashboard_person_id.value = option.dataset.personId;
-  form.requestSubmit();
+  const selector = option.closest("[data-dashboard-selector]");
+  if (!selector || option.dataset.personId !== selector.dataset.selectedPerson) return;
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || (event.button != null && event.button !== 0)) return;
+  event.preventDefault();
+  selector.open = false;
 });
 
 document.addEventListener('keydown', event => {
@@ -18,14 +20,12 @@ document.addEventListener('keydown', event => {
     return;
   }
   const option = event.target.closest('[data-person-id]');
-  if (!option || !['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+  if (!option || !selector || !['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
   event.preventDefault();
-  const options = [...option.closest('[role="radiogroup"]').querySelectorAll('[role="radio"]')];
+  const options = [...selector.querySelectorAll('a[data-person-id]')];
   const index = options.indexOf(option);
   const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 :
     (index + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1) + options.length) % options.length;
-  options.forEach(button => { button.tabIndex = -1; });
-  options[next].tabIndex = 0;
   options[next].focus();
 });
 

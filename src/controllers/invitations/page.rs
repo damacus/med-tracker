@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::ShellView as TeraView;
 
 #[derive(Clone, Copy)]
 pub(super) enum Change {

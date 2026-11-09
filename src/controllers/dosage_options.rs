@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 mod form;
 
 use super::medications::{
@@ -153,7 +154,7 @@ impl Page<'_> {
                     header::CACHE_CONTROL,
                     header::HeaderValue::from_static("no-store"),
                 );
-                response
+                (self.token.clone(), response).into_response()
             }
             Err(_) => unavailable(),
         }
