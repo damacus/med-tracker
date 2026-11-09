@@ -15,6 +15,8 @@ tasks:
       - package.json
       - package-lock.json
       - assets/static/css/app.css
+      - assets/static/css/profile.css
+      - assets/static/css/dashboard.css
       - assets/static/css/themes.css
       - assets/static/css/fonts.css
       - assets/static/css/platform.css

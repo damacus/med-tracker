@@ -1,11 +1,11 @@
 .profile-page { overflow-wrap: anywhere; }
 .profile-page * { min-width: 0; }
 .profile-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: stretch; gap: .375rem; padding: .375rem; border: 1px solid var(--border-color); border-radius: 1rem; background: var(--surface-container); box-shadow: var(--elevation-1), inset 0 1px 0 color-mix(in oklab, var(--surface-container-lowest) 65%, transparent); }
-.profile-tabs .profile-tab { display: flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .625rem .75rem; border: 1px solid transparent; border-radius: .75rem; color: var(--on-surface-variant); font-size: .875rem; font-weight: 600; line-height: 1.35; text-align: center; text-decoration: none; overflow-wrap: anywhere; }
+.profile-tabs .profile-tab { display: flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .625rem .75rem; border: 1px solid transparent; border-radius: .75rem; color: var(--on-surface-variant); font-size: .875rem; font-weight: 600; line-height: 1.35; text-align: center; text-decoration: none; overflow-wrap: normal; }
 .profile-tabs .profile-tab:hover { color: var(--foreground); background: color-mix(in oklab, var(--surface-container-lowest) 50%, transparent); }
 .profile-tabs .profile-tab[aria-selected="true"] { border-color: var(--border-color); background: var(--surface-container-lowest); color: var(--primary); box-shadow: 0 2px 4px color-mix(in oklab, var(--foreground) 8%, transparent), inset 0 1px 0 color-mix(in oklab, var(--surface-container-lowest) 80%, transparent); }
 .profile-tabs .profile-tab:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--ring); outline-offset: 2px; }
-@media (max-width: 479px) { .profile-tabs { gap: .25rem; padding: .25rem; } .profile-tabs .profile-tab { padding-inline: .375rem; font-size: .8125rem; } }
+@media (max-width: 480px) { .profile-tabs { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem; padding: .25rem; } .profile-tabs .profile-tab { padding-inline: .375rem; font-size: .8125rem; } }
 [data-profile-status]:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
 .profile-setting:not(details) { grid-template-columns: minmax(0,1fr) auto; gap: .3rem 1rem; }
 .profile-setting > span { grid-column: 1; color: var(--on-surface-variant); }
