@@ -191,10 +191,10 @@ async fn profile_dialogs_keep_failed_proofs_and_synthetic_secret_results_in_plac
         page.goto(&profile, None).await.unwrap();
         expect(page.locator("[data-profile-dialogs-ready=true]")).to_be_visible().await.unwrap();
         for panel in ["email", "password", "totp", "passkey", "keys"] {
-            let opener = page.locator(&format!("#security [data-profile-flow-entry={panel}]"));
+            let opener = page.locator(format!("#security [data-profile-flow-entry={panel}]"));
             opener.focus().await.unwrap();
             page.keyboard().press("Enter", None).await.unwrap();
-            expect(page.locator(&format!("dialog[open] [data-flow-kind={panel}]"))).to_be_visible().await.unwrap();
+            expect(page.locator(format!("dialog[open] [data-flow-kind={panel}]"))).to_be_visible().await.unwrap();
             assert_eq!(page.url(), profile);
             assert!(!page.evaluate::<(), bool>("() => document.querySelector('dialog[open]').scrollWidth > innerWidth", None).await.unwrap());
             page.keyboard().press("Escape", None).await.unwrap();

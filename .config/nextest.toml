@@ -14,6 +14,10 @@ filter = 'binary(=migration_roles)'
 priority = 100
 threads-required = "num-test-threads"
 
+[profile.browser-ci]
+inherits = "default"
+fail-fast = false
+
 [profile.api]
 inherits = "default"
 test-threads = 8

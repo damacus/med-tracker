@@ -242,6 +242,8 @@ jobs:
           echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
           task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
       - run: task host:test:browser
+        env:
+          NEXTEST_PROFILE: browser-ci
       - name: Preserve browser screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

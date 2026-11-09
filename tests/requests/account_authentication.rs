@@ -20,6 +20,26 @@ fn is_auth_session_cookie(header: &str) -> bool {
     )
 }
 
+fn profile_flow_field(html: &str, action: &str, name: &str) -> String {
+    let document = scraper::Html::parse_document(html);
+    let forms = scraper::Selector::parse("form[action]").unwrap();
+    let fields = scraper::Selector::parse("input[name]").unwrap();
+    let form = document
+        .select(&forms)
+        .find(|form| {
+            form.value()
+                .attr("action")
+                .and_then(|value| value.split('?').next())
+                == Some(action)
+        })
+        .expect("profile flow action form");
+    form.select(&fields)
+        .find(|field| field.value().attr("name") == Some(name))
+        .and_then(|field| field.value().attr("value"))
+        .expect("profile flow form field")
+        .to_owned()
+}
+
 #[tokio::test]
 async fn account_authentication_profile_flows_keep_native_errors_and_fragment_outcomes() {
     let (fixture, boot) = boot_request_fixture().await;
@@ -79,15 +99,11 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
             .text()
             .contains(&format!("href=\"{profile}#security\""))
     );
-    let csrf = native
-        .text()
-        .split("name=\"authenticity_token\" value=\"")
-        .nth(1)
-        .unwrap()
-        .split('"')
-        .next()
-        .unwrap()
-        .to_owned();
+    let csrf = profile_flow_field(
+        &native.text(),
+        "/account/security/email",
+        "authenticity_token",
+    );
     let suffix = format!(
         "?profile_flow=email&profile_household={}",
         fixture.household.slug
@@ -95,6 +111,7 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
     let rejected = request
         .post(&format!("/account/security/email{suffix}"))
         .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("authenticity_token", csrf.as_str()),
             ("new_email", "invalid-address"),
@@ -106,6 +123,7 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
     let csrf_denied = request
         .post(&format!("/account/security/email{suffix}"))
         .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("authenticity_token", "invalid"),
             ("new_email", "synthetic@example.test"),
@@ -113,9 +131,10 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
         .await;
     assert_eq!(csrf_denied.status_code(), 403);
     assert!(csrf_denied.text().contains("data-flow-outcome=\"invalid\""));
-    for (path, fields, expected) in [
+    for (panel, action, fields, expected) in [
         (
-            "/account/security/password?profile_flow=password",
+            "password",
+            "/account/security/password",
             vec![
                 ("current_password", "incorrect"),
                 ("new_password", "Synthetic-unaccepted-passphrase-42"),
@@ -123,24 +142,25 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
             400,
         ),
         (
-            "/account/security/totp?profile_flow=totp",
+            "totp",
+            "/account/security/totp",
             vec![("password", "incorrect")],
             200,
         ),
-        (
-            "/account/security/password/confirm?profile_flow=operation",
-            vec![
-                ("operation_id", "invalid-operation"),
-                ("password", "incorrect"),
-            ],
-            401,
-        ),
     ] {
+        let form = request.get(&format!("{profile}?panel={panel}")).await;
+        assert_eq!(form.status_code(), 200, "{}", form.text());
+        let csrf = profile_flow_field(&form.text(), action, "authenticity_token");
         let mut fields = fields;
         fields.push(("authenticity_token", csrf.as_str()));
+        let path = format!(
+            "{action}?profile_flow={panel}&profile_household={}",
+            fixture.household.slug
+        );
         let invalid = request
-            .post(path)
+            .post(&path)
             .add_header("origin", boot.app_context.config.server.full_url())
+            .add_header("sec-fetch-site", "same-origin")
             .add_header("accept", "text/vnd.medtracker.profile-flow+html")
             .form(&fields)
             .await;
@@ -158,6 +178,68 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
         assert!(!invalid.text().contains("<html"));
         assert!(!invalid.text().contains("Profile updated"));
     }
+    let security = request.get(&profile).await;
+    assert_eq!(security.status_code(), 200, "{}", security.text());
+    let csrf = profile_flow_field(
+        &security.text(),
+        "/account/security/operation",
+        "authenticity_token",
+    );
+    let proof = request
+        .post(&format!(
+            "/account/security/operation?profile_flow=operation&profile_household={}",
+            fixture.household.slug
+        ))
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+        .form(&[
+            ("action", "close_account"),
+            ("authenticity_token", csrf.as_str()),
+        ])
+        .await;
+    assert_eq!(proof.status_code(), 200, "{}", proof.text());
+    let csrf = profile_flow_field(
+        &proof.text(),
+        "/account/security/password/confirm",
+        "authenticity_token",
+    );
+    let operation = profile_flow_field(
+        &proof.text(),
+        "/account/security/password/confirm",
+        "operation_id",
+    );
+    let denied_proof = request
+        .post(&format!(
+            "/account/security/password/confirm?profile_flow=operation&profile_household={}",
+            fixture.household.slug
+        ))
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+        .form(&[
+            ("operation_id", operation.as_str()),
+            ("password", "incorrect"),
+            ("authenticity_token", csrf.as_str()),
+        ])
+        .await;
+    assert_eq!(denied_proof.status_code(), 401, "{}", denied_proof.text());
+    assert!(
+        denied_proof
+            .text()
+            .contains("data-flow-outcome=\"invalid\"")
+    );
+    assert!(!denied_proof.text().contains("<html"));
+    assert!(!denied_proof.text().contains("Profile updated"));
+    assert_eq!(
+        accounts::Entity::find_by_id(fixture.account.id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .status,
+        2
+    );
     drop(request);
     close_request(fixture, boot).await;
 }

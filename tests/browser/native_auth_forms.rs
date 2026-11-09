@@ -4,7 +4,7 @@ use sea_orm::sea_query::{Expr, ExprTrait, Query};
 use sea_orm::{ConnectionTrait, DbBackend, Statement};
 use serde_json::Value;
 
-use super::native_auth::{capture_sizes, capture_sizes_at};
+use super::native_auth::{assert_profile_security, capture_sizes, capture_sizes_at};
 use crate::harness::{self, named};
 
 const NEW_PASSWORD: &str = "Native-browser-passphrase-42";
@@ -267,15 +267,12 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .click(None)
                     .await
                     .unwrap();
-                expect(page.get_by_role(AriaRole::Heading, named("Account security")))
-                    .to_be_visible()
-                    .await
-                    .unwrap();
+                assert_profile_security(page).await;
                 expect(page.locator("#security form[action^='/account/security/totp/disable']"))
                     .to_be_visible()
                     .await
                     .unwrap();
-                page.get_by_role(AriaRole::Button, named("Sign out"))
+                page.locator("#security form[action='/logout'] button")
                     .click(None)
                     .await
                     .unwrap();
@@ -348,12 +345,9 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .click(None)
                     .await
                     .unwrap();
-                expect(page.get_by_role(AriaRole::Heading, named("Account security")))
-                    .to_be_visible()
-                    .await
-                    .unwrap();
-                expect(page.get_by_text("browser-changed@example.test", true))
-                    .to_be_visible()
+                assert_profile_security(page).await;
+                expect(page.locator(".profile-hero"))
+                    .to_contain_text("browser-changed@example.test")
                     .await
                     .unwrap();
                 let query = Query::select()

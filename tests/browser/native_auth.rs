@@ -67,7 +67,8 @@ async fn sign_out(page: &Page) {
             .await
             .unwrap();
     }
-    page.get_by_role(AriaRole::Button, named("Sign out"))
+    assert_profile_security(page).await;
+    page.locator("#security form[action='/logout'] button")
         .click(None)
         .await
         .unwrap();
@@ -76,6 +77,21 @@ async fn sign_out(page: &Page) {
         .await
         .unwrap();
     assert_signed_out(page).await;
+}
+
+pub(super) async fn assert_profile_security(page: &Page) {
+    expect(page.get_by_role(AriaRole::Heading, named("My Profile")))
+        .to_be_visible()
+        .await
+        .unwrap();
+    expect(page.locator("#profile-tab-security"))
+        .to_have_attribute("aria-selected", "true")
+        .await
+        .unwrap();
+    expect(page.get_by_role(AriaRole::Heading, named("Account Security")))
+        .to_be_visible()
+        .await
+        .unwrap();
 }
 
 async fn assert_signed_out(page: &Page) {
@@ -318,7 +334,7 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             })();"#).await.unwrap();
             harness::sign_in(journey).await;
             page.goto(&format!("{}/account/security", journey.origin), None).await.unwrap();
-            expect(page.get_by_role(AriaRole::Heading, named("Account security"))).to_be_visible().await.unwrap();
+            assert_profile_security(page).await;
             capture_sizes(page, "account-security").await;
             page.get_by_role(AriaRole::Link, named("Add passkey")).click(None).await.unwrap();
             page.get_by_label("Passkey name", true).fill("Browser acceptance key", None).await.unwrap();
@@ -345,8 +361,8 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             page.get_by_role(AriaRole::Button, named("Sign in with a passkey")).click(None).await.unwrap();
             expect(page.get_by_role(AriaRole::Button, named("Open household: Synthetic household"))).to_be_visible().await.unwrap();
             page.goto(&format!("{}/account/security", journey.origin), None).await.unwrap();
-            expect(page.get_by_role(AriaRole::Heading, named("Account security"))).to_be_visible().await.unwrap();
-            expect(page.get_by_text("persistence@example.test", true)).to_be_visible().await.unwrap();
+            assert_profile_security(page).await;
+            expect(page.locator(".profile-hero")).to_contain_text("persistence@example.test").await.unwrap();
             expect(page.get_by_text("Browser acceptance key", true)).to_be_visible().await.unwrap();
             let session = native_session(page).await;
             assert!(session["session"].is_object(), "verified credential did not create a native session");
