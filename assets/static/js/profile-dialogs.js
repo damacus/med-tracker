@@ -51,28 +51,13 @@ export function mountProfileDialogs(document) {
   let busy = false;
   let active = false;
   let kind;
-  const dialog = document.createElement('dialog');
-  if (typeof dialog.showModal !== 'function') return;
-  dialog.className = 'profile-flow-dialog';
-  const box = document.createElement('div');
-  box.className = 'profile-flow-box';
-  const top = document.createElement('header');
-  const heading = document.createElement('p');
-  heading.id = 'profile-flow-heading';
-  dialog.setAttribute('aria-labelledby', heading.id);
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.className = 'btn btn-ghost';
-  closeButton.textContent = '×';
-  closeButton.setAttribute('aria-label', labels.flowClose || 'Close setting');
-  const status = document.createElement('p');
-  status.setAttribute('role', 'status');
-  status.setAttribute('aria-live', 'polite');
-  const content = document.createElement('div');
-  content.className = 'profile-flow-content';
-  top.append(heading, closeButton);
-  box.append(top, status, content);
-  dialog.append(box);
+  const dialog = document.querySelector('[data-profile-flow-dialog]');
+  if (!dialog || typeof dialog.showModal !== 'function') return;
+  const heading = dialog.querySelector('[data-profile-flow-heading]');
+  const closeButton = dialog.querySelector('[data-profile-flow-close]');
+  const status = dialog.querySelector('[data-profile-flow-status]');
+  const content = dialog.querySelector('[data-profile-flow-content]');
+  if (!heading || !closeButton || !status || !content) return;
 
   const setBusy = value => { busy = value; closeButton.disabled = value; dialog.setAttribute('aria-busy', String(value)); };
   const restoreFocus = target => {
@@ -284,7 +269,6 @@ export function mountProfileDialogs(document) {
     });
     document.addEventListener('security-flow-result', event => { if (root?.contains(event.target) || event.target === root) { setBusy(false); status.textContent = ''; } });
     window.addEventListener('pagehide', () => { requests.cancel(); clearSecrets(root); setBusy(false); });
-    document.body.append(dialog);
     ready = true;
     host.dataset.profileDialogsReady = 'true';
     const inline = host.querySelector('[data-profile-flow-root]');

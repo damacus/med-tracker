@@ -5,5 +5,6 @@
   <nav class="profile-tabs" aria-label="{{ labels.profiles.show.title }}"><a class="profile-tab" {% if profile_flow.kind == 'history' or profile_flow.kind == 'plans' %}aria-current="page"{% endif %} href="{{ profile_flow.profile }}#profile">{{ labels.profiles.sections.profile.title }}</a><a class="profile-tab" {% if profile_flow.kind != 'history' and profile_flow.kind != 'plans' %}aria-current="page"{% endif %} href="{{ profile_flow.profile }}#security">{{ labels.profiles.sections.security.title }}</a><a class="profile-tab" href="{{ profile_flow.profile }}#advanced">{{ labels.profiles.sections.advanced.title }}</a></nav>
   <section class="profile-section"><h2 class="sr-only">{% if profile_flow.kind == 'history' or profile_flow.kind == 'plans' %}{{ labels.profiles.sections.profile.title }}{% else %}{{ labels.profiles.sections.security.title }}{% endif %}</h2>{% include "profile/flow-fragment.html" %}</section>
 </div>
+{% include "profile/flow-dialog.html" %}
 <script type="module" src="/static/js/profile-dialogs.js"></script>
 {% endblock content %}

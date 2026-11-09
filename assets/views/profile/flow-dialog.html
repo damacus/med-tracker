@@ -1,0 +1,10 @@
+<dialog id="profile-flow-dialog" class="profile-flow-dialog" aria-labelledby="profile-flow-heading" data-profile-flow-dialog>
+  <div class="profile-flow-box">
+    <header>
+      <p id="profile-flow-heading" data-profile-flow-heading>{{ labels.profiles.dialogs.title | default(value='Profile setting') }}</p>
+      <button type="button" class="btn btn-ghost" aria-label="{{ labels.profiles.dialogs.close | default(value='Close setting') }}" data-profile-flow-close>×</button>
+    </header>
+    <p role="status" aria-live="polite" data-profile-flow-status></p>
+    <div class="profile-flow-content" data-profile-flow-content></div>
+  </div>
+</dialog>
