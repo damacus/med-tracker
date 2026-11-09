@@ -142,16 +142,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .await
                     .unwrap();
                 capture_sizes_at(page, "profile-security", Some("#security h2")).await;
-                page.locator("#security a[href='/account/security']")
-                    .first()
-                    .click(None)
-                    .await
-                    .unwrap();
-                expect(page.get_by_role(AriaRole::Heading, named("Account security")))
-                    .to_be_visible()
-                    .await
-                    .unwrap();
-                page.get_by_role(AriaRole::Link, named("Personal API keys"))
+                page.locator("#security a[href='/account/security/keys']")
                     .click(None)
                     .await
                     .unwrap();
@@ -280,7 +271,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .to_be_visible()
                     .await
                     .unwrap();
-                expect(page.get_by_text("Authenticator app: enabled", true))
+                expect(page.locator("#security form[action='/account/security/totp/disable']"))
                     .to_be_visible()
                     .await
                     .unwrap();

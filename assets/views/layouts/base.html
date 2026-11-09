@@ -23,7 +23,7 @@
       {% if slug or standalone_navigation | default(value=false) %}{% include "components/app-navigation.html" %}{% else %}
       <div class="shell-width shell-header-inner">
         <a href="/" class="text-xl font-semibold" aria-label="{% if labels %}{{ labels.layouts.navigation.home_link }}{% else %}MedTracker home{% endif %}">MedTracker</a>
-        <a class="link" href="/account/security">{% if labels %}{{ labels.profiles.account_security.title }}{% else %}Account security{% endif %}</a>
+        <a class="link" href="/profile#security">{% if labels %}{{ labels.profiles.account_security.title }}{% else %}Account security{% endif %}</a>
       </div>
       {% endif %}
     </header>

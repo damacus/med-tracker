@@ -53,29 +53,32 @@ pub fn assert_no_violations(reports: &[Value]) {
 }
 
 async fn navigation(viewport: Viewport, size: &'static str) {
+    let desktop = viewport.width >= 1024;
     harness::journey(viewport, |journey| Box::pin(async move {
         harness::sign_in(journey).await;
         let page = &journey.page;
         let report = audit(page, &format!("navigation-{size}")).await;
         assert!(page.evaluate::<(), bool>("() => [...document.querySelectorAll('[data-global-search-trigger]')].every(trigger => trigger.getAttribute('aria-label').startsWith('Open global search — Search ') && ['Meta+K', 'Control+K'].includes(trigger.getAttribute('aria-keyshortcuts')) && trigger.querySelector('kbd[aria-hidden=\"true\"]'))", None).await.unwrap());
-        expect(page.get_by_role(AriaRole::Button, harness::named("Synthetic adult · My Account"))).to_be_visible().await.unwrap();
+        expect(page.get_by_role(AriaRole::Link, harness::named("Synthetic adult · Profile"))).to_be_visible().await.unwrap();
         let directory = std::path::Path::new("docs/screenshots/accessibility-level-a");
         std::fs::create_dir_all(directory).unwrap();
         page.screenshot_to_file(&directory.join(format!("navigation-{size}.png")), ScreenshotOptions::builder().animations(Animations::Disabled).build()).await.unwrap();
-        let trigger = page.locator("[data-app-account]");
+        if !desktop { page.locator("[data-app-drawer]").click(None).await.unwrap(); }
+        let trigger = page.locator(if desktop { ".app-sidebar [data-household-trigger]" } else { "#app-drawer [data-household-trigger]" });
         trigger.focus().await.unwrap();
         page.keyboard().press("Enter", None).await.unwrap();
-        let account = page.get_by_role(AriaRole::Navigation, harness::named("My Account"));
+        let account = page.get_by_role(AriaRole::Navigation, harness::named("Households"));
         expect(account.clone()).to_be_visible().await.unwrap();
-        expect(page.locator("[data-account-menu][open]")).to_be_visible().await.unwrap();
+        expect(page.locator(if desktop { "#sidebar-households[open]" } else { "#drawer-households[open]" })).to_be_visible().await.unwrap();
         expect(trigger.clone()).to_have_attribute("aria-expanded", "true").await.unwrap();
         page.keyboard().press("ArrowDown", None).await.unwrap();
-        assert!(page.evaluate::<(), bool>("() => document.querySelector('#app-account').querySelector('button, a[href]') === document.activeElement", None).await.unwrap());
+        assert!(page.evaluate::<(), bool>("() => document.activeElement.matches('[data-household-options] button')", None).await.unwrap());
         let open_report = audit(page, &format!("navigation-account-open-{size}")).await;
         page.keyboard().press("Escape", None).await.unwrap();
         expect(account).to_be_hidden().await.unwrap();
         expect(trigger.clone()).to_have_attribute("aria-expanded", "false").await.unwrap();
         expect(trigger).to_be_focused().await.unwrap();
+        if !desktop { page.keyboard().press("Escape", None).await.unwrap(); }
         assert_no_violations(&[report, open_report]);
         page.evaluate::<(), bool>("() => { const button = document.createElement('button'); button.id = 'a11y-negative-control'; button.textContent = 'Visible audit label'; button.setAttribute('aria-label', 'Different accessible name'); document.querySelector('main').append(button); return true; }", None).await.unwrap();
         let negative = audit(page, &format!("negative-control-{size}")).await;

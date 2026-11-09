@@ -2089,6 +2089,13 @@ ga:
       "closure_description": "Cuireann dúnadh do chuntais deireadh le do rochtain agus cúlghaireann sé modhanna sínithe isteach. Coinnítear taifid chúraim chomhroinnte agus stair iniúchta. Aistrigh úinéireacht aon teaghlaigh ar tusa an t-aon úinéir air ar dtús."
       "close_account": "Dún cuntas"
     security:
+      provider_linked: "Tá ZITADEL nasctha."
+      add_password: "Cuir pasfhocal leis trí ríomhphost"
+      remove_password: "Bain pasfhocal"
+      password_required: "Cuir pasfhocal leis sula gcumasaíonn tú aip fíordheimhnithe."
+      replace_backup_codes: "Athraigh cóid chúltaca"
+      support_access: "Iarratais ar rochtain tacaíochta"
+      sign_out: "Sínigh amach"
       sessions: "Seisiúin ghníomhacha"
       current_session: "An seisiún reatha"
       other_session: "Seisiún eile"

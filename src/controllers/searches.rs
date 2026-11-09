@@ -38,8 +38,7 @@ async fn show(
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
-    headers: HeaderMap,
-    token: CsrfToken,
+    (headers, token): (HeaderMap, CsrfToken),
     ViewEngine(view): ViewEngine<TeraView>,
     Query(input): Query<SearchQuery>,
 ) -> Response {

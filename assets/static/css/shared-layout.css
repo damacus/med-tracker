@@ -17,14 +17,20 @@
 .app-sidebar-household, .app-sidebar-person { display:flex; align-items:center; gap:.75rem; min-height:3rem; padding:.5rem .75rem; border-radius:.5rem; }
 .app-sidebar-navigation svg, .app-sidebar-household > svg { flex-shrink:0; }
 .app-sidebar [aria-current="page"] { background:var(--secondary-container); color:var(--on-secondary-container); font-weight:700; }
-.app-account-disclosure { position:relative; }
 .app-account-trigger [data-account-name] { max-width:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .app-avatar { position:relative; }
 .app-avatar img { position:absolute; inset:0; }
-.app-account-disclosure > summary, .app-mobile-menu > summary { list-style:none; cursor:pointer; }
-.app-account-disclosure > summary::-webkit-details-marker, .app-mobile-menu > summary::-webkit-details-marker { display:none; }
-.app-account-disclosure:not([open]) > .app-account, .app-mobile-menu:not([open]) > .app-drawer { display:none; }
-.app-account-disclosure > .app-account { position:absolute; z-index:50; right:0; top:100%; max-height:calc(100dvh - 6rem); }
+.household-selector > summary, .app-mobile-menu > summary { list-style:none; cursor:pointer; }
+.household-selector > summary::-webkit-details-marker, .app-mobile-menu > summary::-webkit-details-marker { display:none; }
+.household-selector:not([open]) > .household-options, .app-mobile-menu:not([open]) > .app-drawer { display:none; }
+.household-selector > summary { border-radius:.5rem; }
+.household-selector > summary:hover { background:var(--surface-container); }
+.household-selector > summary:focus-visible { outline:3px solid var(--ring); outline-offset:2px; }
+.household-options { position:fixed; z-index:50; left:14rem; bottom:4rem; width:min(20rem, calc(100vw - 6rem)); max-height:calc(100dvh - 6rem); border-radius:1rem; padding:.5rem; }
+.household-option { display:flex; align-items:center; gap:.75rem; width:100%; min-height:44px; padding:.625rem .75rem; border-radius:.5rem; text-align:left; overflow-wrap:anywhere; }
+.household-option:hover { background:var(--surface-container); }
+.household-option[aria-current="true"] { background:var(--secondary-container); color:var(--on-secondary-container); font-weight:700; }
+.household-check { width:1.25rem; flex-shrink:0; }
 .app-mobile-menu { display:none; }
 .app-drawer-overlay { position:fixed; inset:0; z-index:55; width:100%; height:100%; border:0; background:rgb(0 0 0 / .25); }
 .app-mobile-menu:not([open]) > .app-drawer-overlay { display:none; }
@@ -37,6 +43,8 @@
   .app-household:has([data-sidebar-expanded]:not(:checked)) .app-sidebar .app-sidebar-rail-label { display:block; }
   .app-household:has([data-sidebar-expanded]:not(:checked)) .app-sidebar-top { flex-direction:column; }
   .app-household:has([data-sidebar-expanded]:not(:checked)) .app-sidebar-brand { padding-inline:0; }
+  .app-household:has([data-sidebar-expanded]:not(:checked)) .app-sidebar-brand-text { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .app-household:has([data-sidebar-expanded]:not(:checked)) .app-sidebar .household-options { left:5rem; }
   .app-household:has([data-sidebar-expanded]:not(:checked)) .app-sidebar-navigation a,
   .app-household:has([data-sidebar-expanded]:not(:checked)) .app-sidebar-search,
   .app-household:has([data-sidebar-expanded]:not(:checked)) .app-sidebar-household,
@@ -73,6 +81,7 @@
 @media (max-width:1023px) {
   [data-sidebar-expanded] { display:none; }
   .app-mobile-menu { display:block; }
+  .app-drawer .household-options { position:static; width:100%; max-height:none; margin-block:.5rem; }
   .app-mobile-menu .app-drawer { position:fixed; z-index:60; inset:4rem auto 0 0; min-height:0; max-height:calc(100dvh - 4rem); }
   .app-mobile-menu.drawer-enhanced .app-drawer { top:0; max-height:100dvh; }
   .app-sidebar { position:static; display:none; width:auto; padding:1rem; border-right:0; border-bottom:1px solid var(--border-color); }

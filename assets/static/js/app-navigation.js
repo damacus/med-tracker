@@ -89,9 +89,9 @@
     });
     requestAnimationFrame(() => document.body.classList.add("sidebar-interactive"));
   }
-  for (const disclosure of document.querySelectorAll("[data-account-menu]")) {
+  for (const disclosure of document.querySelectorAll("[data-household-selector]")) {
     const summary = disclosure.querySelector("summary");
-    const panel = disclosure.querySelector('#app-account');
+    const panel = disclosure.querySelector('[data-household-options]');
     const close = () => { disclosure.open = false; summary.focus({ preventScroll: true }); };
     panel.close = () => {
       disclosure.open = false;
@@ -106,7 +106,7 @@
       summary.setAttribute('aria-expanded', String(disclosure.open));
     });
     disclosure.addEventListener("keydown", event => {
-      if (event.key === "Escape" && disclosure.open) { event.preventDefault(); close(); }
+      if (event.key === "Escape" && disclosure.open) { event.preventDefault(); event.stopPropagation(); close(); }
       if (event.key === 'ArrowDown' && event.target === summary) {
         event.preventDefault();
         disclosure.open = true;

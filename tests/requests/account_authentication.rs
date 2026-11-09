@@ -552,7 +552,7 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .add_header("cookie", owner_cookie.clone())
         .await;
     assert_eq!(profile.status_code(), 200, "{}", profile.text());
-    assert!(profile.text().contains("href=\"/account/security\""));
+    assert!(!profile.text().contains("href=\"/account/security\""));
     assert!(
         profile
             .text()
@@ -563,8 +563,29 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .get("/account/security")
         .add_header("cookie", owner_cookie.clone())
         .await;
-    assert_eq!(center.status_code(), 200);
-    assert!(center.text().contains("Add passkey"));
+    assert_eq!(center.status_code(), 303);
+    assert_eq!(center.header("location"), "/profile#security");
+    assert_eq!(center.header("cache-control"), "no-store");
+    let anonymous = server(&boot).get("/account/security").await;
+    assert_eq!(anonymous.status_code(), 303);
+    assert_eq!(anonymous.header("location"), "/login");
+    assert_eq!(anonymous.header("cache-control"), "no-store");
+    assert!(profile.text().contains("Add passkey"));
+    assert!(profile.text().contains("value=\"close_account\""));
+    let denied = request
+        .post("/account/security/operation")
+        .add_header("cookie", owner_cookie.clone())
+        .form(&[
+            ("authenticity_token", "invalid"),
+            ("action", "close_account"),
+        ])
+        .await;
+    assert_eq!(denied.status_code(), 403);
+    assert!(
+        profile
+            .text()
+            .contains("action=\"/account/security/operation\"")
+    );
     let foreign_sign_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
@@ -675,7 +696,7 @@ async fn account_authentication_accepts_split_cookie_headers() {
         account_id.to_string()
     );
     let browser = request
-        .get("/account/security")
+        .get("/profile")
         .add_header("cookie", cookie)
         .add_header("cookie", "unrelated=1")
         .await;
@@ -688,7 +709,7 @@ async fn account_authentication_accepts_split_cookie_headers() {
     assert_eq!(rejected.status_code(), 400);
     assert_eq!(rejected.header("cache-control"), "no-store");
     let rejected = request
-        .get("/account/security")
+        .get("/profile")
         .add_header("cookie", malformed)
         .await;
     assert_eq!(rejected.status_code(), 400);
@@ -764,10 +785,18 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
         .unwrap();
     assert!(renewed.expires_at > Utc::now() + Duration::hours(2));
     let security = request
-        .get("/account/security")
+        .get("/profile")
         .add_header("cookie", cookie.clone())
         .await;
     assert_eq!(security.status_code(), 200);
+    assert!(security.text().contains("id=\"profile-security-content\""));
+    assert!(
+        security
+            .text()
+            .contains("href=\"/account/security/password\"")
+    );
+    assert!(security.text().contains("value=\"close_account\""));
+    assert!(security.text().contains("action=\"/logout\""));
     let registration = request
         .get("/api/auth/passkey/generate-register-options")
         .add_header("cookie", cookie.clone())
@@ -1070,10 +1099,7 @@ async fn account_authentication_account_status_and_session_lifetime_remain_requi
             "{mutation}: {}",
             rejected.status_code()
         );
-        let security = request
-            .get("/account/security")
-            .add_header("cookie", cookie)
-            .await;
+        let security = request.get("/profile").add_header("cookie", cookie).await;
         assert_ne!(security.status_code(), 200, "{mutation}");
     }
     drop(request);
@@ -1548,7 +1574,7 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
         .unwrap()
         .to_owned();
     let listing = request
-        .get("/account/security")
+        .get("/profile")
         .add_header("cookie", cookie.clone())
         .await;
     assert_eq!(listing.status_code(), 200, "{}", listing.text());
@@ -1587,10 +1613,7 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
         .json(&json!({"id":own_passkey.to_string()}))
         .await;
     assert_eq!(removed.status_code(), 200, "{}", removed.text());
-    let listing = request
-        .get("/account/security")
-        .add_header("cookie", cookie)
-        .await;
+    let listing = request.get("/profile").add_header("cookie", cookie).await;
     assert_eq!(listing.status_code(), 200, "{}", listing.text());
     assert_eq!(listing.text().matches("name=\"session_id\"").count(), 101);
     assert_eq!(listing.text().matches("data-passkey-id=").count(), 101);

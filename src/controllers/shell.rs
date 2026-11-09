@@ -91,7 +91,7 @@ pub(super) async fn load(
     token: &CsrfToken,
     request_id: &str,
     path: &str,
-) -> std::result::Result<ShellContext, Response> {
+) -> std::result::Result<ShellContext, Box<Response>> {
     let (principal, tenant) = begin(ctx, session, slug, request_id)
         .await
         .map_err(authentication_error)?;
@@ -119,7 +119,7 @@ pub(super) async fn load(
         match profile::linked_person(&tenant, principal.account_id(), PersonAccess::View).await {
             Ok(person) => Some(person),
             Err(OperationError::Forbidden | OperationError::NotFound) => None,
-            Err(error) => return Err(operation_error(error)),
+            Err(error) => return Err(Box::new(operation_error(error))),
         };
     let name = person
         .as_ref()
@@ -167,7 +167,7 @@ pub(super) async fn load(
         .await
         .map_err(authentication_error)?;
     if !households.iter().any(|household| household.slug == slug) {
-        return Err(operation_error(OperationError::Forbidden));
+        return Err(Box::new(operation_error(OperationError::Forbidden)));
     }
     let active_household_id = principal
         .active_household(&ctx.db)
@@ -190,7 +190,7 @@ pub(super) async fn load(
                 .map_err(|error| operation_error(error.into()))?;
             None
         }
-        Err(error) => return Err(operation_error(error)),
+        Err(error) => return Err(Box::new(operation_error(error))),
     };
     let selected_section = choices
         .iter()
@@ -306,7 +306,8 @@ impl FromRequestParts<AppContext> for ShellViewEngine<ShellView> {
                     &request_id,
                     parts.uri.path(),
                 )
-                .await?,
+                .await
+                .map_err(|response| *response)?,
             )
         } else {
             None

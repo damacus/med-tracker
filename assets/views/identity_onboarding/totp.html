@@ -16,7 +16,7 @@
   {% else %}
   {% if secret %}<p>{{ flow.totp_setup_hint }}</p><label class="grid gap-2" for="totp-secret">{{ flow.setup_key }}<input class="input input-bordered w-full font-mono" id="totp-secret" value="{{ secret }}" readonly></label>{% endif %}
   {% if backup_codes %}<section aria-labelledby="backup-heading"><h2 id="backup-heading" class="text-xl font-semibold">Save your backup codes</h2><p>Each code can complete one password sign-in if you lose access to your authenticator app. Keep them somewhere safe.</p><ul aria-label="Backup codes" class="font-mono break-all space-y-2">{% for code in backup_codes %}<li>{{ code }}</li>{% endfor %}</ul></section>{% endif %}
-  {% if mode == "backup" %}<p>These codes replace your previous set. Save them now; this page is shown once.</p><a class="btn btn-primary" href="/account/security">I have saved my backup codes</a>{% else %}
+  {% if mode == "backup" %}<p>These codes replace your previous set. Save them now; this page is shown once.</p><a class="btn btn-primary" href="/profile#security">I have saved my backup codes</a>{% else %}
   <form method="post" action="{% if mode == 'login' %}/auth/totp{% elif mode == 'disable' %}/account/security/totp/disable/confirm{% else %}/account/security/totp/finish{% endif %}" class="space-y-4">
     <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
     {% if mode == 'disable' %}<label class="grid gap-2" for="disable-password">{{ flow.current_password }}<input class="input input-bordered w-full" id="disable-password" name="password" type="password" autocomplete="current-password" required></label>{% endif %}

@@ -2433,6 +2433,13 @@ en:
       "closure_description": "Closing your account ends your access and revokes sign-in methods. Shared care records and audit history remain. Transfer ownership of any household where you are the only owner first."
       "close_account": "Close account"
     security:
+      provider_linked: "ZITADEL is linked."
+      add_password: "Add password by email"
+      remove_password: "Remove password"
+      password_required: "Add a password before enabling an authenticator app."
+      replace_backup_codes: "Replace backup codes"
+      support_access: "Support access requests"
+      sign_out: "Sign out"
       sessions: "Active sessions"
       current_session: "Current session"
       other_session: "Other session"

@@ -21,12 +21,9 @@ body { margin: 0; font-family: var(--font-family); background: var(--background)
 .app-navigation-panel { color: var(--foreground); background: var(--surface-container-low); border: 1px solid var(--border-color); padding: 1rem; overflow-y: auto; box-shadow: var(--elevation-1); }
 .app-drawer-side { z-index: 40; }
 .app-drawer { width: min(85vw, 320px); min-height: 100%; }
-.app-account { width: min(90vw, 20rem); max-height: calc(100dvh - 2rem); margin: .5rem 0; border-radius: 1rem; position-try-fallbacks: flip-block; }
-.app-account::backdrop { background: transparent; }
-@supports not (position-area: bottom) { .app-account[popover] { position: fixed; margin: 0; inset: auto; } }
 html:has(.app-household) { scrollbar-gutter: stable; }
 .app-navigation-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-weight: 700; margin-bottom: 1rem; }
-@media (max-width: 640px) { [data-account-name] { display: none; } }
+@media (max-width: 640px) { [data-account-name] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; } }
 .shell-main { padding-block: 3rem; }
 .shell-card { background: var(--card); border: 1px solid var(--border-color); box-shadow: var(--elevation-1); }
 .shell-muted { color: var(--on-surface-variant); }

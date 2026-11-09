@@ -2425,6 +2425,13 @@ pt:
       "closure_description": "Fechar a tua conta termina o teu acesso e revoga os métodos de início de sessão. Os registos de cuidados partilhados e o histórico de auditoria são mantidos. Transfere primeiro a propriedade de qualquer agregado familiar do qual sejas o único proprietário."
       "close_account": "Fechar conta"
     security:
+      provider_linked: "O ZITADEL está associado."
+      add_password: "Adicionar palavra-passe por email"
+      remove_password: "Remover palavra-passe"
+      password_required: "Adicione uma palavra-passe antes de ativar uma aplicação de autenticação."
+      replace_backup_codes: "Substituir códigos de recuperação"
+      support_access: "Pedidos de acesso de suporte"
+      sign_out: "Terminar sessão"
       sessions: "Sessões ativas"
       current_session: "Sessão atual"
       other_session: "Outra sessão"

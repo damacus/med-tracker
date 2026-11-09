@@ -3,7 +3,7 @@
 {% set personal = personal_profile | default(value=false) %}
 {% if personal %}{% set profile_path = '/profile' %}{% set sections = ['profile', 'security', 'advanced'] %}{% else %}{% set profile_path = '/households/' ~ slug ~ '/profile' %}{% set sections = ['profile', 'security', 'notifications', 'advanced'] %}{% endif %}
 <div class="profile-page grid gap-6">
-  {% include "profile/navigation.html" %}
+  {% if not shell %}{% include "profile/navigation.html" %}{% endif %}
   <noscript><link rel="stylesheet" href="/static/css/profile-no-script.css"><nav class="profile-summary flex flex-wrap gap-2 mt-2 text-sm text-base-content/70" aria-label="{{ labels.profiles.sections.profile.title }}"><a class="link" href="#profile-avatar">{{ labels.profiles.avatar.title }}</a><a class="link" href="#profile-timezone">{{ labels.profiles.time_zone.title }}</a><a class="link" href="#profile-shortcuts">{{ labels.profiles.mobile_shortcuts.title }}</a></nav></noscript>
   <p role="status" aria-live="polite" data-profile-status data-saved-label="{{ labels.profiles.updated }}" data-failure-label="{{ labels.profiles.browser.failure }}"></p>
   <header class="profile-hero grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border-b border-base-300 pb-6">
@@ -13,9 +13,9 @@
     </div>
     <p class="shell-muted col-span-full">{% if personal %}{{ labels.profiles.personal.description }}{% else %}{{ labels.profiles.show.description }}{% endif %}</p>
   </header>
-  <nav class="tabs tabs-box" aria-label="{{ labels.profiles.show.title }}" data-profile-tabs>
+  <nav class="profile-tabs" aria-label="{{ labels.profiles.show.title }}" data-profile-tabs>
     {% for section in sections %}
-    <a class="tab" id="profile-tab-{{ section }}" href="#{{ section }}" data-profile-tab="{{ section }}">{{ labels.profiles.sections[section].title }}</a>
+    <a class="profile-tab" id="profile-tab-{{ section }}" href="#{{ section }}" data-profile-tab="{{ section }}">{{ labels.profiles.sections[section].title }}</a>
     {% endfor %}
   </nav>
   <section id="profile" class="profile-section min-w-0" aria-labelledby="profile-tab-profile" data-profile-panel>
@@ -152,7 +152,7 @@
     </details>
     <section class="card card-body bg-base-100 border border-base-300 gap-4"><h3 class="card-title">{{ labels.profiles.browser.danger_zone }}</h3>
       <p>{{ labels.profiles.browser.closure_description }}</p>
-      <a class="btn btn-neutral" href="/account/security">{{ labels.profiles.browser.close_account }}</a>
+      <a class="btn btn-neutral" href="#security">{{ labels.profiles.browser.close_account }}</a>
     </section>
     </div>
   </section>

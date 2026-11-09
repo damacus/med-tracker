@@ -380,7 +380,7 @@ pub async fn sign_in(journey: &Journey) {
     )
     .await
     .unwrap();
-    expect(page.locator("[data-sidebar-account]:visible, header [data-app-account]:visible"))
+    expect(page.locator("header [data-app-profile]:visible"))
         .to_be_visible()
         .await
         .unwrap();
@@ -411,22 +411,7 @@ pub async fn open_care_section(page: &Page, name: &str) {
         }
         return;
     }
-    let account = ["Administration", "Profile"].contains(&name);
-    let dialog_name = if account {
-        "My Account"
-    } else {
-        "Navigation menu"
-    };
-    page.locator(if account {
-        "[data-app-account]"
-    } else {
-        "[data-app-drawer]"
-    })
-    .click(None)
-    .await
-    .unwrap();
-    page.get_by_role(AriaRole::Dialog, named(dialog_name))
-        .get_by_role(AriaRole::Link, named(name))
+    page.get_by_role(AriaRole::Link, named(name))
         .click(None)
         .await
         .unwrap();

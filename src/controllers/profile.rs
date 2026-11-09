@@ -251,7 +251,7 @@ async fn navigation(
     .await
     {
         Ok(shell) => shell,
-        Err(response) => return response,
+        Err(response) => return *response,
     };
     (
         StatusCode::OK,
@@ -468,24 +468,23 @@ impl Page<'_> {
         else {
             return unavailable();
         };
-        data["security"] = match crate::models::identity::better_auth::security::overview(
+        let security = match crate::models::identity::better_auth::security::overview(
             &service,
             &crate::controllers::identity_onboarding::identity_request(headers),
             request_id.clone(),
         )
         .await
         {
-            Ok(value)
-                if value["account_id"]
-                    .as_str()
-                    .and_then(|id| id.parse::<i64>().ok())
-                    == Some(principal.account_id()) =>
-            {
-                value
-            }
+            Ok(value) if value.account_id.get() == principal.account_id() => value,
             Ok(_) => return operation_error(OperationError::Forbidden),
             Err(_) => return unavailable(),
         };
+        data["account_access"] =
+            match profile::account_access::load(&ctx.db, security.account_id).await {
+                Ok(value) => json!(value),
+                Err(error) => return operation_error(error),
+            };
+        data["security"] = json!(security);
         let (_, tenant) = match begin(ctx, session, slug, &request_id).await {
             Ok(value) => value,
             Err(error) => return authentication_error(error),

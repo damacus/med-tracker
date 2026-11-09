@@ -19,8 +19,7 @@ pub(super) async fn open(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     ViewEngine(view): ViewEngine<TeraView>,
-    headers: HeaderMap,
-    token: CsrfToken,
+    (headers, token): (HeaderMap, CsrfToken),
     Query(query): Query<WorkflowQuery>,
 ) -> Response {
     let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {

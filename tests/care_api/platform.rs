@@ -1840,7 +1840,7 @@ async fn platform_user_reactivation_does_not_revive_old_sessions() {
         .build()
         .unwrap();
     let stale = client
-        .get(format!("{}/account/security", app.origin))
+        .get(format!("{}/profile", app.origin))
         .header("cookie", old)
         .send()
         .await
@@ -1858,7 +1858,7 @@ async fn platform_user_reactivation_does_not_revive_old_sessions() {
     )
     .await;
     let current = client
-        .get(format!("{}/account/security", app.origin))
+        .get(format!("{}/profile", app.origin))
         .header("cookie", fresh)
         .send()
         .await
@@ -2326,7 +2326,7 @@ async fn platform_browser_forms_require_csrf_and_platform_rights() {
         })
         .await
         .unwrap();
-    let (cookies, _body) = form_page(&app, &member, "/account/security").await;
+    let (cookies, _body) = form_page(&app, &member, "/profile").await;
     let token = hidden_field(&_body, "authenticity_token");
     let forbidden = post_form(
         &app,
@@ -6397,7 +6397,7 @@ async fn platform_support_activation_waiting_on_authority_query_denies_after_dea
 async fn security_page(app: &Application, cookie: &str) -> (reqwest::StatusCode, String) {
     let response = app
         .client
-        .get(format!("{}/account/security", app.origin))
+        .get(format!("{}/profile", app.origin))
         .header("cookie", cookie)
         .send()
         .await

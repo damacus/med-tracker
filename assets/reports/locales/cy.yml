@@ -2116,6 +2116,13 @@ cy:
       "closure_description": "Mae cau eich cyfrif yn dod â'ch mynediad i ben ac yn dirymu dulliau mewngofnodi. Mae cofnodion gofal a rennir a hanes archwilio yn aros. Trosglwyddwch berchnogaeth unrhyw aelwyd lle mai chi yw'r unig berchennog yn gyntaf."
       "close_account": "Cau cyfrif"
     security:
+      provider_linked: "Mae ZITADEL wedi’i gysylltu."
+      add_password: "Ychwanegu cyfrinair drwy e-bost"
+      remove_password: "Dileu cyfrinair"
+      password_required: "Ychwanegwch gyfrinair cyn galluogi ap dilysu."
+      replace_backup_codes: "Disodli codau wrth gefn"
+      support_access: "Ceisiadau mynediad cymorth"
+      sign_out: "Allgofnodi"
       sessions: "Sesiynau gweithredol"
       current_session: "Sesiwn gyfredol"
       other_session: "Sesiwn arall"

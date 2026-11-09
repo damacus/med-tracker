@@ -2088,6 +2088,13 @@ es:
       "closure_description": "Cerrar tu cuenta finaliza tu acceso y revoca los métodos de inicio de sesión. Se conservan los registros de atención compartidos y el historial de auditoría. Primero transfiere la propiedad de cualquier hogar del que seas el único propietario."
       "close_account": "Cerrar cuenta"
     security:
+      provider_linked: "ZITADEL está vinculado."
+      add_password: "Añadir contraseña por correo electrónico"
+      remove_password: "Eliminar contraseña"
+      password_required: "Añade una contraseña antes de activar una aplicación de autenticación."
+      replace_backup_codes: "Reemplazar códigos de recuperación"
+      support_access: "Solicitudes de acceso de soporte"
+      sign_out: "Cerrar sesión"
       sessions: "Sesiones activas"
       current_session: "Sesión actual"
       other_session: "Otra sesión"

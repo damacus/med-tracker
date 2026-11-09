@@ -43,7 +43,7 @@ async fn register_and_sign_out(journey: &harness::Journey) {
         .click(None)
         .await
         .unwrap();
-    expect(page.get_by_text("Passkey: Fresh journey key", true))
+    expect(page.get_by_text("Fresh journey key", true))
         .to_be_visible()
         .await
         .unwrap();
@@ -109,7 +109,7 @@ async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static 
                 .click(None)
                 .await
                 .unwrap();
-            expect(page.get_by_text("Passkey: Cancellation retry key", true))
+            expect(page.get_by_text("Cancellation retry key", true))
                 .to_be_visible()
                 .await
                 .unwrap();
@@ -311,7 +311,7 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             page.get_by_label("Passkey name", true).fill("Browser acceptance key", None).await.unwrap();
             capture_sizes(page, "register-passkey").await;
             page.get_by_role(AriaRole::Button, named("Register Passkey")).click(None).await.unwrap();
-            expect(page.get_by_text("Passkey: Browser acceptance key", true)).to_be_visible().await.unwrap();
+            expect(page.get_by_text("Browser acceptance key", true)).to_be_visible().await.unwrap();
             let credentials = cdp.send("WebAuthn.getCredentials", Some(json!({"authenticatorId":authenticator_id}))).await.unwrap();
             assert_eq!(credentials["result"]["credentials"].as_array().unwrap().len(), 1);
             page.get_by_role(AriaRole::Button, named("Sign out")).click(None).await.unwrap();
@@ -334,7 +334,7 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             page.goto(&format!("{}/account/security", journey.origin), None).await.unwrap();
             expect(page.get_by_role(AriaRole::Heading, named("Account security"))).to_be_visible().await.unwrap();
             expect(page.get_by_text("persistence@example.test", true)).to_be_visible().await.unwrap();
-            expect(page.get_by_text("Passkey: Browser acceptance key", true)).to_be_visible().await.unwrap();
+            expect(page.get_by_text("Browser acceptance key", true)).to_be_visible().await.unwrap();
             let session = native_session(page).await;
             assert!(session["session"].is_object(), "verified credential did not create a native session");
             capture_sizes(page, "passkey-signed-in").await;
