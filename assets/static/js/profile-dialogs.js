@@ -49,6 +49,7 @@ export function mountProfileDialogs(document) {
   let placeholder;
   let opener;
   let busy = false;
+  let active = false;
   let kind;
   const dialog = document.createElement('dialog');
   if (typeof dialog.showModal !== 'function') return;
@@ -74,7 +75,35 @@ export function mountProfileDialogs(document) {
   dialog.append(box);
 
   const setBusy = value => { busy = value; closeButton.disabled = value; dialog.setAttribute('aria-busy', String(value)); };
-  const close = () => { if (!busy) dialog.close(); };
+  const restoreFocus = target => {
+    if (!target) return;
+    if (!target.matches('a[href], button, input, select, textarea, [tabindex]')) target.tabIndex = -1;
+    target.focus();
+  };
+  const teardown = () => {
+    if (!active) return null;
+    active = false;
+    requests.cancel();
+    clearSecrets(root);
+    if (root && root.dataset.flowSecret !== 'true') {
+      placeholder.querySelector('summary').textContent = heading.textContent;
+      placeholder.append(root);
+      placeholder.open = false;
+    } else { root?.remove(); placeholder?.remove(); }
+    root = null;
+    placeholder = null;
+    status.replaceChildren();
+    setBusy(false);
+    const target = opener?.isConnected ? opener : host.querySelector('[data-profile-tab][aria-selected="true"], h1');
+    opener = null;
+    return target;
+  };
+  const close = () => {
+    if (busy || !dialog.open) return;
+    const target = teardown();
+    dialog.close();
+    restoreFocus(target);
+  };
   const fail = (mutation, fallback) => {
     status.textContent = mutation ? (labels.flowUncertain || 'The request may have completed. Check the current setting before trying again. A lost one-time key cannot be displayed again.') : (labels.flowFailed || 'The setting could not be loaded. Try again or open it inline.');
     if (mutation) {
@@ -116,7 +145,9 @@ export function mountProfileDialogs(document) {
   };
   const show = target => {
     if (!dialog.open) {
+      teardown();
       dialog.showModal();
+      active = true;
       opener = target;
       host.querySelectorAll('[data-profile-flow-root]').forEach(previous => { if (previous !== root) { clearSecrets(previous); (previous.closest('[data-profile-flow-inline]') || previous).remove(); } });
       if (!placeholder) { placeholder = slot(); host.append(placeholder); }
@@ -124,6 +155,7 @@ export function mountProfileDialogs(document) {
   };
   const nativeFallback = () => {
     ready = false;
+    active = false;
     delete host.dataset.profileDialogsReady;
     requests.cancel();
     if (root && placeholder) placeholder.replaceWith(root);
@@ -180,24 +212,9 @@ export function mountProfileDialogs(document) {
   };
   try {
     closeButton.addEventListener('click', close);
-    dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+    dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
     dialog.addEventListener('close', () => {
-      requests.cancel();
-      clearSecrets(root);
-      if (root && root.dataset.flowSecret !== 'true') {
-        placeholder.querySelector('summary').textContent = heading.textContent;
-        placeholder.append(root);
-        placeholder.open = false;
-      }
-      else { root?.remove(); placeholder?.remove(); }
-      root = null;
-      placeholder = null;
-      status.replaceChildren();
-      const target = opener?.isConnected ? opener : host.querySelector('[data-profile-tab][aria-selected="true"], h1');
-      if (target) {
-        if (!target.matches('a[href], button, input, select, textarea, [tabindex]')) target.tabIndex = -1;
-        target.focus();
-      }
+      if (!dialog.open) restoreFocus(teardown());
     });
     document.addEventListener('click', event => {
       if (!ready || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

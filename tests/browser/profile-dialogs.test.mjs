@@ -176,6 +176,150 @@ test('plan notes and readonly clinical values survive close, reopen and an unrel
   });
 });
 
+test('a queued previous close cannot cancel or empty the newly opened Keys reader', async () => {
+  const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
+  const state = flowHarness({ queueClose: true, inline: ({ root }) => root('passkey') });
+  const keys = state.root('keys');
+  let signal;
+  let release;
+  state.globals.fetch = (url, options) => {
+    signal = options.signal;
+    return new Promise(resolve => { release = () => resolve({ url: String(url), headers: new Headers({ 'content-type': 'text/html' }), text: async () => 'keys' }); });
+  };
+  state.globals.DOMParser = class { parseFromString() { return { querySelector: () => keys }; } };
+  await state.environment(async () => {
+    mountProfileDialogs(state.document);
+    const dialog = state.document.querySelector('dialog');
+    dialog.querySelector('button').dispatchEvent(new FlowEvent('click'));
+    const opener = state.document.createElement('a');
+    opener.href = 'https://example.test/profile?panel=keys#security';
+    opener.dataset.profileFlowEntry = 'keys';
+    state.host.append(opener);
+    opener.dispatchEvent(new FlowEvent('click'));
+    state.flushCloseEvents();
+    assert.equal(signal.aborted, false);
+    release();
+    await settle();
+    assert.equal(dialog.open, true);
+    assert.equal(dialog.contains(keys), true);
+  });
+});
+
+for (const dismissal of ['close', 'escape', 'done']) {
+  for (const secret of [false, true]) {
+    test(`${dismissal} tears down its ${secret ? 'secret result' : 'live form'} before a queued close can affect a new reader`, async () => {
+      const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
+      let previous;
+      let form;
+      let notes;
+      let credential;
+      let done;
+      const state = flowHarness({ queueClose: true, inline: ({ document, root, field }) => {
+        previous = root(secret ? 'keys' : 'plans', secret ? 'secret-result' : 'continue');
+        previous.dataset.flowSecret = String(secret);
+        form = document.createElement('form');
+        notes = field('notes', 'Retain these clinical notes.', 'textarea');
+        credential = field('credential', 'synthetic-sensitive-value', 'input', 'password');
+        form.append(notes, credential);
+        done = document.createElement('a');
+        done.href = 'https://example.test/profile#security';
+        done.dataset.profileFlowDone = '';
+        previous.append(form, done);
+        return previous;
+      } });
+      const reader = state.root('keys');
+      const firstField = state.field('name', '');
+      reader.append(firstField);
+      let signal;
+      let release;
+      let fetched = 0;
+      state.globals.fetch = (url, options) => {
+        fetched += 1;
+        signal = options.signal;
+        return new Promise(resolve => { release = () => resolve({ url: String(url), headers: new Headers({ 'content-type': 'text/html' }), text: async () => 'keys' }); });
+      };
+      state.globals.DOMParser = class { parseFromString() { return { querySelector: () => reader }; } };
+      await state.environment(async () => {
+        mountProfileDialogs(state.document);
+        const dialog = state.document.querySelector('dialog');
+        if (dismissal === 'close') dialog.querySelector('button').dispatchEvent(new FlowEvent('click'));
+        else if (dismissal === 'done') done.dispatchEvent(new FlowEvent('click'));
+        else {
+          const cancel = new FlowEvent('cancel', { bubbles: false });
+          dialog.dispatchEvent(cancel);
+          if (!cancel.defaultPrevented) dialog.close();
+        }
+        assert.equal(dialog.open, false);
+        assert.equal(credential.value, '', 'credentials clear before the native close notification');
+        if (secret) assert.equal(previous.children.length, 0, 'one-time body is destroyed synchronously');
+        else {
+          assert.equal(state.host.contains(form), true);
+          assert.equal(notes.value, 'Retain these clinical notes.');
+          assert.equal(previous.querySelector('form'), form, 'the retained form keeps its identity');
+        }
+        const opener = state.document.createElement('a');
+        opener.href = 'https://example.test/profile?panel=keys#security';
+        opener.dataset.profileFlowEntry = 'keys';
+        state.host.append(opener);
+        opener.dispatchEvent(new FlowEvent('click'));
+        assert.equal(dialog.open, true);
+        const focused = dialog.querySelector('button');
+        focused.focus();
+        state.flushCloseEvents();
+        assert.equal(signal.aborted, false, 'the previous close cannot cancel the new reader');
+        assert.equal(state.document.activeElement, focused, 'a stale event cannot steal focus');
+        release();
+        await settle();
+        assert.equal(dialog.contains(reader), true);
+        assert.equal(state.document.activeElement, firstField);
+        assert.equal(fetched, 1);
+        assert.equal(state.location.href, 'https://example.test/profile');
+      });
+    });
+  }
+}
+
+test('synchronous dismissal still refuses Close and Escape during one pending mutation', async () => {
+  const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
+  let form;
+  const state = flowHarness({ queueClose: true, inline: ({ document, root, field }) => {
+    const flow = root('keys');
+    form = document.createElement('form');
+    form.action = 'https://example.test/account/security/keys?profile_flow=keys';
+    form.append(field('authenticity_token', 'synthetic-csrf'));
+    flow.append(form);
+    return flow;
+  } });
+  let signal;
+  let release;
+  let requests = 0;
+  state.globals.fetch = (url, options) => {
+    requests += 1;
+    signal = options.signal;
+    return new Promise(resolve => { release = () => resolve({ url: String(url), headers: new Headers({ 'content-type': 'text/html' }), text: async () => 'invalid' }); });
+  };
+  state.globals.DOMParser = class { parseFromString() { return { querySelector: () => state.root('keys', 'invalid') }; } };
+  await state.environment(async () => {
+    mountProfileDialogs(state.document);
+    form.dispatchEvent(new FlowEvent('submit'));
+    const dialog = state.document.querySelector('dialog');
+    const close = dialog.querySelector('button');
+    assert.equal(close.disabled, true);
+    close.dispatchEvent(new FlowEvent('click'));
+    const cancel = new FlowEvent('cancel', { bubbles: false });
+    dialog.dispatchEvent(cancel);
+    assert.equal(cancel.defaultPrevented, true);
+    assert.equal(dialog.open, true);
+    assert.equal(dialog.contains(form), true);
+    assert.equal(signal.aborted, false);
+    assert.equal(requests, 1);
+    release();
+    await settle();
+    assert.equal(close.disabled, false);
+    assert.equal(dialog.open, true);
+  });
+});
+
 test('real navigation and profile modules guard one enhanced reset request and keep the document in place', async () => {
   const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
   let form;

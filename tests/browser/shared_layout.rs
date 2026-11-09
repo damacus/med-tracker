@@ -113,12 +113,11 @@ async fn shared_layout_desktop_navigation_survives_route_changes() {
                         .to_contain_text("Synthetic household")
                         .await
                         .unwrap();
-                    expect(
-                        page.get_by_role(AriaRole::Button, named("Households Synthetic household")),
-                    )
-                    .to_be_visible()
-                    .await
-                    .unwrap();
+                    expect(switcher.clone()).to_be_visible().await.unwrap();
+                    expect(switcher)
+                        .to_have_attribute("title", "Households")
+                        .await
+                        .unwrap();
                     if ["dashboard", "medications", "profile", "reports"].contains(&path) {
                         if path == "reports" {
                             expect(page.locator("body[data-navigation-ready]"))
@@ -175,7 +174,7 @@ async fn shared_layout_mobile_drawer_and_narrow_pages() {
                         )
                         .await
                         .unwrap();
-                        let trigger = page.get_by_role(AriaRole::Button, named("Open menu"));
+                        let trigger = page.get_by_label("Open menu", true);
                         trigger.click(None).await.unwrap();
                         expect(page.locator("#app-drawer"))
                             .to_be_visible()
@@ -261,7 +260,7 @@ async fn shared_layout_fallback_and_permission_boundaries() {
             page.route("**/profile/navigation",|route|async move {route.abort(None).await}).await.unwrap();
             page.route("**/static/js/app-navigation.js",|route|async move {route.abort(None).await}).await.unwrap();
             page.reload(None).await.unwrap();
-            expect(page.locator(".app-sidebar a[href$='/dashboard']")).to_be_visible().await.unwrap();
+            expect(page.locator(".app-sidebar [data-section=dashboard]")).to_be_visible().await.unwrap();
             page.locator("[data-app-profile]").click(None).await.unwrap();
             page.locator("#profile-tab-security").click(None).await.unwrap();
             expect(page.locator("#security form[action='/logout'] button")).to_be_visible().await.unwrap();
@@ -389,8 +388,9 @@ async fn shared_layout_platform_and_account_frames_do_not_invent_household_navig
             page.reload(None).await.unwrap();
             page.locator("[data-app-profile]").click(None).await.unwrap();
             page.locator("#profile-tab-security").click(None).await.unwrap();
-            expect(page.locator("a[href='/platform/users']")).to_be_visible().await.unwrap();
-            page.locator("a[href='/platform/users']").click(None).await.unwrap();
+            let platform_link=page.locator(".app-sidebar [data-sidebar-navigation] a[href='/platform/users']");
+            expect(platform_link.clone()).to_be_visible().await.unwrap();
+            platform_link.click(None).await.unwrap();
             expect(page.locator(".platform-nav")).to_be_visible().await.unwrap();
             assert_eq!(page.locator(".app-sidebar").count().await.unwrap(),0);
             capture(page,"platform-desktop").await;
@@ -478,6 +478,7 @@ async fn shared_layout_search_handles_rapid_escape_and_queued_dialog_close() {
             search.focus();
             search.click();
             const rapidBefore=document.activeElement===input?'input':'opener';
+            const queuedSearchClose=new Promise(resolve=>panel.addEventListener('close',resolve,{once:true}));
             panel.dispatchEvent(new Event('cancel',{cancelable:true}));
             const rapid={closed:!panel.open,restored:document.activeElement===search,before:rapidBefore};
             panel.querySelector('[data-global-search-close]').click();
@@ -486,6 +487,7 @@ async fn shared_layout_search_handles_rapid_escape_and_queued_dialog_close() {
             document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
             input.focus();
             await closed;
+            await queuedSearchClose;
             const queued={closed:!panel.open,inputFocused:document.activeElement===input,dialogClosed:!dialog.closest('details').open};
             return {rapid,queued,focus};
         }"#,None).await.unwrap();

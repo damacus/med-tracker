@@ -68,8 +68,9 @@ export class Fields extends Array {
   get(name) { return this.find(field => field[0] === name)?.[1]; }
 }
 
-export function flowHarness({ inline, throwOpen = false } = {}) {
+export function flowHarness({ inline, throwOpen = false, queueClose = false } = {}) {
   const native = [];
+  const closeEvents = [];
   let document;
   class Form extends Element {
     constructor() { super('form', document); this.method = 'post'; this.enctype = 'application/x-www-form-urlencoded'; }
@@ -82,7 +83,11 @@ export function flowHarness({ inline, throwOpen = false } = {}) {
     const element = tag === 'form' ? new Form() : new Element(tag, document);
     if (tag === 'dialog') {
       element.showModal = () => { if (throwOpen) throw Error('Opening failed'); element.open = true; };
-      element.close = () => { element.open = false; element.dispatchEvent(new FlowEvent('close', { bubbles: false })); };
+      element.close = () => {
+        element.open = false;
+        const notify = () => element.dispatchEvent(new FlowEvent('close', { bubbles: false }));
+        if (queueClose) closeEvents.push(notify); else notify();
+      };
     }
     return element;
   };
@@ -122,7 +127,8 @@ export function flowHarness({ inline, throwOpen = false } = {}) {
     for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
     try { return await callback(); } finally { for (const [key, descriptor] of Object.entries(previous)) if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key]; }
   };
-  return { document, window, location, host, field, root, native, messages, navigator, globals, environment, installNavigation };
+  const flushCloseEvents = () => closeEvents.splice(0).forEach(notify => notify());
+  return { document, window, location, host, field, root, native, messages, navigator, globals, environment, installNavigation, flushCloseEvents };
 }
 
 export const settle = () => new Promise(setImmediate);

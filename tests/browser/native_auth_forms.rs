@@ -57,6 +57,21 @@ async fn sign_in(page: &Page, origin: &str) {
         .unwrap();
 }
 
+async fn close_profile_setting(page: &Page, entry: &str) {
+    page.get_by_role(AriaRole::Link, named("Done"))
+        .click(None)
+        .await
+        .unwrap();
+    expect(page.locator("dialog.profile-flow-dialog[open]"))
+        .to_have_count(0)
+        .await
+        .unwrap();
+    expect(page.locator(format!("#security [data-profile-flow-entry='{entry}']")))
+        .to_be_focused()
+        .await
+        .unwrap();
+}
+
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
@@ -150,15 +165,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .to_be_visible()
                     .await
                     .unwrap();
-                page.goto(
-                    &format!(
-                        "{}/households/persistence-fixture/profile#security",
-                        journey.origin
-                    ),
-                    None,
-                )
-                .await
-                .unwrap();
+                close_profile_setting(page, "keys").await;
                 page.locator("#security [data-profile-flow-entry='email']")
                     .click(None)
                     .await
@@ -167,15 +174,7 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .to_be_visible()
                     .await
                     .unwrap();
-                page.goto(
-                    &format!(
-                        "{}/households/persistence-fixture/profile#security",
-                        journey.origin
-                    ),
-                    None,
-                )
-                .await
-                .unwrap();
+                close_profile_setting(page, "email").await;
                 page.locator("#security [data-profile-flow-entry='keys']")
                     .click(None)
                     .await
