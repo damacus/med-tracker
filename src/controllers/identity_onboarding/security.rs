@@ -3,7 +3,6 @@ use axum::{
     Extension,
     extract::Form,
     http::{HeaderMap, StatusCode, header},
-    response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
 use loco_rs::prelude::*;

@@ -297,7 +297,7 @@ impl Frame {
         engine: &TeraView,
         key: &str,
         mut data: Value,
-    ) -> loco_rs::Result<String> {
+    ) -> Result<String, Box<loco_rs::Error>> {
         let body = match key {
             "identity_onboarding/email_change.html" => "email_change",
             "identity_onboarding/password.html" => "password",
@@ -313,7 +313,7 @@ impl Frame {
             "profile/schedules.html" => "schedules",
             "profile/show.html" if self.presentation.complete => "complete",
             "profile/flow-error.html" => "error",
-            _ => return engine.render(key, data),
+            _ => return engine.render(key, data).map_err(Box::new),
         };
         let secret = body == "key_result"
             || data.get("secret").is_some_and(|value| !value.is_null())
@@ -332,14 +332,16 @@ impl Frame {
             data["flow"] = self.labels["profiles"]["security_flow"].clone();
             data["flow_json"] = json!(data["flow"].to_string());
         }
-        engine.render(
-            if self.presentation.fragment {
-                "profile/flow-fragment.html"
-            } else {
-                "profile/flow-page.html"
-            },
-            data,
-        )
+        engine
+            .render(
+                if self.presentation.fragment {
+                    "profile/flow-fragment.html"
+                } else {
+                    "profile/flow-page.html"
+                },
+                data,
+            )
+            .map_err(Box::new)
     }
 }
 

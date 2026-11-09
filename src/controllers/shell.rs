@@ -482,7 +482,7 @@ impl ViewRenderer for ShellView {
             data["shell"] = presentation;
         }
         if let Some(flow) = &self.flow {
-            flow.render(&self.engine, key, data)
+            flow.render(&self.engine, key, data).map_err(|error| *error)
         } else {
             self.engine.render(key, data)
         }

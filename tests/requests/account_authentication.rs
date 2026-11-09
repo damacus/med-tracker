@@ -33,6 +33,19 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
         .await;
     assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
     let profile = format!("/households/{}/profile", fixture.household.slug);
+    let administrator_support = request
+        .get(&format!("{profile}?panel=support"))
+        .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+        .await;
+    assert_eq!(
+        administrator_support.status_code(),
+        403,
+        "{}",
+        administrator_support.text()
+    );
+    let mut membership = fixture.membership.clone().into_active_model();
+    membership.role = Set("owner".into());
+    membership.update(&fixture.admin).await.unwrap();
     for panel in [
         "email", "password", "reset", "totp", "passkey", "keys", "support", "history", "plans",
     ] {

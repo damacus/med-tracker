@@ -26,10 +26,21 @@ test('administration switcher keeps six ordinary localised route links and curre
   const paths = ['', '/users', '/carer_relationships', '/invitations', '/audit_logs', '/household/edit'];
   assert.equal(links.length, paths.length);
   for (const [index, link] of links.entries()) {
-    assert.ok(link.includes(`href="/households/{{ slug }}/admin${paths[index]}{{ language_suffix }}"`));
+    const route = `/households/{{ slug }}/admin${paths[index]}{{ language_suffix }}`;
+    assert.ok(link.includes(index === 1 ? route : `href="${route}"`));
     assert.match(link, /class="section-switcher-item"/);
     assert.match(link, /{% if admin_section == '[a-z]+' %}aria-current="page"{% endif %}/);
   }
+});
+
+test('member detail carries its validated filtered list return through the Members switcher', () => {
+  const member = read('assets/views/administration/member.html');
+  assert.match(member, /{% set members_navigation_url = member_return_url %}\s*{% include "administration\/navigation\.html" %}/);
+  const navigation = read('assets/views/administration/navigation.html');
+  assert.match(navigation, /href="{% if members_navigation_url %}{{ members_navigation_url }}{% else %}\/households\/{{ slug }}\/admin\/users{{ language_suffix }}{% endif %}"/);
+  assert.doesNotMatch(member.slice(0, member.indexOf('<h1')), /<a\b/);
+  assert.doesNotMatch(read('assets/views/administration/role.html'), /members_navigation_url/);
+  assert.match(read('assets/views/administration/role.html'), /href="{{ member_return_url }}">{{ labels.admin.users.form.cancel }}/);
 });
 
 test('profile and administration use one raised switcher with visible focus and touch targets', () => {

@@ -6409,34 +6409,56 @@ async fn security_page(app: &Application, cookie: &str) -> (reqwest::StatusCode,
 #[tokio::test]
 async fn platform_account_security_shows_scoped_navigation_links() {
     let app = Application::new().await;
+    let support_entry = scraper::Selector::parse("a[data-profile-flow-entry='support'], a[href='/profile?panel=support#security'], a[href='/account/support']").unwrap();
+    let platform_entry = scraper::Selector::parse("a[href='/platform/users']").unwrap();
+    let platform_navigation = scraper::Selector::parse(
+        "[data-profile-navigation-fallback] nav a[href='/platform/users']",
+    )
+    .unwrap();
     supported_household(&app).await;
     let admin = admin_fixture_session(&app).await;
     let owner = fixture_session(&app, actor(&app, "support-owner").await.account.id).await;
     let member = fixture_session(&app, actor(&app, "supported-member").await.account.id).await;
     let (status, body) = security_page(&app, &admin).await;
     assert_eq!(status, reqwest::StatusCode::OK, "{body}");
+    let document = scraper::Html::parse_document(&body);
     assert!(
-        str::contains(&body, "/platform/users"),
+        document.select(&platform_navigation).next().is_some(),
         "platform administrators need the platform administration link: {body}"
     );
     assert!(
-        !str::contains(&body, "/account/support"),
+        document.select(&support_entry).next().is_none(),
         "non-owner administrators must not see the owner support link: {body}"
     );
     let (status, body) = security_page(&app, &owner).await;
     assert_eq!(status, reqwest::StatusCode::OK, "{body}");
+    let document = scraper::Html::parse_document(&body);
+    let mut support_links = document.select(&support_entry);
+    let support_link = support_links
+        .next()
+        .unwrap_or_else(|| panic!("household owners need the support access link: {body}"));
     assert!(
-        str::contains(&body, "/account/support"),
-        "household owners need the support access link: {body}"
+        support_links.next().is_none(),
+        "duplicate support access link: {body}"
+    );
+    assert_eq!(
+        support_link.value().attr("href"),
+        Some("/profile?panel=support#security")
+    );
+    assert_eq!(
+        support_link.value().attr("data-profile-flow-entry"),
+        Some("support")
     );
     assert!(
-        !str::contains(&body, "/platform/users"),
+        document.select(&platform_entry).next().is_none(),
         "ordinary owners must not see platform administration: {body}"
     );
     let (status, body) = security_page(&app, &member).await;
     assert_eq!(status, reqwest::StatusCode::OK, "{body}");
+    let document = scraper::Html::parse_document(&body);
     assert!(
-        !str::contains(&body, "/platform/users") && !str::contains(&body, "/account/support"),
+        document.select(&platform_entry).next().is_none()
+            && document.select(&support_entry).next().is_none(),
         "ordinary members must see neither link: {body}"
     );
 

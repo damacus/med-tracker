@@ -638,10 +638,6 @@ async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounte
     let operation_id = operation["operation_id"].as_str().unwrap();
     let identifier = format!("password-change:{operation_id}");
     let original = verification(&app, &identifier).await.unwrap();
-    let fault = format!("oidc_closure_notice_{}", uuid::Uuid::new_v4().simple());
-    // SeaORM has no trigger or PL/pgSQL function builder. Whole-run exclusivity
-    // isolates this registration policy and schema fault; objects are removed below.
-    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic provider closure notice failure'; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON pg_loco_queue FOR EACH ROW WHEN(NEW.task_data->>'subject'='Account closed') EXECUTE FUNCTION {fault}()")).await.unwrap();
     let (authorize, state_cookie) =
         begin_operation(&app, "operation", &cookie, Some(operation_id)).await;
     let code = issuer.code(&authorize, "native-owner-subject", &owner_email);
@@ -652,15 +648,24 @@ async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounte
         "{}/account/security/provider/confirm?operation_id={operation_id}",
         app.origin
     );
+    let fault = format!("oidc_closure_notice_{}", uuid::Uuid::new_v4().simple());
+    // SeaORM has no trigger or PL/pgSQL function builder. Whole-run exclusivity
+    // isolates this registration policy and schema fault; objects are removed below.
+    app.fixture.admin.execute_unprepared(&format!("CREATE FUNCTION {fault}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic provider closure notice failure'; END $$; CREATE TRIGGER {fault} BEFORE INSERT ON pg_loco_queue FOR EACH ROW WHEN(NEW.task_data->>'subject'='Account closed') EXECUTE FUNCTION {fault}()")).await.unwrap();
     let failed = app
         .client
         .get(&complete_url)
         .header("cookie", &proof_cookie)
         .send()
+        .await;
+    app.fixture
+        .admin
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {fault} ON pg_loco_queue; DROP FUNCTION {fault}()"
+        ))
         .await
         .unwrap();
-    assert_eq!(failed.status().as_u16(), 303);
-    assert_eq!(failed.headers()["location"], "/account/security");
+    assert_invalid_provider_operation(failed.unwrap()).await;
     assert_eq!(
         accounts::Entity::find_by_id(account_id)
             .one(&app.fixture.admin)
@@ -671,13 +676,6 @@ async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounte
         2
     );
     assert_eq!(verification(&app, &identifier).await.unwrap(), original);
-    app.fixture
-        .admin
-        .execute_unprepared(&format!(
-            "DROP TRIGGER {fault} ON pg_loco_queue; DROP FUNCTION {fault}()"
-        ))
-        .await
-        .unwrap();
     let closed = app
         .client
         .get(&complete_url)
@@ -751,12 +749,7 @@ async fn provider_support_retry(
         .get(&complete_url)
         .header("cookie", &proof_cookie)
         .send()
-        .await
-        .unwrap();
-    assert_eq!(failed.status().as_u16(), 303);
-    assert_eq!(failed.headers()["location"], "/account/security");
-    assert_eq!(verification(app, &identifier).await.unwrap(), original);
-    assert_eq!(support_requests(app, admin.id).await, 0);
+        .await;
     app.fixture
         .admin
         .execute_unprepared(&format!(
@@ -764,6 +757,9 @@ async fn provider_support_retry(
         ))
         .await
         .unwrap();
+    assert_invalid_provider_operation(failed.unwrap()).await;
+    assert_eq!(verification(app, &identifier).await.unwrap(), original);
+    assert_eq!(support_requests(app, admin.id).await, 0);
     let retry = app
         .client
         .get(&complete_url)
@@ -782,8 +778,7 @@ async fn provider_support_retry(
         .send()
         .await
         .unwrap();
-    assert_eq!(replay.status().as_u16(), 303);
-    assert_eq!(replay.headers()["location"], "/account/security");
+    assert_invalid_provider_operation(replay).await;
     let count = support_requests(app, admin.id).await;
     assert_eq!(count, 1);
     let mut admin = admin.into_active_model();
@@ -797,4 +792,15 @@ async fn support_requests(app: &Application, admin: i64) -> u64 {
         .count(&app.fixture.admin)
         .await
         .unwrap()
+}
+
+async fn assert_invalid_provider_operation(response: reqwest::Response) {
+    assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    assert!(!response.headers().contains_key("location"));
+    let body = response.text().await.unwrap();
+    assert!(body.contains("data-profile-dialog-host"));
+    assert!(body.contains("data-flow-kind=\"operation\""));
+    assert!(body.contains("data-flow-outcome=\"invalid\""));
+    assert!(!body.contains("Profile updated"));
 }

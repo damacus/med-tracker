@@ -1745,7 +1745,14 @@ async fn member_detail_scopes_safe_history_and_preserves_navigation() -> TestRes
         422
     );
 
-    assert!(html.contains("/admin/users?q=Detail&amp;role=all&amp;status=suspended&amp;sort=email&amp;direction=desc&amp;page=2&amp;lang=en"));
+    let detail_document = scraper::Html::parse_document(&html);
+    let current_section = scraper::Selector::parse(".admin-navigation a[aria-current='page']")
+        .map_err(|_| "current administration section selector")?;
+    let members_navigation = detail_document
+        .select(&current_section)
+        .next()
+        .ok_or("Members switcher missing")?;
+    assert_eq!(members_navigation.value().attr("href"), Some(format!("/households/{slug}/admin/users?q=Detail&role=all&status=suspended&sort=email&direction=desc&page=2&lang=en").as_str()));
     let older = html
         .split(r#"data-member-older href=""#)
         .nth(1)
@@ -1885,7 +1892,14 @@ async fn member_detail_rechecks_authority_and_keeps_context_on_errors() -> TestR
             .text()
             .contains(r#"name="return_to" value="member""#)
     );
-    assert!(rejected.text().contains("/admin/users?q=Synthetic&amp;role=owner&amp;status=all&amp;sort=email&amp;direction=desc&amp;page=3&amp;lang=en"));
+    let rejected_document = scraper::Html::parse_document(&rejected.text());
+    let current_section = scraper::Selector::parse(".admin-navigation a[aria-current='page']")
+        .map_err(|_| "current administration section selector")?;
+    let members_navigation = rejected_document
+        .select(&current_section)
+        .next()
+        .ok_or("Members switcher missing after rejected change")?;
+    assert_eq!(members_navigation.value().attr("href"), Some(format!("/households/{slug}/admin/users?q=Synthetic&role=owner&status=all&sort=email&direction=desc&page=3&lang=en").as_str()));
     let role=request.get(format!("/households/{slug}/admin/memberships/{actor_member_id}/edit?q=Synthetic&return_to=member&page=3&lang=es").as_str()).await;
     assert_eq!(role.status_code(), 200, "{}", role.text());
     assert!(

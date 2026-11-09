@@ -3,6 +3,7 @@
 <section id="administration-form" tabindex="-1" class="admin-page">
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ member.name }}</h1>
+  {% set members_navigation_url = member_return_url %}
   {% include "administration/navigation.html" %}
   {% if member_notice %}<div role="status" class="alert alert-success mt-4">{{ member_labels.changed }} {{ member_labels[member_notice] }}.</div>{% endif %}
   <div class="mt-4">{% include "components/form_errors.html" %}</div>
