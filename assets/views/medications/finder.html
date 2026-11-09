@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-3xl mx-auto" data-medication-finder data-household="{{ slug }}">
+<section class="max-w-3xl mx-auto" data-medication-finder data-household="{{ slug }}" data-can-adjust="{{ can_adjust }}">
   <a class="link" href="/households/{{ slug }}/medications">Back to medications</a>
   <h1 class="text-3xl font-semibold mt-4">Medication Finder</h1>
   <p class="mt-2">Scan a pack or enter its barcode to find a medicine and add stock.</p>
@@ -21,7 +21,7 @@
     <button type="submit" class="btn btn-neutral w-fit" disabled>Search medicines</button>
   </form>
   <div data-lookup-feedback>
-    <p role="status" class="mt-4" data-lookup-status></p>
+    <p role="status" tabindex="-1" class="mt-4" data-lookup-status></p>
     <div data-lookup-results class="flex flex-col gap-4 mt-4"></div>
     {% if can_create %}<a class="link mt-4 inline-block" data-manual-entry href="/households/{{ slug }}/medications/new">Enter medication manually</a>{% endif %}
   </div>

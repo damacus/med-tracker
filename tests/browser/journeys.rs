@@ -974,6 +974,13 @@ async fn barcode_hit_resolves_existing_medicine_to_refill() {
             let page = &journey.page;
             page.add_init_script(
                 r#"window.__cameraStops = 0;
+window.__scanSounds = 0;
+window.AudioContext = class {
+  constructor() { this.currentTime = 0; this.destination = {}; }
+  resume() { return Promise.resolve(); }
+  createOscillator() { return { connect() {}, start() { window.__scanSounds += 1; }, stop() {}, frequency: { setValueAtTime() {} } }; }
+  createGain() { return { connect() {}, gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} } }; }
+};
 window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
   static async getCameras() { return [{ id: 'synthetic-camera' }]; }
   async start(_camera, _settings, decoded) { window.__decodeBarcode = decoded; }
@@ -1026,20 +1033,26 @@ window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
                 .await
                 .unwrap();
             dialog
-                .get_by_label("Barcode", true)
-                .fill("1234567890123", None)
-                .await
-                .unwrap();
-            dialog
-                .get_by_role(AriaRole::Button, named("Find barcode"))
+                .get_by_role(AriaRole::Button, named("Start Scanner"))
                 .click(None)
                 .await
                 .unwrap();
+            page.evaluate::<(), serde_json::Value>(
+                "() => window.__decodeBarcode('1234567890123')",
+                None,
+            )
+            .await
+            .unwrap();
+            let sounds: i64 = page
+                .evaluate::<(), i64>("() => window.__scanSounds", None)
+                .await
+                .unwrap();
+            assert_eq!(sounds, 1);
             expect(dialog.get_by_text("Medicine found in your household.", false))
                 .to_be_visible()
                 .await
                 .unwrap();
-            expect(dialog.get_by_role(AriaRole::Link, named("Refill this medicine")))
+            expect(dialog.get_by_role(AriaRole::Link, named("Add stock")))
                 .to_have_class_regex("btn-primary")
                 .await
                 .unwrap();
@@ -1047,8 +1060,26 @@ window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
                 .to_have_class_regex("btn-outline")
                 .await
                 .unwrap();
+            for (width, height, name) in [
+                (1440, 1000, "scanner-result-desktop"),
+                (390, 844, "scanner-result-mobile"),
+            ] {
+                page.set_viewport_size(Viewport { width, height })
+                    .await
+                    .unwrap();
+                assert!(
+                    !page
+                        .evaluate::<(), bool>(
+                            "() => document.documentElement.scrollWidth > innerWidth",
+                            None,
+                        )
+                        .await
+                        .unwrap()
+                );
+                harness::capture(page, name).await;
+            }
             dialog
-                .get_by_role(AriaRole::Link, named("Refill this medicine"))
+                .get_by_role(AriaRole::Link, named("Add stock"))
                 .click(None)
                 .await
                 .unwrap();
