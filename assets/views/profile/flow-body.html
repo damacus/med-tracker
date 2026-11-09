@@ -1,0 +1,14 @@
+{% if profile_flow.body == 'email_change' %}{% include "profile/flows/email_change.html" %}
+{% elif profile_flow.body == 'password' %}{% include "profile/flows/password.html" %}
+{% elif profile_flow.body == 'password_reset' %}{% include "profile/flows/password_reset.html" %}
+{% elif profile_flow.body == 'password_email' %}{% include "profile/flows/password_email.html" %}
+{% elif profile_flow.body == 'totp' %}{% include "profile/flows/totp.html" %}
+{% elif profile_flow.body == 'add_passkey' %}{% include "profile/flows/add_passkey.html" %}
+{% elif profile_flow.body == 'keys' %}{% include "profile/flows/keys.html" %}
+{% elif profile_flow.body == 'key_result' %}{% include "profile/flows/key_result.html" %}
+{% elif profile_flow.body == 'provider_link' %}{% include "profile/flows/provider_link.html" %}
+{% elif profile_flow.body == 'support' %}{% include "profile/flows/support.html" %}
+{% elif profile_flow.body == 'history' %}{% include "profile/flows/history.html" %}
+{% elif profile_flow.body == 'schedules' %}{% include "profile/flows/schedules.html" %}
+{% elif profile_flow.body == 'complete' %}<p role="status">{{ labels.profiles.updated }}</p><template data-profile-security-refresh>{% include "profile/security.html" %}</template>
+{% elif profile_flow.body == 'error' %}<h1 class="text-2xl font-semibold">{{ title }}</h1><p role="alert" tabindex="-1">{{ error }}</p>{% endif %}

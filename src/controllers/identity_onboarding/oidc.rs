@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::better_auth::IdentityService;
 use axum::{
     Extension,
@@ -77,7 +78,7 @@ fn native_redirect(response: better_auth_core::AuthResponse) -> Response {
     redirect
 }
 
-pub(super) async fn link(
+pub(crate) async fn link(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     csrf: CsrfToken,
@@ -258,11 +259,10 @@ pub(super) async fn complete_operation(
         Ok(response) if response.status < 400 => {
             let body = response.body.json().ok().flatten().unwrap_or_default();
             if body["apiKey"].is_string() {
-                return super::keys::result(&view, &body);
+                return super::keys::result_with_cookies(&view, &body, &response);
             }
-            let mut redirect = super::rendering::redirect(
-                body["redirect"].as_str().unwrap_or("/account/security"),
-            );
+            let mut redirect =
+                view.profile_redirect(body["redirect"].as_str().unwrap_or("/account/security"));
             for cookie in response.headers.get_all("set-cookie") {
                 let Ok(cookie) = cookie.parse() else {
                     return super::rendering::unavailable();
@@ -272,6 +272,11 @@ pub(super) async fn complete_operation(
             redirect
         }
         Ok(response) => native_redirect(response),
-        Err(_) => super::rendering::redirect("/account/security"),
+        Err(_) => view
+            .profile_error(
+                StatusCode::BAD_REQUEST,
+                "This confirmation is invalid or expired. Start the account change again.",
+            )
+            .unwrap_or_else(|| super::rendering::redirect("/account/security")),
     }
 }

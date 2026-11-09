@@ -20,6 +20,230 @@ fn is_auth_session_cookie(header: &str) -> bool {
     )
 }
 
+fn profile_flow_field(html: &str, action: &str, name: &str) -> String {
+    let document = scraper::Html::parse_document(html);
+    let forms = scraper::Selector::parse("form[action]").unwrap();
+    let fields = scraper::Selector::parse("input[name]").unwrap();
+    let form = document
+        .select(&forms)
+        .find(|form| {
+            form.value()
+                .attr("action")
+                .and_then(|value| value.split('?').next())
+                == Some(action)
+        })
+        .expect("profile flow action form");
+    form.select(&fields)
+        .find(|field| field.value().attr("name") == Some(name))
+        .and_then(|field| field.value().attr("value"))
+        .expect("profile flow form field")
+        .to_owned()
+}
+
+#[tokio::test]
+async fn account_authentication_profile_flows_keep_native_errors_and_fragment_outcomes() {
+    let (fixture, boot) = boot_request_fixture().await;
+    enable_completed_onboarding(&fixture, fixture.account.id).await;
+    let mut request = server(&boot);
+    request.save_cookies();
+    let signed_in = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"email":fixture.account.email,"password":"password"}))
+        .await;
+    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+    let profile = format!("/households/{}/profile", fixture.household.slug);
+    let administrator_support = request
+        .get(&format!("{profile}?panel=support"))
+        .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+        .await;
+    assert_eq!(
+        administrator_support.status_code(),
+        403,
+        "{}",
+        administrator_support.text()
+    );
+    let mut membership = fixture.membership.clone().into_active_model();
+    membership.role = Set("owner".into());
+    membership.update(&fixture.admin).await.unwrap();
+    for panel in [
+        "email", "password", "reset", "totp", "passkey", "keys", "support", "history", "plans",
+    ] {
+        let response = request
+            .get(&format!("{profile}?panel={panel}"))
+            .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+            .await;
+        assert_eq!(response.status_code(), 200, "{panel}: {}", response.text());
+        assert_eq!(response.header("cache-control"), "no-store");
+        assert!(
+            response
+                .text()
+                .contains(&format!("data-flow-kind=\"{panel}\"")),
+            "{panel}: {}",
+            response.text()
+        );
+        assert!(
+            response
+                .text()
+                .contains(&format!("data-flow-profile=\"{profile}\""))
+        );
+        assert!(!response.text().contains("<html"));
+        assert!(!response.text().contains("<script"));
+    }
+    let native = request.get(&format!("{profile}?panel=email")).await;
+    assert_eq!(native.status_code(), 200, "{}", native.text());
+    assert!(native.text().contains("data-profile-dialog-host"));
+    assert!(native.text().contains("Change email"));
+    assert!(
+        native
+            .text()
+            .contains(&format!("href=\"{profile}#security\""))
+    );
+    let csrf = profile_flow_field(
+        &native.text(),
+        "/account/security/email",
+        "authenticity_token",
+    );
+    let suffix = format!(
+        "?profile_flow=email&profile_household={}",
+        fixture.household.slug
+    );
+    let rejected = request
+        .post(&format!("/account/security/email{suffix}"))
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", csrf.as_str()),
+            ("new_email", "invalid-address"),
+        ])
+        .await;
+    assert_eq!(rejected.status_code(), 400, "{}", rejected.text());
+    assert!(rejected.text().contains("data-profile-dialog-host"));
+    assert!(rejected.text().contains("data-flow-outcome=\"invalid\""));
+    let csrf_denied = request
+        .post(&format!("/account/security/email{suffix}"))
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", "invalid"),
+            ("new_email", "synthetic@example.test"),
+        ])
+        .await;
+    assert_eq!(csrf_denied.status_code(), 403);
+    assert!(csrf_denied.text().contains("data-flow-outcome=\"invalid\""));
+    for (panel, action, fields, expected) in [
+        (
+            "password",
+            "/account/security/password",
+            vec![
+                ("current_password", "incorrect"),
+                ("new_password", "Synthetic-unaccepted-passphrase-42"),
+            ],
+            400,
+        ),
+        (
+            "totp",
+            "/account/security/totp",
+            vec![("password", "incorrect")],
+            200,
+        ),
+    ] {
+        let form = request.get(&format!("{profile}?panel={panel}")).await;
+        assert_eq!(form.status_code(), 200, "{}", form.text());
+        let csrf = profile_flow_field(&form.text(), action, "authenticity_token");
+        let mut fields = fields;
+        fields.push(("authenticity_token", csrf.as_str()));
+        let path = format!(
+            "{action}?profile_flow={panel}&profile_household={}",
+            fixture.household.slug
+        );
+        let invalid = request
+            .post(&path)
+            .add_header("origin", boot.app_context.config.server.full_url())
+            .add_header("sec-fetch-site", "same-origin")
+            .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+            .form(&fields)
+            .await;
+        assert_eq!(
+            invalid.status_code(),
+            expected,
+            "{path}: {}",
+            invalid.text()
+        );
+        assert!(
+            invalid.text().contains("data-flow-outcome=\"invalid\""),
+            "{path}: {}",
+            invalid.text()
+        );
+        assert!(!invalid.text().contains("<html"));
+        assert!(!invalid.text().contains("Profile updated"));
+    }
+    let security = request.get(&profile).await;
+    assert_eq!(security.status_code(), 200, "{}", security.text());
+    let csrf = profile_flow_field(
+        &security.text(),
+        "/account/security/operation",
+        "authenticity_token",
+    );
+    let proof = request
+        .post(&format!(
+            "/account/security/operation?profile_flow=operation&profile_household={}",
+            fixture.household.slug
+        ))
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+        .form(&[
+            ("action", "close_account"),
+            ("authenticity_token", csrf.as_str()),
+        ])
+        .await;
+    assert_eq!(proof.status_code(), 200, "{}", proof.text());
+    let csrf = profile_flow_field(
+        &proof.text(),
+        "/account/security/password/confirm",
+        "authenticity_token",
+    );
+    let operation = profile_flow_field(
+        &proof.text(),
+        "/account/security/password/confirm",
+        "operation_id",
+    );
+    let denied_proof = request
+        .post(&format!(
+            "/account/security/password/confirm?profile_flow=operation&profile_household={}",
+            fixture.household.slug
+        ))
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .add_header("accept", "text/vnd.medtracker.profile-flow+html")
+        .form(&[
+            ("operation_id", operation.as_str()),
+            ("password", "incorrect"),
+            ("authenticity_token", csrf.as_str()),
+        ])
+        .await;
+    assert_eq!(denied_proof.status_code(), 401, "{}", denied_proof.text());
+    assert!(
+        denied_proof
+            .text()
+            .contains("data-flow-outcome=\"invalid\"")
+    );
+    assert!(!denied_proof.text().contains("<html"));
+    assert!(!denied_proof.text().contains("Profile updated"));
+    assert_eq!(
+        accounts::Entity::find_by_id(fixture.account.id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .status,
+        2
+    );
+    drop(request);
+    close_request(fixture, boot).await;
+}
+
 async fn enable_completed_onboarding(fixture: &RequestFixture, account_id: i64) {
     let active = identity_onboarding::ActiveModel {
         account_id: Set(account_id),
@@ -552,19 +776,36 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .add_header("cookie", owner_cookie.clone())
         .await;
     assert_eq!(profile.status_code(), 200, "{}", profile.text());
-    assert!(profile.text().contains("href=\"/account/security\""));
-    assert!(
-        profile
-            .text()
-            .contains("href=\"/account/security/passkey\"")
-    );
+    assert!(!profile.text().contains("href=\"/account/security\""));
+    assert!(profile.text().contains("panel=passkey"));
     assert!(!profile.text().contains("regenerate_recovery"));
     let center = request
         .get("/account/security")
         .add_header("cookie", owner_cookie.clone())
         .await;
-    assert_eq!(center.status_code(), 200);
-    assert!(center.text().contains("Add passkey"));
+    assert_eq!(center.status_code(), 303);
+    assert_eq!(center.header("location"), "/profile#security");
+    assert_eq!(center.header("cache-control"), "no-store");
+    let anonymous = server(&boot).get("/account/security").await;
+    assert_eq!(anonymous.status_code(), 303);
+    assert_eq!(anonymous.header("location"), "/login");
+    assert_eq!(anonymous.header("cache-control"), "no-store");
+    assert!(profile.text().contains("Add passkey"));
+    assert!(profile.text().contains("value=\"close_account\""));
+    let denied = request
+        .post("/account/security/operation")
+        .add_header("cookie", owner_cookie.clone())
+        .form(&[
+            ("authenticity_token", "invalid"),
+            ("action", "close_account"),
+        ])
+        .await;
+    assert_eq!(denied.status_code(), 403);
+    assert!(
+        profile
+            .text()
+            .contains("action=\"/account/security/operation?profile_flow=operation")
+    );
     let foreign_sign_in = request
         .post("/api/auth/sign-in/email")
         .add_header("origin", boot.app_context.config.server.full_url())
@@ -675,7 +916,7 @@ async fn account_authentication_accepts_split_cookie_headers() {
         account_id.to_string()
     );
     let browser = request
-        .get("/account/security")
+        .get("/profile")
         .add_header("cookie", cookie)
         .add_header("cookie", "unrelated=1")
         .await;
@@ -688,7 +929,7 @@ async fn account_authentication_accepts_split_cookie_headers() {
     assert_eq!(rejected.status_code(), 400);
     assert_eq!(rejected.header("cache-control"), "no-store");
     let rejected = request
-        .get("/account/security")
+        .get("/profile")
         .add_header("cookie", malformed)
         .await;
     assert_eq!(rejected.status_code(), 400);
@@ -764,10 +1005,14 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
         .unwrap();
     assert!(renewed.expires_at > Utc::now() + Duration::hours(2));
     let security = request
-        .get("/account/security")
+        .get("/profile")
         .add_header("cookie", cookie.clone())
         .await;
     assert_eq!(security.status_code(), 200);
+    assert!(security.text().contains("id=\"profile-security-content\""));
+    assert!(security.text().contains("panel=password"));
+    assert!(security.text().contains("value=\"close_account\""));
+    assert!(security.text().contains("action=\"/logout\""));
     let registration = request
         .get("/api/auth/passkey/generate-register-options")
         .add_header("cookie", cookie.clone())
@@ -1070,10 +1315,7 @@ async fn account_authentication_account_status_and_session_lifetime_remain_requi
             "{mutation}: {}",
             rejected.status_code()
         );
-        let security = request
-            .get("/account/security")
-            .add_header("cookie", cookie)
-            .await;
+        let security = request.get("/profile").add_header("cookie", cookie).await;
         assert_ne!(security.status_code(), 200, "{mutation}");
     }
     drop(request);
@@ -1548,7 +1790,7 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
         .unwrap()
         .to_owned();
     let listing = request
-        .get("/account/security")
+        .get("/profile")
         .add_header("cookie", cookie.clone())
         .await;
     assert_eq!(listing.status_code(), 200, "{}", listing.text());
@@ -1587,10 +1829,7 @@ async fn account_authentication_security_inventory_is_complete_live_and_account_
         .json(&json!({"id":own_passkey.to_string()}))
         .await;
     assert_eq!(removed.status_code(), 200, "{}", removed.text());
-    let listing = request
-        .get("/account/security")
-        .add_header("cookie", cookie)
-        .await;
+    let listing = request.get("/profile").add_header("cookie", cookie).await;
     assert_eq!(listing.status_code(), 200, "{}", listing.text());
     assert_eq!(listing.text().matches("name=\"session_id\"").count(), 101);
     assert_eq!(listing.text().matches("data-passkey-id=").count(), 101);

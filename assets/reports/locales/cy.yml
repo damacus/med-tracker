@@ -1995,6 +1995,9 @@ cy:
       history_empty: "Nid oes unrhyw ddosau a gymerwyd wedi'u cofnodi ar eich cyfer."
       history_next: "Cofnodion hŷn"
     security_flow:
+      operation_uncertain: "Efallai bod y cais wedi ei gwblhau. Gwiriwch y gosodiadau diogelwch presennol cyn dechrau newid arall. Ni ellir dangos allwedd untro a gollwyd eto."
+      review_security: "Gweld y gosodiadau diogelwch presennol"
+      passkey_requires_js: "Mae angen sgriptiau porwr i gofrestru allwedd bas. Galluogwch nhw i barhau."
       incomplete_link: "Dolen anghyflawn"
       incomplete_reset_guidance: "Mae’r ddolen ailosod cyfrinair hon yn anghyflawn. Gofynnwch am ddolen newydd i ailosod eich cyfrinair."
       incomplete_verification_guidance: "Mae’r ddolen ddilysu hon yn anghyflawn. Gofynnwch am e-bost newydd i ddilysu eich cyfrif."
@@ -2115,7 +2118,29 @@ cy:
       "danger_zone": "Parth Perygl"
       "closure_description": "Mae cau eich cyfrif yn dod â'ch mynediad i ben ac yn dirymu dulliau mewngofnodi. Mae cofnodion gofal a rennir a hanes archwilio yn aros. Trosglwyddwch berchnogaeth unrhyw aelwyd lle mai chi yw'r unig berchennog yn gyntaf."
       "close_account": "Cau cyfrif"
+    dialogs:
+      rejected: "Gwrthodwyd y cais hwn. Ailagorwch y gosodiad, gwiriwch eich sesiwn mewngofnodi a rhowch gynnig arall arni."
+      done: "Wedi gorffen"
+      close: "Cau’r gosodiad"
+      loading: "Wrthi’n llwytho’r gosodiad…"
+      failed: "Nid oedd modd llwytho’r gosodiad. Rhowch gynnig arall neu agorwch ef ar y dudalen."
+      uncertain: "Efallai bod y cais wedi’i gwblhau. Gwiriwch y gosodiad presennol cyn rhoi cynnig arall. Ni ellir dangos allwedd untro goll eto."
+      inline: "Agor y gosodiad ar y dudalen"
+      title: "Gosodiad proffil"
+      external: "Mae mewngofnodi darparwr a dilysu e-bost yn agor eu tudalen ddilysu."
     security:
+      session_today: "Heddiw am %{time}"
+      session_at: "%{date} am %{time}"
+      session_created: "Crëwyd"
+      session_expires: "Yn dod i ben"
+      session_timezone: "Dangosir yr amseroedd yn %{zone}."
+      provider_linked: "Mae ZITADEL wedi’i gysylltu."
+      add_password: "Ychwanegu cyfrinair drwy e-bost"
+      remove_password: "Dileu cyfrinair"
+      password_required: "Ychwanegwch gyfrinair cyn galluogi ap dilysu."
+      replace_backup_codes: "Disodli codau wrth gefn"
+      support_access: "Ceisiadau mynediad cymorth"
+      sign_out: "Allgofnodi"
       sessions: "Sesiynau gweithredol"
       current_session: "Sesiwn gyfredol"
       other_session: "Sesiwn arall"
@@ -2360,6 +2385,7 @@ cy:
       people: Pobl
       medication_finder: Darganfyddwr Meddyginiaethau
     profile_menu:
+      platform_administration: Gweinyddu’r platfform
       my_account: Fy Nghyfrif
       dashboard: Bordd
       profile: Proffil
@@ -2379,6 +2405,7 @@ cy:
       administration: Gweinyddu
       logout: Allgofnodi
     sidebar:
+      toggle: Toglo’r bar ochr
       dashboard: Dangosfwrdd
       inventory: Rhestr Eiddo
       locations: Lleoliadau

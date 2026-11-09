@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::better_auth::{IdentityService, dispatch};
 use axum::{
     Extension,
@@ -56,7 +57,7 @@ fn render(
     }
 }
 
-pub(super) async fn show(csrf: CsrfToken, ViewEngine(view): ViewEngine<TeraView>) -> Response {
+pub(crate) async fn show(csrf: CsrfToken, ViewEngine(view): ViewEngine<TeraView>) -> Response {
     render(&view, csrf, None, false, None)
 }
 pub(super) async fn confirmation(
@@ -71,7 +72,7 @@ pub(super) async fn confirmation(
         );
     };
     if link.token.len() > 4096 {
-        return StatusCode::BAD_REQUEST.into_response();
+        return view.profile_rejection(StatusCode::BAD_REQUEST);
     }
     render(&view, csrf, Some(&link.token), false, None)
 }
@@ -83,7 +84,7 @@ pub(super) async fn request(
     Form(form): Form<Request>,
 ) -> Response {
     if csrf.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let mut request = super::passkeys::request(&headers);
     request.method = better_auth_core::HttpMethod::Post;
@@ -113,10 +114,10 @@ pub(super) async fn reset(
     Form(form): Form<Reset>,
 ) -> Response {
     if csrf.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     if form.token.len() > 4096 {
-        return StatusCode::BAD_REQUEST.into_response();
+        return view.profile_rejection(StatusCode::BAD_REQUEST);
     }
     if let Err(message) =
         crate::models::identity::better_auth::validate_new_password(&form.password)

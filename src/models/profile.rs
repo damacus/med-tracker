@@ -1,3 +1,4 @@
+pub(crate) mod account_access;
 pub mod avatar;
 pub mod gravatar;
 pub(crate) mod personal_history;

@@ -1,18 +1,5 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-{% include "identity_onboarding/security_labels.html" %}
-<section class="max-w-xl mx-auto card shell-card"><div class="card-body gap-4">
-  <h1 class="text-3xl font-semibold">{{ title }}</h1>
-  {% if mode == "start" %}
-  <form method="post" action="/account/security/email" class="space-y-4">
-    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-    <label class="form-control" for="new_email">{{ flow.new_email }}</label>
-    <input class="input input-bordered w-full" id="new_email" name="new_email" type="email" autocomplete="email" required>
-    <button class="btn shell-primary" type="submit">{{ flow.continue }}</button>
-  </form>
-  {% else %}
-  <p>{{ flow.email_pending_hint }}</p>
-  {% endif %}
-  <a class="link" href="/account/security">{{ flow.back }}</a>
-</div></section>
+{% include "profile/flows/email_change.html" %}
+
 {% endblock content %}

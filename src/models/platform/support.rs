@@ -42,7 +42,6 @@ pub struct SupportSchedule {
 
 pub struct SupportRead {
     pub household_name: String,
-    pub slug: String,
     pub expires_at: String,
     pub members: Vec<String>,
     pub people: Vec<String>,
@@ -811,7 +810,6 @@ pub async fn read(
         .ok_or(OperationError::NotFound)?;
     Ok(SupportRead {
         household_name: get(&household, "name")?,
-        slug: get(&household, "slug")?,
         expires_at: deadline_label(session.expires_at),
         members,
         people,

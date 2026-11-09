@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use axum::{
     Extension,
     extract::{Form as AxumForm, Query},
@@ -33,6 +34,15 @@ mod verification_resend;
 
 pub(crate) use passkeys::request as identity_request;
 pub(crate) use password::render_named;
+
+pub(crate) use credentials::passkey as profile_passkey;
+pub(crate) use email_change::show as profile_email;
+pub(crate) use keys::show as profile_keys;
+pub(crate) use oidc::link as profile_provider;
+pub(crate) use password::show as profile_password;
+pub(crate) use password_reset::show as profile_reset;
+pub(crate) use support::page as profile_support;
+pub(crate) use totp::show as profile_totp;
 
 pub fn routes() -> Routes {
     Routes::new()

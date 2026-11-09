@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::ShellView as TeraView;
 
 fn context(slug: &str, error: Option<&OperationError>) -> Value {
     let mut data = super::super::medications::rendering::appearance_context();

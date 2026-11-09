@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::better_auth::{
     BrowserIdentity, IdentityService, browser_identity, dispatch,
 };
@@ -42,7 +43,7 @@ fn render(view: &TeraView, csrf: CsrfToken, mode: &str) -> Response {
         Err(_) => super::rendering::unavailable(),
     }
 }
-pub(super) async fn show(
+pub(crate) async fn show(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     csrf: CsrfToken,
@@ -68,7 +69,7 @@ pub(super) async fn start(
     Form(form): Form<Start>,
 ) -> Response {
     if csrf.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let mut request = super::passkeys::request(&headers);
     request.method = better_auth_core::HttpMethod::Post;
@@ -88,10 +89,17 @@ pub(super) async fn start(
     .await
     {
         Ok(response) if response.status == 200 => render(&view, csrf, "pending"),
-        _ => (
-            StatusCode::BAD_REQUEST,
-            "Email change is unavailable. Check your address and sign-in session.",
-        )
-            .into_response(),
+        _ => view
+            .profile_error(
+                StatusCode::BAD_REQUEST,
+                "Email change is unavailable. Check your address and sign-in session.",
+            )
+            .unwrap_or_else(|| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    "Email change is unavailable. Check your address and sign-in session.",
+                )
+                    .into_response()
+            }),
     }
 }

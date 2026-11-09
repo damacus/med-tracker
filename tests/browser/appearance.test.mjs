@@ -6,7 +6,7 @@ import test from 'node:test';
 const source = () => readFileSync('assets/static/js/appearance.js', 'utf8');
 const classes = new Set();
 
-function searchControls(platform, translated) {
+function searchControls(platform, translated, existingSidebarHint = false) {
   class Element {
     constructor(text = '') { this.text = text; this.attributes = {}; this.children = []; this.listeners = {}; }
     get textContent() { return this.text + this.children.map(child => child.textContent).join(''); }
@@ -18,6 +18,14 @@ function searchControls(platform, translated) {
     querySelector(selector) { return this.children.find(child => child.tag === selector); }
   }
   const triggers = [new Element('Search'), new Element('Search')];
+  if (existingSidebarHint) {
+    const spacing = readFileSync('assets/views/components/app-sidebar.html', 'utf8').match(/<\/span>(\s*)<kbd/)?.[1] || '';
+    for (const trigger of triggers) {
+      const hint = new Element('Ctrl K');
+      hint.tag = 'kbd';
+      trigger.append(new Element(spacing), hint);
+    }
+  }
   for (const trigger of triggers) trigger.setAttribute('aria-label', 'Open global search');
   const fields = new Map();
   const panel = new Element();
@@ -40,6 +48,14 @@ function searchControls(platform, translated) {
   });
   return { triggers, panel };
 }
+
+test('existing server sidebar hints keep words separated in the accessible search name', () => {
+  for (const [platform, hint] of [['MacIntel', '⌘K'], ['Win32', 'Ctrl+K']]) {
+    for (const trigger of searchControls(platform, undefined, true).triggers) {
+      assert.equal(trigger.attributes['aria-label'], `Open global search — Search ${hint}`);
+    }
+  }
+});
 
 for (const [platform, hint, shortcut] of [['MacIntel', '⌘K', 'Meta+K'], ['Win32', 'Ctrl+K', 'Control+K']]) {
   test(`search keeps descriptive names separate from ${platform} shortcut hints`, () => {
@@ -70,6 +86,7 @@ test('navigation leaves standalone validation pages without a household drawer i
   const header = { querySelector() { throw Error('standalone header must not be replaced'); } };
   const document = {
     querySelector(selector) { return selector === '.shell-header' ? header : null; },
+    querySelectorAll() { return []; },
     getElementById() { return {}; },
     addEventListener(name, listener) { listeners[name] = listener; },
   };
@@ -77,7 +94,7 @@ test('navigation leaves standalone validation pages without a household drawer i
     document, window: {}, navigator: {}, sessionStorage: { getItem() { return null; } },
   });
   await Promise.resolve();
-  assert.doesNotThrow(() => listeners['app-navigation']({ detail: { labels: {} } }));
+  assert.equal(listeners['app-navigation'], undefined);
 });
 
 test('login keeps the packaged brand and benefit artwork', () => {
@@ -90,7 +107,7 @@ test('login keeps the packaged brand and benefit artwork', () => {
   }
 });
 
-test('shared navigation follows the selected page language and otherwise keeps browser negotiation', async () => {
+test('shortcut changes fetch only after profile saving and follow the selected page language', async () => {
   for (const language of ['es', 'en', '', undefined]) {
     const listeners = {};
     let request;
@@ -104,7 +121,9 @@ test('shared navigation follows the selected page language and otherwise keeps b
       navigator: { language: 'cy' },
       async fetch(url, options) { request = { url, options }; return { ok: false }; },
     });
-    await listeners.DOMContentLoaded();
+    assert.equal(request, undefined);
+    assert.equal(listeners.DOMContentLoaded, undefined);
+    await listeners['profile-saved']();
     assert.equal(request.url, '/households/persistence-fixture/profile/navigation');
     assert.equal(request.options.headers.Accept, 'application/json');
     assert.equal(request.options.cache, 'no-store');

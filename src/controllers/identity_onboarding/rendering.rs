@@ -1,3 +1,4 @@
+use crate::controllers::shell::ShellView as TeraView;
 use axum::{
     http::{StatusCode, header},
     response::IntoResponse,

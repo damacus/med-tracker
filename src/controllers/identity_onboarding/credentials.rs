@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::better_auth::{IdentityService, dispatch};
 use axum::{
     Extension,
@@ -25,7 +26,7 @@ pub(super) async fn start(
     Form(form): Form<Start>,
 ) -> Response {
     if csrf.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let mut request = super::passkeys::request(&headers);
     request.method = better_auth_core::HttpMethod::Post;
@@ -51,7 +52,7 @@ pub(super) async fn start(
         }.await;
         return match native {
             Ok(response) if response.status < 400 => {
-                let mut redirect = super::rendering::redirect("/account/security");
+                let mut redirect = view.profile_redirect("/account/security");
                 for cookie in response.headers.get_all("set-cookie") {
                     let Ok(cookie) = cookie.parse() else {
                         return super::rendering::unavailable();
@@ -60,11 +61,7 @@ pub(super) async fn start(
                 }
                 redirect
             }
-            _ => (
-                StatusCode::BAD_REQUEST,
-                "This sign-in method could not be removed. Check your session and try again.",
-            )
-                .into_response(),
+            _ => view.profile_error(StatusCode::BAD_REQUEST, "This sign-in method could not be removed. Check your session and try again.").unwrap_or_else(|| (StatusCode::BAD_REQUEST, "This sign-in method could not be removed. Check your session and try again.").into_response()),
         };
     }
     let label = match form.action.as_str() {
@@ -107,15 +104,23 @@ pub(super) async fn start(
                 label,
             )
         }
-        _ => (
-            StatusCode::BAD_REQUEST,
-            "This account operation is unavailable. Check your session and permissions.",
-        )
-            .into_response(),
+        _ => view
+            .profile_error(
+                StatusCode::BAD_REQUEST,
+                "This account operation is unavailable. Check your session and permissions.",
+            )
+            .unwrap_or_else(|| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    "This account operation is unavailable. Check your session and permissions.",
+                )
+                    .into_response()
+            }),
     }
 }
 
-pub(super) async fn passkey(
+pub(crate) async fn passkey(
+    token: CsrfToken,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
@@ -133,7 +138,7 @@ pub(super) async fn passkey(
     let mut data = crate::controllers::medications::rendering::appearance_context();
     data["title"] = json!("Add passkey");
     match super::security_locale::view(&view, "identity_onboarding/add_passkey.html", data) {
-        Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => super::rendering::unavailable(),
     }
 }

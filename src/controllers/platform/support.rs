@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use axum::extract::Path;
 
 use super::*;
@@ -63,7 +64,6 @@ fn render_read(
     let mut data = crate::controllers::medications::rendering::appearance_context();
     data["title"] = json!("Support access");
     data["household_name"] = json!(read.household_name);
-    data["slug"] = json!(read.slug);
     data["expires_at"] = json!(read.expires_at);
     data["members"] = json!(read.members);
     data["people"] = json!(read.people);

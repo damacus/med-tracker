@@ -1,4 +1,5 @@
 use super::authorization_response;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::{
     authorization::{self, AuthorizationInput, DisplayedConsent},
     browser,

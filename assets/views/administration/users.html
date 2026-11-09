@@ -1,9 +1,8 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section id="administration-form" tabindex="-1" class="admin-page">
-  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ admin_labels.nav.overview }}</a>
-  {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.nav.members }}</h1>
+  <p class="mt-2">{{ admin_labels.overview.review_access }}</p>
   {% include "administration/navigation.html" %}
   {% if member_notice %}<div role="status" class="alert alert-success mt-4">{{ member_labels.changed }} {{ member_labels[member_notice] }}.</div>{% endif %}
   <div class="mt-4">{% include "components/form_errors.html" %}</div>

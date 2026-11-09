@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{care::report_pdf, entities::account};
 use axum::{extract::Query, http::HeaderMap};
 use sea_orm::EntityTrait;
@@ -18,7 +19,7 @@ pub(super) async fn open(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     ViewEngine(view): ViewEngine<TeraView>,
-    headers: HeaderMap,
+    (headers, token): (HeaderMap, CsrfToken),
     Query(query): Query<WorkflowQuery>,
 ) -> Response {
     let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
@@ -107,7 +108,7 @@ pub(super) async fn open(
         return unavailable();
     }
     match format::render().view(&view, "medications/workflow.html", data) {
-        Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => unavailable(),
     }
 }

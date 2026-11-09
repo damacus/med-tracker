@@ -47,14 +47,14 @@ async fn polish_profile_avatar_refreshes_all_existing_surfaces_without_navigatio
         let page=&journey.page;
         page.goto(&format!("{}/households/persistence-fixture/profile",journey.origin),None).await.unwrap();
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
-        page.evaluate::<(),bool>("() => { window.polishDocument = document; window.polishAccount = document.querySelector('#app-account'); return true; }",None).await.unwrap();
+        page.evaluate::<(),bool>("() => { window.polishDocument = document; window.polishAccount = document.querySelector('[data-app-profile]'); return true; }",None).await.unwrap();
         page.locator("#profile-avatar > summary").click(None).await.unwrap();
         let bytes=base64::engine::general_purpose::STANDARD.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEX/AAAZ4gk3AAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg==").unwrap();
         page.locator("#profile-avatar-file").set_input_files_payload(FilePayload::new("synthetic.png","image/png",bytes),None).await.unwrap();
         page.locator("form[action$='/profile/avatar'] button[type=submit]").click(None).await.unwrap();
         expect(page.locator("form[action$='/profile/avatar/remove']")).to_be_visible().await.unwrap();
         expect(page.locator("[data-sidebar-avatar] img")).to_be_visible().await.unwrap();
-        assert!(page.evaluate::<(),bool>("async () => { const avatars=[...document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')]; await Promise.all(avatars.map(async avatar => { const image=avatar.querySelector('img'); if(image) await image.decode(); })); return avatars.length>=4 && avatars.every(avatar => { const image=avatar.querySelector('img'); return image && image.complete && image.naturalWidth>0; }) && window.polishDocument===document && window.polishAccount===document.querySelector('#app-account'); }",None).await.unwrap());
+        assert!(page.evaluate::<(),bool>("async () => { const avatars=[...document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')]; await Promise.all(avatars.map(async avatar => { const image=avatar.querySelector('img'); if(image) await image.decode(); })); return avatars.length>=4 && avatars.every(avatar => { const image=avatar.querySelector('img'); return image && image.complete && image.naturalWidth>0; }) && window.polishDocument===document && window.polishAccount===document.querySelector('[data-app-profile]'); }",None).await.unwrap());
         capture(page,"avatar-upload-desktop").await;
         page.set_viewport_size(Viewport{width:390,height:844}).await.unwrap();
         capture(page,"avatar-upload-mobile").await;
@@ -62,11 +62,8 @@ async fn polish_profile_avatar_refreshes_all_existing_surfaces_without_navigatio
         page.locator("form[action$='/profile/avatar/remove'] button").click(None).await.unwrap();
         expect(page.locator("form[action$='/profile/avatar/remove']")).to_have_count(0).await.unwrap();
         assert_eq!(page.locator("[data-profile-avatar] img, [data-sidebar-avatar] img").count().await.unwrap(),0);
-        assert!(page.evaluate::<(),bool>("() => window.polishDocument===document && window.polishAccount===document.querySelector('#app-account') && [...document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')].every(avatar=>avatar.textContent.trim().length>0)",None).await.unwrap());
-        page.locator(".app-sidebar [data-sidebar-account]").click(None).await.unwrap();
-        expect(page.locator("#app-account[open]")).to_be_visible().await.unwrap();
-        page.keyboard().press("Escape",None).await.unwrap();
-        expect(page.locator(".app-sidebar [data-sidebar-account]")).to_be_focused().await.unwrap();
+        assert!(page.evaluate::<(),bool>("() => window.polishDocument===document && window.polishAccount===document.querySelector('[data-app-profile]') && [...document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')].every(avatar=>avatar.textContent.trim().length>0)",None).await.unwrap());
+        expect(page.locator("[data-app-profile]")).to_have_attribute("href", "/households/persistence-fixture/profile").await.unwrap();
     })).await;
 }
 

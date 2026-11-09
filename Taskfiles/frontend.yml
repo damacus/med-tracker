@@ -15,6 +15,10 @@ tasks:
       - package.json
       - package-lock.json
       - assets/static/css/app.css
+      - assets/static/css/profile.css
+      - assets/static/css/profile-dialogs.css
+      - assets/static/css/section-switcher.css
+      - assets/static/css/dashboard.css
       - assets/static/css/themes.css
       - assets/static/css/fonts.css
       - assets/static/css/platform.css
@@ -37,5 +41,5 @@ tasks:
   test:
     cmds:
       [
-        node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs tests/browser/dashboard-cancellation.test.mjs tests/browser/canary-status.test.mjs tests/browser/scanner-feedback.test.mjs,
+        node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs tests/browser/dashboard-cancellation.test.mjs tests/browser/canary-status.test.mjs tests/browser/scanner-feedback.test.mjs tests/browser/dashboard-selector.test.mjs tests/browser/shared-shell.test.mjs tests/browser/admin-navigation.test.mjs tests/browser/navigation-recovery.test.mjs tests/browser/profile-dialogs.test.mjs tests/browser/global-search-lifecycle.test.mjs,
       ]

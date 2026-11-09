@@ -78,7 +78,7 @@ const AUDIT_LOCALES: [(&str, &str, &str, &str, &str); 5] = [
 ];
 
 #[tokio::test]
-async fn audit_browser_locales_show_safe_list_detail_recent_and_invalid_filter()
+async fn audit_browser_locales_show_safe_list_detail_overview_and_invalid_filter()
 -> Result<(), Box<dyn Error>> {
     let app = Application::new().await;
     let fixture_account_id = app.fixture.account.id;
@@ -160,13 +160,26 @@ async fn audit_browser_locales_show_safe_list_detail_recent_and_invalid_filter()
                 "{language}: private metadata leaked"
             );
         }
-        assert!(overview_body.contains(recent), "{language}: recent section");
         assert!(
-            overview_body.contains(&format!(
+            !overview_body.contains(recent),
+            "{language}: removed activity section returned"
+        );
+        assert!(
+            overview_body.contains("data-admin-metric=\"recent-audit-events\""),
+            "{language}: audit metric missing"
+        );
+        assert!(
+            !overview_body.contains(&format!(
                 "/audit_logs/{}?lang={language}",
                 audit_ids["locale"]
             )),
-            "{language}: recent link lost locale"
+            "{language}: removed activity event link returned"
+        );
+        assert!(
+            overview_body.contains(&format!(
+                "href=\"/households/{fixture_slug}/admin/audit_logs?lang={language}\""
+            )),
+            "{language}: audit navigation lost locale"
         );
         assert_eq!(invalid_status, reqwest::StatusCode::UNPROCESSABLE_ENTITY);
         assert!(

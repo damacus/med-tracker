@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{
     access::{self, Actor},
     identity::{browser, resource::AuthenticationError},
@@ -8,8 +9,8 @@ use crate::models::{
 use sea_orm::DatabaseTransaction;
 
 mod avatar;
-mod history;
-mod person_schedules;
+pub(crate) mod history;
+pub(crate) mod person_schedules;
 
 pub fn routes() -> Routes {
     Routes::new()
@@ -54,6 +55,20 @@ async fn show(
     ViewEngine(view): ViewEngine<TeraView>,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
+    if view
+        .profile_presentation()
+        .is_some_and(|value| !value.complete)
+    {
+        return super::dialogs::open(super::dialogs::Open {
+            ctx,
+            session,
+            headers,
+            token,
+            view,
+            request,
+        })
+        .await;
+    }
     AccountPage {
         ctx: &ctx,
         session: &session,
@@ -240,14 +255,7 @@ impl AccountPage<'_> {
         )
         .await
         {
-            Ok(value)
-                if value["account_id"]
-                    .as_str()
-                    .and_then(|id| id.parse::<i64>().ok())
-                    == Some(account_id.get()) =>
-            {
-                value
-            }
+            Ok(value) if value.account_id == account_id => value,
             Ok(_) => return operation_error(OperationError::Forbidden),
             Err(_) => return unavailable(),
         };
@@ -386,7 +394,17 @@ impl AccountPage<'_> {
         }).collect::<Vec<_>>());
         data["sidebar_links"] = json!([]);
         data["authenticity_token"] = json!(authenticity_token);
-        data["security"] = security;
+        data["account_access"] =
+            match profile::account_access::load(&self.ctx.db, security.account_id).await {
+                Ok(value) => json!(value),
+                Err(error) => return operation_error(error),
+            };
+        data["security"] = json!(crate::views::profile_security::context(
+            &security,
+            principal.time_zone(),
+            &labels,
+            chrono::Utc::now()
+        ));
         data["system_info"] = json!({"development":self.ctx.environment == loco_rs::environment::Environment::Development,"version":env!("CARGO_PKG_VERSION"),"worktree":env!("MEDTRACKER_BUILD_WORKTREE"),"commit":env!("MEDTRACKER_BUILD_COMMIT")});
         match format::render().view(self.view, "profile/show.html", data) {
             Ok(response) => (

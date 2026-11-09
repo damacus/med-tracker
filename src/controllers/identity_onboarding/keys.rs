@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::identity::better_auth::{IdentityService, dispatch, personal_keys};
 use axum::{
     Extension,
@@ -10,7 +11,7 @@ use loco_rs::prelude::*;
 use serde_json::json;
 use std::collections::BTreeMap;
 
-pub(super) async fn show(
+pub(crate) async fn show(
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     request_id: Option<Extension<loco_rs::controller::middleware::request_id::LocoRequestId>>,
@@ -52,7 +53,7 @@ pub(super) async fn create(
         .get("authenticity_token")
         .is_none_or(|token| csrf.verify(token).is_err())
     {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let households = form
         .keys()
@@ -60,13 +61,13 @@ pub(super) async fn create(
         .map(str::parse::<i64>)
         .collect::<std::result::Result<Vec<_>, _>>();
     let Ok(households) = households else {
-        return StatusCode::BAD_REQUEST.into_response();
+        return view.profile_rejection(StatusCode::BAD_REQUEST);
     };
     let Some(expires_days) = form
         .get("expires_days")
         .and_then(|value| value.parse::<u16>().ok())
     else {
-        return StatusCode::BAD_REQUEST.into_response();
+        return view.profile_rejection(StatusCode::BAD_REQUEST);
     };
     let key = personal_keys::Creation {
         name: form.get("name").cloned().unwrap_or_default(),
@@ -93,13 +94,9 @@ pub(super) async fn create(
     {
         Ok(response) if response.status == 200 => {
             let body = response.body.json().ok().flatten().unwrap_or_default();
-            result(&view, &body)
+            result_with_cookies(&view, &body, &response)
         }
-        _ => (
-            StatusCode::BAD_REQUEST,
-            "Choose permitted households, explicit permissions and an expiry of 1 to 365 days.",
-        )
-            .into_response(),
+        _ => view.profile_error(StatusCode::BAD_REQUEST, "Choose permitted households, explicit permissions and an expiry of 1 to 365 days.").unwrap_or_else(|| (StatusCode::BAD_REQUEST, "Choose permitted households, explicit permissions and an expiry of 1 to 365 days.").into_response()),
     }
 }
 
@@ -110,6 +107,7 @@ pub(super) struct Revoke {
 }
 
 pub(super) async fn revoke(
+    ViewEngine(view): ViewEngine<TeraView>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     request_id: Option<Extension<loco_rs::controller::middleware::request_id::LocoRequestId>>,
@@ -117,7 +115,7 @@ pub(super) async fn revoke(
     Form(form): Form<Revoke>,
 ) -> Response {
     if csrf.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let mut request = super::passkeys::request(&headers);
     request.path = "/security/api-key/revoke".into();
@@ -133,10 +131,8 @@ pub(super) async fn revoke(
     )
     .await
     {
-        Ok(response) if response.status == 200 => {
-            super::rendering::redirect("/account/security/keys")
-        }
-        _ => StatusCode::UNAUTHORIZED.into_response(),
+        Ok(response) if response.status == 200 => view.profile_redirect("/account/security/keys"),
+        _ => view.profile_rejection(StatusCode::UNAUTHORIZED),
     }
 }
 
@@ -156,4 +152,19 @@ pub(super) fn result(view: &TeraView, body: &serde_json::Value) -> Response {
             .into_response(),
         Err(_) => super::rendering::unavailable(),
     }
+}
+
+pub(super) fn result_with_cookies(
+    view: &TeraView,
+    body: &serde_json::Value,
+    native: &better_auth_core::AuthResponse,
+) -> Response {
+    let mut response = result(view, body);
+    for cookie in native.headers.get_all("set-cookie") {
+        let Ok(value) = cookie.parse() else {
+            return super::rendering::unavailable();
+        };
+        response.headers_mut().append(header::SET_COOKIE, value);
+    }
+    response
 }

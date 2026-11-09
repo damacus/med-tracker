@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::ShellView as TeraView;
 use crate::models::{
     access::TenantTransaction,
     identity::{browser::BrowserPrincipal, resource::AuthenticationError},

@@ -43,7 +43,7 @@ async fn register_and_sign_out(journey: &harness::Journey) {
         .click(None)
         .await
         .unwrap();
-    expect(page.get_by_text("Passkey: Fresh journey key", true))
+    expect(page.get_by_text("Fresh journey key", true))
         .to_be_visible()
         .await
         .unwrap();
@@ -51,7 +51,24 @@ async fn register_and_sign_out(journey: &harness::Journey) {
 }
 
 async fn sign_out(page: &Page) {
-    page.get_by_role(AriaRole::Button, named("Sign out"))
+    if page
+        .locator("dialog.profile-flow-dialog[open]")
+        .count()
+        .await
+        .unwrap()
+        > 0
+    {
+        expect(page.locator("dialog [data-flow-outcome=complete]"))
+            .to_be_visible()
+            .await
+            .unwrap();
+        page.locator("dialog [data-profile-flow-done]")
+            .click(None)
+            .await
+            .unwrap();
+    }
+    assert_profile_security(page).await;
+    page.locator("#security form[action='/logout'] button")
         .click(None)
         .await
         .unwrap();
@@ -60,6 +77,21 @@ async fn sign_out(page: &Page) {
         .await
         .unwrap();
     assert_signed_out(page).await;
+}
+
+pub(super) async fn assert_profile_security(page: &Page) {
+    expect(page.get_by_role(AriaRole::Heading, named("My Profile")))
+        .to_be_visible()
+        .await
+        .unwrap();
+    expect(page.locator("#profile-tab-security"))
+        .to_have_attribute("aria-selected", "true")
+        .await
+        .unwrap();
+    expect(page.get_by_role(AriaRole::Heading, named("Account Security")))
+        .to_be_visible()
+        .await
+        .unwrap();
 }
 
 async fn assert_signed_out(page: &Page) {
@@ -109,14 +141,11 @@ async fn passkey_cancelled_sign_in_can_retry(viewport: Viewport, size: &'static 
                 .click(None)
                 .await
                 .unwrap();
-            expect(page.get_by_text("Passkey: Cancellation retry key", true))
+            expect(page.get_by_text("Cancellation retry key", true))
                 .to_be_visible()
                 .await
                 .unwrap();
-            page.get_by_role(AriaRole::Button, named("Sign out"))
-                .click(None)
-                .await
-                .unwrap();
+            sign_out(page).await;
             expect(page.get_by_role(AriaRole::Heading, named("Welcome back")))
                 .to_be_visible()
                 .await
@@ -305,16 +334,16 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             })();"#).await.unwrap();
             harness::sign_in(journey).await;
             page.goto(&format!("{}/account/security", journey.origin), None).await.unwrap();
-            expect(page.get_by_role(AriaRole::Heading, named("Account security"))).to_be_visible().await.unwrap();
+            assert_profile_security(page).await;
             capture_sizes(page, "account-security").await;
             page.get_by_role(AriaRole::Link, named("Add passkey")).click(None).await.unwrap();
             page.get_by_label("Passkey name", true).fill("Browser acceptance key", None).await.unwrap();
             capture_sizes(page, "register-passkey").await;
             page.get_by_role(AriaRole::Button, named("Register Passkey")).click(None).await.unwrap();
-            expect(page.get_by_text("Passkey: Browser acceptance key", true)).to_be_visible().await.unwrap();
+            expect(page.get_by_text("Browser acceptance key", true)).to_be_visible().await.unwrap();
             let credentials = cdp.send("WebAuthn.getCredentials", Some(json!({"authenticatorId":authenticator_id}))).await.unwrap();
             assert_eq!(credentials["result"]["credentials"].as_array().unwrap().len(), 1);
-            page.get_by_role(AriaRole::Button, named("Sign out")).click(None).await.unwrap();
+            sign_out(page).await;
             expect(page.get_by_role(AriaRole::Heading, named("Welcome back"))).to_be_visible().await.unwrap();
             page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
             capture_sizes(page, "sign-in").await;
@@ -332,9 +361,9 @@ async fn native_passkey_registers_signs_in_and_rejects_signed_unverified_asserti
             page.get_by_role(AriaRole::Button, named("Sign in with a passkey")).click(None).await.unwrap();
             expect(page.get_by_role(AriaRole::Button, named("Open household: Synthetic household"))).to_be_visible().await.unwrap();
             page.goto(&format!("{}/account/security", journey.origin), None).await.unwrap();
-            expect(page.get_by_role(AriaRole::Heading, named("Account security"))).to_be_visible().await.unwrap();
-            expect(page.get_by_text("persistence@example.test", true)).to_be_visible().await.unwrap();
-            expect(page.get_by_text("Passkey: Browser acceptance key", true)).to_be_visible().await.unwrap();
+            assert_profile_security(page).await;
+            expect(page.locator(".profile-hero")).to_contain_text("persistence@example.test").await.unwrap();
+            expect(page.get_by_text("Browser acceptance key", true)).to_be_visible().await.unwrap();
             let session = native_session(page).await;
             assert!(session["session"].is_object(), "verified credential did not create a native session");
             capture_sizes(page, "passkey-signed-in").await;

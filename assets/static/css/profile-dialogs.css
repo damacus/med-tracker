@@ -1,0 +1,16 @@
+.profile-flow-dialog { width: min(calc(100% - 2rem), 52rem); max-height: calc(100dvh - 2rem); margin: auto; padding: 0; border: 1px solid var(--border-color); border-radius: 1.25rem; background: var(--surface-container-lowest); color: var(--foreground); box-shadow: var(--elevation-4); }
+.profile-flow-dialog::backdrop { background: rgb(0 0 0 / .35); }
+.profile-flow-box { display: grid; max-height: calc(100dvh - 2rem); grid-template-rows: auto auto minmax(0, 1fr); }
+.profile-flow-box > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; border-bottom: 1px solid var(--border-color); }
+.profile-flow-box > header p { font-size: 1rem; font-weight: 700; }
+.profile-flow-box > [role="status"]:not(:empty) { margin: 1rem; }
+.profile-flow-content { overflow-y: auto; overscroll-behavior: contain; padding: 1rem; }
+.profile-flow-content [data-profile-flow-root] { display: grid; gap: 1rem; min-width: 0; overflow-wrap: anywhere; }
+.profile-flow-content .card { width: 100%; max-width: none; margin: 0; }
+.profile-flow-content input, .profile-flow-content select, .profile-flow-content textarea { max-width: 100%; }
+.profile-flow-dialog[aria-busy="true"] { cursor: progress; }
+@media (max-width: 480px) { .profile-flow-dialog { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); } .profile-flow-box { max-height: calc(100dvh - 1rem); } .profile-flow-content { padding: .75rem; } }
+@media (prefers-reduced-motion: no-preference) { .profile-flow-dialog[open] { animation: profile-flow-enter .15s ease-out; } @keyframes profile-flow-enter { from { opacity: 0; transform: translateY(.5rem); } to { opacity: 1; transform: translateY(0); } } }
+
+[data-profile-flow-inline] > summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; font-weight: 600; }
+[data-profile-flow-inline] > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }

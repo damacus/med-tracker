@@ -1,4 +1,5 @@
 use super::medications::{self as browser, forms, rendering};
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{
     care::{medications, orders},
     entities::medication,

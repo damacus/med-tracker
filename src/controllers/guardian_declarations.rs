@@ -1,3 +1,4 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::{
     controllers::medications::{authentication_error, operation_error, request_id, unavailable},
     models::{

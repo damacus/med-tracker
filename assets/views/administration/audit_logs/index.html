@@ -1,8 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="admin-page">
-  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{% if lang == "en" %}Administration{% else %}{{ admin_labels.nav.label }}{% endif %}</a>
-  {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.audit.title }}</h1>
   <p class="mt-2">{{ admin_labels.audit.description }}</p>
   {% include "administration/navigation.html" %}

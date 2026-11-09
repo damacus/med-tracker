@@ -1,6 +1,7 @@
 pub mod reports;
 pub mod review_prompts;
 pub mod searches;
+pub(crate) mod shell;
 use loco_rs::prelude::*;
 
 pub mod administration;

@@ -1,4 +1,5 @@
 use super::*;
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 
 fn household_json(household: &platform::recovery::RecoveryHousehold) -> Value {
     json!({

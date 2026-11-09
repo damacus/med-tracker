@@ -1,102 +1,24 @@
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use axum::{
     Extension,
     extract::Form,
     http::{HeaderMap, StatusCode, header},
-    response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
 use loco_rs::prelude::*;
 use serde_json::json;
 
-use crate::models::{
-    identity::better_auth::{BrowserIdentity, IdentityService, browser_identity, clinical_id},
-    platform,
-};
+use crate::models::identity::better_auth::{BrowserIdentity, IdentityService, browser_identity};
 
 pub(super) async fn settings(
-    State(ctx): State<AppContext>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    token: CsrfToken,
-    ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    let identity = browser_identity(&service, &super::passkeys::request(&headers)).await;
-    let Ok(BrowserIdentity::Authenticated { user, session }) = identity else {
-        return super::rendering::redirect("/login");
-    };
-    let Ok(user_id) = user.id.display_string() else {
-        return super::rendering::unavailable();
-    };
-    let Ok(account_id) = clinical_id(&user_id) else {
-        return super::rendering::unavailable();
-    };
-    let Ok(inventory) =
-        crate::models::identity::better_auth::security::inventory(&ctx.db, account_id).await
-    else {
-        return super::rendering::unavailable();
-    };
-    let Ok(accounts) = service.context().database.get_user_accounts(&user_id).await else {
-        return super::rendering::unavailable();
-    };
-    let Ok(authenticity_token) = token.authenticity_token() else {
-        return super::rendering::unavailable();
-    };
-    let mut data = crate::controllers::medications::rendering::appearance_context();
-    data["title"] = json!("Account security");
-    let Ok(email) = user.email.typed() else {
-        return super::rendering::unavailable();
-    };
-    data["email"] = json!(email);
-    let Ok(factor_enabled) = user.two_factor_enabled.typed() else {
-        return super::rendering::unavailable();
-    };
-    data["totp"] = json!(factor_enabled.unwrap_or(false));
-    data["password"] = json!(
-        accounts
-            .iter()
-            .any(|account| account.provider_id.as_str() == Some("credential")
-                && account.password.typed().is_ok_and(Option::is_some))
-    );
-    data["zitadel"] = json!(
-        accounts
-            .iter()
-            .any(|account| account.provider_id.as_str() == Some("zitadel"))
-    );
-    data["provider_available"] = json!(service.provider.is_some());
-    data["can_unlink_provider"] = json!(accounts.len() > 1);
-    data["passkeys"] = json!(
-        inventory.passkeys
-            .into_iter()
-            .map(|key| json!({"id":key.id.to_string(),"name":key.name.unwrap_or_else(|| "Passkey".into())}))
-            .collect::<Vec<_>>()
-    );
-    let Ok(current_id) = session.id.display_string().and_then(|id| clinical_id(&id)) else {
-        return super::rendering::unavailable();
-    };
-    let sessions=inventory.sessions.into_iter().map(|entry| json!({"id":entry.id.to_string(),"current":entry.id == current_id,"created":entry.created_at.format("%d %b %Y %H:%M UTC").to_string(),"expires":entry.expires_at.format("%d %b %Y %H:%M UTC").to_string()})).collect::<Vec<_>>();
-    data["sessions"] = json!(sessions);
-    let (mut platform_admin, mut support_access) = (false, false);
-    if let Ok(transaction) = platform::begin(&ctx.db).await {
-        platform_admin = platform::administrator(&transaction, account_id)
-            .await
-            .is_ok();
-        support_access = platform::support::support_link(&transaction, account_id)
-            .await
-            .unwrap_or(false);
-        let _ = transaction.rollback().await;
-    }
-    data["platform_admin"] = json!(platform_admin);
-    data["support_access"] = json!(support_access);
-    data["authenticity_token"] = json!(authenticity_token);
-    match format::render().view(&view, "identity_onboarding/security.html", data) {
-        Ok(response) => (
-            StatusCode::OK,
-            token,
-            [(header::CACHE_CONTROL, "no-store")],
-            response,
-        )
-            .into_response(),
-        Err(_) => super::rendering::unavailable(),
+    match browser_identity(&service, &super::passkeys::request(&headers)).await {
+        Ok(BrowserIdentity::Authenticated { .. }) => {
+            super::rendering::redirect("/profile#security")
+        }
+        _ => super::rendering::redirect("/login"),
     }
 }
 
@@ -107,6 +29,7 @@ pub(super) struct Revoke {
 }
 
 pub(super) async fn revoke(
+    ViewEngine(view): ViewEngine<TeraView>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     request_id: Option<Extension<loco_rs::controller::middleware::request_id::LocoRequestId>>,
@@ -114,7 +37,7 @@ pub(super) async fn revoke(
     Form(form): Form<Revoke>,
 ) -> Response {
     if csrf.verify(&form.authenticity_token).is_err() {
-        return StatusCode::FORBIDDEN.into_response();
+        return view.profile_rejection(StatusCode::FORBIDDEN);
     }
     let mut request = super::passkeys::request(&headers);
     request.method = better_auth_core::HttpMethod::Post;
@@ -132,12 +55,11 @@ pub(super) async fn revoke(
     {
         Ok(response) if response.status == 200 => {
             let body = response.body.json().ok().flatten().unwrap_or_default();
-            let mut redirect =
-                super::rendering::redirect(if body["current"].as_bool() == Some(true) {
-                    "/login"
-                } else {
-                    "/account/security"
-                });
+            let mut redirect = view.profile_redirect(if body["current"].as_bool() == Some(true) {
+                "/login"
+            } else {
+                "/account/security"
+            });
             for cookie in response.headers.get_all("set-cookie") {
                 let Ok(value) = cookie.parse() else {
                     return super::rendering::unavailable();
@@ -146,6 +68,6 @@ pub(super) async fn revoke(
             }
             redirect
         }
-        _ => StatusCode::UNAUTHORIZED.into_response(),
+        _ => view.profile_rejection(StatusCode::UNAUTHORIZED),
     }
 }

@@ -1,12 +1,10 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 {% set invite = invite_labels.index %}
-<section class="admin-page">
-  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ admin_labels.nav.overview }}</a>
-  {% include "administration/context.html" %}
+<section class="admin-page admin-invitations-page">
   <h1 class="text-3xl font-semibold mt-4">{{ invite.title }}</h1>
-  {% include "administration/navigation.html" %}
   <p class="mt-2">{{ invite.subtitle }}</p>
+  {% include "administration/navigation.html" %}
   {% if notice %}<p class="alert border border-success bg-success/10 text-base-content mt-6" role="status">{{ notice }}</p>{% endif %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
@@ -23,7 +21,6 @@
       <button class="btn btn-neutral mt-4" type="submit">{{ invite.form.submit }}</button>
     </form>
   </div></div>
-  <h2 class="text-xl font-semibold mt-8">{{ invite.recent }}</h2>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <h2 class="text-xl font-semibold">{{ invite_labels.acceptance.invite_guardian }}</h2>
     <p>{{ invite_labels.acceptance.invite_guardian_description }}</p>
@@ -35,7 +32,8 @@
       <button class="btn btn-neutral" type="submit">{{ invite_labels.acceptance.invite_guardian }}</button>
     </form>
   </div></div>
-  <form action="/households/{{ slug }}/admin/invitations" method="get" class="shell-panel grid gap-4 p-4 mt-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="{{ invite.filters.heading }}">
+  <h2 class="text-xl font-semibold mt-8">{{ invite.recent }}</h2>
+  <form action="/households/{{ slug }}/admin/invitations" method="get" class="admin-filter shell-panel grid gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="{{ invite.filters.heading }}">
     {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
     <div><label for="invitation-search" class="label">{{ invite.filters.search }}</label><input id="invitation-search" name="q" type="search" class="input w-full" maxlength="254" value="{{ filters.q }}"></div>
     <div><label for="invitation-role" class="label">{{ invite.form.role }}</label><select id="invitation-role" name="role" class="select w-full"><option value="">{{ invite.filters.all_roles }}</option>{% for role in roles %}<option value="{{ role }}" {% if filters.role == role %}selected{% endif %}>{{ role_labels[role] }}</option>{% endfor %}</select></div>

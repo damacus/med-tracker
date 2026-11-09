@@ -169,22 +169,30 @@ async fn person_owned_schedule_remains_editable_after_last_departure() {
                     .unwrap(),
                     "3"
                 );
-                page.get_by_role(AriaRole::Button, named("Retire plan"))
-                    .click(None)
+                let retire = format!("#retire-{}", plan.id);
+                let summary = page.locator(format!("{retire} > summary"));
+                summary.focus().await.unwrap();
+                summary.press("Enter", None)
                     .await
                     .unwrap();
-                expect(page.locator("dialog[open] button[data-dialog-close]"))
+                expect(page.locator(&retire)).to_have_attribute("open", "").await.unwrap();
+                expect(page.locator(format!("{retire} button[name=action][value=retire]")))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                expect(page.locator(format!("{retire} input[name=clinical_revision]")))
+                    .to_have_value(&(plan.clinical_revision + 1).to_string()).await.unwrap();
+                summary.press("Enter", None)
+                    .await
+                    .unwrap();
+                expect(page.locator(format!("{retire}:not([open])"))).to_have_count(1).await.unwrap();
+                expect(summary)
                     .to_be_focused()
                     .await
                     .unwrap();
-                page.locator("dialog[open]")
-                    .press("Escape", None)
-                    .await
-                    .unwrap();
-                expect(page.locator("button[data-dialog-open^='retire-']"))
-                    .to_be_focused()
-                    .await
-                    .unwrap();
+                let cancelled = person_schedules::Entity::find_by_id(plan.id).one(&journey.admin).await.unwrap().unwrap();
+                assert!(cancelled.retired_at.is_none());
+                assert_eq!(cancelled.clinical_revision, plan.clinical_revision + 1);
                 page.get_by_role(AriaRole::Button, named("Pause schedule"))
                     .click(None)
                     .await
@@ -197,6 +205,7 @@ async fn person_owned_schedule_remains_editable_after_last_departure() {
                     .click(None)
                     .await
                     .unwrap();
+                expect(page.get_by_role(AriaRole::Button, named("Pause schedule"))).to_be_visible().await.unwrap();
                 let directory = std::path::Path::new("docs/screenshots/person-owned-schedules");
                 let artifacts = std::path::Path::new("target/2684-task2-screenshots");
                 std::fs::create_dir_all(directory).unwrap();

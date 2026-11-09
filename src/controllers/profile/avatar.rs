@@ -1,6 +1,7 @@
 use super::super::medications::{
     authentication_error, begin, operation_error, request_id, unavailable,
 };
+use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{
     access::PersonAccess,
     errors::OperationError,

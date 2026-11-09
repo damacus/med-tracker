@@ -114,11 +114,13 @@ async fn login_images_follow_viewport_and_selected_appearance() {
             expect(page.get_by_role(AriaRole::Button, harness::named("Open household: Synthetic household")))
                 .to_be_visible().await.unwrap();
             let security = page.get_by_role(AriaRole::Link, harness::named("Security settings"));
-            expect(security.clone()).to_have_attribute("href", "/account/security").await.unwrap();
+            expect(security.clone()).to_have_attribute("href", "/profile#security").await.unwrap();
             security.press("Enter", None).await.unwrap();
-            expect(page.get_by_role(AriaRole::Heading, harness::named("Account security")))
+            expect(page.get_by_role(AriaRole::Heading, harness::named("My Profile")))
                 .to_be_visible().await.unwrap();
-            assert_eq!(page.locator("[data-appearance-choice], [data-dialog-open='appearance-dialog']").count().await.unwrap(), 0);
+            expect(page.locator("#profile-tab-security")).to_have_attribute("aria-selected", "true").await.unwrap();
+            expect(page.locator("#security [data-profile-security-content]")).to_be_visible().await.unwrap();
+            expect(page.locator("#profile")).to_be_hidden().await.unwrap();
             page.goto(&format!("{}/households/choose", journey.origin), None).await.unwrap();
             page.get_by_role(AriaRole::Button, harness::named("Open household: Synthetic household"))
                 .click(None).await.unwrap();
