@@ -68,7 +68,7 @@ export class Fields extends Array {
   get(name) { return this.find(field => field[0] === name)?.[1]; }
 }
 
-export function flowHarness({ inline, throwOpen = false, queueClose = false } = {}) {
+export function flowHarness({ inline, throwOpen = false, queueClose = false, serverChrome = true } = {}) {
   const native = [];
   const closeEvents = [];
   let document;
@@ -98,6 +98,17 @@ export function flowHarness({ inline, throwOpen = false, queueClose = false } = 
   host.dataset.profileDialogHost = '';
   host.dataset.profileUrl = '/profile';
   document.body.append(host);
+  if (serverChrome) {
+    const dialog = document.createElement('dialog'); dialog.dataset.profileFlowDialog = '';
+    const box = document.createElement('div'); box.className = 'profile-flow-box';
+    const header = document.createElement('header');
+    const heading = document.createElement('p'); heading.dataset.profileFlowHeading = '';
+    const close = document.createElement('button'); close.dataset.profileFlowClose = ''; close.type = 'button';
+    const status = document.createElement('p'); status.dataset.profileFlowStatus = ''; status.setAttribute('role', 'status');
+    const content = document.createElement('div'); content.dataset.profileFlowContent = ''; content.className = 'profile-flow-content';
+    header.append(heading, close); box.append(header, status, content); dialog.append(box);
+    document.body.append(dialog);
+  }
   const field = (name, value, tag = 'input', type = 'text') => Object.assign(document.createElement(tag), { name, value, type });
   const root = (kind, outcome = 'continue') => {
     const element = document.createElement('section');

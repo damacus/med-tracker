@@ -2,6 +2,20 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { FlowEvent, flowHarness, settle } from './profile-flow-harness.mjs';
 
+test('profile enhancement uses the existing server-rendered dialog without constructing another', async () => {
+  const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
+  const state = flowHarness({ serverChrome: true });
+  const existing = state.document.querySelector('dialog');
+  const create = state.document.createElement;
+  state.document.createElement = tag => { assert.notEqual(tag, 'dialog', 'dialog chrome is already rendered'); return create(tag); };
+  await state.environment(async () => {
+    mountProfileDialogs(state.document);
+    assert.equal(state.host.dataset.profileDialogsReady, 'true');
+    assert.equal(state.document.querySelector('dialog'), existing);
+    assert.equal(state.document.querySelectorAll('dialog').length, 1);
+  });
+});
+
 test('profile flow destinations are limited to local setting routes', async () => {
   const { localFlowUrl } = await import('../../assets/static/js/profile-dialogs.js');
   const base = new URL('https://example.test/households/one/profile');
@@ -68,45 +82,20 @@ test('dismissal clears one-time material and password values without caching the
 
 test('a dialog initialisation failure restores the live inline form and leaves native entry links alone', async () => {
   const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
-  class Element {
-    constructor(tag) { this.tag = tag; this.dataset = {}; this.children = []; }
-    append(...nodes) { for (const node of nodes) { node.remove(); node.parent = this; this.children.push(node); } }
-    replaceWith(node) { const parent = this.parent; const index = parent.children.indexOf(this); this.remove(); node.remove(); node.parent = parent; parent.children.splice(index, 0, node); }
-    remove() { if (this.parent) { this.parent.children.splice(this.parent.children.indexOf(this), 1); this.parent = null; } }
-    setAttribute() {}
-    addEventListener() {}
-    querySelectorAll(selector) { return this.children.flatMap(child => [...(selector === '[data-profile-flow-root]' && child.dataset.flowOutcome ? [child] : []), ...child.querySelectorAll(selector)]); }
-    querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
-  }
-  const host = new Element('main');
-  host.dataset.profileUrl = '/profile';
-  const inline = new Element('section');
-  inline.dataset.flowOutcome = 'continue';
-  inline.dataset.flowProfile = '/profile';
-  host.append(inline);
-  const body = new Element('body');
-  body.append(host);
-  const listeners = new Map();
-  const document = {
-    body,
-    querySelector() { return host; },
-    createElement(tag) { const element = new Element(tag); if (tag === 'dialog') element.showModal = () => { throw Error('Initialisation failed'); }; return element; },
-    addEventListener(type, listener) { listeners.set(type, listener); },
-  };
-  const previous = { location: globalThis.location, window: globalThis.window };
-  globalThis.location = { origin: 'https://example.test' };
-  globalThis.window = { addEventListener() {} };
-  try {
-    mountProfileDialogs(document);
-    assert.equal(host.querySelector('[data-profile-flow-root]'), inline);
-    assert.notEqual(host.dataset.profileDialogsReady, 'true');
-    let prevented = false;
-    listeners.get('click')({ button: 0, preventDefault() { prevented = true; } });
-    assert.equal(prevented, false);
-  } finally {
-    globalThis.location = previous.location;
-    globalThis.window = previous.window;
-  }
+  let inline;
+  const state = flowHarness({ throwOpen: true, inline: ({ root }) => { inline = root('password'); return inline; } });
+  await state.environment(async () => {
+    mountProfileDialogs(state.document);
+    assert.equal(state.host.querySelector('[data-profile-flow-root]'), inline);
+    assert.notEqual(state.host.dataset.profileDialogsReady, 'true');
+    const entry = state.document.createElement('a');
+    entry.href = 'https://example.test/profile?panel=password';
+    entry.dataset.profileFlowEntry = 'password';
+    state.host.append(entry);
+    const click = new FlowEvent('click');
+    entry.dispatchEvent(click);
+    assert.equal(click.defaultPrevented, false);
+  });
 });
 
 test('runtime opening failure retains native GET and password-bearing named POST actions', async () => {
