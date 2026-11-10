@@ -1,84 +1,152 @@
-# Fresh Rust installation notes
+# Install MedTracker
 
-Root Loco uses PostgreSQL 18. Install it against a new, empty database and
-create fresh accounts. Follow [ADR 0016](../adrs/0016-fresh-rust-without-legacy-compatibility.md):
-PR #3028 removed the Rails application from the current tree; its files remain
-in Git history. There is no Rails schema adoption, credential conversion or
-reverse migration. These notes describe fresh
-installation requirements. They do not define a cutover, live-data transfer or
-Rails recovery plan, and they do not authorise a release or deployment.
+MedTracker 0.6 runs on PostgreSQL 18 with a fresh database and new accounts.
+One installation serves multiple accounts and households, with application
+permissions and PostgreSQL row-level security separating their data. Keep any
+previous Rails database separately: setup does not import, reset or adopt it.
 
-Rust supports versioned encrypted portable export and import under the
-[portable-data contract](../api/portable-data.md). Frozen synthetic Rails
-fixtures cover selected serializer examples only; they do not establish
-database-backed export selection or completeness for all Rails records. The
-known v1/v2 limitations and remaining compatibility evidence are tracked under
-[#2702](https://github.com/damacus/med-tracker/issues/2702). That work does not
-require planning or performing a Rails cutover for this release.
+Docker Compose and Helm use the same application binary. Initial setup creates
+the schema, internal roles and restricted application access. Routine upgrades
+run automatically with a separate non-superuser schema-update login. Operators
+do not create roles, assign grants or maintain database setup scripts.
 
-## Image and configuration
+Use a released image and chart version, preferably pinning the image digest.
+Expose the application through HTTPS and keep secure production cookies enabled.
+See [release notes](../releases/0.6.md) for remaining limitations and
+[configuration](../../config/production.yaml) for all available settings.
 
-- Root-Loco server, worker and scheduler images have native `linux/amd64` and
-  `linux/arm64` build and smoke-check coverage. Follow
-  [Loco Linux images](loco-images.md) for the current image workflow. It builds
-  and checks the Loco images; PR #3028 archived Rails and removed its separate
-  image publisher. Publication is not deployment.
-- Use the selected version or immutable image reference in the installation's
-  configuration. Keep server and worker versions compatible with the schema.
-  This guide does not select a release version or image digest.
-- Use [`config/production.yaml`](../../config/production.yaml) as the Rust
-  settings reference. Set the public origin with `MEDTRACKER_PUBLIC_HOST`,
-  `PORT` and the appropriate `BINDING`; keep production secure cookies enabled.
-  Provision a persistent `AUTH_SESSION_SECRET` and 64-byte Base64
-  `MEDTRACKER_SESSION_KEY` through the secret store, shared across replicas. Do
-  not use fixture keys or copy Rails credentials.
-- Keep setup credentials separate from the restricted runtime
-  `DATABASE_URL`. The runtime login inherits `med_tracker_app`, has no
-  owner-role membership or superuser/`BYPASSRLS` privileges, and serves both
-  application and queue access. Keep production automatic migration,
-  truncation and recreation disabled.
-- Configure private storage consistently across replicas: avatars use
-  `ACTIVE_STORAGE_S3_*`; dm+d uses `S3_ENDPOINT`, `S3_BUCKET`, `AWS_REGION` and
-  its access/secret keys. Keep secrets in the deployment secret store and
-  preserve existing objects. Configure enabled mail/push delivery and the
-  registration, session/token lifetime, timezone and dose-signing settings.
-- The root `worker` Task starts a worker **and** scheduler. The `scheduler` Task
-  is another scheduler entry point. Choose one scheduler owner; avoid starting
-  both unintentionally. Current schedules cover support expiry, dm+d, browser
-  reminders and medication-review refresh.
+## Docker Compose
 
-## Fresh installation
+Check out the release you want to install. Create a private `.env` file
+(`chmod 600 .env`) with a strong PostgreSQL bootstrap password, the image
+reference, the public hostname and your mail configuration:
 
-1. Provision a new, empty PostgreSQL 18 database and the required storage.
-   Stop if the target is populated or its ownership is unclear. Initial schema
-   installation uses root `db:migrate` with a separate
-   `MIGRATION_DATABASE_URL`; see [database setup](../testing.md#loco-database-setup).
-   `db:seed` and `db:prepare` load synthetic fixtures for development and test,
-   not production users.
-2. Configure the selected Loco image, runtime settings, restricted database
-   credentials, storage and mail/push services. Create new Better Auth accounts;
-   existing Rails credentials and sessions do not authenticate to Rust.
-3. Use the installation's normal controller to run the server, worker and one
-   scheduler against that database. Observe startup and ordinary sign-in and
-   care operations as part of the owner's release process.
-4. Where portable transfer is needed, use only the currently supported
-   encrypted import/export contract and its documented limits. A frozen fixture
-   or successful Rust-native round trip does not prove that every Rails export
-   can be restored. Unknown-completeness retained prescription snapshots remain
-   blocked from adoption and fresh dose recording under PR #3029; no recovery
-   procedure is promised.
+```dotenv
+POSTGRES_PASSWORD=<long-random-password>
+LOCO_IMAGE=ghcr.io/damacus/med-tracker-loco:0.6.0
+MEDTRACKER_PUBLIC_HOST=https://med-tracker.example.org
+MEDTRACKER_COOKIE_SECURE=true
+MEDTRACKER_SMTP_ENABLED=true
+MEDTRACKER_SMTP_HOST=smtp.example.org
+MEDTRACKER_SMTP_USER=<smtp-user>
+MEDTRACKER_SMTP_PASSWORD=<smtp-password>
+MEDTRACKER_MAIL_FROM=MedTracker <notifications@example.org>
+```
 
-## Related scope
+The default bootstrap connection uses the PostgreSQL service in Compose. Use a
+URL-safe bootstrap password, or set `MEDTRACKER_SETUP_DATABASE_URL` to the full
+connection URI with a percent-encoded password. Bootstrap access goes only to
+PostgreSQL and the initial setup service.
 
-Account-owned dose-history reading is delivered (#2982; first-release history
-issue [#2685](https://github.com/damacus/med-tracker/issues/2685) is closed).
-Person-owned shared treatment plans and cross-household sharing remain
-unfinished under [#2684](https://github.com/damacus/med-tracker/issues/2684) and
-[#2976](https://github.com/damacus/med-tracker/issues/2976). Household
-administration does not grant permission to change a person's plan.
+Run initial setup, then start the application:
 
-Physical phone-camera acceptance remains follow-up fix-forward work under
-[#2524](https://github.com/damacus/med-tracker/issues/2524). Simulated camera
-input does not prove a physical phone camera works. Optional medication
-locations remain paused for the owner's UI audit. These notes do not turn those
-items or Rails-export completeness into a deployment or recovery gate.
+```fish
+docker compose -f compose.yaml -f compose.production.yaml --profile setup run --rm setup
+docker compose -f compose.yaml -f compose.production.yaml up -d
+```
+
+Setup generates runtime and schema-update credentials and persistent session
+keys. To choose credentials instead, supply `MEDTRACKER_RUNTIME_DATABASE_URL`
+and `MEDTRACKER_UPDATE_DATABASE_URL` before setup. Both must point to the same
+database as the setup connection. Existing passwords are never silently changed.
+
+Generated configuration is stored in separate private named volumes using
+Loco's native YAML overlays. The running app, worker and scheduler mount only
+runtime configuration, read-only. The update service mounts only update
+configuration. The current production template is supplied as a Compose config,
+so mail and other environment settings remain configurable after installation.
+
+The web service listens on loopback port 5150. Connect your HTTPS reverse proxy
+to it. Set `MEDTRACKER_PORT` if that local port is occupied.
+
+For a routine upgrade, update `LOCO_IMAGE` to the desired release and run:
+
+```fish
+docker compose -f compose.yaml -f compose.production.yaml pull
+docker compose -f compose.yaml -f compose.production.yaml up -d
+```
+
+Compose runs the schema-update service before starting the new application
+processes. A failed update blocks their startup. Ordinary restarts reuse the
+same credentials and data; do not rerun initial administrator setup for each
+release. PostgreSQL data and both configuration volumes must be backed up.
+Do not remove volumes as part of an upgrade.
+
+## Helm
+
+Provision a fresh PostgreSQL 18 database. Put its administrator connection URI
+in a Kubernetes Secret using your existing secret manager; the default key is
+`DATABASE_URL`. For example, HomeOps uses 1Password and ExternalSecrets.
+The application only needs administrator access during initial installation.
+
+Create a values file:
+
+```yaml
+database:
+  host: postgres.example.internal
+  name: medtracker
+  bootstrap:
+    existingSecret: med-tracker-bootstrap
+env:
+  MEDTRACKER_PUBLIC_HOST: https://med-tracker.example.org
+  MEDTRACKER_PUBLIC_ORIGIN: https://med-tracker.example.org
+envFrom:
+  - secretRef:
+      name: med-tracker-integrations
+```
+
+The integrations Secret supplies the SMTP variables shown above and any enabled
+storage or identity-provider configuration. Configure HTTPS ingress or Gateway
+API routing to the chart's Service.
+
+```fish
+helm install med-tracker https://github.com/damacus/med-tracker/releases/download/v0.6.0/med-tracker-0.6.0.tgz --values values.yaml --wait --timeout 10m
+```
+
+The chart generates runtime and schema-update Secrets, runs initial setup before
+application startup, and retains those credentials on subsequent upgrades.
+To use an existing secret manager for all credentials, supply
+`database.runtime.existingSecret` and `database.update.existingSecret`.
+Both contain `DATABASE_URL`; the runtime Secret also supplies
+`AUTH_SESSION_SECRET` and `MEDTRACKER_SESSION_KEY`.
+
+Each GitHub release includes the chart archive and its SHA-256 checksum.
+Upgrade through Helm, or let Flux reconcile the chart from the matching Git tag:
+
+```fish
+helm upgrade med-tracker https://github.com/damacus/med-tracker/releases/download/v<next-version>/med-tracker-<next-version>.tgz --reuse-values --wait --timeout 10m
+```
+
+The chart runs the native `db migrate` command in a pre-upgrade hook using the
+schema-update login. A failed hook stops the rollout. Routine upgrades do not
+mount or require the administrator Secret. If image tags or digests are
+explicitly pinned in values, update them to match the chart release.
+
+When an existing Helm release is being pointed at a new empty database, use
+`setup.bootstrapOnUpgrade: true` for that one cutover. Remove that setting after
+successful initial setup. This does not migrate data from the old database.
+
+See the [chart reference](https://github.com/damacus/med-tracker/blob/main/charts/med-tracker/README.md) for existing-secret,
+routing and image settings. Generated Secrets are retained on uninstall; keep
+them with database backups rather than deleting them during an upgrade.
+
+## Configuration and schema changes
+
+The server, worker and single scheduler use restricted runtime credentials.
+The runtime `auto_migrate` setting remains false because Compose and Helm perform
+automatic schema updates with separate credentials. Truncation and database
+recreation remain disabled.
+
+Initial setup establishes RLS and grants. Routine 0.6 releases preserve that
+security model and remain compatible with the previous running application.
+Deliberate RLS or privilege changes belong in a planned release such as 0.7
+with a one-time upgrade guide.
+
+SMTP is required for real account verification and recovery mail. Configure the
+private S3-compatible storage settings for enabled avatar and dm+d features.
+Keep session keys stable across replicas and restarts; never substitute the
+committed development fixtures. Production seeding is not an installation step.
+
+Supported encrypted portable import/export remains subject to the
+[portable-data contract](../api/portable-data.md). It is not a general Rails
+database or credential migration mechanism.

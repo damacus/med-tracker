@@ -7,7 +7,10 @@
 			"release-as": "0.6.0",
 			"prerelease": false,
 			"include-component-in-tag": false,
-			"initial-version": "0.1.0"
+			"initial-version": "0.1.0",
+			"extra-files": [
+				{"type": "yaml", "path": "charts/med-tracker/Chart.yaml", "jsonpath": "$['version','appVersion']"}
+			]
 		}
 	},
 	"release-search-depth": 100,

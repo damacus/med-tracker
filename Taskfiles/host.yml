@@ -173,6 +173,7 @@ tasks:
     env:
       RUST_ICU_MAJOR_VERSION_NUMBER: *icu_major
       RUST_ICU_LINK_SEARCH_DIR: *icu_lib
+      MEDTRACKER_CANARY_ENABLED: "true"
     cmds:
       - defer:
           task: foundation:db-down

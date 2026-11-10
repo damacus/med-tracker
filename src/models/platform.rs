@@ -13,6 +13,7 @@ use serde_json::json;
 const PER_PAGE: i64 = 25;
 const PLATFORM_LOCK: i32 = 3;
 
+pub mod database_setup;
 pub(crate) mod expiry;
 pub(crate) mod recovery;
 pub(crate) mod support;

@@ -74,7 +74,7 @@ impl IdentityPolicy {
             .map_err(database_error)?;
         self.audit(transaction, account_id, "account", "closed")
             .await?;
-        super::super::mail::notice_address_in(transaction, &address, "Account closed", "Your MedTracker account was closed. Your sign-in methods, sessions and personal API keys are no longer usable. Shared care records and audit history are preserved.").await?;
+        super::super::mail::notice_address_in(transaction, &address, "Account closed", "Your MedTracker account was closed. Your sign-in methods, sessions and personal API keys are no longer usable. Shared care records and audit history are preserved.", self.settings()).await?;
         transaction.execute_raw(statement("UPDATE public.api_sessions SET revoked_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE account_id=$1 AND revoked_at IS NULL", [account_id.into()])).await.map_err(database_error)?;
         transaction.execute_raw(statement("UPDATE public.api_app_tokens SET revoked_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE account_id=$1 AND revoked_at IS NULL", [account_id.into()])).await.map_err(database_error)?;
         transaction.execute_raw(statement("UPDATE public.oauth_grants SET revoked_at=timezone('UTC',clock_timestamp()) WHERE account_id=$1 AND revoked_at IS NULL", [account_id.into()])).await.map_err(database_error)?;

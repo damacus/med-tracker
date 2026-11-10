@@ -1,0 +1,90 @@
+{{- $root := . }}
+{{- range $component := list "server" "worker" "scheduler" }}
+{{- if or (eq $component "server") (index $root.Values $component).enabled }}
+{{- $name := include "med-tracker.name" $root }}
+{{- $controller := ternary $name (printf "%s-%s" $name $component) (eq $component "server") }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $controller }}
+  {{- with $root.Values.deploymentAnnotations }}
+  annotations: {{ toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+      app.kubernetes.io/name: {{ $root.Chart.Name }}
+      app.kubernetes.io/controller: {{ $controller }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ $root.Release.Name }}
+        app.kubernetes.io/name: {{ $root.Chart.Name }}
+        app.kubernetes.io/controller: {{ $controller }}
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets: {{ $root.Values.imagePullSecrets | toJson }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: {{ $component }}
+          image: {{ include "med-tracker.image" $root }}
+          imagePullPolicy: {{ $root.Values.image.pullPolicy }}
+          {{- if eq $component "scheduler" }}
+          args: [scheduler, --environment, production]
+          {{- else if eq $component "worker" }}
+          args: [start, --worker, --environment, production]
+          {{- else }}
+          args: [start, --environment, production]
+          ports:
+            - name: http
+              containerPort: 5150
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+          {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ include "med-tracker.runtime-secret" $root }}
+            {{- with $root.Values.envFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "med-tracker.runtime-secret" $root }}
+                  key: {{ $root.Values.database.runtime.key }}
+            {{- range $name, $value := $root.Values.env }}
+            - name: {{ $name }}
+              value: {{ $value | toString | quote }}
+            {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources: {{ $root.Values.resources | toJson }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}
+{{- end }}

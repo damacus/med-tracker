@@ -38,6 +38,7 @@ pub mod m20261104_000033_guardian_authority_eligibility;
 pub mod m20261104_000034_sharing_member_plan_cache;
 pub mod m20261106_000035_loco_queue;
 mod native_authentication;
+pub mod provision;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
 pub struct Migrator;
@@ -148,9 +149,10 @@ impl MigratorTrait for Migrator {
                    IF current_setting('server_version_num')::int NOT BETWEEN 180000 AND 189999
                    THEN RAISE EXCEPTION 'MedTracker requires PostgreSQL 18'; END IF;
                  END $$;
-                 SELECT pg_advisory_xact_lock(5567948073909809714)",
+                 ",
                 )
                 .await?;
+            provision::lock(&transaction).await?;
             StandardMigrator::install(&transaction).await?;
             let installed = transaction.query_one_raw(sea_orm::Statement::from_sql_and_values(
                 sea_orm::DbBackend::Postgres,

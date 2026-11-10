@@ -1,0 +1,43 @@
+image:
+  repository: ghcr.io/damacus/med-tracker-loco
+  tag: ""
+  pullPolicy: IfNotPresent
+  digest: ""
+fullnameOverride: ""
+deploymentAnnotations: {}
+imagePullSecrets: []
+envFrom: []
+route: {}
+database:
+  host: ""
+  port: 5432
+  name: medtracker
+  bootstrap:
+    existingSecret: ""
+    key: DATABASE_URL
+  runtime:
+    existingSecret: ""
+    key: DATABASE_URL
+  update:
+    existingSecret: ""
+    key: DATABASE_URL
+setup:
+  enabled: true
+  bootstrapOnUpgrade: false
+  timeoutSeconds: 600
+env:
+  MEDTRACKER_PUBLIC_HOST: ""
+  MEDTRACKER_PUBLIC_ORIGIN: ""
+  MEDTRACKER_COOKIE_SECURE: "true"
+service:
+  port: 5150
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 1Gi
+worker:
+  enabled: true
+scheduler:
+  enabled: true

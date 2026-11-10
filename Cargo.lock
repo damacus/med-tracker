@@ -4187,6 +4187,7 @@ dependencies = [
  "oxide-auth",
  "oxide-auth-async",
  "pbkdf2",
+ "percent-encoding",
  "playwright-rs",
  "proptest",
  "prost",

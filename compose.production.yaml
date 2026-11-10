@@ -1,0 +1,85 @@
+services:
+  postgres:
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong PostgreSQL bootstrap password}
+    volumes:
+      - postgres-production:/var/lib/postgresql
+  setup:
+    profiles: [setup]
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: [task, database-setup, --environment, production]
+    environment:
+      DATABASE_URL: ${MEDTRACKER_SETUP_DATABASE_URL:-postgres://medtracker:${POSTGRES_PASSWORD}@postgres/medtracker_loco}
+      MEDTRACKER_RUNTIME_DATABASE_URL: ${MEDTRACKER_RUNTIME_DATABASE_URL:-}
+      MEDTRACKER_UPDATE_DATABASE_URL: ${MEDTRACKER_UPDATE_DATABASE_URL:-}
+      MEDTRACKER_SETUP_PERSIST_CONFIG: "true"
+    volumes:
+      - runtime-configuration:/app/setup/runtime
+      - update-configuration:/app/setup/update
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  update:
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: [db, migrate, --environment, production]
+    environment:
+      LOCO_CONFIG_FOLDER: /app/setup/update
+    volumes:
+      - update-configuration:/app/setup/update:ro
+    configs:
+      - source: production
+        target: /app/setup/update/production.yaml
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  app: &runtime
+    restart: unless-stopped
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0}
+    depends_on:
+      update:
+        condition: service_completed_successfully
+    command: [start, --environment, production]
+    environment: &runtime-environment
+      LOCO_CONFIG_FOLDER: /app/setup/runtime
+      MEDTRACKER_PUBLIC_HOST: ${MEDTRACKER_PUBLIC_HOST:?Set the public HTTPS origin}
+      MEDTRACKER_PUBLIC_ORIGIN: ${MEDTRACKER_PUBLIC_HOST:?Set the public HTTPS origin}
+      MEDTRACKER_COOKIE_SECURE: ${MEDTRACKER_COOKIE_SECURE:-true}
+      MEDTRACKER_SMTP_ENABLED: ${MEDTRACKER_SMTP_ENABLED:-false}
+      MEDTRACKER_SMTP_HOST: ${MEDTRACKER_SMTP_HOST:-}
+      MEDTRACKER_SMTP_PORT: ${MEDTRACKER_SMTP_PORT:-587}
+      MEDTRACKER_SMTP_USER: ${MEDTRACKER_SMTP_USER:-}
+      MEDTRACKER_SMTP_PASSWORD: ${MEDTRACKER_SMTP_PASSWORD:-}
+      MEDTRACKER_MAIL_FROM: ${MEDTRACKER_MAIL_FROM:-}
+    volumes:
+      - runtime-configuration:/app/setup/runtime:ro
+    configs:
+      - source: production
+        target: /app/setup/runtime/production.yaml
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ports:
+      - 127.0.0.1:${MEDTRACKER_PORT:-5150}:5150
+  worker:
+    <<: *runtime
+    command: [start, --worker, --environment, production]
+    ports: []
+  scheduler:
+    <<: *runtime
+    command: [scheduler, --environment, production]
+    ports: []
+configs:
+  production:
+    file: ./config/production.yaml
+volumes:
+  postgres-production:
+  runtime-configuration:
+  update-configuration:

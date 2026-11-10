@@ -63,7 +63,10 @@ async fn navigation(viewport: Viewport, size: &'static str) {
         let directory = std::path::Path::new("docs/screenshots/accessibility-level-a");
         std::fs::create_dir_all(directory).unwrap();
         page.screenshot_to_file(&directory.join(format!("navigation-{size}.png")), ScreenshotOptions::builder().animations(Animations::Disabled).build()).await.unwrap();
-        if !desktop { page.locator("[data-app-drawer]").click(None).await.unwrap(); }
+        if !desktop {
+            page.locator("[data-app-drawer]").click(None).await.unwrap();
+            expect(page.locator("[data-drawer-close]")).to_be_focused().await.unwrap();
+        }
         let trigger = page.locator(if desktop { ".app-sidebar [data-household-trigger]" } else { "#app-drawer [data-household-trigger]" });
         trigger.focus().await.unwrap();
         page.keyboard().press("Enter", None).await.unwrap();

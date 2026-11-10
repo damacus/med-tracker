@@ -54,11 +54,15 @@ pub(super) fn signup_created(request: &better_auth_core::AuthRequest) -> AuthRes
     Ok(())
 }
 
-pub(super) fn verification(db: DatabaseConnection) -> EmailVerificationCallbacks<AccountSchema> {
+pub(super) fn verification(
+    db: DatabaseConnection,
+    from: Option<String>,
+) -> EmailVerificationCallbacks<AccountSchema> {
     let db = Arc::new(db);
     EmailVerificationCallbacks::send(move |message, endpoint| {
         let user = message.user_view()?;
         let email = Email {
+            from: from.clone(),
             to: user
                 .email
                 .typed()?
@@ -113,11 +117,15 @@ pub(super) fn verification(db: DatabaseConnection) -> EmailVerificationCallbacks
     })
 }
 
-pub(super) fn password(db: DatabaseConnection) -> PasswordManagementCallbacks<AccountSchema> {
+pub(super) fn password(
+    db: DatabaseConnection,
+    from: Option<String>,
+) -> PasswordManagementCallbacks<AccountSchema> {
     let db = Arc::new(db);
     PasswordManagementCallbacks::send_reset_password(move |message, _| {
         let user = &message.user;
         let email = Email {
+            from: from.clone(),
             to: user
                 .email
                 .typed()?
@@ -139,6 +147,7 @@ pub(super) async fn send_passwordless_registration(
     context: &better_auth_core::AuthContext<AccountSchema>,
     user: &better_auth_core::wire::UserView,
     transaction: &better_auth_seaorm::TransactionConnection,
+    from: Option<String>,
 ) -> AuthResult<()> {
     let (sender, receiver) = std::sync::mpsc::sync_channel::<Email>(1);
     let mut local = context.clone();
@@ -148,6 +157,7 @@ pub(super) async fn send_passwordless_registration(
             move |message, _| {
                 let user = message.user_view()?;
                 let email = Email {
+                    from: from.clone(),
                     to: user
                         .email
                         .typed()?
