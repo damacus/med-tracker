@@ -26,11 +26,17 @@ jobs:
         with:
           version: v4.3.1
       - name: Validate chart installation and automatic upgrades
+        env:
+          HELM_PUBLIC_ORIGIN: https://medtracker.example.test
         run: |
-          helm lint charts/med-tracker --set database.host=postgres --set database.bootstrap.existingSecret=bootstrap
-          helm template med-tracker charts/med-tracker --set database.host=postgres --set database.bootstrap.existingSecret=bootstrap > "$RUNNER_TEMP/helm-install.yaml"
-          helm template med-tracker charts/med-tracker --is-upgrade --set database.host=postgres > "$RUNNER_TEMP/helm-upgrade.yaml"
-          helm template med-tracker charts/med-tracker --is-upgrade --set database.host=postgres --set database.bootstrap.existingSecret=bootstrap --set setup.bootstrapOnUpgrade=true > "$RUNNER_TEMP/helm-cutover.yaml"
+          if helm template med-tracker charts/med-tracker --set database.host=postgres --set database.bootstrap.existingSecret=bootstrap > "$RUNNER_TEMP/helm-invalid-origin.log" 2>&1; then
+            echo 'Chart accepted missing production HTTPS origins' >&2
+            exit 1
+          fi
+          helm lint charts/med-tracker --set database.host=postgres --set database.bootstrap.existingSecret=bootstrap --set env.MEDTRACKER_PUBLIC_HOST="$HELM_PUBLIC_ORIGIN" --set env.MEDTRACKER_PUBLIC_ORIGIN="$HELM_PUBLIC_ORIGIN"
+          helm template med-tracker charts/med-tracker --set database.host=postgres --set database.bootstrap.existingSecret=bootstrap --set env.MEDTRACKER_PUBLIC_HOST="$HELM_PUBLIC_ORIGIN" --set env.MEDTRACKER_PUBLIC_ORIGIN="$HELM_PUBLIC_ORIGIN" > "$RUNNER_TEMP/helm-install.yaml"
+          helm template med-tracker charts/med-tracker --is-upgrade --set database.host=postgres --set env.MEDTRACKER_PUBLIC_HOST="$HELM_PUBLIC_ORIGIN" --set env.MEDTRACKER_PUBLIC_ORIGIN="$HELM_PUBLIC_ORIGIN" > "$RUNNER_TEMP/helm-upgrade.yaml"
+          helm template med-tracker charts/med-tracker --is-upgrade --set database.host=postgres --set database.bootstrap.existingSecret=bootstrap --set setup.bootstrapOnUpgrade=true --set env.MEDTRACKER_PUBLIC_HOST="$HELM_PUBLIC_ORIGIN" --set env.MEDTRACKER_PUBLIC_ORIGIN="$HELM_PUBLIC_ORIGIN" > "$RUNNER_TEMP/helm-cutover.yaml"
 
   loco_lint:
     name: Rust lint and formatting

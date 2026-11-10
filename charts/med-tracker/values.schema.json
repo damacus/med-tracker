@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["env"],
+  "properties": {
+    "env": {
+      "type": "object",
+      "required": ["MEDTRACKER_PUBLIC_HOST", "MEDTRACKER_PUBLIC_ORIGIN"],
+      "properties": {
+        "MEDTRACKER_PUBLIC_HOST": {
+          "type": "string",
+          "description": "The public HTTPS origin used to access MedTracker.",
+          "pattern": "^https://[^/?#\\s@]+/?$"
+        },
+        "MEDTRACKER_PUBLIC_ORIGIN": {
+          "type": "string",
+          "description": "The public HTTPS origin used for production request validation.",
+          "pattern": "^https://[^/?#\\s@]+/?$"
+        }
+      }
+    }
+  }
+}

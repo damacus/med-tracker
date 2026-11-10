@@ -26,8 +26,8 @@ setup:
   bootstrapOnUpgrade: false
   timeoutSeconds: 600
 env:
-  MEDTRACKER_PUBLIC_HOST: http://localhost:5150
-  MEDTRACKER_PUBLIC_ORIGIN: http://localhost:5150
+  MEDTRACKER_PUBLIC_HOST: ""
+  MEDTRACKER_PUBLIC_ORIGIN: ""
   MEDTRACKER_COOKIE_SECURE: "true"
 service:
   port: 5150

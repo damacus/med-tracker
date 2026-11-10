@@ -3,7 +3,9 @@
 See the [installation guide](../../docs/operations/loco-cutover-runbook.md)
 for PostgreSQL 18 requirements, credentials and upgrades.
 
-Set `database.host` and `database.bootstrap.existingSecret`. The bootstrap Secret
+Set `database.host`, `database.bootstrap.existingSecret`, and the HTTPS origin in
+both `env.MEDTRACKER_PUBLIC_HOST` and `env.MEDTRACKER_PUBLIC_ORIGIN`. Helm validates
+the required HTTPS origins before creating resources. The bootstrap Secret
 contains `DATABASE_URL` for the empty database's administrator. The chart
 generates separate runtime and schema-update credentials, retaining them across
 upgrades. Alternatively, provide `database.runtime.existingSecret` and
