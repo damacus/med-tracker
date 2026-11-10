@@ -65,7 +65,13 @@ async fn seeded_care_full_boot_gate_and_replay() {
         .to_owned();
     control.execute(&insert).await.unwrap();
     let mut preflight_config = Config::new(&Environment::Production).unwrap();
-    preflight_config.mailer = None;
+    let canary_mailer = preflight_config.mailer.clone();
+    assert!(canary_mailer.as_ref().is_some_and(|mailer| mailer.stub));
+    assert_eq!(
+        settings::flag(preflight_config.settings.as_ref(), &["canary", "enabled"]),
+        Some(true)
+    );
+    preflight_config.settings.as_mut().unwrap()["canary"]["enabled"] = json!(false);
     preflight_config.database.uri = uri.clone();
     preflight_config.queue =
         Some(serde_yaml_ng::from_str(&format!("kind: Postgres\nuri: {uri}\n")).unwrap());
@@ -88,7 +94,7 @@ async fn seeded_care_full_boot_gate_and_replay() {
     }
     preflight.config.mailer = Some(serde_json::from_value(json!({"stub":false})).unwrap());
     assert!(validate(&preflight).is_err());
-    preflight.config.mailer = None;
+    preflight.config.mailer = canary_mailer;
 
     preflight.shared_store.insert(Arc::new(Canary {
         control: control.clone(),

@@ -117,11 +117,13 @@ scheduler:
       run: medication-review-evidence-refresh
       schedule: "0 0 3 * * Sun"
 mailer:
+  stub: <%= get_env(name="MEDTRACKER_CANARY_ENABLED", default="false") %>
   smtp:
     enable: <%= get_env(name="MEDTRACKER_SMTP_ENABLED", default="false") %>
     host: "<%= get_env(name="MEDTRACKER_SMTP_HOST", default="") %>"
     port: <%= get_env(name="MEDTRACKER_SMTP_PORT", default="587") %>
     secure: true
+    tls: starttls
     auth:
       user: "<%= get_env(name="MEDTRACKER_SMTP_USER", default="") %>"
       password: "<%= get_env(name="MEDTRACKER_SMTP_PASSWORD", default="") %>"
