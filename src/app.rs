@@ -43,6 +43,9 @@ impl Hooks for App {
     ) -> Result<BootResult> {
         let ctx = create_context::<Self>(environment, config).await?;
         let result = async {
+            if ctx.environment == Environment::Production {
+                crate::models::platform::database_setup::validate_runtime(&ctx).await?;
+            }
             loco_rs::db::converge::<Self, Migrator>(&ctx, &ctx.config.database).await?;
             if let (Some(queue), Some(QueueConfig::Postgres(config))) =
                 (&ctx.queue_provider, &ctx.config.queue)
@@ -451,6 +454,7 @@ impl Hooks for App {
     }
 
     fn register_tasks(tasks: &mut Tasks) {
+        tasks.register(crate::models::platform::database_setup::DatabaseSetupTask);
         tasks.register(crate::models::canary::CapabilitiesTask);
         tasks.register(crate::models::canary::SeedTask);
         tasks.register(crate::models::canary::SmokeTask);
@@ -473,5 +477,17 @@ impl Hooks for App {
     async fn on_shutdown(ctx: &AppContext) {
         crate::telemetry::queue_metrics::stop(ctx);
         crate::telemetry::shutdown().await;
+    }
+}
+
+#[cfg(test)]
+mod setup_tests {
+    use super::*;
+
+    #[test]
+    fn database_setup_is_a_native_loco_task() {
+        let mut tasks = Tasks::default();
+        App::register_tasks(&mut tasks);
+        assert!(tasks.names().iter().any(|name| name == "database-setup"));
     }
 }

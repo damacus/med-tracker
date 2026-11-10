@@ -824,3 +824,220 @@ async fn fresh_setup_refuses_an_unrecognised_schema_without_changing_data() {
     })
     .await
 }
+
+async fn setup_context(
+    directory: &std::path::Path,
+    runtime: Option<&str>,
+    update: Option<&str>,
+) -> loco_rs::app::AppContext {
+    use loco_rs::{app::Hooks, config::QueueConfig, environment::Environment};
+    let mut config = med_tracker::app::App::load_config(&Environment::Production)
+        .await
+        .unwrap();
+    config.database.uri = std::env::var("MEDTRACKER_TEST_SETUP_DATABASE_URL").unwrap();
+    if let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() {
+        queue.uri.clone_from(&config.database.uri);
+    }
+    config.settings.as_mut().unwrap()["database_setup"] = serde_json::json!({
+        "runtime_url":runtime,"update_url":update,"output_directory":directory,"persist_config":true
+    });
+    loco_rs::boot::create_context::<med_tracker::app::App>(&Environment::Production, config)
+        .await
+        .unwrap()
+}
+
+async fn setup_access_case(supplied: bool) {
+    schema_case(async {
+        use loco_rs::{
+            app::Hooks,
+            boot::StartMode,
+            config::{Config, QueueConfig},
+            environment::Environment,
+            task::{Tasks, Vars},
+        };
+        use sea_orm::{Database, EntityTrait};
+        let directory = tempfile::tempdir().unwrap();
+        let control =
+            url::Url::parse(&std::env::var("MEDTRACKER_TEST_SETUP_DATABASE_URL").unwrap()).unwrap();
+        let suffix = uuid::Uuid::new_v4().simple().to_string();
+        let chosen = |kind: &str| {
+            let mut uri = control.clone();
+            uri.set_username(&format!("setup_{kind}_{suffix}")).unwrap();
+            uri.set_password(Some("password'with:+@symbols")).unwrap();
+            uri.to_string()
+        };
+        let chosen_runtime = chosen("runtime");
+        let chosen_update = chosen("update");
+        let ctx = setup_context(
+            directory.path(),
+            supplied.then_some(chosen_runtime.as_str()),
+            supplied.then_some(chosen_update.as_str()),
+        )
+        .await;
+        let mut tasks = Tasks::default();
+        med_tracker::app::App::register_tasks(&mut tasks);
+        tasks
+            .run(&ctx, "database-setup", &Vars::default())
+            .await
+            .unwrap();
+        let read_uri = |kind: &str| {
+            let path = directory.path().join(kind).join("production.local.yaml");
+            let contents = std::fs::read(path).unwrap();
+            let value: serde_yaml_ng::Value = serde_yaml_ng::from_slice(&contents).unwrap();
+            value["settings"]["database_setup"]["stored_database_url"]
+                .as_str()
+                .unwrap()
+                .to_owned()
+        };
+        let runtime_uri = read_uri("runtime");
+        let update_uri = read_uri("update");
+        if supplied {
+            assert_eq!(runtime_uri, chosen_runtime);
+            assert_eq!(update_uri, chosen_update);
+        }
+        let runtime = Database::connect(runtime_uri.clone()).await.unwrap();
+        let update = Database::connect(update_uri.clone()).await.unwrap();
+        migration::provision::validate(
+            &runtime,
+            url::Url::parse(&runtime_uri).unwrap().username(),
+            migration::provision::Access::Runtime,
+        )
+        .await
+        .unwrap();
+        migration::provision::validate(
+            &update,
+            url::Url::parse(&update_uri).unwrap().username(),
+            migration::provision::Access::Update,
+        )
+        .await
+        .unwrap();
+        assert!(migration::Migrator::up(&runtime, None).await.is_err());
+        migration::Migrator::up(&update, None).await.unwrap();
+        fixtures::seed_persistence(&ctx.db).await;
+        let before = med_tracker::models::_entities::accounts::Entity::find_by_id(71001)
+            .one(&ctx.db)
+            .await
+            .unwrap()
+            .unwrap();
+        tasks
+            .run(&ctx, "database-setup", &Vars::default())
+            .await
+            .unwrap();
+        assert_eq!(read_uri("runtime"), runtime_uri);
+        assert_eq!(read_uri("update"), update_uri);
+        assert_eq!(
+            med_tracker::models::_entities::accounts::Entity::find_by_id(71001)
+                .one(&ctx.db)
+                .await
+                .unwrap()
+                .unwrap(),
+            before
+        );
+        let mut config =
+            Config::from_folder(&Environment::Production, &directory.path().join("runtime"))
+                .unwrap();
+        let mut administrator_config = config.clone();
+        administrator_config
+            .database
+            .uri
+            .clone_from(&ctx.config.database.uri);
+        if let Some(QueueConfig::Postgres(queue)) = administrator_config.queue.as_mut() {
+            queue.uri.clone_from(&ctx.config.database.uri);
+        }
+        let administrator_boot = med_tracker::app::App::boot(
+            StartMode::ServerOnly,
+            &Environment::Production,
+            administrator_config,
+        )
+        .await;
+        let rejected = administrator_boot.is_err();
+        if let Ok(boot) = administrator_boot {
+            if let Some(queue) = &boot.app_context.queue_provider {
+                queue.shutdown().unwrap();
+            }
+            boot.app_context.db.close().await.unwrap();
+        }
+        assert!(
+            rejected,
+            "Normal production startup must reject bootstrap credentials"
+        );
+        config.database.uri.clone_from(&runtime_uri);
+        if let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() {
+            queue.uri.clone_from(&runtime_uri);
+        }
+        let boot =
+            med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Production, config)
+                .await
+                .unwrap();
+        if let Some(queue) = &boot.app_context.queue_provider {
+            queue.shutdown().unwrap();
+        }
+        boot.app_context.db.close().await.unwrap();
+        runtime.close().await.unwrap();
+        update.close().await.unwrap();
+        if let Some(queue) = &ctx.queue_provider {
+            queue.shutdown().unwrap();
+        }
+        // SeaQuery has no DROP ROLE statement; only these test-created logins
+        // are removed, after UUID database ownership was checked by schema_case.
+        for uri in [runtime_uri, update_uri] {
+            let username = url::Url::parse(&uri).unwrap().username().to_owned();
+            assert!(
+                username
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+            );
+            ctx.db
+                .execute_unprepared(&format!("DROP ROLE {username}"))
+                .await
+                .unwrap();
+        }
+        ctx.db.close().await.unwrap();
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn database_setup_generates_credentials_and_supports_restricted_boot_and_updates() {
+    setup_access_case(false).await;
+}
+
+#[tokio::test]
+async fn database_setup_uses_supplied_credentials_and_preserves_data_on_repeat() {
+    setup_access_case(true).await;
+}
+
+#[tokio::test]
+async fn database_setup_rejects_an_incompatible_existing_login_before_installing_schema() {
+    schema_case(async {
+        use loco_rs::{
+            app::Hooks,
+            task::{Tasks, Vars},
+        };
+        let directory = tempfile::tempdir().unwrap();
+        let mut runtime =
+            url::Url::parse(&std::env::var("MEDTRACKER_TEST_SETUP_DATABASE_URL").unwrap()).unwrap();
+        runtime.set_username("pg_read_all_data").unwrap();
+        runtime.set_password(Some("password")).unwrap();
+        let ctx = setup_context(directory.path(), Some(runtime.as_str()), None).await;
+        let mut tasks = Tasks::default();
+        med_tracker::app::App::register_tasks(&mut tasks);
+        assert!(
+            tasks
+                .run(&ctx, "database-setup", &Vars::default())
+                .await
+                .is_err()
+        );
+        assert!(
+            !migration::SchemaManager::new(&ctx.db)
+                .has_table("accounts")
+                .await
+                .unwrap()
+        );
+        if let Some(queue) = &ctx.queue_provider {
+            queue.shutdown().unwrap();
+        }
+        ctx.db.close().await.unwrap();
+    })
+    .await;
+}

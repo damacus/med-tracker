@@ -4,6 +4,12 @@ logger:
   level: info
   format: compact
 settings:
+  database_setup:
+    runtime_url: "<%= get_env(name="MEDTRACKER_RUNTIME_DATABASE_URL", default="") %>"
+    update_url: "<%= get_env(name="MEDTRACKER_UPDATE_DATABASE_URL", default="") %>"
+    output_directory: "<%= get_env(name="MEDTRACKER_SETUP_DIRECTORY", default="setup") %>"
+    source_directory: "<%= get_env(name="LOCO_CONFIG_FOLDER", default="config") %>"
+    persist_config: <%= get_env(name="MEDTRACKER_SETUP_PERSIST_CONFIG", default="false") %>
   telemetry:
     otlp_endpoint: <%= get_env(name="OTEL_EXPORTER_OTLP_ENDPOINT", default="") %>
     otlp_traces_endpoint: <%= get_env(name="OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", default="") %>

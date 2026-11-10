@@ -1,0 +1,6 @@
+apiVersion: v2
+name: med-tracker
+description: MedTracker with PostgreSQL setup and automatic schema updates
+type: application
+version: 0.6.0
+appVersion: "0.6.0"

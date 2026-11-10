@@ -56,6 +56,7 @@ oxide-auth = "=0.6.1"
 oxide-auth-async = "=0.2.1"
 serde_urlencoded = "=0.7.1"
 url = "=2.5.8"
+percent-encoding = "=2.3.2"
 pbkdf2 = "=0.13.0"
 
 web-push = { version = "=0.11.0", default-features = false }

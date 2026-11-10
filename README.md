@@ -57,6 +57,11 @@ verification at a live database. See [database setup](docs/testing.md#loco-datab
 
 ## Try MedTracker locally
 
+For production Docker Compose and Helm installations, follow the
+[installation guide](docs/operations/loco-cutover-runbook.md). The application
+handles initial database access provisioning; Compose and Helm run routine
+schema updates automatically without administrator access in the running app.
+
 We are looking for technically confident self-hosters to run MedTracker and try
 the journey from household setup to recording doses. Tell us where the app is
 confusing or unreliable.

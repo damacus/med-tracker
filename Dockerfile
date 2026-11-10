@@ -64,7 +64,9 @@ RUN ldd /rootfs/app/med-tracker > /tmp/dependencies \
     && ! grep -q 'not found' /tmp/dependencies \
     && awk '/=> \// {print $3} /^[[:space:]]*\// {print $1}' /tmp/dependencies \
        | xargs -r -I '{}' cp --parents -L '{}' /rootfs \
-    && mkdir -p /rootfs/etc/ssl/certs /rootfs/usr/share /rootfs/tmp \
+    && mkdir -p /rootfs/etc/ssl/certs /rootfs/usr/share /rootfs/tmp /rootfs/app/setup/runtime /rootfs/app/setup/update \
+    && chmod 700 /rootfs/app/setup /rootfs/app/setup/runtime /rootfs/app/setup/update \
+    && chown -R 65532:65532 /rootfs/app/setup \
     && chmod 1777 /rootfs/tmp \
     && cp /etc/ssl/certs/ca-certificates.crt /rootfs/etc/ssl/certs/ \
     && cp -a /usr/share/zoneinfo /rootfs/usr/share/
