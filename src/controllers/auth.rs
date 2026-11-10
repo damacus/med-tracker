@@ -116,7 +116,7 @@ async fn login_form(
     let Ok(authenticity_token) = token.authenticity_token() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
-    let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "authenticity_token":authenticity_token, "error":error, "auth_notice":notice, "registration_open":registration_open, "zitadel":crate::models::settings::text(ctx.config.settings.as_ref(), &["zitadel","issuer"]).is_some() });
+    let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "authenticity_token":authenticity_token, "error":error, "auth_notice":notice, "registration_open":registration_open, "provider_name":crate::models::identity::better_auth::oidc::provider_name(ctx.config.settings.as_ref()), "oidc":crate::models::settings::text(ctx.config.settings.as_ref(), &["oidc","issuer_url"]).is_some() });
     match format::render().view(view, "auth/login.html", data) {
         Ok(response) => (
             status,

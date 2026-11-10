@@ -165,10 +165,8 @@ pub(super) async fn build(
         .plugin(UserManagementPlugin::new().change_email_enabled(true))
         .plugin(keys);
     if let Some(oauth) = oauth {
-        if !oauth.has_provider("zitadel").await? {
-            return Err(AuthError::config(
-                "Configured ZITADEL provider is unavailable",
-            ));
+        if !oauth.has_provider("oidc").await? {
+            return Err(AuthError::config("Configured OIDC provider is unavailable"));
         }
         auth = auth.plugin(oauth);
     }

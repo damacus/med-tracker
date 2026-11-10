@@ -7,7 +7,7 @@ services:
       - postgres-production:/var/lib/postgresql
   setup:
     profiles: [setup]
-    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0}
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0} # x-release-please-version
     depends_on:
       postgres:
         condition: service_healthy
@@ -24,7 +24,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
   update:
-    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0}
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0} # x-release-please-version
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,7 +41,7 @@ services:
     security_opt: [no-new-privileges:true]
   app: &runtime
     restart: unless-stopped
-    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0}
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.0} # x-release-please-version
     depends_on:
       update:
         condition: service_completed_successfully
@@ -51,6 +51,11 @@ services:
       MEDTRACKER_PUBLIC_HOST: ${MEDTRACKER_PUBLIC_HOST:?Set the public HTTPS origin}
       MEDTRACKER_PUBLIC_ORIGIN: ${MEDTRACKER_PUBLIC_HOST:?Set the public HTTPS origin}
       MEDTRACKER_COOKIE_SECURE: ${MEDTRACKER_COOKIE_SECURE:-true}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
+      OIDC_PROVIDER_NAME: ${OIDC_PROVIDER_NAME:-OpenID Connect}
       MEDTRACKER_SMTP_ENABLED: ${MEDTRACKER_SMTP_ENABLED:-false}
       MEDTRACKER_SMTP_HOST: ${MEDTRACKER_SMTP_HOST:-}
       MEDTRACKER_SMTP_PORT: ${MEDTRACKER_SMTP_PORT:-587}

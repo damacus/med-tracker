@@ -302,7 +302,9 @@ impl Hooks for App {
             .add_route(crate::controllers::oauth_server::routes())
             .add_route(browser(crate::controllers::browser_routes()))
             .add_route(browser(crate::controllers::auth::routes()))
-            .add_route(browser(crate::controllers::identity_onboarding::routes()))
+            .add_route(browser(crate::controllers::identity_onboarding::routes(
+                ctx,
+            )))
             .add_route(browser(crate::controllers::oauth_server::browser_routes()))
             .add_route(browser(crate::controllers::medications::routes()))
             .add_route(browser(crate::controllers::searches::routes()))

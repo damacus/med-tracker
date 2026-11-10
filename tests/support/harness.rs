@@ -178,7 +178,7 @@ impl Journey {
         }
         for (key, _) in std::env::vars_os() {
             let key = key.to_string_lossy().into_owned();
-            if key.starts_with("MEDTRACKER_ZITADEL_") || key.starts_with("MEDTRACKER_WEB_PUSH_") {
+            if key.starts_with("OIDC_") || key.starts_with("MEDTRACKER_WEB_PUSH_") {
                 command.env_remove(&key);
             }
         }

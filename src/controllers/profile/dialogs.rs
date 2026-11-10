@@ -283,7 +283,10 @@ impl Frame {
                 .and_then(|value| value.to_str().ok())
                 .unwrap_or("en"),
         );
-        let labels = report_pdf::translations(locale).map_err(|_| unavailable())?;
+        let labels = crate::views::profile_security::with_provider_name(
+            report_pdf::translations(locale).map_err(|_| unavailable())?,
+            crate::models::identity::better_auth::oidc::provider_name(ctx.config.settings.as_ref()),
+        );
         Ok(Some(Self {
             presentation,
             name: snapshot.name.unwrap_or_else(|| snapshot.email.clone()),

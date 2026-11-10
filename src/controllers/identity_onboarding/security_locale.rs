@@ -28,7 +28,11 @@ pub(super) fn view(
         .map_err(|_| Error::string("Security translations unavailable"))?;
     let english = crate::models::care::report_pdf::translations("en")
         .map_err(|_| Error::string("Security translations unavailable"))?;
-    let flow = &labels["profiles"]["security_flow"];
+    let name = view.provider_name();
+    let flow = crate::views::profile_security::with_provider_name(
+        labels["profiles"]["security_flow"].clone(),
+        name,
+    );
     let source = english["profiles"]["security_flow"]
         .as_object()
         .ok_or_else(|| Error::string("Security translations unavailable"))?;
@@ -46,6 +50,10 @@ pub(super) fn view(
             };
             data[target] = flow[key].clone();
         }
+    }
+    data["provider_name"] = json!(name);
+    for field in ["title", "error", "operation_label", "operation_text"] {
+        data[field] = crate::views::profile_security::with_provider_name(data[field].take(), name);
     }
     data["flow"] = flow.clone();
     data["flow_json"] = json!(flow.to_string());

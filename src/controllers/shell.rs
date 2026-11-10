@@ -272,6 +272,7 @@ fn optional_shell_error(
 
 pub(crate) struct ShellView {
     engine: TeraView,
+    provider_name: String,
     shell: Option<ShellContext>,
     presentation: Option<super::profile::dialogs::Presentation>,
     flow: Option<super::profile::dialogs::Frame>,
@@ -280,6 +281,10 @@ pub(crate) struct ShellView {
 pub(crate) struct ShellViewEngine<E>(pub E);
 
 impl ShellView {
+    pub(crate) fn provider_name(&self) -> &str {
+        &self.provider_name
+    }
+
     pub(crate) fn document_engine(&self) -> TeraView {
         self.engine.clone()
     }
@@ -414,6 +419,10 @@ impl FromRequestParts<AppContext> for ShellViewEngine<ShellView> {
         };
         Ok(Self(ShellView {
             engine,
+            provider_name: crate::models::identity::better_auth::oidc::provider_name(
+                state.config.settings.as_ref(),
+            )
+            .to_owned(),
             shell,
             presentation,
             flow,

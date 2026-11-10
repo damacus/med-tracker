@@ -4,12 +4,16 @@ use better_auth_core::{AuthError, AuthRequest, AuthResponse, AuthResult, HttpMet
 use serde::Deserialize;
 use serde_json::json;
 
+pub(crate) fn provider_name(settings: Option<&serde_json::Value>) -> &str {
+    crate::models::settings::text(settings, &["oidc", "provider_name"]).unwrap_or("OpenID Connect")
+}
+
 #[derive(Clone)]
 pub struct Provider {
     issuer: String,
     client_id: String,
     client_secret: String,
-    callback: String,
+    callback: url::Url,
 }
 
 #[derive(Deserialize)]
@@ -24,11 +28,11 @@ impl Provider {
         base_url: &str,
         settings: Option<&serde_json::Value>,
     ) -> AuthResult<Option<Self>> {
-        let Some(issuer) = crate::models::settings::text(settings, &["zitadel", "issuer"]) else {
+        let Some(issuer) = crate::models::settings::text(settings, &["oidc", "issuer_url"]) else {
             return Ok(None);
         };
         let parsed =
-            url::Url::parse(issuer).map_err(|_| AuthError::internal("Invalid ZITADEL issuer"))?;
+            url::Url::parse(issuer).map_err(|_| AuthError::config("Invalid OIDC issuer"))?;
         let local = parsed
             .host_str()
             .is_some_and(|host| matches!(host, "localhost" | "127.0.0.1" | "::1"))
@@ -39,26 +43,45 @@ impl Provider {
             || !parsed.username().is_empty()
             || parsed.password().is_some()
         {
-            return Err(AuthError::internal("Invalid ZITADEL issuer"));
+            return Err(AuthError::config("Invalid OIDC issuer"));
         }
-        let client_id = crate::models::settings::text(settings, &["zitadel", "client_id"])
-            .ok_or_else(|| AuthError::internal("ZITADEL client unavailable"))?;
-        let client_secret = crate::models::settings::text(settings, &["zitadel", "client_secret"])
-            .ok_or_else(|| AuthError::internal("ZITADEL client unavailable"))?;
-        let mut callback = url::Url::parse(base_url)
+        let client_id = crate::models::settings::text(settings, &["oidc", "client_id"])
+            .ok_or_else(|| AuthError::config("OIDC client ID unavailable"))?;
+        let client_secret = crate::models::settings::text(settings, &["oidc", "client_secret"])
+            .ok_or_else(|| AuthError::config("OIDC client secret unavailable"))?;
+        let origin = url::Url::parse(base_url)
             .map_err(|_| AuthError::internal("Identity URL unavailable"))?;
-        callback.set_path("/auth/zitadel/callback");
+        let callback = match crate::models::settings::text(settings, &["oidc", "redirect_uri"]) {
+            Some(value) => url::Url::parse(value)
+                .map_err(|_| AuthError::config("Invalid OIDC redirect URI"))?,
+            None => origin
+                .join("/auth/oidc/callback")
+                .map_err(|_| AuthError::config("Invalid OIDC redirect URI"))?,
+        };
+        if callback.origin() != origin.origin()
+            || (callback.scheme() != "https" && !local)
+            || !callback.username().is_empty()
+            || callback.password().is_some()
+            || callback.query().is_some()
+            || callback.fragment().is_some()
+        {
+            return Err(AuthError::config("Invalid OIDC redirect URI"));
+        }
         Ok(Some(Self {
             issuer: issuer.into(),
             client_id: client_id.into(),
             client_secret: client_secret.into(),
-            callback: callback.to_string(),
+            callback,
         }))
+    }
+
+    pub(crate) fn callback_path(&self) -> &str {
+        self.callback.path()
     }
 
     pub(super) fn plugin(&self) -> OAuthPlugin {
         OAuthPlugin::new().add_generic_provider(
-            "zitadel",
+            "oidc",
             GenericOAuthConfig {
                 client_id: self.client_id.clone(),
                 client_secret: Some(self.client_secret.clone()),
@@ -66,7 +89,7 @@ impl Provider {
                     "{}/.well-known/openid-configuration",
                     self.issuer.trim_end_matches('/')
                 )),
-                redirect_uri: Some(self.callback.clone()),
+                redirect_uri: Some(self.callback.to_string()),
                 require_id_token_verification: true,
                 disable_implicit_sign_up: Some(true),
                 pkce: true,
@@ -120,7 +143,7 @@ impl Provider {
         };
         service.call_endpoint(HttpMethod::Post, path, better_auth::server_api::EndpointInput {
             request: Some(request.clone()), headers: Some(request.headers.clone()),
-            body: Some(json!({"provider":"zitadel","callbackURL":callback,"newUserCallbackURL":"/auth/passkey/setup","errorCallbackURL":"/auth/zitadel/register","requestSignUp":false,"disableRedirect":true})),
+            body: Some(json!({"provider":"oidc","callbackURL":callback,"newUserCallbackURL":"/auth/passkey/setup","errorCallbackURL":"/auth/oidc/register","requestSignUp":false,"disableRedirect":true})),
             ..Default::default()
         }).await
     }
@@ -143,7 +166,7 @@ impl Provider {
         }
         service.call_endpoint(HttpMethod::Post, "/sign-in/social", better_auth::server_api::EndpointInput {
             request: Some(request.clone()), headers: Some(request.headers.clone()),
-            body: Some(json!({"provider":"zitadel","callbackURL":"/auth/passkey/setup","newUserCallbackURL":"/auth/passkey/setup","errorCallbackURL":"/auth/zitadel/register","requestSignUp":true,"disableRedirect":true,"additionalData":{"profile":{"name":profile.name,"date_of_birth":profile.date_of_birth,"invitation_token":profile.invitation_token}}})),
+            body: Some(json!({"provider":"oidc","callbackURL":"/auth/passkey/setup","newUserCallbackURL":"/auth/passkey/setup","errorCallbackURL":"/auth/oidc/register","requestSignUp":true,"disableRedirect":true,"additionalData":{"profile":{"name":profile.name,"date_of_birth":profile.date_of_birth,"invitation_token":profile.invitation_token}}})),
             ..Default::default()
         }).await
     }
@@ -157,7 +180,7 @@ impl Provider {
         service
             .call_endpoint(
                 HttpMethod::Get,
-                "/callback/zitadel",
+                "/callback/oidc",
                 better_auth::server_api::EndpointInput {
                     request: Some(request.clone()),
                     headers: Some(request.headers.clone()),
@@ -183,7 +206,7 @@ impl Provider {
                 .additional_fields
                 .get("authentication_method")
                 .and_then(better_auth_core::FieldValue::as_str)
-                != Some("zitadel")
+                != Some("oidc")
         {
             return Err(AuthError::InvalidCredentials);
         }
@@ -227,5 +250,82 @@ impl Provider {
             pending,
         )
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Provider;
+    use serde_json::json;
+
+    #[test]
+    fn generic_oidc_settings_enable_provider() {
+        let settings = json!({"oidc": {
+            "issuer_url": "https://identity.example.com",
+            "client_id": "test-client",
+            "client_secret": "password",
+            "provider_name": "Example Identity"
+        }});
+        assert!(
+            Provider::configured("https://medtracker.example.com/api/auth", Some(&settings))
+                .unwrap()
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn oidc_callback_and_branding_are_configurable() {
+        let mut settings = json!({"oidc": {
+            "issuer_url": "https://identity.example.com",
+            "client_id": "test-client", "client_secret": "password"
+        }});
+        let provider =
+            Provider::configured("https://medtracker.example.com/api/auth", Some(&settings))
+                .unwrap()
+                .unwrap();
+        assert_eq!(
+            provider.callback.as_str(),
+            "https://medtracker.example.com/auth/oidc/callback"
+        );
+        assert_eq!(super::provider_name(Some(&settings)), "OpenID Connect");
+        settings["oidc"]["redirect_uri"] = json!("https://medtracker.example.com/auth/oidc/return");
+        settings["oidc"]["provider_name"] = json!("Example <Identity>");
+        let provider =
+            Provider::configured("https://medtracker.example.com/api/auth", Some(&settings))
+                .unwrap()
+                .unwrap();
+        assert_eq!(provider.callback_path(), "/auth/oidc/return");
+        assert_eq!(super::provider_name(Some(&settings)), "Example <Identity>");
+    }
+
+    #[test]
+    fn oidc_rejects_missing_credentials_and_foreign_or_insecure_callbacks() {
+        let mut settings = json!({"oidc": {"issuer_url": "https://identity.example.com"}});
+        assert!(
+            Provider::configured("https://medtracker.example.com/api/auth", Some(&settings))
+                .is_err()
+        );
+        settings["oidc"]["client_id"] = json!("test-client");
+        assert!(
+            Provider::configured("https://medtracker.example.com/api/auth", Some(&settings))
+                .is_err()
+        );
+        settings["oidc"]["client_secret"] = json!("password");
+        for uri in [
+            "https://other.example.com/auth/oidc/callback",
+            "http://medtracker.example.com/auth/oidc/callback",
+            "https://medtracker.example.com/auth/oidc/callback#fragment",
+        ] {
+            settings["oidc"]["redirect_uri"] = json!(uri);
+            assert!(
+                Provider::configured("https://medtracker.example.com/api/auth", Some(&settings))
+                    .is_err()
+            );
+        }
+        assert!(
+            Provider::configured("https://medtracker.example.com/api/auth", None)
+                .unwrap()
+                .is_none()
+        );
     }
 }

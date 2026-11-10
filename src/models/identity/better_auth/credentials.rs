@@ -219,7 +219,7 @@ impl Credentials {
             .await?;
         let response = AuthResponse::json(
             200,
-            &json!({"operation_id":operation_id,"password_proof":credential.is_some_and(|account| account.password.typed().is_ok_and(Option::is_some)),"passkey_proof":!ctx.database.list_passkeys_by_user(&user.id.display_string()?).await?.is_empty(),"oidc_proof":accounts.iter().any(|account| account.provider_id.as_str()==Some("zitadel"))}),
+            &json!({"operation_id":operation_id,"password_proof":credential.is_some_and(|account| account.password.typed().is_ok_and(Option::is_some)),"passkey_proof":!ctx.database.list_passkeys_by_user(&user.id.display_string()?).await?.is_empty(),"oidc_proof":accounts.iter().any(|account| account.provider_id.as_str()==Some("oidc"))}),
         )?;
         transaction.commit().await.map_err(database_error)?;
         Ok(response)

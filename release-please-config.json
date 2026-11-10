@@ -4,17 +4,17 @@
 			"release-type": "rust",
 			"package-name": "med-tracker",
 			"changelog-path": "CHANGELOG.md",
-			"release-as": "0.6.0",
 			"prerelease": false,
 			"include-component-in-tag": false,
 			"initial-version": "0.1.0",
 			"extra-files": [
-				{"type": "yaml", "path": "charts/med-tracker/Chart.yaml", "jsonpath": "$['version','appVersion']"}
+				{"type": "yaml", "path": "charts/med-tracker/Chart.yaml", "jsonpath": "$['version','appVersion']"},
+				{"type": "generic", "path": "compose.production.yaml"}
 			]
 		}
 	},
 	"release-search-depth": 100,
 	"bump-minor-pre-major": true,
 	"bump-patch-for-minor-pre-major": true,
-	"pull-request-header": "Releases MedTracker 0.6.0 with the Rust/Loco application.\n\nA fresh PostgreSQL 18 database and new accounts are required. Keep the previous Rails database separately.\n\nSee the [release notes](https://github.com/damacus/med-tracker/blob/main/docs/releases/0.6.md) for changes and known limitations, and the [installation guide](https://github.com/damacus/med-tracker/blob/main/docs/operations/loco-cutover-runbook.md) for setup.\n"
+	"pull-request-header": "Releases MedTracker with the Rust/Loco application.\n\nSee the [0.6 release notes](https://github.com/damacus/med-tracker/blob/main/docs/releases/0.6.md) for changes and known limitations, and the [installation guide](https://github.com/damacus/med-tracker/blob/main/docs/operations/loco-cutover-runbook.md) for setup.\n"
 }

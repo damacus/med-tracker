@@ -142,7 +142,7 @@ impl AuthPlugin<ClinicalAuthSchema> for ClinicalRequest {
                     | "/reset-password"
                     | "/sign-in/social"
                     | "/link-social"
-                    | "/callback/zitadel"
+                    | "/callback/oidc"
                     | "/two-factor/enable"
                     | "/two-factor/disable"
                     | "/two-factor/verify-totp"

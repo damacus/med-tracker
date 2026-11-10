@@ -9,6 +9,24 @@ use chrono_tz::Tz;
 use serde::Serialize;
 use serde_json::Value;
 
+pub(crate) fn with_provider_name(mut value: Value, name: &str) -> Value {
+    match &mut value {
+        Value::String(text) => *text = text.replace("%{provider}", name),
+        Value::Object(fields) => {
+            for text in fields.values_mut() {
+                *text = with_provider_name(std::mem::take(text), name);
+            }
+        }
+        Value::Array(items) => {
+            for text in items {
+                *text = with_provider_name(std::mem::take(text), name);
+            }
+        }
+        _ => {}
+    }
+    value
+}
+
 #[derive(Serialize)]
 pub(crate) struct SessionTime {
     datetime: String,
@@ -29,7 +47,7 @@ pub(crate) struct Security<'a> {
     account_id: AccountId,
     totp: bool,
     password: bool,
-    zitadel: bool,
+    oidc: bool,
     provider_available: bool,
     can_unlink_provider: bool,
     passkey_count: String,
@@ -49,7 +67,7 @@ pub(crate) fn context<'a>(
         account_id: overview.account_id,
         totp: overview.totp,
         password: overview.password,
-        zitadel: overview.zitadel,
+        oidc: overview.oidc,
         provider_available: overview.provider_available,
         can_unlink_provider: overview.can_unlink_provider,
         passkey_count: overview.passkey_count.to_string(),

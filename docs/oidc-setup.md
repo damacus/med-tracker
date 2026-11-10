@@ -1,210 +1,44 @@
-# OpenID Connect Setup
+# OpenID Connect setup
 
-## Rust/Loco with Better Auth
+MedTracker uses Better Auth’s generic OAuth/OIDC plugin for optional provider sign-in. Configure one OpenID Connect provider for the installation; the provider does not grant household membership or clinical access.
 
-Loco uses Better Auth’s native OAuth plugin for ZITADEL browser sign-in. Configure
-these values through the deployment secret store and `config/*.yaml`:
+## Configuration
+
+Supply these settings through your deployment secret store and Loco configuration:
 
 | Variable | Purpose |
 | --- | --- |
-| `MEDTRACKER_ZITADEL_ISSUER` | HTTPS issuer with OpenID discovery metadata. |
-| `MEDTRACKER_ZITADEL_CLIENT_ID` | Confidential web application client ID. |
-| `MEDTRACKER_ZITADEL_CLIENT_SECRET` | Server-side client secret. |
-| `MEDTRACKER_PUBLIC_HOST` | Canonical public application host and scheme. |
+| `OIDC_ISSUER_URL` | HTTPS issuer publishing OpenID discovery metadata. |
+| `OIDC_CLIENT_ID` | Confidential web application client ID. |
+| `OIDC_CLIENT_SECRET` | Server-side client secret; never expose it to browsers or mobile clients. |
+| `OIDC_REDIRECT_URI` | Optional explicit callback URL; defaults to the public origin plus `/auth/oidc/callback`. |
+| `OIDC_PROVIDER_NAME` | Display branding, such as “Your organisation”; defaults to “OpenID Connect”. |
+| `MEDTRACKER_PUBLIC_ORIGIN` | Canonical public application origin, including HTTPS scheme and any public port. |
 
-Register `/auth/zitadel/callback` at the exact configured public application
-origin, including its public port when present. Better Auth owns discovery,
-authorisation-code exchange, PKCE, nonce and ID-token validation. The provider
-must supply the requested `openid`, `email` and `profile` claims.
+With no issuer configured, provider sign-in is disabled. A configured issuer requires both client credentials. The display name affects interface text only; it does not change the stored provider identity.
 
-Existing accounts link ZITADEL explicitly through **Account security**; matching
-email addresses alone do not link accounts. New registrations collect the
-required name, date of birth and invitation details before provider sign-in and
-remain subject to MedTracker’s registration policy. Provider identity grants no
-household membership or clinical access.
-
-Verify new registration, existing-account sign-in, explicit linking/unlinking,
-callback rejection and household access against the intended provider. A working
-web login does not prove the complete mobile authorisation journey. Never put
-the confidential provider secret in a mobile client.
-
-The remaining sections describe the archived Rails application. Their
-`OIDC_*` variables and `/auth/oidc/callback` route do not configure Loco.
-
-## Rails reference
-
-MedTracker can use an OpenID Connect (OIDC) provider for browser sign-in. The
-provider must publish discovery metadata and support the authorization code
-flow.
-
-This guide configures the delegated browser login used by both the web app and
-the mobile system-browser journey. Phones authenticate through MedTracker's
-Rodauth authorization server, not directly against the external provider.
-
-## Browser flow
-
-MedTracker uses Rodauth, OmniAuth, and `omniauth_openid_connect`. The browser
-flow requests the `openid`, `email`, and `profile` scopes.
-
-1. A person selects **Continue with _provider_** on the login page.
-2. MedTracker redirects the browser to the provider.
-3. The provider returns an authorization code to MedTracker.
-4. MedTracker exchanges the code on the server and validates the returned
-   identity.
-5. MedTracker links the provider identity to an eligible account.
-
-The provider does not grant household roles or person access. MedTracker keeps
-those decisions in household memberships and person access grants.
-
-## Mobile sign-in
-
-The phone discovers MedTracker's authorization endpoints at
-`/.well-known/oauth-authorization-server` and its registered public mobile client
-configuration at `/api/v1/capabilities`. It opens MedTracker's authorization page
-in the system browser and uses S256 PKCE to redeem the returned code.
-
-The browser offers the installation's existing local and delegated sign-in
-methods. Configure the external provider's confidential web client below; do not
-put its secret in the phone. MedTracker's public mobile registration and native
-callback are separate from this provider registration. The retired custom mobile
-exchange and its `OIDC_MOBILE_CLIENT_ID` setting are not part of this flow.
-
-After deployment, verify actual phone login, return to the registered callback,
-household access and refresh. Working discovery or a successful web login alone
-does not establish that the complete mobile journey works.
-
-## Provider registration
-
-Create a confidential web application in the provider. Register this callback:
+For example, configure a provider with issuer `https://identity.example.com` and the public application origin `https://medtracker.example.com`. Register this callback on its confidential web client:
 
 ```text
 https://medtracker.example.com/auth/oidc/callback
 ```
 
-Use the exact public MedTracker origin. The scheme, host, port, and path must
-match the configured redirect URI.
+An explicit callback must use the same public origin and HTTPS, with no credentials, query or fragment. MedTracker registers its configured callback path and passes that exact URI to Better Auth. Local HTTP is restricted to local test/development origins. Provider sign-in starts at `/auth/oidc`; provider registration uses `/auth/oidc/register`.
 
-The provider must supply:
+## Provider and application responsibilities
 
-- an HTTPS issuer URL with OpenID discovery metadata;
-- a client ID;
-- a client secret;
-- the subject and email claims requested by the configured scopes.
+The provider publishes discovery metadata and supports the authorization code flow with the requested `openid`, `email` and `profile` scopes. Better Auth owns discovery, code exchange, PKCE, nonce binding and ID-token validation. MedTracker supplies configuration and adapts native endpoints to its browser pages.
 
-HTTP issuer and redirect URLs are accepted only for `localhost` development.
+Existing accounts link the provider explicitly through **Account security**. Matching email addresses alone do not link accounts. New registrations collect the required name, adult date of birth and invitation details before provider sign-in and remain subject to the installation’s registration policy. Local sign-in methods remain available according to the account’s configured methods.
 
-## MedTracker configuration
+MedTracker retains its CSRF and origin checks, permission checks, audit, session revocation and household access rules. Changing provider branding does not change these rules.
 
-Set these required values:
+## Compose and Helm
 
-```fish
-set -x APP_URL "https://medtracker.example.com"
-set -x OIDC_ISSUER_URL "https://identity.example.com"
-set -x OIDC_CLIENT_ID "your-client-id"
-set -x OIDC_CLIENT_SECRET "your-client-secret"
-```
+Set the same `OIDC_*` values on the application processes in Docker Compose or Helm values. Store client credentials in the platform’s Secret mechanism. HomeOps resolves its existing client through 1Password and ExternalSecrets; other installations can use their own provider and secret store.
 
-`APP_URL` is required in production. MedTracker derives the callback as
-`$APP_URL/auth/oidc/callback`.
+## Mobile and verification
 
-These optional values change the callback or the login button label:
+First-party mobile clients discover MedTracker’s authorization server through `/.well-known/oauth-authorization-server` and `/api/v1/capabilities`. They use MedTracker’s authorization code flow with S256 PKCE in the system browser. The external provider’s confidential secret remains on the server.
 
-```fish
-set -x OIDC_REDIRECT_URI "https://medtracker.example.com/auth/oidc/callback"
-set -x OIDC_PROVIDER_NAME "Your identity provider"
-```
-
-You can store the OIDC provider settings in Rails encrypted credentials
-instead:
-
-```yaml
-oidc:
-  issuer_url: https://identity.example.com
-  client_id: your-client-id
-  client_secret: your-client-secret
-```
-
-Environment variables and encrypted credentials are both supported. Never put
-the client secret in source files, container images, or public logs.
-
-## Local development
-
-For Portless development, register this callback with the provider:
-
-```text
-https://med-tracker.localhost/auth/oidc/callback
-```
-
-Set the stable URLs before you start MedTracker:
-
-```fish
-set -x APP_URL "https://med-tracker.localhost"
-set -x OIDC_REDIRECT_URI "https://med-tracker.localhost/auth/oidc/callback"
-set -x OIDC_ISSUER_URL "https://identity.example.com"
-set -x OIDC_CLIENT_ID "your-client-id"
-set -x OIDC_CLIENT_SECRET "your-client-secret"
-task dev
-```
-
-The issuer must be reachable from the MedTracker container. A host-only
-`localhost` issuer will not work unless the container can resolve and reach it.
-
-For Zitadel-specific steps, see
-[Test local MedTracker with Zitadel](zitadel-local-testing.md).
-
-## Account and access rules
-
-MedTracker can link a provider identity to an existing account with the same
-email. New accounts remain subject to the registration policy. When
-invitation-only registration is active, an uninvited provider identity cannot
-create an account.
-
-An inactive account or a person without an active household membership cannot
-use OIDC to bypass those restrictions.
-
-Zitadel project roles named `doctor` or `nurse` can update a person's
-professional title. They do not become MedTracker household roles.
-
-## Verification
-
-After configuration:
-
-1. Open `/login` and confirm that the provider button appears.
-2. Sign in with an invited or existing account.
-3. Confirm that the provider returns to `/auth/oidc/callback`.
-4. Confirm that MedTracker opens the expected household dashboard.
-5. Sign out and confirm that the local session ends.
-
-Do not use a production account to test an untrusted or development provider.
-
-## Troubleshooting
-
-### Provider button is missing
-
-Both `OIDC_CLIENT_ID` and `OIDC_ISSUER_URL` must be present. Restart the service
-after changing its environment.
-
-### Redirect URI mismatch
-
-Compare the provider registration with the effective MedTracker callback. Check
-the scheme, host, port, and `/auth/oidc/callback` path.
-
-### Discovery fails
-
-Confirm that this URL returns valid provider metadata and is reachable from the
-MedTracker container:
-
-```text
-https://identity.example.com/.well-known/openid-configuration
-```
-
-### Production reports an insecure URL
-
-Production issuer and redirect URLs must use HTTPS. HTTP is allowed only for
-`localhost`, `127.0.0.1`, and `::1`.
-
-## Related documentation
-
-- [Test local MedTracker with Zitadel](zitadel-local-testing.md)
-- [Authentication and authorization](adrs/0002-authentication-and-authorization-strategy.md)
-- [External identity provider decision](adrs/0005-external-identity-provider.md)
+Verify registration, sign-in, explicit linking/unlinking, reauthentication, callback rejection and household access against the intended provider. Verify the actual mobile return and token refresh separately; a successful browser login does not establish the complete phone journey.

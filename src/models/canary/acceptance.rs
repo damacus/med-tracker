@@ -118,7 +118,7 @@ async fn seeded_care_full_boot_gate_and_replay() {
         }
         assert!(validate(&preflight).is_err());
     }
-    for section in ["browser_push", "avatar_storage", "dmd_storage", "zitadel"] {
+    for section in ["browser_push", "avatar_storage", "dmd_storage", "oidc"] {
         preflight.config.settings = safe_settings.clone();
         preflight.config.settings.as_mut().unwrap()[section] =
             json!({"endpoint":"https://external.example"});

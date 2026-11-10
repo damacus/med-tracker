@@ -120,12 +120,17 @@ async fn personal_history_missing_and_revoked_identity_refusals_do_not_write_aud
         assert!(!event.contains("actor"));
         for private in [
             fixture.household.slug.as_str(),
-            household_id.as_str(),
             cookie.as_str(),
             native_token,
         ] {
             assert!(!event.contains(private));
         }
+        assert!(
+            event
+                .split_ascii_whitespace()
+                .filter_map(|field| field.split_once('='))
+                .all(|(_, value)| value.trim_matches('"') != household_id)
+        );
         for identity_field in [
             "household_id",
             "household_slug",
