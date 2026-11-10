@@ -13,5 +13,5 @@
 	"release-search-depth": 100,
 	"bump-minor-pre-major": true,
 	"bump-patch-for-minor-pre-major": true,
-	"pull-request-header": "MedTracker 0.6 replaces Rails with the Rust/Loco application to reduce operating memory. Install it with a fresh PostgreSQL 18 database and new accounts; existing Rails databases and credentials are not migrated. Keep the previous database separately. This release follows a fix-forward approach; switching back to Rails cannot preserve records created in 0.6. See the [release notes](https://github.com/damacus/med-tracker/blob/main/docs/releases/0.6.md) for changes and known limitations, and the [installation guide](https://github.com/damacus/med-tracker/blob/main/docs/operations/loco-cutover-runbook.md) for configuration."
+	"pull-request-header": "Releases MedTracker 0.6.0 with the Rust/Loco application.\n\nA fresh PostgreSQL 18 database and new accounts are required. Keep the previous Rails database separately.\n\nSee the [release notes](https://github.com/damacus/med-tracker/blob/main/docs/releases/0.6.md) for changes and known limitations, and the [installation guide](https://github.com/damacus/med-tracker/blob/main/docs/operations/loco-cutover-runbook.md) for setup.\n"
 }
