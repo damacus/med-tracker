@@ -151,7 +151,10 @@ async fn signup(app: &Application, email: &str, credential: &str) -> reqwest::Re
 
 #[tokio::test]
 async fn signup_create_saves_canonical_account_and_queued_verification_together() {
-    let app = Application::new().await;
+    let app = Application::new_configured(None, |settings| {
+        settings["mail"] = json!({"from": "MedTracker <notifications@example.test>"});
+    })
+    .await;
     let registration = open_registration(&app).await;
     for (email, credential) in [
         ("signup-owner@example.test", "password"),
@@ -204,11 +207,12 @@ async fn signup_create_saves_canonical_account_and_queued_verification_together(
             .await
             .unwrap();
         assert_eq!(grants, 0);
+        let messages =
+            super::native_password_reset::queued_mail(&app, email, "Verify your account").await;
+        assert_eq!(messages.len(), 1);
         assert_eq!(
-            super::native_password_reset::queued_mail(&app, email, "Verify your account")
-                .await
-                .len(),
-            1
+            messages[0]["from"],
+            "MedTracker <notifications@example.test>"
         );
         assert_eq!(session_count(&app, account.id).await, 0);
         if credential == "password" {

@@ -65,6 +65,7 @@ async fn seeded_care_full_boot_gate_and_replay() {
         .to_owned();
     control.execute(&insert).await.unwrap();
     let mut preflight_config = Config::new(&Environment::Production).unwrap();
+    preflight_config.mailer = None;
     preflight_config.database.uri = uri.clone();
     preflight_config.queue =
         Some(serde_yaml_ng::from_str(&format!("kind: Postgres\nuri: {uri}\n")).unwrap());

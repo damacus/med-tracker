@@ -7,13 +7,19 @@ use sea_orm::ConnectionTrait;
 
 use super::policy::{database_error, statement};
 
+pub(super) fn sender(settings: Option<&serde_json::Value>) -> Option<String> {
+    crate::models::settings::text(settings, &["mail", "from"]).map(str::to_owned)
+}
+
 pub(super) async fn notice_address_in(
     transaction: &impl ConnectionTrait,
     address: &str,
     subject: &str,
     body: &str,
+    settings: Option<&serde_json::Value>,
 ) -> AuthResult<()> {
     let email = Email {
+        from: sender(settings),
         to: address.into(),
         subject: subject.into(),
         text: body.into(),

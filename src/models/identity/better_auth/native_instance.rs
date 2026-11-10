@@ -118,12 +118,15 @@ pub(super) async fn build(
                 .require_email_verification(true)
                 .with_email_verification(Arc::new(verification())),
         )
+        .plugin(verification().callbacks(super::native_mail::verification(
+            policy.database().clone(),
+            super::mail::sender(policy.settings()),
+        )))
         .plugin(
-            verification().callbacks(super::native_mail::verification(policy.database().clone())),
-        )
-        .plugin(
-            PasswordManagementPlugin::new()
-                .callbacks(super::native_mail::password(policy.database().clone())),
+            PasswordManagementPlugin::new().callbacks(super::native_mail::password(
+                policy.database().clone(),
+                super::mail::sender(policy.settings()),
+            )),
         )
         .plugin(SessionManagementPlugin::new())
         .plugin(TwoFactorPlugin::new())

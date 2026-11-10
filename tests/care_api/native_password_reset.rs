@@ -29,7 +29,10 @@ pub(super) async fn queued_mail(app: &Application, email: &str, subject: &str) -
 #[tokio::test]
 async fn native_password_reset_enrols_numeric_account_without_existing_password_and_rejects_replay()
 {
-    let app = Application::new().await;
+    let app = Application::new_configured(None, |settings| {
+        settings["mail"] = json!({"from": "MedTracker <recovery@example.test>"});
+    })
+    .await;
     let delete = Query::delete()
         .from_table("auth_credentials")
         .and_where(Expr::col("user_id").eq(app.fixture.account.id))
@@ -53,6 +56,7 @@ async fn native_password_reset_enrols_numeric_account_without_existing_password_
     let messages = queued_mail(&app, &app.fixture.account.email, "Reset your password").await;
     assert_eq!(messages.len(), 1);
     let mail = &messages[0];
+    assert_eq!(mail["from"], "MedTracker <recovery@example.test>");
     let link = url::Url::parse(
         mail["text"]
             .as_str()

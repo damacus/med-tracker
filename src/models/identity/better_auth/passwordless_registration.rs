@@ -22,8 +22,13 @@ pub(super) async fn register(
                     settings.as_ref(),
                 )
                 .await?;
-                super::native_mail::send_passwordless_registration(&context, &user, &transaction)
-                    .await?;
+                super::native_mail::send_passwordless_registration(
+                    &context,
+                    &user,
+                    &transaction,
+                    super::mail::sender(settings.as_ref()),
+                )
+                .await?;
                 Ok(())
             })
         })
