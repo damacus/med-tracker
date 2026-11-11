@@ -7,6 +7,64 @@ fn medication_body(app: &Application) -> Value {
 }
 
 #[tokio::test]
+async fn medication_barcodes_are_unique_within_each_household() {
+    let first = Application::new().await;
+    let second = Application::new().await;
+    let barcode = format!("2{:012}", first.fixture.household.id);
+    let mut created_ids = Vec::new();
+    for app in [&first, &second] {
+        let token = app.token().await;
+        let endpoint = format!(
+            "{}/api/v1/households/{}/medications",
+            app.origin, app.fixture.household.id
+        );
+        let mut body = medication_body(app);
+        body["medication"]["barcode"] = json!(barcode);
+        let response = app
+            .client
+            .post(&endpoint)
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        let created = Application::assert_status(response, 201).await;
+        created_ids.push(created["data"]["id"].as_i64().unwrap());
+
+        let response = app
+            .client
+            .post(&endpoint)
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        let duplicate = Application::assert_status(response, 422).await;
+        assert_eq!(
+            duplicate["error"]["errors"]["barcode"],
+            json!(["has already been taken"])
+        );
+
+        let response = app
+            .client
+            .patch(format!("{endpoint}/{}", app.fixture.medication.id))
+            .bearer_auth(&token)
+            .json(&json!({"medication":{"barcode":barcode}}))
+            .send()
+            .await
+            .unwrap();
+        let duplicate = Application::assert_status(response, 422).await;
+        assert_eq!(
+            duplicate["error"]["errors"]["barcode"],
+            json!(["has already been taken"])
+        );
+    }
+    assert_ne!(created_ids[0], created_ids[1]);
+    first.close().await;
+    second.close().await;
+}
+
+#[tokio::test]
 async fn medication_crud_api_create_update_and_stale_write() {
     let app = Application::new().await;
     let fixture_household_id = app.fixture.household.id;

@@ -83,8 +83,6 @@ CREATE INDEX index_medication_review_evidence_records_on_interacting_terms ON pu
 
 CREATE UNIQUE INDEX index_medication_takes_on_client_uuid ON public.medication_takes USING btree (client_uuid) WHERE (client_uuid IS NOT NULL);
 
-CREATE UNIQUE INDEX index_medications_on_barcode ON public.medications USING btree (barcode) WHERE ((barcode IS NOT NULL) AND ((barcode)::text <> ''::text));
-
 CREATE INDEX index_medications_on_barcode_trigram ON public.medications USING gin (barcode public.gin_trgm_ops);
 
 CREATE INDEX index_medications_on_category_trigram ON public.medications USING gin (category public.gin_trgm_ops);
