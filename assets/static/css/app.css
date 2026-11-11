@@ -21,7 +21,6 @@ body { margin: 0; font-family: var(--font-family); background: var(--background)
 .app-avatar { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; overflow: hidden; background: var(--color-neutral); color: var(--color-neutral-content); }
 .app-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .app-navigation-panel { color: var(--foreground); background: var(--surface-container-low); border: 1px solid var(--border-color); padding: 1rem; overflow-y: auto; box-shadow: var(--elevation-1); }
-.app-drawer-side { z-index: 40; }
 .app-drawer { width: min(85vw, 320px); min-height: 100%; }
 html:has(.app-household) { scrollbar-gutter: stable; }
 .app-navigation-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-weight: 700; margin-bottom: 1rem; }

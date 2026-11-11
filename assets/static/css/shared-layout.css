@@ -3,6 +3,12 @@
 .app-sidebar-brand > span:first-child { display:grid; place-items:center; width:2.25rem; height:2.25rem; border-radius:.75rem; background:var(--primary); color:var(--primary-foreground); flex-shrink:0; }
 .app-sidebar-search { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-top:2rem; padding:.625rem .75rem; border:1px solid var(--border-color); border-radius:.5rem; font-size:.8125rem; font-weight:600; color:var(--on-surface-variant); }
 .app-search-shortcut { font-size:.625rem; white-space:nowrap; }
+#global_search_panel .modal-box { border:1px solid var(--border-color); border-radius:.75rem; }
+#global_search_panel .modal-box:focus-within { outline:2px solid var(--ring); outline-offset:0; }
+#global_search_query { width:100%; min-width:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+#global_search_query:focus { outline:none; box-shadow:none; }
+#global_search_panel [data-global-search-results]:empty { display:none; }
+#global_search_panel [data-global-search-results]:not(:empty) { border-top:1px solid var(--border-color); }
 @media (hover: none) and (pointer: coarse) { .app-search-shortcut { display:none; } }
 .app-sidebar-search kbd { font-size:.625rem; white-space:nowrap; }
 .app-sidebar-navigation { padding-block:1.25rem; }
@@ -32,8 +38,8 @@
 .household-option[aria-current="true"] { background:var(--secondary-container); color:var(--on-secondary-container); font-weight:700; }
 .household-check { width:1.25rem; flex-shrink:0; }
 .app-mobile-menu { display:none; }
-.app-drawer-overlay { position:fixed; inset:0; z-index:55; width:100%; height:100%; border:0; background:rgb(0 0 0 / .25); }
-.app-mobile-menu:not([open]) > .app-drawer-overlay { display:none; }
+.app-mobile-menu[open]:not(.drawer-enhanced) > .app-drawer { display:block; }
+.app-drawer::backdrop { background:rgb(0 0 0 / .25); }
 .app-household { padding-bottom:calc(4rem + env(safe-area-inset-bottom)); }
 @media (min-width:1024px) {
   .app-household { padding-bottom:0; }
@@ -82,8 +88,8 @@
   [data-sidebar-expanded] { display:none; }
   .app-mobile-menu { display:block; }
   .app-drawer .household-options { position:static; width:100%; max-height:none; margin-block:.5rem; }
-  .app-mobile-menu .app-drawer { position:fixed; z-index:60; inset:4rem auto 0 0; min-height:0; max-height:calc(100dvh - 4rem); }
-  .app-mobile-menu.drawer-enhanced .app-drawer { top:0; max-height:100dvh; }
+  .app-mobile-menu .app-drawer { position:fixed; z-index:60; inset:4rem auto 0 0; margin:0; min-height:0; max-height:calc(100dvh - 4rem); }
+  .app-mobile-menu.drawer-enhanced .app-drawer { top:0; height:100dvh; max-height:100dvh; }
   .app-sidebar { position:static; display:none; width:auto; padding:1rem; border-right:0; border-bottom:1px solid var(--border-color); }
   .app-household[data-navigation-failed]:not([data-navigation-ready]) .app-sidebar { display:flex; }
   .app-household .shell-header, .app-household .shell-header:has(.app-header) { position:sticky; top:0; right:auto; z-index:25; margin-left:0; border-bottom:1px solid var(--border-color); background:var(--surface-container-lowest); }

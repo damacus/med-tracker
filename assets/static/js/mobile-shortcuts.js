@@ -53,7 +53,7 @@ async function refreshMobileShortcuts() {
       if (selectedSection === link.id) anchor.setAttribute('aria-current', 'page');
       return [anchor];
     }));
-    if (!navigation.isConnected) (document.querySelector('.drawer-content') || document.body).append(navigation);
+    if (!navigation.isConnected) document.body.append(navigation);
     document.body.classList.add('pb-[calc(4rem+env(safe-area-inset-bottom))]', 'lg:pb-0');
   } catch { document.body?.setAttribute('data-navigation-failed', 'true'); }
 }

@@ -144,3 +144,12 @@ test('search closes native navigation even when the optional navigation enhancem
   ui.escapeSearch();
   assert.equal(ui.document.activeElement, ui.summary);
 });
+
+test('search closes the fallback disclosure when its native dialog was never opened', () => {
+  const ui = fixture({ enhanced: false });
+  ui.navigation.close = () => {};
+  ui.summary.click();
+  ui.openSearch();
+  assert.equal(ui.disclosure.open, false);
+  assert.equal(ui.panel.open, true);
+});
