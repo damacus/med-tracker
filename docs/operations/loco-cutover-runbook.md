@@ -77,7 +77,7 @@ Do not remove volumes as part of an upgrade.
 Use upstream [BJW app-template](https://bjw-s-labs.github.io/helm-charts/docs/app-template/)
 5.3.0 directly. MedTracker supplies ordinary values files, with no custom chart,
 templates or chart archive to maintain. Check out the application release and
-copy [the runtime values](../../deploy/helm/values.yaml) to your own `values.yaml`.
+copy [the runtime values](https://github.com/damacus/med-tracker/blob/main/deploy/helm/values.yaml) to your own `values.yaml`.
 Set both public-origin variables under `controllers.web.containers.app.env` to
 your HTTPS origin. YAML anchors share these settings with the worker and scheduler.
 Configure your existing ingress or Gateway to the web Service on port 5150.
@@ -99,7 +99,7 @@ Use a persistent random session secret and a base64-encoded 64-byte random sessi
 key. Keep these credentials stable and back them up with the database. The values
 files reference Secrets; they neither generate nor manage their lifecycle.
 
-Install with [the initial-setup overlay](../../deploy/helm/setup.values.yaml):
+Install with [the initial-setup overlay](https://github.com/damacus/med-tracker/blob/main/deploy/helm/setup.values.yaml):
 
 ```fish
 helm install med-tracker oci://ghcr.io/bjw-s-labs/helm/app-template --version 5.3.0 --values values.yaml --values deploy/helm/setup.values.yaml --wait --timeout 10m
