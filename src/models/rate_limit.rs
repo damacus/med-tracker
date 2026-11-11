@@ -182,6 +182,10 @@ impl std::fmt::Display for RateLimitConfigError {
 impl std::error::Error for RateLimitConfigError {}
 
 impl RateLimitState {
+    pub(crate) fn client_ip(&self, peer: IpAddr, headers: &HeaderMap) -> IpAddr {
+        client_ip(peer, headers, &self.trusted)
+    }
+
     pub fn from_settings(
         settings: Option<&Value>,
         environment: &Environment,
@@ -240,7 +244,7 @@ impl RateLimitState {
                 .as_secs()
         });
         self.limiter
-            .check(client_ip(peer, headers, &self.trusted), method, path, now)
+            .check(self.client_ip(peer, headers), method, path, now)
     }
 }
 

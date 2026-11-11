@@ -21,6 +21,8 @@ mod canonical_identity;
 
 #[path = "care_api/approved_sharing.rs"]
 mod approved_sharing;
+#[path = "care_api/auth_proxy_limits.rs"]
+mod auth_proxy_limits;
 #[path = "care_api/avatar.rs"]
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]
