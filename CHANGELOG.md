@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.2](https://github.com/damacus/med-tracker/compare/v0.6.1...v0.6.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deps:** update rust crate zip to v9.5.1 ([#3082](https://github.com/damacus/med-tracker/issues/3082)) ([9a4e31b](https://github.com/damacus/med-tracker/commit/9a4e31b529267f76c4916803dc44807e0b6e096b))
+* preserve OIDC environment strings ([#3085](https://github.com/damacus/med-tracker/issues/3085)) ([52aa573](https://github.com/damacus/med-tracker/commit/52aa57311b2abe3682c882ea477572d9b802b019))
+* use upstream BJW app-template ([#3087](https://github.com/damacus/med-tracker/issues/3087)) ([83a633c](https://github.com/damacus/med-tracker/commit/83a633c20e4302834d09521df46ce0c80c13d175))
+
 ## [0.6.1](https://github.com/damacus/med-tracker/compare/v0.6.0...v0.6.1) (2026-11-11)
 
 
