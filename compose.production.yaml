@@ -7,7 +7,7 @@ services:
       - postgres-production:/var/lib/postgresql
   setup:
     profiles: [setup]
-    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.2} # x-release-please-version
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.3} # x-release-please-version
     depends_on:
       postgres:
         condition: service_healthy
@@ -24,7 +24,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
   update:
-    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.2} # x-release-please-version
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.3} # x-release-please-version
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,7 +41,7 @@ services:
     security_opt: [no-new-privileges:true]
   app: &runtime
     restart: unless-stopped
-    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.2} # x-release-please-version
+    image: ${LOCO_IMAGE:-ghcr.io/damacus/med-tracker-loco:0.6.3} # x-release-please-version
     depends_on:
       update:
         condition: service_completed_successfully

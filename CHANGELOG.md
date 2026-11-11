@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.3](https://github.com/damacus/med-tracker/compare/v0.6.2...v0.6.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* **oauth:** require S256 PKCE for all clients ([#3092](https://github.com/damacus/med-tracker/issues/3092)) ([e6f3402](https://github.com/damacus/med-tracker/commit/e6f3402335f8b957234e01ace86d1659f980c6a6))
+* respect trusted proxies in auth limits ([#3090](https://github.com/damacus/med-tracker/issues/3090)) ([f1510b7](https://github.com/damacus/med-tracker/commit/f1510b717bd198a807bc16c515e9d728e2a1e34d))
+
 ## [0.6.2](https://github.com/damacus/med-tracker/compare/v0.6.1...v0.6.2) (2026-11-11)
 
 
