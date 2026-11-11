@@ -4,7 +4,7 @@ use crate::models::{
     profile,
 };
 use loco_rs::model::TenantQueryExt;
-use sea_orm::{ConnectionTrait, DbBackend, QuerySelect, QueryTrait, Statement};
+use sea_orm::{QuerySelect, QueryTrait};
 use std::collections::HashSet;
 
 pub async fn enrich(
@@ -56,11 +56,7 @@ pub async fn enrich(
         .into_iter()
         .map(|row| row.record_id)
         .collect();
-    for row in db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT p.id FROM people p JOIN accounts owner ON owner.person_id=p.id JOIN account_avatars a ON a.account_id=owner.id WHERE p.id=ANY($1::bigint[])",
-        [ids.clone().into()])).await? {
-        uploaded.insert(row.try_get("", "id")?);
-    }
+    uploaded.extend(profile::avatar::account_avatar_people(tenant, &ids).await?);
     let gravatars = profile::gravatar::for_visible_people(tenant, &people, &uploaded).await?;
     let counts = active_source_counts(tenant, &ids).await?;
     if let Some(rows) = collection["data"].as_array_mut() {

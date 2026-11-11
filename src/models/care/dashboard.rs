@@ -9,10 +9,7 @@ use crate::models::{
     profile,
 };
 use chrono::{Timelike, Utc};
-use sea_orm::{
-    ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QueryOrder,
-    Statement,
-};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 
@@ -65,12 +62,13 @@ pub async fn read(
         .into_iter()
         .map(|row| row.record_id)
         .collect();
-    for row in db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT p.id FROM people p JOIN accounts owner ON owner.person_id=p.id JOIN account_avatars a ON a.account_id=owner.id WHERE p.id=ANY($1::bigint[])",
-        [people.iter().map(|person| person.id).collect::<Vec<_>>().into()]
-    )).await? {
-        attachments.insert(row.try_get("", "id")?);
-    }
+    attachments.extend(
+        profile::avatar::account_avatar_people(
+            tenant,
+            &people.iter().map(|person| person.id).collect::<Vec<_>>(),
+        )
+        .await?,
+    );
     let gravatars = profile::gravatar::for_visible_people(tenant, &people, &attachments).await?;
     let schedules = schedule::Entity::find()
         .filter(schedule::Column::HouseholdId.eq(household))

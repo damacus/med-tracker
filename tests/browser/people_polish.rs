@@ -1,7 +1,7 @@
 use crate::harness::{self, named};
 use playwright_rs::expect;
 use playwright_rs::protocol::{AriaRole, FulfillOptions, ScreenshotOptions, Viewport};
-use sea_orm::ConnectionTrait;
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
 
 async fn capture(page: &playwright_rs::protocol::Page, name: &str) {
     expect(page.locator("body[data-navigation-ready]"))
@@ -201,9 +201,32 @@ async fn people_polish_counts_consent_and_visibility() {
             page.reload(None).await.unwrap();
             expect(page.locator("[data-person-card='73001'] img[src*='gravatar']")).to_be_visible().await.unwrap();
             assert_eq!(page.locator("[data-person-card='73002'] img[src*='gravatar']").count().await.unwrap(),0);
-            journey.admin.execute_unprepared("INSERT INTO active_storage_blobs(id,key,filename,content_type,byte_size,service_name,created_at) VALUES(79901,'synthetic-accountless-avatar','synthetic.png','image/png',1,'s3_with_persistent_mirror',now()); INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,household_id,created_at) VALUES('avatar','Person',73002,79901,72001,now()); UPDATE accounts SET preferences=jsonb_set(preferences,'{gravatar_enabled}','false') WHERE id=71001").await.unwrap();
+            page.goto(&format!("{}/households/persistence-fixture/dashboard",journey.origin),None).await.unwrap();
+            assert_eq!(page.locator("[data-person-id='73001'] img[src*='gravatar']").count().await.unwrap(),1);
+            assert_eq!(page.locator("[data-person-id='73002'] img").count().await.unwrap(),0);
+            assert_eq!(page.locator("[data-person-id='73005']").count().await.unwrap(),0);
+            med_tracker::models::_entities::accounts::ActiveModel { id: Set(71001), preferences: Set(serde_json::json!({"gravatar_enabled":false})), ..Default::default() }.update(&journey.admin).await.unwrap();
+            page.reload(None).await.unwrap();
+            assert_eq!(page.locator("[data-person-id='73001'] img[src*='gravatar']").count().await.unwrap(),0);
+            page.goto(&format!("{}/households/persistence-fixture/people",journey.origin),None).await.unwrap();
+            assert_eq!(page.locator("[data-person-card='73001'] img[src*='gravatar']").count().await.unwrap(),0);
+            med_tracker::models::_entities::accounts::ActiveModel { id: Set(71001), preferences: Set(serde_json::json!({"gravatar_enabled":true})), ..Default::default() }.update(&journey.admin).await.unwrap();
+            page.goto(&format!("{}/households/persistence-fixture/dashboard",journey.origin),None).await.unwrap();
+            let avatar = sea_orm::sea_query::Query::insert()
+                .into_table("account_avatars")
+                .columns(["account_id", "key", "content_type", "service_name", "byte_size", "checksum"])
+                .values_panic([71001_i64.into(), "synthetic-account-avatar".into(), "image/png".into(), "s3".into(), 1_i64.into(), "synthetic".into()])
+                .to_owned();
+            journey.admin.execute_raw(journey.admin.get_database_backend().build(&avatar)).await.unwrap();
+            journey.admin.execute_unprepared("INSERT INTO active_storage_blobs(id,key,filename,content_type,byte_size,service_name,created_at) VALUES(79901,'synthetic-accountless-avatar','synthetic.png','image/png',1,'s3_with_persistent_mirror',now()); INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,household_id,created_at) VALUES('avatar','Person',73002,79901,72001,now())").await.unwrap();
+            page.route("**/people/73001/avatar",|route|async move {route.fulfill(FulfillOptions::builder().content_type("image/svg+xml").body_string("<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect width='48' height='48' fill='#86a998'/></svg>").build()).await}).await.unwrap();
             page.route("**/people/73002/avatar",|route|async move {route.fulfill(FulfillOptions::builder().content_type("image/svg+xml").body_string("<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect width='48' height='48' fill='#86a998'/></svg>").build()).await}).await.unwrap();
             page.reload(None).await.unwrap();
+            assert_eq!(page.locator("[data-person-id='73001'] img[src$='/73001/avatar']").count().await.unwrap(),1);
+            assert_eq!(page.locator("[data-person-id='73002'] img[src$='/73002/avatar']").count().await.unwrap(),1);
+            assert_eq!(page.locator("[data-person-id='73001'] img[src*='gravatar']").count().await.unwrap(),0);
+            page.goto(&format!("{}/households/persistence-fixture/people",journey.origin),None).await.unwrap();
+            expect(page.locator("[data-person-card='73001'] img[src$='/73001/avatar']")).to_be_visible().await.unwrap();
             expect(page.locator("[data-person-card='73002'] img[src$='/73002/avatar']")).to_be_visible().await.unwrap();
             assert_eq!(page.locator("main img[src*='gravatar']").count().await.unwrap(),0);
             page.goto(&format!("{}/households/persistence-fixture/people?per_page=1",journey.origin),None).await.unwrap();
