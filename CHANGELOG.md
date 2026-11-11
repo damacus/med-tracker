@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/damacus/med-tracker/compare/v0.6.0...v0.6.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* restore generic OIDC configuration ([#3080](https://github.com/damacus/med-tracker/issues/3080)) ([1c0243b](https://github.com/damacus/med-tracker/commit/1c0243b5253dd1bd63ca688955afd57759bd2ee6))
+
 ## [0.6.0](https://github.com/damacus/med-tracker/compare/v0.5.35...v0.6.0) (2026-11-10)
 
 
