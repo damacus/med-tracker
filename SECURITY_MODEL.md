@@ -20,7 +20,7 @@ Deployment facts (home-ops): `kubernetes/apps/home/med-tracker` serves `med-trac
 | **Platform Admin** | `src/controllers/platform*`, `src/controllers/administration*`, `src/models/platform/**` (support access, recovery, settings, database setup) |
 | **Workers & Integrations** | `src/models/nhs_dmd/**`, `src/models/care/review_prompts/refresh.rs` (openFDA/DailyMed), browser push and mail outbox, `src/models/care/ai_suggestions.rs` (OpenAI/Anthropic/Gemini/OpenRouter), `src/models/profile/gravatar.rs`, `src/models/storage.rs` (S3/RustFS), `src/models/canary/**`, `src/telemetry/**` |
 | **Client Tools & Mobile** | `client-tools/**` (API client, CLI, MCP server using `MEDTRACKER_TOKEN`), `mobile/android/**` |
-| **Deployment** | `Dockerfile`, `charts/med-tracker/**`, `compose*.yaml`, `config/*.yaml`, `.github/workflows/**`, `Taskfiles/**`, plus home-ops manifests |
+| **Deployment** | `Dockerfile`, `deploy/helm/**`, `compose*.yaml`, `config/*.yaml`, `.github/workflows/**`, `Taskfiles/**`, plus home-ops manifests |
 
 ## Trust boundaries and entry points
 

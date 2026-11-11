@@ -1,0 +1,130 @@
+# Values for upstream bjw-s app-template 5.3.0; no MedTracker chart is required.
+# Supply credentials through existing Secrets, for example with ExternalSecrets.
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+
+controllers:
+  # Serve HTTP with restricted runtime credentials; expose this Service via HTTPS.
+  web:
+    type: deployment
+    strategy: Recreate
+    containers:
+      app:
+        image:
+          repository: ghcr.io/damacus/med-tracker-loco
+          tag: 0.6.1 # x-release-please-version
+          pullPolicy: IfNotPresent
+        args: [start, --environment, production]
+        envFrom: &runtimeSecrets
+          - secretRef:
+              name: med-tracker-runtime
+          - secretRef:
+              name: med-tracker-integrations
+        env: &runtimeEnvironment
+          BINDING: 0.0.0.0
+          PORT: "5150"
+          MEDTRACKER_PUBLIC_HOST: https://med-tracker.example.org
+          MEDTRACKER_PUBLIC_ORIGIN: https://med-tracker.example.org
+          MEDTRACKER_COOKIE_SECURE: "true"
+        securityContext: &containerSecurity
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        resources: &resources
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            memory: 1Gi
+        # Allow five minutes for startup; readiness and liveness use Loco's health endpoint.
+        probes:
+          liveness: &healthProbe
+            enabled: true
+            custom: true
+            spec:
+              httpGet:
+                path: /health
+                port: 5150
+          readiness: *healthProbe
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              httpGet:
+                path: /health
+                port: 5150
+              periodSeconds: 5
+              failureThreshold: 60
+
+  # Run background work and one scheduler with the same restricted runtime access.
+  worker:
+    type: deployment
+    strategy: Recreate
+    containers:
+      worker: &backgroundContainer
+        # Native app-template field templating follows image overrides on the web process.
+        image: &image
+          repository: '{{ .Values.controllers.web.containers.app.image.repository }}'
+          tag: '{{ .Values.controllers.web.containers.app.image.tag }}'
+          digest: '{{ .Values.controllers.web.containers.app.image.digest | default "" }}'
+          pullPolicy: IfNotPresent
+        args: [start, --worker, --environment, production]
+        envFrom: *runtimeSecrets
+        env: *runtimeEnvironment
+        securityContext: *containerSecurity
+        resources: *resources
+  scheduler:
+    type: deployment
+    strategy: Recreate
+    containers:
+      scheduler:
+        <<: *backgroundContainer
+        args: [scheduler, --environment, production]
+
+  # Helm waits for native Loco migrations before deploying each new release.
+  # This non-superuser login owns schema updates; runtime auto_migrate remains false.
+  update:
+    type: job
+    # Pre-install hooks run before chart-created ServiceAccounts exist.
+    serviceAccount:
+      name: default
+    annotations:
+      helm.sh/hook: pre-install,pre-upgrade
+      helm.sh/hook-weight: "-5"
+      helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    job:
+      backoffLimit: 0
+      activeDeadlineSeconds: 600
+    containers:
+      update:
+        image: *image
+        args: [db, migrate, --environment, production]
+        envFrom:
+          - secretRef:
+              name: med-tracker-update
+        securityContext: *containerSecurity
+        resources: *resources
+
+# Route to the web controller only; configure your existing ingress or Gateway separately.
+service:
+  app:
+    controller: web
+    ports:
+      http:
+        port: 5150
+        targetPort: 5150
+
+# Read-only containers need writable temporary space, with no application data PVC.
+persistence:
+  tmp:
+    type: emptyDir
+    globalMounts:
+      - path: /tmp

@@ -10,7 +10,7 @@ the schema, internal roles and restricted application access. Routine upgrades
 run automatically with a separate non-superuser schema-update login. Operators
 do not create roles, assign grants or maintain database setup scripts.
 
-Use a released image and chart version, preferably pinning the image digest.
+Use a released image and BJW's app-template chart, preferably pinning the image digest.
 Expose the application through HTTPS and keep secure production cookies enabled.
 See [release notes](../releases/0.6.md) for remaining limitations and
 [configuration](../../config/production.yaml) for all available settings.
@@ -74,61 +74,57 @@ Do not remove volumes as part of an upgrade.
 
 ## Helm
 
-Provision a fresh PostgreSQL 18 database. Put its administrator connection URI
-in a Kubernetes Secret using your existing secret manager; the default key is
-`DATABASE_URL`. For example, HomeOps uses 1Password and ExternalSecrets.
-The application only needs administrator access during initial installation.
+Use upstream [BJW app-template](https://bjw-s-labs.github.io/helm-charts/docs/app-template/)
+5.3.0 directly. MedTracker supplies ordinary values files, with no custom chart,
+templates or chart archive to maintain. Check out the application release and
+copy [the runtime values](https://github.com/damacus/med-tracker/blob/main/deploy/helm/values.yaml) to your own `values.yaml`.
+Set both public-origin variables under `controllers.web.containers.app.env` to
+your HTTPS origin. YAML anchors share these settings with the worker and scheduler.
+Configure your existing ingress or Gateway to the web Service on port 5150.
 
-Create a values file:
+Provision a fresh PostgreSQL 18 database and these Secrets through your existing
+secret manager. For example, HomeOps uses 1Password and ExternalSecrets.
 
-```yaml
-database:
-  host: postgres.example.internal
-  name: medtracker
-  bootstrap:
-    existingSecret: med-tracker-bootstrap
-env:
-  MEDTRACKER_PUBLIC_HOST: https://med-tracker.example.org
-  MEDTRACKER_PUBLIC_ORIGIN: https://med-tracker.example.org
-envFrom:
-  - secretRef:
-      name: med-tracker-integrations
-```
+| Secret | Required keys | Used by |
+| --- | --- | --- |
+| `med-tracker-bootstrap` | `DATABASE_URL` for the empty database's administrator | Initial setup only |
+| `med-tracker-runtime` | `DATABASE_URL`, `AUTH_SESSION_SECRET`, `MEDTRACKER_SESSION_KEY` | Web, worker and scheduler |
+| `med-tracker-update` | `DATABASE_URL` for a separate schema-update login | Automatic schema updates |
+| `med-tracker-integrations` | SMTP variables above, plus any enabled storage and `OIDC_*` settings | Web, worker and scheduler |
 
-The integrations Secret supplies the SMTP variables shown above and any enabled
-storage or identity-provider configuration. Configure HTTPS ingress or Gateway
-API routing to the chart's Service.
+Choose distinct runtime and update usernames and strong URL-encoded passwords;
+all three connection URIs must identify the same database. Loco's native setup
+task creates these logins, grants and RLS. You do not create roles or write SQL.
+Use a persistent random session secret and a base64-encoded 64-byte random session
+key. Keep these credentials stable and back them up with the database. The values
+files reference Secrets; they neither generate nor manage their lifecycle.
 
-```fish
-helm install med-tracker https://github.com/damacus/med-tracker/releases/download/v0.6.0/med-tracker-0.6.0.tgz --values values.yaml --wait --timeout 10m
-```
-
-The chart generates runtime and schema-update Secrets, runs initial setup before
-application startup, and retains those credentials on subsequent upgrades.
-To use an existing secret manager for all credentials, supply
-`database.runtime.existingSecret` and `database.update.existingSecret`.
-Both contain `DATABASE_URL`; the runtime Secret also supplies
-`AUTH_SESSION_SECRET` and `MEDTRACKER_SESSION_KEY`.
-
-Each GitHub release includes the chart archive and its SHA-256 checksum.
-Upgrade through Helm, or let Flux reconcile the chart from the matching Git tag:
+Install with [the initial-setup overlay](https://github.com/damacus/med-tracker/blob/main/deploy/helm/setup.values.yaml):
 
 ```fish
-helm upgrade med-tracker https://github.com/damacus/med-tracker/releases/download/v<next-version>/med-tracker-<next-version>.tgz --reuse-values --wait --timeout 10m
+helm install med-tracker oci://ghcr.io/bjw-s-labs/helm/app-template --version 5.3.0 --values values.yaml --values deploy/helm/setup.values.yaml --wait --timeout 10m
 ```
 
-The chart runs the native `db migrate` command in a pre-upgrade hook using the
-schema-update login. A failed hook stops the rollout. Routine upgrades do not
-mount or require the administrator Secret. If image tags or digests are
-explicitly pinned in values, update them to match the chart release.
+The setup hook runs `task database-setup` with administrator access, followed by
+`db migrate` with the non-superuser update login. Failed hooks stop the rollout.
+The web, worker and scheduler receive only runtime credentials and integrations.
+The setup overlay also supports an existing release pointed at a new empty
+database; it does not import or reset the old database.
 
-When an existing Helm release is being pointed at a new empty database, use
-`setup.bootstrapOnUpgrade: true` for that one cutover. Remove that setting after
-successful initial setup. This does not migrate data from the old database.
+For routine upgrades, update the image tag or digest in your runtime values and
+omit the setup overlay. Reset stored Helm values so the initial setup controller
+is removed, then reapply your complete runtime values file:
 
-See the [chart reference](https://github.com/damacus/med-tracker/blob/main/charts/med-tracker/README.md) for existing-secret,
-routing and image settings. Generated Secrets are retained on uninstall; keep
-them with database backups rather than deleting them during an upgrade.
+```fish
+helm upgrade med-tracker oci://ghcr.io/bjw-s-labs/helm/app-template --version 5.3.0 --reset-values --values values.yaml --wait --timeout 10m
+```
+
+Do not use `--reuse-values`: it would retain the privileged initial setup
+controller. The routine values contain only the restricted migration hook, which
+runs before each upgrade. Ordinary upgrades and Pod restarts need no administrator
+Secret. With Flux, use the same upstream chart and values and remove the setup
+controller after successful initial setup. The chart version is independent of
+the application image version; existing HomeOps deployments already use this chart.
 
 ## Configuration and schema changes
 
