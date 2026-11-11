@@ -28,7 +28,11 @@ async fn capture(page: &Page, name: &str) {
         &directory.join(format!("admin-{name}.png")),
         ScreenshotOptions::builder()
             .animations(Animations::Disabled)
-            .full_page(name.starts_with("overview") || name.contains("error"))
+            .full_page(
+                name.starts_with("overview")
+                    || name.contains("error")
+                    || name.starts_with("platform-settings"),
+            )
             .build(),
     )
     .await

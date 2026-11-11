@@ -577,15 +577,9 @@ async fn set_sign_in_enabled(
 }
 
 const SETTINGS_LOCK: i32 = 1;
-pub const LOOKUP_SOURCES: [&str; 7] = [
-    "imported_catalog",
-    "local_nhs_dmd",
-    "cached_open_products_facts",
-    "open_products_facts",
-    "curated_catalog",
-    "nhs_dmd",
-    "supplements",
-];
+pub use crate::models::care::medication_lookup::LOOKUP_SOURCES;
+pub const INVALID_LOOKUP_SOURCES: &str =
+    "Use at least one supported medicine lookup source listed on the platform settings page.";
 
 pub struct Settings {
     pub invite_only: bool,
@@ -650,18 +644,10 @@ fn default_settings(invite_only: bool) -> Settings {
         invite_only_locked: false,
         medicine_lookup_base_url: DEFAULT_LOOKUP_BASE_URL.to_owned(),
         medicine_lookup_token_url: DEFAULT_LOOKUP_TOKEN_URL.to_owned(),
-        medicine_lookup_source_priority: [
-            "imported_catalog",
-            "local_nhs_dmd",
-            "cached_open_products_facts",
-            "open_products_facts",
-            "curated_catalog",
-            "nhs_dmd",
-            "supplements",
-        ]
-        .iter()
-        .map(|source| source.to_string())
-        .collect(),
+        medicine_lookup_source_priority: LOOKUP_SOURCES
+            .iter()
+            .map(|source| source.to_string())
+            .collect(),
     }
 }
 
@@ -747,7 +733,9 @@ fn valid_settings(
             .iter()
             .all(|source| LOOKUP_SOURCES.contains(&source.as_str()))
     {
-        return Err(invalid());
+        return Err(OperationError::Validation {
+            details: json!({"error": INVALID_LOOKUP_SOURCES}),
+        });
     }
     Ok(())
 }

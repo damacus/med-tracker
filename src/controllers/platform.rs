@@ -230,8 +230,15 @@ pub(super) async fn proof(
             } else {
                 StatusCode::BAD_REQUEST
             };
-            view.profile_error(status, "This platform change is unavailable.")
-                .unwrap_or_else(|| (status, "This platform change is unavailable.").into_response())
+            let message = if label == "platform settings change"
+                && status == StatusCode::BAD_REQUEST
+            {
+                "Settings could not be saved. Use only the allowed medicine lookup sources shown on the settings page."
+            } else {
+                "This platform change is unavailable."
+            };
+            view.profile_error(status, message)
+                .unwrap_or_else(|| (status, message).into_response())
         }
         Err(_) => unavailable(),
     }

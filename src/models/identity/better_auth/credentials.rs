@@ -154,6 +154,11 @@ pub(super) fn platform_error(error: OperationError) -> AuthError {
             AuthError::forbidden("Platform administrator rights are required")
         }
         OperationError::NotFound => AuthError::bad_request("Platform target is unavailable"),
+        OperationError::Validation { details }
+            if details["error"] == crate::models::platform::INVALID_LOOKUP_SOURCES =>
+        {
+            AuthError::bad_request(crate::models::platform::INVALID_LOOKUP_SOURCES)
+        }
         OperationError::Validation { .. } => {
             AuthError::bad_request("The platform target is not eligible for this change")
         }

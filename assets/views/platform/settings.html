@@ -23,19 +23,13 @@
       {% endif %}
     </fieldset>
     </section>
-    <section class="platform-panel"><h2>Medicine lookup</h2><p class="platform-panel-description">Configure the terminology service and the order used to find medicine information.</p>
-    <fieldset class="fieldset">
-      <label class="label" for="medicine-lookup-base-url">Medicine lookup base URL</label>
-      <input class="input input-bordered w-full" id="medicine-lookup-base-url" name="medicine_lookup_base_url" type="url" value="{{ medicine_lookup_base_url }}" required>
-    </fieldset>
-    <fieldset class="fieldset">
-      <label class="label" for="medicine-lookup-token-url">Medicine lookup token URL</label>
-      <input class="input input-bordered w-full" id="medicine-lookup-token-url" name="medicine_lookup_token_url" type="url" value="{{ medicine_lookup_token_url }}" required>
-    </fieldset>
+    <section class="platform-panel"><h2>Medicine lookup</h2><p class="platform-panel-description">Choose the order used to search local medicine information. Service URLs are not used by medicine lookup.</p>
+    <input type="hidden" name="medicine_lookup_base_url" value="{{ medicine_lookup_base_url }}">
+    <input type="hidden" name="medicine_lookup_token_url" value="{{ medicine_lookup_token_url }}">
     <fieldset class="fieldset">
       <label class="label" for="medicine-lookup-source-priority">Medicine lookup source priority</label>
       <input class="input input-bordered w-full" id="medicine-lookup-source-priority" name="medicine_lookup_source_priority" type="text" value="{{ medicine_lookup_source_priority }}" required>
-      <p class="text-sm text-base-content/70">Comma-separated. Allowed sources: {{ lookup_sources }}.</p>
+      <p class="text-sm text-base-content/70">Comma-separated. Allowed sources: {{ lookup_sources }}. Remove any other saved sources before saving. Sources omitted here are searched afterwards in the default order.</p>
     </fieldset>
     </section>
     <div class="platform-form-footer"><span class="shell-muted text-sm">You will confirm your identity before saving.</span><button class="btn btn-primary" type="submit">Save settings</button></div>

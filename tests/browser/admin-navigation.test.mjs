@@ -6,6 +6,12 @@ const read = path => readFileSync(path, 'utf8');
 const templates = readdirSync('assets/views/administration', { recursive: true })
   .filter(path => path.endsWith('.html'));
 
+test('platform settings identifies inactive medicine lookup service URLs', () => {
+  const page = read('assets/views/platform/settings.html');
+  assert.match(page, /Service URLs are not used by medicine lookup/);
+  assert.doesNotMatch(page, /name="medicine_lookup_(?:base|token)_url" type="url"/);
+});
+
 test('household administration headings have no redundant standalone back links', () => {
   for (const path of templates) {
     const source = read(`assets/views/administration/${path}`);
