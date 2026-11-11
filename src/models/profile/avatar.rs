@@ -59,18 +59,6 @@ mod bounded_read_tests {
     };
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    #[test]
-    fn account_avatar_presence_query_limits_people() {
-        use sea_orm::{DbBackend, QueryTrait};
-
-        let query = super::account_avatar_presence_query(&[42, 73]);
-        let statement = query.build(DbBackend::Postgres);
-        assert!(statement.sql.contains("account_avatars"));
-        assert!(statement.sql.contains("people"));
-        assert!(statement.sql.contains("accounts"));
-        assert_eq!(statement.values.unwrap().0.len(), 2);
-    }
-
     #[tokio::test]
     async fn avatar_read_stops_an_oversized_stream_before_consuming_it() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

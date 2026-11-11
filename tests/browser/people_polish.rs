@@ -1,7 +1,7 @@
 use crate::harness::{self, named};
 use playwright_rs::expect;
 use playwright_rs::protocol::{AriaRole, FulfillOptions, ScreenshotOptions, Viewport};
-use sea_orm::ConnectionTrait;
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
 
 async fn capture(page: &playwright_rs::protocol::Page, name: &str) {
     expect(page.locator("body[data-navigation-ready]"))
@@ -205,6 +205,13 @@ async fn people_polish_counts_consent_and_visibility() {
             assert_eq!(page.locator("[data-person-id='73001'] img[src*='gravatar']").count().await.unwrap(),1);
             assert_eq!(page.locator("[data-person-id='73002'] img").count().await.unwrap(),0);
             assert_eq!(page.locator("[data-person-id='73005']").count().await.unwrap(),0);
+            med_tracker::models::_entities::accounts::ActiveModel { id: Set(71001), preferences: Set(serde_json::json!({"gravatar_enabled":false})), ..Default::default() }.update(&journey.admin).await.unwrap();
+            page.reload(None).await.unwrap();
+            assert_eq!(page.locator("[data-person-id='73001'] img[src*='gravatar']").count().await.unwrap(),0);
+            page.goto(&format!("{}/households/persistence-fixture/people",journey.origin),None).await.unwrap();
+            assert_eq!(page.locator("[data-person-card='73001'] img[src*='gravatar']").count().await.unwrap(),0);
+            med_tracker::models::_entities::accounts::ActiveModel { id: Set(71001), preferences: Set(serde_json::json!({"gravatar_enabled":true})), ..Default::default() }.update(&journey.admin).await.unwrap();
+            page.goto(&format!("{}/households/persistence-fixture/dashboard",journey.origin),None).await.unwrap();
             let avatar = sea_orm::sea_query::Query::insert()
                 .into_table("account_avatars")
                 .columns(["account_id", "key", "content_type", "service_name", "byte_size", "checksum"])
