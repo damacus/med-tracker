@@ -1,0 +1,86 @@
+#!/usr/bin/env fish
+
+if test (count $argv) -eq 0; or begin; test (count $argv) -eq 1; and contains -- "$argv[1]" --help -h; end
+    echo 'Usage: scripts/stash_drop stash@{N}'
+    echo '       scripts/stash_drop --drop stash@{N} FULL_OBJECT_ID'
+    echo '       scripts/stash_drop --drop-all [--yes]'
+    echo ''
+    echo 'Options:'
+    echo '  -h, --help  Show this help.'
+    echo '  --drop      Drop the selected stash if its full object ID matches.'
+    echo '  --drop-all  List and drop all stashes after confirmation.'
+    echo '  --yes       Skip confirmation with --drop-all.'
+    echo ''
+    echo 'Examples:'
+    echo "  scripts/stash_drop 'stash@{0}'"
+    echo '  scripts/stash_drop --drop-all'
+    echo 'Preview a stash to get its full object ID before using --drop.'
+    echo 'Exit codes: 0 success, 1 operation failed or cancelled, 2 invalid usage.'
+    exit 0
+end
+
+if test (count $argv) -ge 1; and test "$argv[1]" = --drop-all
+    if test (count $argv) -gt 2; or begin; test (count $argv) -eq 2; and test "$argv[2]" != --yes; end
+        echo 'Usage: stash_drop --drop-all [--yes]' >&2
+        exit 2
+    end
+    set -l stashes (git stash list)
+    or exit $status
+    if test (count $stashes) -eq 0
+        exit 0
+    end
+    echo 'Found the following stashes:'
+    printf '%s\n' $stashes
+    if test (count $argv) -eq 1
+        if not isatty stdin
+            echo '--drop-all requires an interactive terminal or --yes.' >&2
+            exit 1
+        end
+        read -P 'Would you like to drop the stashes? [y/N] ' confirmation
+        if not string match -qi -- y "$confirmation"; and not string match -qi -- yes "$confirmation"
+            echo 'No stashes dropped.' >&2
+            exit 1
+        end
+    end
+    git stash clear
+    or exit $status
+    echo 'All stashes dropped.' >&2
+    exit 0
+end
+
+set -l dropping 0
+if test (count $argv) -eq 3; and test "$argv[1]" = --drop
+    set dropping 1
+    set -e argv[1]
+else if test (count $argv) -ne 1
+    echo 'Select one stash to preview, or use --drop with its full object ID. Use --help for details.' >&2
+    exit 2
+end
+
+set -l selector $argv[1]
+if string match -q -- '-*' "$selector"
+    echo "Unknown option: $selector. Run scripts/stash_drop --help for usage." >&2
+    exit 2
+end
+if not string match -rq '^stash@\{[0-9]+\}$' -- "$selector"
+    echo 'Expected a stash selector such as stash@{0}.' >&2
+    exit 2
+end
+set -l oid (git rev-parse --verify "$selector" 2>/dev/null)
+if test $status -ne 0
+    echo "Stash $selector does not exist." >&2
+    exit 1
+end
+if test $dropping -eq 1
+    if test "$argv[2]" != "$oid"
+        echo 'Stash ID does not match; preview it again before dropping.' >&2
+        exit 1
+    end
+    git stash drop "$selector"
+    exit $status
+end
+git stash list --format='%gd %s' | string match -- "$selector *"
+echo "Object ID: $oid"
+git stash show --stat --include-untracked "$selector"
+or exit $status
+echo "To drop: scripts/stash_drop --drop '$selector' $oid"
