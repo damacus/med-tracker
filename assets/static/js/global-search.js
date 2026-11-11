@@ -115,10 +115,8 @@
     opener = clickedTrigger || navigationTrigger || document.activeElement;
     navigationPanels.forEach(dialog => {
       if (typeof dialog.close === 'function') dialog.close();
-      else {
-        const disclosure = dialog.closest('details');
-        if (disclosure) disclosure.open = false;
-      }
+      const disclosure = dialog.closest('details');
+      if (disclosure) disclosure.open = false;
     });
     searchOpen = true;
     panel.showModal();

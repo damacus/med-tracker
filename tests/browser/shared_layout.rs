@@ -1,7 +1,7 @@
 use crate::harness::{self, named};
 use playwright_rs::expect;
+use playwright_rs::protocol::{Animations, ScreenshotOptions, Viewport};
 use playwright_rs::protocol::{AriaRole, BrowserContextOptions};
-use playwright_rs::protocol::{ScreenshotOptions, Viewport};
 use sea_orm::ConnectionTrait;
 
 #[tokio::test]
@@ -139,7 +139,9 @@ async fn capture(page: &playwright_rs::protocol::Page, name: &str) {
     std::fs::create_dir_all(directory).unwrap();
     page.screenshot_to_file(
         &directory.join(format!("{name}.png")),
-        ScreenshotOptions::default(),
+        ScreenshotOptions::builder()
+            .animations(Animations::Disabled)
+            .build(),
     )
     .await
     .unwrap();
@@ -454,6 +456,75 @@ async fn shared_layout_search_and_account_do_not_compete() {
                     .to_be_focused()
                     .await
                     .unwrap();
+            })
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn shared_layout_mobile_native_dialog_transitions() {
+    harness::journey(
+        Viewport {
+            width: 390,
+            height: 844,
+        },
+        |journey| {
+            Box::pin(async move {
+                let page = &journey.page;
+                harness::sign_in(journey).await;
+                let trigger = page.locator("[data-app-drawer]");
+                trigger.click(None).await.unwrap();
+                expect(page.locator("#app-drawer:modal"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                page.locator("#app-drawer [data-household-trigger]")
+                    .click(None)
+                    .await
+                    .unwrap();
+                capture(page, "mobile-dialog-households").await;
+                page.keyboard().press("Escape", None).await.unwrap();
+                expect(page.locator("#app-drawer"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                page.keyboard().press("Control+k", None).await.unwrap();
+                expect(page.locator("#global_search_panel"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                capture(page, "mobile-dialog-search").await;
+                page.keyboard().press("Escape", None).await.unwrap();
+                expect(trigger.clone()).to_be_focused().await.unwrap();
+                trigger.click(None).await.unwrap();
+                expect(page.locator("#app-drawer:modal"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                page.mouse().click(350.0, 400.0, None).await.unwrap();
+                expect(page.locator("#app-drawer"))
+                    .to_be_hidden()
+                    .await
+                    .unwrap();
+                expect(trigger.clone()).to_be_focused().await.unwrap();
+                trigger.click(None).await.unwrap();
+                expect(page.locator("#app-drawer:modal"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                page.set_viewport_size(Viewport {
+                    width: 1440,
+                    height: 1000,
+                })
+                .await
+                .unwrap();
+                expect(page.locator("#app-drawer"))
+                    .to_be_hidden()
+                    .await
+                    .unwrap();
+                capture(page, "mobile-dialog-resized-desktop").await;
             })
         },
     )

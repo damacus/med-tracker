@@ -15,7 +15,6 @@
     {% if canary_enabled | default(value=false) %}<script src="/static/js/canary.js" defer></script>{% endif %}
   </head>
   <body{% if shell %} class="app-household" data-sidebar-collapsed="{{ shell.sidebar_collapsed }}" data-navigation-ready="true"{% endif %}>
-    {% if shell or standalone_navigation | default(value=false) %}<div class="drawer" data-app-drawer-layout><input id="app-drawer-toggle" type="checkbox" class="drawer-toggle" tabindex="-1" aria-hidden="true"><div class="drawer-content">{% endif %}
     <a href="#main" class="skip-link">{% if labels %}{{ labels.layouts.navigation.skip_to_content }}{% else %}Skip to content{% endif %}</a>
     {% block header %}
     {% if shell %}{% include "components/app-sidebar.html" %}{% endif %}
@@ -43,6 +42,5 @@
     {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · {% if labels %}{{ labels.layouts.navigation.care_tagline }}{% else %}Care, kept together.{% endif %}</div></footer>{% endblock footer %}
     {% block appearance %}{% endblock appearance %}
     {% if shell %}<nav class="dock lg:hidden" data-mobile-shortcuts aria-label="{{ shell.shortcut_label }}">{% for link in shell.links %}<a href="{{ link.href }}" aria-label="{{ link.label }}" {% if shell.selected_section == link.id %}aria-current="page"{% endif %}><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#{{ link.id }}"/></svg><span class="dock-label">{{ link.label }}</span></a>{% endfor %}</nav>{% endif %}
-    {% if shell or standalone_navigation | default(value=false) %}</div></div>{% endif %}
   </body>
 </html>

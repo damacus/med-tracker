@@ -134,51 +134,26 @@
     });
   }
   const drawer = document.querySelector("[data-mobile-drawer]");
-  if (drawer) {
+  if (drawer && typeof drawer.querySelector('#app-drawer').showModal === 'function') {
     const summary = drawer.querySelector("summary");
     const panel = drawer.querySelector("#app-drawer");
     const closeButton = drawer.querySelector("[data-drawer-close]");
-    const overlay = drawer.querySelector('[data-drawer-overlay]');
-    const close = () => { drawer.open = false; summary.focus({ preventScroll: true }); };
-    panel.close = () => { drawer.open = false; panel.removeAttribute('open'); panel.dispatchEvent(new Event('close')); };
     summary.setAttribute('aria-controls', panel.id);
     summary.setAttribute('aria-expanded', String(drawer.open));
-    const controls = () => [...panel.querySelectorAll('a[href], button:not([disabled]), [tabindex="0"]')].filter(node => node.getClientRects().length);
-    const outside = new Map();
     drawer.addEventListener("toggle", () => {
       summary.setAttribute("aria-expanded", String(drawer.open));
-      panel.toggleAttribute('open', drawer.open);
-      if (drawer.open) {
-        panel.setAttribute("role", "dialog");
-        panel.setAttribute("aria-modal", "true");
-        for (const node of document.querySelectorAll('.app-sidebar, .shell-main, .shell-footer, [data-mobile-shortcuts], .app-header > :not([data-mobile-drawer])')) {
-          if (!outside.has(node)) outside.set(node, node.inert);
-          node.inert = true;
-        }
-        controls()[0]?.focus({ preventScroll: true });
-      } else {
-        panel.removeAttribute("role");
-        panel.removeAttribute("aria-modal");
-        for (const [node, inert] of outside) node.inert = inert;
-        outside.clear();
-      }
+      if (drawer.open && !panel.open) panel.showModal();
+      else if (!drawer.open && panel.open) panel.close();
     });
-    closeButton.addEventListener("click", close);
-    overlay.addEventListener('click', close);
-    drawer.addEventListener("keydown", event => {
-      if (!drawer.open) return;
-      if (event.key === "Escape") { event.preventDefault(); close(); return; }
-      if (event.key !== "Tab") return;
-      const focusable = controls();
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === summary)) { event.preventDefault(); last?.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    panel.addEventListener('close', () => { drawer.open = false; summary.setAttribute('aria-expanded', 'false'); });
+    closeButton.addEventListener('click', () => panel.close());
+    panel.addEventListener('click', event => {
+      if (event.target !== panel) return;
+      const rect = panel.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) panel.close();
     });
-    document.addEventListener("click", event => { if (drawer.open && !drawer.contains(event.target)) drawer.open = false; });
-    window.matchMedia("(min-width: 1024px)").addEventListener("change", event => { if (event.matches) drawer.open = false; });
+    window.matchMedia("(min-width: 1024px)").addEventListener("change", event => { if (event.matches && panel.open) panel.close(); });
     closeButton.hidden = false;
-    overlay.hidden = false;
     drawer.classList.add('drawer-enhanced');
   }
 })();
