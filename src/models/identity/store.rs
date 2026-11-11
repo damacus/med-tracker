@@ -28,16 +28,6 @@ pub(super) fn digest(token: &str) -> String {
     URL_SAFE.encode(Sha256::digest(token.as_bytes()))
 }
 
-pub(super) fn pkce(mobile: bool) -> Pkce {
-    if mobile {
-        Pkce::required()
-    } else {
-        let mut pkce = Pkce::required();
-        pkce.allow_plain();
-        pkce
-    }
-}
-
 pub(super) struct Store<'a> {
     pub transaction: &'a DatabaseTransaction,
     pub application_id: i64,
@@ -200,7 +190,7 @@ impl Store<'_> {
     fn grant(&self, row: &oauth_grant::Model, refresh: bool) -> Result<Grant, ()> {
         let mut extensions = Extensions::new();
         if !refresh {
-            let pkce = pkce(row.client_kind == "mobile");
+            let pkce = Pkce::required();
             if let Some(value) = pkce.challenge(
                 row.code_challenge_method.as_deref().map(Into::into),
                 row.code_challenge.as_deref().map(Into::into),

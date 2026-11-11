@@ -21,7 +21,7 @@ pub(crate) mod time_zone;
 
 use crate::models::entities::oauth_application;
 use input::Input;
-use oxide_auth::frontends::simple::extensions::AddonList;
+use oxide_auth::frontends::simple::extensions::{AddonList, Pkce};
 use registrar::RegisteredClient;
 pub use store::Lifetime as AuthenticationLifetime;
 use store::Store;
@@ -66,7 +66,7 @@ pub async fn exchange_with_lifetime(
         let application = oauth_application::Entity::find().filter(oauth_application::Column::ClientId.eq(&input.id))
             .lock_shared().one(&transaction).await.map_err(|_| ExchangeError::Unavailable)?.ok_or(ExchangeError::InvalidClient)?;
         let mut addons = AddonList::new();
-        addons.push_code(store::pkce(application.client_kind == "mobile"));
+        addons.push_code(Pkce::required());
         let mut endpoint = Endpoint {
             store: Store { transaction: &transaction, application_id: application.id, client_id: application.client_id.clone(), redirect: input.value("redirect_uri").map(|value| value.into_owned()), selected: None, lifetime },
             registrar: RegisteredClient::new(application, &input)?, addons,

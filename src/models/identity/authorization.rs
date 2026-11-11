@@ -13,7 +13,7 @@ use base64::{
 };
 use oxide_auth::{
     code_grant::authorization::{Error, Request},
-    frontends::simple::extensions::AddonList,
+    frontends::simple::extensions::{AddonList, Pkce},
     primitives::{
         generator::{RandomGenerator, TagGrant},
         grant::Grant,
@@ -432,7 +432,7 @@ fn endpoint<'a>(
     _: &'a AuthorizationInput,
 ) -> Result<Endpoint<'a>, Box<Error>> {
     let mut addons = AddonList::new();
-    addons.push_authorization(store::pkce(application.client_kind == "mobile"));
+    addons.push_authorization(Pkce::required());
     Ok(Endpoint {
         registrar: RegisteredClient::authorization(application)
             .map_err(|_| Error::PrimitiveError)?,

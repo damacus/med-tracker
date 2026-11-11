@@ -608,6 +608,25 @@ async fn race(
 }
 
 #[tokio::test]
+async fn integration_code_rejects_stored_plain_pkce_challenge() {
+    let fixture = Fixture::new().await;
+    fixture
+        .update_grant(|grant| {
+            grant.code_challenge = Set(Some(VERIFIER.into()));
+            grant.code_challenge_method = Set(Some("plain".into()));
+        })
+        .await;
+    let original = fixture.row().await;
+    let result = identity::exchange(&fixture.runtime, request(code_body(&fixture)), None).await;
+    assert!(
+        matches!(result, Err(ExchangeError::Protocol { ref body, .. }) if body["error"] == "invalid_request"),
+        "{result:?}"
+    );
+    assert_eq!(fixture.row().await, original);
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn integration_code_requires_stored_pkce_challenge() {
     let fixture = Fixture::new().await;
     fixture
