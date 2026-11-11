@@ -1,0 +1,53 @@
+# Initial empty-database setup only. Omit this file from routine Helm upgrades.
+# Loco creates roles, schema and RLS; no operator-written SQL or init scripts.
+controllers:
+  setup:
+    type: job
+    # The namespace's default account already exists before pre-install hooks.
+    serviceAccount:
+      name: default
+    annotations:
+      # Also supports reusing an existing release with a new, empty database.
+      helm.sh/hook: pre-install,pre-upgrade
+      helm.sh/hook-weight: "-10"
+      helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    job:
+      backoffLimit: 0
+      activeDeadlineSeconds: 600
+    containers:
+      setup:
+        # Reuse the selected application image, including an optional digest pin.
+        image:
+          repository: '{{ .Values.controllers.web.containers.app.image.repository }}'
+          tag: '{{ .Values.controllers.web.containers.app.image.tag }}'
+          digest: '{{ .Values.controllers.web.containers.app.image.digest | default "" }}'
+          pullPolicy: IfNotPresent
+        args: [task, database-setup, --environment, production]
+        env:
+          # Only this initial Job receives the database administrator connection.
+          DATABASE_URL:
+            valueFrom:
+              secretKeyRef:
+                name: med-tracker-bootstrap
+                key: DATABASE_URL
+          MEDTRACKER_RUNTIME_DATABASE_URL:
+            valueFrom:
+              secretKeyRef:
+                name: med-tracker-runtime
+                key: DATABASE_URL
+          MEDTRACKER_UPDATE_DATABASE_URL:
+            valueFrom:
+              secretKeyRef:
+                name: med-tracker-update
+                key: DATABASE_URL
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            memory: 1Gi

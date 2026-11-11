@@ -14,7 +14,7 @@ on:
       - migration/**
       - assets/**
       - config/production.yaml
-      - charts/med-tracker/**
+      - deploy/helm/**
       - package.json
       - package-lock.json
       - scripts/*loco_image*.mjs
@@ -338,33 +338,6 @@ jobs:
             test "$(docker buildx imagetools inspect "$IMAGE:$RELEASE_VERSION" --format '{{.Manifest.Digest}}')" = "$digest"
             printf 'Release tag: %s:%s\n' "$IMAGE" "$RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"
           fi
-
-  helm_chart:
-    name: Publish release Helm chart
-    needs: [publish, tooling]
-    if: needs.tooling.outputs.release_version != ''
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-          ref: ${{ inputs.tag_name || github.sha }}
-      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310
-        with:
-          version: v4.3.1
-      - name: Publish the chart matching the checked release image
-        env:
-          VERSION: ${{ needs.tooling.outputs.release_version }}
-          RELEASE_TAG: ${{ inputs.tag_name }}
-          GH_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          helm package charts/med-tracker --version "$VERSION" --app-version "$VERSION" --destination "$RUNNER_TEMP/chart"
-          (cd "$RUNNER_TEMP/chart" && sha256sum "med-tracker-$VERSION.tgz" > "med-tracker-$VERSION.tgz.sha256")
-          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/chart/med-tracker-$VERSION.tgz" "$RUNNER_TEMP/chart/med-tracker-$VERSION.tgz.sha256"
 
   beta:
     name: Promote current main beta

@@ -8,7 +8,7 @@
 			"include-component-in-tag": false,
 			"initial-version": "0.1.0",
 			"extra-files": [
-				{"type": "yaml", "path": "charts/med-tracker/Chart.yaml", "jsonpath": "$['version','appVersion']"},
+				{"type": "generic", "path": "deploy/helm/values.yaml"},
 				{"type": "generic", "path": "compose.production.yaml"}
 			]
 		}
