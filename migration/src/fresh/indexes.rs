@@ -4,6 +4,19 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
+                .name("index_medications_on_barcode")
+                .table("medications")
+                .unique()
+                .col("household_id")
+                .col("barcode")
+                .and_where(Expr::col("barcode").is_not_null())
+                .and_where(Expr::col("barcode").ne(""))
+                .to_owned(),
+        )
+        .await?;
+    manager
+        .create_index(
+            Index::create()
                 .name("idx_audit_checkpoint_chain_sequence")
                 .table(Alias::new("audit_checkpoints"))
                 .unique()

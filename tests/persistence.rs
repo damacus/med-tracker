@@ -1,3 +1,5 @@
+#[path = "support/clinical_fixture.rs"]
+mod clinical_fixture;
 #[path = "support/fixtures.rs"]
 pub mod fixtures;
 #[path = "support/scenario.rs"]
@@ -5,6 +7,106 @@ pub mod scenario;
 use futures_util::FutureExt;
 use loco_rs::prelude::ConnectionTrait;
 use migration::MigratorTrait;
+
+#[tokio::test]
+async fn medication_barcode_upgrade_preserves_rows_and_household_uniqueness() {
+    schema_case(async {
+        use med_tracker::models::_entities::medications;
+        use migration::SchemaManager;
+        use sea_orm::sea_query::{ConditionalStatement, Expr, ExprTrait, Index};
+        use sea_orm::{ActiveModelTrait, EntityTrait, Set, prelude::Decimal};
+
+        let db = restored_database().await;
+        let upgrade_position = migration::Migrator::migrations()
+            .iter()
+            .position(|migration| {
+                migration.name() == "m20261111_000036_household_medication_barcodes"
+            })
+            .unwrap();
+        migration::Migrator::up(&db, Some(u32::try_from(upgrade_position).unwrap()))
+            .await
+            .unwrap();
+        let manager = SchemaManager::new(&db);
+        manager
+            .drop_index(
+                Index::drop()
+                    .name("index_medications_on_barcode")
+                    .table("medications")
+                    .to_owned(),
+            )
+            .await
+            .unwrap();
+        manager
+            .create_index(
+                Index::create()
+                    .name("index_medications_on_barcode")
+                    .table("medications")
+                    .unique()
+                    .col("barcode")
+                    .and_where(Expr::col("barcode").is_not_null())
+                    .and_where(Expr::col("barcode").ne(""))
+                    .to_owned(),
+            )
+            .await
+            .unwrap();
+
+        let first = scenario::Scenario::new().await;
+        let second = scenario::Scenario::new().await;
+        let first_medication = first
+            .medication("Synthetic first tablets", Decimal::ZERO)
+            .await;
+        let second_medication = second
+            .medication("Synthetic second tablets", Decimal::ZERO)
+            .await;
+        let spare = first
+            .medication("Synthetic spare tablets", Decimal::ZERO)
+            .await;
+        let barcode = format!("2{:012}", first.household.id);
+        let original = medications::ActiveModel {
+            id: Set(first_medication.id),
+            barcode: Set(Some(barcode.clone())),
+            ..Default::default()
+        }
+        .update(&db)
+        .await
+        .unwrap();
+
+        migration::Migrator::up(&db, None).await.unwrap();
+        let preserved = medications::Entity::find_by_id(original.id)
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(preserved, original);
+        let shared = medications::ActiveModel {
+            id: Set(second_medication.id),
+            barcode: Set(Some(barcode.clone())),
+            ..Default::default()
+        }
+        .update(&db)
+        .await
+        .unwrap();
+        assert_eq!(shared.barcode, original.barcode);
+        assert_ne!(shared.household_id, original.household_id);
+
+        let error = medications::ActiveModel {
+            id: Set(spare.id),
+            barcode: Set(Some(barcode)),
+            ..Default::default()
+        }
+        .update(&db)
+        .await
+        .unwrap_err();
+        assert!(
+            matches!(error.sql_err(), Some(sea_orm::SqlErr::UniqueConstraintViolation(name))
+            if name.contains("index_medications_on_barcode"))
+        );
+        first.close().await;
+        second.close().await;
+        db.close().await.unwrap();
+    })
+    .await;
+}
 
 #[tokio::test]
 async fn fixture_slices_preserve_baseline_and_care_memberships() {
