@@ -101,7 +101,7 @@ pub(crate) async fn link(
         return super::rendering::unavailable();
     };
     let mut data = crate::controllers::medications::rendering::appearance_context();
-    data["title"] = json!("Link ZITADEL");
+    data["title"] = json!("Link %{provider}");
     data["authenticity_token"] = json!(token);
     match super::security_locale::view(&view, "identity_onboarding/provider_link.html", data) {
         Ok(response) => (csrf, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
@@ -121,7 +121,7 @@ pub(super) async fn registration(
         return super::rendering::unavailable();
     };
     let mut data = crate::controllers::medications::rendering::appearance_context();
-    data["title"] = json!("Create your account with ZITADEL");
+    data["title"] = json!("Create your account with %{provider}");
     data["authenticity_token"] = json!(token);
     match super::security_locale::view(
         &view,
@@ -171,7 +171,7 @@ pub(super) async fn register(
         Ok(response) => native_redirect(response),
         Err(error) => {
             provider_error(&error, "register");
-            super::rendering::redirect("/auth/zitadel/register")
+            super::rendering::redirect("/auth/oidc/register")
         }
     }
 }

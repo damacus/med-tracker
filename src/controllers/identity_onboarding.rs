@@ -44,7 +44,14 @@ pub(crate) use password_reset::show as profile_reset;
 pub(crate) use support::page as profile_support;
 pub(crate) use totp::show as profile_totp;
 
-pub fn routes() -> Routes {
+pub fn routes(ctx: &AppContext) -> Routes {
+    let service = ctx
+        .shared_store
+        .get::<crate::models::identity::better_auth::IdentityService>();
+    let callback = service
+        .as_ref()
+        .and_then(|service| service.provider.as_ref())
+        .map_or("/auth/oidc/callback", |provider| provider.callback_path());
     Routes::new()
         .add("/create-account", get(create_form).post(create))
         .add(
@@ -60,10 +67,10 @@ pub fn routes() -> Routes {
         .add("/account/security", get(security::settings))
         .add("/account/security/keys", get(keys::show).post(keys::create))
         .add("/account/security/keys/revoke", post(keys::revoke))
-        .add("/auth/zitadel", post(oidc::start))
-        .add("/auth/zitadel/callback", get(oidc::callback))
+        .add("/auth/oidc", post(oidc::start))
+        .add(callback, get(oidc::callback))
         .add(
-            "/auth/zitadel/register",
+            "/auth/oidc/register",
             get(oidc::registration).post(oidc::register),
         )
         .add("/account/security/provider/link", get(oidc::link))

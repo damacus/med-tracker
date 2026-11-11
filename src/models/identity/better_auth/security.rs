@@ -98,7 +98,7 @@ pub(crate) struct SecurityOverview {
     pub account_id: AccountId,
     pub(crate) totp: bool,
     pub(crate) password: bool,
-    pub(crate) zitadel: bool,
+    pub(crate) oidc: bool,
     pub(crate) provider_available: bool,
     pub(crate) can_unlink_provider: bool,
     pub(crate) passkey_count: usize,
@@ -148,9 +148,7 @@ pub(crate) async fn overview(
             account.provider_id == "credential"
                 && matches!(account.password, SchemaValue::Typed(Some(_)))
         });
-        let zitadel = accounts
-            .iter()
-            .any(|account| account.provider_id == "zitadel");
+        let oidc = accounts.iter().any(|account| account.provider_id == "oidc");
         let passkeys = inventory
             .passkeys
             .into_iter()
@@ -175,7 +173,7 @@ pub(crate) async fn overview(
             account_id,
             totp: user.two_factor_enabled.typed()?.unwrap_or(false),
             password,
-            zitadel,
+            oidc,
             provider_available: service.provider.is_some(),
             can_unlink_provider: accounts.len() > 1,
             passkey_count: passkeys.len(),
@@ -198,12 +196,12 @@ mod tests {
     use loco_rs::controller::views::{ViewRenderer, engines::TeraView};
     use serde_json::json;
 
-    fn render(password: bool, zitadel: bool, totp: bool, can_unlink_provider: bool) -> String {
+    fn render(password: bool, oidc: bool, totp: bool, can_unlink_provider: bool) -> String {
         let created = Utc::now();
         let security = SecurityOverview {
             account_id: AccountId::from_database(1),
             password,
-            zitadel,
+            oidc,
             totp,
             provider_available: true,
             can_unlink_provider,
@@ -228,8 +226,10 @@ mod tests {
                 expires: created,
             }],
         };
-        let labels =
-            crate::models::care::report_pdf::translations("en").expect("translations load");
+        let labels = crate::views::profile_security::with_provider_name(
+            crate::models::care::report_pdf::translations("en").expect("translations load"),
+            "Example Identity",
+        );
         let security =
             crate::views::profile_security::context(&security, chrono_tz::UTC, &labels, created);
         TeraView::build().expect("templates load").render("profile/security.html", json!({
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn provider_only_profile_keeps_status_and_add_password_without_unlink() {
         let html = render(false, true, false, false);
-        assert!(html.contains("ZITADEL is linked."));
+        assert!(html.contains("Example Identity is linked."));
         assert!(html.contains("panel=reset"));
         assert!(!html.contains("value=\"unlink_provider\""));
         assert!(!html.contains("value=\"remove_password\""));

@@ -39,10 +39,12 @@ settings:
   rails_compat:
     secret_key_base: <%= get_env(name="RAILS_SECRET_KEY_BASE", default="") %>
     old_secret_key_base: <%= get_env(name="RAILS_OLD_SECRET_KEY_BASE", default="") %>
-  zitadel:
-    issuer: <%= get_env(name="MEDTRACKER_ZITADEL_ISSUER", default="") %>
-    client_id: <%= get_env(name="MEDTRACKER_ZITADEL_CLIENT_ID", default="") %>
-    client_secret: <%= get_env(name="MEDTRACKER_ZITADEL_CLIENT_SECRET", default="") %>
+  oidc:
+    issuer_url: <%= get_env(name="OIDC_ISSUER_URL", default="") %>
+    redirect_uri: <%= get_env(name="OIDC_REDIRECT_URI", default="") %>
+    provider_name: <%= get_env(name="OIDC_PROVIDER_NAME", default="") %>
+    client_id: <%= get_env(name="OIDC_CLIENT_ID", default="") %>
+    client_secret: <%= get_env(name="OIDC_CLIENT_SECRET", default="") %>
   invitation_mail:
     send_timeout_seconds: <%= get_env(name="MEDTRACKER_INVITATION_MAIL_TIMEOUT_SECONDS", default="30") %>
     from: <%= get_env(name="MEDTRACKER_MAIL_FROM", default="") %>

@@ -160,9 +160,11 @@ impl Issuer {
         assert!(!query["nonce"].is_empty());
         assert!(!query["state"].is_empty());
         assert!(!query.contains_key("client_secret"));
-        assert_eq!(
-            url::Url::parse(&query["redirect_uri"]).unwrap().path(),
-            "/auth/zitadel/callback"
+        assert!(
+            url::Url::parse(&query["redirect_uri"])
+                .unwrap()
+                .path()
+                .starts_with("/auth/oidc/")
         );
         let code = uuid::Uuid::new_v4().to_string();
         self.state.grants.lock().unwrap().insert(
@@ -227,7 +229,7 @@ async fn begin_operation(
         assert_eq!(legacy.headers()["cache-control"], "no-store");
     }
     let page_path = match mode {
-        "register" => "/auth/zitadel/register",
+        "register" => "/auth/oidc/register",
         "link" => "/account/security/provider/link",
         "operation" => "/profile",
         _ => "/login",
@@ -263,9 +265,9 @@ async fn begin_operation(
         input.push(("operation_id", operation));
     }
     let path = if mode == "register" {
-        "/auth/zitadel/register"
+        "/auth/oidc/register"
     } else {
-        "/auth/zitadel"
+        "/auth/oidc"
     };
     let response = super::platform::post_form(app, &cookie, path, &input).await;
     let status = response.status();
@@ -293,7 +295,12 @@ async fn callback(
         .1
         .into_owned();
     let mut url = url::Url::parse(&app.origin).unwrap();
-    url.set_path("/auth/zitadel/callback");
+    let redirect = authorize
+        .query_pairs()
+        .find(|(key, _)| key == "redirect_uri")
+        .unwrap()
+        .1;
+    url.set_path(url::Url::parse(&redirect).unwrap().path());
     url.query_pairs_mut()
         .append_pair("code", code)
         .append_pair("state", if tampered { "invalid-state" } else { &state });
@@ -338,7 +345,7 @@ async fn providers(app: &Application, account: i64) -> Vec<String> {
         .column("id")
         .from("auth_credentials")
         .and_where(Expr::col("user_id").eq(account))
-        .and_where(Expr::col("provider_id").eq("zitadel"))
+        .and_where(Expr::col("provider_id").eq("oidc"))
         .to_owned();
     app.fixture
         .admin
@@ -365,10 +372,119 @@ async fn verification(app: &Application, identifier: &str) -> Option<String> {
 }
 
 #[tokio::test]
+async fn native_oidc_custom_callback_and_provider_branding_use_generic_configuration() {
+    let issuer = Issuer::new().await;
+    let issuer_url = issuer.state.origin.clone();
+    let public_origin = "http://localhost:5150";
+    let mut app = Application::new_configured(
+        Some("synthetic-dose-occurrence-signing-key"),
+        move |settings| {
+            settings["public_origin"] = json!(public_origin);
+            settings["oidc"] = json!({
+                "issuer_url": issuer_url,
+                "client_id": "native-test-client",
+                "client_secret": "password",
+                "provider_name": "Example <Identity>",
+                "redirect_uri": format!("{public_origin}/auth/oidc/return")
+            });
+        },
+    )
+    .await;
+    app.client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .unwrap();
+    let login = app
+        .client
+        .get(format!("{}/login", app.origin))
+        .send()
+        .await
+        .unwrap();
+    let body = login.text().await.unwrap();
+    assert!(body.contains("Sign in with Example &lt;Identity&gt;"));
+    assert!(!body.contains("ZITADEL"));
+    let registration = super::signup::open_registration(&app).await;
+    let registration_page = app
+        .client
+        .get(format!("{}/auth/oidc/register", app.origin))
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert!(registration_page.contains("Create your account with Example &lt;Identity&gt;"));
+    let cookie =
+        super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
+    for path in [
+        "/profile?panel=provider".to_owned(),
+        format!(
+            "/households/{}/profile?panel=provider",
+            app.fixture.household.slug
+        ),
+        format!("/households/{}/profile", app.fixture.household.slug),
+    ] {
+        let response = app
+            .client
+            .get(format!("{}{path}", app.origin))
+            .header("cookie", &cookie)
+            .send()
+            .await
+            .unwrap();
+        assert!(
+            response.status().is_success(),
+            "{path}: {}",
+            response.status()
+        );
+        let html = response.text().await.unwrap();
+        assert!(
+            html.contains("Example &lt;Identity&gt;"),
+            "{path}: configured provider name missing"
+        );
+        assert!(
+            !html.contains("%{provider}"),
+            "{path}: unresolved provider placeholder"
+        );
+        assert!(
+            !html.contains("OpenID Connect"),
+            "{path}: fallback replaced configured provider name"
+        );
+    }
+    let (authorize, state_cookie) = begin(&app, "register", "").await;
+    assert_eq!(
+        authorize
+            .query_pairs()
+            .find(|(key, _)| key == "redirect_uri")
+            .unwrap()
+            .1,
+        format!("{public_origin}/auth/oidc/return")
+    );
+    let code = issuer.code(
+        &authorize,
+        "custom-callback",
+        &format!("custom-oidc-{}@example.test", uuid::Uuid::new_v4()),
+    );
+    let response = callback(&app, &authorize, &code, &state_cookie, false).await;
+    assert!(response.status().is_redirection());
+    assert_eq!(issuer.state.token_calls.load(Ordering::SeqCst), 1);
+    assert_eq!(response.headers()["location"], "/auth/passkey/setup");
+    assert!(
+        app.client
+            .get(format!("{}/auth/zitadel/callback", app.origin))
+            .send()
+            .await
+            .unwrap()
+            .status()
+            .is_client_error()
+    );
+    super::signup::restore_registration(&app, registration).await;
+}
+
+#[tokio::test]
 async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounted_provider() {
     let issuer = Issuer::new().await;
     let settings = issuer.state.origin.clone();
-    let mut app=Application::new_configured(Some("synthetic-dose-occurrence-signing-key"),move |value|value["zitadel"]=json!({"issuer":settings,"client_id":"native-test-client","client_secret":"synthetic-native-client-secret"})).await;
+    let mut app=Application::new_configured(Some("synthetic-dose-occurrence-signing-key"),move |value|value["oidc"]=json!({"issuer_url":settings,"provider_name":"Example Identity","client_id":"native-test-client","client_secret":"synthetic-native-client-secret"})).await;
     app.client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(std::time::Duration::from_secs(5))

@@ -23,7 +23,7 @@ test('profile flow destinations are limited to local setting routes', async () =
   assert.equal(localFlowUrl('https://other.test/account/security/email', base), null);
   assert.equal(localFlowUrl('/platform/users', base), null);
   assert.equal(localFlowUrl('/api/v1/households/1', base), null);
-  assert.equal(localFlowUrl('/auth/zitadel', base), null);
+  assert.equal(localFlowUrl('/auth/oidc', base), null);
 });
 
 test('flow requests reject late replies and never replay a mutation', async () => {

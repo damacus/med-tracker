@@ -286,6 +286,12 @@ impl AccountPage<'_> {
             Ok(value) => value,
             Err(_) => return unavailable(),
         };
+        let labels = crate::views::profile_security::with_provider_name(
+            labels,
+            crate::models::identity::better_auth::oidc::provider_name(
+                self.ctx.config.settings.as_ref(),
+            ),
+        );
         let Ok(authenticity_token) = self.token.authenticity_token() else {
             return unavailable();
         };

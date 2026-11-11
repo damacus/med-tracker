@@ -35,7 +35,7 @@ test('shared profile exposes protected security controls without another index o
   }
   assert.match(security, /action="\/account\/security\/totp\/backup-codes\?profile_flow=totp/);
   assert.match(security, /data-passkey-id=/);
-  assert.match(security, /{% if security.zitadel %}<p[^>]*>{{ labels.profiles.security.provider_linked }}<\/p>{% endif %}/);
+  assert.match(security, /{% if security.oidc %}<p[^>]*>{{ labels.profiles.security.provider_linked }}<\/p>{% endif %}/);
   assert.doesNotMatch(security, /data-profile-form|href="\/account\/security"/);
 });
 

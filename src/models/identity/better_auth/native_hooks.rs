@@ -213,7 +213,7 @@ impl SeaOrmHooks<AccountSchema> for DomainHooks {
         let _ = fields.insert("clinical_session_purpose".into(), purpose.into());
         let path = ctx.request.as_ref().map(|request| request.request.path());
         let method = match path {
-            Some("/callback/zitadel") => Some("zitadel"),
+            Some("/callback/oidc") => Some("oidc"),
             Some("/passkey/verify-authentication") => Some("passkey"),
             Some("/sign-in/email") => Some("password"),
             _ => None,

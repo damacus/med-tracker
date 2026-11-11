@@ -1,5 +1,5 @@
 (() => {
-  const authPaths = new Set(['/login', '/logout', '/reset-password', '/auth/totp', '/auth/zitadel']);
+  const authPaths = new Set(['/login', '/logout', '/reset-password', '/auth/totp', '/auth/oidc']);
   const transitionKey = 'medtracker.push.transition';
   function workerMessage(worker, type, id, timeoutMs = 5000) {
     return new Promise((resolve, reject) => {

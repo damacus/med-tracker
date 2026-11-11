@@ -110,7 +110,7 @@ test("a saved image of the wrong architecture cannot be published", (t) => {
 test("release-please versions Rust and publishes the checked Loco image", () => {
   const config = JSON.parse(readFileSync("release-please-config.json", "utf8")).packages["."];
   assert.equal(config["release-type"], "rust");
-  assert.equal(config["release-as"], "0.6.0");
+  assert.equal(config["release-as"], undefined);
   assert.equal(config.prerelease, false);
   assert.equal(config["version-file"], undefined);
   const release = workflow("release-please");

@@ -73,7 +73,7 @@ fn validate(ctx: &AppContext) -> Result<(), DbErr> {
             .as_ref()
             .is_some_and(|mailer| !mailer.stub)
         || settings::flag(settings, &["ai_medication_help", "enabled"]) == Some(true)
-        || ["browser_push", "avatar_storage", "dmd_storage", "zitadel"]
+        || ["browser_push", "avatar_storage", "dmd_storage", "oidc"]
             .iter()
             .any(|section| {
                 settings

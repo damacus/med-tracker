@@ -43,7 +43,7 @@ pub(super) async fn start(
             let (path, body) = if form.action == "remove_passkey" {
                 ("/passkey/delete-passkey", json!({"id":form.target.as_ref().ok_or(better_auth_core::AuthError::InvalidCredentials)?}))
             } else {
-                let provider = if form.action == "remove_password" { "credential" } else { "zitadel" };
+                let provider = if form.action == "remove_password" { "credential" } else { "oidc" };
                 let account = service.context().database.get_user_accounts(&user.id.display_string()?).await?.into_iter().find(|account| account.provider_id.as_str() == Some(provider)).ok_or(better_auth_core::AuthError::InvalidCredentials)?;
                 ("/unlink-account", json!({"accountId":account.id.display_string()?}))
             };
@@ -65,7 +65,7 @@ pub(super) async fn start(
         };
     }
     let label = match form.action.as_str() {
-        "unlink_provider" => "unlinking ZITADEL",
+        "unlink_provider" => "unlinking %{provider}",
         "close_account" => "closing your account",
         "remove_password" => "removing your password",
         "remove_passkey" => "removing this passkey",

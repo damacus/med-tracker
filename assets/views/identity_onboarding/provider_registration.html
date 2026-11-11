@@ -2,14 +2,14 @@
 {% block appearance_mode %}system{% endblock appearance_mode %}
 {% block content %}
 <section class="card border border-base-300 bg-base-100 max-w-xl mx-auto"><div class="card-body gap-6">
-  <h1 class="text-2xl font-semibold">Create your account with ZITADEL</h1>
-  <p>Enter your details, then continue to ZITADEL to verify your identity. You will add a local password or passkey afterwards.</p>
-  <form method="post" action="/auth/zitadel/register" class="flex flex-col gap-4">
+  <h1 class="text-2xl font-semibold">Create your account with {{ provider_name }}</h1>
+  <p>Enter your details, then continue to {{ provider_name }} to verify your identity. You will add a local password or passkey afterwards.</p>
+  <form method="post" action="/auth/oidc/register" class="flex flex-col gap-4">
     <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
     <div><label for="name">Name</label><input class="input input-bordered w-full" id="name" name="name" required autocomplete="name"></div>
     <div><label for="date_of_birth">Date of birth</label><input class="input input-bordered w-full" id="date_of_birth" name="date_of_birth" type="date" required></div>
     <div><label for="invitation_token">Invitation token (if supplied)</label><input class="input input-bordered w-full" id="invitation_token" name="invitation_token" autocomplete="off"></div>
-    <button class="btn btn-neutral" type="submit">Continue to ZITADEL</button>
+    <button class="btn btn-neutral" type="submit">Continue to {{ provider_name }}</button>
   </form>
 </div></section>
 {% endblock content %}
