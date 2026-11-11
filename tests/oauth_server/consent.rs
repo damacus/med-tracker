@@ -184,6 +184,50 @@ async fn close(fixture: Fixture, boot: BootResult) {
     fixture.scenario.close().await;
 }
 
+#[tokio::test]
+async fn integration_authorization_rejects_plain_and_omitted_pkce_method() {
+    let (fixture, boot) = boot().await;
+    let request = server(&boot);
+    for method in [Some("plain"), None] {
+        let mut fields: Vec<(String, String)> =
+            serde_urlencoded::from_str(&query(&fixture)).unwrap();
+        fields.retain(|(key, _)| key != "code_challenge_method");
+        fields.push(("response_mode".into(), "query".into()));
+        if let Some(method) = method {
+            fields.push(("code_challenge_method".into(), method.into()));
+        }
+        let query = serde_urlencoded::to_string(fields).unwrap();
+        let response = request.get(&format!("/authorize?{query}")).await;
+        assert_eq!(response.status_code(), 303, "{}", response.text());
+        let location = response.header("location");
+        let location = location.to_str().unwrap();
+        assert!(
+            location.starts_with("https://example.test/callback?"),
+            "{location}"
+        );
+        let location = reqwest::Url::parse(location).unwrap();
+        let parameters: std::collections::HashMap<_, _> = location.query_pairs().collect();
+        assert_eq!(
+            location.origin().ascii_serialization(),
+            "https://example.test"
+        );
+        assert_eq!(location.path(), "/callback");
+        assert_eq!(parameters.get("error").unwrap(), "invalid_request");
+        assert_eq!(parameters.get("state").unwrap(), fixture.state.as_str());
+        assert!(!parameters.contains_key("code"));
+    }
+    assert_eq!(
+        oauth_grants::Entity::find()
+            .filter(oauth_grants::Column::OauthApplicationId.eq(fixture.application.id))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    drop(request);
+    close(fixture, boot).await;
+}
+
 async fn sign_in(request: &TestServer, boot: &BootResult, fixture: &Fixture) {
     sign_in_at(request, boot, fixture, "shared sign-in").await;
 }
