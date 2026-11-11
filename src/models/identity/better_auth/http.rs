@@ -1,10 +1,11 @@
+use crate::models::rate_limit::RateLimitState;
 use axum::{
-    extract::{ConnectInfo, MatchedPath, Request},
+    extract::{ConnectInfo, MatchedPath, Request, State},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     middleware::Next,
     response::Response,
 };
-use std::{net::SocketAddr, time::Instant};
+use std::{net::SocketAddr, sync::Arc, time::Instant};
 
 pub(crate) fn normalize_cookie_headers(headers: &mut HeaderMap) -> Result<(), StatusCode> {
     let cookies = headers
@@ -21,7 +22,11 @@ pub(crate) fn normalize_cookie_headers(headers: &mut HeaderMap) -> Result<(), St
     Ok(())
 }
 
-pub async fn boundary(mut request: Request, next: Next) -> Response {
+pub async fn boundary(
+    State(rate_limit): State<Arc<RateLimitState>>,
+    mut request: Request,
+    next: Next,
+) -> Response {
     let permission = request
         .extensions()
         .get::<axum::extract::MatchedPath>()
@@ -36,17 +41,23 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
     let peer = request
         .extensions()
         .get::<ConnectInfo<SocketAddr>>()
-        .map(|peer| peer.0.ip().to_string());
+        .map(|peer| peer.0.ip());
+    let source = peer.map(|peer| rate_limit.client_ip(peer, request.headers()).to_string());
     for name in ["x-forwarded-for", "x-real-ip", "x-medtracker-peer"] {
         request.headers_mut().remove(name);
     }
     let missing_auth_peer = peer.is_none() && request.uri().path().starts_with("/api/auth/");
-    let source = peer.as_deref().unwrap_or("unknown");
+    let source = source.as_deref().unwrap_or("unknown");
     if let Ok(value) = HeaderValue::from_str(source) {
         request
             .headers_mut()
             .insert("x-forwarded-for", value.clone());
         request.headers_mut().insert("x-real-ip", value);
+    }
+    if let Some(peer) = peer
+        && let Ok(value) = HeaderValue::from_str(&peer.to_string())
+    {
+        request.headers_mut().insert("x-medtracker-peer", value);
     }
     let route = request
         .extensions()
@@ -81,6 +92,16 @@ mod tests {
         instrument::WithSubscriber,
         span::{Attributes, Id, Record},
     };
+
+    fn proxy_state(trusted: &str) -> Arc<RateLimitState> {
+        Arc::new(
+            RateLimitState::from_settings(
+                Some(&serde_json::json!({"api_rate_limit": {"trusted_proxy_ips": trusted}})),
+                &loco_rs::environment::Environment::Test,
+            )
+            .unwrap(),
+        )
+    }
 
     #[derive(Clone, Default)]
     struct JsonBuffer(Arc<Mutex<Vec<u8>>>);
@@ -118,7 +139,10 @@ mod tests {
         async {
             let router = Router::new()
                 .route("/health", get(|| async { StatusCode::OK }))
-                .layer(axum::middleware::from_fn(boundary));
+                .layer(axum::middleware::from_fn_with_state(
+                    proxy_state(""),
+                    boundary,
+                ));
             let server = loco_rs::TestServer::builder()
                 .mock_transport()
                 .build(router)
@@ -216,7 +240,10 @@ mod tests {
                         .to_owned()
                 }),
             )
-            .layer(axum::middleware::from_fn(boundary))
+            .layer(axum::middleware::from_fn_with_state(
+                proxy_state(""),
+                boundary,
+            ))
     }
 
     async fn request(router: Router) -> reqwest::Response {
@@ -249,6 +276,64 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn authentication_proxy_chains_preserve_validated_sources_and_socket_peers() {
+        for (trusted, forwarded, expected) in [
+            ("", Some("198.51.100.77"), "192.0.2.1"),
+            ("192.0.2.1", Some("198.51.100.77"), "198.51.100.77"),
+            (
+                "192.0.2.1,192.0.2.2",
+                Some("203.0.113.99, 198.51.100.77, 192.0.2.2"),
+                "198.51.100.77",
+            ),
+            (
+                "192.0.2.1,192.0.2.2",
+                Some("invalid, 198.51.100.77, 192.0.2.2"),
+                "198.51.100.77",
+            ),
+            ("192.0.2.1", Some("198.51.100.77, invalid"), "192.0.2.1"),
+            ("192.0.2.1", Some(""), "192.0.2.1"),
+            ("192.0.2.1", None, "192.0.2.1"),
+            ("192.0.2.1", Some("2001:db8::77"), "2001:db8::77"),
+        ] {
+            let router = Router::new()
+                .route(
+                    "/api/auth/get-session",
+                    get(|headers: HeaderMap| async move {
+                        axum::Json(
+                            ["x-forwarded-for", "x-real-ip", "x-medtracker-peer"]
+                                .map(|name| headers[name].to_str().unwrap().to_owned()),
+                        )
+                    }),
+                )
+                .layer(axum::middleware::from_fn_with_state(
+                    proxy_state(trusted),
+                    boundary,
+                ))
+                .layer(axum::Extension(ConnectInfo(
+                    "192.0.2.1:1234".parse::<SocketAddr>().unwrap(),
+                )));
+            let server = loco_rs::TestServer::builder()
+                .mock_transport()
+                .build(router)
+                .unwrap();
+            let mut request = server
+                .get("/api/auth/get-session")
+                .add_header("x-real-ip", "203.0.113.99")
+                .add_header("x-medtracker-peer", "203.0.113.99");
+            if let Some(forwarded) = forwarded {
+                request = request.add_header("x-forwarded-for", forwarded);
+            }
+            let response = request.await;
+            assert_eq!(response.status_code(), StatusCode::OK);
+            assert_eq!(
+                response.json::<[String; 3]>(),
+                [expected, expected, "192.0.2.1"].map(str::to_owned),
+                "trusted={trusted}, forwarded={forwarded:?}"
+            );
+        }
+    }
+
     #[tokio::test(flavor = "current_thread")]
     async fn completion_log_omits_client_controlled_framework_request_id() {
         let events = RequestIdEvents::default();
@@ -256,7 +341,10 @@ mod tests {
         let peer = ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 12345)));
         let router = Router::new()
             .route("/api/auth/get-session", get(|| async { StatusCode::OK }))
-            .layer(axum::middleware::from_fn(boundary))
+            .layer(axum::middleware::from_fn_with_state(
+                proxy_state(""),
+                boundary,
+            ))
             .layer(axum::middleware::from_fn(
                 loco_rs::controller::middleware::request_id::request_id_middleware,
             ))

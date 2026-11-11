@@ -427,7 +427,8 @@ impl Hooks for App {
             .get::<Arc<crate::models::rate_limit::RateLimitState>>()
             .ok_or_else(|| Error::string("API rate-limit state is unavailable"))?;
         let router = router
-            .layer(axum::middleware::from_fn(
+            .layer(axum::middleware::from_fn_with_state(
+                rate_limit.clone(),
                 crate::models::identity::better_auth::http_boundary,
             ))
             .layer(axum::middleware::from_fn_with_state(
