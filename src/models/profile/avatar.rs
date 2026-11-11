@@ -9,6 +9,44 @@ use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use std::{io::Cursor, time::Duration};
 
+fn account_avatar_presence_query(ids: &[i64]) -> sea_orm::Select<person::Entity> {
+    use sea_orm::{
+        QuerySelect, QueryTrait,
+        sea_query::{Alias, Expr, ExprTrait, JoinType},
+    };
+
+    let mut query = person::Entity::find()
+        .select_only()
+        .column(person::Column::Id)
+        .filter(person::Column::Id.is_in(ids.to_vec()));
+    QueryTrait::query(&mut query)
+        .join(
+            JoinType::InnerJoin,
+            account::Entity,
+            Expr::col((account::Entity, account::Column::PersonId))
+                .equals((person::Entity, person::Column::Id)),
+        )
+        .join(
+            JoinType::InnerJoin,
+            Alias::new("account_avatars"),
+            Expr::col((Alias::new("account_avatars"), Alias::new("account_id")))
+                .equals((account::Entity, account::Column::Id)),
+        );
+    query
+}
+
+pub(crate) async fn account_avatar_people(
+    tenant: &TenantTransaction,
+    ids: &[i64],
+) -> Result<std::collections::HashSet<i64>, OperationError> {
+    Ok(account_avatar_presence_query(ids)
+        .into_tuple::<i64>()
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .collect())
+}
+
 pub(crate) const MAX_UPLOAD: usize = 5 * 1024 * 1024;
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -20,6 +58,18 @@ mod bounded_read_tests {
         atomic::{AtomicUsize, Ordering},
     };
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[test]
+    fn account_avatar_presence_query_limits_people() {
+        use sea_orm::{DbBackend, QueryTrait};
+
+        let query = super::account_avatar_presence_query(&[42, 73]);
+        let statement = query.build(DbBackend::Postgres);
+        assert!(statement.sql.contains("account_avatars"));
+        assert!(statement.sql.contains("people"));
+        assert!(statement.sql.contains("accounts"));
+        assert_eq!(statement.values.unwrap().0.len(), 2);
+    }
 
     #[tokio::test]
     async fn avatar_read_stops_an_oversized_stream_before_consuming_it() {
