@@ -116,6 +116,10 @@ async fn security_entry_forms_group_fields_and_name_support_proof() {
                     .click(None)
                     .await
                     .unwrap();
+                expect(page.get_by_label("Passkey name", true))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
                 inspect_form(page, "passkey").await;
                 let now = chrono::Utc::now().naive_utc();
                 med_tracker::models::_entities::platform_admins::ActiveModel {
