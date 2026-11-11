@@ -16,6 +16,47 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Select client checks
+    runs-on: ubuntu-26.04
+    outputs:
+      client_tools: ${{ github.event_name != 'pull_request' || steps.filter.outputs.client_tools == 'true' }}
+      android: ${{ github.event_name != 'pull_request' || steps.filter.outputs.android == 'true' }}
+      api_clients: ${{ github.event_name != 'pull_request' || steps.filter.outputs.api_clients == 'true' }}
+    steps:
+      - name: Detect client inputs changed by this PR
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad
+        id: filter
+        with:
+          filters: |
+            client_tools:
+              - 'client-tools/**'
+              - 'docs/api/openapi.v1.yaml'
+              - '.cargo/**'
+              - '.config/nextest.toml'
+              - 'deny.toml'
+              - 'mise.toml'
+              - 'Taskfile.yml'
+              - '.github/actions/**'
+              - '.github/workflows/ci.yml'
+            android:
+              - 'mobile/android/**'
+              - 'docs/api/openapi.v1.yaml'
+              - 'mise.toml'
+              - 'Taskfile.yml'
+              - '.github/actions/**'
+              - '.github/workflows/android.yml'
+              - '.github/workflows/ci.yml'
+            api_clients:
+              - 'client-tools/openapi-generator/**'
+              - 'docs/api/openapi.v1.yaml'
+              - 'mise.toml'
+              - 'Taskfile.yml'
+              - '.github/actions/**'
+              - '.github/workflows/api-clients.yml'
+              - '.github/workflows/ci.yml'
+
   helm:
     name: Helm install and upgrade rendering
     runs-on: ubuntu-26.04
@@ -277,6 +318,8 @@ jobs:
           if-no-files-found: ignore
 
   client_tools:
+    needs: changes
+    if: needs.changes.outputs.client_tools == 'true'
     runs-on: [ubuntu-latest]
     name: Rust Client Tools
     steps:
@@ -322,9 +365,13 @@ jobs:
         run: task client-tools:test:secret-service
 
   android:
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
     uses: ./.github/workflows/android.yml
 
   api_clients:
+    needs: changes
+    if: needs.changes.outputs.api_clients == 'true'
     uses: ./.github/workflows/api-clients.yml
 
   markdown_check:
@@ -366,6 +413,7 @@ jobs:
     name: CI Success
     if: always()
     needs:
+      - changes
       - helm
       - loco_lint
       - loco_unit
@@ -378,11 +426,22 @@ jobs:
       - docs_check
     runs-on: ubuntu-latest
     steps:
-      - name: Require every CI job to pass
+      - name: Require selected checks and every other CI job to pass
         env:
           JOB_RESULTS: ${{ toJSON(needs) }}
+          CLIENT_CHECKS: ${{ toJSON(needs.changes.outputs) }}
         run: |
-          if ! jq -e 'all(.[]; .result == "success")' <<< "$JOB_RESULTS"; then
+          if ! jq -e --argjson selected "$CLIENT_CHECKS" '
+            ($selected | keys | sort) == ["android", "api_clients", "client_tools"] and
+            all(to_entries[];
+              .key as $job | .value.result as $result |
+              if $selected | has($job) then
+                if $selected[$job] == "true" then $result == "success"
+                elif $selected[$job] == "false" then $result == "skipped"
+                else false end
+              else $result == "success" end
+            )
+          ' <<< "$JOB_RESULTS"; then
             echo "$JOB_RESULTS" | jq .
             exit 1
           fi
