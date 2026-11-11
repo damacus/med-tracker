@@ -20,6 +20,74 @@ use std::{
     },
 };
 
+#[test]
+fn oidc_environment_values_remain_strings_in_loco_configuration() {
+    use loco_rs::{config::Config, environment::Environment};
+    if std::env::var_os("MEDTRACKER_OIDC_CONFIG_CHILD").is_none() {
+        for (client_id, provider_name, client_secret) in [
+            ("370483510927952408", "Example Identity", "password"),
+            (
+                "000370483510927952408",
+                "Example's \"Identity\": C:\\SSO #1",
+                "password:'C:\\oidc\"",
+            ),
+            ("true", "true", "000123"),
+            (
+                "000123",
+                "Example\nOIDC: <Identity>",
+                "password\nwith: 'quotes'",
+            ),
+        ] {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "native_oidc::oidc_environment_values_remain_strings_in_loco_configuration",
+                    "--nocapture",
+                ])
+                .env("MEDTRACKER_OIDC_CONFIG_CHILD", "1")
+                .env("OIDC_ISSUER_URL", "https://identity.example.test")
+                .env(
+                    "OIDC_REDIRECT_URI",
+                    "https://medtracker.example.test/auth/oidc/callback",
+                )
+                .env("OIDC_CLIENT_ID", client_id)
+                .env("OIDC_CLIENT_SECRET", client_secret)
+                .env("OIDC_PROVIDER_NAME", provider_name)
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        return;
+    }
+    for environment in [
+        Environment::Production,
+        Environment::Development,
+        Environment::Test,
+    ] {
+        let config = Config::from_folder(&environment, std::path::Path::new("config")).unwrap();
+        let settings = config.settings.unwrap();
+        for (field, variable) in [
+            ("issuer_url", "OIDC_ISSUER_URL"),
+            ("redirect_uri", "OIDC_REDIRECT_URI"),
+            ("client_id", "OIDC_CLIENT_ID"),
+            ("client_secret", "OIDC_CLIENT_SECRET"),
+            ("provider_name", "OIDC_PROVIDER_NAME"),
+        ] {
+            let expected = std::env::var(variable).unwrap();
+            assert_eq!(
+                settings["oidc"][field].as_str(),
+                Some(expected.as_str()),
+                "{environment}: {field}"
+            );
+        }
+    }
+}
+
 #[derive(Clone)]
 struct Grant {
     nonce: String,
