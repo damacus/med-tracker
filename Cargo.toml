@@ -4,7 +4,7 @@ exclude = ["rust", "client-tools"]
 
 [package]
 name = "med-tracker"
-version = "0.6.2"
+version = "0.6.3"
 edition = "2024"
 rust-version = "1.94.1"
 publish = false
