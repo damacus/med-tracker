@@ -2468,18 +2468,12 @@ async fn platform_settings_requires_platform_administrator() {
     let cookie = admin_fixture_session(&app).await;
     let (_cookies, body) = form_page(&app, &cookie, "/platform/settings").await;
 
-    assert!(str::contains(
-        &body,
-        "Service URLs are not used by medicine lookup"
-    ));
+    assert!(str::contains(&body, "Medicine lookup order"));
     assert!(!str::contains(
         &body,
         "name=\"medicine_lookup_base_url\" type=\"url\""
     ));
-    assert!(str::contains(
-        &body,
-        "Allowed sources: imported_catalog, local_nhs_dmd, cached_open_products_facts, curated_catalog"
-    ));
+    assert!(str::contains(&body, "NHS medicines dictionary"));
     assert!(str::contains(&body, "invite_only"));
     assert!(str::contains(&body, "ontology.nhs.uk"));
     assert!(!str::contains(&body, "password_hash"));

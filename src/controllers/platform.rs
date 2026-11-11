@@ -311,9 +311,44 @@ fn render_settings(view: &TeraView, token: &CsrfToken, settings: &platform::Sett
     data["invite_only_locked"] = json!(settings.invite_only_locked);
     data["medicine_lookup_base_url"] = json!(settings.medicine_lookup_base_url);
     data["medicine_lookup_token_url"] = json!(settings.medicine_lookup_token_url);
-    data["medicine_lookup_source_priority"] =
-        json!(settings.medicine_lookup_source_priority.join(","));
-    data["lookup_sources"] = json!(platform::LOOKUP_SOURCES.join(", "));
+    let mut sources = Vec::new();
+    for source in settings
+        .medicine_lookup_source_priority
+        .iter()
+        .map(String::as_str)
+        .chain(platform::LOOKUP_SOURCES)
+    {
+        if platform::LOOKUP_SOURCES.contains(&source) && !sources.contains(&source) {
+            sources.push(source);
+        }
+    }
+    data["medicine_lookup_source_priority"] = json!(sources.join(","));
+    data["lookup_priority_items"] = json!(
+        sources
+            .iter()
+            .map(|source| {
+                let (name, description) = match *source {
+                    "imported_catalog" => (
+                        "Imported medicines",
+                        "Products from your imported medicine catalogue.",
+                    ),
+                    "local_nhs_dmd" => (
+                        "NHS medicines dictionary",
+                        "Medicine and pack information from your NHS dm+d import.",
+                    ),
+                    "cached_open_products_facts" => (
+                        "Open Products Facts",
+                        "Product information already saved in your local catalogue.",
+                    ),
+                    _ => (
+                        "Curated medicines",
+                        "The reference catalogue included with MedTracker.",
+                    ),
+                };
+                json!({"id": source, "name": name, "description": description})
+            })
+            .collect::<Vec<_>>()
+    );
     data["authenticity_token"] = json!(authenticity);
     match format::render().view(view, "platform/settings.html", data) {
         Ok(response) => (

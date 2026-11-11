@@ -27,13 +27,17 @@ tasks:
       - assets/views/**/*.html
       - assets/static/js/*.js
       - exclude: assets/static/js/html5-qrcode.min.js
+      - exclude: assets/static/js/sortable.min.js
       - node_modules/html5-qrcode/html5-qrcode.min.js
+      - node_modules/sortablejs/Sortable.min.js
     generates:
       - assets/static/css/compiled.css
       - assets/static/js/html5-qrcode.min.js
+      - assets/static/js/sortable.min.js
     cmds:
       - ./node_modules/.bin/tailwindcss --cwd assets -i static/css/app.css -o static/css/compiled.css --minify
       - cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js
+      - cp node_modules/sortablejs/Sortable.min.js assets/static/js/sortable.min.js
   prepare:
     cmds:
       - task: install
