@@ -3,6 +3,12 @@
 .app-sidebar-brand > span:first-child { display:grid; place-items:center; width:2.25rem; height:2.25rem; border-radius:.75rem; background:var(--primary); color:var(--primary-foreground); flex-shrink:0; }
 .app-sidebar-search { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-top:2rem; padding:.625rem .75rem; border:1px solid var(--border-color); border-radius:.5rem; font-size:.8125rem; font-weight:600; color:var(--on-surface-variant); }
 .app-search-shortcut { font-size:.625rem; white-space:nowrap; }
+#global_search_panel .modal-box { border:1px solid var(--border-color); border-radius:.75rem; }
+#global_search_panel .modal-box:focus-within { outline:2px solid var(--ring); outline-offset:0; }
+#global_search_query { width:100%; min-width:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+#global_search_query:focus { outline:none; box-shadow:none; }
+#global_search_panel [data-global-search-results]:empty { display:none; }
+#global_search_panel [data-global-search-results]:not(:empty) { border-top:1px solid var(--border-color); }
 @media (hover: none) and (pointer: coarse) { .app-search-shortcut { display:none; } }
 .app-sidebar-search kbd { font-size:.625rem; white-space:nowrap; }
 .app-sidebar-navigation { padding-block:1.25rem; }

@@ -430,6 +430,32 @@ async fn shared_layout_search_and_account_do_not_compete() {
                     .to_be_visible()
                     .await
                     .unwrap();
+                assert_eq!(
+                    page.locator("#global_search_panel .modal-box [data-global-search-close]")
+                        .count()
+                        .await
+                        .unwrap(),
+                    0,
+                );
+                expect(page.locator("#global_search_query"))
+                    .to_be_focused()
+                    .await
+                    .unwrap();
+                for width in [1440, 390, 320] {
+                    page.set_viewport_size(Viewport {
+                        width,
+                        height: 1000,
+                    })
+                    .await
+                    .unwrap();
+                    capture(page, &format!("search-spotlight-{width}")).await;
+                }
+                page.set_viewport_size(Viewport {
+                    width: 1440,
+                    height: 1000,
+                })
+                .await
+                .unwrap();
                 page.keyboard().press("Escape", None).await.unwrap();
                 expect(page.locator("[data-sidebar-search]"))
                     .to_be_focused()
