@@ -440,6 +440,138 @@ async fn verification(app: &Application, identifier: &str) -> Option<String> {
 }
 
 #[tokio::test]
+async fn native_oidc_signin_checks_local_session_and_requests_account_selection() {
+    let issuer = Issuer::new().await;
+    let issuer_url = issuer.state.origin.clone();
+    let mut app = Application::new_configured(Some("synthetic-dose-occurrence-signing-key"), move |settings| {
+        settings["oidc"] = json!({"issuer_url":issuer_url,"client_id":"native-test-client","client_secret":"password"});
+    }).await;
+    app.client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .unwrap();
+    let (authorize, state_cookie) = begin(&app, "signin", "").await;
+    assert!(
+        authorize
+            .query_pairs()
+            .any(|(key, value)| key == "prompt" && value == "select_account")
+    );
+    assert!(
+        authorize
+            .query_pairs()
+            .any(|(key, value)| key == "code_challenge_method" && value == "S256")
+    );
+    assert!(
+        authorize
+            .query_pairs()
+            .any(|(key, value)| key == "nonce" && !value.is_empty())
+    );
+    let code = issuer.code(&authorize, "unknown", "unknown@example.test");
+    let failed = callback(&app, &authorize, &code, &state_cookie, true).await;
+    let destination = url::Url::parse(&app.origin)
+        .unwrap()
+        .join(failed.headers()["location"].to_str().unwrap())
+        .unwrap();
+    assert_eq!(destination.path(), "/login");
+    assert!(
+        destination
+            .query_pairs()
+            .any(|(key, value)| key == "error" && value == "state_mismatch")
+    );
+    assert_eq!(issuer.state.token_calls.load(Ordering::SeqCst), 0);
+
+    let missing_state = app
+        .client
+        .get(format!("{}/auth/oidc/callback", app.origin))
+        .send()
+        .await
+        .unwrap();
+    let missing_state = url::Url::parse(&app.origin)
+        .unwrap()
+        .join(missing_state.headers()["location"].to_str().unwrap())
+        .unwrap();
+    assert_eq!(missing_state.path(), "/login");
+    assert!(
+        missing_state
+            .query_pairs()
+            .any(|(key, value)| key == "error" && value == "state_not_found")
+    );
+    assert_eq!(issuer.state.token_calls.load(Ordering::SeqCst), 0);
+
+    let page = app
+        .client
+        .get(format!("{}/login", app.origin))
+        .send()
+        .await
+        .unwrap();
+    let csrf_cookie = cookies(&page);
+    let html = page.text().await.unwrap();
+    let csrf = html
+        .split("name=\"authenticity_token\" value=\"")
+        .nth(1)
+        .unwrap()
+        .split('"')
+        .next()
+        .unwrap();
+    let authenticated =
+        super::platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
+    let page = app
+        .client
+        .get(format!("{}/login", app.origin))
+        .header("cookie", &authenticated)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(page.status().as_u16(), 303);
+    assert_eq!(page.headers()["location"], "/");
+    let started = super::platform::post_form(
+        &app,
+        &format!("{authenticated}; {csrf_cookie}"),
+        "/auth/oidc",
+        &[("authenticity_token", csrf)],
+    )
+    .await;
+    assert_eq!(started.status().as_u16(), 303);
+    assert_eq!(started.headers()["location"], "/");
+}
+
+#[tokio::test]
+async fn native_oidc_login_errors_are_useful_and_do_not_echo_provider_input() {
+    let app = Application::new().await;
+    for (code, expected) in [
+        (
+            "state_mismatch",
+            "Your sign-in session expired or could not be verified. Please start sign-in again.",
+        ),
+        (
+            "access_denied",
+            "Sign-in was cancelled or denied. Please try again.",
+        ),
+        (
+            "untrusted-provider-message",
+            "We could not sign you in with your identity provider. Please try again.",
+        ),
+    ] {
+        let response = app
+            .client
+            .get(format!(
+                "{}/login?error={code}&error_description=private-provider-detail",
+                app.origin
+            ))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 200);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        let html = response.text().await.unwrap();
+        assert!(html.contains(expected), "{html}");
+        assert!(html.contains("role=\"alert\""));
+        assert!(!html.contains("private-provider-detail"));
+        assert!(!html.contains("untrusted-provider-message"));
+    }
+}
+
+#[tokio::test]
 async fn native_oidc_custom_callback_and_provider_branding_use_generic_configuration() {
     let issuer = Issuer::new().await;
     let issuer_url = issuer.state.origin.clone();
@@ -655,6 +787,15 @@ async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounte
     assert!(replay.status().is_redirection());
     assert_eq!(graph(&app).await["sessions"], sessions);
     assert_eq!(issuer.state.token_calls.load(Ordering::SeqCst), token_calls);
+    let login_page = app
+        .client
+        .get(format!("{}/login", app.origin))
+        .header("cookie", &cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(login_page.status().as_u16(), 303);
+    assert_eq!(login_page.headers()["location"], "/auth/passkey/setup");
     let setup = app
         .client
         .get(format!("{}/auth/passkey/setup", app.origin))
@@ -772,6 +913,7 @@ async fn native_oidc_registration_signin_link_unlink_and_state_replay_use_mounte
     let code = issuer.code(&authorize, "native-owner-subject", &owner_email);
     let signed_in = callback(&app, &authorize, &code, &state_cookie, false).await;
     assert!(signed_in.status().is_redirection());
+    assert_eq!(signed_in.headers()["location"], "/auth/passkey/complete");
     let cookie = session_cookie(&signed_in);
     let session = app
         .client
