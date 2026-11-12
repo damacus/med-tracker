@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.4](https://github.com/damacus/med-tracker/compare/v0.6.3...v0.6.4) (2026-11-12)
+
+
+### Bug Fixes
+
+* **deps:** update axum sessions ([#3100](https://github.com/damacus/med-tracker/issues/3100)) ([b183154](https://github.com/damacus/med-tracker/commit/b183154c897e1195e272c837ea308b7790b59768))
+* **deps:** update dependency org.jetbrains.kotlinx:kotlinx-serialization-json to v1.13.0 ([#3097](https://github.com/damacus/med-tracker/issues/3097)) ([60ca6f9](https://github.com/damacus/med-tracker/commit/60ca6f9d15f4035d05ddebc4cfb7011a7dd02e91))
+* make medicine lookup order sortable ([#3094](https://github.com/damacus/med-tracker/issues/3094)) ([31934e6](https://github.com/damacus/med-tracker/commit/31934e62a248e9f5331fea19a204d77ae803902c))
+* require household AI opt-in ([#3102](https://github.com/damacus/med-tracker/issues/3102)) ([abd4fb9](https://github.com/damacus/med-tracker/commit/abd4fb9be0f2a76799d30bf8630bbef10131eb5f))
+* scope medication barcodes to households ([#3091](https://github.com/damacus/med-tracker/issues/3091)) ([859575c](https://github.com/damacus/med-tracker/commit/859575cbd2a0760f0a0a9f85ce610286e0638a08))
+
 ## [0.6.3](https://github.com/damacus/med-tracker/compare/v0.6.2...v0.6.3) (2026-11-11)
 
 
