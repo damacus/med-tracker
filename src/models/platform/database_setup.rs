@@ -43,6 +43,8 @@ impl From<SetupError> for loco_rs::Error {
 struct Settings {
     runtime_url: Option<String>,
     update_url: Option<String>,
+    runtime: Option<super::database_connection::Credentials>,
+    update: Option<super::database_connection::Credentials>,
     output_directory: Option<PathBuf>,
     source_directory: Option<PathBuf>,
     #[serde(default)]
@@ -403,6 +405,24 @@ impl Task for DatabaseSetupTask {
         let settings = Settings::from_config(&ctx.config)?;
         let bootstrap = Url::parse(&ctx.config.database.uri)
             .map_err(|_| error("Invalid setup database URL"))?;
+        let runtime_url = settings
+            .runtime_url
+            .as_deref()
+            .filter(|value| !value.is_empty());
+        let update_url = settings
+            .update_url
+            .as_deref()
+            .filter(|value| !value.is_empty());
+        let runtime_fields = match (runtime_url, &settings.runtime) {
+            (None, Some(fields)) => fields.connection_uri(&bootstrap)?,
+            _ => None,
+        };
+        let update_fields = match (update_url, &settings.update) {
+            (None, Some(fields)) => fields.connection_uri(&bootstrap)?,
+            _ => None,
+        };
+        let runtime_url = runtime_url.or_else(|| runtime_fields.as_ref().map(Url::as_str));
+        let update_url = update_url.or_else(|| update_fields.as_ref().map(Url::as_str));
         let directory = settings
             .output_directory
             .as_deref()
@@ -411,18 +431,8 @@ impl Task for DatabaseSetupTask {
         let update_path = directory.join("update/production.local.yaml");
         let runtime_saved = saved_config(&runtime_path)?;
         let update_saved = saved_config(&update_path)?;
-        let runtime = credential(
-            settings.runtime_url.as_deref(),
-            runtime_saved.as_ref(),
-            &bootstrap,
-            "runtime",
-        )?;
-        let update = credential(
-            settings.update_url.as_deref(),
-            update_saved.as_ref(),
-            &bootstrap,
-            "update",
-        )?;
+        let runtime = credential(runtime_url, runtime_saved.as_ref(), &bootstrap, "runtime")?;
+        let update = credential(update_url, update_saved.as_ref(), &bootstrap, "update")?;
         if runtime.username() == update.username()
             || runtime.username() == bootstrap.username()
             || update.username() == bootstrap.username()
@@ -440,8 +450,7 @@ impl Task for DatabaseSetupTask {
             for (uri, access) in [(&runtime, Access::Runtime), (&update, Access::Update)] {
                 migration::provision::preflight(&db, uri.username(), access).await.map_err(database_error)?;
             }
-            let generated = settings.runtime_url.as_deref().is_none_or(str::is_empty)
-                || settings.update_url.as_deref().is_none_or(str::is_empty);
+            let generated = runtime_url.is_none() || update_url.is_none();
             if generated || settings.persist_config {
                 for (path, uri, saved) in [(&runtime_path, &runtime, runtime_saved.as_ref()), (&update_path, &update, update_saved.as_ref())] {
                     if saved.is_none() { persist(path, &output_config(&ctx.config, uri, saved)?, settings.source_directory.as_deref().unwrap_or_else(|| Path::new("config")))?; }

@@ -4,7 +4,30 @@ logger:
   level: info
   format: compact
 settings:
+  postgres:
+    url:
+      template: '<% raw %><%= get_env(name="DATABASE_URL", default="") %><% endraw %>'
+    host:
+      template: '<% raw %><%= get_env(name="PGHOST", default="") %><% endraw %>'
+    port:
+      template: '<% raw %><%= get_env(name="PGPORT", default="") %><% endraw %>'
+    dbname:
+      template: '<% raw %><%= get_env(name="PGDATABASE", default="") %><% endraw %>'
+    username:
+      template: '<% raw %><%= get_env(name="PGUSER", default="") %><% endraw %>'
+    password:
+      template: '<% raw %><%= get_env(name="PGPASSWORD", default="") %><% endraw %>'
   database_setup:
+    runtime:
+      username:
+        template: '<% raw %><%= get_env(name="MEDTRACKER_RUNTIME_PGUSER", default="") %><% endraw %>'
+      password:
+        template: '<% raw %><%= get_env(name="MEDTRACKER_RUNTIME_PGPASSWORD", default="") %><% endraw %>'
+    update:
+      username:
+        template: '<% raw %><%= get_env(name="MEDTRACKER_UPDATE_PGUSER", default="") %><% endraw %>'
+      password:
+        template: '<% raw %><%= get_env(name="MEDTRACKER_UPDATE_PGPASSWORD", default="") %><% endraw %>'
     runtime_url: "<%= get_env(name="MEDTRACKER_RUNTIME_DATABASE_URL", default="") %>"
     update_url: "<%= get_env(name="MEDTRACKER_UPDATE_DATABASE_URL", default="") %>"
     output_directory: "<%= get_env(name="MEDTRACKER_SETUP_DIRECTORY", default="setup") %>"

@@ -15,6 +15,36 @@ Expose the application through HTTPS and keep secure production cookies enabled.
 See [release notes](../releases/0.6.md) for remaining limitations and
 [configuration](../../config/production.yaml) for all available settings.
 
+## PostgreSQL connection fields
+
+MedTracker accepts the standard `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER` and
+`PGPASSWORD` fields. Supply host, database, username and password together;
+the port defaults to 5432. A partial field configuration stops startup with a
+configuration error. Passwords and database names are encoded by the application,
+so Kubernetes manifests do not need to construct or escape connection URLs.
+Login names retain MedTracker's existing restriction to ASCII letters, digits,
+underscores and hyphens.
+
+With CloudNativePG, read `host`, `port` and `dbname` from its generated application
+Secret. Read `username` and `password` from the credential Secret for the process
+being started. The web, worker and scheduler use the restricted runtime login;
+the migration Job uses the schema-update login. Do not give those processes the
+database-owner or administrator credential from CNPG's generated Secrets.
+
+For initial setup, use the same endpoint fields with the administrator's
+`PGUSER` and `PGPASSWORD`. Supply `MEDTRACKER_RUNTIME_PGUSER` and
+`MEDTRACKER_RUNTIME_PGPASSWORD` for the runtime login, and
+`MEDTRACKER_UPDATE_PGUSER` and `MEDTRACKER_UPDATE_PGPASSWORD` for schema updates.
+Each pair must be complete and all three logins must be distinct. The existing
+setup checks still require an empty or recognised database and restricted roles.
+
+Existing `DATABASE_URL` configurations and saved Loco configuration keep working.
+An explicit `DATABASE_URL` takes precedence over the active connection fields.
+The corresponding `MEDTRACKER_RUNTIME_DATABASE_URL` and
+`MEDTRACKER_UPDATE_DATABASE_URL` settings also take precedence over their
+credential fields. Without either supplied setup credential, native setup keeps
+generating and storing separate credentials as before.
+
 ## Docker Compose
 
 Check out the release you want to install. Create a private `.env` file

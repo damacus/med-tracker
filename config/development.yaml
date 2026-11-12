@@ -4,6 +4,19 @@ logger:
   level: info
   format: compact
 settings:
+  postgres:
+    url:
+      template: '<% raw %><%= get_env(name="DATABASE_URL", default="") %><% endraw %>'
+    host:
+      template: '<% raw %><%= get_env(name="PGHOST", default="") %><% endraw %>'
+    port:
+      template: '<% raw %><%= get_env(name="PGPORT", default="") %><% endraw %>'
+    dbname:
+      template: '<% raw %><%= get_env(name="PGDATABASE", default="") %><% endraw %>'
+    username:
+      template: '<% raw %><%= get_env(name="PGUSER", default="") %><% endraw %>'
+    password:
+      template: '<% raw %><%= get_env(name="PGPASSWORD", default="") %><% endraw %>'
   telemetry:
     otlp_endpoint: <%= get_env(name="OTEL_EXPORTER_OTLP_ENDPOINT", default="") %>
     otlp_traces_endpoint: <%= get_env(name="OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", default="") %>

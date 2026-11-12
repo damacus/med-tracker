@@ -32,6 +32,12 @@ impl Hooks for App {
         crate::telemetry::build_version()
     }
 
+    async fn load_config(environment: &Environment) -> Result<Config> {
+        let mut config = environment.load()?;
+        crate::models::platform::database_connection::configure(&mut config)?;
+        Ok(config)
+    }
+
     fn init_logger(ctx: &AppContext) -> Result<bool> {
         Ok(crate::telemetry::init::<Self>(ctx))
     }

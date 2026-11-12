@@ -997,7 +997,26 @@ async fn setup_context(
         .unwrap()
 }
 
-async fn setup_access_case(supplied: bool) {
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SetupCredentials {
+    Generated,
+    Urls,
+    Fields,
+}
+
+fn postgres_fields(uri: &str) -> serde_json::Value {
+    let uri = url::Url::parse(uri).unwrap();
+    serde_json::json!({
+        "url":"",
+        "host":uri.host_str().unwrap(),
+        "port":uri.port().unwrap_or(5432).to_string(),
+        "dbname":percent_encoding::percent_decode_str(uri.path().trim_start_matches('/')).decode_utf8().unwrap(),
+        "username":uri.username(),
+        "password":percent_encoding::percent_decode_str(uri.password().unwrap()).decode_utf8().unwrap(),
+    })
+}
+
+async fn setup_access_case(credentials: SetupCredentials) {
     schema_case(async {
         use loco_rs::{
             app::Hooks,
@@ -1014,17 +1033,35 @@ async fn setup_access_case(supplied: bool) {
         let chosen = |kind: &str| {
             let mut uri = control.clone();
             uri.set_username(&format!("setup_{kind}_{suffix}")).unwrap();
-            uri.set_password(Some("password'with:+@symbols")).unwrap();
+            let password = if credentials == SetupCredentials::Fields {
+                percent_encoding::utf8_percent_encode(
+                    " leading password'with:+@%2F\"\\{{ literal template }} ",
+                    percent_encoding::NON_ALPHANUMERIC,
+                )
+                .to_string()
+            } else {
+                "password'with:+@symbols".to_owned()
+            };
+            uri.set_password(Some(&password)).unwrap();
             uri.to_string()
         };
         let chosen_runtime = chosen("runtime");
         let chosen_update = chosen("update");
-        let ctx = setup_context(
+        let mut ctx = setup_context(
             directory.path(),
-            supplied.then_some(chosen_runtime.as_str()),
-            supplied.then_some(chosen_update.as_str()),
+            (credentials == SetupCredentials::Urls).then_some(chosen_runtime.as_str()),
+            (credentials == SetupCredentials::Urls).then_some(chosen_update.as_str()),
         )
         .await;
+        if credentials == SetupCredentials::Fields {
+            let runtime = postgres_fields(&chosen_runtime);
+            let update = postgres_fields(&chosen_update);
+            let setup = &mut ctx.config.settings.as_mut().unwrap()["database_setup"];
+            setup["runtime"] =
+                serde_json::json!({"username":runtime["username"], "password":runtime["password"]});
+            setup["update"] =
+                serde_json::json!({"username":update["username"], "password":update["password"]});
+        }
         let mut tasks = Tasks::default();
         med_tracker::app::App::register_tasks(&mut tasks);
         tasks
@@ -1042,9 +1079,49 @@ async fn setup_access_case(supplied: bool) {
         };
         let runtime_uri = read_uri("runtime");
         let update_uri = read_uri("update");
-        if supplied {
+        if credentials == SetupCredentials::Urls {
             assert_eq!(runtime_uri, chosen_runtime);
             assert_eq!(update_uri, chosen_update);
+        }
+        if credentials == SetupCredentials::Fields {
+            assert_eq!(
+                postgres_fields(&runtime_uri),
+                postgres_fields(&chosen_runtime)
+            );
+            assert_eq!(
+                postgres_fields(&update_uri),
+                postgres_fields(&chosen_update)
+            );
+            for (uri, allowed) in [(&update_uri, true), (&runtime_uri, false)] {
+                let fields = postgres_fields(uri);
+                let output = tokio::time::timeout(
+                    std::time::Duration::from_secs(120),
+                    tokio::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"))
+                        .args(["db", "migrate", "--environment", "production"])
+                        .env_remove("DATABASE_URL")
+                        .env_remove("LOCO_CONFIG_FOLDER")
+                        .env("PGHOST", fields["host"].as_str().unwrap())
+                        .env("PGPORT", fields["port"].as_str().unwrap())
+                        .env("PGDATABASE", fields["dbname"].as_str().unwrap())
+                        .env("PGUSER", fields["username"].as_str().unwrap())
+                        .env("PGPASSWORD", fields["password"].as_str().unwrap())
+                        .kill_on_drop(true)
+                        .output(),
+                )
+                .await
+                .unwrap()
+                .unwrap();
+                assert_eq!(
+                    output.status.success(),
+                    allowed,
+                    "Native migration command must preserve role separation"
+                );
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                assert!(!stderr.contains(fields["password"].as_str().unwrap()));
+                if !allowed {
+                    assert!(stderr.contains("permission denied"));
+                }
+            }
         }
         let runtime = Database::connect(runtime_uri.clone()).await.unwrap();
         let update = Database::connect(update_uri.clone()).await.unwrap();
@@ -1116,6 +1193,11 @@ async fn setup_access_case(supplied: bool) {
         if let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() {
             queue.uri.clone_from(&runtime_uri);
         }
+        if credentials == SetupCredentials::Fields {
+            config.settings.as_mut().unwrap()["postgres"] = postgres_fields(&runtime_uri);
+            config.database.uri = "postgresql://invalid:password@invalid/invalid".to_owned();
+            med_tracker::models::platform::database_connection::configure(&mut config).unwrap();
+        }
         let boot =
             med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Production, config)
                 .await
@@ -1150,12 +1232,17 @@ async fn setup_access_case(supplied: bool) {
 
 #[tokio::test]
 async fn database_setup_generates_credentials_and_supports_restricted_boot_and_updates() {
-    setup_access_case(false).await;
+    setup_access_case(SetupCredentials::Generated).await;
 }
 
 #[tokio::test]
 async fn database_setup_uses_supplied_credentials_and_preserves_data_on_repeat() {
-    setup_access_case(true).await;
+    setup_access_case(SetupCredentials::Urls).await;
+}
+
+#[tokio::test]
+async fn database_setup_uses_cnpg_fields_for_restricted_boot_and_native_migrations() {
+    setup_access_case(SetupCredentials::Fields).await;
 }
 
 #[tokio::test]
