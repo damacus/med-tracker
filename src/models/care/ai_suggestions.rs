@@ -1,12 +1,14 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, HouseholdScope, PersonAccess, TenantTransaction},
     entities::{household, version},
     errors::OperationError,
 };
 use chrono::Utc;
 use regex::Regex;
 use scraper::{Html, Selector};
-use sea_orm::{ActiveModelTrait, EntityTrait, Set, prelude::Decimal};
+use sea_orm::{
+    ActiveModelTrait, DatabaseConnection, EntityTrait, QuerySelect, Set, prelude::Decimal,
+};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
@@ -606,26 +608,60 @@ fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Value {
     json!({"medication": medication, "doses": doses, "sources": sources, "errors": errors})
 }
 
-pub(crate) async fn generate(settings: Option<&Value>, identity: &Value) -> Value {
+struct Outbound<'a> {
+    db: &'a DatabaseConnection,
+    scope: &'a HouseholdScope,
+    settings: Option<&'a Value>,
+}
+
+impl Outbound<'_> {
+    async fn run<T>(
+        &self,
+        action: impl std::future::Future<Output = T>,
+    ) -> Result<T, OperationError> {
+        let tenant = access::begin(self.db, self.scope, self.settings).await?;
+        household::Entity::find_by_id(self.scope.household_id)
+            .lock_shared()
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::NotFound)?;
+        authorize(&tenant, self.settings).await?;
+        let result = action.await;
+        tenant.rollback().await?;
+        Ok(result)
+    }
+}
+
+pub(crate) async fn generate(
+    db: &DatabaseConnection,
+    scope: &HouseholdScope,
+    settings: Option<&Value>,
+    identity: &Value,
+) -> Result<Value, OperationError> {
+    let outbound = Outbound {
+        db,
+        scope,
+        settings,
+    };
     let config = match configured_provider(settings) {
         Ok(config) => config,
-        Err(error) => return empty_draft(error),
+        Err(error) => return Ok(empty_draft(error)),
     };
     let Some(source_config) = source_config() else {
-        return empty_draft("trusted_source_unavailable");
+        return Ok(empty_draft("trusted_source_unavailable"));
     };
     let mut urls = matching_seeds(identity, &source_config);
     if urls.is_empty() {
         let prompt = json!({"task":"Suggest up to three likely public medication guidance URLs from the configured trusted domains. Return JSON with candidate_urls only. Do not provide clinical guidance.","medication_identity":identity,"allowed_domains":source_config.sources.iter().flat_map(|source| &source.domains).collect::<Vec<_>>()}).to_string();
-        let candidates = match call_provider(&config, &prompt).await {
+        let candidates = match outbound.run(call_provider(&config, &prompt)).await? {
             Ok(content) => content,
-            Err(()) => return empty_draft("suggestion_unavailable"),
+            Err(()) => return Ok(empty_draft("suggestion_unavailable")),
         };
         urls = candidate_urls(&candidates, &source_config);
     }
     let client = match http_client(5) {
         Ok(client) => client,
-        Err(_) => return empty_draft("trusted_source_unavailable"),
+        Err(_) => return Ok(empty_draft("trusted_source_unavailable")),
     };
     let proxy_origin = setting(settings, "source_proxy_origin").map(str::to_owned);
     let mut fetched = Vec::new();
@@ -633,22 +669,25 @@ pub(crate) async fn generate(settings: Option<&Value>, identity: &Value) -> Valu
         if !allowed_source(&url, &source_config) {
             continue;
         }
-        if let Some(source) = fetch_source(&client, &url, proxy_origin.as_deref()).await {
+        if let Some(source) = outbound
+            .run(fetch_source(&client, &url, proxy_origin.as_deref()))
+            .await?
+        {
             fetched.push(source);
         }
     }
     if fetched.is_empty() {
-        return empty_draft("trusted_source_unavailable");
+        return Ok(empty_draft("trusted_source_unavailable"));
     }
     let prompt = json!({
         "task": "Find trusted source evidence and draft medication onboarding fields. Return JSON with medication, doses, sources, errors. Cite only the fetched URLs and quote exact evidence text.",
         "medication_identity": identity,
         "fetched_sources": fetched.iter().map(|source| json!({"url":source.url,"title":source.title,"text":source.text})).collect::<Vec<_>>()
     }).to_string();
-    match call_provider(&config, &prompt).await {
+    Ok(match outbound.run(call_provider(&config, &prompt)).await? {
         Ok(content) => validated_draft(&content, &fetched),
         Err(()) => empty_draft("suggestion_unavailable"),
-    }
+    })
 }
 
 pub(crate) async fn record_suggestion(
@@ -712,7 +751,9 @@ pub(crate) async fn authorize(
         .one(tenant.transaction())
         .await?;
     if !feature_enabled(settings)
-        || household.is_none_or(|household| household.subscription_plan != "family_plus")
+        || household.is_none_or(|household| {
+            household.subscription_plan != "family_plus" || !household.ai_suggestions_enabled
+        })
     {
         return Err(OperationError::NotFound);
     }

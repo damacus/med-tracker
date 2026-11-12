@@ -51,7 +51,7 @@ open class MedicationSuggestionsApi(basePath: kotlin.String = defaultBasePath, c
     /**
      * POST /households/{household_id}/ai_medication_suggestions
      * Generate medication setup suggestions.
-     * 
+     * Requires explicit household AI opt-in managed by a household owner or administrator, in addition to feature availability and plan eligibility. Consent defaults to off. No suggestion input is sent to an external provider without current consent.
      * @param householdId 
      * @param aiMedicationSuggestionRequest  (optional)
      * @return AiMedicationSuggestionResponse
@@ -84,7 +84,7 @@ open class MedicationSuggestionsApi(basePath: kotlin.String = defaultBasePath, c
     /**
      * POST /households/{household_id}/ai_medication_suggestions
      * Generate medication setup suggestions.
-     * 
+     * Requires explicit household AI opt-in managed by a household owner or administrator, in addition to feature availability and plan eligibility. Consent defaults to off. No suggestion input is sent to an external provider without current consent.
      * @param householdId 
      * @param aiMedicationSuggestionRequest  (optional)
      * @return ApiResponse<AiMedicationSuggestionResponse?>

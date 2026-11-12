@@ -1668,6 +1668,12 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         manager,
         Table::create()
             .table(Alias::new("households"))
+            .col(
+                ColumnDef::new(Alias::new("ai_suggestions_enabled"))
+                    .boolean()
+                    .not_null()
+                    .default(false),
+            )
             .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
             .col(
                 ColumnDef::new(Alias::new("created_at"))

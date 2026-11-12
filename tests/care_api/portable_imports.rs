@@ -121,6 +121,12 @@ async fn portable_v3_import_restores_labels_without_person_location_memberships(
         let status = response.status().as_u16();
         let body: Value = response.json().await.unwrap();
         assert_eq!(status, expected, "{endpoint}: {body}");
+        let household = rows::households::Entity::find_by_id(app.fixture.household.id)
+            .one(&app.fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!household.ai_suggestions_enabled);
         assert!(
             body["data"]["errors"].as_array().unwrap().is_empty(),
             "{body}"

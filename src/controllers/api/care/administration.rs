@@ -34,7 +34,12 @@ pub(super) fn key(headers: &HeaderMap) -> Option<&str> {
 }
 fn attributes(body: &Value, envelope: &str) -> std::result::Result<Value, response::Failure> {
     let allowed: &[&str] = match envelope {
-        "household" => &["name", "timezone", "subscription_plan"],
+        "household" => &[
+            "name",
+            "timezone",
+            "subscription_plan",
+            "ai_suggestions_enabled",
+        ],
         "household_membership" => &["role", "status", "person_id"],
         "person_access_grant" => &[
             "household_membership_id",

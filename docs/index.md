@@ -82,6 +82,7 @@ or unredacted logs publicly.
 - [Kubernetes NHS dm+d Release Import](kubernetes-nhs-dmd-import.md): import dm+d AMPP and GTIN release files in production.
 - [UK Regulatory Compliance Plan](uk-regulatory-compliance-plan.md): how MedTracker aligns with health data standards.
 - [Audit Trail](audit-trail.md): how we ensure clinical records are safe and traceable.
+- [AI suggestions](ai-suggestions.md): household permission for external medication suggestions.
 
 ---
 

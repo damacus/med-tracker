@@ -216,8 +216,8 @@ impl<'a> Page<'a> {
             Screen::Settings => {
                 let current = administration::settings::read(tenant).await?;
                 data["draft"] = submitted.map_or_else(
-                    || json!({"name":current["data"]["name"]}),
-                    |draft| json!(draft),
+                    || json!({"name":current["data"]["name"],"ai_suggestions_enabled":current["data"]["ai_suggestions_enabled"]}),
+                    |draft| json!({"name":forms::field(draft,"name"),"ai_suggestions_enabled":forms::field(draft,"ai_suggestions_enabled") == "true"}),
                 );
                 "administration/household.html"
             }
@@ -467,6 +467,9 @@ impl<'a> Page<'a> {
                         &tenant,
                         administration::settings::HouseholdSettingsInput::from_form_name(
                             forms::field(&draft, "name"),
+                        )
+                        .with_ai_suggestions(
+                            forms::field(&draft, "ai_suggestions_enabled") == "true",
                         ),
                         provenance,
                     )

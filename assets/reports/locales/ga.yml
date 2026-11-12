@@ -768,6 +768,8 @@ ga:
       subtitle: Athainmnigh an teaghlach reatha agus coinnigh lipéad an teaghlaigh so-aitheanta do gach duine a bhfuil rochtain aige.
       name: Ainm an teaghlaigh
       save: Sábháil an teaghlach
+      ai_suggestions_enabled: Ceadaigh moltaí cógas ó AI seachtrach
+      ai_suggestions_disclosure: Seolfar na sonraí cógas a chuirtear isteach chuig an soláthraí seachtrach AI atá cumraithe. Má mhúchann tú é seo agus má shábhálann tú, stopfar seoltaí amach anseo. Ní féidir sonraí a seoladh cheana a aisghairm.
   platform:
     settings:
       title: Socruithe ardáin

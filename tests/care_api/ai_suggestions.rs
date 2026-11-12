@@ -82,6 +82,8 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
     let fixture_household_id = app.fixture.household.id;
     let fixture_membership_id = app.fixture.membership.id;
     upgrade_plan(&app).await;
+    let token = app.token().await;
+    Application::assert_status(change_consent(&app, &token, true).await, 200).await;
     assert_eq!(
         app.context.config.settings.as_ref().unwrap()["ai_medication_help"],
         json!({"enabled": true})
@@ -111,7 +113,6 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
         .exec(&app.fixture.admin)
         .await
         .unwrap();
-    let token = app.token().await;
     let participating = app
         .client
         .post(suggestions_url(&app))
@@ -212,6 +213,7 @@ async fn ai_medication_suggestions_validates_the_identity_shape() {
     let app = Application::new_with_ai_help(true).await;
     upgrade_plan(&app).await;
     let token = app.token().await;
+    Application::assert_status(change_consent(&app, &token, true).await, 200).await;
 
     for body in [
         json!({"unlisted": true}),
@@ -243,6 +245,7 @@ async fn ai_medication_suggestions_returns_a_draft_and_records_the_suggestion() 
     let fixture_household_id = app.fixture.household.id;
     upgrade_plan(&app).await;
     let token = app.token().await;
+    Application::assert_status(change_consent(&app, &token, true).await, 200).await;
     let response = app
         .client
         .post(suggestions_url(&app))
@@ -277,9 +280,27 @@ const CALPOL_SEED_URL: &str =
 const CALPOL_EVIDENCE: &str = "Each 5 ml contains 250 mg paracetamol. Give every 4 to 6 hours as needed. Do not give more than 4 doses in 24 hours.";
 
 fn ai_mock_server() -> u16 {
+    ai_counting_server().0
+}
+
+fn ai_counting_server() -> (u16, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
+    ai_gated_server(None)
+}
+
+type SourceGate = (
+    tokio::sync::oneshot::Sender<()>,
+    std::sync::mpsc::Receiver<()>,
+);
+
+fn ai_gated_server(
+    gate: Option<SourceGate>,
+) -> (u16, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
+    let count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let observed = count.clone();
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
+        let mut gate = gate;
         for stream in listener.incoming() {
             let Ok(mut stream) = stream else { continue };
             let mut buffer = [0_u8; 8192];
@@ -287,7 +308,14 @@ fn ai_mock_server() -> u16 {
                 continue;
             };
             let request = String::from_utf8_lossy(&buffer[..read]);
+            observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             let (content_type, body) = if request.starts_with("GET /fetch") {
+                if let Some((entered, release)) = gate.take() {
+                    let _ = entered.send(());
+                    release
+                        .recv_timeout(std::time::Duration::from_secs(4))
+                        .unwrap();
+                }
                 (
                     "text/html",
                     format!(
@@ -319,7 +347,299 @@ fn ai_mock_server() -> u16 {
             let _ = std::io::Write::write_all(&mut stream, response.as_bytes());
         }
     });
-    port
+    (port, count)
+}
+
+#[tokio::test]
+async fn ai_consent_withdrawal_stops_later_in_flight_provider_send() {
+    let (entered_tx, entered_rx) = tokio::sync::oneshot::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let (port, count) = ai_gated_server(Some((entered_tx, release_rx)));
+    let app = Application::new_with_ai_generation(port).await;
+    upgrade_plan(&app).await;
+    let token = app.token().await;
+    Application::assert_status(change_consent(&app, &token, true).await, 200).await;
+    let request = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication":{"name":"calpol sixplus"}}));
+    let suggestion = tokio::spawn(async move { request.send().await.unwrap() });
+    tokio::time::timeout(std::time::Duration::from_secs(3), entered_rx)
+        .await
+        .unwrap()
+        .unwrap();
+    let request = app
+        .client
+        .patch(format!(
+            "{}/api/v1/households/{}/admin/settings",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(&token)
+        .json(&json!({"household":{"ai_suggestions_enabled":false}}));
+    let withdrawal = tokio::spawn(async move { request.send().await.unwrap() });
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            use sea_orm::sea_query::{Alias, Query};
+            let query = Query::select()
+                .expr_as(Expr::col(Alias::new("pid")).count(), Alias::new("waiting"))
+                .from(Alias::new("pg_stat_activity"))
+                .and_where(Expr::col(Alias::new("wait_event_type")).eq("Lock"))
+                .and_where(Expr::col(Alias::new("query")).like("%households%FOR UPDATE%"))
+                .to_owned();
+            let waiting: i64 = app
+                .fixture
+                .admin
+                .query_one_raw(app.fixture.admin.get_database_backend().build(&query))
+                .await
+                .unwrap()
+                .unwrap()
+                .try_get("", "waiting")
+                .unwrap();
+            if waiting > 0 || withdrawal.is_finished() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    release_tx.send(()).unwrap();
+    Application::assert_status(withdrawal.await.unwrap(), 200).await;
+    Application::assert_status(suggestion.await.unwrap(), 404).await;
+    assert_eq!(count.load(std::sync::atomic::Ordering::SeqCst), 1);
+    let response = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication":{"name":"calpol sixplus"}}))
+        .send()
+        .await
+        .unwrap();
+    Application::assert_status(response, 404).await;
+    assert_eq!(count.load(std::sync::atomic::Ordering::SeqCst), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn ai_consent_defaults_off_without_outbound_requests() {
+    let (port, count) = ai_counting_server();
+    let app = Application::new_with_ai_generation(port).await;
+    upgrade_plan(&app).await;
+    let token = app.token().await;
+    let response = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(token)
+        .json(&json!({"medication":{"name":"calpol sixplus"}}))
+        .send()
+        .await
+        .unwrap();
+    Application::assert_status(response, 404).await;
+    assert_eq!(count.load(std::sync::atomic::Ordering::SeqCst), 0);
+    app.close().await;
+}
+
+async fn change_consent(app: &Application, token: &str, enabled: bool) -> reqwest::Response {
+    app.client
+        .patch(format!(
+            "{}/api/v1/households/{}/admin/settings",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(token)
+        .json(&json!({"household":{"ai_suggestions_enabled":enabled}}))
+        .send()
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn ai_consent_manager_update_and_withdrawal_stop_outbound_requests() {
+    let (port, count) = ai_counting_server();
+    let app = Application::new_with_ai_generation(port).await;
+    upgrade_plan(&app).await;
+    let token = app.token().await;
+    let enabled = Application::assert_status(change_consent(&app, &token, true).await, 200).await;
+    assert_eq!(enabled["data"]["ai_suggestions_enabled"], true);
+    let response = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication":{"name":"calpol sixplus"}}))
+        .send()
+        .await
+        .unwrap();
+    Application::assert_status(response, 200).await;
+    assert!(count.load(std::sync::atomic::Ordering::SeqCst) >= 2);
+    let withdrawn =
+        Application::assert_status(change_consent(&app, &token, false).await, 200).await;
+    assert_eq!(withdrawn["data"]["ai_suggestions_enabled"], false);
+    let before = count.load(std::sync::atomic::Ordering::SeqCst);
+    let response = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication":{"name":"calpol sixplus"}}))
+        .send()
+        .await
+        .unwrap();
+    Application::assert_status(response, 404).await;
+    assert_eq!(count.load(std::sync::atomic::Ordering::SeqCst), before);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn ai_consent_settings_preserve_omissions_reject_invalid_and_nonmanagers() {
+    let (port, count) = ai_counting_server();
+    let app = Application::new_with_ai_generation(port).await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/{}/admin/settings",
+        app.origin, app.fixture.household.id
+    );
+    let initial = Application::assert_status(
+        app.client
+            .get(&endpoint)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    assert_eq!(initial["data"]["ai_suggestions_enabled"], false);
+    Application::assert_status(change_consent(&app, &token, true).await, 200).await;
+    let repeated = Application::assert_status(change_consent(&app, &token, true).await, 200).await;
+    assert_eq!(repeated["data"]["ai_suggestions_enabled"], true);
+    let unrelated = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&token)
+        .json(&json!({"household":{"name":"Synthetic renamed household"}}))
+        .send()
+        .await
+        .unwrap();
+    let updated = Application::assert_status(unrelated, 200).await;
+    assert_eq!(updated["data"]["ai_suggestions_enabled"], true);
+    for invalid in [Value::Null, json!("true"), json!(1)] {
+        let response = app
+            .client
+            .patch(&endpoint)
+            .bearer_auth(&token)
+            .json(&json!({"household":{"ai_suggestions_enabled":invalid}}))
+            .send()
+            .await
+            .unwrap();
+        Application::assert_status(response, 422).await;
+    }
+    app.fixture.member().await;
+    Application::assert_status(change_consent(&app, &token, false).await, 403).await;
+    let saved = rows::households::Entity::find_by_id(app.fixture.household.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let saved = serde_json::to_value(saved).unwrap();
+    assert_eq!(saved["ai_suggestions_enabled"], true);
+    let audits = rows::versions::Entity::find()
+        .filter(rows::versions::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(rows::versions::Column::ItemType.eq("Household"))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(audits.len(), 2);
+    assert!(
+        audits
+            .iter()
+            .all(|audit| audit.whodunnit.as_deref() == Some(&app.fixture.account.id.to_string()))
+    );
+    assert!(audits.iter().any(|audit| {
+        audit
+            .object
+            .as_ref()
+            .is_some_and(|object| object.as_str().contains("ai_suggestions_enabled"))
+    }));
+    assert_eq!(count.load(std::sync::atomic::Ordering::SeqCst), 0);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn ai_consent_foreign_and_revoked_callers_send_nothing() {
+    let (port, count) = ai_counting_server();
+    let app = Application::new_with_ai_generation(port).await;
+    upgrade_plan(&app).await;
+    let token = app.token().await;
+    Application::assert_status(change_consent(&app, &token, true).await, 200).await;
+    let foreign = app.fixture.foreign_household().await;
+    let endpoint = format!(
+        "{}/api/v1/households/{}/ai_medication_suggestions",
+        app.origin, foreign.household.id
+    );
+    let response = app
+        .client
+        .post(endpoint)
+        .bearer_auth(&token)
+        .json(&json!({"medication":{"name":"calpol sixplus"}}))
+        .send()
+        .await
+        .unwrap();
+    assert!(!response.status().is_success());
+    let response = app
+        .client
+        .patch(format!(
+            "{}/api/v1/households/{}/admin/settings",
+            app.origin, foreign.household.id
+        ))
+        .bearer_auth(&token)
+        .json(&json!({"household":{"ai_suggestions_enabled":true}}))
+        .send()
+        .await
+        .unwrap();
+    assert!(!response.status().is_success());
+    let mut member = app.fixture.membership.clone().into_active_model();
+    member.status = Set("revoked".into());
+    member.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
+    member.permissions_version = Set(app.fixture.membership.permissions_version + 1);
+    member.update(&app.fixture.admin).await.unwrap();
+    let response = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication":{"name":"calpol sixplus"}}))
+        .send()
+        .await
+        .unwrap();
+    Application::assert_status(response, 403).await;
+    assert_eq!(count.load(std::sync::atomic::Ordering::SeqCst), 0);
+    foreign.close().await;
+    app.close().await;
+}
+
+#[tokio::test]
+async fn ai_consent_unreadable_database_fails_closed_without_clinical_errors() {
+    use sea_orm::TransactionTrait;
+    let (port, count) = ai_counting_server();
+    let app = Application::new_with_pool_size(Some("synthetic-dose-occurrence-signing-key"), move |settings| {
+        settings["ai_medication_help"] = json!({"enabled":true,"provider":"openai","api_key":"synthetic-ai-key","model":"gpt-4o","api_base_url":format!("http://127.0.0.1:{port}/v1/"),"source_proxy_origin":format!("http://127.0.0.1:{port}")});
+    }, Some(1), Some(100)).await;
+    upgrade_plan(&app).await;
+    let token = app.token().await;
+    Application::assert_status(change_consent(&app, &token, true).await, 200).await;
+    let held = app.context.db.begin().await.unwrap();
+    let response = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication":{"name":"Synthetic private clinical sentinel"}}))
+        .send()
+        .await
+        .unwrap();
+    let payload = Application::assert_status(response, 503).await;
+    assert!(!payload.to_string().as_str().contains("clinical sentinel"));
+    assert!(!payload.to_string().as_str().contains("synthetic-ai-key"));
+    assert_eq!(count.load(std::sync::atomic::Ordering::SeqCst), 0);
+    held.rollback().await.unwrap();
+    app.close().await;
 }
 
 #[tokio::test]
@@ -328,6 +648,7 @@ async fn ai_medication_suggestions_validates_doses_against_fetched_evidence() {
     let app = Application::new_with_ai_generation(port).await;
     upgrade_plan(&app).await;
     let token = app.token().await;
+    Application::assert_status(change_consent(&app, &token, true).await, 200).await;
     let response = app
         .client
         .post(suggestions_url(&app))

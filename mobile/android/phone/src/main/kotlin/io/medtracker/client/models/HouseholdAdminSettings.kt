@@ -28,6 +28,7 @@ import com.squareup.moshi.JsonClass
  * @param timezone 
  * @param subscriptionPlan 
  * @param updatedAt 
+ * @param aiSuggestionsEnabled Whether a household manager has explicitly permitted medication suggestion inputs to be sent to the configured external AI provider.
  */
 
 
@@ -49,7 +50,11 @@ data class HouseholdAdminSettings (
     val subscriptionPlan: HouseholdAdminSettings.SubscriptionPlan,
 
     @Json(name = "updated_at")
-    val updatedAt: java.time.OffsetDateTime
+    val updatedAt: java.time.OffsetDateTime,
+
+    /* Whether a household manager has explicitly permitted medication suggestion inputs to be sent to the configured external AI provider. */
+    @Json(name = "ai_suggestions_enabled")
+    val aiSuggestionsEnabled: kotlin.Boolean = false
 
 ) {
 

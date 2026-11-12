@@ -45,16 +45,24 @@ pub(super) async fn create(
                 Some(identity) => identity,
             },
         };
+    let scope = tenant.scope().clone();
     if tenant.rollback().await.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    let draft = care::ai_suggestions::generate(ctx.config.settings.as_ref(), &identity).await;
+    let draft =
+        care::ai_suggestions::generate(&ctx.db, &scope, ctx.config.settings.as_ref(), &identity)
+            .await;
     let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
-    let reply = match care::ai_suggestions::record_suggestion(&tenant, &identity, &draft).await {
-        Ok(()) => Ok((StatusCode::OK, json!({"data": draft}), None)),
+    let reply = match draft {
+        Ok(draft) => {
+            match care::ai_suggestions::record_suggestion(&tenant, &identity, &draft).await {
+                Ok(()) => Ok((StatusCode::OK, json!({"data": draft}), None)),
+                Err(error) => Err(response::operation(error)),
+            }
+        }
         Err(error) => Err(response::operation(error)),
     };
     finish(
