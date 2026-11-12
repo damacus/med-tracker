@@ -23,22 +23,31 @@
       {% endif %}
     </fieldset>
     </section>
-    <section class="platform-panel"><h2>Medicine lookup</h2><p class="platform-panel-description">Configure the terminology service and the order used to find medicine information.</p>
-    <fieldset class="fieldset">
-      <label class="label" for="medicine-lookup-base-url">Medicine lookup base URL</label>
-      <input class="input input-bordered w-full" id="medicine-lookup-base-url" name="medicine_lookup_base_url" type="url" value="{{ medicine_lookup_base_url }}" required>
-    </fieldset>
-    <fieldset class="fieldset">
-      <label class="label" for="medicine-lookup-token-url">Medicine lookup token URL</label>
-      <input class="input input-bordered w-full" id="medicine-lookup-token-url" name="medicine_lookup_token_url" type="url" value="{{ medicine_lookup_token_url }}" required>
-    </fieldset>
-    <fieldset class="fieldset">
-      <label class="label" for="medicine-lookup-source-priority">Medicine lookup source priority</label>
-      <input class="input input-bordered w-full" id="medicine-lookup-source-priority" name="medicine_lookup_source_priority" type="text" value="{{ medicine_lookup_source_priority }}" required>
-      <p class="text-sm text-base-content/70">Comma-separated. Allowed sources: {{ lookup_sources }}.</p>
-    </fieldset>
+    <section class="platform-panel"><h2>Medicine lookup order</h2><p class="platform-panel-description" id="lookup-priority-help">Search sources from top to bottom. Drag a handle or use the arrows to change their priority.</p>
+    <input type="hidden" name="medicine_lookup_base_url" value="{{ medicine_lookup_base_url }}">
+    <input type="hidden" name="medicine_lookup_token_url" value="{{ medicine_lookup_token_url }}">
+    <input id="medicine-lookup-source-priority" name="medicine_lookup_source_priority" type="hidden" value="{{ medicine_lookup_source_priority }}">
+    <ol class="lookup-priority-list" data-lookup-priority aria-label="Medicine lookup priority" aria-describedby="lookup-priority-help">
+      {% for source in lookup_priority_items %}
+      <li class="lookup-priority-item bg-base-200 rounded-box border border-base-300" data-source="{{ source.id }}" data-name="{{ source.name }}">
+        <button type="button" class="btn btn-ghost lookup-drag-handle" aria-label="Reorder {{ source.name }}" title="Drag to reorder; use arrow keys to move" disabled>
+          <svg width="20" height="24" viewBox="0 0 20 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="5" r="1.5"/><circle cx="14" cy="5" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="14" cy="12" r="1.5"/><circle cx="6" cy="19" r="1.5"/><circle cx="14" cy="19" r="1.5"/></svg>
+        </button>
+        <span class="badge badge-neutral lookup-rank" aria-label="Priority {{ loop.index }}" data-rank>{{ loop.index }}</span>
+        <div class="lookup-source-copy"><strong>{{ source.name }}</strong><p>{{ source.description }}</p><span class="lookup-priority-label" data-priority-label>{% if loop.first %}First choice{% else %}Fallback {{ loop.index0 }}{% endif %}</span></div>
+        <div class="lookup-move-buttons">
+          <button class="btn btn-ghost" type="button" data-move="up" aria-label="Move {{ source.name }} up" disabled>↑</button>
+          <button class="btn btn-ghost" type="button" data-move="down" aria-label="Move {{ source.name }} down" disabled>↓</button>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    <p class="sr-only" role="status" aria-live="polite" data-lookup-status></p>
+    <noscript><p class="platform-notice">Enable JavaScript to change the lookup order.</p></noscript>
     </section>
     <div class="platform-form-footer"><span class="shell-muted text-sm">You will confirm your identity before saving.</span><button class="btn btn-primary" type="submit">Save settings</button></div>
   </form>
 </section>
+<script src="/static/js/sortable.min.js" defer></script>
+<script src="/static/js/lookup-priority.js" defer></script>
 {% endblock content %}

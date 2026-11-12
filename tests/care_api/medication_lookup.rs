@@ -662,6 +662,18 @@ async fn medication_lookup_preserves_local_source_priority_and_manual_misses() {
     .insert(&app.fixture.admin)
     .await
     .unwrap();
+    let cached_catalogue_row =
+        med_tracker::models::_entities::barcode_catalog_entries::ActiveModel {
+            gtin: sea_orm::Set("9876543210123".to_owned()),
+            display: sea_orm::Set("Cached lookup regression medicine".to_owned()),
+            source: sea_orm::Set("open_products_facts".to_owned()),
+            created_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            updated_at: sea_orm::Set((chrono::Utc::now()).naive_utc()),
+            ..Default::default()
+        }
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
     let token = app.token().await;
     let url = format!(
         "{}/api/v1/households/{fixture_household_id}/medication_lookup",
@@ -676,6 +688,19 @@ async fn medication_lookup_preserves_local_source_priority_and_manual_misses() {
         .unwrap();
     let first_status = first.status().as_u16();
     let first_body = first.json::<Value>().await.unwrap_or(Value::Null);
+    let cached = app
+        .client
+        .get(format!("{url}?q=9876543210123"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(cached.status(), reqwest::StatusCode::OK);
+    let cached_body = cached.json::<Value>().await.unwrap();
+    assert_eq!(
+        cached_body["results"][0]["display"],
+        "Cached lookup regression medicine"
+    );
     let missing = app
         .client
         .get(format!("{url}?q=9999999999999"))
@@ -700,6 +725,12 @@ async fn medication_lookup_preserves_local_source_priority_and_manual_misses() {
         .unwrap();
     med_tracker::models::_entities::barcode_catalog_entries::Entity::delete_by_id(
         catalogue_row_0.id,
+    )
+    .exec(&app.fixture.admin)
+    .await
+    .unwrap();
+    med_tracker::models::_entities::barcode_catalog_entries::Entity::delete_by_id(
+        cached_catalogue_row.id,
     )
     .exec(&app.fixture.admin)
     .await

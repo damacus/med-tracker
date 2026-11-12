@@ -28,7 +28,11 @@ async fn capture(page: &Page, name: &str) {
         &directory.join(format!("admin-{name}.png")),
         ScreenshotOptions::builder()
             .animations(Animations::Disabled)
-            .full_page(name.starts_with("overview") || name.contains("error"))
+            .full_page(
+                name.starts_with("overview")
+                    || name.contains("error")
+                    || name.starts_with("platform-settings"),
+            )
             .build(),
     )
     .await
@@ -116,6 +120,16 @@ async fn administration_polish_platform_frames() {
         for (path,label) in [("users","platform-users"),("settings","platform-settings"),("support","platform-support"),("owner-recovery","platform-recovery")] {
             page.goto(&format!("{}/platform/{path}",journey.origin),None).await.unwrap();
             expect(page.locator(".platform-page")).to_be_visible().await.unwrap();
+            if path == "settings" {
+                assert_eq!(page.locator("[data-source]").count().await.unwrap(), 4);
+                page.get_by_role(AriaRole::Button, named("Move Curated medicines up")).click(None).await.unwrap();
+                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,local_nhs_dmd,curated_catalog,cached_open_products_facts").await.unwrap();
+                page.get_by_role(AriaRole::Button, named("Reorder Curated medicines")).focus().await.unwrap();
+                page.keyboard().press("ArrowUp", None).await.unwrap();
+                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,curated_catalog,local_nhs_dmd,cached_open_products_facts").await.unwrap();
+                page.locator("[data-source='curated_catalog'] .lookup-drag-handle").drag_to(&page.locator("[data-source='imported_catalog'] .lookup-drag-handle"), None).await.unwrap();
+                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("curated_catalog,imported_catalog,local_nhs_dmd,cached_open_products_facts").await.unwrap();
+            }
             assert_eq!(page.locator(".app-sidebar").count().await.unwrap(),0);
             for width in [1440,390,320] {
                 page.set_viewport_size(Viewport {width,height:if width==1440 {1000}else{844}}).await.unwrap();

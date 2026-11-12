@@ -2058,7 +2058,7 @@ async fn platform_settings_initialization_cannot_race_signup_into_two_rows() {
             "invite_only":true,
             "medicine_lookup_base_url":"https://lookup.example.test/api",
             "medicine_lookup_token_url":"https://lookup.example.test/token",
-            "medicine_lookup_source_priority":["nhs_dmd"]
+            "medicine_lookup_source_priority":["local_nhs_dmd"]
         }),
     )
     .await;
@@ -2468,7 +2468,12 @@ async fn platform_settings_requires_platform_administrator() {
     let cookie = admin_fixture_session(&app).await;
     let (_cookies, body) = form_page(&app, &cookie, "/platform/settings").await;
 
-    assert!(str::contains(&body, "medicine_lookup_base_url"));
+    assert!(str::contains(&body, "Medicine lookup order"));
+    assert!(!str::contains(
+        &body,
+        "name=\"medicine_lookup_base_url\" type=\"url\""
+    ));
+    assert!(str::contains(&body, "NHS medicines dictionary"));
     assert!(str::contains(&body, "invite_only"));
     assert!(str::contains(&body, "ontology.nhs.uk"));
     assert!(!str::contains(&body, "password_hash"));
@@ -2498,7 +2503,10 @@ async fn platform_settings_update_via_browser_proof() {
                 "medicine_lookup_token_url",
                 "https://lookup.example.test/token",
             ),
-            ("medicine_lookup_source_priority", "nhs_dmd,supplements"),
+            (
+                "medicine_lookup_source_priority",
+                "local_nhs_dmd,imported_catalog,cached_open_products_facts,curated_catalog",
+            ),
             ("authenticity_token", &token),
         ],
     )
@@ -2533,6 +2541,24 @@ async fn platform_settings_rejects_insecure_and_unknown_values() {
     let app = Application::new().await;
     let settings_before = isolate_settings(&app).await;
     let cookie = admin_session(&app).await;
+    let (status, response) = operation_start(
+        &app,
+        &cookie,
+        json!({
+            "action": "platform_settings",
+            "invite_only": false,
+            "medicine_lookup_base_url": "https://lookup.example.test/fhir",
+            "medicine_lookup_token_url": "https://lookup.example.test/token",
+            "medicine_lookup_source_priority": ["open_products_facts"]
+        }),
+    )
+    .await;
+    assert_eq!(status, reqwest::StatusCode::BAD_REQUEST);
+    assert!(
+        response
+            .to_string()
+            .contains("supported medicine lookup source")
+    );
     let (cookies, body) = form_page(&app, &cookie, "/platform/settings").await;
     let token = hidden_field(&body, "authenticity_token");
     for form in [
@@ -2543,7 +2569,7 @@ async fn platform_settings_rejects_insecure_and_unknown_values() {
                 "medicine_lookup_token_url",
                 "https://lookup.example.test/token",
             ),
-            ("medicine_lookup_source_priority", "nhs_dmd"),
+            ("medicine_lookup_source_priority", "local_nhs_dmd"),
             ("authenticity_token", token.as_str()),
         ],
         vec![
@@ -2563,13 +2589,39 @@ async fn platform_settings_rejects_insecure_and_unknown_values() {
             ("invite_only", "false"),
             (
                 "medicine_lookup_base_url",
+                "https://lookup.example.test/fhir",
+            ),
+            (
+                "medicine_lookup_token_url",
+                "https://lookup.example.test/token",
+            ),
+            ("medicine_lookup_source_priority", "open_products_facts"),
+            ("authenticity_token", token.as_str()),
+        ],
+        vec![
+            ("invite_only", "false"),
+            (
+                "medicine_lookup_base_url",
+                "https://lookup.example.test/fhir",
+            ),
+            (
+                "medicine_lookup_token_url",
+                "https://lookup.example.test/token",
+            ),
+            ("medicine_lookup_source_priority", "nhs_dmd,supplements"),
+            ("authenticity_token", token.as_str()),
+        ],
+        vec![
+            ("invite_only", "false"),
+            (
+                "medicine_lookup_base_url",
                 "https://client:secret@lookup.example.test/fhir",
             ),
             (
                 "medicine_lookup_token_url",
                 "https://lookup.example.test/token",
             ),
-            ("medicine_lookup_source_priority", "nhs_dmd"),
+            ("medicine_lookup_source_priority", "local_nhs_dmd"),
             ("authenticity_token", token.as_str()),
         ],
     ] {
@@ -2588,6 +2640,7 @@ async fn platform_settings_rejects_insecure_and_unknown_values() {
             );
         } else {
             assert!(!status.is_success(), "unexpected refusal body: {body}");
+            assert!(body.contains("allowed medicine lookup sources"), "{body}");
         }
     }
     assert!(app_settings(&app).await.is_none());
@@ -2617,7 +2670,7 @@ async fn platform_settings_audit_failure_rolls_back() {
                 "medicine_lookup_token_url",
                 "https://lookup.example.test/token",
             ),
-            ("medicine_lookup_source_priority", "nhs_dmd"),
+            ("medicine_lookup_source_priority", "local_nhs_dmd"),
             ("authenticity_token", &token),
         ],
     )

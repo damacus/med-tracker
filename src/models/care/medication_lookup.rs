@@ -16,6 +16,13 @@ use std::collections::{HashMap, HashSet};
 mod enrichment;
 mod matching;
 
+pub const LOOKUP_SOURCES: [&str; 4] = [
+    "imported_catalog",
+    "local_nhs_dmd",
+    "cached_open_products_facts",
+    "curated_catalog",
+];
+
 #[derive(Default, Deserialize)]
 pub struct Search {
     #[serde(default)]
@@ -72,12 +79,6 @@ fn product(
 }
 
 async fn priorities(tenant: &TenantTransaction) -> Result<Vec<String>, OperationError> {
-    let supported = [
-        "imported_catalog",
-        "local_nhs_dmd",
-        "cached_open_products_facts",
-        "curated_catalog",
-    ];
     let row = tenant
         .transaction()
         .query_one_raw(Statement::from_string(
@@ -94,10 +95,10 @@ async fn priorities(tenant: &TenantTransaction) -> Result<Vec<String>, Operation
         .into_iter()
         .flatten()
         .filter_map(Value::as_str)
-        .filter(|source| supported.contains(source))
+        .filter(|source| LOOKUP_SOURCES.contains(source))
         .map(str::to_owned)
         .collect();
-    for source in supported {
+    for source in LOOKUP_SOURCES {
         if !ordered.iter().any(|item| item == source) {
             ordered.push(source.into());
         }

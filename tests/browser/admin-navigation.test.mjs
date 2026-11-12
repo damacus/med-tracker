@@ -6,6 +6,21 @@ const read = path => readFileSync(path, 'utf8');
 const templates = readdirSync('assets/views/administration', { recursive: true })
   .filter(path => path.endsWith('.html'));
 
+test('medicine lookup uses a ranked list with accessible reorder controls', () => {
+  const page = read('assets/views/platform/settings.html');
+  assert.doesNotMatch(page, /Some previously saved sources/);
+  assert.match(page, /data-lookup-priority/);
+  assert.match(page, /Move {{ source.name }} up/);
+  assert.match(page, /Move {{ source.name }} down/);
+  assert.doesNotMatch(page, /type="text"[^>]*medicine_lookup_source_priority/);
+});
+
+test('platform settings identifies inactive medicine lookup service URLs', () => {
+  const page = read('assets/views/platform/settings.html');
+  assert.doesNotMatch(page, /type="url"/);
+  assert.doesNotMatch(page, /name="medicine_lookup_(?:base|token)_url" type="url"/);
+});
+
 test('household administration headings have no redundant standalone back links', () => {
   for (const path of templates) {
     const source = read(`assets/views/administration/${path}`);
