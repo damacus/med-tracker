@@ -6,13 +6,13 @@
     <meta name="theme-color" content="#f8fafc">
     <title>{% block title %}{{ title }}{% endblock title %} | MedTracker</title>
     <link rel="icon" type="image/png" href="/favicon.ico">
-    <script src="/static/js/appearance.js"></script>
-    <script src="/static/js/avatar-image.js"></script>
-    <link rel="stylesheet" href="/static/css/compiled.css">
-    <script src="/static/js/interaction.js" defer></script>
-    <script src="/static/js/mobile-shortcuts.js" defer></script>
-    <script src="/static/js/app-navigation.js" defer></script>
-    {% if canary_enabled | default(value=false) %}<script src="/static/js/canary.js" defer></script>{% endif %}
+    <script src="/static/js/appearance.js?v={{ asset_version }}"></script>
+    <script src="/static/js/avatar-image.js?v={{ asset_version }}"></script>
+    <link rel="stylesheet" href="/static/css/compiled.css?v={{ asset_version }}">
+    <script src="/static/js/interaction.js?v={{ asset_version }}" defer></script>
+    <script src="/static/js/mobile-shortcuts.js?v={{ asset_version }}" defer></script>
+    <script src="/static/js/app-navigation.js?v={{ asset_version }}" defer></script>
+    {% if canary_enabled | default(value=false) %}<script src="/static/js/canary.js?v={{ asset_version }}" defer></script>{% endif %}
   </head>
   <body{% if shell %} class="app-household" data-sidebar-collapsed="{{ shell.sidebar_collapsed }}" data-navigation-ready="true"{% endif %}>
     <a href="#main" class="skip-link">{% if labels %}{{ labels.layouts.navigation.skip_to_content }}{% else %}Skip to content{% endif %}</a>
@@ -36,7 +36,7 @@
       </div>
       <form method="dialog" class="modal-backdrop"><button type="submit" data-global-search-close aria-label="{% if labels %}{{ labels.global_search.close }}{% else %}Close search{% endif %}"></button></form>
     </dialog>
-    <script src="/static/js/global-search.js" defer></script>
+    <script src="/static/js/global-search.js?v={{ asset_version }}" defer></script>
     {% endif %}
     <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% if canary_enabled | default(value=false) %}{% include "components/canary-notice.html" %}{% endif %}{% block content %}{% endblock content %}</main>
     {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · {% if labels %}{{ labels.layouts.navigation.care_tagline }}{% else %}Care, kept together.{% endif %}</div></footer>{% endblock footer %}

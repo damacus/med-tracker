@@ -1,5 +1,7 @@
-import { mountAddPasskey } from './add-passkey.js';
-import { mountSecurityProof } from './security-proof.js';
+const assetQuery = new URL(import.meta.url).search;
+const [{ mountAddPasskey }, { mountSecurityProof }] = await Promise.all([
+  import('./add-passkey.js' + assetQuery), import('./security-proof.js' + assetQuery),
+]);
 
 const localPaths = /^(?:\/account\/security\/(?:email(?:\/pending)?|password(?:\/(?:confirm|email))?|totp(?:\/(?:finish|disable(?:\/confirm)?|backup-codes))?|passkey|keys(?:\/revoke)?|provider\/(?:link|confirm)|operation|session\/revoke)|\/account\/support(?:\/(?:approve|end))?|\/profile\/(?:history|schedules(?:\/[a-f0-9-]+)?)|\/reset-password(?:\/confirm)?)$/;
 

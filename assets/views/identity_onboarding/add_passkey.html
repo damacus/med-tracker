@@ -1,5 +1,5 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 {% include "profile/flows/add_passkey.html" %}
-<script type="module" src="/static/js/add-passkey.js" defer></script>
+<script type="module" src="/static/js/add-passkey.js?v={{ asset_version }}" defer></script>
 {% endblock content %}

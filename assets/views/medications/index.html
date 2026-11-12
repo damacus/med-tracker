@@ -27,7 +27,7 @@
   {% else %}<p>{% if current_location_id or current_category %}{{ inventory_labels.empty_filtered }}{% else %}{{ inventory_labels.empty_unfiltered }}{% endif %}</p>{% endfor %}
   </div>
 </section>
-<script src="/static/js/inventory-filters.js" defer></script>
+<script src="/static/js/inventory-filters.js?v={{ asset_version }}" defer></script>
 {% if can_adjust %}
 <dialog id="inventory-scan-dialog" class="modal" aria-labelledby="inventory-scan-title">
   <div class="modal-box w-[calc(100vw-1rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
@@ -49,6 +49,6 @@
     <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ inventory_labels.close_scanner }}</button></div>
   </div>
 </dialog>
-<script src="/static/js/medication-finder.js" defer></script>
+<script src="/static/js/medication-finder.js?v={{ asset_version }}" defer></script>
 {% endif %}
 {% endblock content %}

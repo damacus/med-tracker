@@ -91,7 +91,7 @@ test('navigation leaves standalone validation pages without a household drawer i
     addEventListener(name, listener) { listeners[name] = listener; },
   };
   runInNewContext(readFileSync('assets/static/js/app-navigation.js', 'utf8'), {
-    document, window: {}, navigator: {}, sessionStorage: { getItem() { return null; } },
+    document, window: { addEventListener() {} }, navigator: {}, sessionStorage: { getItem() { return null; } },
   });
   await Promise.resolve();
   assert.equal(listeners['app-navigation'], undefined);

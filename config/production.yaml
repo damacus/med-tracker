@@ -135,7 +135,7 @@ server:
         uri: /static
         path: assets/static
       fallback: assets/static/404.html
-      cache_control: no-cache
+      cache_control: no-store
 workers:
   mode: BackgroundQueue
 scheduler:
