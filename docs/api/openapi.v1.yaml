@@ -5307,12 +5307,13 @@ paths:
         - Household administration
         - Invitations
       summary: Revoke a household invitation.
+      description: An accepted invitation cannot be revoked. Repeating a revocation succeeds without changing its original revocation time.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/id"
       responses:
         "204":
-          description: Invitation revoked.
+          description: Invitation revoked or already revoked.
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -5323,6 +5324,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
   /households/{household_id}/admin/person_access_grants:
