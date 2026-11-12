@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.5](https://github.com/damacus/med-tracker/compare/v0.6.4...v0.6.5) (2026-11-12)
+
+
+### Features
+
+* **config:** accept PostgreSQL connection fields ([#3105](https://github.com/damacus/med-tracker/issues/3105)) ([a92e7af](https://github.com/damacus/med-tracker/commit/a92e7af546b6c34bb34e4a860b06af3d646a459e))
+
 ## [0.6.4](https://github.com/damacus/med-tracker/compare/v0.6.3...v0.6.4) (2026-11-12)
 
 
