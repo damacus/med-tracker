@@ -9,6 +9,55 @@ use loco_rs::prelude::ConnectionTrait;
 use migration::MigratorTrait;
 
 #[tokio::test]
+async fn household_ai_consent_upgrade_and_new_households_default_off() {
+    schema_case(async {
+        use med_tracker::models::_entities::households;
+        use migration::SchemaManager;
+        use sea_orm::EntityTrait;
+        use sea_orm::sea_query::Table;
+
+        let db = restored_database().await;
+        let position = migration::Migrator::migrations()
+            .iter()
+            .position(|migration| migration.name() == "m20261111_000037_household_ai_consent")
+            .unwrap();
+        migration::Migrator::up(&db, Some(u32::try_from(position).unwrap()))
+            .await
+            .unwrap();
+        let existing = scenario::Scenario::new().await;
+        let manager = SchemaManager::new(&db);
+        manager
+            .alter_table(
+                Table::alter()
+                    .table("households")
+                    .drop_column("ai_suggestions_enabled")
+                    .to_owned(),
+            )
+            .await
+            .unwrap();
+        migration::Migrator::up(&db, None).await.unwrap();
+        let row = households::Entity::find_by_id(existing.household.id)
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(row).unwrap()["ai_suggestions_enabled"],
+            false
+        );
+        let new = scenario::Scenario::new().await;
+        assert_eq!(
+            serde_json::to_value(&new.household).unwrap()["ai_suggestions_enabled"],
+            false
+        );
+        new.close().await;
+        existing.close().await;
+        db.close().await.unwrap();
+    })
+    .await;
+}
+
+#[tokio::test]
 async fn medication_barcode_upgrade_preserves_rows_and_household_uniqueness() {
     schema_case(async {
         use med_tracker::models::_entities::medications;

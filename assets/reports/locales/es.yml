@@ -992,6 +992,8 @@ es:
       subtitle: Cambia el nombre del hogar actual y mantenlo reconocible para todas las personas con acceso.
       name: Nombre del hogar
       save: Guardar hogar
+      ai_suggestions_enabled: Permitir sugerencias de medicamentos con IA externa
+      ai_suggestions_disclosure: Los datos de medicamentos enviados se transmitirán al proveedor externo de IA configurado. Al desactivar esta opción y guardar, se detienen los envíos futuros. Los datos ya enviados no se pueden recuperar.
   platform:
     settings:
       title: Configuración de plataforma

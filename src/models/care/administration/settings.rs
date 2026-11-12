@@ -13,6 +13,7 @@ pub struct HouseholdSettingsInput {
     name: TextField,
     timezone: TextField,
     subscription_plan: TextField,
+    ai_suggestions_enabled: Option<bool>,
     invalid_shape: bool,
     unknown_field: bool,
     empty: bool,
@@ -22,6 +23,7 @@ struct SettingsValues {
     name: Option<String>,
     timezone: Option<String>,
     subscription_plan: Option<String>,
+    ai_suggestions_enabled: Option<bool>,
 }
 
 impl HouseholdSettingsInput {
@@ -41,11 +43,19 @@ impl HouseholdSettingsInput {
             name: text("name"),
             timezone: text("timezone"),
             subscription_plan: text("subscription_plan"),
-            unknown_field: fields
-                .keys()
-                .any(|key| !matches!(key.as_str(), "name" | "timezone" | "subscription_plan")),
+            ai_suggestions_enabled: fields
+                .get("ai_suggestions_enabled")
+                .and_then(Value::as_bool),
+            unknown_field: fields.keys().any(|key| {
+                !matches!(
+                    key.as_str(),
+                    "name" | "timezone" | "subscription_plan" | "ai_suggestions_enabled"
+                )
+            }),
             empty: fields.is_empty(),
-            invalid_shape: false,
+            invalid_shape: fields
+                .get("ai_suggestions_enabled")
+                .is_some_and(|value| !value.is_boolean()),
         }
     }
 
@@ -54,6 +64,11 @@ impl HouseholdSettingsInput {
             name: TextField::Value(name.into()),
             ..Self::default()
         }
+    }
+
+    pub fn with_ai_suggestions(mut self, enabled: bool) -> Self {
+        self.ai_suggestions_enabled = Some(enabled);
+        self
     }
 
     fn check_shape(&self) -> Result<(), OperationError> {
@@ -85,12 +100,13 @@ impl HouseholdSettingsInput {
             name,
             timezone,
             subscription_plan,
+            ai_suggestions_enabled: self.ai_suggestions_enabled,
         })
     }
 }
 
 fn value(row: &household::Model) -> Value {
-    json!({"id":row.id,"name":row.name,"slug":row.slug,"timezone":row.timezone,"subscription_plan":row.subscription_plan,"updated_at":row.updated_at.and_utc().to_rfc3339()})
+    json!({"id":row.id,"name":row.name,"slug":row.slug,"timezone":row.timezone,"subscription_plan":row.subscription_plan,"ai_suggestions_enabled":row.ai_suggestions_enabled,"updated_at":row.updated_at.and_utc().to_rfc3339()})
 }
 pub async fn read(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     authorize(tenant).await?;
@@ -108,12 +124,29 @@ pub async fn update(
     authorize(tenant).await?;
     input.check_shape()?;
     let row = household::Entity::find_by_id(tenant.scope().household_id)
+        .lock_exclusive()
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
+    authorize(tenant).await?;
     let before = value(&row);
-    let mut active: household::ActiveModel = row.into();
     let values = input.values()?;
+    if values.name.as_ref().is_none_or(|name| name == &row.name)
+        && values
+            .timezone
+            .as_ref()
+            .is_none_or(|timezone| timezone == &row.timezone)
+        && values
+            .subscription_plan
+            .as_ref()
+            .is_none_or(|plan| plan == &row.subscription_plan)
+        && values
+            .ai_suggestions_enabled
+            .is_none_or(|enabled| enabled == row.ai_suggestions_enabled)
+    {
+        return Ok(json!({"data":before}));
+    }
+    let mut active: household::ActiveModel = row.into();
     if let Some(name) = values.name {
         active.name = Set(name);
     }
@@ -122,6 +155,9 @@ pub async fn update(
     }
     if let Some(subscription_plan) = values.subscription_plan {
         active.subscription_plan = Set(subscription_plan);
+    }
+    if let Some(enabled) = values.ai_suggestions_enabled {
+        active.ai_suggestions_enabled = Set(enabled);
     }
     active.updated_at = Set(Utc::now().naive_utc());
     let row = active.update(tenant.transaction()).await?;

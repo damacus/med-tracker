@@ -986,6 +986,8 @@ cy:
       subtitle: Ailenwch yr aelwyd bresennol a chadwch label yr aelwyd yn adnabyddadwy i bawb sydd â mynediad.
       name: Enw'r aelwyd
       save: Cadw'r aelwyd
+      ai_suggestions_enabled: Caniatáu awgrymiadau meddyginiaeth gan AI allanol
+      ai_suggestions_disclosure: Bydd manylion meddyginiaeth a gyflwynir yn cael eu hanfon at y darparwr AI allanol sydd wedi ei ffurfweddu. Mae diffodd hyn yn atal anfon yn y dyfodol ar ôl cadw. Ni ellir adalw data sydd eisoes wedi ei anfon.
   platform:
     settings:
       title: Gosodiadau platfform

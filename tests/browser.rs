@@ -37,6 +37,8 @@ mod typed_care_operations;
 
 #[path = "browser/administration_polish.rs"]
 mod administration_polish;
+#[path = "browser/household_ai_consent.rs"]
+mod household_ai_consent;
 #[path = "browser/nhs_dmd_admin.rs"]
 mod nhs_dmd_admin;
 

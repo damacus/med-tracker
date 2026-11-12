@@ -10,6 +10,11 @@
       {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <label for="name" class="font-semibold">{{ labels.admin.households.name }}</label>
       <input id="name" name="name" class="input w-full" value="{{ draft.name }}" required {% if name_invalid %}aria-invalid="true" aria-describedby="form-error-name"{% endif %}>
+      <label for="ai_suggestions_enabled" class="flex items-center gap-3 font-semibold">
+        <input id="ai_suggestions_enabled" name="ai_suggestions_enabled" type="checkbox" value="true" class="checkbox" aria-describedby="ai-suggestions-disclosure" {% if draft.ai_suggestions_enabled %}checked{% endif %}>
+        {{ labels.admin.households.ai_suggestions_enabled }}
+      </label>
+      <p id="ai-suggestions-disclosure">{{ labels.admin.households.ai_suggestions_disclosure }}</p>
       <div class="flex flex-col sm:flex-row gap-3 mt-4">
         <button class="btn btn-neutral" type="submit">{{ labels.admin.households.save }}</button>
         <a class="btn btn-ghost" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ labels.admin.users.form.cancel }}</a>

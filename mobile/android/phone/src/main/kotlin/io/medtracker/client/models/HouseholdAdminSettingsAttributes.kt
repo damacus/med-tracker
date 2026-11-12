@@ -22,6 +22,7 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
+ * @param aiSuggestionsEnabled Explicit household AI consent. Owners and administrators can enable or withdraw consent. Omission preserves the existing value.
  * @param name 
  * @param timezone 
  * @param subscriptionPlan 
@@ -29,6 +30,10 @@ import com.squareup.moshi.JsonClass
 
 
 data class HouseholdAdminSettingsAttributes (
+
+    /* Explicit household AI consent. Owners and administrators can enable or withdraw consent. Omission preserves the existing value. */
+    @Json(name = "ai_suggestions_enabled")
+    val aiSuggestionsEnabled: kotlin.Boolean? = null,
 
     @Json(name = "name")
     val name: kotlin.String? = null,

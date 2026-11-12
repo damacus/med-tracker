@@ -592,7 +592,9 @@ async fn household_settings_and_grant_audit_failure_roll_back_effects_and_keys()
             "idempotency-key",
             format!("{}-synthetic-rollback-settings", app.fixture.client_uuid),
         )
-        .json(&json!({"household":{"name":"Must roll back settings"}}))
+        .json(
+            &json!({"household":{"name":"Must roll back settings","ai_suggestions_enabled":true}}),
+        )
         .send()
         .await
         .unwrap();
@@ -612,6 +614,10 @@ async fn household_settings_and_grant_audit_failure_roll_back_effects_and_keys()
         .unwrap();
     app.fixture.admin.execute_unprepared(&format!("DROP TRIGGER {fault} ON security_audit_events; DROP FUNCTION {fault}(); DROP SEQUENCE {probe}")).await.unwrap();
     let settings_count = i64::from(household(&app).await.name == "Must roll back settings");
+    assert_eq!(
+        serde_json::to_value(household(&app).await).unwrap()["ai_suggestions_enabled"],
+        false
+    );
     let grants = person_access_grants::Entity::find()
         .filter(person_access_grants::Column::HouseholdId.eq(household_id))
         .filter(person_access_grants::Column::PersonId.eq(app.fixture.minor.id))

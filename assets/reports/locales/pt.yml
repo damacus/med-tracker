@@ -993,6 +993,8 @@ pt:
       subtitle: Altere o nome do agregado atual e mantenha-o reconhecível para todas as pessoas com acesso.
       name: Nome do agregado
       save: Guardar agregado
+      ai_suggestions_enabled: Permitir sugestões de medicamentos por IA externa
+      ai_suggestions_disclosure: Os dados de medicamentos submetidos serão enviados ao fornecedor externo de IA configurado. Desativar esta opção impede futuros envios após guardar. Os dados já enviados não podem ser recuperados.
   platform:
     settings:
       title: Definições da plataforma

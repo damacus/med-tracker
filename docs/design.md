@@ -19,6 +19,7 @@ below is not the current Rust care-authority contract.
 - [Fresh Rust without legacy compatibility](adrs/0016-fresh-rust-without-legacy-compatibility.md)
 - [Personal-history download authorisation and audit](adrs/0017-personal-history-download-authorisation-and-audit.md): design accepted; implementation and verification pending
 - [SMART deferral and future interoperability uses](adrs/0018-defer-smart-and-record-interoperability-uses.md): SMART implementation deferred until after migration; candidate uses are exploratory
+- [Explicit household permission for AI suggestions](adrs/0021-household-ai-consent.md): default off, manager-controlled and rechecked before each outbound step
 
 An active minor who has no effective guardian in any household may have an
 eligible open local guardian link restored, or a household owner or administrator

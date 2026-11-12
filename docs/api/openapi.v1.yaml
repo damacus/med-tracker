@@ -4635,6 +4635,7 @@ paths:
         - Household
         - Medication suggestions
       summary: Generate medication setup suggestions.
+      description: Requires explicit household AI opt-in managed by a household owner or administrator, in addition to feature availability and plan eligibility. Consent defaults to off. No suggestion input is sent to an external provider without current consent.
       parameters:
         - $ref: "#/components/parameters/household_id"
       requestBody:
@@ -4657,7 +4658,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
-          description: The household or paid suggestion feature is unavailable.
+          description: The household or paid suggestion feature is unavailable, or the household has not opted in to AI suggestions.
           content:
             application/json:
               schema:
@@ -6035,6 +6036,7 @@ components:
         - slug
         - timezone
         - subscription_plan
+        - ai_suggestions_enabled
         - updated_at
       properties:
         id:
@@ -6055,6 +6057,10 @@ components:
             - family_plus
         updated_at:
           $ref: "#/components/schemas/Timestamp"
+        ai_suggestions_enabled:
+          type: boolean
+          default: false
+          description: Whether a household manager has explicitly permitted medication suggestion inputs to be sent to the configured external AI provider.
     HouseholdAdminSettingsResponse:
       type: object
       additionalProperties: false
@@ -6068,6 +6074,9 @@ components:
       additionalProperties: false
       minProperties: 1
       properties:
+        ai_suggestions_enabled:
+          type: boolean
+          description: Explicit household AI consent. Owners and administrators can enable or withdraw consent. Omission preserves the existing value.
         name:
           type: string
           minLength: 1

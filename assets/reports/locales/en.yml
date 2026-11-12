@@ -394,6 +394,8 @@ en:
         for everyone with access.
       name: Household name
       save: Save household
+      ai_suggestions_enabled: Allow external AI medication suggestions
+      ai_suggestions_disclosure: Submitted medication details will be sent to the configured external AI provider. Turning this off stops future sends once saved. Data already sent cannot be recalled.
     membership_roles:
       invalid_role: Select a valid household role.
       owner_demotion_rejected: Only household owners can change owner memberships.

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i64,
+    pub ai_suggestions_enabled: bool,
     pub created_at: DateTime,
     pub created_by_account_id: Option<i64>,
     pub lifecycle_state: String,
