@@ -39,10 +39,16 @@ test('shared profile exposes protected security controls without another index o
   assert.doesNotMatch(security, /data-profile-form|href="\/account\/security"/);
 });
 
-test('header has a direct profile link and household choices submit through the existing CSRF endpoint', () => {
+test('header exposes account shortcuts and CSRF-protected sign out before scripts run', () => {
   const header = read('assets/views/components/app-navigation.html');
-  assert.doesNotMatch(header, /data-account-menu|account-menu\.html/);
-  assert.match(header, /href="\/households\/{{ slug }}\/profile"/);
+  assert.match(header, /<details[^>]*data-account-menu/);
+  assert.match(header, /include "components\/shell-logout.html"/);
+  const logout = read('assets/views/components/shell-logout.html');
+  assert.match(logout, /method="post" action="\/logout"/);
+  assert.match(logout, /name="authenticity_token" value="{{ shell.authenticity_token }}"/);
+});
+
+test('household choices submit through the existing CSRF endpoint', () => {
   const selector = read('assets/views/components/household-selector.html');
   assert.match(selector, /action="\/households\/select"/);
   assert.match(selector, /name="authenticity_token"/);
