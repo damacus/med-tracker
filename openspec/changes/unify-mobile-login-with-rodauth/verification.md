@@ -109,7 +109,7 @@ remains the implementation checkpoint.
 
 ## Outstanding evidence and delivery
 
-- Provider-backed Zitadel/SSO, passkey and representative rollout/rollback
+- Provider-backed OIDC/SSO, passkey and representative rollout/rollback
   checks have not run. No deployment or merge has occurred.
 - Desktop browser screenshots remain unavailable while the Mac is locked;
   Android visual verification was completed through the running emulator.

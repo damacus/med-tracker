@@ -14,7 +14,7 @@ password management, email verification, passkeys, TOTP, session/account/user
 management, organisations, OAuth and API-key capabilities. Exclude impersonation
 and unrestricted admin endpoints. Supported hooks and transaction-bound storage
 integrate canonical SeaORM accounts, memberships and audit records. Remove draft
-patch-only interfaces. Use `openidconnect = "=4.0.1"` for ZITADEL verified
+patch-only interfaces. Use `openidconnect = "=4.0.1"` for OIDC verified
 fresh-authentication proofs; retain the existing native OAuth grant engine.
 
 The pinned Better Auth passkey plugin hard-codes discouraged user verification
@@ -94,7 +94,7 @@ and publication. Freeze verified source and preserve exact live-job handles.
 ## Signup, login and recovery
 
 - Offer password or passkey first. Verify email before application access.
-  Everyone, including ZITADEL users, retains a local password or passkey.
+  Everyone, including OIDC users, retains a local password or passkey.
 - Require acknowledgement of saving ten recovery codes before application access.
   Provide copy/download controls and never log plaintext codes.
 - Password minimum: 15 characters. Allow long passphrases and password managers;
@@ -131,7 +131,7 @@ and publication. Freeze verified source and preserve exact live-job handles.
 - Every email, credential, TOTP, recovery-code, provider, key creation or closure
   operation requires fresh authentication bound to that single pending operation.
   Reject replay and substitution. Accept fresh passkey, password with applicable
-  TOTP or verified fresh ZITADEL proof; existing sessions alone are insufficient.
+  TOTP or verified fresh OIDC proof; existing sessions alone are insufficient.
 - Show active sessions; individual revocation and logout are available.
 - Verify new local email before activation and notify the old address.
 - Closure disables login, revokes credentials/sessions and ends memberships while
@@ -144,7 +144,7 @@ and publication. Freeze verified source and preserve exact live-job handles.
 - Notify credential, MFA, email, provider, API-key changes, recovery and closure.
   Omit routine successful-login notifications.
 
-## ZITADEL and households
+## OIDC and households
 
 The maintained `openidconnect` verifier handles discovery, code exchange, PKCE,
 signature, issuer, audience, expiry and nonce before the bounded application
@@ -155,7 +155,7 @@ registration policy still applies. New accounts receive only database-enforced
 enrolment sessions; a real local password or verified passkey and the existing
 ten-code save acknowledgement remain mandatory before clinical access.
 
-- Optional ZITADEL follows local registration/invitation policy and grants no
+- Optional OIDC sign-in follows local registration/invitation policy and grants no
   household access itself. Auto-link matching accounts only if both emails are
   verified; then identify provider accounts by issuer and immutable subject.
 - Synchronise changed verified provider email when unique and notify. Reject
@@ -186,7 +186,7 @@ ten-code save acknowledgement remain mandatory before clinical access.
 ## Acceptance, defaults and cutover
 
 Use existing Rust/browser runners with failing behaviour tests before production.
-Cover password/passkey/password-TOTP/ZITADEL onboarding/login; enrolment access
+Cover password/passkey/password-TOTP/OIDC onboarding/login; enrolment access
 gates; concurrent recovery and rollback; credential-type separation; expiry,
 revocation, replay and cross-account denial; operation-bound fresh proofs; OIDC
 issuer/audience/signature/nonce/state/PKCE/freshness rejection; invitation
@@ -205,7 +205,7 @@ Operation-bound fresh-auth proofs: five minutes, single use. Recovery codes rema
 valid until consumed, regenerated or closure; regeneration invalidates the set.
 Preserve configurable registration and INVITE_ONLY precedence. Rehearse approved
 old-session/token and unsupported-credential invalidation on synthetic migrated
-accounts, preserving live credentials and rollback data. Production ZITADEL
+accounts, preserving live credentials and rollback data. Production OIDC
 configuration/activation and live-provider verification remain separate; automated
 acceptance uses an owned OIDC fixture.
 

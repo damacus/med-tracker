@@ -25,6 +25,6 @@
 
 ## 5. Live evidence and issue completion
 
-- [ ] 5.1 Obtain the deployment owner's exact server digest, Android build and public discovery/callback configuration. Exercise local-only login and configured ZITADEL login/SSO/passkey/MFA through the real system browser with a test account; verify cancellation, authenticated household/dashboard reads, refresh, sign-out and device revocation. Record redacted results; unavailable provider/device checks remain blocked.
+- [ ] 5.1 Obtain the deployment owner's exact server digest, Android build and public discovery/callback configuration. Exercise local-only login and configured OIDC login/SSO/passkey/MFA through the real system browser with a test account; verify cancellation, authenticated household/dashboard reads, refresh, sign-out and device revocation. Record redacted results; unavailable provider/device checks remain blocked.
 - [ ] 5.2 Coordinate a separately authorised representative rollout/rollback rehearsal with the deployment owner. Verify schema-compatible rollback or issuance-disable recovery, account grants and existing restricted integrations; record versions and outcomes without production patient data or unapproved live mutations.
 - [ ] 5.3 Map completed evidence back to the existing parent tasks and #1889 acceptance criteria, leaving unrelated unfinished work open. Publish a precise issue update and close #1889 only after required security and live-delivery checks pass; verify the issue state and retain #2055 as separate iOS delivery.

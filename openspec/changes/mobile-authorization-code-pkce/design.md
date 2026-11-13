@@ -29,9 +29,9 @@ to an unimplemented offline replay engine or unrelated iOS delivery.
 ### Keep the two authentication boundaries explicit
 
 The phone authorises against MedTracker and redeems its code at MedTracker.
-Rodauth can authenticate the browser locally or delegate to ZITADEL through
+Rodauth can authenticate the browser locally or delegate to an OIDC provider through
 the existing OIDC integration. Those are different client registrations and
-callbacks. Native ZITADEL client IDs and `OIDC_MOBILE_CLIENT_ID` from the retired
+callbacks. Native provider client IDs and `OIDC_MOBILE_CLIENT_ID` from the retired
 exchange are not evidence that current Rodauth discovery is configured correctly.
 Use live discovery and registered MedTracker mobile applications when checking
 the deployed flow. Verify upstream issuer/audience/expiry/nonce/signature at the

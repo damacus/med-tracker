@@ -49,7 +49,7 @@ a committed code does not replace the issued token hashes.
 The upstream checks use the installed OmniAuth OIDC middleware with real RS256
 signatures and synthetic HTTP responses. A valid control reaches its application
 handoff; invalid issuer, audience, expiry, nonce and signature do not. These are
-library-boundary checks, not a claim of real ZITADEL login or deployed Rails wiring.
+library-boundary checks, not a claim of real OIDC login or deployed Rails wiring.
 
 ## Integrated checks
 
