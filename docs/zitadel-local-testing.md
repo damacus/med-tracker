@@ -1,8 +1,9 @@
-# Test Local MedTracker with Zitadel
+# Test local MedTracker with Zitadel
 
-This guide connects the local MedTracker development stack to a Zitadel
-instance. The Zitadel issuer must be reachable from both your browser and the
-MedTracker container. A hosted HTTPS issuer is the simplest setup.
+This is a historical Rails example using Zitadel as an OIDC provider. The
+variables, callback and claims below do not configure the current Loco
+application. For current setup, use the [OIDC setup guide](oidc-setup.md).
+The issuer must be reachable from both your browser and the application.
 
 ## Prerequisites
 

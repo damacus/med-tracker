@@ -16,7 +16,7 @@ still describes the removed exchange.
   by failing behavioural tests; reuse the installed OAuth library.
 - Verify upstream OIDC rejection, mobile callback/state binding, refresh and
   current household access without collecting credentials or health data in logs.
-- Exercise configured ZITADEL SSO and login methods through the actual Android
+- Exercise configured OIDC SSO and login methods through the actual Android
   system-browser journey, keeping local login and optional MFA policy unchanged.
 - Reconcile authentication ADRs, setup guidance, capabilities and the original
   issue's acceptance criteria with the already-merged account-level OAuth flow.
@@ -27,7 +27,7 @@ still describes the removed exchange.
 Non-goals: rebuilding PKCE or JWT cryptography; restoring retired mobile routes;
 deploying obsolete PR #2222; new session-lifetime or MFA policy; new iOS features;
 an offline replay engine; expanding SMART/FHIR or application-token permissions;
-changing ZITADEL clients or deploying from this planning change.
+changing provider clients or deploying from this planning change.
 
 ## Capabilities
 

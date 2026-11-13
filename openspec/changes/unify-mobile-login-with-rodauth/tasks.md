@@ -36,7 +36,7 @@
 
 - [x] 5.1 Add failing redaction tests for authorization codes, verifiers and tokens in request/provider diagnostics and audits; implement filtering and verify authentication failures expose no credential material.
 - [ ] 5.2 Update docs/design.md, authentication ADRs and setup guides to match discovery and direct replacement with no compatibility window; verify `task docs:build`, OpenSpec strict validation and `git diff --check`.
-- [ ] 5.3 Exercise browser/mobile sign-in against local-only and mixed local/Zitadel installations, including SSO reuse and configured password, passkey and MFA choices; record actual results and capture screenshots for visible UI changes without treating unavailable provider checks as passed.
+- [ ] 5.3 Exercise browser/mobile sign-in against local-only and mixed local/OIDC installations, including SSO reuse and configured password, passkey and MFA choices; record actual results and capture screenshots for visible UI changes without treating unavailable provider checks as passed.
 - [x] 5.4 Run applicable full Rails, RuboCop, security and Android task checks after focused tests; record failures or environmental limits and require applicable gates to pass before pushing implementation.
 
 ## 6. Rollout and retirement

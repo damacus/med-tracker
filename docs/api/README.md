@@ -13,9 +13,9 @@ deprecation, stable generated names, and generated-client ownership.
 Phones start at a user-selected instance URL and load
 `/.well-known/oauth-authorization-server` plus `/api/v1/capabilities`.
 Registered public client settings are in `authentication.mobile_oauth`.
-Use the platform browser for OAuth authorization code login with S256 PKCE;
-The application handles local sign-in, configured MFA and delegated providers such as
-Zitadel. Redeem and refresh through the discovered token endpoint.
+Use the platform browser for OAuth authorization code login with S256 PKCE.
+The application handles local sign-in, configured MFA and delegated OIDC
+providers. Redeem and refresh through the discovered token endpoint.
 
 The resulting credential identifies the account. `/auth/households` lists its
 currently authorised households. Household selection is navigation and does not

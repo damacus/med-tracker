@@ -92,7 +92,7 @@ The user confirmed there are no active mobile clients. Replace the old flow dire
 
 1. Implement new grant invariants, authorization discovery and account/household API handling while preserving existing restricted integration credentials.
 2. Update Android, the root OpenAPI schema, pinned contract and authentication documentation together. Remove the old ID-token exchange and obsolete first-party selection path; do not retain dead mobile compatibility code. Preserve local browser login and unrelated integrations.
-3. Verify local-only, mixed local/delegated and Zitadel SSO flows, instance selection/presets and existing MFA choices. Define the future iOS contract without claiming iOS implementation.
+3. Verify local-only, mixed local/delegated and OIDC SSO flows, instance selection/presets and existing MFA choices. Define the future iOS contract without claiming iOS implementation.
 4. Roll out the coherent server/client change. A rollback restores the previous release/schema as appropriate or disables new issuance; never reinterpret account grants as restricted grants or broaden legacy grants. Revoke incompatible test/new credentials when necessary and require sign-in. Do not close #1889 before delivery and verification.
 
 ## Open Questions

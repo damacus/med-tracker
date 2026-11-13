@@ -16,8 +16,8 @@ session revocation, and audit evidence.
 ## Decision
 
 Hosted deployments can use an external OpenID Connect provider as the primary
-identity service. Zitadel is the preferred provider for MedTracker-operated
-deployments, but the browser integration remains provider-neutral.
+identity service. The browser integration is provider-neutral; Zitadel is one
+example of an OIDC provider.
 
 The web application remains a Rodauth OIDC client. Rodauth owns the browser
 session, account linking, and MedTracker login lifecycle after the provider
@@ -49,12 +49,12 @@ PR #2232 replaced the custom mobile ID-token exchange, password login,
 household-selection exchange and refresh routes. Clients discover MedTracker's
 authorization server and public mobile client configuration through
 `/.well-known/oauth-authorization-server` and `/api/v1/capabilities`. Rodauth owns
-code redemption and refresh rotation; phones do not need a ZITADEL native client
+code redemption and refresh rotation; phones do not need an external provider's native client
 ID or the retired exchange's `OIDC_MOBILE_CLIENT_ID` setting.
 
 Issue #1889 remains open for failure-path, provider-backed login and rollout
 acceptance. Merged source and passing local tests do not establish deployed
-ZITADEL or passkey behaviour. Local browser password login remains available
+provider-backed login or passkey behaviour. Local browser password login remains available
 where installation policy permits it.
 
 ## Security requirements
