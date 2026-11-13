@@ -442,7 +442,8 @@ pub fn dispatch(
                     service.handle_request(request).await
                 },
             )
-            .await;
+            .await
+            .and_then(AuthResponse::into_http_response);
         match result {
             Err(AuthError::Conflict(_)) if signup => Ok(AuthResponse::json(
                 200,

@@ -162,7 +162,59 @@ async fn signup_create_saves_canonical_account_and_queued_verification_together(
     ] {
         let email = format!("{}-{email}", uuid::Uuid::new_v4());
         let email = email.as_str();
-        let response = signup(&app, email, credential).await;
+        let response = if credential == "password" {
+            let page = app
+                .client
+                .get(format!("{}/create-account", app.origin))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(page.status().as_u16(), 200);
+            let cookie = page
+                .headers()
+                .get_all("set-cookie")
+                .iter()
+                .map(|value| value.to_str().unwrap().split(';').next().unwrap())
+                .collect::<Vec<_>>()
+                .join("; ");
+            let html = page.text().await.unwrap();
+            let csrf = html
+                .split("name=\"authenticity_token\" value=\"")
+                .nth(1)
+                .unwrap()
+                .split('"')
+                .next()
+                .unwrap();
+            let fields = [
+                ("name", "New household owner"),
+                ("email", email),
+                ("date_of_birth", "1990-01-01"),
+                ("credential", "password"),
+                ("password", "synthetic-signup-1!"),
+                ("authenticity_token", csrf),
+            ];
+            let rejected = app
+                .client
+                .post(format!("{}/create-account", app.origin))
+                .header("cookie", &cookie)
+                .header("origin", "https://untrusted.example")
+                .header("sec-fetch-site", "same-origin")
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body(serde_urlencoded::to_string(fields).unwrap())
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(
+                rejected.status().as_u16(),
+                422,
+                "{}",
+                rejected.text().await.unwrap()
+            );
+            assert_eq!(signup_counts(&app, email).await, (0, 0));
+            super::platform::post_form(&app, &cookie, "/create-account", &fields).await
+        } else {
+            signup(&app, email, credential).await
+        };
         let status = response.status();
         let body = response.text().await.unwrap();
         assert_eq!(status.as_u16(), 200, "{body}");

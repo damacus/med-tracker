@@ -32,5 +32,5 @@
   </tbody></table></div>
   <nav aria-label="{{ admin_labels.nav.members }}" class="flex gap-4 mt-4">{% if previous_url != "" %}<a class="link" href="/households/{{ slug }}/admin/users{{ previous_url }}">{{ member_labels.previous }}</a>{% endif %}{% if next_url != "" %}<a class="link" href="/households/{{ slug }}/admin/users{{ next_url }}">{{ member_labels.next }}</a>{% endif %}</nav>
 </section>
-<script src="/static/js/bulk-member-selection.js" defer></script>
+<script src="/static/js/bulk-member-selection.js?v={{ asset_version }}" defer></script>
 {% endblock content %}

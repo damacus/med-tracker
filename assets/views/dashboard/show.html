@@ -35,7 +35,7 @@
     </div><aside class="space-y-5"><section class="dashboard-panel p-6"><h2 class="text-2xl font-black tracking-tight mb-5">{% if variant == 'time_first' %}{{ labels.dashboard.variants.time_first.later_today }}{% else %}{{ labels.dashboard.variants.calm_focus.after_this }}{% endif %}</h2>{% for row in dashboard.following %}{% include "dashboard/following.html" %}{% else %}<p class="py-8 text-center text-base-content/70">{{ labels.dashboard.variants.no_more_tasks }}</p>{% endfor %}</section>{% if variant == 'time_first' %}{% include "dashboard/stock.html" %}{% endif %}</aside></div>
   {% endif %}
   {% if dose %}{% include "medications/record-dose-dialog.html" %}{% endif %}
-  <script src="/static/js/dashboard.js" defer></script>
+  <script src="/static/js/dashboard.js?v={{ asset_version }}" defer></script>
   <footer class="mt-16 border-t border-base-300 pt-6 text-center text-xs text-base-content/50">v{{ version }}</footer>
 </div>
 {% endblock content %}
