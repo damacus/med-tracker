@@ -176,7 +176,7 @@ pub(crate) async fn authorized(
             &existing_medications,
         )
     };
-    if ["schedules", "person_medications"].iter().any(|kind| {
+    Ok(!(["schedules", "person_medications"].iter().any(|kind| {
         plan.rows(kind).iter().any(|row| {
             row["medication_portable_id"]
                 .as_str()
@@ -200,10 +200,7 @@ pub(crate) async fn authorized(
             &planned_new_medications,
             &existing_medications,
         )
-    }) {
-        return Ok(false);
-    }
-    Ok(true)
+    })))
 }
 
 fn delegated_medication_target_allowed(
