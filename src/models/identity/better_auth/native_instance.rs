@@ -28,6 +28,9 @@ pub(super) async fn build(
     )
     .map_err(|_| AuthError::internal("Invalid configured identity origin"))?;
     config.app_name = "MedTracker".into();
+    if oauth.is_some() {
+        config.api_error.error_url = Some("/login".into());
+    }
     config.advanced.database.generate_id = Some(better_auth::config::IdGeneration::Database);
     config.advanced.background_tasks = None;
     config.session.cookie_cache = None;

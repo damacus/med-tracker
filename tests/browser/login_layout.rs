@@ -11,6 +11,33 @@ use crate::{
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn oidc_signin_error_remains_on_accessible_login_at_desktop_and_mobile_sizes() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
+        Box::pin(async move {
+            let page = &journey.page;
+            for (width, height) in [(1440, 1000), (390, 844)] {
+                page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                page.goto(&format!("{}/login?error=state_mismatch", journey.origin), None).await.unwrap();
+                let screen: Value = page.evaluate("() => ({url: location.href, title: document.title, text: document.body.innerText})", None::<&()>).await.unwrap();
+                assert_eq!(page.locator("[role=alert]").count().await.unwrap(), 1, "{screen}");
+                expect(page.locator("[role=alert]")).to_have_text("Your sign-in session expired or could not be verified. Please start sign-in again.").await.unwrap();
+                expect(page.locator("form[action='/login']")).to_be_visible().await.unwrap();
+                page.get_by_label("Email address", true).focus().await.unwrap();
+                assert!(page.evaluate::<(), bool>("() => document.activeElement.id === 'email' && document.documentElement.scrollWidth <= innerWidth", None).await.unwrap());
+                harness::capture(page, &format!("zitadel-signin-error-{width}")).await;
+                let report = audit(page, &format!("zitadel-signin-error-{width}")).await;
+                assert_no_violations(&[report]);
+            }
+            harness::sign_in(journey).await;
+            page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+            assert!(!page.url().contains("/login"));
+            expect(page.locator("form[action='/login']")).to_have_count(0).await.unwrap();
+        })
+    }).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn login_images_follow_viewport_and_selected_appearance() {
     harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
         Box::pin(async move {
@@ -133,7 +160,9 @@ async fn login_images_follow_viewport_and_selected_appearance() {
             page.goto(&format!("{}/households/persistence-fixture/medications", journey.origin), None).await.unwrap();
             expect(page.locator("html")).to_have_attribute("data-theme", "default-light").await.unwrap();
             assert_eq!(page.locator("[data-appearance-choice], [data-dialog-open='appearance-dialog']").count().await.unwrap(), 0);
-            page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+            page.goto(&format!("{}/profile#security", journey.origin), None).await.unwrap();
+            page.locator("#security form[action='/logout'] button").click(None).await.unwrap();
+            expect(page.locator("form[action='/login']")).to_be_visible().await.unwrap();
             harness::device_appearance(page, "dark").await;
             expect(page.locator("html")).to_have_attribute("data-theme", "neutral-dark").await.unwrap();
             let saved: String = page.evaluate("() => localStorage.getItem('med-tracker-appearance')", None::<&()>).await.unwrap();

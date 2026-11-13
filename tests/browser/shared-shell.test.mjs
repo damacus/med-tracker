@@ -96,7 +96,7 @@ function enhance({ sidebar = null, household = null, drawer = null, outside = []
     addEventListener() {},
   };
   runInNewContext(read('assets/static/js/app-navigation.js'), {
-    document, navigator: {}, window: { matchMedia() { return { addEventListener() {} }; } },
+    document, navigator: {}, window: { addEventListener() {}, matchMedia() { return { addEventListener() {} }; } },
     sessionStorage: { getItem() { return null; } }, requestAnimationFrame(fn) { fn(); },
     Event: class { constructor(type) { this.type = type; } },
   });

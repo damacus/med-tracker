@@ -346,6 +346,63 @@ test('real navigation and profile modules guard one enhanced reset request and k
   });
 });
 
+test('sign-in replaces a cached legacy worker through the current worker URL', async () => {
+  const state = flowHarness();
+  const currentRegistration = await state.navigator.serviceWorker.getRegistration();
+  const form = state.document.createElement('form');
+  form.action = 'https://example.test/auth/oidc';
+  const button = state.document.createElement('button');
+  form.append(button);
+  state.host.append(form);
+  let restorePage;
+  state.window.addEventListener = (type, listener) => { if (type === 'pageshow') restorePage = listener; };
+  let upgraded = false;
+  state.navigator.serviceWorker.getRegistration = async () => upgraded ? currentRegistration : {
+    active: { state: 'activated', postMessage(_, ports) { ports[0].postMessage({ ok: true, protocol: 0 }); } },
+    update: async () => { throw Error('Legacy worker URL is still cached'); },
+  };
+  state.navigator.serviceWorker.register = async (url, options) => {
+    assert.equal(url, '/profile-service-worker.js');
+    assert.equal(options.scope, '/');
+    assert.equal(options.updateViaCache, 'none');
+    upgraded = true;
+    return currentRegistration;
+  };
+  await state.environment(async () => {
+    state.installNavigation();
+    form.dispatchEvent(new FlowEvent('submit', { submitter: button }));
+    await settle();
+    assert.equal(upgraded, true);
+    assert.equal(state.native.length, 1);
+    assert.ok(state.messages.includes('auth-transition-begin'));
+    restorePage({ persisted: true });
+    assert.equal(button.disabled, false);
+    assert.equal(form.getAttribute('aria-busy'), null);
+  });
+});
+
+test('sign-in shows a recoverable error when an old notification worker cannot update', async () => {
+  const state = flowHarness();
+  const form = state.document.createElement('form');
+  form.action = 'https://example.test/auth/oidc';
+  const button = state.document.createElement('button');
+  button.type = 'submit';
+  form.append(button);
+  state.host.append(form);
+  state.navigator.serviceWorker.getRegistration = async () => ({
+    active: { state: 'activated', postMessage(_, ports) { ports[0].postMessage({ ok: true, protocol: 0 }); } },
+    update: async () => { throw Error('Old worker URL is unavailable'); },
+  });
+  await state.environment(async () => {
+    state.installNavigation();
+    form.dispatchEvent(new FlowEvent('submit', { submitter: button }));
+    await settle();
+    assert.equal(state.native.length, 0);
+    assert.match(form.querySelector('[role="alert"]')?.textContent || '', /refresh this page and try again/i);
+    assert.equal(button.disabled, false);
+  });
+});
+
 function webauthnHarness(mode) {
   const state = flowHarness();
   const root = state.root(mode === 'registration' ? 'passkey' : 'operation');

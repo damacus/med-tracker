@@ -26,5 +26,5 @@
     {% if can_create %}<a class="link mt-4 inline-block" data-manual-entry href="/households/{{ slug }}/medications/new">Enter medication manually</a>{% endif %}
   </div>
 </section>
-<script src="/static/js/medication-finder.js" defer></script>
+<script src="/static/js/medication-finder.js?v={{ asset_version }}" defer></script>
 {% endblock content %}
