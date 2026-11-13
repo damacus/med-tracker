@@ -6,5 +6,5 @@
   <section class="profile-section"><h2 class="sr-only">{% if profile_flow.kind == 'history' or profile_flow.kind == 'plans' %}{{ labels.profiles.sections.profile.title }}{% else %}{{ labels.profiles.sections.security.title }}{% endif %}</h2>{% include "profile/flow-fragment.html" %}</section>
 </div>
 {% include "profile/flow-dialog.html" %}
-<script type="module" src="/static/js/profile-dialogs.js"></script>
+<script type="module" src="/static/js/profile-dialogs.js?v={{ asset_version }}"></script>
 {% endblock content %}

@@ -19,6 +19,7 @@ fn person_carer_pages_render_in_every_supported_locale() {
         for manager in [true, false] {
             for populated in [true, false] {
                 let data = json!({
+                    "asset_version":env!("MEDTRACKER_BUILD_VERSION"),
                     "slug":"synthetic-household","person":{"id":73002,"name":"Synthetic minor"},
                     "lang":locale,"title":labels["people"]["carer_relationships"]["new_title"],
                     "labels":labels,"carer_labels":labels["people"]["carer_relationships"],

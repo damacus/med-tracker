@@ -260,13 +260,13 @@ async fn shared_layout_fallback_and_permission_boundaries() {
             expect(fallback.locator("[data-dashboard-selector] button")).to_have_count(0).await.unwrap();
             no_script.close().await.unwrap();
             page.route("**/profile/navigation",|route|async move {route.abort(None).await}).await.unwrap();
-            page.route("**/static/js/app-navigation.js",|route|async move {route.abort(None).await}).await.unwrap();
+            page.route("**/static/js/app-navigation.js*",|route|async move {route.abort(None).await}).await.unwrap();
             page.reload(None).await.unwrap();
             expect(page.locator(".app-sidebar [data-section=dashboard]")).to_be_visible().await.unwrap();
             page.locator("[data-app-profile]").click(None).await.unwrap();
             page.locator("#profile-tab-security").click(None).await.unwrap();
             expect(page.locator("#security form[action='/logout'] button")).to_be_visible().await.unwrap();
-            page.unroute("**/static/js/app-navigation.js").await.unwrap();
+            page.unroute("**/static/js/app-navigation.js*").await.unwrap();
             page.unroute("**/profile/navigation").await.unwrap();
             journey.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
             page.reload(None).await.unwrap();

@@ -65,5 +65,5 @@
     {% if has_next %}<a class="btn btn-outline" href="?page={{ next_page }}&review_status={{ reviews.meta.active_status }}&priority={{ reviews.meta.active_priority }}&show_hidden={% if reviews.meta.show_hidden %}1{% else %}0{% endif %}">{{ labels.medication_reviews.browser.next }}</a>{% endif %}
   </nav>
 </section>
-<script src="/static/js/review-filters.js" defer></script>
+<script src="/static/js/review-filters.js?v={{ asset_version }}" defer></script>
 {% endblock content %}

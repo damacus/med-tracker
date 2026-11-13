@@ -18,7 +18,7 @@
     (await registration?.getNotifications?.())?.forEach(notification => notification.close());
   }
   async function compatibleRegistration() {
-    const registration = await navigator.serviceWorker?.getRegistration('/');
+    let registration = await navigator.serviceWorker?.getRegistration('/');
     if (!registration?.active) return registration;
     try {
       const status = await workerMessage(registration.active, 'auth-transition-status', undefined, 250);
@@ -27,8 +27,8 @@
     let timer;
     const deadline = Date.now() + 10000;
     try {
-      await Promise.race([
-        registration.update(),
+      registration = await Promise.race([
+        navigator.serviceWorker.register('/profile-service-worker.js', { scope: '/', updateViaCache: 'none' }),
         new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Notification worker upgrade timed out')), 10000); }),
       ]);
       while (registration.installing || registration.waiting || registration.active?.state !== 'activated') {
@@ -66,6 +66,18 @@
   }
   window.medTrackerBeginPushTransition = beginAuthTransition;
   window.medTrackerEndPushTransition = finishAuthTransition;
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted) return;
+    for (const form of document.querySelectorAll('form[aria-busy="true"]')) {
+      if (!authPaths.has(new URL(form.action).pathname)) continue;
+      form.removeAttribute('aria-busy');
+      form.querySelector('[data-auth-status]')?.remove();
+      for (const submitter of form.querySelectorAll('[data-auth-pending]')) {
+        submitter.disabled = false;
+        submitter.removeAttribute('data-auth-pending');
+      }
+    }
+  });
   document.addEventListener('submit', event => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !authPaths.has(new URL(form.action).pathname)) return;
@@ -74,11 +86,31 @@
       if (!form.dispatchEvent(enhanced)) { event.preventDefault(); return; }
     }
     event.preventDefault();
+    if (form.getAttribute('aria-busy') === 'true') return;
+    let status = form.querySelector('[data-auth-status]');
+    if (!status) {
+      status = document.createElement('p');
+      status.dataset.authStatus = '';
+      form.append(status);
+    }
+    status.setAttribute('role', 'status');
+    status.textContent = 'Please wait…';
+    form.setAttribute('aria-busy', 'true');
+    if (event.submitter) {
+      event.submitter.disabled = true;
+      event.submitter.setAttribute('data-auth-pending', '');
+    }
     void (async () => {
       try {
         await beginAuthTransition();
       } catch {
-        window.alert('Could not update or clear browser notifications. Check your connection and retry signing in or out.');
+        status.setAttribute('role', 'alert');
+        status.textContent = 'Could not sign in or out. Refresh this page and try again.';
+        form.removeAttribute('aria-busy');
+        if (event.submitter) {
+          event.submitter.disabled = false;
+          event.submitter.removeAttribute('data-auth-pending');
+        }
         return;
       }
       if (!form.isConnected) document.body.append(form);

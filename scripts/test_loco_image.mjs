@@ -117,10 +117,14 @@ test("production boot with restricted database identity", async (t) => {
   assert.ok(healthy, `Production server did not become healthy: ${await docker("logs", server)}`);
   const css = await fetch(`${origin}/static/css/compiled.css`, { signal: AbortSignal.timeout(5000) });
   assert.equal(css.status, 200);
+  assert.match(css.headers.get("cache-control") || "", /no-store/);
   assert.ok((await css.arrayBuffer()).byteLength > 1000);
   const login = await fetch(`${origin}/login`, { signal: AbortSignal.timeout(5000) });
   assert.equal(login.status, 200);
-  assert.match(await login.text(), /<form/);
+  const loginHtml = await login.text();
+  assert.match(loginHtml, /<form/);
+  assert.match(loginHtml, /\/static\/js\/app-navigation\.js\?v=[^" ]+/);
+  assert.match(loginHtml, /\/static\/js\/passkeys\.js\?v=[^" ]+/);
   for (const name of [server, worker]) {
     assert.equal((await docker("inspect", "--format", "{{.State.Running}}", name)).trim(), "true", await docker("logs", name));
   }

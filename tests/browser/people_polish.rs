@@ -308,7 +308,7 @@ async fn people_polish_render_locales() {
     ] {
         let all: serde_json::Value = serde_yaml_ng::from_str(source).unwrap();
         let labels = &all[lang];
-        let data = serde_json::json!({"slug":"synthetic","title":"People","lang":lang,"labels":labels,"care_warning_labels":labels["care_warning"],"authenticity_token":"synthetic","allow_palette":true,"appearances":[],"palettes":[],"can_create":true,"people":[{"id":1,"name":"Synthetic adult","care_warning":null,"age_present":false,"date_of_birth_display":null,"avatar_initials":"SA","avatar_attached":false,"gravatar_url":null,"can_manage":true,"active_medication_label":"1 active medication"}],"previous_page":null,"next_page":null,"per_page":20});
+        let data = serde_json::json!({"asset_version":env!("MEDTRACKER_BUILD_VERSION"),"slug":"synthetic","title":"People","lang":lang,"labels":labels,"care_warning_labels":labels["care_warning"],"authenticity_token":"synthetic","allow_palette":true,"appearances":[],"palettes":[],"can_create":true,"people":[{"id":1,"name":"Synthetic adult","care_warning":null,"age_present":false,"date_of_birth_display":null,"avatar_initials":"SA","avatar_attached":false,"gravatar_url":null,"can_manage":true,"active_medication_label":"1 active medication"}],"previous_page":null,"next_page":null,"per_page":20});
         view.render("people/index.html", data)
             .unwrap_or_else(|error| panic!("{lang}: {error:?}"));
     }

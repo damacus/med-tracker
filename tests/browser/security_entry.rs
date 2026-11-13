@@ -256,7 +256,7 @@ async fn profile_dialogs_native_fallback_survives_disabled_download_and_initiali
             context.add_cookies(&current.cookies(None).await.unwrap()).await.unwrap();
             let page = context.new_page().await.unwrap();
             if failure == "download" {
-                page.route("**/static/js/profile-dialogs.js", |route| async move { route.abort(None).await }).await.unwrap();
+                page.route("**/static/js/profile-dialogs.js*", |route| async move { route.abort(None).await }).await.unwrap();
             }
             if failure == "initialisation" {
                 page.add_init_script("document.addEventListener('DOMContentLoaded', () => {}); Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {value: undefined});").await.unwrap();
