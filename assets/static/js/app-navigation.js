@@ -133,6 +133,28 @@
       if (disclosure.open && event.relatedTarget && !disclosure.contains(event.relatedTarget)) disclosure.open = false;
     });
   }
+  const accountMenu = document.querySelector('[data-account-menu]');
+  if (accountMenu) {
+    const summary = accountMenu.querySelector('summary');
+    accountMenu.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && accountMenu.open) {
+        event.preventDefault();
+        accountMenu.open = false;
+        summary.focus({ preventScroll: true });
+      }
+      if (event.key === 'ArrowDown' && event.target === summary) {
+        event.preventDefault();
+        accountMenu.open = true;
+        accountMenu.querySelector('a[href]')?.focus({ preventScroll: true });
+      }
+    });
+    document.addEventListener('click', event => {
+      if (accountMenu.open && !accountMenu.contains(event.target)) accountMenu.open = false;
+    });
+    accountMenu.addEventListener('focusout', event => {
+      if (accountMenu.open && event.relatedTarget && !accountMenu.contains(event.relatedTarget)) accountMenu.open = false;
+    });
+  }
   const drawer = document.querySelector("[data-mobile-drawer]");
   if (drawer && typeof drawer.querySelector('#app-drawer').showModal === 'function') {
     const summary = drawer.querySelector("summary");

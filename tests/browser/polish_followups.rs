@@ -63,7 +63,7 @@ async fn polish_profile_avatar_refreshes_all_existing_surfaces_without_navigatio
         expect(page.locator("form[action$='/profile/avatar/remove']")).to_have_count(0).await.unwrap();
         assert_eq!(page.locator("[data-profile-avatar] img, [data-sidebar-avatar] img").count().await.unwrap(),0);
         assert!(page.evaluate::<(),bool>("() => window.polishDocument===document && window.polishAccount===document.querySelector('[data-app-profile]') && [...document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')].every(avatar=>avatar.textContent.trim().length>0)",None).await.unwrap());
-        expect(page.locator("[data-app-profile]")).to_have_attribute("href", "/households/persistence-fixture/profile").await.unwrap();
+        expect(page.locator("[data-account-section=profile]")).to_have_attribute("href", "/households/persistence-fixture/profile").await.unwrap();
     })).await;
 }
 

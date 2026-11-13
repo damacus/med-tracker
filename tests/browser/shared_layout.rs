@@ -149,6 +149,122 @@ async fn capture(page: &playwright_rs::protocol::Page, name: &str) {
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn shared_layout_account_menu_signs_out_from_desktop_and_mobile() {
+    for (name, width, height, scripts) in [
+        ("desktop", 1440, 1000, true),
+        ("mobile", 390, 844, true),
+        ("desktop-no-script", 1440, 1000, false),
+        ("mobile-no-script", 390, 844, false),
+    ] {
+        harness::journey(Viewport { width, height }, |journey| {
+            Box::pin(async move {
+                harness::sign_in(journey).await;
+                let original = journey.page.context().unwrap();
+                let isolated = original
+                    .browser()
+                    .unwrap()
+                    .new_context_with_options(
+                        BrowserContextOptions::builder()
+                            .javascript_enabled(scripts)
+                            .viewport(Viewport { width, height })
+                            .build(),
+                    )
+                    .await
+                    .unwrap();
+                isolated
+                    .add_cookies(&original.cookies(None).await.unwrap())
+                    .await
+                    .unwrap();
+                let account_page = isolated.new_page().await.unwrap();
+                let page = &account_page;
+                page.goto(
+                    &format!(
+                        "{}/households/persistence-fixture/medications",
+                        journey.origin
+                    ),
+                    None,
+                )
+                .await
+                .unwrap();
+                page.locator("[data-app-profile]").focus().await.unwrap();
+                page.keyboard().press("Enter", None).await.unwrap();
+                expect(page.locator("[data-account-menu] a[href$='/dashboard']"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                expect(page.locator("[data-account-menu] a[href$='/profile']"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                expect(page.locator("[data-account-menu] a[href$='/admin']"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                expect(page.locator("[data-account-menu] form[action='/logout'] button"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                assert!(page.evaluate::<(), bool>("() => { const menu = document.querySelector('.app-account-options'); const rect = menu.getBoundingClientRect(); return getComputedStyle(menu).position === 'absolute' && rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight && document.querySelector('.shell-header').getBoundingClientRect().height < 100; }", None).await.unwrap());
+                capture(page, &format!("account-menu-{name}")).await;
+                if scripts {
+                    page.keyboard().press("Escape", None).await.unwrap();
+                } else {
+                    page.locator("[data-app-profile]")
+                        .click(None)
+                        .await
+                        .unwrap();
+                }
+                expect(page.locator("[data-app-profile]"))
+                    .to_be_focused()
+                    .await
+                    .unwrap();
+                expect(page.locator("[data-account-menu] form[action='/logout'] button"))
+                    .to_be_hidden()
+                    .await
+                    .unwrap();
+                page.locator("[data-app-profile]")
+                    .click(None)
+                    .await
+                    .unwrap();
+                page.locator("[data-account-menu] a[href$='/profile']")
+                    .click(None)
+                    .await
+                    .unwrap();
+                assert!(page.url().ends_with("/profile"));
+                page.locator("[data-app-profile]")
+                    .click(None)
+                    .await
+                    .unwrap();
+                page.locator("[data-account-menu] form[action='/logout'] button")
+                    .click(None)
+                    .await
+                    .unwrap();
+                expect(page.locator("form[action='/login']"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                page.goto(
+                    &format!(
+                        "{}/households/persistence-fixture/medications",
+                        journey.origin
+                    ),
+                    None,
+                )
+                .await
+                .unwrap();
+                expect(page.locator("form[action='/login']"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                isolated.close().await.unwrap();
+            })
+        })
+        .await;
+    }
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn shared_layout_mobile_drawer_and_narrow_pages() {
     harness::journey(
         Viewport {
@@ -249,6 +365,8 @@ async fn shared_layout_fallback_and_permission_boundaries() {
             fallback.locator("#drawer-households button[aria-current=true]").click(None).await.unwrap();
             assert!(fallback.url().ends_with("/dashboard"));
             fallback.locator("[data-app-profile]").click(None).await.unwrap();
+            expect(fallback.locator("[data-account-menu] form[action='/logout'] button")).to_be_visible().await.unwrap();
+            fallback.locator("[data-account-section=profile]").click(None).await.unwrap();
             expect(fallback.locator("#security form[action='/logout'] button")).to_be_visible().await.unwrap();
             expect(fallback.locator("[data-profile-navigation-fallback]")).to_have_count(0).await.unwrap();
             assert_eq!(fallback.locator("[data-dialog-open='appearance-dialog']").count().await.unwrap(), 0);
@@ -264,6 +382,7 @@ async fn shared_layout_fallback_and_permission_boundaries() {
             page.reload(None).await.unwrap();
             expect(page.locator(".app-sidebar [data-section=dashboard]")).to_be_visible().await.unwrap();
             page.locator("[data-app-profile]").click(None).await.unwrap();
+            page.locator("[data-account-section=profile]").click(None).await.unwrap();
             page.locator("#profile-tab-security").click(None).await.unwrap();
             expect(page.locator("#security form[action='/logout'] button")).to_be_visible().await.unwrap();
             page.unroute("**/static/js/app-navigation.js").await.unwrap();
@@ -271,6 +390,7 @@ async fn shared_layout_fallback_and_permission_boundaries() {
             journey.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
             page.reload(None).await.unwrap();
             expect(page.locator("[data-app-profile]")).to_be_visible().await.unwrap();
+            expect(page.locator("[data-account-section=administration]")).to_have_count(0).await.unwrap();
             assert_eq!(page.locator(".app-sidebar [data-section=administration]").count().await.unwrap(),0);
             journey.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
             page.goto(&format!("{}/households/choose?switch=1",journey.origin),None).await.unwrap();
@@ -294,7 +414,7 @@ async fn shared_layout_server_navigation_and_rail_persist_across_household_pages
             assert!(page.evaluate::<(), bool>("() => { const toggle = document.querySelector('[data-sidebar-expanded]'); return !toggle.checked && !toggle.hasAttribute('checked') && document.querySelector('.app-sidebar').getBoundingClientRect().width === 80 && !performance.getEntriesByType('resource').some(entry => new URL(entry.name).pathname.endsWith('/profile/navigation')); }", None).await.unwrap(), "{path}");
             expect(page.get_by_role(AriaRole::Link, named("MedTracker"))).to_be_visible().await.unwrap();
             assert!(page.evaluate::<(), bool>("() => getComputedStyle(document.querySelector('.app-sidebar-search kbd')).display === 'none'", None).await.unwrap(), "shortcut hint visible in {path} icon rail");
-            expect(page.locator("[data-app-profile]")).to_have_attribute("href", "/households/persistence-fixture/profile").await.unwrap();
+            expect(page.locator("[data-account-section=profile]")).to_have_attribute("href", "/households/persistence-fixture/profile").await.unwrap();
             page.locator(".app-sidebar [data-household-trigger]").click(None).await.unwrap();
             expect(page.locator("#sidebar-households button[aria-current=true]")).to_be_visible().await.unwrap();
             page.keyboard().press("Escape", None).await.unwrap();
@@ -389,6 +509,7 @@ async fn shared_layout_platform_and_account_frames_do_not_invent_household_navig
             journey.admin.execute_unprepared("INSERT INTO platform_admins (account_id,status,created_at,updated_at) VALUES (71001,'active',now(),now())").await.unwrap();
             page.reload(None).await.unwrap();
             page.locator("[data-app-profile]").click(None).await.unwrap();
+            page.locator("[data-account-section=profile]").click(None).await.unwrap();
             page.locator("#profile-tab-security").click(None).await.unwrap();
             let platform_link=page.locator(".app-sidebar [data-sidebar-navigation] a[href='/platform/users']");
             expect(platform_link.clone()).to_be_visible().await.unwrap();
