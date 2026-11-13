@@ -1,7 +1,9 @@
 use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
+use crate::models::identity::better_auth::{BrowserIdentity, IdentityService, browser_identity};
 use axum::{
-    extract::Form as AxumForm,
-    http::{StatusCode, header},
+    Extension,
+    extract::{Form as AxumForm, Query},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
@@ -20,6 +22,40 @@ struct Login {
 #[derive(Deserialize)]
 struct Logout {
     authenticity_token: String,
+}
+
+#[derive(Deserialize)]
+struct LoginQuery {
+    error: Option<ProviderSignInError>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ProviderSignInError {
+    #[serde(alias = "state_not_found")]
+    StateMismatch,
+    AccessDenied,
+    #[serde(alias = "user_not_found", alias = "account_not_linked")]
+    SignupDisabled,
+    #[serde(other)]
+    Unavailable,
+}
+
+impl ProviderSignInError {
+    fn message(self) -> &'static str {
+        match self {
+            Self::StateMismatch => {
+                "Your sign-in session expired or could not be verified. Please start sign-in again."
+            }
+            Self::AccessDenied => "Sign-in was cancelled or denied. Please try again.",
+            Self::SignupDisabled => {
+                "This identity is not linked to a MedTracker account. Sign in another way or create an account."
+            }
+            Self::Unavailable => {
+                "We could not sign you in with your identity provider. Please try again."
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
@@ -87,13 +123,35 @@ async fn retired() -> Response {
 
 async fn login(
     State(ctx): State<AppContext>,
+    Extension(service): Extension<IdentityService>,
+    headers: HeaderMap,
     session: Session<SessionPgPool>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(query): Query<LoginQuery>,
 ) -> Response {
+    match browser_identity(
+        &service,
+        &crate::controllers::identity_onboarding::identity_request(&headers),
+    )
+    .await
+    {
+        Ok(BrowserIdentity::Authenticated { .. }) => return authenticated_redirect(&session),
+        Ok(BrowserIdentity::Enrolment { .. }) => return redirect("/auth/passkey/setup"),
+        Ok(BrowserIdentity::SignedOut) => {}
+        Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
     let notice = session.get::<String>("auth_notice");
     session.remove("auth_notice");
-    login_form(&ctx, &token, &view, None, StatusCode::OK, notice).await
+    login_form(
+        &ctx,
+        &token,
+        &view,
+        query.error.map(ProviderSignInError::message),
+        StatusCode::OK,
+        notice,
+    )
+    .await
 }
 
 async fn login_form(

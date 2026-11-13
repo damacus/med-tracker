@@ -122,6 +122,7 @@ impl Provider {
         if operation_id.is_some() && link {
             return Err(AuthError::InvalidCredentials);
         }
+        let ordinary_sign_in = operation_id.is_none() && !link;
         let (path, callback) = if link {
             service
                 .context()
@@ -139,11 +140,19 @@ impl Provider {
                 format!("/account/security/provider/confirm?operation_id={id}"),
             )
         } else {
-            ("/sign-in/social", "/auth/passkey/setup".into())
+            ("/sign-in/social", "/auth/passkey/complete".into())
         };
         service.call_endpoint(HttpMethod::Post, path, better_auth::server_api::EndpointInput {
             request: Some(request.clone()), headers: Some(request.headers.clone()),
-            body: Some(json!({"provider":"oidc","callbackURL":callback,"newUserCallbackURL":"/auth/passkey/setup","errorCallbackURL":"/auth/oidc/register","requestSignUp":false,"disableRedirect":true})),
+            body: Some(json!({
+                "provider":"oidc",
+                "callbackURL":callback,
+                "newUserCallbackURL":"/auth/passkey/setup",
+                "errorCallbackURL":if ordinary_sign_in { "/login" } else { "/auth/oidc/register" },
+                "requestSignUp":false,
+                "disableRedirect":true,
+                "additionalParams":if ordinary_sign_in { json!({"prompt":"select_account"}) } else { json!({}) },
+            })),
             ..Default::default()
         }).await
     }

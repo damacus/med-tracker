@@ -1,5 +1,5 @@
 use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
-use crate::models::identity::better_auth::IdentityService;
+use crate::models::identity::better_auth::{BrowserIdentity, IdentityService, browser_identity};
 use axum::{
     Extension,
     extract::{Form, Query},
@@ -7,6 +7,8 @@ use axum::{
     response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
+use axum_session::Session;
+use axum_session_sqlx::SessionPgPool;
 use loco_rs::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
@@ -180,6 +182,7 @@ pub(super) async fn start(
     Extension(service): Extension<IdentityService>,
     request_id: Option<Extension<loco_rs::controller::middleware::request_id::LocoRequestId>>,
     headers: HeaderMap,
+    session: Session<SessionPgPool>,
     csrf: CsrfToken,
     Form(form): Form<Start>,
 ) -> Response {
@@ -190,6 +193,18 @@ pub(super) async fn start(
         return StatusCode::NOT_FOUND.into_response();
     };
     let request = super::passkeys::request(&headers);
+    if !form.link && form.operation_id.is_none() {
+        match browser_identity(&service, &request).await {
+            Ok(BrowserIdentity::Authenticated { .. }) => {
+                return crate::controllers::auth::authenticated_redirect(&session);
+            }
+            Ok(BrowserIdentity::Enrolment { .. }) => {
+                return super::rendering::redirect("/auth/passkey/setup");
+            }
+            Ok(BrowserIdentity::SignedOut) => {}
+            Err(_) => return super::rendering::unavailable(),
+        }
+    }
     match provider.preflight(&service, &request).await {
         Ok(Some(response)) => return native_redirect(response),
         Err(_) => return super::rendering::unavailable(),
@@ -206,7 +221,7 @@ pub(super) async fn start(
         Ok(response) => native_redirect(response),
         Err(error) => {
             provider_error(&error, "start");
-            super::rendering::redirect("/login")
+            super::rendering::redirect("/login?error=provider_unavailable")
         }
     }
 }
@@ -233,7 +248,7 @@ pub(super) async fn callback(
             .unwrap_or_else(|_| super::rendering::unavailable()),
         Err(error) => {
             provider_error(&error, "callback");
-            super::rendering::redirect("/login")
+            super::rendering::redirect("/login?error=provider_unavailable")
         }
     }
 }
