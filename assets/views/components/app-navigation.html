@@ -5,5 +5,13 @@
   </details>{% endif %}
   <a href="/" class="text-xl font-semibold app-brand" aria-label="{% if labels %}{{ labels.layouts.navigation.home_link }}{% else %}MedTracker home{% endif %}">MedTracker</a>
   {% if shell %}<a href="/households/{{ slug }}/search" class="btn btn-outline" data-global-search-trigger aria-label="{{ labels.global_search.open }}" aria-controls="global_search_panel" aria-expanded="false">{{ labels.global_search.open_short }}</a>{% endif %}
-  {% if shell %}<a href="/households/{{ slug }}/profile" class="btn btn-ghost app-account-trigger" data-app-profile><span class="app-avatar" data-profile-avatar aria-hidden="true">{% include "components/shell-avatar.html" %}</span><span data-account-name>{{ shell.name }}</span><span class="sr-only"> · {{ shell.labels.profile_menu.profile }}</span></a>{% else %}<a href="/profile" class="btn btn-ghost app-account-trigger" data-app-profile><span class="app-avatar" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#profile"/></svg></span><span data-account-name>{% if labels %}{{ labels.layouts.profile_menu.profile }}{% else %}Profile{% endif %}</span></a>{% endif %}
+  {% if shell %}<details class="app-account-menu" data-account-menu>
+    <summary class="btn btn-ghost app-account-trigger" data-app-profile><span class="app-avatar" data-profile-avatar aria-hidden="true">{% include "components/shell-avatar.html" %}</span><span data-account-name>{{ shell.name }}</span><span class="sr-only"> · {{ shell.labels.profile_menu.my_account }}</span></summary>
+    <nav class="app-account-options" aria-label="{{ shell.labels.profile_menu.my_account }}">
+      <ul class="menu w-full">
+        {% for link in shell.choices %}{% if link.id == 'dashboard' or link.id == 'profile' or link.id == 'administration' %}<li><a href="{{ link.href }}" data-account-section="{{ link.id }}">{{ shell.labels.profile_menu[link.id] }}</a></li>{% endif %}{% endfor %}
+      </ul>
+      {% include "components/shell-logout.html" %}
+    </nav>
+  </details>{% else %}<a href="/profile" class="btn btn-ghost app-account-trigger" data-app-profile><span class="app-avatar" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#profile"/></svg></span><span data-account-name>{% if labels %}{{ labels.layouts.profile_menu.profile }}{% else %}Profile{% endif %}</span></a>{% endif %}
 </div>

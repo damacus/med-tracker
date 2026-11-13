@@ -59,7 +59,16 @@ async fn navigation(viewport: Viewport, size: &'static str) {
         let page = &journey.page;
         let report = audit(page, &format!("navigation-{size}")).await;
         assert!(page.evaluate::<(), bool>("() => [...document.querySelectorAll('[data-global-search-trigger]')].every(trigger => trigger.getAttribute('aria-label').startsWith('Open global search — Search ') && ['Meta+K', 'Control+K'].includes(trigger.getAttribute('aria-keyshortcuts')) && trigger.querySelector('kbd[aria-hidden=\"true\"]'))", None).await.unwrap());
-        expect(page.get_by_role(AriaRole::Link, harness::named("Synthetic adult · Profile"))).to_be_visible().await.unwrap();
+        let profile = page.locator("[data-account-menu] > summary");
+        expect(profile.clone()).to_be_visible().await.unwrap();
+        expect(profile.clone()).to_contain_text("Synthetic adult").await.unwrap();
+        expect(profile.clone()).to_contain_text("My Account").await.unwrap();
+        profile.focus().await.unwrap();
+        page.keyboard().press("Enter", None).await.unwrap();
+        let profile_report = audit(page, &format!("navigation-profile-open-{size}")).await;
+        expect(page.locator("[data-account-menu] form[action='/logout'] button")).to_be_visible().await.unwrap();
+        page.keyboard().press("Escape", None).await.unwrap();
+        expect(profile).to_be_focused().await.unwrap();
         let directory = std::path::Path::new("docs/screenshots/accessibility-level-a");
         std::fs::create_dir_all(directory).unwrap();
         page.screenshot_to_file(&directory.join(format!("navigation-{size}.png")), ScreenshotOptions::builder().animations(Animations::Disabled).build()).await.unwrap();
@@ -82,7 +91,7 @@ async fn navigation(viewport: Viewport, size: &'static str) {
         expect(trigger.clone()).to_have_attribute("aria-expanded", "false").await.unwrap();
         expect(trigger).to_be_focused().await.unwrap();
         if !desktop { page.keyboard().press("Escape", None).await.unwrap(); }
-        assert_no_violations(&[report, open_report]);
+        assert_no_violations(&[report, profile_report, open_report]);
         page.evaluate::<(), bool>("() => { const button = document.createElement('button'); button.id = 'a11y-negative-control'; button.textContent = 'Visible audit label'; button.setAttribute('aria-label', 'Different accessible name'); document.querySelector('main').append(button); return true; }", None).await.unwrap();
         let negative = audit(page, &format!("negative-control-{size}")).await;
         assert!(negative["violations"].as_array().unwrap().iter().any(|violation| violation["id"] == "label-content-name-mismatch"), "audit failed to detect a visible-label mismatch");
