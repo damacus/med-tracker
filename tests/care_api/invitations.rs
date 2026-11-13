@@ -255,6 +255,104 @@ async fn invitations_api_collection_retains_newest_hundred_limit() {
 }
 
 #[tokio::test]
+async fn invitation_revoke_rejects_accepted_state() {
+    let app = Application::new().await;
+    let household_id = app.fixture.household.id;
+    let token = app.token().await;
+    let accepted = seed_invitation(
+        &app,
+        &format!("accepted-{}@example.test", uuid::Uuid::new_v4()),
+        uuid::Uuid::new_v4().to_string(),
+        chrono::Utc::now().naive_utc() + chrono::Duration::days(1),
+    )
+    .await;
+    let mut accepted_update: household_invitations::ActiveModel = accepted.clone().into();
+    accepted_update.accepted_at = Set(Some(chrono::Utc::now().naive_utc()));
+    let accepted = accepted_update.update(&app.fixture.admin).await.unwrap();
+    let endpoint = format!(
+        "{}/api/v1/households/{household_id}/admin/invitations/{}",
+        app.origin, accepted.id
+    );
+    let before = invitation_effects(&app, household_id).await;
+    let accepted_status = app
+        .client
+        .delete(endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .status();
+    let after_accepted = household_invitations::Entity::find_by_id(accepted.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let after_rejection = invitation_effects(&app, household_id).await;
+    app.close().await;
+    assert_eq!(accepted_status.as_u16(), 422);
+    assert_eq!(after_accepted.accepted_at, accepted.accepted_at);
+    assert_eq!(after_accepted.revoked_at, None);
+    assert_eq!(after_accepted.updated_at, accepted.updated_at);
+    assert_eq!(before["versions"], after_rejection["versions"]);
+}
+
+#[tokio::test]
+async fn invitation_revoke_repeated_is_idempotent() {
+    let app = Application::new().await;
+    let household_id = app.fixture.household.id;
+    let token = app.token().await;
+    let pending = seed_invitation(
+        &app,
+        &format!("pending-{}@example.test", uuid::Uuid::new_v4()),
+        uuid::Uuid::new_v4().to_string(),
+        chrono::Utc::now().naive_utc() + chrono::Duration::days(1),
+    )
+    .await;
+    let endpoint = |id| {
+        format!(
+            "{}/api/v1/households/{household_id}/admin/invitations/{id}",
+            app.origin
+        )
+    };
+    let before_first = invitation_effects(&app, household_id).await;
+    let first_status = app
+        .client
+        .delete(endpoint(pending.id))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .status();
+    let first = household_invitations::Entity::find_by_id(pending.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let after_first = invitation_effects(&app, household_id).await;
+    let second_status = app
+        .client
+        .delete(endpoint(pending.id))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .status();
+    let second = household_invitations::Entity::find_by_id(pending.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let after_second = invitation_effects(&app, household_id).await;
+    app.close().await;
+    assert_eq!((first_status.as_u16(), second_status.as_u16()), (204, 204));
+    assert!(first.revoked_at.is_some());
+    assert_eq!(first.revoked_at, second.revoked_at);
+    assert_eq!(first.updated_at, second.updated_at);
+    assert_eq!(after_first["versions"], before_first["versions"] + 1);
+    assert_eq!(after_first["versions"], after_second["versions"]);
+}
+
+#[tokio::test]
 async fn invitations_resend_rotates_once_replay_does_not_send_again_and_revoke_invalidates_token() {
     use med_tracker::models::care::invitations;
     use sha2::{Digest, Sha256};

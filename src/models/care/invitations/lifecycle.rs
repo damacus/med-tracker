@@ -56,6 +56,12 @@ pub async fn revoke(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
     let row = current(tenant, id).await?;
+    if row.accepted_at.is_some() {
+        return Err(invalid("base", "Invitation cannot be revoked"));
+    }
+    if row.revoked_at.is_some() {
+        return Ok(());
+    }
     let before = super::issuing::state(&row);
     let now = Utc::now().naive_utc();
     let mut active: household_invitation::ActiveModel = row.into();
