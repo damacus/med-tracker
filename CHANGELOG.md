@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.6](https://github.com/damacus/med-tracker/compare/v0.6.5...v0.6.6) (2026-11-13)
+
+
+### Bug Fixes
+
+* **auth:** correct Zitadel sign-in flow ([#3110](https://github.com/damacus/med-tracker/issues/3110)) ([82fdf50](https://github.com/damacus/med-tracker/commit/82fdf5030754f6d8c321d55f4c226573ea2aafcd))
+* **auth:** restore registration and browser sign-in ([#3107](https://github.com/damacus/med-tracker/issues/3107)) ([f06417c](https://github.com/damacus/med-tracker/commit/f06417c156429a995f66102c0c32d211e434313f))
+* restore account menu sign out ([#3112](https://github.com/damacus/med-tracker/issues/3112)) ([f6bb095](https://github.com/damacus/med-tracker/commit/f6bb0956f6aeb7537ccbef2c4da7415811cc0777))
+
 ## [0.6.5](https://github.com/damacus/med-tracker/compare/v0.6.4...v0.6.5) (2026-11-12)
 
 
