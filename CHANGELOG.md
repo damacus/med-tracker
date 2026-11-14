@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.7](https://github.com/damacus/med-tracker/compare/v0.6.6...v0.6.7) (2026-11-14)
+
+
+### Bug Fixes
+
+* keep password reset submission feedback ([#3117](https://github.com/damacus/med-tracker/issues/3117)) ([2853f97](https://github.com/damacus/med-tracker/commit/2853f97bf015b3cb039f473d538cfd6d03230f0d))
+* unblock password reset requests ([#3115](https://github.com/damacus/med-tracker/issues/3115)) ([ded656b](https://github.com/damacus/med-tracker/commit/ded656b37e374fd74a4e554097a42bced85d0e20))
+
 ## [0.6.6](https://github.com/damacus/med-tracker/compare/v0.6.5...v0.6.6) (2026-11-13)
 
 
