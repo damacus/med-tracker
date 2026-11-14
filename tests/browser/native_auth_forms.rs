@@ -90,6 +90,12 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                     .fill("persistence@example.test", None)
                     .await
                     .unwrap();
+                page.evaluate::<Value, ()>(
+                    "() => { navigator.serviceWorker.getRegistration = async () => { throw Error('Notification worker unavailable'); }; }",
+                    None,
+                )
+                .await
+                .unwrap();
                 capture_sizes(page, "password-reset-request").await;
                 page.get_by_role(AriaRole::Button, named("Send reset link"))
                     .click(None)
