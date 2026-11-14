@@ -501,7 +501,7 @@ test('reset sends the enhanced request when the notification worker is unavailab
 });
 
 for (const enhancement of ['unavailable', 'runtime-open-failure']) {
-  test(`reset ${enhancement} allows native submission when the notification worker is unavailable`, async () => {
+  test(`reset ${enhancement} keeps pending feedback and submits once with an unavailable worker`, async () => {
     const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
     const state = flowHarness({ throwOpen: true });
     const form = state.document.createElement('form');
@@ -509,7 +509,7 @@ for (const enhancement of ['unavailable', 'runtime-open-failure']) {
     form.dataset.profileFlowEntry = 'reset';
     const email = state.field('email', 'synthetic@example.test');
     const submitter = Object.assign(state.document.createElement('button'), { name: 'intent', value: 'request_reset', type: 'submit' });
-    form.append(email, submitter);
+    form.append(email, state.field('authenticity_token', 'synthetic-csrf'), submitter);
     state.host.append(form);
     state.navigator.serviceWorker.getRegistration = async () => { throw Error('Worker unavailable'); };
     let fetched = 0;
@@ -521,10 +521,17 @@ for (const enhancement of ['unavailable', 'runtime-open-failure']) {
       form.dispatchEvent(event);
       await settle();
       assert.equal(fetched, 0);
-      assert.equal(event.defaultPrevented, false);
-      assert.equal(submitter.disabled, undefined);
-      assert.equal(submitter.name, 'intent');
-      assert.equal(submitter.value, 'request_reset');
+      assert.equal(event.defaultPrevented, true);
+      assert.equal(submitter.disabled, true);
+      assert.equal(form.getAttribute('aria-busy'), 'true');
+      assert.equal(form.querySelector('[role=status]').textContent, 'Please wait…');
+      assert.equal(state.native.length, 1);
+      assert.equal(state.native[0].get('email'), 'synthetic@example.test');
+      assert.equal(state.native[0].get('authenticity_token'), 'synthetic-csrf');
+      assert.deepEqual(state.native[0].getAll('intent'), ['request_reset']);
+      form.dispatchEvent(new FlowEvent('submit', { submitter }));
+      await settle();
+      assert.equal(state.native.length, 1);
       assert.equal(email.value, 'synthetic@example.test');
       assert.equal(state.messages.includes('auth-transition-begin'), false);
     });

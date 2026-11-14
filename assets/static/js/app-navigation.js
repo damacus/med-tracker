@@ -1,5 +1,5 @@
 (() => {
-  const authPaths = new Set(['/login', '/logout', '/auth/totp', '/auth/oidc']);
+  const authPaths = new Set(['/login', '/logout', '/reset-password', '/auth/totp', '/auth/oidc']);
   const transitionKey = 'medtracker.push.transition';
   function workerMessage(worker, type, id, timeoutMs = 5000) {
     return new Promise((resolve, reject) => {
@@ -80,13 +80,11 @@
   });
   document.addEventListener('submit', event => {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
+    if (!(form instanceof HTMLFormElement) || !authPaths.has(new URL(form.action).pathname)) return;
     if (new URL(form.action).pathname === '/reset-password') {
       const enhanced = new CustomEvent('profile-flow-auth-submit', { bubbles: true, cancelable: true, detail: { submitter: event.submitter } });
       if (!form.dispatchEvent(enhanced)) { event.preventDefault(); return; }
-      return;
     }
-    if (!authPaths.has(new URL(form.action).pathname)) return;
     event.preventDefault();
     if (form.getAttribute('aria-busy') === 'true') return;
     let status = form.querySelector('[data-auth-status]');
@@ -104,7 +102,7 @@
     }
     void (async () => {
       try {
-        await beginAuthTransition();
+        if (new URL(form.action).pathname !== '/reset-password') await beginAuthTransition();
       } catch {
         status.setAttribute('role', 'alert');
         status.textContent = 'Could not sign in or out. Refresh this page and try again.';
