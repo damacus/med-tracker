@@ -253,7 +253,112 @@ let guardian_id=guardian.account.person_id.to_string();
         require(history.contains("Your initial guardian declaration") && history.contains("Superseded by a later appointment")
             && !history.contains(&format!("/{old_id}/withdraw")),
             "Old guardian must see truthful superseded initial history with no terminal withdrawal control")?;
+        let (_, relationships) = form_page(&app, &cookies,
+            &format!("/households/{slug}/admin/carer_relationships")).await;
+        let old_card = relationships.split("<li class=\"card ")
+            .skip(1)
+            .find(|card| card.contains("Synthetic personal guardian record"))
+            .ok_or_else(|| DbErr::Custom("Missing superseded care row".into()))?;
+        require(old_card.contains("Superseded") && !old_card.contains(" · Inactive"),
+            "Superseded declaration must be distinguished from a merely inactive link")?;
+        require(!old_card.contains("data-dialog-open=") && !old_card.contains("<form"),
+            "Superseded care row must retain history without stale controls")?;
         guardian.close().await;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
+async fn guardian_relationship_status_after_withdrawal_and_same_guardian_recovery()
+-> Result<(), DbErr> {
+    withdrawn_relationship_status(false).await
+}
+
+#[tokio::test]
+async fn guardian_relationship_status_after_withdrawal_and_different_guardian_recovery()
+-> Result<(), DbErr> {
+    withdrawn_relationship_status(true).await
+}
+
+async fn withdrawn_relationship_status(different_guardian: bool) -> Result<(), DbErr> {
+    let mut app = Application::new().await;
+    let result = async {
+        app.client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|error| DbErr::Custom(error.to_string()))?;
+        owner(&app).await?;
+        let token = app.token().await;
+        let (subject, old_declaration) = declaration(&app, &token).await?;
+        let old_link = carer_relationships::Entity::find()
+            .filter(carer_relationships::Column::GuardianDeclarationId.eq(old_declaration))
+            .filter(carer_relationships::Column::HouseholdId.eq(app.fixture.household.id))
+            .one(&app.fixture.admin)
+            .await?
+            .ok_or_else(|| DbErr::Custom("Missing original relationship".into()))?;
+        let withdrawn = app.client
+            .patch(format!("{}/api/v1/auth/guardian-declarations/{old_declaration}", app.origin))
+            .bearer_auth(&token)
+            .json(&serde_json::json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+            .send().await.map_err(|error| DbErr::Custom(error.to_string()))?;
+        require(withdrawn.status().as_u16() == 200, "Real guardian withdrawal must succeed")?;
+        let replacement = if different_guardian {
+            Some(guardian(&app, "Synthetic replacement status guardian").await?)
+        } else {
+            None
+        };
+        let guardian_id = replacement.as_ref().map_or(app.fixture.adult.id, |row| row.account.person_id).to_string();
+        let cookie = fixture_session(&app, app.fixture.account.id).await;
+        let list_path = format!("/households/{}/admin/carer_relationships", app.fixture.household.slug);
+        let recovery_path = format!("{list_path}/recover/{subject}");
+        let (cookies, page) = form_page(&app, &cookie, &recovery_path).await;
+        let csrf = hidden_field(&page, "authenticity_token");
+        let snapshot = hidden_field(&page, "snapshot_token");
+        let revision = hidden_field(&page, "snapshot_revision");
+        let link_token = hidden_field(&page, "link_token");
+        let form = [
+            ("authenticity_token", csrf.as_str()), ("action", "appoint"),
+            ("guardian_id", guardian_id.as_str()), ("snapshot_token", snapshot.as_str()),
+            ("snapshot_revision", revision.as_str()), ("link_token", link_token.as_str()),
+            ("reason", "Manager appointed guardian after terminal withdrawal."),
+            ("confirm_recovery", "true"),
+        ];
+        let appointed = post_form(&app, &cookies, &recovery_path, &form).await;
+        require(appointed.status().as_u16() == 303, "Recovery must create a fresh appointment")?;
+        let repeated = post_form(&app, &cookies, &recovery_path, &form).await;
+        require(repeated.status().as_u16() == 409, "Repeated recovery must reject its stale snapshot")?;
+        let generic = post_form(&app, &cookies, &format!("{list_path}/{}/activate", old_link.id),
+            &[("authenticity_token", csrf.as_str())]).await;
+        require(generic.status().as_u16() == 403, "Stale generic activation must not restore withdrawn authority")?;
+        let links = carer_relationships::Entity::find()
+            .filter(carer_relationships::Column::PatientId.eq(subject))
+            .filter(carer_relationships::Column::HouseholdId.eq(app.fixture.household.id))
+            .all(&app.fixture.admin).await?;
+        require(links.len() == 2 && links.iter().any(|row| row == &old_link)
+            && links.iter().filter(|row| row.guardian_declaration_id != Some(old_declaration)).count() == 1,
+            "Recovery and rejected stale requests must retain the unchanged old link and exactly one new link")?;
+        let (_, history) = form_page(&app, &cookies, "/profile/guardian-declarations").await;
+        require(history.contains("Withdrawn") && !history.contains(&format!("/{old_declaration}/withdraw")),
+            "Original declaration must remain terminal and attributable")?;
+        let (_, list) = form_page(&app, &cookies, &list_path).await;
+        let cards = list.split("<li class=\"card ")
+            .skip(1)
+            .filter(|card| card.contains("Synthetic personal guardian record"))
+            .collect::<Vec<_>>();
+        require(cards.len() == 2, "Both historical and current care rows must remain visible")?;
+        let old_card = cards.first().ok_or_else(|| DbErr::Custom("Missing historical care row".into()))?;
+        let new_card = cards.get(1).ok_or_else(|| DbErr::Custom("Missing current care row".into()))?;
+        require(old_card.contains("Withdrawn") && !old_card.contains(" · Active"),
+            "Withdrawn declaration must override the retained active link flag in the old care row")?;
+        require(!old_card.contains("data-dialog-open=") && !old_card.contains("<form"),
+            "Terminal historical care row must not offer stale relationship controls")?;
+        require(new_card.contains(" · Active") && new_card.contains("data-dialog-open="),
+            "Only the new effective appointment must display Active with current controls")?;
+        if let Some(replacement) = replacement {
+            replacement.close().await;
+        }
         Ok(())
     }.await;
     app.close().await;

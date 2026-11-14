@@ -86,7 +86,7 @@ test('overview retains six actions in shared content-sized rows and removes its 
 test('care deactivation stays a content-width touch target with its existing confirmation', () => {
   const relationships = read('assets/views/administration/relationships.html');
   assert.match(relationships, /<button class="btn btn-outline admin-relationship-action" type="button" data-dialog-open="deactivate-{{ relationship.id }}"/);
-  assert.match(relationships, /{% if relationship.active %}[\s\S]*<dialog id="deactivate-{{ relationship.id }}"/);
+  assert.match(relationships, /{% if relationship.effective_status == "active" %}[\s\S]*<dialog id="deactivate-{{ relationship.id }}"/);
   assert.match(relationships, /action="\/households\/{{ slug }}\/admin\/carer_relationships\/{{ relationship.id }}\/deactivate" method="post"/);
   assert.match(relationships, /name="authenticity_token" value="{{ authenticity_token }}"/);
   assert.match(relationships, /data-dialog-close/);

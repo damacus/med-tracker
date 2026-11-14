@@ -1,7 +1,85 @@
 use super::*;
 use crate::models::access::PersonAccess;
 use loco_rs::model::TenantQueryExt;
-use sea_orm::sea_query::{Expr, ExprTrait};
+use sea_orm::{
+    ConnectionTrait, FromQueryResult,
+    sea_query::{Alias, Expr, ExprTrait, JoinType, Query},
+};
+
+#[derive(FromQueryResult)]
+struct DeclarationStatus {
+    relationship_id: i64,
+    withdrawn: bool,
+    superseded: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+enum RelationshipStatus {
+    Active,
+    Inactive,
+    Withdrawn,
+    Superseded,
+}
+
+async fn declaration_statuses(
+    tenant: &TenantTransaction,
+    rows: &[carer_relationship::Model],
+) -> Result<HashMap<i64, DeclarationStatus>, OperationError> {
+    let ids: Vec<i64> = rows
+        .iter()
+        .filter(|row| row.guardian_declaration_id.is_some())
+        .map(|row| row.id)
+        .collect();
+    if ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let query = Query::select()
+        .expr_as(Expr::col(("c", "id")), "relationship_id")
+        .expr_as(Expr::col(("d", "withdrawn_at")).is_not_null(), "withdrawn")
+        .expr_as(
+            Expr::col(("d", "superseded_at")).is_not_null(),
+            "superseded",
+        )
+        .from_as(
+            (Alias::new("public"), Alias::new("carer_relationships")),
+            "c",
+        )
+        .join_as(
+            JoinType::InnerJoin,
+            (Alias::new("public"), Alias::new("guardian_declarations")),
+            "d",
+            Expr::col(("c", "guardian_declaration_id"))
+                .equals(("d", "id"))
+                .and(Expr::col(("c", "carer_id")).equals(("d", "guardian_person_id")))
+                .and(Expr::col(("c", "patient_id")).equals(("d", "subject_person_id"))),
+        )
+        .and_where(Expr::col(("c", "household_id")).eq(tenant.scope().household_id))
+        .and_where(Expr::col(("c", "id")).is_in(ids))
+        .to_owned();
+    let statuses = DeclarationStatus::find_by_statement(
+        tenant.transaction().get_database_backend().build(&query),
+    )
+    .all(tenant.transaction())
+    .await?;
+    Ok(statuses
+        .into_iter()
+        .map(|row| (row.relationship_id, row))
+        .collect())
+}
+
+fn effective_status(
+    row: &carer_relationship::Model,
+    declaration: Option<&DeclarationStatus>,
+) -> RelationshipStatus {
+    match declaration {
+        Some(status) if status.withdrawn => RelationshipStatus::Withdrawn,
+        Some(status) if status.superseded => RelationshipStatus::Superseded,
+        None if row.guardian_declaration_id.is_some() => RelationshipStatus::Inactive,
+        _ if row.active => RelationshipStatus::Active,
+        _ => RelationshipStatus::Inactive,
+    }
+}
 
 fn snapshot(row: &carer_relationship::Model) -> Value {
     json!({"id":row.id,"household_id":row.household_id,"carer_id":row.carer_id,"patient_id":row.patient_id,"relationship_type":row.relationship_type,"active":row.active,"created_at":row.created_at,"updated_at":row.updated_at})
@@ -20,10 +98,12 @@ pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
         .order_by_asc(carer_relationship::Column::Id)
         .all(tenant.transaction())
         .await?;
+    let declarations = declaration_statuses(tenant, &rows).await?;
     let data: Vec<Value> = rows
         .iter()
         .map(|row| {
             let mut value = snapshot(row);
+            value["effective_status"] = json!(effective_status(row, declarations.get(&row.id)));
             value["carer_name"] = people
                 .get(&row.carer_id)
                 .map_or(Value::Null, |row| json!(row.name));

@@ -10,8 +10,8 @@
   {% for relationship in relationships %}
     <li class="card bg-base-100 border border-base-300"><div class="card-body">
       <h2 class="card-title">{% if relationship.carer_name %}{{ relationship.carer_name }}{% else %}{{ unavailable_person }} #{{ relationship.carer_id }}{% endif %} · {% if relationship.patient_name %}{{ relationship.patient_name }}{% else %}{{ unavailable_person }} #{{ relationship.patient_id }}{% endif %}</h2>
-      <p>{% if relationship.relationship_type == "professional_carer" or relationship.relationship_type == "self" %}{{ admin_labels.polish[relationship.relationship_type] }}{% else %}{{ labels.admin.labels.relationship_types[relationship.relationship_type] }}{% endif %} · {% if relationship.active %}{{ labels.admin.carer_relationships.index.active }}{% else %}{{ labels.admin.carer_relationships.index.inactive }}{% endif %}</p>
-      {% if relationship.active %}
+      <p>{% if relationship.relationship_type == "professional_carer" or relationship.relationship_type == "self" %}{{ admin_labels.polish[relationship.relationship_type] }}{% else %}{{ labels.admin.labels.relationship_types[relationship.relationship_type] }}{% endif %} · {% if relationship.effective_status == "withdrawn" %}{{ labels.guardian_declarations.withdrawn }}{% elif relationship.effective_status == "superseded" %}{{ labels.guardian_declarations.superseded }}{% elif relationship.effective_status == "active" %}{{ labels.admin.carer_relationships.index.active }}{% else %}{{ labels.admin.carer_relationships.index.inactive }}{% endif %}</p>
+      {% if relationship.effective_status == "active" %}
         <button class="btn btn-outline admin-relationship-action" type="button" data-dialog-open="deactivate-{{ relationship.id }}">{{ labels.admin.carer_relationships.index.deactivate }}</button>
         <dialog id="deactivate-{{ relationship.id }}" class="modal" aria-labelledby="deactivate-title-{{ relationship.id }}">
           <div class="modal-box">
