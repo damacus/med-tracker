@@ -309,7 +309,7 @@ test('synchronous dismissal still refuses Close and Escape during one pending mu
   });
 });
 
-test('real navigation and profile modules guard one enhanced reset request and keep the document in place', async () => {
+test('real navigation and profile modules send one enhanced reset request without a notification transition', async () => {
   const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
   let form;
   const state = flowHarness({ inline: ({ document, root, field }) => {
@@ -325,7 +325,7 @@ test('real navigation and profile modules guard one enhanced reset request and k
   pending.append(state.document.createTextNode('Check your email'));
   state.globals.fetch = async (url, options) => {
     fetched += 1;
-    assert.equal(state.messages.filter(message => message === 'auth-transition-begin').length, 1);
+    assert.equal(state.messages.filter(message => message === 'auth-transition-begin').length, 0);
     assert.equal(options.body.get('email'), 'synthetic@example.test');
     assert.equal(options.body.get('authenticity_token'), 'synthetic-csrf');
     return { url: String(url), headers: new Headers({ 'content-type': 'text/html' }), text: async () => 'pending' };
@@ -341,8 +341,8 @@ test('real navigation and profile modules guard one enhanced reset request and k
     assert.equal(state.location.href, 'https://example.test/profile');
     assert.equal(state.document.querySelector('dialog').open, true);
     assert.equal(state.document.querySelector('dialog').contains(pending), true);
-    assert.equal(state.messages.filter(message => message === 'auth-transition-end').length, 1);
-    assert.ok(state.messages.includes('closed'));
+    assert.equal(state.messages.filter(message => message === 'auth-transition-end').length, 0);
+    assert.equal(state.messages.includes('closed'), false);
   });
 });
 
@@ -466,7 +466,7 @@ for (const mode of ['registration', 'proof']) {
   }
 }
 
-test('reset notification-guard failure sends nothing and keeps the enhanced form visible', async () => {
+test('reset sends the enhanced request when the notification worker is unavailable', async () => {
   const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
   let form;
   const state = flowHarness({ inline: ({ document, root, field }) => {
@@ -477,28 +477,31 @@ test('reset notification-guard failure sends nothing and keeps the enhanced form
     reset.append(form);
     return reset;
   } });
-  let registrationCalls = 0;
-  const registration = state.navigator.serviceWorker.getRegistration;
-  state.navigator.serviceWorker.getRegistration = async () => { if (++registrationCalls > 1) throw Error('Worker unavailable'); return registration(); };
+  state.navigator.serviceWorker.getRegistration = async () => { throw Error('Worker unavailable'); };
   let fetched = 0;
-  state.globals.fetch = async () => { fetched += 1; };
+  const pending = state.root('reset');
+  state.globals.fetch = async url => {
+    fetched += 1;
+    return { url: String(url), headers: new Headers({ 'content-type': 'text/html' }), text: async () => 'pending' };
+  };
+  state.globals.DOMParser = class { parseFromString() { return { querySelector: () => pending }; } };
   await state.environment(async () => {
     state.installNavigation();
     mountProfileDialogs(state.document);
     form.dispatchEvent(new FlowEvent('submit'));
     await settle();
-    assert.equal(fetched, 0);
+    assert.equal(fetched, 1);
     assert.equal(state.native.length, 0);
     const dialog = state.document.querySelector('dialog');
     assert.equal(dialog.open, true);
-    assert.equal(dialog.contains(form), true);
+    assert.equal(dialog.contains(pending), true);
     assert.equal(dialog.getAttribute('aria-busy'), 'false');
-    assert.ok(dialog.querySelector('[role=status]').textContent);
+    assert.equal(state.messages.includes('auth-transition-begin'), false);
   });
 });
 
 for (const enhancement of ['unavailable', 'runtime-open-failure']) {
-  test(`reset ${enhancement} keeps native notification guarding and its named submitter`, async () => {
+  test(`reset ${enhancement} allows native submission when the notification worker is unavailable`, async () => {
     const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
     const state = flowHarness({ throwOpen: true });
     const form = state.document.createElement('form');
@@ -508,20 +511,22 @@ for (const enhancement of ['unavailable', 'runtime-open-failure']) {
     const submitter = Object.assign(state.document.createElement('button'), { name: 'intent', value: 'request_reset', type: 'submit' });
     form.append(email, submitter);
     state.host.append(form);
+    state.navigator.serviceWorker.getRegistration = async () => { throw Error('Worker unavailable'); };
     let fetched = 0;
     state.globals.fetch = async () => { fetched += 1; };
     await state.environment(async () => {
       state.installNavigation();
       if (enhancement !== 'unavailable') mountProfileDialogs(state.document);
-      form.dispatchEvent(new FlowEvent('submit', { submitter }));
+      const event = new FlowEvent('submit', { submitter });
+      form.dispatchEvent(event);
       await settle();
       assert.equal(fetched, 0);
-      assert.equal(state.native.length, 1);
-      assert.equal(state.native[0].get('email'), 'synthetic@example.test');
-      assert.deepEqual(state.native[0].getAll('intent'), ['request_reset']);
+      assert.equal(event.defaultPrevented, false);
+      assert.equal(submitter.disabled, undefined);
+      assert.equal(submitter.name, 'intent');
+      assert.equal(submitter.value, 'request_reset');
       assert.equal(email.value, 'synthetic@example.test');
-      assert.equal(state.messages.filter(message => message === 'auth-transition-begin').length, 1);
-      assert.ok(state.messages.includes('closed'));
+      assert.equal(state.messages.includes('auth-transition-begin'), false);
     });
   });
 }
