@@ -166,14 +166,7 @@ export function mountProfileDialogs(document) {
     setBusy(mutation);
     status.textContent = labels.flowLoading || 'Loading setting…';
     let sent = false;
-    let guarded = false;
-    let presented = false;
     try {
-      if (mutation && url.pathname === '/reset-password') {
-        await window.medTrackerBeginPushTransition();
-        guarded = true;
-        if (!requests.current(request)) return;
-      }
       sent = true;
       const response = await fetch(url, { ...options, signal: request.signal, credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/vnd.medtracker.profile-flow+html', 'Accept-Language': document.documentElement.lang, ...options.headers } });
       if (!requests.current(request)) return;
@@ -186,14 +179,9 @@ export function mountProfileDialogs(document) {
       if (!requests.current(request)) return;
       flowRoot(next, profile);
       mount(next);
-      presented = true;
     } catch (error) {
       if (requests.current(request) && error.name !== 'AbortError') fail(mutation && sent, mutation && sent ? null : url);
     } finally {
-      if (guarded) {
-        try { await window.medTrackerEndPushTransition(); }
-        catch { if (requests.current(request) && (!sent || presented)) fail(false, url); }
-      }
       if (requests.current(request)) setBusy(false);
     }
   };
@@ -242,7 +230,6 @@ export function mountProfileDialogs(document) {
       if (!root?.contains(form) && !form.hasAttribute('data-profile-flow-entry')) return;
       const url = localFlowUrl(form.action, profile);
       if (!url) return;
-      if (url.pathname === '/reset-password' && typeof window.medTrackerBeginPushTransition !== 'function') return;
       if (busy) { event.preventDefault(); return; }
       kind = form.dataset.profileFlowEntry || kind;
       let target;
