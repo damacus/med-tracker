@@ -49,8 +49,13 @@ pub(super) fn row_value(
         .unwrap_or_else(|| local_midnight(row.window_start, settings));
     let now = Utc::now().naive_utc();
     let due = due_time <= now && (source.kind() == Kind::Schedule || source.created_at() <= now);
+    let historical = !row.expected && row.record.is_none() && row.take.is_some();
+    let row_key = match row.take.as_ref().filter(|_| historical) {
+        Some(take) => keys::historical_key(secret, source, take),
+        None => key(secret, source, row.window_start, row.position),
+    };
     json!({
-        "key": key(secret, source, row.window_start, row.position),
+        "key": row_key,
         "source_type": source.kind().name(),
         "source_id": source.id(),
         "source_portable_id": source.portable_id(),
@@ -63,7 +68,7 @@ pub(super) fn row_value(
         "due": due,
         "reason": reason,
         "note": note,
-        "resolved_at": resolved_at,
+        "resolved_at": resolved_at.or_else(|| row.take.as_ref().and_then(|take| take.taken_at).map(timestamp)),
         "medication_take_id": medication_take_id,
         "etag": etag,
     })

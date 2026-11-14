@@ -16,6 +16,7 @@
 <article class="card border border-base-300 bg-base-100" aria-label="{{ ui.dose }} {{ row.position }} {{ ui.on }} {{ row.window_starts_on }}"><div class="card-body gap-4">
   <h2 class="text-xl font-semibold">{{ ui.dose }} {{ row.position }} {{ ui.on }} {{ row.window_starts_on }}</h2>
   <p data-dose-outcome>{% if row.outcome == "taken" %}{{ ui.taken }}{% elif row.outcome == "not_taken" %}{{ ui.not_taken }}{% else %}{{ ui.open }}{% endif %}</p>
+  {% if row.outcome == "taken" and row.dose_amount %}<p data-dose-amount>{{ ui.amount }}: {{ row.dose_amount }} {{ row.dose_unit | default(value="") }}</p>{% endif %}
   {% if row.scheduled_at %}<p>{{ ui.scheduled }} <time data-dose-scheduled datetime="{{ row.scheduled_at }}">{{ row.scheduled_at_display }}</time></p>{% endif %}
   {% if row.reason %}<p>{{ ui.reason }}: {{ reasons[row.reason] }}</p>{% endif %}
   {% if row.note %}<p>{{ row.note }}</p>{% endif %}

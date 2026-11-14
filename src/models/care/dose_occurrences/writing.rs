@@ -154,6 +154,13 @@ pub(crate) async fn browser_list(
         };
         value["prescribed_amount"] = json!(amount);
         value["prescribed_unit"] = json!(unit);
+        value["dose_amount"] = json!(
+            row.take
+                .as_ref()
+                .and_then(|take| take.dose_amount)
+                .map(|amount| amount.normalize().to_string())
+        );
+        value["dose_unit"] = json!(row.take.as_ref().and_then(|take| take.dose_unit.as_deref()));
         value
     })
     .await
@@ -179,6 +186,7 @@ async fn list_with_projection(
     let rows = projected(tenant.transaction(), &source, start, end, tenant.settings()).await?;
     let data: Vec<Value> = rows
         .iter()
+        .filter(|row| row.window_start <= end && row.window_end >= start)
         .map(|row| project(secret, &source, row))
         .collect();
     Ok(json!({"data":data}))

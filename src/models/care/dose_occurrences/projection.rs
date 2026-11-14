@@ -10,6 +10,7 @@ pub(super) struct Occurrence {
     pub(super) expected: bool,
     pub(super) record: Option<dose_occurrence::Model>,
     pub(super) legacy_take_id: Option<i64>,
+    pub(super) take: Option<medication_take::Model>,
 }
 
 fn pause_covers(period: &pause_period::Model, time: NaiveDateTime) -> bool {
@@ -116,7 +117,24 @@ pub(super) async fn projected(
             takes.filter(medication_take::Column::PersonMedicationId.eq(row.id))
         }
     };
-    let takes = takes.all(db).await.map_err(database_error)?;
+    let mut takes = takes.all(db).await.map_err(database_error)?;
+    let linked_ids: Vec<_> = persisted
+        .iter()
+        .filter_map(|row| row.medication_take_id)
+        .collect();
+    if !linked_ids.is_empty() {
+        takes.extend(
+            medication_take::Entity::find()
+                .in_tenant(match source {
+                    Source::Schedule(row) => row.household_id,
+                    Source::Assignment(row) => row.household_id,
+                })
+                .filter(medication_take::Column::Id.is_in(linked_ids))
+                .all(db)
+                .await
+                .map_err(database_error)?,
+        );
+    }
     Ok(projected_loaded(
         source, scan_start, scan_end, &persisted, &pauses, &takes, settings,
     ))
@@ -180,6 +198,7 @@ pub(super) fn projected_loaded(
                                         expected: true,
                                         record: None,
                                         legacy_take_id: None,
+                                        take: None,
                                     },
                                 );
                             }
@@ -198,6 +217,7 @@ pub(super) fn projected_loaded(
                                         expected: true,
                                         record: None,
                                         legacy_take_id: None,
+                                        take: None,
                                     },
                                 );
                             }
@@ -225,6 +245,7 @@ pub(super) fn projected_loaded(
                                     expected: true,
                                     record: None,
                                     legacy_take_id: None,
+                                    take: None,
                                 },
                             );
                         }
@@ -251,14 +272,31 @@ pub(super) fn projected_loaded(
                 expected,
                 record: Some(record.clone()),
                 legacy_take_id: None,
+                take: record
+                    .medication_take_id
+                    .and_then(|id| takes.iter().find(|take| take.id == id))
+                    .cloned(),
             },
         );
     }
-    for take in takes {
+    let mut historical = Vec::new();
+    let mut seen: std::collections::BTreeSet<_> = persisted
+        .iter()
+        .filter_map(|row| row.medication_take_id)
+        .collect();
+    let mut ordered_takes: Vec<_> = takes.iter().collect();
+    ordered_takes.sort_by_key(|take| (take.taken_at, take.id));
+    for take in ordered_takes {
+        if !seen.insert(take.id) {
+            continue;
+        }
         let Some(taken_at) = take.taken_at else {
             continue;
         };
         let day = local_date(taken_at, settings);
+        if day < scan_start || day > scan_end {
+            continue;
+        }
         let window = if source.kind() == Kind::Assignment {
             cycle_bounds(day, source.dose_cycle()).0
         } else {
@@ -267,16 +305,46 @@ pub(super) fn projected_loaded(
         if let Some((_, row)) = rows.iter_mut().find(|((date, _), row)| {
             *date == window
                 && row.expected
-                && row
-                    .record
-                    .as_ref()
-                    .is_none_or(|record| record.outcome == "open")
+                && row.record.as_ref().is_none_or(|record| {
+                    record.outcome == "open" && record.medication_take_id.is_none()
+                })
                 && row.legacy_take_id.is_none()
         }) {
             row.legacy_take_id = Some(take.id);
+            row.take = Some(take.clone());
+        } else {
+            historical.push(Occurrence {
+                window_start: day,
+                window_end: day,
+                position: 0,
+                scheduled_at: None,
+                expected: false,
+                record: None,
+                legacy_take_id: Some(take.id),
+                take: Some(take.clone()),
+            });
         }
     }
-    rows.into_values().collect()
+    let mut last_position: BTreeMap<NaiveDate, i32> = BTreeMap::new();
+    for row in rows.values() {
+        let position = last_position.entry(row.window_start).or_default();
+        *position = (*position).max(row.position);
+    }
+    for row in &mut historical {
+        let position = last_position.entry(row.window_start).or_default();
+        *position = position.saturating_add(1);
+        row.position = *position;
+    }
+    let mut result: Vec<_> = rows.into_values().chain(historical).collect();
+    result.sort_by_key(|row| {
+        (
+            row.window_start,
+            row.position,
+            row.take.as_ref().and_then(|take| take.taken_at),
+            row.legacy_take_id,
+        )
+    });
+    result
 }
 
 #[cfg(test)]
@@ -354,6 +422,248 @@ mod tests {
             source_dosage_option_id: None,
             updated_at: created_at,
         }
+    }
+
+    fn direct_take(id: i64, taken_at: NaiveDateTime) -> medication_take::Model {
+        medication_take::Model {
+            id,
+            client_uuid: Some(format!("direct-{id}")),
+            created_at: taken_at,
+            dose_amount: Some("2.5".parse().unwrap()),
+            dose_unit: Some("ml".into()),
+            household_id: 1,
+            person_medication_id: Some(1),
+            portable_id: format!("take-{id}"),
+            schedule_id: None,
+            taken_at: Some(taken_at),
+            taken_from_location_id: Some(7),
+            taken_from_medication_id: Some(1),
+            updated_at: taken_at,
+        }
+    }
+
+    #[test]
+    fn projected_loaded_direct_prn_assignment_takes_appear_once_without_expected_doses() {
+        let day = ymd(2026, 11, 14);
+        let mut assignment = make_assignment(ymd_hms(2026, 11, 1, 0, 0, 0), Some(0), Some(4));
+        assignment.administration_kind = 1;
+        let source = Source::Assignment(assignment);
+        assert!(projected_loaded(&source, day, day, &[], &[], &[], None).is_empty());
+        let takes = [
+            direct_take(41, ymd_hms(2026, 11, 14, 10, 0, 0)),
+            direct_take(42, ymd_hms(2026, 11, 14, 15, 36, 0)),
+        ];
+        let original = takes.clone();
+        let rows = projected_loaded(&source, day, day, &[], &[], &takes, None);
+        assert_eq!(
+            rows.len(),
+            2,
+            "both direct PRN ledger entries must be visible"
+        );
+        assert!(rows.iter().all(|row| !row.expected && row.record.is_none()));
+        assert_eq!(
+            rows.iter()
+                .filter_map(|row| row.legacy_take_id)
+                .collect::<Vec<_>>(),
+            vec![41, 42]
+        );
+        assert!(
+            rows.iter()
+                .all(|row| row.window_start == day && row.window_end == day)
+        );
+        let secret: Arc<[u8]> = Arc::from(&b"medtracker-test-secret-32-bytes-long!"[..]);
+        let values: Vec<_> = rows
+            .iter()
+            .map(|row| row_value(&secret, &source, row, None))
+            .collect();
+        assert_ne!(values[0]["key"], values[1]["key"]);
+        assert_ne!(rows[0].position, rows[1].position);
+        for ((value, row), take) in values.iter().zip(&rows).zip(&takes) {
+            assert!(row.position > 0);
+            assert_eq!(row.take.as_ref(), Some(take));
+            assert_eq!(
+                value["resolved_at"],
+                take.taken_at
+                    .unwrap()
+                    .and_utc()
+                    .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+            );
+            assert!(!super::super::persistence::actionable(
+                &source, &rows[0], None
+            ));
+            assert!(decode_key(&secret, &source, value["key"].as_str().unwrap()).is_none());
+        }
+        assert_eq!(
+            takes, original,
+            "projection must preserve ledger attribution"
+        );
+    }
+
+    #[test]
+    fn projected_loaded_direct_prn_schedule_take_has_no_expected_dose() {
+        let day = ymd(2026, 11, 14);
+        let source = Source::Schedule(make_schedule(0, json!({"as_needed": true}), day, day));
+        let mut take = direct_take(41, ymd_hms(2026, 11, 14, 10, 0, 0));
+        take.person_medication_id = None;
+        take.schedule_id = Some(1);
+        let rows = projected_loaded(&source, day, day, &[], &[], &[take], None);
+        assert_eq!(rows.len(), 1);
+        assert!(!rows[0].expected);
+        assert_eq!(rows[0].legacy_take_id, Some(41));
+    }
+
+    #[test]
+    fn projected_loaded_regular_excess_direct_take_is_not_lost() {
+        let day = ymd(2026, 11, 14);
+        let source = Source::Assignment(make_assignment(
+            ymd_hms(2026, 11, 1, 0, 0, 0),
+            Some(0),
+            Some(1),
+        ));
+        let takes = [
+            direct_take(41, ymd_hms(2026, 11, 14, 10, 0, 0)),
+            direct_take(42, ymd_hms(2026, 11, 14, 15, 36, 0)),
+        ];
+        let rows = projected_loaded(&source, day, day, &[], &[], &takes, None);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows.iter().filter(|row| row.expected).count(), 1);
+        assert_eq!(
+            rows.iter()
+                .filter_map(|row| row.legacy_take_id)
+                .collect::<Vec<_>>(),
+            vec![41, 42]
+        );
+    }
+
+    #[test]
+    fn projected_loaded_historical_keys_remain_non_actionable_after_treatment_edits() {
+        let day = ymd(2026, 11, 14);
+        let mut assignment = make_assignment(ymd_hms(2026, 11, 1, 0, 0, 0), Some(0), Some(1));
+        assignment.administration_kind = 1;
+        let source = Source::Assignment(assignment.clone());
+        let take = direct_take(41, ymd_hms(2026, 11, 14, 10, 0, 0));
+        let secret: Arc<[u8]> = Arc::from(&b"medtracker-test-secret-32-bytes-long!"[..]);
+        let rows = projected_loaded(
+            &source,
+            day,
+            day,
+            &[],
+            &[],
+            std::slice::from_ref(&take),
+            None,
+        );
+        let value = row_value(&secret, &source, &rows[0], None);
+        let historical_key = value["key"].as_str().unwrap();
+        assignment.administration_kind = 0;
+        assignment.max_daily_doses = Some(4);
+        assignment.dose_cycle = Some(1);
+        let edited = Source::Assignment(assignment);
+        assert!(decode_key(&secret, &edited, historical_key).is_none());
+        assert_ne!(historical_key, key(&secret, &edited, day, 1));
+        assert_eq!(
+            historical_key,
+            keys::historical_key(&secret, &edited, &take)
+        );
+    }
+
+    #[test]
+    fn projected_loaded_prn_cycle_uses_taken_local_day_and_filters_range_edges() {
+        let mut assignment = make_assignment(ymd_hms(2026, 10, 1, 0, 0, 0), Some(1), Some(4));
+        assignment.administration_kind = 1;
+        let source = Source::Assignment(assignment);
+        let settings = json!({"time_zone": "Europe/London"});
+        let day = ymd(2026, 10, 24);
+        let takes = [
+            direct_take(40, ymd_hms(2026, 10, 23, 22, 59, 59)),
+            direct_take(41, ymd_hms(2026, 10, 23, 23, 0, 0)),
+            direct_take(42, ymd_hms(2026, 10, 24, 22, 59, 59)),
+            direct_take(43, ymd_hms(2026, 10, 24, 23, 0, 0)),
+        ];
+        let duplicated = [
+            takes[2].clone(),
+            takes[1].clone(),
+            takes[1].clone(),
+            takes[0].clone(),
+            takes[3].clone(),
+        ];
+        let rows = projected_loaded(&source, day, day, &[], &[], &duplicated, Some(&settings));
+        assert_eq!(rows.len(), 2);
+        assert_eq!(
+            rows.iter()
+                .filter_map(|row| row.legacy_take_id)
+                .collect::<Vec<_>>(),
+            vec![41, 42]
+        );
+        assert!(
+            rows.iter()
+                .all(|row| row.window_start == day && row.window_end == day && !row.expected)
+        );
+        let secret: Arc<[u8]> = Arc::from(&b"medtracker-test-secret-32-bytes-long!"[..]);
+        let (start, end) = scan_bounds(&source, day, day);
+        let wide = projected_loaded(&source, start, end, &[], &[], &takes, Some(&settings));
+        for row in rows {
+            let full = wide
+                .iter()
+                .find(|candidate| candidate.legacy_take_id == row.legacy_take_id)
+                .unwrap();
+            assert_eq!(
+                row_value(&secret, &source, &row, Some(&settings))["key"],
+                row_value(&secret, &source, full, Some(&settings))["key"]
+            );
+        }
+    }
+
+    #[test]
+    fn projected_loaded_linked_prn_take_and_direct_take_each_appear_once() {
+        let day = ymd(2026, 11, 14);
+        let mut assignment = make_assignment(ymd_hms(2026, 11, 1, 0, 0, 0), Some(0), Some(4));
+        assignment.administration_kind = 1;
+        let source = Source::Assignment(assignment);
+        let time = ymd_hms(2026, 11, 14, 10, 0, 0);
+        let record = dose_occurrence::Model {
+            id: 9,
+            household_id: 1,
+            schedule_id: None,
+            person_medication_id: Some(1),
+            medication_take_id: Some(41),
+            resolved_by_membership_id: Some(3),
+            portable_id: "linked-prn".into(),
+            window_starts_on: day,
+            window_ends_on: Some(day),
+            position: 1,
+            scheduled_at: None,
+            outcome: "taken".into(),
+            reason: None,
+            note: Some("Original attribution".into()),
+            resolved_at: Some(time),
+            created_at: time,
+            updated_at: time,
+        };
+        let direct = direct_take(42, ymd_hms(2026, 11, 14, 15, 36, 0));
+        let rows = projected_loaded(
+            &source,
+            day,
+            day,
+            std::slice::from_ref(&record),
+            &[],
+            &[direct, direct_take(41, time)],
+            None,
+        );
+        assert_eq!(rows.len(), 2);
+        assert_eq!(
+            rows.iter()
+                .filter(|row| row.record.as_ref() == Some(&record))
+                .count(),
+            1
+        );
+        assert_eq!(
+            rows.iter()
+                .filter(|row| row.legacy_take_id == Some(42))
+                .count(),
+            1
+        );
+        assert!(rows.iter().all(|row| !row.expected));
+        assert_ne!(rows[0].position, rows[1].position);
     }
 
     #[test]

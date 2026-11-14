@@ -2,6 +2,25 @@ use super::*;
 
 type HmacSha256 = Hmac<Sha256>;
 
+pub(super) fn historical_key(
+    secret: &Arc<[u8]>,
+    source: &Source,
+    take: &medication_take::Model,
+) -> String {
+    let payload = json!([
+        "medication_take",
+        source.kind().name(),
+        source.portable_id(),
+        take.portable_id
+    ]);
+    let encoded = URL_SAFE_NO_PAD.encode(payload.to_string());
+    let mut mac = HmacSha256::new_from_slice(secret).expect("validated HMAC secret");
+    mac.update(b"medtracker-dose-history-v1\0");
+    mac.update(encoded.as_bytes());
+    let signature = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
+    format!("{encoded}.{signature}")
+}
+
 pub(super) fn key(
     secret: &Arc<[u8]>,
     source: &Source,

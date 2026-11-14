@@ -2,6 +2,328 @@ use super::*;
 use sea_orm::QuerySelect as _;
 use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
 
+#[tokio::test]
+async fn dose_outcomes_direct_prn_takes_appear_once_and_reads_preserve_stock_and_history() {
+    use med_tracker::models::_entities::{medication_takes, person_medications};
+    use sea_orm::QueryOrder as _;
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let created = app.client.post(format!("{}/api/v1/households/{}/people", app.origin, app.fixture.household.id))
+        .bearer_auth(&token)
+        .header("idempotency-key", uuid::Uuid::new_v4().to_string())
+        .json(&json!({"person": {"name":"PRN history child", "date_of_birth":"2020-01-01", "person_type":"minor", "has_capacity":false, "initial_guardian_declaration":true}}))
+        .send().await.unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let child = created.json::<Value>().await.unwrap()["data"]["id"]
+        .as_i64()
+        .unwrap();
+    person_medications::Entity::update_many()
+        .col_expr(
+            person_medications::Column::PersonId,
+            sea_orm::sea_query::Expr::value(child),
+        )
+        .col_expr(
+            person_medications::Column::CreatedAt,
+            sea_orm::sea_query::Expr::value(
+                "2026-10-01T00:00:00"
+                    .parse::<chrono::NaiveDateTime>()
+                    .unwrap(),
+            ),
+        )
+        .col_expr(
+            person_medications::Column::AdministrationKind,
+            sea_orm::sea_query::Expr::value(1),
+        )
+        .col_expr(
+            person_medications::Column::MaxDailyDoses,
+            sea_orm::sea_query::Expr::value(Some(4)),
+        )
+        .col_expr(
+            person_medications::Column::MinHoursBetweenDoses,
+            sea_orm::sea_query::Expr::value(Option::<i32>::None),
+        )
+        .filter(person_medications::Column::Id.eq(app.fixture.assignment.id))
+        .filter(person_medications::Column::HouseholdId.eq(app.fixture.household.id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let base = format!(
+        "{}/api/v1/households/{}",
+        app.origin, app.fixture.household.id
+    );
+    let endpoint = format!(
+        "{base}/person_medications/{}/dose_occurrences?start_date=2026-10-05&end_date=2026-10-05",
+        app.fixture.assignment.id
+    );
+    let empty = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(empty.status().as_u16(), 200);
+    assert_eq!(empty.json::<Value>().await.unwrap()["data"], json!([]));
+    let before_doses = app.fixture.effect().await;
+    let mut ids = Vec::new();
+    for time in ["2026-10-05T10:00:00Z", "2026-10-05T15:36:00Z"] {
+        let mut input = shared_take_body(&app.fixture);
+        input["medication_take"]["client_uuid"] = json!(uuid::Uuid::new_v4().to_string());
+        input["medication_take"]["taken_at"] = json!(time);
+        let created = app
+            .client
+            .post(format!("{base}/medication_takes"))
+            .bearer_auth(&token)
+            .json(&input)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(created.status().as_u16(), 201);
+        ids.push(
+            created.json::<Value>().await.unwrap()["data"]["id"]
+                .as_i64()
+                .unwrap(),
+        );
+    }
+    let ledger = medication_takes::Entity::find()
+        .filter(medication_takes::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(medication_takes::Column::PersonMedicationId.eq(app.fixture.assignment.id))
+        .order_by_asc(medication_takes::Column::Id)
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    let effects = app.fixture.effect().await;
+    assert_eq!(effects.0, before_doses.0 + 2);
+    assert_eq!(
+        effects.1.parse::<sea_orm::prelude::Decimal>().unwrap(),
+        before_doses.1.parse::<sea_orm::prelude::Decimal>().unwrap()
+            - sea_orm::prelude::Decimal::from(4)
+    );
+    assert_eq!(effects.2, before_doses.2 + 2);
+    assert_eq!(effects.3, before_doses.3 + 2);
+    let mut previous = None;
+    for _ in 0..2 {
+        let response = app
+            .client
+            .get(&endpoint)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 200);
+        let body: Value = response.json().await.unwrap();
+        let rows = body["data"].as_array().unwrap();
+        assert_eq!(
+            rows.len(),
+            2,
+            "direct PRN takes must appear in occurrence history"
+        );
+        for id in &ids {
+            let matching: Vec<_> = rows
+                .iter()
+                .filter(|row| row["medication_take_id"].as_i64() == Some(*id))
+                .collect();
+            assert_eq!(matching.len(), 1);
+            assert_eq!(matching[0]["outcome"], "taken");
+            assert_eq!(matching[0]["expected"], false);
+            assert_eq!(matching[0]["source_type"], "person_medication");
+            assert_eq!(matching[0]["source_id"], app.fixture.assignment.id);
+            assert!(matching[0]["position"].as_i64().unwrap() > 0);
+            assert!(matching[0].get("dose_amount").is_none());
+            let take = ledger.iter().find(|take| take.id == *id).unwrap();
+            assert_eq!(
+                matching[0]["resolved_at"],
+                take.taken_at
+                    .unwrap()
+                    .and_utc()
+                    .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+            );
+        }
+        if let Some(previous) = previous.as_ref() {
+            assert_eq!(&body, previous);
+        }
+        previous = Some(body);
+    }
+    let previous = previous.unwrap();
+    let declarations = format!("{}/api/v1/auth/guardian-declarations", app.origin);
+    let response = app
+        .client
+        .get(&declarations)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let declarations_body: Value = response.json().await.unwrap();
+    let subject_id = child.to_string();
+    let declaration = declarations_body["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["subject_person_id"] == subject_id)
+        .unwrap();
+    let declaration_id = declaration["id"].as_str().unwrap();
+    let withdrawn = app
+        .client
+        .patch(format!("{declarations}/{declaration_id}"))
+        .bearer_auth(&token)
+        .json(
+            &json!({"guardian_declaration":{"withdrawn":true,"revision":declaration["revision"]}}),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(withdrawn.status().as_u16(), 200);
+    let after_withdrawal = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(after_withdrawal.status().as_u16(), 200);
+    assert_eq!(after_withdrawal.json::<Value>().await.unwrap(), previous);
+    use med_tracker::models::access::{self, Actor, HouseholdScope, PersonAccess};
+    use med_tracker::models::care::administration::recovery::{
+        self, RecoveryAction, RecoveryCommand, RecoveryGuardianId, RecoverySubjectId,
+    };
+    let scope = HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    assert!(matches!(
+        access::require_person_access(&tenant, child, PersonAccess::Manage).await,
+        Err(med_tracker::models::errors::OperationError::Forbidden)
+    ));
+    let selected = recovery::options(&tenant)
+        .await
+        .unwrap()
+        .subjects
+        .into_iter()
+        .find(|subject| subject.id.get() == child)
+        .unwrap();
+    recovery::execute(
+        &tenant,
+        RecoveryCommand {
+            subject: RecoverySubjectId::parse(child).unwrap(),
+            guardian: RecoveryGuardianId::parse(app.fixture.adult.id).unwrap(),
+            expected: selected.snapshot,
+            action: RecoveryAction::Appoint,
+            reason: "Retain original PRN history through guardian recovery.".into(),
+        },
+    )
+    .await
+    .unwrap();
+    tenant.commit().await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    access::require_person_access(&tenant, child, PersonAccess::Manage)
+        .await
+        .unwrap();
+    tenant.rollback().await.unwrap();
+    let after_recovery = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(after_recovery.status().as_u16(), 200);
+    assert_eq!(after_recovery.json::<Value>().await.unwrap(), previous);
+    let cookie = crate::platform::fixture_session(&app, app.fixture.account.id).await;
+    let (_, page) = crate::platform::form_page(
+        &app,
+        &cookie,
+        &format!("/households/{}/people/{child}/treatments/assignments/{}/doses?start_date=2026-10-05&end_date=2026-10-05", app.fixture.household.slug, app.fixture.assignment.id),
+    ).await;
+    assert_eq!(page.matches("data-dose-outcome>Taken").count(), 2);
+    assert_eq!(
+        page.matches("data-dose-amount>Dose amount: 2 tablet")
+            .count(),
+        2
+    );
+    assert!(page.contains("2026-10-05T10:00:00Z") && page.contains("2026-10-05T15:36:00Z"));
+    assert!(!page.contains("data-dialog-open=\"dose-"));
+    let historical_key = previous["data"][0]["key"].as_str().unwrap();
+    person_medications::Entity::update_many()
+        .col_expr(
+            person_medications::Column::AdministrationKind,
+            sea_orm::sea_query::Expr::value(0),
+        )
+        .filter(person_medications::Column::Id.eq(app.fixture.assignment.id))
+        .filter(person_medications::Column::HouseholdId.eq(app.fixture.household.id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let action_endpoint = endpoint.split('?').next().unwrap();
+    for (action, method, fields) in [
+        (
+            "not_taken",
+            reqwest::Method::POST,
+            json!({"key": historical_key, "reason":"refused"}),
+        ),
+        (
+            "reopen",
+            reqwest::Method::PATCH,
+            json!({"key": historical_key}),
+        ),
+        (
+            "take",
+            reqwest::Method::POST,
+            json!({"key": historical_key, "taken_at":"2026-10-05T10:00:00Z", "client_uuid":uuid::Uuid::new_v4().to_string()}),
+        ),
+    ] {
+        let denied = app
+            .client
+            .request(method, format!("{action_endpoint}/{action}"))
+            .bearer_auth(&token)
+            .json(&json!({"dose_occurrence":fields}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(
+            denied.status().as_u16(),
+            422,
+            "historical key must never authorise {action}"
+        );
+        assert_eq!(
+            denied.json::<Value>().await.unwrap()["error"]["code"],
+            "invalid_occurrence"
+        );
+    }
+    assert_eq!(app.fixture.effect().await, effects);
+    let retained = medication_takes::Entity::find()
+        .filter(medication_takes::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(medication_takes::Column::PersonMedicationId.eq(app.fixture.assignment.id))
+        .order_by_asc(medication_takes::Column::Id)
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(retained, ledger);
+    use med_tracker::models::_entities::medication_dose_occurrences;
+    assert_eq!(
+        medication_dose_occurrences::Entity::find()
+            .filter(medication_dose_occurrences::Column::HouseholdId.eq(app.fixture.household.id))
+            .filter(
+                medication_dose_occurrences::Column::PersonMedicationId
+                    .eq(app.fixture.assignment.id)
+            )
+            .count(&app.fixture.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    app.close().await;
+}
+
 async fn outcome_sources(app: &Application) -> med_tracker::models::_entities::schedules::Model {
     let fixture_household_id = app.fixture.household.id;
     let fixture_person_id = app.fixture.account.person_id;
