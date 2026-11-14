@@ -56,6 +56,7 @@
     </div></article>
     {% else %}<p class="mt-4">No {{ group.label | lower }} recorded.</p>{% endfor %}
   </section>{% endfor %}
+  {% if shared_plans %}{% include "treatments/shared_plans.html" %}{% endif %}
   <nav class="flex gap-4 mt-6" aria-label="Treatment pages">
     {% if page > 1 %}<a class="link" href="?page={{ page - 1 }}">Previous page</a>{% endif %}
     {% if has_next %}<a class="link" href="?page={{ page + 1 }}">Next page</a>{% endif %}

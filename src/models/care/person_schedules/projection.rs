@@ -432,6 +432,53 @@ pub(crate) async fn list(
         .map_err(Into::into)
 }
 
+pub(crate) async fn unbound_for_person(
+    tenant: &TenantTransaction,
+    person_id: i64,
+    offset: u64,
+) -> Result<(Vec<SharedPlan>, bool), OperationError> {
+    use sea_orm::QueryTrait;
+
+    crate::models::access::require_person_access(
+        tenant,
+        person_id,
+        crate::models::access::PersonAccess::View,
+    )
+    .await?;
+    crate::models::access::recheck(tenant).await?;
+    let approved = sharing_approval::Entity::find()
+        .select_only()
+        .column(sharing_approval::Column::PersonId)
+        .filter(sharing_approval::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(sharing_approval::Column::PersonId.eq(person_id))
+        .filter(sharing_approval::Column::EndedAt.is_null());
+    let bound = schedule::Entity::find()
+        .select_only()
+        .column(schedule::Column::PersonScheduleId)
+        .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(schedule::Column::PersonId.eq(person_id))
+        .filter(schedule::Column::PersonScheduleId.is_not_null())
+        .filter(schedule::Column::ExecutionEndedAt.is_null())
+        .filter(schedule::Column::RetiredAt.is_null());
+    let mut rows = shared_schedule::Entity::find()
+        .filter(shared_schedule::Column::PersonId.eq(person_id))
+        .filter(shared_schedule::Column::PersonId.in_subquery(approved.into_query()))
+        .filter(shared_schedule::Column::Id.not_in_subquery(bound.into_query()))
+        .filter(shared_schedule::Column::RetiredAt.is_null())
+        .order_by_asc(shared_schedule::Column::Id)
+        .offset(offset)
+        .limit(21)
+        .all(tenant.transaction())
+        .await?;
+    let has_next = rows.len() > 20;
+    rows.truncate(20);
+    let plans = rows
+        .iter()
+        .map(SharedPlan::try_from)
+        .collect::<Result<_, _>>()?;
+    Ok((plans, has_next))
+}
+
 pub(crate) struct BindStock {
     pub(crate) plan: PersonScheduleId,
     pub(crate) revision: ClinicalRevision,

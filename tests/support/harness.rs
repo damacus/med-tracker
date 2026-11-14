@@ -85,6 +85,10 @@ pub struct Journey {
 }
 
 impl Journey {
+    pub fn runtime(&self) -> &DatabaseConnection {
+        &self.db.runtime
+    }
+
     async fn start(viewport: Viewport, smtp_port: Option<u16>) -> Self {
         let uri = template::owned_database_url();
         template::prepare(&uri, "browser_template", |admin| async move {

@@ -1,0 +1,26 @@
+<section class="mt-8" aria-labelledby="shared-plans-heading">
+  <h2 class="text-2xl font-semibold" id="shared-plans-heading">{{ labels.treatments.shared_heading | default(value="Shared prescriptions") }}</h2>
+  {% for plan in shared_plans %}
+  <article class="card shell-card mt-4"><div class="card-body">
+    <h3 class="card-title break-words">{{ plan.medicine_name | default(value=labels.profiles.show.not_set) }}</h3>
+    <p>{{ plan.dose_amount | default(value="") }} {{ plan.dose_unit | default(value="") }} · {% if plan.status == "paused" %}{{ labels.people.show.browser.paused }}{% elif plan.status == "inactive" %}{{ labels.treatments.shared_inactive | default(value="Inactive") }}{% elif plan.status == "outside_dates" %}{{ labels.people.show.browser.outside_dates }}{% else %}{{ labels.people.show.browser.active }}{% endif %}</p>
+    <p class="shell-muted">{{ labels.treatments.shared_unbound | default(value="This prescription is shared. Local stock has not been matched, so doses for this prescription cannot be recorded here yet.") }}</p>
+    <dl class="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+      <dt class="font-semibold">{{ labels.treatments.form.schedule_type }}</dt><dd>{{ labels.treatments.types[plan.effective_schedule_type] }}</dd>
+      <dt class="font-semibold">{{ labels.profiles.personal.origin_zone }}</dt><dd>{{ plan.origin_time_zone }}</dd>
+      {% if plan.start_date %}<dt class="font-semibold">{{ labels.schedules.form.start_date }}</dt><dd>{{ plan.start_date }}</dd>{% endif %}
+      {% if plan.end_date %}<dt class="font-semibold">{{ labels.schedules.form.end_date }}</dt><dd>{{ plan.end_date }}</dd>{% endif %}
+      {% if plan.fixed_timing and plan.frequency %}<dt class="font-semibold">{{ labels.schedules.form.frequency }}</dt><dd>{{ plan.frequency }}</dd>{% endif %}
+      {% if plan.max_daily_doses %}<dt class="font-semibold">{{ labels.schedules.form.max_doses_per_cycle }}</dt><dd>{{ plan.max_daily_doses }}{% if plan.dose_cycle %} ({{ labels.dosages.management[plan.dose_cycle] }}){% endif %}</dd>{% endif %}
+      {% if plan.min_hours_between_doses %}<dt class="font-semibold">{{ labels.schedules.form.min_hours_between_doses }}</dt><dd>{{ plan.min_hours_between_doses }}</dd>{% endif %}
+      {% if plan.fixed_timing and plan.schedule_config.times is defined %}<dt class="font-semibold">{{ labels.profiles.personal.plan_times }}</dt><dd>{{ plan.schedule_config.times | join(sep=", ") }}</dd>{% endif %}
+      {% if plan.schedule_config.weekdays is defined %}<dt class="font-semibold">{{ labels.treatments.types.weekly }}</dt><dd>{{ plan.schedule_config.weekdays | join(sep=", ") }}</dd>{% endif %}
+      {% if plan.schedule_config.dates is defined %}<dt class="font-semibold">{{ labels.treatments.types.specific_dates }}</dt><dd>{{ plan.schedule_config.dates | join(sep=", ") }}</dd>{% endif %}
+      {% if plan.schedule_config.tapering_plan is defined %}<dt class="font-semibold">{{ labels.treatments.types.tapering }}</dt><dd>{{ plan.schedule_config.tapering_plan }}</dd>{% endif %}
+      {% if plan.schedule_config.taper_steps is defined %}<dt class="font-semibold">{{ labels.treatments.types.tapering }}</dt><dd><ol class="list-decimal ml-6">{% for step in plan.schedule_config.taper_steps %}<li>{{ step.start_date }} — {{ step.end_date }}: {% if step.amount is defined %}{{ step.amount }}{% elif step.dose_amount is defined %}{{ step.dose_amount }}{% endif %} {% if step.unit is defined %}{{ step.unit }}{% elif step.dose_unit is defined %}{{ step.dose_unit }}{% endif %}{% if plan.fixed_timing and step.times is defined %} · {{ step.times | join(sep=", ") }}{% endif %}{% if step.max_daily_doses is defined %} · {{ labels.schedules.form.max_doses_per_cycle }}: {{ step.max_daily_doses }}{% endif %}{% if step.min_hours_between_doses is defined %} · {{ labels.schedules.form.min_hours_between_doses }}: {{ step.min_hours_between_doses }}{% endif %}</li>{% endfor %}</ol></dd>{% endif %}
+      {% if plan.pause_started_at %}<dt class="font-semibold">{{ labels.treatments.shared_paused_since | default(value="Paused since") }}</dt><dd><time datetime="{{ plan.pause_started_at }}">{{ plan.pause_started_at }}</time></dd>{% endif %}
+      <dt class="font-semibold">{{ labels.treatments.shared_latest_dose | default(value="Latest dose across shared care") }}</dt><dd>{% if plan.latest_taken_at %}<time datetime="{{ plan.latest_taken_at }}">{{ plan.latest_taken_at }}</time>{% else %}{{ labels.treatments.shared_no_latest_dose | default(value="No latest dose recorded") }}{% endif %}</dd>
+    </dl>
+  </div></article>
+  {% endfor %}
+</section>

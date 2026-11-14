@@ -56,6 +56,12 @@ cy:
     invalid: "Gwiriwch y manylion a rhowch gynnig arall arni."
     conflict: "Newidiodd y cofnod tra oedd y ffurflen hon ar agor. Adolygwch y cofnod diweddaraf cyn cadw."
   treatments:
+    shared_inactive: "Anweithredol"
+    shared_heading: "Presgripsiynau a rennir"
+    shared_unbound: "Mae’r presgripsiwn hwn yn cael ei rannu. Nid yw stoc leol wedi’i pharu eto, felly ni ellir cofnodi dosau ar gyfer y presgripsiwn hwn yma eto."
+    shared_paused_since: "Wedi’i oedi ers"
+    shared_latest_dose: "Y dos diweddaraf ar draws gofal a rennir"
+    shared_no_latest_dose: "Dim dos diweddaraf wedi’i gofnodi"
     form:
       keep_maximum: "Gadewch yn wag i gadw'r uchafswm presennol."
       schedule_maximum: "Gadewch yn wag i ddefnyddio uchafswm o 4 dos ym mhob cylch."

@@ -60,7 +60,7 @@ impl<'a> Page<'a> {
         data["authenticity_token"] = json!(authenticity);
         data["slug"] = json!(self.slug);
         data["person_id"] = json!(self.person);
-        match crate::models::care::report_pdf::translations("en") {
+        match crate::models::care::report_pdf::translations(data["lang"].as_str().unwrap_or("en")) {
             Ok(labels) => data["labels"] = labels,
             Err(_) => return browser::unavailable(),
         }
@@ -75,7 +75,7 @@ impl<'a> Page<'a> {
             Err(_) => browser::unavailable(),
         }
     }
-    pub(super) async fn index(&self, page: i64) -> Response {
+    pub(super) async fn index(&self, page: i64, language: &str) -> Response {
         let (principal, tenant) = match self.begin().await {
             Ok(value) => value,
             Err(error) => return browser::authentication_error(error),
@@ -91,11 +91,9 @@ impl<'a> Page<'a> {
             Ok(data) => data,
             Err(error) => return browser::operation_error(error),
         };
-        let response = self.render(
-            "treatments/index.html",
-            rendering::index(data),
-            StatusCode::OK,
-        );
+        let mut data = rendering::index(data);
+        data["lang"] = json!(crate::models::care::report_pdf::locale(language));
+        let response = self.render("treatments/index.html", data, StatusCode::OK);
         if tenant.commit().await.is_err() {
             return browser::unavailable();
         }

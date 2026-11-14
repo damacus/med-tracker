@@ -93,13 +93,19 @@ async fn index(
     State(ctx): State<AppContext>,
     Path((slug, person)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers): (Option<Extension<LocoRequestId>>, axum::http::HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Query(page): Query<Pagination>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, &person, request)
-        .index(page.page.unwrap_or(1))
+        .index(
+            page.page.unwrap_or(1),
+            headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("en"),
+        )
         .await
 }
 async fn new(

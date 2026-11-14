@@ -56,6 +56,12 @@ en:
     invalid: "Check the details and try again."
     conflict: "Dose record changed while this form was open. Review the latest dose record before saving."
   treatments:
+    shared_inactive: "Inactive"
+    shared_heading: "Shared prescriptions"
+    shared_unbound: "This prescription is shared. Local stock has not been matched, so doses for this prescription cannot be recorded here yet."
+    shared_paused_since: "Paused since"
+    shared_latest_dose: "Latest dose across shared care"
+    shared_no_latest_dose: "No latest dose recorded"
     form:
       keep_maximum: "Leave blank to keep the current maximum."
       schedule_maximum: "Leave blank to use a maximum of 4 doses per cycle."

@@ -1,12 +1,12 @@
 use crate::accessibility_level_a::{assert_no_violations, audit};
 use crate::harness::{self, named};
 use med_tracker::models::_entities::{
-    household_memberships, medication_takes, person_household_approvals, person_schedules,
-    schedules,
+    household_memberships, households, medication_takes, person_household_approvals,
+    person_schedules, schedules,
 };
 use playwright_rs::expect;
 use playwright_rs::protocol::{AriaRole, ScreenshotOptions, Viewport};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
 
 const GUARDIAN_NOTE: &str = "Guardian private note Q7Z";
 const PRIVATE_TAKE: &str = "7.77";
@@ -154,6 +154,126 @@ fn api_client() -> reqwest::Client {
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .unwrap()
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn shared_prescription_index_resolves_all_request_locales() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
+        Box::pin(async move {
+            crate::fixtures::browser::seed_dependent_sharing(&journey.admin).await;
+            harness::sign_in(journey).await;
+            create_dependent_plan(journey).await;
+            accept_dependent_sharing(journey).await;
+            journey.page.goto(&format!("{}/households/persistence-fixture/people/73003/treatments", journey.origin), None).await.unwrap();
+            journey.page.locator("summary:has-text('Pause options')").click(None).await.unwrap();
+            journey.page.get_by_label("Pause reason", true).select_option("temporarily_not_needed", None).await.unwrap();
+            journey.page.get_by_role(AriaRole::Button, named("Pause treatment")).click(None).await.unwrap();
+            expect(journey.page.locator("main")).to_contain_text("Resume treatment").await.unwrap();
+            foreign_sign_in(journey).await;
+            for (language, source) in [
+                ("en-GB", include_str!("../../assets/reports/locales/en.yml")),
+                ("cy-GB", include_str!("../../assets/reports/locales/cy.yml")),
+                ("ga-IE", include_str!("../../assets/reports/locales/ga.yml")),
+                ("pt-PT", include_str!("../../assets/reports/locales/pt.yml")),
+                ("es-ES", include_str!("../../assets/reports/locales/es.yml")),
+            ] {
+                let labels: serde_json::Value = serde_yaml_ng::from_str(source).unwrap();
+                let response: serde_json::Value = journey.page.evaluate(
+                    "async language => { const response = await fetch('/households/foreign-fixture/people/73003/treatments', {headers:{'Accept-Language':language}}); const doc = new DOMParser().parseFromString(await response.text(), 'text/html'); return {status:response.status, lang:doc.documentElement.lang, text:doc.querySelector('section[aria-labelledby=shared-plans-heading]')?.textContent ?? ''}; }",
+                    Some(&language),
+                ).await.unwrap();
+                assert_eq!(response["status"], 200, "{response}");
+                assert_eq!(response["lang"], &language[..2], "{response}");
+                for key in ["shared_heading", "shared_unbound", "shared_paused_since", "shared_latest_dose", "shared_no_latest_dose"] {
+                    let expected = labels[&language[..2]]["treatments"][key].as_str().unwrap();
+                    assert!(response["text"].as_str().unwrap().contains(expected), "{language} {key}: {response}");
+                }
+            }
+        })
+    }).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn treatment_collection_holds_shared_binding_lock_until_commit() {
+    use med_tracker::models::{access, care::browser_treatments};
+    use sea_orm::sea_query::{LockBehavior, LockType};
+
+    harness::journey(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        |journey| {
+            Box::pin(async move {
+                crate::fixtures::browser::seed_dependent_sharing(&journey.admin).await;
+                harness::sign_in(journey).await;
+                let (_, plan) = create_dependent_plan(journey).await;
+                accept_dependent_sharing(journey).await;
+                let scope = access::HouseholdScope {
+                    actor: access::Actor { account_id: 71002 },
+                    household_id: 72002,
+                    request_id: "shared-plan-read-binding-regression".into(),
+                };
+                let reader = access::begin(journey.runtime(), &scope, None)
+                    .await
+                    .unwrap();
+                let before = browser_treatments::index(&reader, "73003", 1, chrono_tz::UTC)
+                    .await
+                    .unwrap();
+                assert_eq!(before["shared_plans"].as_array().unwrap().len(), 1);
+                assert!(before["schedules"].as_array().unwrap().is_empty());
+                let other_reader = access::begin(journey.runtime(), &scope, None)
+                    .await
+                    .unwrap();
+                let shared = households::Entity::find_by_id(72002)
+                    .lock_with_behavior(LockType::Share, LockBehavior::Nowait)
+                    .one(other_reader.transaction())
+                    .await
+                    .unwrap();
+                assert!(
+                    shared.is_some(),
+                    "concurrent readers must remain compatible"
+                );
+                other_reader.commit().await.unwrap();
+                let contender = access::begin(journey.runtime(), &scope, None)
+                    .await
+                    .unwrap();
+                let exclusive = households::Entity::find_by_id(72002)
+                    .lock_with_behavior(LockType::Update, LockBehavior::Nowait)
+                    .one(contender.transaction())
+                    .await;
+                contender.rollback().await.unwrap();
+                assert!(
+                    exclusive
+                        .is_err_and(|error| error.to_string().contains("could not obtain lock")),
+                    "the read must hold the household lock used by stock binding until commit"
+                );
+                let origin = journey.origin.clone();
+                let plan_id = plan.id.clone();
+                let binding =
+                    tokio::spawn(async move { bind_stock(&origin, &plan_id, 80002, 1).await });
+                let during = browser_treatments::index(&reader, "73003", 1, chrono_tz::UTC)
+                    .await
+                    .unwrap();
+                assert_eq!(during["shared_plans"].as_array().unwrap().len(), 1);
+                assert!(during["schedules"].as_array().unwrap().is_empty());
+                reader.commit().await.unwrap();
+                assert_eq!(binding.await.unwrap().status(), reqwest::StatusCode::OK);
+                let reader = access::begin(journey.runtime(), &scope, None)
+                    .await
+                    .unwrap();
+                let after = browser_treatments::index(&reader, "73003", 1, chrono_tz::UTC)
+                    .await
+                    .unwrap();
+                assert!(after["shared_plans"].as_array().unwrap().is_empty());
+                assert_eq!(after["schedules"].as_array().unwrap().len(), 1);
+                reader.commit().await.unwrap();
+            })
+        },
+    )
+    .await;
 }
 
 async fn bind_stock(origin: &str, plan: &str, medication: i64, revision: i64) -> reqwest::Response {
@@ -404,16 +524,72 @@ async fn foreign_bound_schedule_hides_private_data_and_keeps_stock_local() {
                 let mut reports = Vec::new();
                 let (origin_schedule, plan) = create_dependent_plan(journey).await;
                 accept_dependent_sharing(journey).await;
+                seed_private_take(journey, origin_schedule.id).await;
+                foreign_sign_in(journey).await;
+                page.goto(
+                    &format!(
+                        "{}/households/foreign-fixture/people/73003/treatments",
+                        journey.origin
+                    ),
+                    None,
+                )
+                .await
+                .unwrap();
+                expect(page.locator("main article"))
+                    .to_have_count(1)
+                    .await
+                    .unwrap();
+                expect(page.locator("main article"))
+                    .to_contain_text("Synthetic tablets")
+                    .await
+                    .unwrap();
+                expect(page.locator("main article"))
+                    .to_contain_text("2 tablet")
+                    .await
+                    .unwrap();
+                expect(page.locator("main article"))
+                    .to_contain_text("Active")
+                    .await
+                    .unwrap();
+                for denied in [
+                    GUARDIAN_NOTE,
+                    PRIVATE_TAKE,
+                    "Synthetic foreign medicine",
+                    "Edit schedule",
+                    "Record dose",
+                ] {
+                    expect(page.locator("main"))
+                        .not()
+                        .to_contain_text(denied)
+                        .await
+                        .unwrap();
+                }
+                expect(page.locator(
+                    "main article a[href$='/doses'], main article a[href*='record_source_id='], main article form[action*='/doses']",
+                ))
+                    .to_have_count(0)
+                    .await
+                    .unwrap();
+                expect(page.locator("main a[href*='/medications/80001']"))
+                    .to_have_count(0)
+                    .await
+                    .unwrap();
+                expect(page.locator(format!(
+                    "main a[href*='/schedules/{}']",
+                    origin_schedule.id
+                )))
+                .to_have_count(0)
+                .await
+                .unwrap();
+                reports.push(audit(page, "foreign-unbound-shared-plan").await);
                 // Bind the plan to the foreign household's own stock at the
                 // current clinical revision so it renders as a local schedule.
                 let bound = bind_stock(&journey.origin, &plan.id, 80002, 1).await;
                 assert_eq!(bound.status(), reqwest::StatusCode::OK);
                 let bound: serde_json::Value = bound.json().await.unwrap();
                 let bound_id = bound["data"]["id"].as_i64().unwrap();
-                seed_private_take(journey, origin_schedule.id).await;
                 // The household manager sees the bound schedule against local
                 // stock without clinical affordances or foreign private data.
-                foreign_sign_in(journey).await;
                 page.goto(
                     &format!(
                         "{}/households/foreign-fixture/people/73003/treatments",
@@ -427,6 +603,16 @@ async fn foreign_bound_schedule_hides_private_data_and_keeps_stock_local() {
                     .to_contain_text("Synthetic foreign medicine")
                     .await
                     .unwrap();
+                expect(page.locator("main article"))
+                    .to_have_count(1)
+                    .await
+                    .unwrap();
+                expect(page.locator(format!(
+                    "main a[href='/households/foreign-fixture/people/73003/treatments/schedules/{bound_id}/doses']"
+                )))
+                .to_have_count(1)
+                .await
+                .unwrap();
                 for denied in [
                     "Edit schedule",
                     "Add schedule",

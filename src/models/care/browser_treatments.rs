@@ -1,7 +1,10 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::{people, treatments::projection},
-    entities::{dosage, medication, pause_period, person, person_medication, schedule},
+    care::{
+        people, person_schedules::SharedPlan, treatment_command::ScheduleType,
+        treatments::projection,
+    },
+    entities::{dosage, household, medication, pause_period, person, person_medication, schedule},
     errors::OperationError,
 };
 use chrono::NaiveDate;
@@ -11,6 +14,63 @@ use sea_orm::{
 };
 use serde_json::{Value, json};
 use std::collections::HashMap;
+
+#[derive(serde::Serialize)]
+struct SharedPlanCard {
+    #[serde(flatten)]
+    plan: SharedPlan,
+    effective_schedule_type: ScheduleType,
+    fixed_timing: bool,
+    status: SharedPlanStatus,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+enum SharedPlanStatus {
+    Paused,
+    Inactive,
+    OutsideDates,
+    Active,
+}
+
+fn shared_plan_card(
+    plan: SharedPlan,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<SharedPlanCard, OperationError> {
+    let zone: chrono_tz::Tz = plan
+        .origin_time_zone
+        .parse()
+        .map_err(|_| OperationError::Unavailable)?;
+    let today = now.with_timezone(&zone).date_naive();
+    let status = if plan.pause_started_at.is_some() {
+        SharedPlanStatus::Paused
+    } else if !plan.active {
+        SharedPlanStatus::Inactive
+    } else if plan.start_date.is_some_and(|date| today < date)
+        || plan.end_date.is_some_and(|date| today > date)
+    {
+        SharedPlanStatus::OutsideDates
+    } else {
+        SharedPlanStatus::Active
+    };
+    let effective_schedule_type = if plan.schedule_type == ScheduleType::AsNeeded
+        || plan
+            .frequency
+            .as_deref()
+            .is_some_and(|value| value.eq_ignore_ascii_case("as needed"))
+        || plan.schedule_config.get("as_needed") == Some(&Value::Bool(true))
+    {
+        ScheduleType::AsNeeded
+    } else {
+        plan.schedule_type
+    };
+    Ok(SharedPlanCard {
+        plan,
+        effective_schedule_type,
+        fixed_timing: effective_schedule_type != ScheduleType::AsNeeded,
+        status,
+    })
+}
 
 pub async fn person_cards(
     tenant: &TenantTransaction,
@@ -305,6 +365,12 @@ pub async fn index(
             details: json!({"errors":{"page":["must be positive"]}}),
         });
     }
+    household::Entity::find_by_id(tenant.scope().household_id)
+        .lock_shared()
+        .one(tenant.transaction())
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    access::recheck(tenant).await?;
     let (person_data, _) = people::read(tenant, id, zone).await?;
     let person_id = person_data["data"]["id"]
         .as_str()
@@ -320,6 +386,13 @@ pub async fn index(
     let schedule_count = schedule_query.clone().count(tenant.transaction()).await?;
     let assignment_count = assignment_query.clone().count(tenant.transaction()).await?;
     let offset = page.saturating_sub(1).saturating_mul(20) as u64;
+    let (shared_plans, shared_has_next) =
+        super::person_schedules::projection::unbound_for_person(tenant, person_id, offset).await?;
+    let now = chrono::Utc::now();
+    let shared_plans = shared_plans
+        .into_iter()
+        .map(|plan| shared_plan_card(plan, now))
+        .collect::<Result<Vec<_>, _>>()?;
     let schedules = schedule_query
         .order_by_asc(schedule::Column::Id)
         .limit(20)
@@ -339,7 +412,7 @@ pub async fn index(
     let can_manage = access::can_access_person(tenant, person_id, PersonAccess::Manage).await?;
     let medications = super::browser_query::index(tenant).await?;
     Ok(
-        json!({"person":person_data["data"],"schedules":schedules,"assignments":assignments,"medications":medications,"can_manage":can_manage,"page":page,"has_next":schedule_count.max(assignment_count)>(page as u64).saturating_mul(20)}),
+        json!({"person":person_data["data"],"schedules":schedules,"assignments":assignments,"shared_plans":shared_plans,"medications":medications,"can_manage":can_manage,"page":page,"has_next":shared_has_next || schedule_count.max(assignment_count)>(page as u64).saturating_mul(20)}),
     )
 }
 
@@ -391,5 +464,90 @@ pub async fn source_option(
             .await?
             .ok_or(OperationError::NotFound)?
             .source_dosage_option_id)
+    }
+}
+
+#[cfg(test)]
+mod shared_plan_tests {
+    use super::*;
+    use crate::models::care::person_schedules::SharedPlan;
+    use chrono::{DateTime, Utc};
+
+    fn plan() -> SharedPlan {
+        let state: crate::models::entities::shared_schedule::Model =
+            serde_json::from_value(json!({
+                "id":"f848d768-ed41-43f8-ae06-bb83567e5625", "person_id":1,
+                "stock_default_known":true, "origin_time_zone":"Pacific/Kiritimati",
+                "clinical_revision":1, "active":true, "schedule_type":0,
+                "schedule_config":{}, "medicine_name":"Shared tablets",
+                "start_date":"2026-11-15", "end_date":"2026-11-15",
+                "created_at":"2026-11-14T00:00:00", "updated_at":"2026-11-14T00:00:00"
+            }))
+            .unwrap();
+        SharedPlan::try_from(&state).unwrap()
+    }
+
+    fn render(plan: SharedPlan, now: DateTime<Utc>) -> String {
+        use loco_rs::controller::views::{ViewRenderer, engines::TeraView};
+
+        let card = shared_plan_card(plan, now).unwrap();
+        let labels = crate::models::care::report_pdf::translations("en").unwrap();
+        TeraView::build()
+            .unwrap()
+            .render(
+                "treatments/shared_plans.html",
+                json!({"shared_plans":[card], "labels":labels}),
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn shared_daily_plan_uses_effective_as_needed_timing() {
+        let now = "2026-11-15T00:00:00Z".parse().unwrap();
+        for (frequency, config) in [
+            (None, json!({"as_needed":true,"times":["08:00"]})),
+            (Some("AS NEEDED".into()), json!({})),
+            (
+                Some("Daily".into()),
+                json!({"as_needed":true,"times":["08:00"]}),
+            ),
+        ] {
+            let mut plan = plan();
+            plan.frequency = frequency;
+            plan.schedule_config = config;
+            let html = render(plan, now);
+            assert!(html.contains(">As needed</dd>"), "{html}");
+            assert!(!html.contains(">Daily</dd>"), "{html}");
+            assert!(!html.contains(">Frequency</dt>"), "{html}");
+            assert!(
+                !html.contains("08:00"),
+                "PRN must not advertise a fixed dose time: {html}"
+            );
+        }
+    }
+
+    #[test]
+    fn shared_plan_date_status_uses_origin_zone_and_inclusive_dates() {
+        for (instant, expected) in [
+            ("2026-11-14T09:59:59Z", "Outside scheduled dates"),
+            ("2026-11-14T10:00:00Z", "Active"),
+            ("2026-11-15T09:59:59Z", "Active"),
+            ("2026-11-15T10:00:00Z", "Outside scheduled dates"),
+        ] {
+            let html = render(plan(), instant.parse().unwrap());
+            assert!(html.contains(&format!("· {expected}</p>")), "{html}");
+        }
+    }
+
+    #[test]
+    fn shared_disabled_plan_is_inactive_and_pause_remains_distinct() {
+        let mut disabled = plan();
+        disabled.active = false;
+        let now = "2026-11-15T00:00:00Z".parse().unwrap();
+        let html = render(disabled.clone(), now);
+        assert!(html.contains("· Inactive</p>"), "{html}");
+        disabled.pause_started_at = Some(now);
+        let html = render(disabled, now);
+        assert!(html.contains("· Paused</p>"), "{html}");
     }
 }

@@ -56,6 +56,12 @@ es:
     invalid: "Revise los datos e inténtelo de nuevo."
     conflict: "El registro cambió mientras este formulario estaba abierto. Revise el registro más reciente antes de guardar."
   treatments:
+    shared_inactive: "Inactiva"
+    shared_heading: "Prescripciones compartidas"
+    shared_unbound: "Esta prescripción está compartida. Todavía no se han vinculado existencias locales, por lo que aún no se pueden registrar aquí dosis de esta prescripción."
+    shared_paused_since: "En pausa desde"
+    shared_latest_dose: "Última dosis en la atención compartida"
+    shared_no_latest_dose: "No hay una última dosis registrada"
     form:
       keep_maximum: "Déjelo en blanco para mantener el máximo actual."
       schedule_maximum: "Déjelo en blanco para usar un máximo de 4 dosis por ciclo."

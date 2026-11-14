@@ -56,6 +56,12 @@ pt:
     invalid: "Verifique os dados e tente novamente."
     conflict: "O registo mudou enquanto este formulário estava aberto. Reveja o registo mais recente antes de guardar."
   treatments:
+    shared_inactive: "Inativa"
+    shared_heading: "Prescrições partilhadas"
+    shared_unbound: "Esta prescrição é partilhada. Ainda não foi associado stock local, pelo que ainda não é possível registar doses desta prescrição aqui."
+    shared_paused_since: "Em pausa desde"
+    shared_latest_dose: "Última dose nos cuidados partilhados"
+    shared_no_latest_dose: "Nenhuma última dose registada"
     form:
       keep_maximum: "Deixe em branco para manter o máximo atual."
       schedule_maximum: "Deixe em branco para usar um máximo de 4 doses por ciclo."
