@@ -51,7 +51,7 @@ pub(crate) async fn create_with_failure(
     {
         return Err(error(ErrorKind::Validation, "dose_unit does not match the source").into());
     }
-    if !timing_allowed(db, &proposed).await? {
+    if !command.historical_entry && !timing_allowed(db, &proposed).await? {
         return Err(error(
             ErrorKind::Validation,
             "Cannot take medication: timing restrictions not met",
@@ -98,13 +98,15 @@ pub(crate) async fn create_with_failure(
             current.update(db).await?;
         }
     }
-    decrement_stock(db, context, request_id, &proposed).await?;
-    crate::models::care::browser_push::low_stock::record_crossing(
-        context.tenant,
-        &proposed.selected,
-        take.id,
-    )
-    .await?;
+    if !command.historical_entry {
+        decrement_stock(db, context, request_id, &proposed).await?;
+        crate::models::care::browser_push::low_stock::record_crossing(
+            context.tenant,
+            &proposed.selected,
+            take.id,
+        )
+        .await?;
+    }
     record_domain_audit(db, context, request_id, &take, &proposed).await?;
     Ok((false, take))
 }

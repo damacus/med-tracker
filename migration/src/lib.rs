@@ -39,6 +39,7 @@ pub mod m20261104_000034_sharing_member_plan_cache;
 pub mod m20261106_000035_loco_queue;
 pub mod m20261111_000036_household_medication_barcodes;
 pub mod m20261111_000037_household_ai_consent;
+pub mod m20261115_000038_historical_dose_entry;
 mod native_authentication;
 pub mod provision;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
@@ -87,6 +88,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261106_000035_loco_queue::Migration),
             Box::new(m20261111_000036_household_medication_barcodes::Migration),
             Box::new(m20261111_000037_household_ai_consent::Migration),
+            Box::new(m20261115_000038_historical_dose_entry::Migration),
         ]
     }
 }

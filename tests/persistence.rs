@@ -290,7 +290,7 @@ async fn adoption_fact_backfill_indexes_pre_existing_linked_take_evidence_idempo
         };
         use sea_orm::{
             ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait,
-            QueryFilter, prelude::Decimal,
+            QueryFilter, QuerySelect, prelude::Decimal,
         };
         let db = restored_database().await;
         // Apply through m20261029_000024_live_adoption_history, leaving the
@@ -340,11 +340,22 @@ async fn adoption_fact_backfill_indexes_pre_existing_linked_take_evidence_idempo
         .await
         .unwrap();
         let taken_at = now - chrono::Duration::days(1);
-        let take = medication_takes::ActiveModel {
+        #[derive(sea_orm::FromQueryResult)]
+        struct PriorSchemaTake {
+            id: i64,
+            portable_id: String,
+            client_uuid: Option<String>,
+            taken_at: Option<chrono::NaiveDateTime>,
+            created_at: chrono::NaiveDateTime,
+            updated_at: chrono::NaiveDateTime,
+        }
+        let take_portable_id = uuid::Uuid::new_v4().to_string();
+        let take_client_uuid = uuid::Uuid::new_v4().to_string();
+        let inserted = medication_takes::Entity::insert(medication_takes::ActiveModel {
             household_id: Set(72001),
             schedule_id: Set(Some(source.id)),
-            portable_id: Set(uuid::Uuid::new_v4().to_string()),
-            client_uuid: Set(Some(uuid::Uuid::new_v4().to_string())),
+            portable_id: Set(take_portable_id),
+            client_uuid: Set(Some(take_client_uuid)),
             dose_amount: Set(Some(Decimal::new(2, 0))),
             dose_unit: Set(Some("tablet".into())),
             taken_at: Set(Some(taken_at)),
@@ -352,10 +363,25 @@ async fn adoption_fact_backfill_indexes_pre_existing_linked_take_evidence_idempo
             created_at: Set(taken_at),
             updated_at: Set(taken_at),
             ..Default::default()
-        }
-        .insert(&db)
+        })
+        .exec(&db)
         .await
         .unwrap();
+        let take = medication_takes::Entity::find_by_id(inserted.last_insert_id)
+            .select_only()
+            .columns([
+                medication_takes::Column::Id,
+                medication_takes::Column::PortableId,
+                medication_takes::Column::ClientUuid,
+                medication_takes::Column::TakenAt,
+                medication_takes::Column::CreatedAt,
+                medication_takes::Column::UpdatedAt,
+            ])
+            .into_model::<PriorSchemaTake>()
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap();
         let snapshot = serde_json::json!({
             "id":take.id,"portable_id":take.portable_id,"client_uuid":take.client_uuid,
             "household_id":72001,"schedule_id":source.id,"person_medication_id":null,

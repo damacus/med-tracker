@@ -16,6 +16,7 @@ pub struct Model {
     #[sea_orm(column_type = "Decimal(Some((10, 2)))", nullable)]
     pub dose_amount: Option<Decimal>,
     pub dose_unit: Option<String>,
+    pub historical_entry: bool,
     #[sea_orm(unique_key = "index_medication_takes_on_id_and_household_id")]
     pub household_id: i64,
     pub person_medication_id: Option<i64>,

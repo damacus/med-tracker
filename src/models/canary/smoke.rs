@@ -220,6 +220,11 @@ fn dose_form(
         let values: BTreeMap<String, String> = form
             .select(&inputs)
             .filter_map(|input| {
+                if matches!(input.value().attr("type"), Some("checkbox" | "radio"))
+                    && input.value().attr("checked").is_none()
+                {
+                    return None;
+                }
                 Some((
                     input.value().attr("name")?.into(),
                     input.value().attr("value").unwrap_or_default().into(),
@@ -247,5 +252,13 @@ mod tests {
             let values: BTreeMap<String, String> = serde_urlencoded::from_str(&body).unwrap();
             assert_eq!(values["taken_at"], wall_time);
         }
+    }
+
+    #[test]
+    fn smoke_submission_excludes_unchecked_history_checkbox() {
+        let html = r#"<span data-testid="current-supply">10 tablets</span><form data-dose-form><input name="source_id" value="81001"><input type="checkbox" name="record_mode" value="historical"></form>"#;
+        let (body, _) = dose_submission(html).unwrap();
+        let values: BTreeMap<String, String> = serde_urlencoded::from_str(&body).unwrap();
+        assert!(!values.contains_key("record_mode"));
     }
 }

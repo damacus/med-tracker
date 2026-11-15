@@ -8,6 +8,7 @@ pub(super) struct ProposedTake {
     pub(super) amount: Decimal,
     pub(super) unit: String,
     pub(super) selected: medication::Model,
+    pub(super) historical_entry: bool,
 }
 
 enum Prescription {
@@ -54,6 +55,9 @@ pub(super) async fn prepare(
         return Err(OperationError::Forbidden.into());
     }
     let taken_at = command.taken_at;
+    if command.historical_entry && taken_at >= Utc::now().naive_utc() {
+        return Err(error(ErrorKind::Validation, "Historical dose must be in the past").into());
+    }
     if taken_at > Utc::now().naive_utc() + Duration::hours(1) {
         return Err(error(
             ErrorKind::Validation,
@@ -171,9 +175,10 @@ pub(super) async fn prepare(
                 && prescription
                     .as_ref()
                     .is_none_or(|plan| plan.stock_matches(value))
-                && value
-                    .current_supply
-                    .is_none_or(|supply| supply > Decimal::ZERO)
+                && (command.historical_entry
+                    || value
+                        .current_supply
+                        .is_none_or(|supply| supply > Decimal::ZERO))
         })
         .collect();
     if matching.is_empty() {
@@ -221,5 +226,6 @@ pub(super) async fn prepare(
         amount,
         unit,
         selected,
+        historical_entry: command.historical_entry,
     })
 }

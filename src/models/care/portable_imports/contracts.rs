@@ -236,6 +236,7 @@ fn allowed_fields(kind: &str) -> &'static [&'static str] {
             "dose_amount",
             "dose_unit",
             "taken_from_medication_portable_id",
+            "historical_entry",
             "taken_from_location_portable_id",
         ],
         "notification_preferences" => &[

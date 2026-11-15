@@ -515,6 +515,35 @@ async fn foreign_bound_schedule_hides_private_data_and_keeps_stock_local() {
                     .to_be_visible()
                     .await
                     .unwrap();
+                let preview_checks = page.evaluate::<(), Vec<String>>(r#"async () => {
+                    const form = document.querySelector('#record-dose-dialog form[data-dose-form]');
+                    const actual = form.querySelector('[name=actual_dose_amount]');
+                    const time = form.querySelector('[name=taken_at]');
+                    const originalFetch = window.fetch;
+                    let unit = form.querySelector('[name=dose_unit]').value;
+                    window.fetch = async () => new Response(JSON.stringify({available:true, amount:'3', unit, label:`3 ${unit}`}), {status:200, headers:{'Content-Type':'application/json'}});
+                    const preview = () => new Promise((resolve, reject) => {
+                        const status = form.querySelector('[data-dose-availability]');
+                        const timeout = setTimeout(() => { observer.disconnect(); reject(new Error('preview timed out')); }, 5000);
+                        const observer = new MutationObserver(() => {
+                            if (!form.querySelector('[type=submit]').disabled) {
+                                clearTimeout(timeout); observer.disconnect(); resolve();
+                            }
+                        });
+                        observer.observe(status, {childList:true, characterData:true, subtree:true});
+                        time.dispatchEvent(new Event('change', {bubbles:true}));
+                    });
+                    actual.value = '1.5';
+                    await preview();
+                    const kept = actual.value;
+                    const ready = form.querySelector('[data-dose-availability]').textContent;
+                    unit = 'ml';
+                    await preview();
+                    const result = [kept, actual.value, form.querySelector('[data-actual-dose-unit]').textContent, String(actual.validity.valueMissing), ready];
+                    window.fetch = originalFetch;
+                    return result;
+                }"#, None).await.unwrap();
+                assert_eq!(preview_checks, ["1.5", "", "ml", "true", "Ready to record. Check the amount given."]);
                 expect(page.locator(format!("label[for=stock-source-schedule-{bound_id}]")))
                     .to_contain_text("Stock source")
                     .await

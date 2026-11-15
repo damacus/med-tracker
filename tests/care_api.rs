@@ -55,6 +55,8 @@ mod dosages;
 mod dose_history;
 #[path = "care_api/dose_outcomes.rs"]
 mod dose_outcomes;
+#[path = "care_api/dose_recording_browser.rs"]
+mod dose_recording_browser;
 #[path = "care_api/error_trace.rs"]
 mod error_trace;
 #[path = "care_api/fixture.rs"]

@@ -1,10 +1,7 @@
-function announceDoseReady(form, label) {
+function announceDoseReady(form) {
   const status = form.querySelector('[data-dose-availability]');
-  const dose = document.createElement('span');
-  dose.lang = 'en';
-  dose.textContent = label;
   status.hidden = false;
-  status.replaceChildren(document.createTextNode(`${status.dataset.readyLabel} `), dose);
+  status.textContent = status.dataset.readyLabel;
 }
 
 document.addEventListener('click', event => {
@@ -18,11 +15,19 @@ document.addEventListener('click', event => {
   }
   if (updatedDose) {
     const form = updatedDose.closest('form[data-dose-form]');
+    const previous = form.querySelector('[name="expected_dose_amount"]').value;
+    const actual = form.querySelector('[name="actual_dose_amount"]');
+    const unitChanged = form.querySelector('[name="dose_unit"]').value !== updatedDose.dataset.doseUnit;
+    if (unitChanged) actual.value = '';
+    else if (actual.value === previous) actual.value = updatedDose.dataset.doseAmount;
+    form.querySelector('[data-dose-unit-changed]').hidden = !unitChanged;
+    form.querySelector('[data-actual-dose-unit]').textContent = updatedDose.dataset.doseUnit;
     form.querySelector('[name="dose_amount"]').value = updatedDose.dataset.doseAmount;
+    form.querySelector('[name="expected_dose_amount"]').value = updatedDose.dataset.doseAmount;
     form.querySelector('[name="dose_unit"]').value = updatedDose.dataset.doseUnit;
     updatedDose.remove();
     form.querySelector('[data-dose-stale-alert]')?.setAttribute('hidden', '');
-    announceDoseReady(form, form.querySelector('[data-dose-label]').textContent);
+    announceDoseReady(form);
     const submit = form.querySelector('[type="submit"]');
     submit.disabled = form.dataset.doseCurrentAvailable !== 'true';
     if (!submit.disabled) submit.focus();
@@ -68,10 +73,18 @@ document.addEventListener('change', async event => {
     }
     form.dataset.doseCurrentAvailable = 'true';
     updatedDose?.remove();
+    const previous = form.querySelector('[name="expected_dose_amount"]').value;
+    const actual = form.querySelector('[name="actual_dose_amount"]');
+    const unitChanged = form.querySelector('[name="dose_unit"]').value !== preview.unit;
+    if (unitChanged) actual.value = '';
+    else if (actual.value === previous) actual.value = preview.amount;
+    form.querySelector('[data-dose-unit-changed]').hidden = !unitChanged;
+    form.querySelector('[data-actual-dose-unit]').textContent = preview.unit;
     form.querySelector('[name="dose_amount"]').value = preview.amount;
+    form.querySelector('[name="expected_dose_amount"]').value = preview.amount;
     form.querySelector('[name="dose_unit"]').value = preview.unit;
     form.querySelector('[data-dose-label]').textContent = preview.label;
-    announceDoseReady(form, preview.label);
+    announceDoseReady(form);
     submit.disabled = false;
   } catch {
     if (form.dataset.dosePreviewSequence !== String(sequence)) return;

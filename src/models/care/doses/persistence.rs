@@ -18,6 +18,7 @@ pub(super) async fn insert_take(
         taken_from_location_id: Set(Some(proposed.selected.location_id)),
         dose_amount: Set(Some(proposed.amount)),
         dose_unit: Set(Some(proposed.unit.clone())),
+        historical_entry: Set(proposed.historical_entry),
         taken_at: Set(Some(proposed.taken_at)),
         created_at: Set(now),
         updated_at: Set(now),

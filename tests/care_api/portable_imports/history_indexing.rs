@@ -175,6 +175,10 @@ async fn restore_indexes_prior_take_without_operational_side_effects() {
     let take = take_row(&app, &take_portable_id)
         .await
         .expect("restored take must exist");
+    assert!(
+        !take.historical_entry,
+        "older payloads default to normal entry provenance"
+    );
     assert_eq!(take.schedule_id, Some(source_id));
     assert_eq!(take.person_medication_id, None);
     assert!(
@@ -247,6 +251,46 @@ async fn restore_indexes_prior_take_without_operational_side_effects() {
         denied, 422,
         "restored history must bound a later live dose under the daily maximum"
     );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn historical_entry_provenance_survives_portable_roundtrip_and_replay() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let source_id = super::super::schedule_lifecycle::create_schedule(&app, &token).await;
+    let source = rows::schedules::Entity::find_by_id(source_id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let id = uuid::Uuid::new_v4().to_string();
+    let mut payload = take_bundle(&source, &id, "2026-01-02T12:00:00Z", "2");
+    payload["records"]["medication_takes"][0]["historical_entry"] = json!(true);
+    assert_eq!(
+        import(&app, &token, &payload, false)
+            .await
+            .status()
+            .as_u16(),
+        201
+    );
+    assert!(take_row(&app, &id).await.unwrap().historical_entry);
+    assert_eq!(
+        import(&app, &token, &payload, false)
+            .await
+            .status()
+            .as_u16(),
+        201
+    );
+    let exported = super::export_bundle(&app, &token).await;
+    let bundle = portable_crypto::decrypt(&exported, PASSPHRASE).unwrap();
+    let take = bundle["records"]["medication_takes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["portable_id"] == id)
+        .unwrap();
+    assert_eq!(take["historical_entry"], true);
     app.close().await;
 }
 

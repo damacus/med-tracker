@@ -126,11 +126,26 @@ pub struct Take {
     taken_from_medication_id: Option<MedicationId>,
     expected_effective_amount: Option<Decimal>,
     expected_effective_unit: Option<String>,
+    historical_entry: bool,
 }
 
 pub enum TakeAttempt {
     Ready(Take),
     MalformedReplay(MalformedReplay),
+}
+
+impl TakeAttempt {
+    pub(crate) fn historical(self) -> Result<Self, OperationError> {
+        match self {
+            Self::Ready(mut take) => {
+                take.historical_entry = true;
+                Ok(Self::Ready(take))
+            }
+            Self::MalformedReplay(_) => {
+                Err(error(ErrorKind::Validation, "Invalid historical dose"))
+            }
+        }
+    }
 }
 
 pub struct MalformedReplay {
@@ -212,6 +227,7 @@ impl TakeInput {
             taken_from_medication_id,
             expected_effective_amount,
             expected_effective_unit: self.expected_effective_unit,
+            historical_entry: false,
         }))
     }
 

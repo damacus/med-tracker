@@ -54,6 +54,7 @@ pub(super) async fn record_domain_audit(
         "taken_from_location_id": take.taken_from_location_id,
         "dose_amount": take.dose_amount.map(|value| decimal_string(value.to_string())),
         "dose_unit": take.dose_unit,
+        "historical_entry": take.historical_entry,
         "taken_at": take.taken_at.map(|value| value.format("%Y-%m-%dT%H:%M:%SZ").to_string()),
         "created_at": take.created_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
         "updated_at": take.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string()

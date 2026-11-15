@@ -43,6 +43,7 @@ pub struct DoseHistory {
     pub amount: Option<String>,
     pub unit: Option<String>,
     pub taken_at: Option<chrono::NaiveDateTime>,
+    pub historical_entry: bool,
 }
 
 #[derive(Serialize)]
@@ -371,6 +372,7 @@ pub async fn detail(
                 amount: take.dose_amount.map(|value| value.normalize().to_string()),
                 unit: take.dose_unit,
                 taken_at: take.taken_at,
+                historical_entry: take.historical_entry,
             })
         })
         .collect();

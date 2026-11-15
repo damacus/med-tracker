@@ -32,6 +32,13 @@ cover replay without double deduction, side-effect-free restore, revoked authori
 and DST/timezone schedules. Preserve existing API/MCP contracts except the explicit
 access/location changes, documented together in OpenAPI, clients and ADRs.
 
+An authorised carer may explicitly record a past dose with its actual amount and
+time, including when the time conflicts with the current plan. The entry keeps
+its historical provenance, leaves current stock unchanged and participates in
+subsequent timing checks. Ordinary dose recording keeps its timing and stock
+checks. Portable records retain the entry mode; older records without it default
+to the ordinary entry mode.
+
 Retain older `rust/` crates as read-only reference. Obsolete `rust:*` and
 `api:*` Task surfaces are removed; root Task owns active Loco workflows. The root CI workflow tests
 the active Loco application and client tools; it does not run the superseded
