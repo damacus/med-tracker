@@ -366,6 +366,7 @@ mod tests {
             created_at: time,
             dose_amount: Some(Decimal::ONE),
             dose_unit: Some("tablet".to_string()),
+            historical_entry: false,
             household_id: 1,
             person_medication_id: None,
             portable_id: "take-1".to_string(),

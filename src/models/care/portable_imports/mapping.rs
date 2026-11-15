@@ -295,6 +295,13 @@ pub(super) fn mapped_row(
                 row,
                 &["client_uuid", "taken_at", "dose_amount", "dose_unit"],
             );
+            let historical = match row.get("historical_entry") {
+                None => false,
+                Some(value) => value
+                    .as_bool()
+                    .ok_or_else(|| "historical_entry is invalid".to_owned())?,
+            };
+            fields.insert("historical_entry".to_owned(), json!(historical));
             let (schedule_id, assignment_id) = source_ids(index, row)?;
             fields.insert("schedule_id".to_owned(), schedule_id);
             fields.insert("person_medication_id".to_owned(), assignment_id);

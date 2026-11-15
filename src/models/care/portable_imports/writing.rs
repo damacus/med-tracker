@@ -277,6 +277,7 @@ pub(super) async fn verify_immutable(
             "taken_at",
             "dose_amount",
             "dose_unit",
+            "historical_entry",
             "taken_from_medication_id",
             "taken_from_location_id",
         ][..]

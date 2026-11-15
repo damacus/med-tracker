@@ -1,8 +1,49 @@
 use crate::harness;
+use med_tracker::models::_entities::{medication_takes, medications, person_medications};
 use playwright_rs::{
     expect,
     protocol::{Animations, ScreenshotOptions, Viewport},
 };
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, sea_query::Expr};
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn historical_dose_is_recorded_with_zero_stock() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
+        Box::pin(async move {
+            medications::Entity::update_many().col_expr(medications::Column::CurrentSupply, Expr::value(0))
+                .filter(medications::Column::Id.eq(80001)).exec(&journey.admin).await.unwrap();
+            person_medications::Entity::update_many().col_expr(person_medications::Column::MinHoursBetweenDoses, Expr::value(6))
+                .filter(person_medications::Column::Id.eq(81001)).exec(&journey.admin).await.unwrap();
+            harness::sign_in(journey).await;
+            let page = &journey.page;
+            let day = (chrono::Utc::now().date_naive() - chrono::Duration::days(2)).to_string();
+            let directory = std::path::Path::new("docs/screenshots/historical-dose");
+            std::fs::create_dir_all(directory).unwrap();
+            for (index, clock) in ["08:52", "14:07"].iter().enumerate() {
+                page.goto(&format!("{}/households/persistence-fixture/medications/80001?record_source_type=person_medication&record_source_id=81001&record_person_id=73001", journey.origin), None).await.unwrap();
+                let form = page.locator("#record-dose-dialog form[data-dose-form]");
+                expect(form.clone()).to_be_visible().await.unwrap();
+                form.locator("[name=actual_dose_amount]").fill("1.5", None).await.unwrap();
+                form.locator("[name=taken_at]").fill(&format!("{day}T{clock}"), None).await.unwrap();
+                form.locator("[name=record_mode]").click(None).await.unwrap();
+                if index == 0 {
+                    for (name, width, height) in [("desktop", 1440, 1000), ("mobile", 390, 844)] {
+                        page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                        page.screenshot_to_file(&directory.join(format!("{name}.png")), ScreenshotOptions::builder().animations(Animations::Disabled).build()).await.unwrap();
+                    }
+                }
+                form.locator("button[type=submit]").click(None).await.unwrap();
+                expect(page.locator("[aria-labelledby=dose-history-heading]")).to_contain_text("Recorded as a past dose").await.unwrap();
+            }
+            let takes = medication_takes::Entity::find().filter(medication_takes::Column::PersonMedicationId.eq(81001)).all(&journey.admin).await.unwrap();
+            assert_eq!(takes.len(), 2);
+            assert!(takes.iter().all(|take| take.historical_entry && take.dose_amount == Some(sea_orm::prelude::Decimal::new(15, 1))));
+            let medication = medications::Entity::find_by_id(80001).one(&journey.admin).await.unwrap().unwrap();
+            assert_eq!(medication.current_supply, Some(sea_orm::prelude::Decimal::ZERO));
+        })
+    }).await;
+}
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]

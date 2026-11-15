@@ -1136,6 +1136,11 @@ cy:
       person: 'PERSON'
       medication: 'MEDDYGINIAETH'
       dose: 'DOS'
+      default_dose: 'Dos diofyn'
+      amount_given: 'Swm a roddwyd'
+      unit_changed: 'Mae’r uned wedi newid. Rhowch y swm eto.'
+      historical_entry: 'Rhoddwyd y dos hwn yn y gorffennol. Cofnodwch yr amser gwirioneddol hyd yn oed os yw’n gwrthdaro â’r cynllun. Peidiwch â newid y stoc bresennol.'
+      historical_label: 'Cofnodwyd fel dos yn y gorffennol'
       taken_at: 'Cymerwyd am'
       stock_remaining: "Stoc sy'n weddill"
       invalid_time: 'Mae’r amser cymryd yn annilys.'
@@ -1144,7 +1149,7 @@ cy:
       conflict: 'Mae’r cais dos hwn yn gwrthdaro â chofnod blaenorol.'
       not_scheduled: 'Nid yw’r driniaeth hon wedi’i threfnu ar gyfer yr amser a ddewiswyd.'
       checking: 'Wrthi’n gwirio’r amser a ddewiswyd.'
-      ready: "Mae'r dos a ddewiswyd yn barod i'w gofnodi."
+      ready: 'Yn barod i gofnodi. Gwiriwch y swm a roddwyd.'
       dose_changed: 'Mae’r dos a gynlluniwyd wedi newid. Adolygwch y dos wedi’i ddiweddaru cyn ei gofnodi.'
       use_updated_dose: 'Defnyddio’r dos wedi’i ddiweddaru'
     finder:

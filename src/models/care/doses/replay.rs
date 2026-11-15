@@ -29,7 +29,12 @@ pub(super) async fn replay_matches(
     let stock_matches = command
         .taken_from_medication_id
         .is_none_or(|id| Some(id.0) == take.taken_from_medication_id);
-    Ok(source_matches && time_matches && amount_matches && unit_matches && stock_matches)
+    Ok(source_matches
+        && time_matches
+        && amount_matches
+        && unit_matches
+        && stock_matches
+        && command.historical_entry == take.historical_entry)
 }
 
 pub(super) async fn authorize_existing_take(

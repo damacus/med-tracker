@@ -525,6 +525,7 @@ async fn scoped_payload(
             "taken_at": row.taken_at.map(timestamp),
             "dose_amount": row.dose_amount.map(|value| medications::decimal_string(value.to_string())),
             "dose_unit": row.dose_unit,
+            "historical_entry": row.historical_entry,
             "taken_from_medication_portable_id": row.taken_from_medication_id.and_then(|id| medication_ids_by_id.get(&id)),
             "taken_from_location_portable_id": row.taken_from_location_id.and_then(|id| location_ids_by_id.get(&id)),
         }))

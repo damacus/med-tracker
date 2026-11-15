@@ -10851,6 +10851,7 @@ components:
           minLength: 1
     PortableRecords:
       type: object
+      description: Portable medication take records include `historical_entry` for explicit past-dose entries. Older records may omit it and are treated as false.
       additionalProperties: false
       required:
         - people

@@ -427,6 +427,7 @@ fn detail_with_state(
         json!({
             "person_name": take.person_name,
             "dose_label": dose_label,
+            "historical_entry": take.historical_entry,
             "taken_at": take.taken_at.map(|value| value.and_utc().with_timezone(&zone).format("%d %b %Y, %H:%M").to_string()),
             "taken_at_iso": take.taken_at.map(|value| value.and_utc().to_rfc3339()),
         })

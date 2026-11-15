@@ -37,6 +37,8 @@ pub fn dose_for(
         ("source_type".into(), source.source_type.into()),
         ("source_id".into(), source.id.to_string()),
         ("dose_amount".into(), source.amount.clone()),
+        ("expected_dose_amount".into(), source.amount.clone()),
+        ("actual_dose_amount".into(), source.amount.clone()),
         ("dose_unit".into(), source.unit.clone()),
         (
             "taken_at".into(),
@@ -80,18 +82,43 @@ pub fn take(
         optional(draft, "dose_unit").ok_or_else(|| OperationError::Validation {
             details: serde_json::json!({"error":"Dose confirmation is incomplete."}),
         })?;
-    TakeInput {
+    let actual_amount = match draft.get("actual_dose_amount") {
+        Some(value) if value.trim().is_empty() => {
+            return Err(OperationError::Validation {
+                details: serde_json::json!({"error":"Dose confirmation is incomplete."}),
+            });
+        }
+        Some(value) => value.clone(),
+        None => confirmed_amount.clone(),
+    };
+    let expected_amount =
+        optional(draft, "expected_dose_amount").unwrap_or_else(|| confirmed_amount.clone());
+    let attempt = TakeInput {
         client_uuid: optional(draft, "client_uuid"),
         source_type: field(draft, "source_type").into(),
         source_id: field(draft, "source_id").into(),
         taken_at: time.to_rfc3339(),
-        dose_amount: Some(confirmed_amount.clone()),
+        dose_amount: Some(actual_amount),
         dose_unit: Some(confirmed_unit.clone()),
         taken_from_medication_id: Some(stock_id),
-        expected_effective_amount: Some(confirmed_amount),
+        expected_effective_amount: Some(expected_amount),
         expected_effective_unit: Some(confirmed_unit),
     }
-    .attempt()
+    .attempt()?;
+    if field(draft, "record_mode") == "historical" {
+        if field(draft, "historical_confirmed") != "true" {
+            return Err(OperationError::Validation {
+                details: serde_json::json!({"error":"Confirm this is a past dose."}),
+            });
+        }
+        attempt.historical()
+    } else if field(draft, "record_mode").is_empty() {
+        Ok(attempt)
+    } else {
+        Err(OperationError::Validation {
+            details: serde_json::json!({"error":"Invalid dose entry mode."}),
+        })
+    }
 }
 
 pub fn can_adjust(tenant: &TenantTransaction) -> bool {
