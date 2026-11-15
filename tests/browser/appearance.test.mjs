@@ -215,7 +215,7 @@ test('browser template families share the application frame and keep document ad
         assert.ok(families.has(relative.split('/')[0]), `unclassified browser family: ${relative}`);
         seen.add(relative.split('/')[0]);
         if (relative.startsWith('reports/') && relative !== 'reports/index.html') assert.equal(parent, 'reports/pdf_base.html');
-        else assert.ok(['layouts/base.html', 'layouts/dashboard.html'].includes(parent), `screen bypasses shared frame: ${relative}`);
+        else assert.ok(['layouts/base.html', 'layouts/dashboard.html', 'auth/login.html'].includes(parent), `screen bypasses shared frame: ${relative}`);
       }
       if (/<!doctype/i.test(content) && relative !== 'layouts/base.html') assert.ok(documents.has(relative), `unframed document: ${relative}`);
     }

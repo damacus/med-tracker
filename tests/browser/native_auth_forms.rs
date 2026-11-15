@@ -97,6 +97,14 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                 .await
                 .unwrap();
                 capture_sizes(page, "password-reset-request").await;
+                expect(page.locator(".login-page"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                expect(page.get_by_role(AriaRole::Link, named("Account security")))
+                    .to_have_count(0)
+                    .await
+                    .unwrap();
                 page.get_by_role(AriaRole::Button, named("Send reset link"))
                     .click(None)
                     .await
