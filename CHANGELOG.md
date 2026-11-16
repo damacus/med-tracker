@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.8](https://github.com/damacus/med-tracker/compare/v0.6.7...v0.6.8) (2026-11-16)
+
+
+### Features
+
+* move medicines between storage locations ([#3133](https://github.com/damacus/med-tracker/issues/3133)) ([9046359](https://github.com/damacus/med-tracker/commit/90463593265c3560f9d33087c7c4f5c689f287d1))
+
+
+### Bug Fixes
+
+* **deps:** update rust crate sghtmltopdf to v0.8.0 ([#3128](https://github.com/damacus/med-tracker/issues/3128)) ([2b7a391](https://github.com/damacus/med-tracker/commit/2b7a391be95bfc2bb20aebeb3b6dacf61c1a55a5))
+* **deps:** update rust crate zip to v9.6.0 ([#3129](https://github.com/damacus/med-tracker/issues/3129)) ([12532a7](https://github.com/damacus/med-tracker/commit/12532a7113e4f68dcf5d3e334f917c8e3ae43af1))
+* record actual and historical doses ([#3122](https://github.com/damacus/med-tracker/issues/3122)) ([4681b51](https://github.com/damacus/med-tracker/commit/4681b514225086f94555472e31c6bf71ed0de101))
+* restore standalone PWA installation ([#3131](https://github.com/damacus/med-tracker/issues/3131)) ([73141b3](https://github.com/damacus/med-tracker/commit/73141b3e88cf0e81dde0f9865114b265615c9ecf))
+* show terminal guardian relationship status ([#3118](https://github.com/damacus/med-tracker/issues/3118)) ([e9d7f41](https://github.com/damacus/med-tracker/commit/e9d7f41eb6fdf70d0ae7412094f9ad19ee9e4f93))
+* use sign-in layout for password reset ([#3119](https://github.com/damacus/med-tracker/issues/3119)) ([447771c](https://github.com/damacus/med-tracker/commit/447771cf2ac6ef14c864a43df7288fe136626e6d))
+
 ## [0.6.7](https://github.com/damacus/med-tracker/compare/v0.6.6...v0.6.7) (2026-11-14)
 
 
