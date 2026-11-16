@@ -1,4 +1,7 @@
-use playwright_rs::{expect, protocol::Viewport};
+use playwright_rs::{
+    expect,
+    protocol::{ScreenshotOptions, Viewport},
+};
 use serde_json::{Value, json};
 
 use crate::harness;
@@ -26,10 +29,20 @@ async fn pwa_shell_keeps_private_pages_network_only() {
             assert_eq!(cache_entries, json!([]));
             let context = page.context().unwrap();
             context.set_offline(true).await.unwrap();
-            page.goto(&format!("{}/", journey.origin), None).await.unwrap();
-            let offline: String = page.evaluate("() => document.body.innerText", None::<&()>).await.unwrap();
-            assert!(offline.contains("Connect to the internet to use MedTracker."), "offline page: {offline}");
-            assert!(!offline.contains("Synthetic household"));
+            let directory = std::path::Path::new("docs/screenshots/pwa");
+            std::fs::create_dir_all(directory).unwrap();
+            for (name, viewport) in [
+                ("offline-mobile", Viewport { width: 390, height: 844 }),
+                ("offline-desktop", Viewport { width: 1440, height: 1000 }),
+            ] {
+                page.set_viewport_size(viewport).await.unwrap();
+                page.goto(&format!("{}/", journey.origin), None).await.unwrap();
+                let offline: String = page.evaluate("() => document.body.innerText", None::<&()>).await.unwrap();
+                assert!(offline.contains("Connect to the internet to use MedTracker."), "{name}: {offline}");
+                assert!(!offline.contains("Synthetic household"), "{name}: {offline}");
+                assert!(!page.evaluate::<(), bool>("() => document.documentElement.scrollWidth > innerWidth", None).await.unwrap(), "{name}: horizontal overflow");
+                page.screenshot_to_file(&directory.join(format!("{name}.png")), ScreenshotOptions::builder().full_page(true).build()).await.unwrap();
+            }
             context.set_offline(false).await.unwrap();
             let private_url = format!("{}/households/persistence-fixture/medications", journey.origin);
             page.goto(&private_url, None).await.unwrap();
