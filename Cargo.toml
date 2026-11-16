@@ -113,7 +113,7 @@ opentelemetry-otlp = { version = "=0.33.1", default-features = false, features =
 ] }
 tracing-opentelemetry = "=0.34.0"
 slug = "=0.1.6"
-sghtmltopdf = { version = "=0.6.1", default-features = false, features = [
+sghtmltopdf = { version = "=0.8.0", default-features = false, features = [
     "cli",
 ] }
 serde_yaml_ng = "=0.10.0"
