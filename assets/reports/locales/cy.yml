@@ -1431,6 +1431,7 @@ cy:
         low_in_days: Bydd y cyflenwad yn isel mewn %{days} diwrnod
         empty_in_days: Bydd y cyflenwad yn wag mewn %{days} diwrnod
       location: Lleoliad
+      adjust_inventory: Addasu Stocrestr
     move:
       title: "Symud Meddyginiaeth"
       current_location: "Lleoliad presennol"
@@ -1445,7 +1446,6 @@ cy:
       same_location: "rhaid iddo fod yn wahanol i'r lleoliad presennol"
       unavailable_location: "ddim ar gael yn y cartref hwn"
       back_to_move: "Yn ôl i Symud Meddyginiaeth"
-      adjust_inventory: Addasu Stocrestr
     adjust_inventory_modal:
       adjust_inventory: Addasu Stocrestr
       current_quantity: Nifer cyfredol

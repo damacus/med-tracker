@@ -1497,6 +1497,9 @@ async fn browser_move_medication_between_house_utility_and_kitchen_preserves_sto
     .await;
     assert!(house_inventory_html.contains("Synthetic tablets"));
     assert!(house_inventory_html.contains(&format!(
+        "<h2 class=\"card-title\"><a class=\"link\" href=\"/households/{slug}/medications/{medication_id}?filter_location_id={house_id}\">"
+    )));
+    assert!(house_inventory_html.contains(&format!(
         "/households/{slug}/medications/{medication_id}/move?filter_location_id={house_id}"
     )));
 
@@ -1636,6 +1639,7 @@ async fn browser_move_medication_between_house_utility_and_kitchen_preserves_sto
         .unwrap()
         .to_owned();
     assert!(show_after_utility.contains(&format!("moved_from={house_id}")));
+    assert!(show_after_utility.contains(&format!("moved_to={}", utility.id)));
     assert!(show_after_utility.contains(&format!("filter_location_id={house_id}")));
 
     let (cookies, show_html) = platform::form_page(&app, &cookies, &show_after_utility).await;
@@ -1687,6 +1691,32 @@ async fn browser_move_medication_between_house_utility_and_kitchen_preserves_sto
     )
     .await;
     assert_eq!(moved_kitchen.status().as_u16(), 303);
+
+    let (_, reopened_first_html) = platform::form_page(&app, &cookies, &show_after_utility).await;
+    assert!(reopened_first_html.contains("Moved Synthetic tablets from House to Utility."));
+    assert!(!reopened_first_html.contains("Moved Synthetic tablets from House to Kitchen."));
+
+    let (_, fabricated_move_html) = platform::form_page(
+        &app,
+        &cookies,
+        &format!(
+            "/households/{slug}/medications/{medication_id}?moved_from={house_id}&moved_to={}",
+            kitchen.id
+        ),
+    )
+    .await;
+    assert!(!fabricated_move_html.contains("Moved Synthetic tablets from House to Kitchen."));
+
+    let (_, kitchen_show_html) = platform::form_page(
+        &app,
+        &cookies,
+        &format!("/households/{slug}/locations/{}", kitchen.id),
+    )
+    .await;
+    assert!(kitchen_show_html.contains(&format!(
+        "/households/{slug}/medications/{medication_id}?filter_location_id={}",
+        kitchen.id
+    )));
 
     let med_after = medications::Entity::find_by_id(medication_id)
         .one(&app.fixture.admin)
@@ -1869,6 +1899,40 @@ async fn browser_move_medication_between_house_utility_and_kitchen_preserves_sto
 
 fn hidden_etag(body: &str) -> String {
     platform::hidden_field(body, "etag").replace("&quot;", "\"")
+}
+
+async fn fixture_queue_count(app: &Application) -> i64 {
+    let household_filter = QueryExpr::expr(
+        QueryFunc::cust("jsonb_extract_path_text")
+            .args([QueryExpr::col("task_data"), QueryExpr::val("household_id")]),
+    )
+    .eq(app.fixture.household.id.to_string());
+    let recipient_filter = QueryExpr::expr(
+        QueryFunc::cust("jsonb_extract_path_text")
+            .args([QueryExpr::col("task_data"), QueryExpr::val("to")]),
+    )
+    .eq(app.fixture.account.email.clone());
+    app.fixture
+        .admin
+        .query_one_raw(
+            app.fixture.admin.get_database_backend().build(
+                &Query::select()
+                    .expr_as(
+                        QueryExpr::expr(QueryFunc::count(QueryExpr::col(
+                            sea_orm::sea_query::Asterisk,
+                        ))),
+                        "n",
+                    )
+                    .from("pg_loco_queue")
+                    .and_where(household_filter.or(recipient_filter))
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "n")
+        .unwrap()
 }
 
 #[tokio::test]
@@ -2107,27 +2171,8 @@ async fn browser_move_medication_rejects_stale_invalid_unauthorized_and_replayed
     assert_eq!(versions_before, 0);
     assert_eq!(changes_before, 1);
 
-    let queue_before: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(
-            app.fixture.admin.get_database_backend().build(
-                &Query::select()
-                    .expr_as(
-                        QueryExpr::expr(QueryFunc::count(QueryExpr::col(
-                            sea_orm::sea_query::Asterisk,
-                        ))),
-                        "n",
-                    )
-                    .from("pg_loco_queue")
-                    .to_owned(),
-            ),
-        )
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "n")
-        .unwrap();
+    let queue_before = fixture_queue_count(&app).await;
+    assert_eq!(queue_before, 0);
 
     let succeeded = platform::post_form(
         &app,
@@ -2209,28 +2254,8 @@ async fn browser_move_medication_rejects_stale_invalid_unauthorized_and_replayed
             .unwrap(),
         0
     );
-    let queue_after: i64 = app
-        .fixture
-        .admin
-        .query_one_raw(
-            app.fixture.admin.get_database_backend().build(
-                &Query::select()
-                    .expr_as(
-                        QueryExpr::expr(QueryFunc::count(QueryExpr::col(
-                            sea_orm::sea_query::Asterisk,
-                        ))),
-                        "n",
-                    )
-                    .from("pg_loco_queue")
-                    .to_owned(),
-            ),
-        )
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "n")
-        .unwrap();
-    assert_eq!(queue_before, queue_after);
+    let queue_after = fixture_queue_count(&app).await;
+    assert_eq!(queue_after, queue_before);
 
     household_memberships::Entity::update_many()
         .col_expr(

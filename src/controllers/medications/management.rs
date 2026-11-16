@@ -267,12 +267,13 @@ impl<'a> Page<'a> {
             .write_move(&tenant, &principal, id, &context, &draft)
             .await;
         match result {
-            Ok((old_location_id, saved_id)) => {
+            Ok((old_location_id, new_location_id, saved_id)) => {
                 if tenant.commit().await.is_err() {
                     return unavailable();
                 }
                 let query = rendering::query_string(&[
                     ("moved_from", Some(old_location_id.to_string())),
+                    ("moved_to", Some(new_location_id.to_string())),
                     (
                         "filter_location_id",
                         forms::optional(&draft, "filter_location_id"),
@@ -310,7 +311,7 @@ impl<'a> Page<'a> {
         id: &str,
         context: &FormContext,
         draft: &HashMap<String, String>,
-    ) -> std::result::Result<(i64, i64), OperationError> {
+    ) -> std::result::Result<(i64, i64, i64), OperationError> {
         let snapshot = context.snapshot.as_ref().ok_or(OperationError::NotFound)?;
         let old_location_id = snapshot.medication.location_id;
         let etag = forms::field(draft, "etag");
@@ -327,7 +328,7 @@ impl<'a> Page<'a> {
             Some(principal.provenance()),
         )
         .await?;
-        Ok((old_location_id, saved.id))
+        Ok((old_location_id, saved.location_id, saved.id))
     }
 
     async fn failed_move(

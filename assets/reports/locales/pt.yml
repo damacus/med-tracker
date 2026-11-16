@@ -1438,6 +1438,7 @@ pt:
         low_in_days: O stock ficará baixo em %{days} dias
         empty_in_days: O stock ficará vazio em %{days} dias
       location: Localização
+      adjust_inventory: Ajustar Inventário
     move:
       title: "Mover Medicamento"
       current_location: "Localização atual"
@@ -1452,7 +1453,6 @@ pt:
       same_location: "deve ser diferente da localização atual"
       unavailable_location: "não está disponível neste agregado"
       back_to_move: "Voltar a Mover Medicamento"
-      adjust_inventory: Ajustar Inventário
     adjust_inventory_modal:
       adjust_inventory: Ajustar Inventário
       current_quantity: Quantidade atual

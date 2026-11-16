@@ -1437,6 +1437,7 @@ es:
         low_in_days: El suministro estará bajo en %{days} días
         empty_in_days: El suministro se agotará en %{days} días
       location: Ubicación
+      adjust_inventory: Ajustar Inventario
     move:
       title: "Mover medicamento"
       current_location: "Ubicación actual"
@@ -1451,7 +1452,6 @@ es:
       same_location: "debe ser diferente de la ubicación actual"
       unavailable_location: "no está disponible en este hogar"
       back_to_move: "Volver a Mover medicamento"
-      adjust_inventory: Ajustar Inventario
     adjust_inventory_modal:
       adjust_inventory: Ajustar Inventario
       current_quantity: Cantidad actual

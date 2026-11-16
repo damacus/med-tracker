@@ -1426,6 +1426,7 @@ ga:
         low_in_days: Beidh an soláthar íseal i gceann %{days} lá
         empty_in_days: Beidh an soláthar folamh i gceann %{days} lá
       location: Suíomh
+      adjust_inventory: Coigeartáil Fardal
     move:
       title: "Bog Cógas"
       current_location: "Suíomh reatha"
@@ -1440,7 +1441,6 @@ ga:
       same_location: "caithfidh sé a bheith difriúil ón suíomh reatha"
       unavailable_location: "níl sé ar fáil sa teaghlach seo"
       back_to_move: "Ar ais go Bog Cógas"
-      adjust_inventory: Coigeartáil Fardal
     administration:
       title: Taifead riaracháin do %{medication}
       subtitle: Roghnaigh an duine agus an plean ar mhaith leat an dáileog seo a thaifeadadh

@@ -151,8 +151,7 @@ pub struct IndexPage<'a> {
 
 #[derive(Default)]
 pub struct ShowNavigation {
-    pub moved_from_id: Option<i64>,
-    pub moved_from_name: Option<String>,
+    pub moved: Option<crate::models::care::browser_query::MovedLocations>,
     pub filter_location_id: Option<i64>,
     pub filter_location_name: Option<String>,
     pub filter_category: Option<String>,
@@ -354,22 +353,33 @@ fn detail_with_state(
             (
                 "moved_id",
                 navigation
-                    .moved_from_id
+                    .moved
+                    .as_ref()
                     .map(|_| detail.stock.medication.id.to_string()),
             ),
             (
                 "moved_from",
-                navigation.moved_from_id.map(|id| id.to_string()),
+                navigation
+                    .moved
+                    .as_ref()
+                    .map(|moved| moved.from_id.to_string()),
+            ),
+            (
+                "moved_to",
+                navigation
+                    .moved
+                    .as_ref()
+                    .map(|moved| moved.to_id.to_string()),
             ),
         ]);
         data["inventory_url"] = json!(format!("/households/{slug}/medications{inventory_filter}"));
-        if navigation.moved_from_id.is_some() {
+        if let Some(moved) = navigation.moved {
             let medication_name = data["name"].as_str().unwrap_or("Medication");
             data["moved_notice"] = json!(moved_banner(
                 &labels,
                 medication_name,
-                navigation.moved_from_name.as_deref(),
-                &detail.location_name,
+                Some(moved.from_name.as_str()),
+                &moved.to_name,
             ));
             if navigation.filter_location_id.is_some() || navigation.filter_category.is_some() {
                 data["filtered_inventory_url"] = data["inventory_url"].clone();

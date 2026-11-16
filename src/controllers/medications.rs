@@ -44,6 +44,8 @@ struct ShowRequest {
     #[serde(default, deserialize_with = "stock_check::empty_location")]
     moved_from: Option<i64>,
     #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_to: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
     filter_location_id: Option<i64>,
     filter_category: Option<String>,
 }
@@ -57,6 +59,8 @@ struct InventoryQuery {
     moved_id: Option<i64>,
     #[serde(default, deserialize_with = "stock_check::empty_location")]
     moved_from: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_to: Option<i64>,
 }
 
 pub fn routes() -> Routes {
@@ -189,25 +193,37 @@ async fn index(
         Ok(value) => value,
         Err(_) => return unavailable(),
     };
-    let moved_notice = if let Some(moved_id) = filters.moved_id
+    let moved_notice = if let (Some(moved_id), Some(moved_from)) =
+        (filters.moved_id, filters.moved_from)
         && let Ok(snapshot) = medications::read_stock_snapshot(&tenant, &moved_id.to_string()).await
-    {
+        && let Some(moved) = match browser_query::moved_locations(
+            &tenant,
+            snapshot.medication.id,
+            moved_from,
+            filters.moved_to,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(error) => return operation_error(error),
+        } {
         let medication_name = snapshot.representation["data"]["display_name"]
             .as_str()
             .unwrap_or("Medication");
-        let location_name = |id: i64| {
-            inventory
-                .locations
-                .iter()
-                .find(|location| location.id == id)
-                .map(|location| location.name.as_str())
-        };
-        let to_name = location_name(snapshot.medication.location_id).unwrap_or("Unknown");
-        let from_name = filters.moved_from.and_then(location_name);
-        let mut banner = rendering::moved_banner(&labels, medication_name, from_name, to_name);
+        let mut banner = rendering::moved_banner(
+            &labels,
+            medication_name,
+            Some(moved.from_name.as_str()),
+            &moved.to_name,
+        );
         if let Some(filtered_id) = filters.location_id
             && filtered_id != snapshot.medication.location_id
-            && let Some(filtered_name) = location_name(filtered_id)
+            && filtered_id != moved.to_id
+            && let Some(filtered_name) = inventory
+                .locations
+                .iter()
+                .find(|location| location.id == filtered_id)
+                .map(|location| location.name.as_str())
         {
             let hint = labels["medications"]["show"]["browser"]["moved_filter_hint"]
                 .as_str()
@@ -308,26 +324,33 @@ async fn show(
         .as_ref()
         .cloned()
         .unwrap_or_else(|| forms::dose(&detail, principal.time_zone()));
-    let locations = if input.moved_from.is_some() || input.filter_location_id.is_some() {
-        crate::models::care::locations::list(&tenant)
+    let moved = match input.moved_from {
+        Some(moved_from) => match browser_query::moved_locations(
+            &tenant,
+            detail.stock.medication.id,
+            moved_from,
+            input.moved_to,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(error) => return operation_error(error),
+        },
+        None => None,
+    };
+    let filter_location_name = match input.filter_location_id {
+        Some(filter_id) => crate::models::care::locations::list(&tenant)
             .await
             .unwrap_or_default()
-    } else {
-        Vec::new()
-    };
-    let find_location = |location_id: Option<i64>| {
-        location_id.and_then(|id| {
-            locations
-                .iter()
-                .find(|location| location.id == id)
-                .map(|location| location.name.clone())
-        })
+            .into_iter()
+            .find(|location| location.id == filter_id)
+            .map(|location| location.name),
+        None => None,
     };
     let navigation = rendering::ShowNavigation {
-        moved_from_id: input.moved_from,
-        moved_from_name: find_location(input.moved_from),
+        moved,
         filter_location_id: input.filter_location_id,
-        filter_location_name: find_location(input.filter_location_id),
+        filter_location_name,
         filter_category: input.filter_category,
     };
     let response = rendering::detail(
