@@ -406,5 +406,202 @@ async fn medication_crud_create_audit_failure_rolls_back_row_and_change() {
     assert_eq!(medicines, 0);
     assert!(reached);
     assert_eq!(changes, 0);
+
+    let now = chrono::Utc::now().naive_utc();
+    let utility = med_tracker::models::_entities::locations::ActiveModel {
+        household_id: Set(fixture.household.id),
+        name: Set("Utility".to_owned()),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
+    let kitchen = med_tracker::models::_entities::locations::ActiveModel {
+        household_id: Set(fixture.household.id),
+        name: Set("Kitchen".to_owned()),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
+    let tenant = access::begin(&fixture.runtime, &fixture.scope, None)
+        .await
+        .unwrap();
+    let moved = crud::update(
+        &tenant,
+        &fixture.medication_id.to_string(),
+        input(json!({"location_id": utility.id})),
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(moved.location_id, utility.id);
+    tenant.commit().await.unwrap();
+
+    let move_version = fixture
+        .audits()
+        .filter(version::Column::Event.eq("api_update"))
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        move_version.whodunnit.as_deref(),
+        Some(fixture.account.id.to_string().as_str())
+    );
+    assert_eq!(
+        move_version.actor_membership_id,
+        Some(fixture.membership.id)
+    );
+    let move_changes: Value =
+        serde_json::from_str(move_version.object_changes.as_deref().unwrap()).unwrap();
+    assert_eq!(
+        move_changes["location_id"],
+        json!([fixture.location_id, utility.id])
+    );
+
+    let version_fault = AuditFailure::install(&fixture, "Medication", Decimal::new(10, 0)).await;
+    let tenant = access::begin(&fixture.runtime, &fixture.scope, None)
+        .await
+        .unwrap();
+    let version_failed = crud::update(
+        &tenant,
+        &fixture.medication_id.to_string(),
+        input(json!({"location_id": kitchen.id})),
+        None,
+        None,
+    )
+    .await;
+    tenant.rollback().await.unwrap();
+    let version_reached = version_fault.reached_and_remove(&fixture).await;
+    assert!(matches!(version_failed, Err(OperationError::Unavailable)));
+    assert!(version_reached);
+    assert_eq!(
+        medication::Entity::find_by_id(fixture.medication_id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .location_id,
+        utility.id
+    );
+    assert_eq!(
+        fixture
+            .audits()
+            .filter(version::Column::Event.eq("api_update"))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        fixture
+            .changes()
+            .filter(api_change_event::Column::RecordType.eq("Medication"))
+            .filter(api_change_event::Column::Action.eq("update"))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+
+    let sync_fault = format!("medication_sync_{}", uuid::Uuid::new_v4().simple());
+    let household_id = fixture.household.id;
+    let medication_id = fixture.medication_id;
+    // SeaORM Schema/Table builders cannot express PostgreSQL trigger functions or
+    // non-transactional sequence probes. This isolated DDL tests rollback when
+    // api_change_events insertion fails after updating medications and versions.
+    fixture
+        .admin
+        .execute_unprepared(&format!(
+            "CREATE SEQUENCE {sync_fault};
+             GRANT USAGE ON SEQUENCE {sync_fault} TO med_tracker_app;
+             CREATE FUNCTION {sync_fault}() RETURNS trigger LANGUAGE plpgsql AS $$
+             BEGIN
+               IF NEW.household_id={household_id} AND NEW.record_type='Medication' AND NEW.action='update' THEN
+                 IF (SELECT location_id FROM medications WHERE id={medication_id})={} THEN
+                   PERFORM nextval('{sync_fault}');
+                 END IF;
+                 RAISE EXCEPTION 'synthetic medication sync rejection';
+               END IF;
+               RETURN NEW;
+             END $$;
+             CREATE TRIGGER {sync_fault} BEFORE INSERT ON api_change_events FOR EACH ROW EXECUTE FUNCTION {sync_fault}()",
+            kitchen.id
+        ))
+        .await
+        .unwrap();
+    let tenant = access::begin(&fixture.runtime, &fixture.scope, None)
+        .await
+        .unwrap();
+    let sync_failed = crud::update(
+        &tenant,
+        &fixture.medication_id.to_string(),
+        input(json!({"location_id": kitchen.id})),
+        None,
+        None,
+    )
+    .await;
+    tenant.rollback().await.unwrap();
+    let sync_reached: bool = fixture
+        .admin
+        .query_one_raw(
+            fixture.admin.get_database_backend().build(
+                &sea_orm::sea_query::Query::select()
+                    .column(sea_orm::sea_query::Alias::new("is_called"))
+                    .from(sea_orm::sea_query::Alias::new(sync_fault.clone()))
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "is_called")
+        .unwrap();
+    fixture
+        .admin
+        .execute_unprepared(&format!(
+            "DROP TRIGGER {0} ON api_change_events; DROP FUNCTION {0}(); DROP SEQUENCE {0}",
+            sync_fault
+        ))
+        .await
+        .unwrap();
+    assert!(matches!(sync_failed, Err(OperationError::Unavailable)));
+    assert!(sync_reached);
+    assert_eq!(
+        medication::Entity::find_by_id(fixture.medication_id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .location_id,
+        utility.id
+    );
+    assert_eq!(
+        fixture
+            .audits()
+            .filter(version::Column::Event.eq("api_update"))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        fixture
+            .changes()
+            .filter(api_change_event::Column::RecordType.eq("Medication"))
+            .filter(api_change_event::Column::Action.eq("update"))
+            .count(&fixture.admin)
+            .await
+            .unwrap(),
+        1
+    );
     fixture.close().await;
 }

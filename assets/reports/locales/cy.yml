@@ -1301,6 +1301,8 @@ cy:
       low_stock: Stoc isel
       edit: Golygu
       edit_medication: Golygu %{medication}
+      move: Symud
+      move_medication: Symud %{medication}
       refill: Ailgyflenwi
       refill_medication: Ailgyflenwi %{medication}
       empty_filtered: "Nid oes meddyginiaethau sy'n cyfateb i'r hidlwyr hyn."
@@ -1351,6 +1353,11 @@ cy:
         adjust_stock: Addasu stoc
         stock_adjustment_page: Tudalen addasu stoc
         edit_medication: Golygu Meddyginiaeth
+        move_medication: Symud Meddyginiaeth
+        moved_from_to: "Symudwyd %{medication} o %{from} i %{to}."
+        moved_to: "Symudwyd %{medication} i %{to}."
+        moved_filter_hint: "Nid yw wedi'i rhestru o dan %{location} mwyach."
+        return_filtered_inventory: "Yn ôl i stocrestr %{location}"
         delete_medication: Dileu Meddyginiaeth
         add_delivered: Ychwanegwch y stoc a ddanfonwyd at y cyflenwad presennol.
         latest_stock: Stoc ddiweddaraf
@@ -1424,6 +1431,20 @@ cy:
         low_in_days: Bydd y cyflenwad yn isel mewn %{days} diwrnod
         empty_in_days: Bydd y cyflenwad yn wag mewn %{days} diwrnod
       location: Lleoliad
+    move:
+      title: "Symud Meddyginiaeth"
+      current_location: "Lleoliad presennol"
+      current_supply: "Cyflenwad sy'n weddill"
+      destination: "Lleoliad cyrchfan"
+      select_destination: "Dewiswch leoliad..."
+      missing_location_hint: "Angen lleoliad storio arall?"
+      submit: "Symud Meddyginiaeth"
+      cancel: "Yn ôl at y Feddyginiaeth"
+      review_latest: "Adolygu'r manylion diweddaraf"
+      conflict: "Newidiodd y feddyginiaeth tra oedd y ffurflen hon ar agor. Adolygwch y manylion diweddaraf cyn cadw."
+      same_location: "rhaid iddo fod yn wahanol i'r lleoliad presennol"
+      unavailable_location: "ddim ar gael yn y cartref hwn"
+      back_to_move: "Yn ôl i Symud Meddyginiaeth"
       adjust_inventory: Addasu Stocrestr
     adjust_inventory_modal:
       adjust_inventory: Addasu Stocrestr

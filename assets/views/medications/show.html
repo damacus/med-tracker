@@ -1,12 +1,13 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="max-w-6xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/medications">{{ labels.medications.index.title }}</a>
+  <a class="link" href="{{ inventory_url | default(value='/households/' ~ slug ~ '/medications') }}">{{ labels.medications.index.title }}</a>
   <div class="border-b border-base-300 pb-6 mt-4">
     <p class="text-sm font-semibold text-base-content/70">{{ labels.medications.show.profile }}</p>
     <h1 class="text-3xl font-semibold mt-1">{{ name }}</h1>
     <p class="text-base-content/70 mt-2">{{ location_name }}</p>
   </div>
+  {% if moved_notice %}<div role="status" class="alert mt-6"><span>{{ moved_notice }}</span>{% if filtered_inventory_url %} <a class="link font-semibold" href="{{ filtered_inventory_url }}">{{ filtered_inventory_label }}</a>{% endif %}</div>{% endif %}
   {% if error %}<p id="dose-error" role="alert" class="alert mt-6">{{ error }}</p>{% endif %}
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)] gap-6 mt-6">
   {% if description %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 lg:row-start-1"><div class="card-body">
@@ -53,7 +54,7 @@
   {% if dose_history | length > 0 %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-5{% elif description or warnings %}lg:row-start-4{% else %}lg:row-start-3{% endif %}" role="region" aria-labelledby="dose-history-heading"><div class="card-body">
     <h2 class="card-title" id="dose-history-heading">{{ labels.medications.show.browser.dose_history }}</h2>
     <ol class="space-y-2">{% for take in dose_history %}
-      <li class="flex flex-wrap gap-x-2"><strong>{{ take.person_name }}</strong>{% if take.dose_label %}<span>{{ take.dose_label }}</span>{% endif %}{% if take.taken_at %}<time datetime="{{ take.taken_at_iso }}">{{ take.taken_at }}</time>{% endif %}{% if take.historical_entry %}<span>{{ labels.medications.dose_dialog.historical_label }}</span>{% endif %}</li>
+      <li class="flex flex-wrap gap-x-2"><strong>{{ take.person_name }}</strong>{% if take.dose_label %}<span>{{ take.dose_label }}</span>{% endif %}{% if take.location_name %}<span>{{ take.location_name }}</span>{% endif %}{% if take.taken_at %}<time datetime="{{ take.taken_at_iso }}">{{ take.taken_at }}</time>{% endif %}{% if take.historical_entry %}<span>{{ labels.medications.dose_dialog.historical_label }}</span>{% endif %}</li>
     {% endfor %}</ol>
   </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-5{% elif description or warnings %}lg:row-start-4{% else %}lg:row-start-3{% endif %}" role="region" aria-label="{{ labels.medications.show.browser.dose_history }}">
     <details><summary class="cursor-pointer font-semibold text-base-content/70">{{ labels.medications.show.browser.dose_history }}</summary><p class="mt-2">{{ labels.medications.show.browser.no_doses }}</p></details>
@@ -68,6 +69,7 @@
   <section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-2 lg:row-start-4" aria-labelledby="medication-management-heading"><div class="card-body">
     <h2 id="medication-management-heading" class="card-title">{{ labels.medications.show.browser.manage_medication }}</h2>
     <div class="flex flex-wrap items-center gap-2">
+      <a class="btn btn-ghost w-fit" href="{{ move_url | default(value='/households/' ~ slug ~ '/medications/' ~ medication_id ~ '/move') }}">{{ labels.medications.show.browser.move_medication }}</a>
       <button type="button" class="btn btn-ghost w-fit" data-dialog-open="adjust-stock-dialog">{{ labels.medications.show.browser.adjust_stock }}</button>
       <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust">{{ labels.medications.show.browser.stock_adjustment_page }}</a>
       <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/edit">{{ labels.medications.show.browser.edit_medication }}</a>

@@ -40,8 +40,59 @@ fn location_data(record: &location::Model) -> Value {
     json!({"id":record.id,"name":record.name,"description":record.description})
 }
 
-pub(super) fn draft(record: Option<&location::Model>) -> HashMap<String, String> {
-    HashMap::from([
+pub(super) fn valid_return_to(slug: &str, value: Option<&str>) -> Option<String> {
+    let value = value.map(str::trim).filter(|value| !value.is_empty())?;
+    let prefix = format!("/households/{slug}/medications/");
+    if !value.starts_with(&prefix)
+        || value.contains('#')
+        || value.contains('\\')
+        || value.chars().any(|ch| ch.is_control())
+    {
+        return None;
+    }
+    let parsed = url::Url::parse(&format!("http://localhost{value}")).ok()?;
+    if parsed.host_str() != Some("localhost")
+        || !parsed.path().starts_with(&prefix)
+        || parsed.path().contains("//")
+        || parsed.path().contains("..")
+    {
+        return None;
+    }
+    Some(value.to_owned())
+}
+
+pub(super) fn return_to_destination(
+    slug: &str,
+    return_to: Option<&str>,
+    destination_id: i64,
+) -> Option<String> {
+    let return_to = valid_return_to(slug, return_to)?;
+    let mut parsed = url::Url::parse(&format!("http://localhost{return_to}")).ok()?;
+    let pairs: Vec<(String, String)> = parsed
+        .query_pairs()
+        .filter(|(key, _)| key != "destination_id")
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
+        .collect();
+    {
+        let mut query = parsed.query_pairs_mut();
+        query.clear();
+        for (key, value) in &pairs {
+            query.append_pair(key, value);
+        }
+        query.append_pair("destination_id", &destination_id.to_string());
+    }
+    Some(match parsed.query() {
+        Some(query) if !query.is_empty() => format!("{}?{query}", parsed.path()),
+        _ => parsed.path().to_owned(),
+    })
+}
+
+pub(super) fn draft(
+    slug: &str,
+    record: Option<&location::Model>,
+    return_to: Option<&str>,
+) -> HashMap<String, String> {
+    let mut draft = HashMap::from([
         (
             "name".into(),
             record.map(|record| record.name.clone()).unwrap_or_default(),
@@ -58,7 +109,13 @@ pub(super) fn draft(record: Option<&location::Model>) -> HashMap<String, String>
                 .map(|record| locations::representation(record).1)
                 .unwrap_or_default(),
         ),
-    ])
+    ]);
+    if record.is_none()
+        && let Some(return_to) = valid_return_to(slug, return_to)
+    {
+        draft.insert("return_to".into(), return_to);
+    }
+    draft
 }
 
 pub(super) fn form(
@@ -79,6 +136,12 @@ pub(super) fn form(
     ));
     data["latest_url"] =
         json!(record.map(|record| format!("/households/{slug}/locations/{}/edit", record.id)));
+    if record.is_none()
+        && let Some(return_to) = valid_return_to(slug, draft.get("return_to").map(String::as_str))
+    {
+        data["return_to"] = json!(return_to);
+        data["back_url"] = json!(return_to);
+    }
     data["draft"] = json!(draft);
     data
 }

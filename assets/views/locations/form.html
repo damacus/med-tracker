@@ -8,13 +8,18 @@
     <form id="location-form" method="post" action="{{ action }}" class="flex flex-col gap-4">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{{ draft.etag }}">
+      {% if return_to %}<input type="hidden" name="return_to" value="{{ return_to }}">{% endif %}
       <label for="name" class="font-semibold">Name</label>
       <input id="name" name="name" class="input w-full" value="{{ draft.name }}" required {% if name_invalid %}aria-invalid="true" aria-describedby="form-error-name"{% endif %}>
       <label for="description" class="font-semibold">Description</label>
       <textarea id="description" name="description" class="textarea w-full" {% if description_invalid %}aria-invalid="true" aria-describedby="form-error-description"{% endif %}>{{ draft.description }}</textarea>
       <div class="flex flex-wrap items-center justify-start gap-3 mt-4">
         <button type="submit" class="btn btn-neutral w-fit">Save Location</button>
+        {% if back_url %}
+        <a class="btn btn-ghost w-fit" href="{{ back_url }}">{{ labels.medications.move.back_to_move | default(value="Back to Move Medication") }}</a>
+        {% else %}
         <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/locations">Back to Locations</a>
+        {% endif %}
       </div>
     </form>
   </div></div>

@@ -42,6 +42,7 @@ pub struct DoseHistory {
     pub person_name: String,
     pub amount: Option<String>,
     pub unit: Option<String>,
+    pub location_name: Option<String>,
     pub taken_at: Option<chrono::NaiveDateTime>,
     pub historical_entry: bool,
 }
@@ -357,6 +358,22 @@ pub async fn detail(
             .into_iter()
             .map(|person| (person.id, person.name))
             .collect();
+    let history_location_ids: Vec<i64> = takes
+        .iter()
+        .filter_map(|take| take.taken_from_location_id)
+        .collect();
+    let history_locations: HashMap<i64, String> = if history_location_ids.is_empty() {
+        HashMap::new()
+    } else {
+        location::Entity::find()
+            .in_tenant(household_id)
+            .filter(location::Column::Id.is_in(history_location_ids))
+            .all(tenant.transaction())
+            .await?
+            .into_iter()
+            .map(|row| (row.id, row.name))
+            .collect()
+    };
     let dose_history = takes
         .into_iter()
         .filter_map(|take| {
@@ -371,6 +388,9 @@ pub async fn detail(
                 person_name: history_people.get(person_id)?.clone(),
                 amount: take.dose_amount.map(|value| value.normalize().to_string()),
                 unit: take.dose_unit,
+                location_name: take
+                    .taken_from_location_id
+                    .and_then(|id| history_locations.get(&id).cloned()),
                 taken_at: take.taken_at,
                 historical_entry: take.historical_entry,
             })

@@ -1,0 +1,33 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold">{{ title }}</h1>
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  {% if changed %}<a class="link mt-4 inline-block" href="{{ latest_url }}">{{ labels.medications.move.review_latest }}</a>{% endif %}
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body gap-4">
+    <dl class="grid gap-4 sm:grid-cols-3 border-b border-base-300 pb-4">
+      <div><dt class="text-xs font-semibold uppercase tracking-wide text-base-content/70">{{ labels.medications.dose_dialog.medication }}</dt><dd class="mt-1 font-semibold">{{ name }}</dd></div>
+      <div><dt class="text-xs font-semibold uppercase tracking-wide text-base-content/70">{{ labels.medications.move.current_location }}</dt><dd class="mt-1 font-semibold">{{ current_location_name }}</dd></div>
+      <div><dt class="text-xs font-semibold uppercase tracking-wide text-base-content/70">{{ labels.medications.move.current_supply }}</dt><dd class="mt-1 font-semibold">{{ quantity_label }}</dd></div>
+    </dl>
+    <form id="medication-move-form" tabindex="-1" method="post" action="{{ action }}" class="grid gap-6">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="etag" value="{{ etag }}">
+      {% if filter_location_id %}<input type="hidden" name="filter_location_id" value="{{ filter_location_id }}">{% endif %}
+      {% if filter_category %}<input type="hidden" name="filter_category" value="{{ filter_category }}">{% endif %}
+      <div class="grid gap-2 min-w-0">
+        <label for="location_id" class="font-semibold">{{ labels.medications.move.destination }}</label>
+        <select id="location_id" name="location_id" class="select w-full min-w-0" required {% if location_invalid %}aria-invalid="true" aria-describedby="form-error-location_id"{% endif %}>
+          <option value="">{{ labels.medications.move.select_destination }}</option>
+          {% for location in locations %}<option value="{{ location.id }}" {% if location.id == selected_location %}selected{% endif %}>{{ location.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <p class="text-sm">{{ labels.medications.move.missing_location_hint }} <a class="link font-semibold" href="{{ add_location_url }}">{{ labels.locations.index.add_location }}</a></p>
+      <div class="flex flex-wrap items-center justify-start gap-3 mt-2">
+        <button type="submit" class="btn btn-neutral w-fit">{{ labels.medications.move.submit }}</button>
+        <a class="btn btn-ghost w-fit" href="{{ back_url }}">{{ labels.medications.move.cancel }}</a>
+      </div>
+    </form>
+  </div></div>
+</section>
+{% endblock content %}

@@ -41,6 +41,11 @@ struct ShowRequest {
     record_source_type: Option<String>,
     record_source_id: Option<i64>,
     record_person_id: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_from: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    filter_location_id: Option<i64>,
+    filter_category: Option<String>,
 }
 
 #[derive(Default, serde::Deserialize)]
@@ -48,6 +53,10 @@ struct InventoryQuery {
     #[serde(default, deserialize_with = "stock_check::empty_location")]
     location_id: Option<i64>,
     category: Option<String>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_id: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_from: Option<i64>,
 }
 
 pub fn routes() -> Routes {
@@ -70,6 +79,10 @@ pub fn routes() -> Routes {
             get(show).post(management::update),
         )
         .add("/{slug}/medications/{id}/edit", get(management::edit))
+        .add(
+            "/{slug}/medications/{id}/move",
+            get(management::open_move).post(management::apply_move),
+        )
         .add(
             "/{slug}/medications/{id}/destroy",
             post(management::destroy),
@@ -176,6 +189,37 @@ async fn index(
         Ok(value) => value,
         Err(_) => return unavailable(),
     };
+    let moved_notice = if let Some(moved_id) = filters.moved_id
+        && let Ok(snapshot) = medications::read_stock_snapshot(&tenant, &moved_id.to_string()).await
+    {
+        let medication_name = snapshot.representation["data"]["display_name"]
+            .as_str()
+            .unwrap_or("Medication");
+        let location_name = |id: i64| {
+            inventory
+                .locations
+                .iter()
+                .find(|location| location.id == id)
+                .map(|location| location.name.as_str())
+        };
+        let to_name = location_name(snapshot.medication.location_id).unwrap_or("Unknown");
+        let from_name = filters.moved_from.and_then(location_name);
+        let mut banner = rendering::moved_banner(&labels, medication_name, from_name, to_name);
+        if let Some(filtered_id) = filters.location_id
+            && filtered_id != snapshot.medication.location_id
+            && let Some(filtered_name) = location_name(filtered_id)
+        {
+            let hint = labels["medications"]["show"]["browser"]["moved_filter_hint"]
+                .as_str()
+                .unwrap_or("It is no longer listed under %{location}.")
+                .replace("%{location}", filtered_name);
+            banner.push(' ');
+            banner.push_str(&hint);
+        }
+        Some(banner)
+    } else {
+        None
+    };
     let response = rendering::index(
         &view,
         &token,
@@ -184,6 +228,7 @@ async fn index(
             inventory,
             location_id: filters.location_id,
             category: filters.category.as_deref(),
+            moved_notice,
         },
         locale,
         labels,
@@ -263,6 +308,28 @@ async fn show(
         .as_ref()
         .cloned()
         .unwrap_or_else(|| forms::dose(&detail, principal.time_zone()));
+    let locations = if input.moved_from.is_some() || input.filter_location_id.is_some() {
+        crate::models::care::locations::list(&tenant)
+            .await
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    let find_location = |location_id: Option<i64>| {
+        location_id.and_then(|id| {
+            locations
+                .iter()
+                .find(|location| location.id == id)
+                .map(|location| location.name.clone())
+        })
+    };
+    let navigation = rendering::ShowNavigation {
+        moved_from_id: input.moved_from,
+        moved_from_name: find_location(input.moved_from),
+        filter_location_id: input.filter_location_id,
+        filter_location_name: find_location(input.filter_location_id),
+        filter_category: input.filter_category,
+    };
     let response = rendering::detail(
         &view,
         &token,
@@ -277,6 +344,7 @@ async fn show(
             draft: &draft,
             error: None,
             open: selected.is_some(),
+            navigation: Some(navigation),
         },
     );
     if tenant.commit().await.is_err() {
@@ -427,6 +495,7 @@ async fn take(
                     draft: &draft,
                     error: Some(&error),
                     open: true,
+                    navigation: None,
                 },
             );
             if tenant.commit().await.is_err() {

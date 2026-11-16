@@ -14,7 +14,7 @@ use crate::models::{
 };
 use axum::{
     Extension,
-    extract::Form as AxumForm,
+    extract::{Form as AxumForm, Query},
     http::{StatusCode, header},
     response::IntoResponse,
 };
@@ -69,9 +69,10 @@ async fn new(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(query): Query<HashMap<String, String>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .form(None, None, None)
+        .form(None, None, None, query.get("return_to").map(String::as_str))
         .await
 }
 
@@ -84,7 +85,7 @@ async fn edit(
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .form(Some(&id), None, None)
+        .form(Some(&id), None, None, None)
         .await
 }
 
