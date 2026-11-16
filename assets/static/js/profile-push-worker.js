@@ -1,12 +1,26 @@
 let transitionStarting = false;
 const pendingDisplays = new Set();
+const offlinePage = '<!doctype html><html lang="en-GB"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f8fafc"><title>Offline | MedTracker</title><style>body{font:1rem system-ui,sans-serif;background:#f8fafc;color:#17233a;margin:0;min-height:100vh;display:grid;place-items:center}main{max-width:30rem;padding:2rem}a{color:#075985}</style><main><h1>You are offline</h1><p>Connect to the internet to use MedTracker.</p><p><a href="/">Try again</a></p></main></html>';
 
 self.addEventListener('install', event => { event.waitUntil(self.skipWaiting()); });
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     (await self.registration.getNotifications()).forEach(notification => notification.close());
+    await caches.delete('medtracker-static-v3').catch(() => {});
     await self.clients.claim();
   })());
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
+  if (request.mode !== 'navigate') return;
+  event.respondWith(fetch(request, { cache: 'no-store' }).catch(() => new Response(offlinePage, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } })));
 });
 
 self.addEventListener('message', event => {

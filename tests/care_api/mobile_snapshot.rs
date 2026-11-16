@@ -207,7 +207,7 @@ async fn mobile_snapshot_returns_a_v1_portable_payload() {
         .unwrap();
     app.close().await;
     assert_eq!(status, 200);
-    assert_ne!(cache_control.as_deref(), Some("no-store"));
+    assert_eq!(cache_control.as_deref(), Some("no-store"));
     let data = &body["data"];
     let mut keys: Vec<&str> = data
         .as_object()

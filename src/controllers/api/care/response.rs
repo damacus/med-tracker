@@ -186,6 +186,9 @@ pub(super) fn success(
         crate::telemetry::ids::enrich_error(&mut body);
     }
     let mut response = (status, AxumJson(body)).into_response();
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     response.headers_mut().insert(
         "x-request-id",
         HeaderValue::from_str(request_id).expect("Generated request UUID"),

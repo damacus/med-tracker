@@ -19,7 +19,10 @@
   }
   async function compatibleRegistration() {
     let registration = await navigator.serviceWorker?.getRegistration('/');
-    if (!registration?.active) return registration;
+    if (!registration?.active) {
+      navigator.serviceWorker?.register('/profile-service-worker.js', { scope: '/', updateViaCache: 'none' }).catch(() => {});
+      return registration;
+    }
     try {
       const status = await workerMessage(registration.active, 'auth-transition-status', undefined, 250);
       if (status.protocol === 1 && registration.active.state === 'activated') return registration;
