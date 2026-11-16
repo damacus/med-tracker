@@ -1,6 +1,11 @@
-<article class="dashboard-timeline-row border-b border-base-300 py-5" data-dashboard-task>
-  <time class="font-bold text-sm">{{ row.time }}</time>
-  {% include "dashboard/identity.html" %}
-  <div><h3 class="font-bold">{{ row.medication }}</h3><p class="text-sm text-base-content/70">{{ row.dose }}</p></div>
-  <span class="badge text-xs">{{ row.status_label }}</span>
-</article>
+<li class="dashboard-timeline-row" data-dashboard-task data-status="{{ row.status }}" data-occurrence-key="{{ row.occurrence_key | default(value='') }}" data-row-id="{{ row.id }}">
+  <div class="dashboard-timeline-time">{% if row.scheduled_at %}<time datetime="{{ row.scheduled_at }}">{{ row.time }}</time>{% elif row.actual_taken_at %}<time datetime="{{ row.actual_taken_at }}">{{ row.time }}</time>{% else %}<span>{{ row.time }}</span>{% endif %}</div>
+  <span class="dashboard-timeline-node" aria-hidden="true">{% if row.outcome == 'taken' %}✓{% elif row.outcome == 'not_taken' %}−{% endif %}</span>
+  <article class="dashboard-timeline-card">
+    <h3>{{ row.medication }}</h3>
+    <p class="dashboard-dose">{{ row.dose }}</p>
+    {% include "dashboard/identity.html" %}
+    {% if row.actual_taken_at %}<p class="dashboard-supporting">{{ labels.dashboard.timeline.taken_at }} <time datetime="{{ row.actual_taken_at }}">{{ row.actual_time }}</time></p>{% endif %}
+    <div class="dashboard-row-footer"><span class="dashboard-status" data-status="{{ row.status }}">{{ row.status_label }}</span>{% include "dashboard/actions.html" %}</div>
+  </article>
+</li>

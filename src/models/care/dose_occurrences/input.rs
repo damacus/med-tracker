@@ -30,6 +30,23 @@ pub(super) enum ActionInput {
 }
 
 impl ChangeInput {
+    pub(crate) fn browser_take(
+        key: &str,
+        attempt: doses::TakeAttempt,
+    ) -> Result<Self, OperationError> {
+        let (taken_at, client_uuid) = attempt.occurrence_identity()?;
+        Ok(Self {
+            fields: Ok(ChangeFields {
+                key: key.to_owned(),
+                action: ActionInput::Take {
+                    taken_at: Ok(taken_at),
+                    attempt: Some(Ok(attempt)),
+                    client_uuid: client_uuid.map(|value| value.to_string()),
+                },
+            }),
+        })
+    }
+
     pub fn not_taken(key: &str, reason: Option<&Value>, note: Option<&Value>) -> Self {
         Self {
             fields: Ok(ChangeFields {

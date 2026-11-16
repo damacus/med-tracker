@@ -504,13 +504,20 @@ async fn foreign_bound_schedule_hides_private_data_and_keeps_stock_local() {
                 // stock even though the manager cannot edit the plan.
                 page.goto(
                     &format!(
-                        "{}/households/foreign-fixture/dashboard?dashboard_person_id=73003&record_medication_id=80002&record_source_type=schedule&record_source_id={bound_id}&record_person_id=73003",
+                        "{}/households/foreign-fixture/dashboard?dashboard_person_id=73003",
                         journey.origin
                     ),
                     None,
                 )
                 .await
                 .unwrap();
+                let record = page
+                    .locator(format!(
+                        "#dashboard a[data-dashboard-action][href*='record_source_type=schedule'][href*='record_source_id={bound_id}&'][href*='record_occurrence_key=']"
+                    ))
+                    .first();
+                expect(record.clone()).to_be_visible().await.unwrap();
+                record.click(None).await.unwrap();
                 expect(page.locator("#record-dose-dialog[open]"))
                     .to_be_visible()
                     .await

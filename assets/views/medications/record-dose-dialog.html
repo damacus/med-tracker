@@ -3,11 +3,12 @@
     <h2 id="record-dose-dialog-title" class="text-xl font-semibold">{{ dose.dose_i18n.record }}</h2>
     <p class="mt-2 text-base-content/70">{{ dose.dose_i18n.confirm }}</p>
     {% if dose.dose_unmatched_error %}<p role="alert" class="alert mt-4" lang="{{ dose.dose_unmatched_error_lang }}" tabindex="-1" data-dialog-error-focus>{{ dose.dose_unmatched_error }}</p>{% endif %}
+    {% if dose.historical_record_url %}<a class="link inline-flex items-center min-h-11 mt-2" href="{{ dose.historical_record_url }}">{{ labels.medications.take_action.historical_record_link }}</a>{% endif %}
     {% for source in dose.assignments %}
       {% if source.can_record %}
       <form method="post" action="{% if dose.dashboard_return %}/households/{{ dose.slug }}/dashboard/doses/{{ dose.medication_id }}{% else %}/households/{{ dose.slug }}/medications/{{ dose.medication_id }}/doses{% endif %}" aria-labelledby="dose-confirm-{{ source.source_type }}-{{ source.id }} dose-classification-{{ source.source_type }}-{{ source.id }}" data-dose-form data-dose-current-available="{{ source.available }}" data-dose-preview-url="/households/{{ dose.slug }}/medications/{{ dose.medication_id }}/doses/preview" class="grid gap-4 mt-4 p-4 rounded-box border border-base-300 bg-base-200 min-w-0">
         <input type="hidden" name="authenticity_token" value="{{ dose.authenticity_token }}">
-        {% if dose.dashboard_return %}<input type="hidden" name="dashboard_person_id" value="{{ dose.dashboard_person_id }}"><input type="hidden" name="dashboard_grouping" value="{{ dose.dashboard_grouping }}">{% endif %}
+        {% if dose.dashboard_return %}<input type="hidden" name="dashboard_person_id" value="{{ dose.dashboard_person_id }}"><input type="hidden" name="dashboard_grouping" value="{{ dose.dashboard_grouping }}">{% if dose.record_occurrence_key %}<input type="hidden" name="record_occurrence_key" value="{{ dose.record_occurrence_key }}">{% endif %}{% if dose.record_occurrence_etag %}<input type="hidden" name="record_occurrence_etag" value="{{ dose.record_occurrence_etag }}">{% endif %}{% endif %}
         <input type="hidden" name="client_uuid" value="{{ source.draft.client_uuid }}">
         <input type="hidden" name="source_type" value="{{ source.draft.source_type }}">
         <input type="hidden" name="source_id" value="{{ source.draft.source_id }}">

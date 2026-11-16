@@ -43,6 +43,28 @@ function openDialog(url, links, id = 'record-dose-dialog', opener = null) {
 const recording = 'record_medication_id=74001&record_source_type=person_medication&record_source_id=75001&record_person_id=73001';
 const base = 'https://example.test/households/synthetic/dashboard';
 
+test('dashboard cancellation restores the selected occurrence among doses from the same treatment', () => {
+  let focused = '';
+  const links = ['first', 'second'].map(key => ({
+    href: `${base}?${recording}&record_occurrence_key=${key}&record_occurrence_etag=current`,
+    focus() { focused = key; },
+    scrollIntoView() {},
+  }));
+  const result = openDialog(`${base}?${recording}&record_occurrence_key=second&record_occurrence_etag=previous&dashboard_person_id=73001&tag=a&tag=b#routine`, links);
+  assert.equal(focused, 'second');
+  assert.equal(result.href, `${base}?dashboard_person_id=73001&tag=a&tag=b#routine`);
+});
+
+test('an as-needed action does not restore focus to a scheduled occurrence of the same treatment', () => {
+  let focused = '';
+  const links = [
+    { href: `${base}?${recording}&record_occurrence_key=scheduled`, focus() { focused = 'scheduled'; }, scrollIntoView() {} },
+    { href: `${base}?${recording}`, focus() { focused = 'as-needed'; }, scrollIntoView() {} },
+  ];
+  openDialog(`${base}?${recording}`, links);
+  assert.equal(focused, 'as-needed');
+});
+
 test('dashboard cancellation focuses the matching action and preserves other URL state', () => {
   let focused = '';
   let scrolled = false;

@@ -101,6 +101,44 @@ pub async fn authorize(
     )
     .await
 }
+
+pub(crate) async fn browser_take_target(
+    tenant: &TenantTransaction,
+    kind: &str,
+    id: &str,
+    medication_id: i64,
+    occurrence_key: Option<&str>,
+    secret: &Arc<[u8]>,
+) -> Result<bool, OperationError> {
+    authorize(tenant, kind, id, "take").await?;
+    let source = source(tenant, kind, id, true).await?;
+    let (source_medication_id, as_needed) = match &source {
+        Source::Schedule(row) => (row.medication_id, schedule_as_needed(row)),
+        Source::Assignment(row) => (row.medication_id, row.administration_kind == 1),
+    };
+    if source_medication_id != medication_id {
+        return Err(OperationError::NotFound);
+    }
+    let occurrence_key = occurrence_key.filter(|value| !value.is_empty());
+    if as_needed {
+        if occurrence_key.is_some() {
+            return Err(invalid_occurrence());
+        }
+        return Ok(true);
+    }
+    let key = occurrence_key
+        .ok_or_else(|| invalid("key", "Choose the scheduled dose from today's timeline."))?;
+    find_row(
+        tenant.transaction(),
+        secret,
+        &source,
+        key,
+        tenant.settings(),
+    )
+    .await?
+    .ok_or_else(invalid_occurrence)?;
+    Ok(false)
+}
 pub async fn list(
     tenant: &TenantTransaction,
     kind: &str,
@@ -108,9 +146,15 @@ pub async fn list(
     query: RangeQuery,
     secret: &Arc<[u8]>,
 ) -> Result<Value, OperationError> {
-    list_with_projection(tenant, kind, id, query, secret, |secret, source, row| {
-        row_value(secret, source, row, tenant.settings())
-    })
+    list_with_projection(
+        tenant,
+        kind,
+        id,
+        query,
+        secret,
+        false,
+        |secret, source, row| row_value(secret, source, row, tenant.settings()),
+    )
     .await
 }
 
@@ -138,24 +182,33 @@ pub(crate) async fn browser_list(
     query: RangeQuery,
     secret: &Arc<[u8]>,
 ) -> Result<Value, OperationError> {
-    list_with_projection(tenant, kind, id, query, secret, |secret, source, row| {
-        let mut value = row_value(secret, source, row, tenant.settings());
-        let (amount, unit) = match source {
-            Source::Schedule(schedule) => {
-                let preview = doses::browser_schedule_preview(schedule.clone(), row.window_start);
-                (preview.amount, preview.unit)
-            }
-            Source::Assignment(assignment) => (
-                assignment
-                    .dose_amount
-                    .map(|amount| amount.normalize().to_string()),
-                assignment.dose_unit.clone(),
-            ),
-        };
-        value["prescribed_amount"] = json!(amount);
-        value["prescribed_unit"] = json!(unit);
-        value
-    })
+    list_with_projection(
+        tenant,
+        kind,
+        id,
+        query,
+        secret,
+        true,
+        |secret, source, row| {
+            let mut value = row_value(secret, source, row, tenant.settings());
+            let (amount, unit) = match source {
+                Source::Schedule(schedule) => {
+                    let preview =
+                        doses::browser_schedule_preview(schedule.clone(), row.window_start);
+                    (preview.amount, preview.unit)
+                }
+                Source::Assignment(assignment) => (
+                    assignment
+                        .dose_amount
+                        .map(|amount| amount.normalize().to_string()),
+                    assignment.dose_unit.clone(),
+                ),
+            };
+            value["prescribed_amount"] = json!(amount);
+            value["prescribed_unit"] = json!(unit);
+            value
+        },
+    )
     .await
 }
 
@@ -165,6 +218,7 @@ async fn list_with_projection(
     id: &str,
     query: RangeQuery,
     secret: &Arc<[u8]>,
+    execution: bool,
     project: impl Fn(&Arc<[u8]>, &Source, &Occurrence) -> Value,
 ) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
@@ -176,7 +230,18 @@ async fn list_with_projection(
         .zip(query.end_date.as_deref().and_then(date))
         .filter(|(start, end)| end >= start && (*end - *start).num_days() <= 30)
         .ok_or_else(|| invalid("date_range", "must contain at most 31 inclusive days"))?;
-    let rows = projected(tenant.transaction(), &source, start, end, tenant.settings()).await?;
+    let rows = if execution {
+        projection::projected_execution(
+            tenant.transaction(),
+            &source,
+            start,
+            end,
+            tenant.settings(),
+        )
+        .await?
+    } else {
+        projected(tenant.transaction(), &source, start, end, tenant.settings()).await?
+    };
     let data: Vec<Value> = rows
         .iter()
         .map(|row| project(secret, &source, row))
@@ -342,8 +407,30 @@ pub async fn change(
             )
             .await?;
             let take = match outcome {
-                doses::Outcome::Created(row) | doses::Outcome::Replayed(row) => row,
+                doses::Outcome::Created(take) => take,
+                doses::Outcome::Replayed(take) => {
+                    if row
+                        .record
+                        .as_ref()
+                        .is_none_or(|record| record.medication_take_id != Some(take.id))
+                    {
+                        return Err(conflict("already_resolved"));
+                    }
+                    take
+                }
             };
+            if let Some(linked) = dose_occurrence::Entity::find()
+                .in_tenant(tenant.scope().household_id)
+                .filter(dose_occurrence::Column::MedicationTakeId.eq(take.id))
+                .one(tenant.transaction())
+                .await?
+                && row
+                    .record
+                    .as_ref()
+                    .is_none_or(|record| record.id != linked.id)
+            {
+                return Err(conflict("already_resolved"));
+            }
             if row
                 .record
                 .as_ref()

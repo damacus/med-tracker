@@ -2,7 +2,9 @@ use super::medications::{authentication_error, begin, operation_error, request_i
 use crate::controllers::shell::{ShellView as TeraView, ShellViewEngine as ViewEngine};
 use crate::models::{
     access,
-    care::{administration, browser_query, dashboard, doses, report_pdf, reports},
+    care::{
+        administration, browser_query, dashboard, dose_occurrences, doses, report_pdf, reports,
+    },
     entities::{account, location, medication, person},
     errors::OperationError,
 };
@@ -30,6 +32,8 @@ struct Selection {
     record_source_type: Option<String>,
     record_source_id: Option<i64>,
     record_person_id: Option<i64>,
+    record_occurrence_key: Option<String>,
+    record_occurrence_etag: Option<String>,
 }
 
 pub fn routes() -> Routes {
@@ -59,17 +63,8 @@ async fn show(
         Ok(Some(value)) => value,
         _ => return unavailable(),
     };
-    let variant = owner.preferences["dashboard_variant"]
-        .as_str()
-        .filter(|value| {
-            matches!(
-                *value,
-                "current" | "time_first" | "family_lanes" | "calm_focus"
-            )
-        })
-        .unwrap_or("current");
     let selected = match query.dashboard_person_id.as_deref() {
-        None if variant != "family_lanes" => {
+        None => {
             let candidates = match access::person_queries::household_people(tenant.scope())
                 .filter(
                     person::Column::Id
@@ -86,14 +81,18 @@ async fn show(
             candidates
                 .iter()
                 .find(|person| person.id == tenant.membership().person_id)
-                .or(candidates.first())
                 .map(|person| person.id)
         }
-        None | Some("all") => None,
+        Some("all") => None,
         Some(value) => match value.parse::<i64>() {
             Ok(id) if id > 0 => Some(id),
             _ => return operation_error(OperationError::NotFound),
         },
+    };
+    let grouping = if query.dashboard_grouping.as_deref() == Some("time") {
+        "time"
+    } else {
+        "person"
     };
     let locale = report_pdf::locale(
         headers
@@ -186,7 +185,62 @@ async fn show(
             }) else {
                 return operation_error(OperationError::NotFound);
             };
-            super::medications::forms::dose_for(source, medication_id, principal.time_zone())
+            let mut draft =
+                super::medications::forms::dose_for(source, medication_id, principal.time_zone());
+            if let Some(key) = query
+                .record_occurrence_key
+                .as_deref()
+                .filter(|key| !key.is_empty())
+            {
+                let today = chrono::Utc::now()
+                    .with_timezone(&principal.time_zone())
+                    .date_naive();
+                let occurrences = match dose_occurrences::with_dashboard_timezone(
+                    principal.time_zone(),
+                    dose_occurrences::projected_for_dashboard(&tenant, &[source.person_id], today),
+                )
+                .await
+                {
+                    Ok(rows) => rows,
+                    Err(error) => return operation_error(error),
+                };
+                let Some(occurrence) = occurrences.iter().find(|row| {
+                    row.occurrence_key == key
+                        && row.source_type == source.source_type
+                        && row.source_id == source.id
+                        && row.person_id == source.person_id
+                        && row.medication_id == medication_id
+                }) else {
+                    return operation_error(OperationError::NotFound);
+                };
+                if occurrence.outcome != "open"
+                    || query
+                        .record_occurrence_etag
+                        .as_deref()
+                        .filter(|value| !value.is_empty())
+                        != occurrence.occurrence_etag.as_deref()
+                {
+                    return operation_error(OperationError::Conflict {
+                        code: "sync_conflict".into(),
+                        details: json!({"error":"This scheduled dose has changed. Refresh the timeline to review its current outcome."}),
+                    });
+                }
+                draft.insert("record_occurrence_key".into(), key.to_owned());
+                if let Some(etag) = query.record_occurrence_etag.as_ref() {
+                    draft.insert("record_occurrence_etag".into(), etag.clone());
+                }
+            } else if !snapshot["rows"].as_array().is_some_and(|rows| {
+                rows.iter().any(|row| {
+                    row["source_type"] == source.source_type
+                        && row["source_id"] == source.id
+                        && row["person_id"] == source.person_id
+                        && row["medication_id"] == medication_id
+                        && row["as_needed"] == true
+                })
+            }) {
+                return operation_error(OperationError::NotFound);
+            }
+            draft
         };
         detail.assignments.retain(|source| {
             source.source_type == super::medications::forms::field(&draft, "source_type")
@@ -218,6 +272,13 @@ async fn show(
                         .map(|id| id.to_string())
                         .as_deref()
                         == Some(super::medications::forms::field(&draft, "source_id"))
+                    && (failure.is_some()
+                        || row["as_needed"] == true
+                        || row["occurrence_key"].as_str()
+                            == Some(super::medications::forms::field(
+                                &draft,
+                                "record_occurrence_key",
+                            )))
             })
         });
         let stock_ids: Vec<i64> = source_row
@@ -254,20 +315,33 @@ async fn show(
         dose["authenticity_token"] = json!(authenticity_token);
         dose["can_record_any"] = json!(detail.assignments.iter().any(|source| source.can_record));
         dose["dashboard_return"] = json!(true);
+        dose["record_occurrence_key"] = json!(super::medications::forms::field(
+            &draft,
+            "record_occurrence_key"
+        ));
+        dose["record_occurrence_etag"] = json!(super::medications::forms::field(
+            &draft,
+            "record_occurrence_etag"
+        ));
+        if let Some(Extension(DoseFailure {
+            error: OperationError::Validation { details },
+            ..
+        })) = &failure
+            && details["errors"]["taken_at"] == json!(["does not match the occurrence window"])
+        {
+            dose["historical_record_url"] =
+                json!(format!("/households/{slug}/medications/{medication_id}"));
+        }
         dose["stock_options"] = json!(stock_options);
         dose["dose_i18n"]["stock_source"] =
             labels["medications"]["take_action"]["stock_source"].clone();
         dose["as_needed"] = source_row.map_or(json!(false), |row| row["as_needed"].clone());
-        dose["dashboard_person_id"] = json!(query.dashboard_person_id.as_deref().unwrap_or("all"));
-        dose["dashboard_grouping"] =
-            json!(if query.dashboard_grouping.as_deref() == Some("time") {
-                "time"
-            } else {
-                "person"
-            });
+        dose["dashboard_person_id"] =
+            json!(selected.map_or_else(|| "all".to_owned(), |id| id.to_string()));
+        dose["dashboard_grouping"] = json!(grouping);
         data["dose"] = dose;
     }
-    if variant == "current" {
+    {
         let people = match reports::accessible_people(&tenant, access::PersonAccess::View).await {
             Ok(people) => people
                 .into_iter()
@@ -291,14 +365,11 @@ async fn show(
             Err(error) => return operation_error(error),
         };
         data["insights"] = json!(history.smart_insights);
+        data["insights_start_date"] = json!(history.start_date.to_string());
+        data["insights_end_date"] = json!(history.end_date.to_string());
     }
     data["dashboard"] = snapshot;
-    data["variant"] = json!(variant);
-    data["grouping"] = json!(if query.dashboard_grouping.as_deref() == Some("time") {
-        "time"
-    } else {
-        "person"
-    });
+    data["grouping"] = json!(grouping);
     data["can_create_person"] = json!(can_create_person);
     data["version"] = json!(env!("CARGO_PKG_VERSION"));
     let hour = chrono::Utc::now()
@@ -430,13 +501,50 @@ async fn take(
     let result = async {
         let detail = browser_query::detail(&tenant, &id.to_string(), principal.time_zone()).await?;
         let input = super::medications::forms::take(&detail, &draft, principal.time_zone())?;
-        doses::execute_attempt_in_timezone(
-            &tenant,
-            input,
+        let kind = super::medications::forms::field(&draft, "source_type");
+        let source_id = super::medications::forms::field(&draft, "source_id");
+        let key = super::medications::forms::optional(&draft, "record_occurrence_key");
+        let secret = dose_occurrences::configured_signing_key(ctx.config.settings.as_ref())?;
+        let as_needed = dose_occurrences::with_dashboard_timezone(
             principal.time_zone(),
-            Some(principal.provenance()),
+            dose_occurrences::browser_take_target(
+                &tenant,
+                kind,
+                source_id,
+                id,
+                key.as_deref(),
+                &secret,
+            ),
         )
-        .await
+        .await?;
+        if as_needed {
+            doses::execute_attempt_in_timezone(
+                &tenant,
+                input,
+                principal.time_zone(),
+                Some(principal.provenance()),
+            )
+            .await?;
+        } else {
+            dose_occurrences::with_dashboard_timezone(
+                principal.time_zone(),
+                dose_occurrences::change(
+                    &tenant,
+                    (kind, source_id),
+                    "take",
+                    dose_occurrences::ChangeInput::browser_take(
+                        key.as_deref().unwrap_or_default(),
+                        input,
+                    )?,
+                    super::medications::forms::optional(&draft, "record_occurrence_etag")
+                        .as_deref(),
+                    &secret,
+                    Some(principal.provenance()),
+                ),
+            )
+            .await?;
+        }
+        Ok::<(), OperationError>(())
     }
     .await;
     let query = Selection {
@@ -462,7 +570,21 @@ async fn take(
             };
             axum::response::Redirect::to(&format!("/households/{slug}/dashboard?dashboard_person_id={person}&dashboard_grouping={grouping}")).into_response()
         }
-        Err(error) => {
+        Err(mut error) => {
+            if let OperationError::Validation { details } = &mut error {
+                if details["errors"]["taken_at"] == json!(["does not match the occurrence window"])
+                {
+                    details["error"] = json!(
+                        "This time is outside the selected scheduled dose window. Record a past dose from medication details."
+                    );
+                } else if details["code"] == "invalid_occurrence" {
+                    details["error"] = json!(
+                        "This scheduled dose is unavailable. Refresh today's timeline and choose a dose that is due."
+                    );
+                } else if details["errors"]["key"].is_array() {
+                    details["error"] = json!("Choose the scheduled dose from today's timeline.");
+                }
+            }
             if tenant.rollback().await.is_err() {
                 return unavailable();
             }

@@ -1,0 +1,5 @@
+<div class="dashboard-row-actions">
+  {% if row.can_record %}<a class="btn btn-primary rounded-full" data-dashboard-action href="{{ row.record_url }}&amp;dashboard_person_id={% if dashboard.selected %}{{ dashboard.selected }}{% else %}all{% endif %}&amp;dashboard_grouping={{ grouping }}">{{ row.action_label }}<span class="sr-only"> · {{ row.medication }} · {{ row.person_name }}{% if row.scheduled_at %} · {{ row.time }}{% endif %}</span></a>{% endif %}
+  {% if row.can_record_outcome %}<a class="btn btn-outline rounded-full" href="{{ row.history_url }}">{{ labels.dashboard.outcomes.not_taken }}<span class="sr-only"> · {{ row.medication }} · {{ row.person_name }}{% if row.scheduled_at %} · {{ row.time }}{% endif %}</span></a>{% endif %}
+  {% if not row.can_record and not row.can_record_outcome %}<a class="dashboard-details-link" href="/households/{{ slug }}/medications/{{ row.medication_id }}">{{ labels.dashboard.timeline.details }}<span class="sr-only"> · {{ row.medication }} · {{ row.person_name }}</span><span aria-hidden="true"> →</span></a>{% endif %}
+</div>
