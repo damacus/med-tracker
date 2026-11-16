@@ -346,6 +346,25 @@ test('real navigation and profile modules send one enhanced reset request withou
   });
 });
 
+test('first sign-in proceeds while worker registration is unavailable', async () => {
+  const state = flowHarness();
+  const form = state.document.createElement('form');
+  form.action = 'https://example.test/auth/oidc';
+  const button = state.document.createElement('button');
+  form.append(button);
+  state.host.append(form);
+  let registrations = 0;
+  state.navigator.serviceWorker.getRegistration = async () => undefined;
+  state.navigator.serviceWorker.register = () => { registrations += 1; return new Promise(() => {}); };
+  await state.environment(async () => {
+    state.installNavigation();
+    form.dispatchEvent(new FlowEvent('submit', { submitter: button }));
+    await settle();
+    assert.ok(registrations > 0);
+    assert.equal(state.native.length, 1);
+  });
+});
+
 test('sign-in replaces a cached legacy worker through the current worker URL', async () => {
   const state = flowHarness();
   const currentRegistration = await state.navigator.serviceWorker.getRegistration();

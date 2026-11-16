@@ -314,6 +314,10 @@ async fn account_only_invitation_opens_dashboard_at_desktop_and_mobile_sizes() {
                     .click(None)
                     .await
                     .unwrap();
+                expect(page.get_by_role(AriaRole::Heading, named("Choose a household")))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
                 page.goto(
                     &format!("{}/invitations/accept?token={invitation}", journey.origin),
                     None,

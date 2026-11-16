@@ -65,6 +65,9 @@ mod accessibility_journeys;
 #[path = "browser/login_layout.rs"]
 mod login_layout;
 
+#[path = "browser/pwa.rs"]
+mod pwa;
+
 #[path = "browser/dashboard_cancellation.rs"]
 mod dashboard_cancellation;
 

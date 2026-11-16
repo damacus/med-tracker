@@ -13,6 +13,16 @@ async fn health_events_documented_routes_create_read_update_and_revoke() {
         "{}/api/v1/households/{fixture_household_id}/health_events",
         app.origin
     );
+    let unauthenticated = app.client.get(&endpoint).send().await.unwrap();
+    assert_eq!(unauthenticated.status().as_u16(), 401);
+    assert_eq!(
+        unauthenticated.headers().get("cache-control").unwrap(),
+        "no-store"
+    );
+    assert_eq!(
+        unauthenticated.headers().get("www-authenticate").unwrap(),
+        "Bearer"
+    );
     let response = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"health_event": {
         "person_id":fixture_person_id.to_string(), "event_kind":"illness", "title":"Synthetic cold", "started_on":"2026-10-01"
     }})).send().await.unwrap();
@@ -27,6 +37,8 @@ async fn health_events_documented_routes_create_read_update_and_revoke() {
         .await
         .unwrap();
     let read_status = read.status().as_u16();
+    assert_eq!(read.headers().get("cache-control").unwrap(), "no-store");
+    assert!(read.headers().get("x-request-id").is_some());
     let etag = read
         .headers()
         .get("etag")
@@ -101,6 +113,7 @@ async fn health_events_documented_routes_create_read_update_and_revoke() {
         .await
         .unwrap();
     let denied_status = denied.status().as_u16();
+    assert_eq!(denied.headers().get("cache-control").unwrap(), "no-store");
     app.close().await;
     assert_eq!(
         (status, read_status, update_status, denied_status),

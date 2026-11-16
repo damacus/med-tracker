@@ -49,8 +49,10 @@ function worker(currentAccount = '71001', gate = { blocked: null }, statusWait =
     await statusWait;
     return { ok: true, json: async () => ({ account_id: currentAccount }) };
   };
-  runInNewContext(readFileSync('assets/static/js/profile-push-worker.js', 'utf8'), { self, URL, fetch, AbortSignal });
-  return { handlers, shown, opened, fetched, self };
+  const deletedCaches = [];
+  const caches = { delete: async name => { deletedCaches.push(name); } };
+  runInNewContext(readFileSync('assets/static/js/profile-push-worker.js', 'utf8'), { self, URL, fetch, AbortSignal, caches });
+  return { handlers, shown, opened, fetched, self, deletedCaches };
 }
 
 test('worker activation closes retained notifications before claiming open tabs', async () => {
@@ -69,6 +71,7 @@ test('worker activation closes retained notifications before claiming open tabs'
   state.handlers.activate({ waitUntil: value => { activated = value; } });
   await activated;
   assert.equal(claimed, true);
+  assert.deepEqual(state.deletedCaches, ['medtracker-static-v3']);
 });
 
 test('auth transition drains an in-flight display before acknowledging tray cleanup', async () => {

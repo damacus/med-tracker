@@ -37,8 +37,20 @@ pub fn routes() -> Routes {
         .add("/up", get(health))
         .add("/health", get(health))
         .add("/favicon.ico", get(favicon))
+        .add("/manifest.webmanifest", get(manifest))
+        .add("/manifest.json", get(manifest))
         .add("/profile-service-worker.js", get(profile_worker))
         .add("/service-worker.js", get(profile_worker))
+}
+
+async fn manifest() -> impl axum::response::IntoResponse {
+    (
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "application/manifest+json",
+        )],
+        include_str!("../assets/static/manifest.webmanifest"),
+    )
 }
 
 async fn favicon() -> impl axum::response::IntoResponse {
