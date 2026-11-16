@@ -71,6 +71,7 @@ impl<'a> Page<'a> {
         id: Option<&str>,
         submitted: Option<&HashMap<String, String>>,
         error: Option<&OperationError>,
+        return_to: Option<&str>,
     ) -> Response {
         let (_, tenant) = match begin(self.ctx, self.session, self.slug, &self.request_id).await {
             Ok(value) => value,
@@ -82,9 +83,12 @@ impl<'a> Page<'a> {
                 Some(id) => Some(locations::read(&tenant, id).await?),
                 None => None,
             };
-            let draft = submitted
-                .cloned()
-                .unwrap_or_else(|| rendering::draft(record.as_ref()));
+            let mut draft = rendering::draft(self.slug, record.as_ref(), return_to);
+            if let Some(submitted) = submitted {
+                for (key, value) in submitted {
+                    draft.insert(key.clone(), value.clone());
+                }
+            }
             Ok::<_, OperationError>(rendering::form(self.slug, record.as_ref(), &draft, error))
         }
         .await;
@@ -142,6 +146,24 @@ impl<'a> Page<'a> {
                 if tenant.commit().await.is_err() {
                     return unavailable();
                 }
+                if id.is_none()
+                    && !deleting
+                    && let Some(created_id) = saved
+                    && let Some(target) = rendering::return_to_destination(
+                        self.slug,
+                        Some(forms::field(&draft, "return_to")),
+                        created_id,
+                    )
+                {
+                    return (
+                        StatusCode::SEE_OTHER,
+                        [
+                            (header::LOCATION, target),
+                            (header::CACHE_CONTROL, "no-store".into()),
+                        ],
+                    )
+                        .into_response();
+                }
                 redirect(self.slug, saved)
             }
             Err(error) => {
@@ -154,7 +176,7 @@ impl<'a> Page<'a> {
                         None => operation_error(OperationError::NotFound),
                     }
                 } else {
-                    self.form(id, Some(&draft), Some(&error)).await
+                    self.form(id, Some(&draft), Some(&error), None).await
                 }
             }
         }

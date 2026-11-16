@@ -1296,6 +1296,8 @@ ga:
       low_stock: Stoc íseal
       edit: Cuir in eagar
       edit_medication: Cuir %{medication} in eagar
+      move: Bog
+      move_medication: Bog %{medication}
       refill: Athlíon
       refill_medication: Athlíon %{medication}
       empty_filtered: "Ní mheaitseálann aon chógas na scagairí seo."
@@ -1346,6 +1348,11 @@ ga:
         adjust_stock: Coigeartaigh stoc
         stock_adjustment_page: Leathanach coigeartaithe stoic
         edit_medication: Cuir Cógas in Eagar
+        move_medication: Bog Cógas
+        moved_from_to: "Bogadh %{medication} ó %{from} go %{to}."
+        moved_to: "Bogadh %{medication} go %{to}."
+        moved_filter_hint: "Níl sé liostaithe faoi %{location} a thuilleadh."
+        return_filtered_inventory: "Ar ais go fardal %{location}"
         delete_medication: Scrios Cógas
         add_delivered: Cuir an stoc seachadta leis an soláthar reatha.
         latest_stock: An stoc is déanaí
@@ -1420,6 +1427,20 @@ ga:
         empty_in_days: Beidh an soláthar folamh i gceann %{days} lá
       location: Suíomh
       adjust_inventory: Coigeartáil Fardal
+    move:
+      title: "Bog Cógas"
+      current_location: "Suíomh reatha"
+      current_supply: "Soláthar fágtha"
+      destination: "Suíomh ceann scríbe"
+      select_destination: "Roghnaigh suíomh..."
+      missing_location_hint: "An bhfuil suíomh stórála eile uait?"
+      submit: "Bog Cógas"
+      cancel: "Ar ais go dtí an Cógas"
+      review_latest: "Athbhreithnigh na sonraí is déanaí"
+      conflict: "Athraíodh an cógas fad is a bhí an fhoirm seo oscailte. Athbhreithnigh na sonraí is déanaí sula sábhálann tú."
+      same_location: "caithfidh sé a bheith difriúil ón suíomh reatha"
+      unavailable_location: "níl sé ar fáil sa teaghlach seo"
+      back_to_move: "Ar ais go Bog Cógas"
     administration:
       title: Taifead riaracháin do %{medication}
       subtitle: Roghnaigh an duine agus an plean ar mhaith leat an dáileog seo a thaifeadadh

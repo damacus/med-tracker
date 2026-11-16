@@ -6,7 +6,7 @@ use crate::models::{
         medications::{self, StockSnapshot},
     },
     entities::{
-        dosage, location, medication, medication_take, person, person_medication, schedule,
+        dosage, location, medication, medication_take, person, person_medication, schedule, version,
     },
     errors::OperationError,
 };
@@ -42,6 +42,7 @@ pub struct DoseHistory {
     pub person_name: String,
     pub amount: Option<String>,
     pub unit: Option<String>,
+    pub location_name: Option<String>,
     pub taken_at: Option<chrono::NaiveDateTime>,
     pub historical_entry: bool,
 }
@@ -357,6 +358,22 @@ pub async fn detail(
             .into_iter()
             .map(|person| (person.id, person.name))
             .collect();
+    let history_location_ids: Vec<i64> = takes
+        .iter()
+        .filter_map(|take| take.taken_from_location_id)
+        .collect();
+    let history_locations: HashMap<i64, String> = if history_location_ids.is_empty() {
+        HashMap::new()
+    } else {
+        location::Entity::find()
+            .in_tenant(household_id)
+            .filter(location::Column::Id.is_in(history_location_ids))
+            .all(tenant.transaction())
+            .await?
+            .into_iter()
+            .map(|row| (row.id, row.name))
+            .collect()
+    };
     let dose_history = takes
         .into_iter()
         .filter_map(|take| {
@@ -371,6 +388,9 @@ pub async fn detail(
                 person_name: history_people.get(person_id)?.clone(),
                 amount: take.dose_amount.map(|value| value.normalize().to_string()),
                 unit: take.dose_unit,
+                location_name: take
+                    .taken_from_location_id
+                    .and_then(|id| history_locations.get(&id).cloned()),
                 taken_at: take.taken_at,
                 historical_entry: take.historical_entry,
             })
@@ -489,6 +509,62 @@ pub async fn detail(
         can_adjust: can_adjust(tenant),
         location_name,
     })
+}
+
+pub struct MovedLocations {
+    pub from_id: i64,
+    pub from_name: String,
+    pub to_id: i64,
+    pub to_name: String,
+}
+
+pub async fn moved_locations(
+    tenant: &TenantTransaction,
+    medication_id: i64,
+    moved_from: i64,
+    moved_to: Option<i64>,
+) -> Result<Option<MovedLocations>, OperationError> {
+    access::recheck(tenant).await?;
+    let revisions = version::Entity::find()
+        .filter(version::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(version::Column::ItemType.eq("Medication"))
+        .filter(version::Column::ItemId.eq(medication_id))
+        .filter(version::Column::Event.eq("api_update"))
+        .order_by_desc(version::Column::Id)
+        .all(tenant.transaction())
+        .await?;
+    let Some((from_id, to_id)) = revisions.into_iter().find_map(|revision| {
+        let changes: serde_json::Value =
+            serde_json::from_str(revision.object_changes.as_deref()?).ok()?;
+        let pair = changes.get("location_id")?.as_array()?;
+        let from_id = pair.first()?.as_i64()?;
+        let to_id = pair.get(1)?.as_i64()?;
+        (from_id == moved_from
+            && from_id != to_id
+            && moved_to.is_none_or(|expected| expected == to_id))
+        .then_some((from_id, to_id))
+    }) else {
+        return Ok(None);
+    };
+    let rows = location::Entity::find()
+        .in_tenant(tenant.scope().household_id)
+        .filter(location::Column::Id.is_in([from_id, to_id]))
+        .all(tenant.transaction())
+        .await?;
+    let name_for = |target: i64| {
+        rows.iter()
+            .find(|row| row.id == target)
+            .map(|row| row.name.clone())
+    };
+    let (Some(from_name), Some(to_name)) = (name_for(from_id), name_for(to_id)) else {
+        return Ok(None);
+    };
+    Ok(Some(MovedLocations {
+        from_id,
+        from_name,
+        to_id,
+        to_name,
+    }))
 }
 
 pub fn can_adjust(tenant: &TenantTransaction) -> bool {

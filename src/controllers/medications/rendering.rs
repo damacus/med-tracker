@@ -46,6 +46,48 @@ pub(crate) fn appearance_context() -> Value {
         "palettes":[{"id":"default","label":"Command Centre"},{"id":"serene-sage","label":"Serene Sage"},{"id":"modern-clinical","label":"Modern Clinical"},{"id":"warm-earth","label":"Warm Earth"},{"id":"deep-lavender","label":"Deep Lavender"},{"id":"forest-care","label":"Forest Care"},{"id":"sunset-support","label":"Sunset Support"},{"id":"tech-indigo","label":"Tech Indigo"},{"id":"soft-rose","label":"Soft Rose"},{"id":"minty-fresh","label":"Minty Fresh"}] })
 }
 
+pub(super) fn query_string(params: &[(&str, Option<String>)]) -> String {
+    let pairs: Vec<(&str, &str)> = params
+        .iter()
+        .filter_map(|(key, value)| {
+            value
+                .as_deref()
+                .filter(|value| !value.is_empty())
+                .map(|value| (*key, value))
+        })
+        .collect();
+    if pairs.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "?{}",
+            serde_urlencoded::to_string(pairs).unwrap_or_default()
+        )
+    }
+}
+
+pub(super) fn moved_banner(
+    labels: &Value,
+    medication_name: &str,
+    from_name: Option<&str>,
+    to_name: &str,
+) -> String {
+    let browser = &labels["medications"]["show"]["browser"];
+    match from_name {
+        Some(from) => browser["moved_from_to"]
+            .as_str()
+            .unwrap_or("Moved %{medication} from %{from} to %{to}.")
+            .replace("%{medication}", medication_name)
+            .replace("%{from}", from)
+            .replace("%{to}", to_name),
+        None => browser["moved_to"]
+            .as_str()
+            .unwrap_or("Moved %{medication} to %{to}.")
+            .replace("%{medication}", medication_name)
+            .replace("%{to}", to_name),
+    }
+}
+
 pub fn index(
     view: &TeraView,
     token: &CsrfToken,
@@ -59,6 +101,7 @@ pub fn index(
         inventory,
         location_id,
         category,
+        moved_notice,
     } = page;
     let mut data = appearance_context();
     data["slug"] = json!(slug);
@@ -80,6 +123,11 @@ pub fn index(
     data["categories"] = json!(inventory.categories);
     data["current_location_id"] = json!(location_id);
     data["current_category"] = json!(category);
+    data["filter_query"] = json!(query_string(&[
+        ("filter_location_id", location_id.map(|id| id.to_string())),
+        ("filter_category", category.map(str::to_owned)),
+    ]));
+    data["moved_notice"] = json!(moved_notice);
     data["can_create"] = json!(permissions.create);
     data["can_adjust"] = json!(permissions.adjust);
     data["can_assign"] = json!(permissions.assign);
@@ -98,6 +146,15 @@ pub struct IndexPage<'a> {
     pub inventory: Inventory,
     pub location_id: Option<i64>,
     pub category: Option<&'a str>,
+    pub moved_notice: Option<String>,
+}
+
+#[derive(Default)]
+pub struct ShowNavigation {
+    pub moved: Option<crate::models::care::browser_query::MovedLocations>,
+    pub filter_location_id: Option<i64>,
+    pub filter_location_name: Option<String>,
+    pub filter_category: Option<String>,
 }
 
 pub fn detail(
@@ -114,7 +171,12 @@ pub fn detail(
         detail,
         presentation.zone,
         presentation.language,
-        DetailState::Dose(presentation.draft, presentation.error, presentation.open),
+        DetailState::Dose(
+            presentation.draft,
+            presentation.error,
+            presentation.open,
+            presentation.navigation,
+        ),
     )
 }
 
@@ -124,6 +186,7 @@ pub struct DosePresentation<'a> {
     pub draft: &'a HashMap<String, String>,
     pub error: Option<&'a OperationError>,
     pub open: bool,
+    pub navigation: Option<ShowNavigation>,
 }
 
 pub fn refill_failure(
@@ -201,6 +264,7 @@ enum DetailState<'a> {
         &'a HashMap<String, String>,
         Option<&'a OperationError>,
         bool,
+        Option<ShowNavigation>,
     ),
     Refill(&'a HashMap<String, String>, &'a OperationError),
     Management(&'a OperationError),
@@ -218,17 +282,40 @@ fn detail_with_state(
 ) -> Response {
     let language = crate::models::care::report_pdf::locale(requested_language);
     let dose_default = super::forms::dose(&detail, zone);
-    let (dose_draft, dose_error, dose_open, refill_failure, management_error, adjustment_failure) =
-        match state {
-            DetailState::Dose(draft, error, open) => (draft, error, open, None, None, None),
-            DetailState::Refill(draft, error) => {
-                (&dose_default, None, false, Some((draft, error)), None, None)
-            }
-            DetailState::Management(error) => (&dose_default, None, false, None, Some(error), None),
-            DetailState::Adjustment(draft, error) => {
-                (&dose_default, None, false, None, None, Some((draft, error)))
-            }
-        };
+    let (
+        dose_draft,
+        dose_error,
+        dose_open,
+        navigation,
+        refill_failure,
+        management_error,
+        adjustment_failure,
+    ) = match state {
+        DetailState::Dose(draft, error, open, navigation) => {
+            (draft, error, open, navigation, None, None, None)
+        }
+        DetailState::Refill(draft, error) => (
+            &dose_default,
+            None,
+            false,
+            None,
+            Some((draft, error)),
+            None,
+            None,
+        ),
+        DetailState::Management(error) => {
+            (&dose_default, None, false, None, None, Some(error), None)
+        }
+        DetailState::Adjustment(draft, error) => (
+            &dose_default,
+            None,
+            false,
+            None,
+            None,
+            None,
+            Some((draft, error)),
+        ),
+    };
     let mut data = match dose_context(
         slug,
         &detail,
@@ -238,12 +325,78 @@ fn detail_with_state(
             draft: dose_draft,
             error: dose_error,
             open: dose_open,
+            navigation: None,
         },
     ) {
         Ok(data) => data,
         Err(_) => return super::unavailable(),
     };
     let labels = data["labels"].clone();
+    if let Some(navigation) = navigation {
+        let filter_query = query_string(&[
+            (
+                "filter_location_id",
+                navigation.filter_location_id.map(|id| id.to_string()),
+            ),
+            ("filter_category", navigation.filter_category.clone()),
+        ]);
+        data["move_url"] = json!(format!(
+            "/households/{slug}/medications/{}/move{filter_query}",
+            detail.stock.medication.id
+        ));
+        let inventory_filter = query_string(&[
+            (
+                "location_id",
+                navigation.filter_location_id.map(|id| id.to_string()),
+            ),
+            ("category", navigation.filter_category.clone()),
+            (
+                "moved_id",
+                navigation
+                    .moved
+                    .as_ref()
+                    .map(|_| detail.stock.medication.id.to_string()),
+            ),
+            (
+                "moved_from",
+                navigation
+                    .moved
+                    .as_ref()
+                    .map(|moved| moved.from_id.to_string()),
+            ),
+            (
+                "moved_to",
+                navigation
+                    .moved
+                    .as_ref()
+                    .map(|moved| moved.to_id.to_string()),
+            ),
+        ]);
+        data["inventory_url"] = json!(format!("/households/{slug}/medications{inventory_filter}"));
+        if let Some(moved) = navigation.moved {
+            let medication_name = data["name"].as_str().unwrap_or("Medication");
+            data["moved_notice"] = json!(moved_banner(
+                &labels,
+                medication_name,
+                Some(moved.from_name.as_str()),
+                &moved.to_name,
+            ));
+            if navigation.filter_location_id.is_some() || navigation.filter_category.is_some() {
+                data["filtered_inventory_url"] = data["inventory_url"].clone();
+                data["filtered_inventory_label"] = json!(match navigation.filter_location_name {
+                    Some(name) =>
+                        labels["medications"]["show"]["browser"]["return_filtered_inventory"]
+                            .as_str()
+                            .unwrap_or("Back to %{location} inventory")
+                            .replace("%{location}", &name),
+                    None => labels["medications"]["index"]["title"]
+                        .as_str()
+                        .unwrap_or("Medications")
+                        .to_owned(),
+                });
+            }
+        }
+    }
     data["etag"] = json!(detail.stock.etag);
     if let Some((draft, error)) = refill_failure {
         data["refill_open"] = json!(true);
@@ -427,6 +580,7 @@ fn detail_with_state(
         json!({
             "person_name": take.person_name,
             "dose_label": dose_label,
+            "location_name": take.location_name,
             "historical_entry": take.historical_entry,
             "taken_at": take.taken_at.map(|value| value.and_utc().with_timezone(&zone).format("%d %b %Y, %H:%M").to_string()),
             "taken_at_iso": take.taken_at.map(|value| value.and_utc().to_rfc3339()),
@@ -457,6 +611,7 @@ pub(crate) fn dose_context(
         draft: dose_draft,
         error: dose_error,
         open: dose_open,
+        navigation: _,
     } = presentation;
     let language = crate::models::care::report_pdf::locale(requested_language);
     let labels = crate::models::care::report_pdf::translations(language)

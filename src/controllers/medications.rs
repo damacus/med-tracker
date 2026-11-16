@@ -41,6 +41,13 @@ struct ShowRequest {
     record_source_type: Option<String>,
     record_source_id: Option<i64>,
     record_person_id: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_from: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_to: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    filter_location_id: Option<i64>,
+    filter_category: Option<String>,
 }
 
 #[derive(Default, serde::Deserialize)]
@@ -48,6 +55,12 @@ struct InventoryQuery {
     #[serde(default, deserialize_with = "stock_check::empty_location")]
     location_id: Option<i64>,
     category: Option<String>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_id: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_from: Option<i64>,
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    moved_to: Option<i64>,
 }
 
 pub fn routes() -> Routes {
@@ -70,6 +83,10 @@ pub fn routes() -> Routes {
             get(show).post(management::update),
         )
         .add("/{slug}/medications/{id}/edit", get(management::edit))
+        .add(
+            "/{slug}/medications/{id}/move",
+            get(management::open_move).post(management::apply_move),
+        )
         .add(
             "/{slug}/medications/{id}/destroy",
             post(management::destroy),
@@ -176,6 +193,49 @@ async fn index(
         Ok(value) => value,
         Err(_) => return unavailable(),
     };
+    let moved_notice = if let (Some(moved_id), Some(moved_from)) =
+        (filters.moved_id, filters.moved_from)
+        && let Ok(snapshot) = medications::read_stock_snapshot(&tenant, &moved_id.to_string()).await
+        && let Some(moved) = match browser_query::moved_locations(
+            &tenant,
+            snapshot.medication.id,
+            moved_from,
+            filters.moved_to,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(error) => return operation_error(error),
+        } {
+        let medication_name = snapshot.representation["data"]["display_name"]
+            .as_str()
+            .unwrap_or("Medication");
+        let mut banner = rendering::moved_banner(
+            &labels,
+            medication_name,
+            Some(moved.from_name.as_str()),
+            &moved.to_name,
+        );
+        if let Some(filtered_id) = filters.location_id
+            && filtered_id != snapshot.medication.location_id
+            && filtered_id != moved.to_id
+            && let Some(filtered_name) = inventory
+                .locations
+                .iter()
+                .find(|location| location.id == filtered_id)
+                .map(|location| location.name.as_str())
+        {
+            let hint = labels["medications"]["show"]["browser"]["moved_filter_hint"]
+                .as_str()
+                .unwrap_or("It is no longer listed under %{location}.")
+                .replace("%{location}", filtered_name);
+            banner.push(' ');
+            banner.push_str(&hint);
+        }
+        Some(banner)
+    } else {
+        None
+    };
     let response = rendering::index(
         &view,
         &token,
@@ -184,6 +244,7 @@ async fn index(
             inventory,
             location_id: filters.location_id,
             category: filters.category.as_deref(),
+            moved_notice,
         },
         locale,
         labels,
@@ -263,6 +324,35 @@ async fn show(
         .as_ref()
         .cloned()
         .unwrap_or_else(|| forms::dose(&detail, principal.time_zone()));
+    let moved = match input.moved_from {
+        Some(moved_from) => match browser_query::moved_locations(
+            &tenant,
+            detail.stock.medication.id,
+            moved_from,
+            input.moved_to,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(error) => return operation_error(error),
+        },
+        None => None,
+    };
+    let filter_location_name = match input.filter_location_id {
+        Some(filter_id) => crate::models::care::locations::list(&tenant)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .find(|location| location.id == filter_id)
+            .map(|location| location.name),
+        None => None,
+    };
+    let navigation = rendering::ShowNavigation {
+        moved,
+        filter_location_id: input.filter_location_id,
+        filter_location_name,
+        filter_category: input.filter_category,
+    };
     let response = rendering::detail(
         &view,
         &token,
@@ -277,6 +367,7 @@ async fn show(
             draft: &draft,
             error: None,
             open: selected.is_some(),
+            navigation: Some(navigation),
         },
     );
     if tenant.commit().await.is_err() {
@@ -427,6 +518,7 @@ async fn take(
                     draft: &draft,
                     error: Some(&error),
                     open: true,
+                    navigation: None,
                 },
             );
             if tenant.commit().await.is_err() {

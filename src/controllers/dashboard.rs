@@ -245,6 +245,7 @@ async fn show(
                 draft: &draft,
                 error: failure.as_ref().map(|Extension(failure)| &failure.error),
                 open: true,
+                navigation: None,
             },
         ) {
             Ok(value) => value,

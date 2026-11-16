@@ -1321,6 +1321,8 @@ en:
       low_stock: Low stock
       edit: Edit
       edit_medication: Edit %{medication}
+      move: Move
+      move_medication: Move %{medication}
       refill: Refill
       refill_medication: Refill %{medication}
       empty_filtered: "No medications match these filters."
@@ -1370,6 +1372,11 @@ en:
         adjust_stock: Adjust stock
         stock_adjustment_page: Stock adjustment page
         edit_medication: Edit Medication
+        move_medication: Move Medication
+        moved_from_to: "Moved %{medication} from %{from} to %{to}."
+        moved_to: "Moved %{medication} to %{to}."
+        moved_filter_hint: "It is no longer listed under %{location}."
+        return_filtered_inventory: "Back to %{location} inventory"
         delete_medication: Delete Medication
         add_delivered: Add delivered stock to the current supply.
         latest_stock: Latest stock
@@ -1444,6 +1451,20 @@ en:
         low_in_days: Supply will be low in %{days} days
         empty_in_days: Supply will be empty in %{days} days
       location: Location
+    move:
+      title: "Move Medication"
+      current_location: "Current location"
+      current_supply: "Remaining supply"
+      destination: "Destination location"
+      select_destination: "Select a location..."
+      missing_location_hint: "Need another storage location?"
+      submit: "Move Medication"
+      cancel: "Back to Medication"
+      review_latest: "Review latest details"
+      conflict: "Medication changed while this form was open. Review the latest details before saving."
+      same_location: "must be different from the current location"
+      unavailable_location: "is not available in this household"
+      back_to_move: "Back to Move Medication"
   people:
     index:
       error_heading: "Check the person details"

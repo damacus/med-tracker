@@ -1307,6 +1307,8 @@ es:
       low_stock: Stock bajo
       edit: Editar
       edit_medication: Editar %{medication}
+      move: Mover
+      move_medication: Mover %{medication}
       refill: Reponer
       refill_medication: Reponer %{medication}
       empty_filtered: "Ningún medicamento coincide con estos filtros."
@@ -1357,6 +1359,11 @@ es:
         adjust_stock: Ajustar existencias
         stock_adjustment_page: Página de ajuste de existencias
         edit_medication: Editar medicamento
+        move_medication: Mover medicamento
+        moved_from_to: "Se movió %{medication} de %{from} a %{to}."
+        moved_to: "Se movió %{medication} a %{to}."
+        moved_filter_hint: "Ya no aparece en %{location}."
+        return_filtered_inventory: "Volver al inventario de %{location}"
         delete_medication: Eliminar medicamento
         add_delivered: Añada las existencias entregadas al suministro actual.
         latest_stock: Existencias más recientes
@@ -1431,6 +1438,20 @@ es:
         empty_in_days: El suministro se agotará en %{days} días
       location: Ubicación
       adjust_inventory: Ajustar Inventario
+    move:
+      title: "Mover medicamento"
+      current_location: "Ubicación actual"
+      current_supply: "Suministro restante"
+      destination: "Ubicación de destino"
+      select_destination: "Seleccione una ubicación..."
+      missing_location_hint: "¿Necesita otra ubicación de almacenamiento?"
+      submit: "Mover medicamento"
+      cancel: "Volver al medicamento"
+      review_latest: "Revisar los últimos detalles"
+      conflict: "El medicamento cambió mientras este formulario estaba abierto. Revise los últimos detalles antes de guardar."
+      same_location: "debe ser diferente de la ubicación actual"
+      unavailable_location: "no está disponible en este hogar"
+      back_to_move: "Volver a Mover medicamento"
     adjust_inventory_modal:
       adjust_inventory: Ajustar Inventario
       current_quantity: Cantidad actual

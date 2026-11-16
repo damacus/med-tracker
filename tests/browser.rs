@@ -84,5 +84,7 @@ mod person_owned_schedules;
 #[path = "browser/personal_profile.rs"]
 mod personal_profile;
 
+#[path = "browser/medication_location_move.rs"]
+mod medication_location_move;
 #[path = "browser/report_table_layout.rs"]
 mod report_table_layout;
