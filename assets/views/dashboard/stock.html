@@ -1,4 +1,7 @@
-<section aria-labelledby="dashboard-stock-title"><h2 id="dashboard-stock-title" class="dashboard-section-title">{{ labels.dashboard.inventory.title }}</h2><div class="dashboard-panel dashboard-stock">
-  <ul role="list">{% for medicine in dashboard.inventory %}{% if loop.index <= 3 %}<li><a href="/households/{{ slug }}/medications/{{ medicine.id }}">{{ medicine.name }}</a><span class="dashboard-supporting">{{ medicine.supply }}</span><progress class="progress {% if medicine.low %}progress-error{% else %}progress-primary{% endif %}" value="{{ medicine.percentage }}" max="100" aria-label="{{ medicine.name }}: {{ medicine.supply }}"></progress></li>{% endif %}{% endfor %}</ul>
-  <a class="btn btn-outline rounded-full" href="/households/{{ slug }}/medications">{{ labels.layouts.mobile_rail.inventory }}</a>
-</div></section>
+<details class="dashboard-responsive-panel collapse collapse-arrow card card-sm card-border bg-base-100" data-dashboard-responsive-panel open>
+  <summary class="collapse-title min-h-11 text-base font-bold lg:hidden"><h2 class="inline">{{ labels.dashboard.inventory.title }}</h2></summary>
+  <div class="collapse-content"><h2 id="dashboard-stock-title" class="hidden pt-4 text-xl font-bold lg:block">{{ labels.dashboard.inventory.title }}</h2><div class="dashboard-stock card-body px-0 pb-0">
+    <ul class="grid gap-4" role="list">{% for medicine in dashboard.inventory %}{% if loop.index <= 3 %}<li class="grid gap-1"><a class="link inline-flex min-h-11 items-center text-sm font-semibold" href="/households/{{ slug }}/medications/{{ medicine.id }}">{{ medicine.name }}</a><span class="text-xs text-base-content/70">{{ medicine.supply }}</span><progress class="progress {% if medicine.low %}progress-error{% else %}progress-primary{% endif %} h-1 w-full" value="{{ medicine.percentage }}" max="100" aria-label="{{ medicine.name }}: {{ medicine.supply }}"></progress></li>{% endif %}{% endfor %}</ul>
+    <a class="btn btn-outline btn-sm min-h-11" href="/households/{{ slug }}/medications">{{ labels.layouts.mobile_rail.inventory }}</a>
+  </div></div>
+</details>

@@ -95,6 +95,112 @@ fn due_before_now(times: &[String]) -> usize {
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
+async fn dashboard_mobile_next_action_stays_above_dock_and_preserves_dose_flow() {
+    harness::journey(Viewport { width: 390, height: 844 }, |journey| {
+        Box::pin(async move {
+            schedules::Entity::update_many()
+                .col_expr(schedules::Column::Active, sea_orm::sea_query::Expr::value(false))
+                .filter(schedules::Column::HouseholdId.eq(72001))
+                .filter(schedules::Column::PersonId.eq(73001))
+                .exec(&journey.admin).await.unwrap();
+            seed_medication(journey, 80011, "Synthetic next action medicine with a long readable formulation and strength").await;
+            for _ in 0..2 {
+                seed_schedule(journey, 80011, 73001, &["00:00".into()]).await;
+            }
+            harness::sign_in(journey).await;
+            let page = &journey.page;
+            let path = format!("{}/households/persistence-fixture/dashboard?dashboard_person_id=73001&tag=one&tag=two#routine", journey.origin);
+            let mut first_key = String::new();
+            for (size, width, height) in [("mobile", 390, 844), ("reflow", 320, 700), ("desktop", 1280, 1000)] {
+                page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                page.goto(&path, None).await.unwrap();
+                expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+                page.evaluate::<(), ()>("async () => { await document.fonts.ready; }", None).await.unwrap();
+                let tray = page.locator("[data-dashboard-next-action]");
+                if size == "desktop" {
+                    expect(tray).to_be_hidden().await.unwrap();
+                    let (file, options) = screenshot("desktop-library.png");
+                    page.screenshot_to_file(&file, options).await.unwrap();
+                    let panel = page.locator("[data-dashboard-responsive-panel]").first();
+                    let panel_link = panel.locator("a[href]").first();
+                    panel_link.focus().await.unwrap();
+                    page.set_viewport_size(Viewport { width: 390, height: 844 }).await.unwrap();
+                    expect(panel_link.clone()).to_be_visible().await.unwrap();
+                    expect(panel_link).to_be_focused().await.unwrap();
+                    let remains_open: bool = panel.evaluate("panel => panel.open", None::<&()>).await.unwrap();
+                    assert!(remains_open, "resizing to mobile must not collapse a panel containing keyboard focus");
+                    continue;
+                }
+                expect(tray.clone()).to_be_visible().await.unwrap();
+                let next: serde_json::Value = page.evaluate("() => { const tray = document.querySelector('[data-dashboard-next-action]'); const link = tray.querySelector('a[href*=record_occurrence_key]'); const key = new URL(link.href).searchParams.get('record_occurrence_key'); const first = [...document.querySelectorAll('.dashboard-timeline-row[data-status=available]')].find(row => row.dataset.occurrenceKey); const visible = [...document.querySelectorAll('a[href*=record_occurrence_key]')].filter(a => a.getClientRects().length && new URL(a.href).searchParams.get('record_occurrence_key') === key); return {key, expected: first?.dataset.occurrenceKey, count: visible.length}; }", None::<&()>).await.unwrap();
+                assert_eq!(next["key"], next["expected"], "tray must select the first due scheduled occurrence");
+                assert_eq!(next["count"], 1, "selected occurrence must have exactly one visible record action");
+                first_key = next["key"].as_str().unwrap().to_owned();
+                if size == "mobile" {
+                    let (file, options) = screenshot("mobile-next-action-top.png");
+                    page.screenshot_to_file(&file, options).await.unwrap();
+                    page.set_viewport_size(Viewport { width: 390, height: 654 }).await.unwrap();
+                    let reference_fits: bool = tray.evaluate("tray => { const r = tray.getBoundingClientRect(); const dock = document.querySelector('.dock').getBoundingClientRect(); return r.top >= 60 && r.bottom <= dock.top && document.documentElement.scrollWidth <= innerWidth; }", None::<&()>).await.unwrap();
+                    assert!(reference_fits, "next action must fit the reference viewport above the dock");
+                    let (file, options) = screenshot("mobile-next-action-reference.png");
+                    page.screenshot_to_file(&file, options).await.unwrap();
+                    page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                }
+                page.evaluate::<(), ()>("() => { window.scrollTo(0, document.documentElement.scrollHeight); }", None).await.unwrap();
+                let clear: bool = tray.evaluate("tray => { const r = tray.getBoundingClientRect(); const dock = document.querySelector('.dock').getBoundingClientRect(); return r.top >= 60 && r.bottom <= dock.top && r.left >= 0 && r.right <= innerWidth && r.height > 0; }", None::<&()>).await.unwrap();
+                assert!(clear, "tray must remain visible above the dock at the page end ({width}px)");
+                let (file, options) = screenshot(&format!("mobile-next-action-{size}.png"));
+                page.screenshot_to_file(&file, options).await.unwrap();
+                for cancel in ["escape", "button"] {
+                    let opener = tray.locator("a[href*='record_occurrence_key=']");
+                    opener.press("Enter", None).await.unwrap();
+                    let dialog = page.locator("#record-dose-dialog");
+                    expect(dialog.clone()).to_be_visible().await.unwrap();
+                    page.evaluate::<(), ()>("() => { const url = new URL(location.href); url.searchParams.append('tag', 'one'); url.searchParams.append('tag', 'two'); url.hash = 'routine'; history.replaceState({retained: true}, '', url); }", None).await.unwrap();
+                    if cancel == "escape" { page.keyboard().press("Escape", None).await.unwrap(); }
+                    else { dialog.locator("[data-dialog-close]").press("Enter", None).await.unwrap(); }
+                    expect(dialog).to_be_hidden().await.unwrap();
+                    expect(opener.clone()).to_be_focused().await.unwrap();
+                    let restored: bool = opener.evaluate("a => { const r = a.getBoundingClientRect(); const dock = document.querySelector('.dock').getBoundingClientRect(); const url = new URL(location.href); return r.top >= 60 && r.bottom <= dock.top && url.searchParams.getAll('tag').join(',') === 'one,two' && url.hash === '#routine' && !url.searchParams.has('record_occurrence_key') && !url.searchParams.has('record_occurrence_etag') && history.state.retained === true; }", None::<&()>).await.unwrap();
+                    assert!(restored, "cancel must preserve navigation state and focus the visible tray opener");
+                }
+                page.evaluate::<(), ()>("async () => { document.documentElement.style.fontSize = '200%'; await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); }", None).await.unwrap();
+                let reflow: serde_json::Value = tray.evaluate("tray => { const r = tray.getBoundingClientRect(); const dock = document.querySelector('.dock').getBoundingClientRect(); const props = getComputedStyle(document.querySelector('#dashboard')); return { fits: document.documentElement.scrollWidth <= innerWidth && r.top >= 0 && r.bottom <= dock.top, viewport: {width: innerWidth, height: innerHeight}, docWidth: document.documentElement.scrollWidth, trayRect: r.toJSON(), dockRect: dock.toJSON(), scrollHeight: document.documentElement.scrollHeight, clientHeight: document.documentElement.clientHeight, props: {trayHeight: props.getPropertyValue('--dashboard-tray-height'), dockHeight: props.getPropertyValue('--dashboard-dock-height')} }; }", None::<&()>).await.unwrap();
+                let controls_clear: bool = tray.evaluate("tray => { const dock = document.querySelector('.dock').getBoundingClientRect(); return [...tray.querySelectorAll('a[data-dashboard-action], .dashboard-row-menu > summary')].every(control => { const r = control.getBoundingClientRect(); return r.top >= 0 && r.bottom <= dock.top && r.left >= 0 && r.right <= innerWidth && control.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }); }", None::<&()>).await.unwrap();
+                let (file, options) = screenshot(&format!("mobile-next-action-{size}-200-percent.png"));
+                page.screenshot_to_file(&file, options).await.unwrap();
+                assert_eq!(reflow["fits"], true, "long next action must reflow at 200% text without dock overlap: {reflow}");
+                assert!(controls_clear, "the enlarged tray actions must remain unobscured: {reflow}");
+                page.evaluate::<(), ()>("async () => { document.documentElement.style.fontSize = ''; await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); }", None).await.unwrap();
+            }
+            page.set_viewport_size(Viewport { width: 390, height: 844 }).await.unwrap();
+            page.goto(&path, None).await.unwrap();
+            for remaining in [1, 0] {
+                let tray = page.locator("[data-dashboard-next-action]");
+                expect(tray.clone()).to_be_visible().await.unwrap();
+                let action = tray.locator("a[href*='record_occurrence_key=']");
+                if remaining == 0 {
+                    let key: String = action.evaluate("a => new URL(a.href).searchParams.get('record_occurrence_key')", None::<&()>).await.unwrap();
+                    assert_ne!(key, first_key, "recording must advance to the next due occurrence");
+                }
+                action.press("Enter", None).await.unwrap();
+                let form = page.locator("#record-dose-dialog form[data-dose-form]");
+                expect(form.clone()).to_be_visible().await.unwrap();
+                form.locator("[name=actual_dose_amount]").fill("2", None).await.unwrap();
+                form.locator("button[type=submit]").press("Enter", None).await.unwrap();
+                expect(page.locator("#dashboard")).to_be_visible().await.unwrap();
+            }
+            expect(page.locator("[data-dashboard-next-action]")).to_be_hidden().await.unwrap();
+            let medicine = medications::Entity::find_by_id(80011).one(&journey.admin).await.unwrap().unwrap();
+            assert_eq!(medicine.current_supply, Some(Decimal::new(6, 0)), "two dose submissions deduct stock exactly once each");
+            let count = medication_takes::Entity::find().filter(medication_takes::Column::TakenFromMedicationId.eq(80011)).all(&journey.admin).await.unwrap().len();
+            assert_eq!(count, 2, "cancelling must not create doses");
+        })
+    }).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
 async fn dashboard_compact_cards_keep_identity_and_keyboard_secondary_actions() {
     harness::journey(Viewport { width: 1280, height: 1000 }, |journey| {
         Box::pin(async move {
@@ -136,19 +242,26 @@ async fn dashboard_compact_cards_keep_identity_and_keyboard_secondary_actions() 
                 }
                 let identified: bool = compact.first().evaluate("row => [...row.querySelectorAll('[aria-label], img[alt]')].some(node => (node.getAttribute('aria-label') || node.getAttribute('alt')) === 'Alexandra Synthetic Person With A Long Readable Name')", None::<&()>).await.unwrap();
                 assert!(identified, "avatar must expose the complete person name");
-                let corner: bool = compact.first().evaluate("row => { const card = row.querySelector('.dashboard-timeline-card').getBoundingClientRect(); const avatar = row.querySelector('.dashboard-avatar').getBoundingClientRect(); return avatar.top >= card.top && avatar.top - card.top <= 24 && avatar.right <= card.right && card.right - avatar.right <= 24; }", None::<&()>).await.unwrap();
+                let corner: bool = compact.first().evaluate("row => { const card = row.querySelector('.dashboard-timeline-card').getBoundingClientRect(); const avatar = row.querySelector('.dashboard-identity').getBoundingClientRect(); return avatar.top >= card.top && avatar.top - card.top <= 24 && avatar.right <= card.right && card.right - avatar.right <= 24; }", None::<&()>).await.unwrap();
                 assert!(corner, "patient avatar must stay in the card's top-right corner at {width}px");
                 let taken = page.locator(".dashboard-timeline-row:has(h3:text-is('Synthetic completed medicine'))");
                 let disabled: bool = taken.evaluate("row => [...row.querySelectorAll('button')].some(button => button.disabled && /Taken/.test(button.textContent))", None::<&()>).await.unwrap();
                 assert!(disabled, "completed dose must retain a disabled Taken button");
-                let aligned: bool = page.evaluate("() => { const open = document.querySelector('.dashboard-timeline-row[data-status=available] [data-dashboard-action]'); const taken = document.querySelector('[data-dashboard-taken]'); return !!open && !!taken && Math.abs(open.getBoundingClientRect().right - taken.getBoundingClientRect().right) < 1; }", None::<&()>).await.unwrap();
-                assert!(aligned, "Taken must replace Take in the same action position");
+                if size == "desktop" {
+                    let aligned: bool = page.evaluate("() => { const open = document.querySelector('.dashboard-timeline-row[data-status=available] [data-dashboard-action]'); const taken = document.querySelector('[data-dashboard-taken]'); return !!open && !!taken && Math.abs(open.getBoundingClientRect().right - taken.getBoundingClientRect().right) < 1; }", None::<&()>).await.unwrap();
+                    assert!(aligned, "Taken must replace Take in the same desktop action position");
+                } else {
+                    expect(page.locator("[data-dashboard-next-action]")).to_be_visible().await.unwrap();
+                }
                 let menu = compact.first().locator(".dashboard-row-menu");
                 let summary = menu.locator("summary");
                 summary.press("Enter", None).await.unwrap();
                 expect(menu.get_by_role(AriaRole::Link, Some(playwright_rs::protocol::GetByRoleOptions::default().name("More details").exact(false)))).to_be_visible().await.unwrap();
                 let skip = menu.get_by_role(AriaRole::Link, Some(playwright_rs::protocol::GetByRoleOptions::default().name("Skip").exact(false)));
                 expect(skip.clone()).to_be_visible().await.unwrap();
+                menu.evaluate::<(), ()>("async node => { await Promise.all(node.getAnimations({subtree: true}).map(animation => animation.finished.catch(() => {}))); }", None).await.unwrap();
+                let opacity: String = menu.locator(".dropdown-content").evaluate("node => getComputedStyle(node).opacity", None::<&()>).await.unwrap();
+                assert_eq!(opacity, "1", "open menu must finish its appearance animation before contrast auditing");
                 page.add_script_tag(Some(playwright_rs::protocol::AddScriptTagOptions::builder().content(std::fs::read_to_string("node_modules/axe-core/axe.min.js").unwrap()).build())).await.unwrap();
                 let violations: serde_json::Value = page.evaluate("async () => { const r = await axe.run(document.querySelector('#dashboard'), {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']}}); return r.violations; }", None::<&()>).await.unwrap();
                 assert_eq!(violations, serde_json::json!([]), "open menu accessibility at {width}px: {violations}");
@@ -196,7 +309,7 @@ async fn dashboard_timeline_lists_every_today_occurrence_once_in_order() {
             let timeline: serde_json::Value = page.evaluate(
                 "() => {
                     const rows = [...document.querySelectorAll('#dashboard [data-dashboard-task]')];
-                    const links = [...document.querySelectorAll('#dashboard a[href*=\"record_occurrence_key=\"]')].map(anchor => {
+                    const links = [...document.querySelectorAll('#dashboard a[href*=\"record_occurrence_key=\"]')].filter(anchor => anchor.getClientRects().length).map(anchor => {
                         const url = new URL(anchor.href);
                         return {
                             key: url.searchParams.get('record_occurrence_key'),
@@ -252,7 +365,7 @@ async fn dashboard_timeline_lists_every_today_occurrence_once_in_order() {
                 0,
                 "the timeline must not offer date navigation"
             );
-            expect(page.get_by_text("Smart Insights", false).first()).to_be_visible().await.unwrap();
+            expect(page.locator("#dashboard-insights-title")).to_be_visible().await.unwrap();
             expect(page.locator("#dashboard .dashboard-stock").get_by_role(AriaRole::Link, harness::named("Inventory"))).to_be_visible().await.unwrap();
 
             for (size, viewport) in [("desktop", Viewport { width: 1280, height: 900 }), ("mobile", Viewport { width: 360, height: 800 })] {
@@ -304,7 +417,7 @@ async fn dashboard_timeline_records_a_dose_against_its_occurrence() {
                     .unwrap();
                 let action = page
                     .locator(format!(
-                        "#dashboard a[href*='record_source_id={}'][href*='record_occurrence_key=']",
+                        "#dashboard a[href*='record_source_id={}'][href*='record_occurrence_key=']:visible",
                         scheduled.id
                     ))
                     .first();
@@ -355,7 +468,7 @@ async fn dashboard_timeline_records_a_dose_against_its_occurrence() {
                 );
 
                 expect(
-                    page.locator(".dashboard-timeline-row[data-status=taken] .dashboard-dose")
+                    page.locator(".dashboard-timeline-row[data-status=taken] .dashboard-row-content > p")
                         .first(),
                 )
                 .to_contain_text("3 tablets")
@@ -363,7 +476,7 @@ async fn dashboard_timeline_records_a_dose_against_its_occurrence() {
                 .unwrap();
                 assert_eq!(
                     page.locator(format!(
-                        "#dashboard a[href*='record_source_id={}'][href*='record_occurrence_key=']",
+                        "#dashboard a[href*='record_source_id={}'][href*='record_occurrence_key=']:visible",
                         scheduled.id
                     ))
                     .count()
@@ -392,10 +505,10 @@ async fn dashboard_timeline_cancelling_record_dialog_restores_occurrence_focus()
             harness::sign_in(journey).await;
             let page = &journey.page;
             let selector = format!(
-                "#dashboard a[href*='record_source_id={}'][href*='record_occurrence_key=']",
+                "#dashboard a[href*='record_source_id={}'][href*='record_occurrence_key=']:visible",
                 scheduled.id
             );
-            for (size, width, height) in [("desktop", 1280, 900), ("mobile", 360, 800)] {
+            for (size, width, height) in [("desktop", 1280, 900)] {
                 page.set_viewport_size(Viewport { width, height }).await.unwrap();
                 for cancel in ["escape", "button"] {
                     page.goto(&format!("{}/households/persistence-fixture/dashboard", journey.origin), None).await.unwrap();

@@ -513,7 +513,7 @@ async fn foreign_bound_schedule_hides_private_data_and_keeps_stock_local() {
                 .unwrap();
                 let record = page
                     .locator(format!(
-                        "#dashboard a[data-dashboard-action][href*='record_source_type=schedule'][href*='record_source_id={bound_id}&'][href*='record_occurrence_key=']"
+                        "#dashboard a[data-dashboard-action][href*='record_source_type=schedule'][href*='record_source_id={bound_id}&'][href*='record_occurrence_key=']:visible"
                     ))
                     .first();
                 expect(record.clone()).to_be_visible().await.unwrap();

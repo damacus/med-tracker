@@ -1,9 +1,13 @@
 <li class="dashboard-timeline-row" data-dashboard-task data-status="{{ row.status }}" data-occurrence-key="{{ row.occurrence_key | default(value='') }}" data-row-id="{{ row.id }}">
-  <div class="dashboard-timeline-time">{% if row.scheduled_at %}<time datetime="{{ row.scheduled_at }}">{{ row.time }}</time>{% elif row.actual_taken_at %}<time datetime="{{ row.actual_taken_at }}">{{ row.time }}</time>{% else %}<span>{{ row.time }}</span>{% endif %}</div>
-  <span class="dashboard-timeline-node" aria-hidden="true">{% if row.outcome == 'taken' %}✓{% elif row.outcome == 'not_taken' %}−{% endif %}</span>
-  <article class="dashboard-timeline-card">
-    <div class="dashboard-row-content"><h3>{{ row.medication }}</h3><p class="dashboard-dose">{{ row.dose }}{% if row.actual_taken_at %}<span class="dashboard-supporting"> · {{ labels.dashboard.timeline.taken_at }} <time datetime="{{ row.actual_taken_at }}">{{ row.actual_time }}</time></span>{% endif %}</p></div>
-    {% include "dashboard/identity.html" %}
-    <div class="dashboard-row-footer">{% if row.outcome != 'taken' %}<span class="dashboard-status" data-status="{{ row.status }}">{{ row.status_label }}</span>{% endif %}{% include "dashboard/actions.html" %}</div>
+  <hr aria-hidden="true" {% if row.outcome == 'taken' %}class="bg-success/60"{% endif %}>
+  <div class="dashboard-timeline-time timeline-start whitespace-nowrap text-xs font-bold tabular-nums sm:text-sm">{% if row.scheduled_at %}<time datetime="{{ row.scheduled_at }}">{{ row.time }}</time>{% elif row.actual_taken_at %}<time datetime="{{ row.actual_taken_at }}">{{ row.time }}</time>{% else %}<span>{{ row.time }}</span>{% endif %}</div>
+  <div class="timeline-middle {% if row.outcome == 'taken' %}text-success{% elif next_action and row.id == next_action.id %}text-primary{% else %}text-base-content/60{% endif %}" aria-hidden="true"><svg class="size-5" width="20" height="20"><use href="/static/dashboard-icons.svg#{% if row.outcome == 'taken' %}check_circle{% else %}clock{% endif %}"/></svg></div>
+  <article class="dashboard-timeline-card timeline-end card card-sm card-border bg-base-100 {% if row.outcome == 'taken' %}bg-success/5{% elif next_action and row.id == next_action.id %}outline outline-primary{% endif %}">
+    <div class="card-body gap-1">
+      <div class="dashboard-row-content min-w-0"><h3 class="card-title text-base leading-snug">{{ row.medication }}</h3><p class="text-sm">{{ row.dose }}{% if row.actual_taken_at %}<span class="text-xs text-base-content/70"> · {{ labels.dashboard.timeline.taken_at }} <time datetime="{{ row.actual_taken_at }}">{{ row.actual_time }}</time></span>{% endif %}</p></div>
+      {% include "dashboard/identity.html" %}
+      <div class="dashboard-row-footer card-actions items-center gap-2">{% if row.outcome != 'taken' %}<span class="dashboard-status badge badge-outline text-xs" data-status="{{ row.status }}">{{ row.status_label }}</span>{% endif %}{% include "dashboard/actions.html" %}</div>
+    </div>
   </article>
+  <hr aria-hidden="true" {% if row.outcome == 'taken' %}class="bg-success/60"{% endif %}>
 </li>

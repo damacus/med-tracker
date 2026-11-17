@@ -318,6 +318,15 @@ pub async fn read(
         }
     }
     rows.sort_by(|left, right| timeline_order(left).cmp(&timeline_order(right)));
+    let next_action = rows
+        .iter()
+        .find(|row| row["as_needed"] == false && row["can_record"] == true)
+        .or_else(|| {
+            rows.iter()
+                .find(|row| row["as_needed"] == false && row["status"] == "upcoming")
+        })
+        .cloned()
+        .unwrap_or(Value::Null);
     let mut actionable: Vec<_> = rows
         .iter()
         .filter(|row| matches!(row["status"].as_str(), Some("available" | "upcoming")))
@@ -356,6 +365,7 @@ pub async fn read(
         .or_else(|| inventory.first());
     let mut projection = json!({"periods":(["morning","afternoon","evening","anytime"].into_iter().filter(|period| rows.iter().any(|row| row["period"] == *period)).collect::<Vec<_>>()),"people":people.iter().map(|person| json!({"id":person.id,"name":person.name,"initials":initials(&person.name),"avatar":attachments.contains(&person.id),"gravatar_url":gravatars.get(&person.id)})).collect::<Vec<_>>(),"selected":selected,"selected_name":selected.and_then(|id| person_by_id.get(&id)).map(|person| json!(person.name)).unwrap_or_else(|| labels["dashboard"]["person_selector"]["all_family"].clone()),"selected_initials":selected.and_then(|id|person_by_id.get(&id)).map(|person|json!(initials(&person.name))).unwrap_or_else(||labels["dashboard"]["person_selector"]["all_family_initials"].clone()),"rows":rows,"lanes":lanes,"next":actionable.first(),"following":actionable.iter().skip(1).take(4).collect::<Vec<_>>(),"completed":completed,"inventory":inventory,"stock":stock,"tasks_left":routine.len(),"due_now":routine.iter().filter(|row| row["status"] == "available").count(),"next_due":if routine.iter().any(|row| row["status"] == "available") { labels["dashboard"]["stats"]["now"].clone() } else { routine.iter().filter(|row| row["status"] == "upcoming").filter_map(|row| row["time"].as_str()).min().map(|value| json!(value)).unwrap_or_else(|| labels["dashboard"]["stats"]["no_upcoming_doses"].clone()) },"date":today.format("%A, %b %-d").to_string()});
     projection["selected_avatar"] = json!(selected.is_some_and(|id| attachments.contains(&id)));
+    projection["next_action"] = next_action;
     projection["selected_gravatar_url"] = json!(selected.and_then(|id| gravatars.get(&id)));
     projection["timeline_rows"] = json!(
         projection["rows"]

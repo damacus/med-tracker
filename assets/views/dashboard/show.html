@@ -1,25 +1,27 @@
 {% extends "layouts/dashboard.html" %}
 {% block content %}
-<div id="dashboard" class="dashboard-page mx-auto" data-testid="dashboard-timeline">
+{% set next_action = dashboard.next_action | default(value=false) %}
+<div id="dashboard" class="dashboard-page mx-auto" data-testid="dashboard-timeline"{% if next_action %} data-dashboard-has-tray="true"{% endif %}>
+  {% set tray = false %}
   <header class="dashboard-heading">
-    <div><h1>{{ labels.dashboard.stats.due_today }}</h1><p class="dashboard-date">{{ dashboard.date }}</p></div>
-    <div class="dashboard-quick-actions">{% if can_add_medication %}<a class="btn btn-primary rounded-full" href="/households/{{ slug }}/medications/workflow"><svg aria-hidden="true" width="20" height="20"><use href="/static/dashboard-icons.svg#plus_circle"/></svg>{{ labels.dashboard.quick_actions.add_medication }}</a>{% endif %}</div>
+    <div><h1 class="text-3xl font-extrabold tracking-tight">{{ labels.dashboard.stats.due_today }}</h1><p class="mt-1 text-sm text-base-content/70">{{ dashboard.date }}</p></div>
+    <div class="dashboard-quick-actions hidden lg:flex">{% if can_add_medication %}<a class="btn rounded-full btn-primary min-h-11" href="/households/{{ slug }}/medications/workflow"><svg aria-hidden="true" width="20" height="20"><use href="/static/dashboard-icons.svg#plus_circle"/></svg>{{ labels.dashboard.quick_actions.add_medication }}</a>{% endif %}</div>
   </header>
   <nav aria-label="{{ labels.dashboard.person_selector.label }}" class="dashboard-person-nav">
-    <details class="dropdown dropdown-bottom dashboard-selector" data-testid="dashboard-person-selector-disclosure" data-dashboard-selector data-selected-person="{% if dashboard.selected %}{{ dashboard.selected }}{% else %}all{% endif %}">
-      <summary data-testid="dashboard-person-selector-summary"><span class="flex items-center gap-3 min-w-0"><span class="dashboard-avatar" aria-hidden="true">{{ dashboard.selected_initials }}{% if dashboard.selected_avatar %}<img src="/households/{{ slug }}/people/{{ dashboard.selected }}/avatar" alt="" data-avatar-image>{% elif dashboard.selected_gravatar_url %}<img src="{{ dashboard.selected_gravatar_url }}" alt="" referrerpolicy="no-referrer" data-avatar-image>{% endif %}</span><strong>{{ dashboard.selected_name }}</strong></span><span class="dashboard-selector-change">{{ labels.dashboard.person_selector.change_person }} <span aria-hidden="true">⌄</span></span></summary>
-      <div class="dropdown-content dashboard-person-options">
-        {% for person in dashboard.people %}<a href="?dashboard_person_id={{ person.id }}&amp;dashboard_grouping={{ grouping }}" {% if dashboard.selected == person.id %}aria-current="true"{% endif %} data-person-id="{{ person.id }}"><span class="dashboard-avatar" aria-hidden="true">{{ person.initials }}{% if person.avatar %}<img src="/households/{{ slug }}/people/{{ person.id }}/avatar" alt="" data-avatar-image>{% elif person.gravatar_url %}<img src="{{ person.gravatar_url }}" alt="" referrerpolicy="no-referrer" data-avatar-image>{% endif %}</span><span>{{ person.name }}</span></a>{% endfor %}
-        <a href="?dashboard_person_id=all&amp;dashboard_grouping={{ grouping }}" {% if not dashboard.selected %}aria-current="true"{% endif %} data-person-id="all"><span class="dashboard-avatar" aria-hidden="true">{{ labels.dashboard.person_selector.all_family_initials }}</span>{{ labels.dashboard.person_selector.all_family }}</a>
-      </div>
+    <details class="dashboard-selector dropdown dropdown-bottom" data-testid="dashboard-person-selector-disclosure" data-dashboard-selector data-selected-person="{% if dashboard.selected %}{{ dashboard.selected }}{% else %}all{% endif %}">
+      <summary class="btn rounded-full btn-outline min-h-11 h-auto w-full justify-between py-2" data-testid="dashboard-person-selector-summary"><div class="flex min-w-0 items-center gap-2"><div class="avatar avatar-placeholder shrink-0" aria-hidden="true"><div class="relative size-8 overflow-hidden rounded-full bg-base-300 text-xs font-semibold">{{ dashboard.selected_initials }}{% if dashboard.selected_avatar %}<img class="absolute inset-0 size-full object-cover" src="/households/{{ slug }}/people/{{ dashboard.selected }}/avatar" alt="" data-avatar-image>{% elif dashboard.selected_gravatar_url %}<img class="absolute inset-0 size-full object-cover" src="{{ dashboard.selected_gravatar_url }}" alt="" referrerpolicy="no-referrer" data-avatar-image>{% endif %}</div></div><strong class="whitespace-normal break-words">{{ dashboard.selected_name }}</strong></div><span class="shrink-0" aria-hidden="true">⌄</span><span class="sr-only">{{ labels.dashboard.person_selector.change_person }}</span></summary>
+      <ul class="dashboard-person-options menu dropdown-content z-40 max-h-[50dvh] w-full overflow-y-auto rounded-box bg-base-100 p-2 shadow-lg">
+        {% for person in dashboard.people %}<li><a class="min-h-11 {% if dashboard.selected == person.id %}menu-active{% endif %}" href="?dashboard_person_id={{ person.id }}&amp;dashboard_grouping={{ grouping }}" {% if dashboard.selected == person.id %}aria-current="true"{% endif %} data-person-id="{{ person.id }}"><div class="avatar avatar-placeholder shrink-0" aria-hidden="true"><div class="relative size-8 overflow-hidden rounded-full bg-base-300 text-xs font-semibold">{{ person.initials }}{% if person.avatar %}<img class="absolute inset-0 size-full object-cover" src="/households/{{ slug }}/people/{{ person.id }}/avatar" alt="" data-avatar-image>{% elif person.gravatar_url %}<img class="absolute inset-0 size-full object-cover" src="{{ person.gravatar_url }}" alt="" referrerpolicy="no-referrer" data-avatar-image>{% endif %}</div></div><span class="whitespace-normal break-words">{{ person.name }}</span></a></li>{% endfor %}
+        <li><a class="min-h-11 {% if not dashboard.selected %}menu-active{% endif %}" href="?dashboard_person_id=all&amp;dashboard_grouping={{ grouping }}" {% if not dashboard.selected %}aria-current="true"{% endif %} data-person-id="all"><div class="avatar avatar-placeholder" aria-hidden="true"><div class="size-8 rounded-full bg-base-300 text-xs font-semibold">{{ labels.dashboard.person_selector.all_family_initials }}</div></div>{{ labels.dashboard.person_selector.all_family }}</a></li>
+      </ul>
     </details>
   </nav>
   <div class="dashboard-content-grid">
     <div class="dashboard-main">
       <section aria-labelledby="dashboard-activity-title">
-        <h2 id="dashboard-activity-title" class="dashboard-section-title">{{ labels.dashboard.timeline.title }}</h2>
+        <h2 id="dashboard-activity-title" class="dashboard-section-title mb-4 text-xl font-bold">{{ labels.dashboard.timeline.title }}</h2>
         {% if dashboard.timeline_rows | length > 0 %}
-        <ol class="dashboard-timeline" role="list" aria-labelledby="dashboard-activity-title" data-dashboard-timeline>
+        <ol class="dashboard-timeline timeline timeline-vertical w-full" role="list" aria-labelledby="dashboard-activity-title" data-dashboard-timeline>
           {% set_global now_shown = false %}
           {% for row in dashboard.timeline_rows %}
             {% if not now_shown and row.order > dashboard.now_order %}{% include "dashboard/now.html" %}{% set_global now_shown = true %}{% endif %}
@@ -27,20 +29,21 @@
           {% endfor %}
           {% if not now_shown %}{% include "dashboard/now.html" %}{% endif %}
         </ol>
-        {% else %}<p class="dashboard-empty">{{ labels.dashboard.empty_state }}</p>{% endif %}
+        {% else %}<p class="card card-sm card-border bg-base-100 p-4 text-sm text-base-content/70">{{ labels.dashboard.empty_state }}</p>{% endif %}
       </section>
-      <details class="dashboard-as-needed" open>
-        <summary><h2>{{ labels.dashboard.as_needed.title }}</h2><span aria-hidden="true">⌄</span></summary>
-        <div class="dashboard-as-needed-choices">{% for row in dashboard.as_needed_rows %}{% include "dashboard/task.html" %}{% else %}<p class="dashboard-supporting">{{ labels.dashboard.timeline.as_needed_empty }}</p>{% endfor %}</div>
+      <details class="dashboard-as-needed collapse collapse-arrow card card-sm card-border bg-base-100 mt-4" open>
+        <summary class="collapse-title min-h-11 text-base font-bold"><h2 class="inline">{{ labels.dashboard.as_needed.title }}</h2></summary>
+        <div class="dashboard-as-needed-choices collapse-content grid gap-3">{% for row in dashboard.as_needed_rows %}{% include "dashboard/task.html" %}{% else %}<p class="text-sm text-base-content/70">{{ labels.dashboard.timeline.as_needed_empty }}</p>{% endfor %}</div>
       </details>
     </div>
     <aside class="dashboard-sidebar">
       {% include "dashboard/stock.html" %}
-      <section aria-labelledby="dashboard-insights-title"><h2 id="dashboard-insights-title" class="dashboard-section-title">{{ labels.dashboard.insights.title }}</h2>{% include "dashboard/insights.html" %}</section>
+      <details class="dashboard-responsive-panel collapse collapse-arrow card card-sm card-border bg-base-100" data-dashboard-responsive-panel open><summary class="collapse-title min-h-11 text-base font-bold lg:hidden"><h2 class="inline">{{ labels.dashboard.insights.title }}</h2></summary><div class="collapse-content"><h2 id="dashboard-insights-title" class="hidden pt-4 text-xl font-bold lg:block">{{ labels.dashboard.insights.title }}</h2>{% include "dashboard/insights.html" %}</div></details>
     </aside>
   </div>
+  {% include "dashboard/next-action.html" %}
   {% if dose %}{% include "medications/record-dose-dialog.html" %}{% endif %}
   <script src="/static/js/dashboard.js?v={{ asset_version }}" defer></script>
-  <footer class="dashboard-version">v{{ version }}</footer>
+  <footer class="mt-8 border-t border-base-300 pt-4 text-center text-xs text-base-content/70">v{{ version }}</footer>
 </div>
 {% endblock content %}

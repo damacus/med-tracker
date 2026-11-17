@@ -17,7 +17,7 @@ async fn dashboard_timeline_accessibility_and_reflow() {
             let directory = std::path::Path::new("docs/screenshots/dashboard-timeline");
             std::fs::create_dir_all(directory).unwrap();
             let engine = std::fs::read_to_string("node_modules/axe-core/axe.min.js").unwrap();
-            for (size, width, height) in [("desktop", 1280, 1000), ("mobile", 360, 800), ("reflow", 320, 800)] {
+            for (size, width, height) in [("desktop", 1280, 1000), ("mobile", 390, 844), ("reflow", 320, 700)] {
                 page.set_viewport_size(Viewport { width, height }).await.unwrap();
                 page.goto(&format!("{}/households/persistence-fixture/dashboard?dashboard_person_id=all", journey.origin), None).await.unwrap();
                 expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
@@ -30,6 +30,15 @@ async fn dashboard_timeline_accessibility_and_reflow() {
                     page.add_script_tag(Some(playwright_rs::protocol::AddScriptTagOptions::builder().content(engine.clone()).build())).await.unwrap();
                     let violations: serde_json::Value = page.evaluate("async () => { const r = await axe.run(document.querySelector('#dashboard'), {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']}}); return r.violations; }", None::<&()>).await.unwrap();
                     assert_eq!(violations, serde_json::json!([]), "dashboard accessibility violations at {width}px in {appearance}: {violations}");
+                    let menu = page.locator(".dashboard-timeline-row .dashboard-row-menu").first();
+                    menu.locator("summary").press("Enter", None).await.unwrap();
+                    menu.evaluate::<(), ()>("async node => { await Promise.all(node.getAnimations({subtree: true}).map(animation => animation.finished.catch(() => {}))); }", None).await.unwrap();
+                    let opacity: String = menu.locator(".dropdown-content").evaluate("node => getComputedStyle(node).opacity", None::<&()>).await.unwrap();
+                    assert_eq!(opacity, "1", "open menu must finish its appearance animation before contrast auditing");
+                    let violations: serde_json::Value = page.evaluate("async () => { const r = await axe.run(document.querySelector('#dashboard'), {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']}}); return r.violations; }", None::<&()>).await.unwrap();
+                    assert_eq!(violations, serde_json::json!([]), "open secondary-menu accessibility violations at {width}px in {appearance}: {violations}");
+                    page.keyboard().press("Escape", None).await.unwrap();
+                    expect(menu.locator("summary")).to_be_focused().await.unwrap();
                     if size != "reflow" {
                         page.screenshot_to_file(&directory.join(format!("{size}-{appearance}.png")), ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
                     }

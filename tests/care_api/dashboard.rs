@@ -53,6 +53,138 @@ fn take(
 }
 
 #[tokio::test]
+async fn dashboard_next_action_selects_exact_due_slot_without_completed_or_prn_rows() {
+    let app = Application::new().await;
+    let source = schedule(&app, 0, json!({"times":["00:00","00:00"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let before = snapshot(&app).await;
+    let first = before["timeline_rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+        .unwrap();
+    assert_eq!(&before["next_action"], first);
+    assert_eq!(before["next_action"]["can_record"], true);
+    assert_eq!(before["next_action"]["as_needed"], false);
+    take(
+        &app,
+        None,
+        Some(source.id),
+        2,
+        chrono::Utc::now().naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let after = snapshot(&app).await;
+    let second = after["timeline_rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| {
+            row["source_type"] == "schedule"
+                && row["source_id"] == source.id
+                && row["outcome"] == "open"
+        })
+        .unwrap();
+    assert_eq!(&after["next_action"], second);
+    assert_ne!(
+        after["next_action"]["occurrence_key"],
+        before["next_action"]["occurrence_key"]
+    );
+    assert_eq!(after["next_action"]["record_url"], second["record_url"]);
+    let tenant = access::begin(
+        &app.context.db,
+        &HouseholdScope {
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: "next-action-person-filter".into(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let selected = dashboard::read(
+        &tenant,
+        chrono_tz::UTC,
+        Some(app.fixture.minor.id),
+        &app.fixture.household.slug,
+        &json!({}),
+    )
+    .await
+    .unwrap();
+    assert!(selected["next_action"].is_null());
+    assert!(selected["timeline_rows"].as_array().unwrap().is_empty());
+    tenant.commit().await.unwrap();
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_next_action_uses_upcoming_fallback_and_is_null_when_blocked_or_complete() {
+    let app = Application::new().await;
+    let zone = if chrono::Utc::now().time() < chrono::NaiveTime::from_hms_opt(12, 0, 0).unwrap() {
+        chrono_tz::UTC
+    } else {
+        "Etc/GMT+12".parse().unwrap()
+    };
+    let source = schedule(&app, 0, json!({"times":["23:59"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let upcoming = snapshot_in_zone(&app, zone).await;
+    let row = upcoming["timeline_rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+        .unwrap();
+    assert_eq!(&upcoming["next_action"], row);
+    assert_eq!(upcoming["next_action"]["status"], "upcoming");
+    assert_eq!(upcoming["next_action"]["can_record"], false);
+    let mut medicine = app.fixture.medication.clone().into_active_model();
+    medicine.current_supply = Set(Some(Decimal::ZERO));
+    medicine.update(&app.fixture.admin).await.unwrap();
+    let blocked = snapshot_in_zone(&app, zone).await;
+    assert!(blocked["next_action"].is_null());
+    let mut medicine = app.fixture.medication.clone().into_active_model();
+    medicine.current_supply = Set(app.fixture.medication.current_supply);
+    medicine.update(&app.fixture.admin).await.unwrap();
+    take(
+        &app,
+        None,
+        Some(source.id),
+        2,
+        chrono::Utc::now().naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let complete = snapshot_in_zone(&app, zone).await;
+    assert!(
+        complete["timeline_rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+            .all(|row| row["outcome"] == "taken")
+    );
+    assert!(
+        complete["as_needed_rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["can_record"] == true)
+    );
+    assert!(complete["next_action"].is_null());
+    app.close().await;
+}
+
+#[tokio::test]
 async fn dashboard_complete_timeline_keeps_every_slot_and_its_actual_dose_once() {
     let app = Application::new().await;
     let scheduled = schedule(&app, 0, json!({"times":["00:00","12:00","23:59"]}))
