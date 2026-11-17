@@ -58,6 +58,7 @@ jobs:
       - name: Publish the release after image verification
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
         run: |
           test -n "$RELEASE_TAG"
