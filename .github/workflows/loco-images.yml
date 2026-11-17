@@ -306,7 +306,7 @@ jobs:
       - name: Publish tested images and assemble their manifest
         id: publish
         env:
-          IMAGE: ghcr.io/${{ github.repository }}-loco
+          IMAGE: ghcr.io/${{ github.repository }}
           REVISION: ${{ github.sha }}
           RELEASE_VERSION: ${{ needs.tooling.outputs.release_version }}
         run: |
@@ -366,7 +366,7 @@ jobs:
       - name: Promote current main beta
         env:
           GH_TOKEN: ${{ github.token }}
-          IMAGE: ghcr.io/${{ github.repository }}-loco
+          IMAGE: ghcr.io/${{ github.repository }}
           REVISION: ${{ github.sha }}
           DIGEST: ${{ needs.publish.outputs.digest }}
         run: |
