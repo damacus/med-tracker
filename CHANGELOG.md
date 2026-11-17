@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.10](https://github.com/damacus/med-tracker/compare/v0.6.9...v0.6.10) (2026-11-17)
+
+
+### Bug Fixes
+
+* **ci:** identify release repository ([#3151](https://github.com/damacus/med-tracker/issues/3151)) ([dff5869](https://github.com/damacus/med-tracker/commit/dff5869e715ec02cafec92e550a9e7409cb8e851))
+
 ## [0.6.9](https://github.com/damacus/med-tracker/compare/v0.6.8...v0.6.9) (2026-11-17)
 
 
