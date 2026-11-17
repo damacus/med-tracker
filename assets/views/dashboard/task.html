@@ -1,5 +1,5 @@
 <article class="dashboard-prn-card" data-dashboard-task data-row-id="{{ row.id }}">
-  <h3>{{ row.medication }}</h3><p class="dashboard-dose">{{ row.dose }}</p>
+  <div class="dashboard-row-content"><h3>{{ row.medication }}</h3><p class="dashboard-dose">{{ row.dose }}</p></div>
   {% include "dashboard/identity.html" %}
-  <div class="dashboard-row-footer"><span class="dashboard-status">{{ row.status_label }}</span>{% include "dashboard/actions.html" %}</div>
+  <div class="dashboard-row-footer">{% if row.outcome != 'taken' %}<span class="dashboard-status">{{ row.status_label }}</span>{% endif %}{% include "dashboard/actions.html" %}</div>
 </article>

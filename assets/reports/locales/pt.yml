@@ -3095,8 +3095,10 @@ pt:
     timeline:
       title: "Atividade de hoje"
       taken_at: "Tomado às"
-      details: "Ver detalhes"
+      details: "Mais detalhes"
       as_needed_empty: "Não há medicamentos conforme necessário disponíveis."
+      actions: "Ações"
+      skip: "Omitir"
     person_selector:
       label: Pessoa do painel
       all_family: "Todos"

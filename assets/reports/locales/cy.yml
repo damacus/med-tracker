@@ -2698,8 +2698,10 @@ cy:
     timeline:
       title: "Gweithgarwch heddiw"
       taken_at: "Cymerwyd am"
-      details: "Gweld manylion"
+      details: "Rhagor o fanylion"
       as_needed_empty: "Nid oes meddyginiaethau yn ôl yr angen ar gael."
+      actions: "Camau gweithredu"
+      skip: "Hepgor"
     person_selector:
       label: Person y dangosfwrdd
       all_family: "Pawb"

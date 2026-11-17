@@ -3051,8 +3051,10 @@ en:
     timeline:
       title: "Today's activity"
       taken_at: "Taken at"
-      details: "View details"
+      details: "More details"
       as_needed_empty: "No as-needed medicines available."
+      actions: "Actions"
+      skip: "Skip"
     person_selector:
       label: Dashboard person
       all_family: "Everyone"

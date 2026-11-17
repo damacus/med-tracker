@@ -123,10 +123,6 @@ async fn show(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
-    let can_create_person = match crate::models::care::people::can_create(&tenant).await {
-        Ok(value) => value,
-        Err(error) => return operation_error(error),
-    };
     let can_add_medication = match crate::models::care::medications::crud::can_create(&tenant).await
     {
         Ok(value) => value,
@@ -370,7 +366,6 @@ async fn show(
     }
     data["dashboard"] = snapshot;
     data["grouping"] = json!(grouping);
-    data["can_create_person"] = json!(can_create_person);
     data["version"] = json!(env!("CARGO_PKG_VERSION"));
     let hour = chrono::Utc::now()
         .with_timezone(&principal.time_zone())

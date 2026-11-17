@@ -2992,8 +2992,10 @@ ga:
     timeline:
       title: "Gníomhaíocht an lae inniu"
       taken_at: "Tógtha ag"
-      details: "Féach ar na sonraí"
+      details: "Tuilleadh sonraí"
       as_needed_empty: "Níl aon chógais de réir mar is gá ar fáil."
+      actions: "Gníomhartha"
+      skip: "Scipeáil"
     person_selector:
       label: Duine an dashboard
       all_family: "Gach duine"

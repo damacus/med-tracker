@@ -2,10 +2,8 @@
   <div class="dashboard-timeline-time">{% if row.scheduled_at %}<time datetime="{{ row.scheduled_at }}">{{ row.time }}</time>{% elif row.actual_taken_at %}<time datetime="{{ row.actual_taken_at }}">{{ row.time }}</time>{% else %}<span>{{ row.time }}</span>{% endif %}</div>
   <span class="dashboard-timeline-node" aria-hidden="true">{% if row.outcome == 'taken' %}✓{% elif row.outcome == 'not_taken' %}−{% endif %}</span>
   <article class="dashboard-timeline-card">
-    <h3>{{ row.medication }}</h3>
-    <p class="dashboard-dose">{{ row.dose }}</p>
+    <div class="dashboard-row-content"><h3>{{ row.medication }}</h3><p class="dashboard-dose">{{ row.dose }}{% if row.actual_taken_at %}<span class="dashboard-supporting"> · {{ labels.dashboard.timeline.taken_at }} <time datetime="{{ row.actual_taken_at }}">{{ row.actual_time }}</time></span>{% endif %}</p></div>
     {% include "dashboard/identity.html" %}
-    {% if row.actual_taken_at %}<p class="dashboard-supporting">{{ labels.dashboard.timeline.taken_at }} <time datetime="{{ row.actual_taken_at }}">{{ row.actual_time }}</time></p>{% endif %}
-    <div class="dashboard-row-footer"><span class="dashboard-status" data-status="{{ row.status }}">{{ row.status_label }}</span>{% include "dashboard/actions.html" %}</div>
+    <div class="dashboard-row-footer">{% if row.outcome != 'taken' %}<span class="dashboard-status" data-status="{{ row.status }}">{{ row.status_label }}</span>{% endif %}{% include "dashboard/actions.html" %}</div>
   </article>
 </li>

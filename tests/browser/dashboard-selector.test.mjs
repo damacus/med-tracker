@@ -65,3 +65,32 @@ test('arrow keys move focus between native links and leave Enter to the browser'
   listeners.keydown({ key: 'ArrowDown', target: { closest(query) { return query.startsWith('details') ? selector : first; } }, preventDefault() {} });
   assert.equal(focused, true);
 });
+
+test('Escape closes a dose actions disclosure and restores its summary focus', () => {
+  const listeners = {};
+  let focused = false;
+  let prevented = false;
+  const menu = { open: true, querySelector() { return { focus() { focused = true; } }; } };
+  const document = { addEventListener(name, fn) { listeners[name] = fn; } };
+  runInNewContext(source, { document });
+  listeners.keydown({
+    key: 'Escape',
+    target: { closest(query) { return query.includes('dashboard-row-menu') ? menu : null; } },
+    preventDefault() { prevented = true; },
+  });
+  assert.equal(menu.open, false);
+  assert.equal(focused, true);
+  assert.equal(prevented, true);
+});
+
+test('leaving a dose actions disclosure closes it without moving focus', () => {
+  const listeners = {};
+  const menu = { open: true, contains() { return false; } };
+  const document = { addEventListener(name, fn) { listeners[name] = fn; } };
+  runInNewContext(source, { document });
+  listeners.focusout({
+    target: { closest(query) { return query.includes('dashboard-row-menu') ? menu : null; } },
+    relatedTarget: {},
+  });
+  assert.equal(menu.open, false);
+});

@@ -3,7 +3,7 @@
 <div id="dashboard" class="dashboard-page mx-auto" data-testid="dashboard-timeline">
   <header class="dashboard-heading">
     <div><h1>{{ labels.dashboard.stats.due_today }}</h1><p class="dashboard-date">{{ dashboard.date }}</p></div>
-    <div class="dashboard-quick-actions">{% if can_create_person %}<a class="btn btn-outline rounded-full" href="/households/{{ slug }}/people/new">{{ labels.dashboard.quick_actions.add_person }}</a>{% endif %}{% if can_add_medication %}<a class="btn btn-primary rounded-full" href="/households/{{ slug }}/medications/workflow"><svg aria-hidden="true" width="20" height="20"><use href="/static/dashboard-icons.svg#plus_circle"/></svg>{{ labels.dashboard.quick_actions.add_medication }}</a>{% endif %}</div>
+    <div class="dashboard-quick-actions">{% if can_add_medication %}<a class="btn btn-primary rounded-full" href="/households/{{ slug }}/medications/workflow"><svg aria-hidden="true" width="20" height="20"><use href="/static/dashboard-icons.svg#plus_circle"/></svg>{{ labels.dashboard.quick_actions.add_medication }}</a>{% endif %}</div>
   </header>
   <nav aria-label="{{ labels.dashboard.person_selector.label }}" class="dashboard-person-nav">
     <details class="dropdown dropdown-bottom dashboard-selector" data-testid="dashboard-person-selector-disclosure" data-dashboard-selector data-selected-person="{% if dashboard.selected %}{{ dashboard.selected }}{% else %}all{% endif %}">

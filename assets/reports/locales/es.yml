@@ -2672,8 +2672,10 @@ es:
     timeline:
       title: "Actividad de hoy"
       taken_at: "Tomada a las"
-      details: "Ver detalles"
+      details: "Más detalles"
       as_needed_empty: "No hay medicamentos a demanda disponibles."
+      actions: "Acciones"
+      skip: "Omitir"
     person_selector:
       label: Persona del panel
       all_family: "Todos"
