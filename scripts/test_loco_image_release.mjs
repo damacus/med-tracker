@@ -119,6 +119,28 @@ test("release-please versions Rust and publishes the checked Loco image", () => 
   assert.equal(release.jobs.docker.with.tag_name, "${{ needs.release-please.outputs.tag_name }}");
 });
 
+test("release publication selects its repository without a checkout", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "loco-release-edit-"));
+  t.after(() => rmSync(directory, { recursive: true }));
+  const publish = workflow("release-please").jobs["publish-release"];
+  assert.deepEqual(publish.needs, ["release-please", "docker"]);
+  const step = publish.steps.find((entry) => entry.name === "Publish the release after image verification");
+  assert.equal(step.env.GH_REPO, "${{ github.repository }}");
+  const gh = join(directory, "gh");
+  writeFileSync(gh, `#!${process.execPath}
+import assert from "node:assert/strict";
+assert.equal(process.env.GH_REPO, "example/med-tracker");
+assert.deepEqual(process.argv.slice(2), ["release", "edit", "v0.6.0", "--draft=false", "--verify-tag"]);
+`);
+  chmodSync(gh, 0o755);
+  const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], {
+    cwd: directory,
+    encoding: "utf8",
+    env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, GH_REPO: step.env.GH_REPO.replace("${{ github.repository }}", "example/med-tracker"), RELEASE_TAG: "v0.6.0" },
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test("publishing retains architecture and scheduler checks and exact source checkout", () => {
   const image = workflow("loco-images");
   assert.ok((image.on ?? image.true).workflow_call.inputs.tag_name);
