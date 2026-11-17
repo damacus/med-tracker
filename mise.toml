@@ -1,5 +1,5 @@
 [tools]
-"npm:portless" = "0.17.0"
+"npm:portless" = "0.18.0"
 "npm:@fission-ai/openspec" = "2.0.0"
 "cargo:cargo-nextest" = "0.9.152"
 "cargo:cargo-machete" = "0.10.1"
