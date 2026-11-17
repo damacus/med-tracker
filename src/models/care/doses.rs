@@ -135,6 +135,15 @@ pub enum TakeAttempt {
 }
 
 impl TakeAttempt {
+    pub(crate) fn occurrence_identity(
+        &self,
+    ) -> Result<(NaiveDateTime, Option<Uuid>), OperationError> {
+        match self {
+            Self::Ready(take) => Ok((take.taken_at, take.client_uuid)),
+            Self::MalformedReplay(malformed) => Err(malformed.original_error.clone()),
+        }
+    }
+
     pub(crate) fn historical(self) -> Result<Self, OperationError> {
         match self {
             Self::Ready(mut take) => {

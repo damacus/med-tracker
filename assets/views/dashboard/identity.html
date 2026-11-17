@@ -1,4 +1,1 @@
-<div class="flex items-center gap-3 min-w-0">
-  <span class="dashboard-avatar h-10 w-10 shrink-0" aria-hidden="true">{{ row.initials }}{% if row.avatar %}<img src="/households/{{ slug }}/people/{{ row.person_id }}/avatar" alt="" data-avatar-image>{% elif row.gravatar_url %}<img src="{{ row.gravatar_url }}" alt="" referrerpolicy="no-referrer" data-avatar-image>{% endif %}</span>
-  <a class="font-bold truncate" href="{{ row.person_url }}">{{ row.person_name }}</a>
-</div>
+<div class="dashboard-identity avatar avatar-placeholder" role="img" aria-label="{{ row.person_name }}" title="{{ row.person_name }}"><div class="relative size-8 items-center justify-center overflow-hidden rounded-full bg-base-300 text-xs font-semibold"><span aria-hidden="true">{{ row.initials }}</span>{% if row.avatar %}<img class="absolute inset-0 size-full object-cover" src="/households/{{ slug }}/people/{{ row.person_id }}/avatar" alt="" aria-hidden="true" data-avatar-image>{% elif row.gravatar_url %}<img class="absolute inset-0 size-full object-cover" src="{{ row.gravatar_url }}" alt="" aria-hidden="true" referrerpolicy="no-referrer" data-avatar-image>{% endif %}</div></div>

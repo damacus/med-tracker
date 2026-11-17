@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
-function openDialog(url, links, id = 'record-dose-dialog', opener = null) {
+function openDialog(url, links, id = 'record-dose-dialog', opener = null, beforeClose = () => {}) {
   const events = {};
   const closed = {};
   class Dialog {
@@ -29,19 +29,84 @@ function openDialog(url, links, id = 'record-dose-dialog', opener = null) {
     getElementById() { return null; },
     querySelector() { return opener; },
     querySelectorAll(selector) {
-      return selector === 'dialog[data-dialog-auto-open]' ? [dialog] : links;
+      return selector === 'dialog[data-dialog-auto-open]' ? [dialog] : links.map(link => ({
+        getClientRects() { return [{}]; },
+        closest() { return null; },
+        ...link,
+      }));
     },
   };
   runInNewContext(readFileSync('assets/static/js/interaction.js', 'utf8'), {
     document, window, URL, URLSearchParams, HTMLDialogElement: Dialog,
   });
   events.DOMContentLoaded();
+  beforeClose();
   closed.close?.();
   return window.location;
 }
 
 const recording = 'record_medication_id=74001&record_source_type=person_medication&record_source_id=75001&record_person_id=73001';
 const base = 'https://example.test/households/synthetic/dashboard';
+
+test('dashboard cancellation chooses the visible occurrence action instead of a hidden desktop copy', () => {
+  let focused = '';
+  const links = [
+    { href: `${base}?${recording}`, getClientRects() { return []; }, focus() { focused = 'hidden'; }, scrollIntoView() {} },
+    { href: `${base}?${recording}`, focus() { focused = 'tray'; }, scrollIntoView() {} },
+  ];
+  openDialog(`${base}?${recording}`, links);
+  assert.equal(focused, 'tray');
+});
+
+test('dashboard cancellation resolves the visible opener after a viewport change', () => {
+  let mobile = true;
+  let focused = '';
+  const links = [
+    { href: `${base}?${recording}`, getClientRects() { return mobile ? [] : [{}]; }, focus() { focused = 'desktop'; }, scrollIntoView() {} },
+    { href: `${base}?${recording}`, getClientRects() { return mobile ? [{}] : []; }, focus() { focused = 'tray'; }, scrollIntoView() {} },
+  ];
+  openDialog(`${base}?${recording}`, links, 'record-dose-dialog', null, () => { mobile = false; });
+  assert.equal(focused, 'desktop');
+});
+
+test('returning focus to the fixed dose tray does not scroll the timeline', () => {
+  let scrolled = false;
+  const link = { href: `${base}?${recording}`, closest() { return {}; }, focus() {}, scrollIntoView() { scrolled = true; } };
+  openDialog(`${base}?${recording}`, [link]);
+  assert.equal(scrolled, false);
+});
+
+test('a visible tray opener avoids layout reads for preceding timeline links', () => {
+  let unrelatedReads = 0;
+  let trayReads = 0;
+  const unrelated = { href: `${base}?${recording.replace('75001', '75002')}`, getClientRects() { unrelatedReads++; return [{}]; }, focus() {}, scrollIntoView() {} };
+  const tray = { href: `${base}?${recording}`, getClientRects() { trayReads++; return [{}]; }, closest() { return {}; }, focus() {}, scrollIntoView() {} };
+  openDialog(`${base}?${recording}`, [unrelated, tray], 'record-dose-dialog', tray);
+  assert.equal(unrelatedReads, 0);
+  assert.equal(trayReads, 1);
+});
+
+test('dashboard cancellation restores the selected occurrence among doses from the same treatment', () => {
+  let focused = '';
+  const links = ['first', 'second'].map(key => ({
+    href: `${base}?${recording}&record_occurrence_key=${key}&record_occurrence_etag=current`,
+    focus() { focused = key; },
+    scrollIntoView() {},
+  }));
+  const result = openDialog(`${base}?${recording}&record_occurrence_key=second&record_occurrence_etag=previous&dashboard_person_id=73001&tag=a&tag=b#routine`, links);
+  assert.equal(focused, 'second');
+  assert.equal(result.href, `${base}?dashboard_person_id=73001&tag=a&tag=b#routine`);
+});
+
+test('an as-needed action does not restore focus to a scheduled occurrence of the same treatment', () => {
+  let focused = '';
+  const links = [
+    { href: `${base}?${recording}&record_occurrence_key=scheduled`, focus() { focused = 'scheduled'; }, scrollIntoView() {} },
+    { href: `${base}?${recording}`, focus() { focused = 'as-needed'; }, scrollIntoView() {} },
+  ];
+  openDialog(`${base}?${recording}`, links);
+  assert.equal(focused, 'as-needed');
+});
 
 test('dashboard cancellation focuses the matching action and preserves other URL state', () => {
   let focused = '';

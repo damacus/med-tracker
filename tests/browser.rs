@@ -71,6 +71,12 @@ mod pwa;
 #[path = "browser/dashboard_cancellation.rs"]
 mod dashboard_cancellation;
 
+#[path = "browser/dashboard_accessibility.rs"]
+mod dashboard_accessibility;
+
+#[path = "browser/dashboard_timeline.rs"]
+mod dashboard_timeline;
+
 #[path = "browser/report_clarity.rs"]
 mod report_clarity;
 
@@ -88,3 +94,6 @@ mod personal_profile;
 mod medication_location_move;
 #[path = "browser/report_table_layout.rs"]
 mod report_table_layout;
+
+#[path = "browser/medication_management.rs"]
+mod medication_management;

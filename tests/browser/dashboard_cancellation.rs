@@ -60,7 +60,9 @@ async fn dashboard_cancellation_restores_focus_and_survives_refresh() {
                     page.goto(&format!("{}/households/persistence-fixture/dashboard?dashboard_person_id=73001&dashboard_grouping=time", journey.origin), None).await.unwrap();
                     expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
                     let action = page.locator("#dashboard a[href*='record_source_id=81001']");
-                    page.locator("#dashboard details:has(a[href*='record_source_id=81001']) > summary").press("Enter", None).await.unwrap();
+                    if !action.is_visible().await.unwrap() {
+                        page.locator("#dashboard details:has(a[href*='record_source_id=81001']) > summary").press("Enter", None).await.unwrap();
+                    }
                     expect(action.clone()).to_be_visible().await.unwrap();
                     action.press("Enter", None).await.unwrap();
                     let dialog = page.locator("#record-dose-dialog");

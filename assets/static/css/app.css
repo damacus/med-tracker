@@ -13,8 +13,8 @@
 
 [data-canary-notice][hidden] { display: none; }
 body { margin: 0; font-family: var(--font-family); background: var(--background); color: var(--foreground); }
-.shell-header { border-bottom: 1px solid var(--border-color); background: var(--surface-container-lowest); }
-.shell-width { width: min(100% - 2rem, 72rem); margin-inline: auto; }
+.shell-header { padding-top: env(safe-area-inset-top); border-bottom: 1px solid var(--border-color); background: var(--surface-container-lowest); }
+.shell-width { width: min(100% - max(1rem, env(safe-area-inset-left)) - max(1rem, env(safe-area-inset-right)), 72rem); margin-left: max(calc((100% - 72rem) / 2), 1rem, env(safe-area-inset-left)); margin-right: max(calc((100% - 72rem) / 2), 1rem, env(safe-area-inset-right)); }
 .shell-header-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1rem; }
 .app-header { flex-wrap: nowrap; gap: .5rem; }
 .app-brand { margin-right: auto; }
@@ -102,3 +102,9 @@ html:has(.app-household) { scrollbar-gutter: stable; }
   .login-primary { min-height: 4.5rem; padding-block: 1.5rem; }
 }
 @media (min-width: 1024px) { .login-page { padding-inline: 2rem; } .login-form-panel { padding: 4rem; } }
+
+.inventory-card { background: var(--surface-container-lowest); border: 1px solid var(--outline); }
+.location-link { border-radius: inherit; text-decoration: none; min-height: 44px; }
+.location-link:hover { background: var(--surface-container-high); }
+.location-medications { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; }
+.location-medications .card-title, .inventory-card .card-title { overflow-wrap: anywhere; }

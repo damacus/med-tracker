@@ -1,17 +1,16 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="max-w-3xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/locations">Locations</a>
-  <a class="link ml-4" href="/households/{{ slug }}/medications">Medications</a>
+  <nav aria-label="Breadcrumb" class="breadcrumbs text-sm"><ol><li><a href="/households/{{ slug }}/medications">Medications</a></li><li><a href="/households/{{ slug }}/locations">Locations</a></li><li aria-current="page">{{ location.name }}</li></ol></nav>
   <h1 class="text-3xl font-semibold mt-4">{{ location.name }}</h1>
   {% if location.description %}<p class="mt-4">{{ location.description }}</p>{% endif %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
-  <h2 class="text-2xl font-semibold mt-8">Medications at this location</h2>
-  <ul class="flex flex-col gap-4 mt-4">
+  <h2 class="text-2xl font-semibold mt-8">Medications in {{ location.name }}</h2>
+  <ul class="location-medications mt-4">
   {% for medication in medications %}
-    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+    <li class="card inventory-card"><div class="card-body p-4">
       <h3 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ medication.id }}?filter_location_id={{ location.id }}">{{ medication.name }}</a></h3>
-      <p>{% if medication.quantity %}Stock: {{ medication.quantity }} {{ medication.unit }}{% else %}Stock is not tracked.{% endif %}</p>
+      {% if medication.quantity != null %}<p>Stock: {{ medication.quantity }} {{ medication.unit }}</p>{% endif %}
       {% if can_manage %}<div class="flex flex-wrap gap-2 mt-2"><a class="btn btn-outline btn-sm" aria-label="Move {{ medication.name }}" href="/households/{{ slug }}/medications/{{ medication.id }}/move?filter_location_id={{ location.id }}">Move</a></div>{% endif %}
     </div></li>
   {% else %}<li>No medications are stored here.</li>{% endfor %}

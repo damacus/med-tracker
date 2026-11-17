@@ -47,3 +47,18 @@ jobs:
     uses: ./.github/workflows/client-tools-release.yml
     with:
       tag_name: ${{ needs.release-please.outputs.tag_name }}
+
+  publish-release:
+    needs: [release-please, docker]
+    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the release after image verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          test -n "$RELEASE_TAG"
+          gh release edit "$RELEASE_TAG" --draft=false --verify-tag

@@ -1,5 +1,6 @@
 use loco_rs::model::TenantQueryExt;
 mod configuration;
+mod dashboard_projection;
 pub(crate) use configuration::configured_signing_key;
 mod calendar;
 mod identity;
@@ -45,6 +46,7 @@ use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 use uuid::Uuid;
 pub(crate) use writing::browser_list;
+pub(crate) use writing::browser_take_target;
 pub(crate) use writing::key_for_row;
 pub use writing::{RangeQuery, authorize, change, list};
 
@@ -66,6 +68,15 @@ pub(crate) struct ReportOccurrence {
     pub outcome: String,
     pub reason: Option<String>,
     pub note: Option<String>,
+}
+
+struct RangeOccurrence {
+    report: ReportOccurrence,
+    dashboard: Option<dashboard_projection::DashboardOccurrence>,
+}
+
+pub(crate) fn dashboard_capacity(count: usize) -> Result<(), OperationError> {
+    projection::check_capacity(count)
 }
 
 pub(crate) fn expected_schedule_doses_for_report(
@@ -151,15 +162,23 @@ pub(crate) async fn projected_for_report(
     start: NaiveDate,
     end: NaiveDate,
 ) -> Result<Vec<ReportOccurrence>, OperationError> {
-    projected_for_range(tenant, person_ids, start, end, false).await
+    Ok(projected_for_range(tenant, person_ids, start, end, false)
+        .await?
+        .into_iter()
+        .map(|row| row.report)
+        .collect())
 }
 
 pub(crate) async fn projected_for_dashboard(
     tenant: &TenantTransaction,
     person_ids: &[i64],
     today: NaiveDate,
-) -> Result<Vec<ReportOccurrence>, OperationError> {
-    projected_for_range(tenant, person_ids, today, today, true).await
+) -> Result<Vec<dashboard_projection::DashboardOccurrence>, OperationError> {
+    projected_for_range(tenant, person_ids, today, today, true)
+        .await?
+        .into_iter()
+        .map(|row| row.dashboard.ok_or(OperationError::Unavailable))
+        .collect()
 }
 
 async fn projected_for_range(
@@ -168,19 +187,27 @@ async fn projected_for_range(
     start: NaiveDate,
     end: NaiveDate,
     dashboard: bool,
-) -> Result<Vec<ReportOccurrence>, OperationError> {
+) -> Result<Vec<RangeOccurrence>, OperationError> {
     if person_ids.is_empty() {
         return Ok(Vec::new());
     }
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
+    let secret = dashboard
+        .then(|| configured_signing_key(tenant.settings()))
+        .transpose()?;
+    let query_end = if dashboard {
+        end + Duration::days(2)
+    } else {
+        end
+    };
     let schedules = schedule::Entity::find()
         .in_tenant(household_id)
         .filter(schedule::Column::PersonId.is_in(person_ids.to_vec()))
         .filter(
             Condition::any()
                 .add(schedule::Column::StartDate.is_null())
-                .add(schedule::Column::StartDate.lte(end)),
+                .add(schedule::Column::StartDate.lte(query_end)),
         )
         .all(db)
         .await?;
@@ -195,48 +222,28 @@ async fn projected_for_range(
         .await?;
     let sources: Vec<Source> = schedules
         .into_iter()
-        .map(|mut source| {
-            if dashboard
-                && source.max_daily_doses.is_none()
-                && !schedule_as_needed(&source)
-                && let Some(config) = schedule_config_on(&source, start)
-                && if config.get("times").is_none() {
-                    config_times(&source.schedule_config, start, tenant.settings()).is_empty()
-                } else {
-                    config_times(config, start, tenant.settings()).is_empty()
-                }
-                && let Some(hours) =
-                    doses::config_decimal(config, &["min_hours_between_doses", "min_hours"])
-                        .or_else(|| {
-                            doses::config_decimal(
-                                &source.schedule_config,
-                                &["min_hours_between_doses", "min_hours"],
-                            )
-                        })
-                        .or(source
-                            .min_hours_between_doses
-                            .map(sea_orm::prelude::Decimal::from))
-                && hours > sea_orm::prelude::Decimal::ZERO
-            {
-                use sea_orm::prelude::Decimal;
-                source.max_daily_doses =
-                    (Decimal::from(24) / hours).ceil().to_string().parse().ok();
-            }
-            Source::Schedule(source)
-        })
+        .map(Source::Schedule)
         .chain(assignments.into_iter().map(Source::Assignment))
         .collect();
     if sources.is_empty() {
         return Ok(Vec::new());
     }
+    if dashboard {
+        projection::check_capacity(sources.len())?;
+    }
+    let mut projection_context = projection::ProjectionContext::new(tenant.settings(), dashboard);
     let scan_start = sources
         .iter()
-        .map(|source| projection::scan_bounds(source, start, end).0)
+        .map(|source| {
+            dashboard_projection::scan_bounds(source, start, end, dashboard, tenant.settings()).0
+        })
         .min()
         .unwrap_or(start);
     let scan_end = sources
         .iter()
-        .map(|source| projection::scan_bounds(source, start, end).1)
+        .map(|source| {
+            dashboard_projection::scan_bounds(source, start, end, dashboard, tenant.settings()).1
+        })
         .max()
         .unwrap_or(end);
     let schedule_ids: Vec<_> = sources
@@ -306,6 +313,11 @@ async fn projected_for_range(
         .order_by_asc(medication_take::Column::Id)
         .all(db)
         .await?;
+    if dashboard {
+        projection::check_capacity(persisted.len())?;
+        projection::check_capacity(pauses.len())?;
+        projection::check_capacity(takes.len())?;
+    }
     let take_ids: Vec<_> = takes.iter().map(|row| row.id).collect();
     let linked_ids: std::collections::HashSet<(Option<i64>, Option<i64>, i64)> =
         if take_ids.is_empty() {
@@ -321,9 +333,15 @@ async fn projected_for_range(
                 })
                 .collect()
         };
+    let take_by_id: std::collections::HashMap<_, _> = if dashboard {
+        takes.iter().map(|take| (take.id, take)).collect()
+    } else {
+        std::collections::HashMap::new()
+    };
     let mut result = Vec::new();
     for source in sources {
-        let (source_start, source_end) = projection::scan_bounds(&source, start, end);
+        let (source_start, source_end) =
+            dashboard_projection::scan_bounds(&source, start, end, dashboard, tenant.settings());
         let source_persisted: Vec<_> = persisted
             .iter()
             .filter(|row| match &source {
@@ -358,16 +376,20 @@ async fn projected_for_range(
             Source::Schedule(row) => row.medication_id,
             Source::Assignment(row) => row.medication_id,
         };
-        for occurrence in projection::projected_loaded(
+        let mut dose_previews = dashboard_projection::DosePreviews::default();
+        for occurrence in projection::projected_loaded_in_mode(
             &source,
-            source_start,
-            source_end,
+            (source_start, source_end),
             &source_persisted,
             &source_pauses,
             &source_takes,
-            tenant.settings(),
-        ) {
-            if occurrence.window_start > end || occurrence.window_end < start {
+            &mut projection_context,
+        )? {
+            if if dashboard {
+                !dashboard_projection::includes(&source, &occurrence, start, end, tenant.settings())
+            } else {
+                occurrence.window_start > end || occurrence.window_end < start
+            } {
                 continue;
             }
             let record = occurrence.record.as_ref();
@@ -378,7 +400,7 @@ async fn projected_for_range(
             } else {
                 record.map_or("open", |row| row.outcome.as_str())
             };
-            result.push(ReportOccurrence {
+            let report = ReportOccurrence {
                 person_id: source.person_id(),
                 medication_id,
                 source_id: source.id(),
@@ -390,7 +412,19 @@ async fn projected_for_range(
                 outcome: outcome.to_owned(),
                 reason: record.and_then(|row| row.reason.clone()),
                 note: record.and_then(|row| row.note.clone()),
+            };
+            let dashboard = secret.as_ref().map(|secret| {
+                dashboard_projection::project(
+                    &report,
+                    &source,
+                    &occurrence,
+                    &take_by_id,
+                    secret,
+                    tenant.settings(),
+                    dose_previews.for_source(&source, occurrence.window_start),
+                )
             });
+            result.push(RangeOccurrence { report, dashboard });
         }
     }
     Ok(result)
