@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.9](https://github.com/damacus/med-tracker/compare/v0.6.8...v0.6.9) (2026-11-17)
+
+
+### Features
+
+* **ui:** unify dashboard and medication management ([#3149](https://github.com/damacus/med-tracker/issues/3149)) ([1d28494](https://github.com/damacus/med-tracker/commit/1d28494c2b2a7e9f2b18ebaef62e7bdbea04e7be))
+
+
+### Bug Fixes
+
+* **deps:** update rust crate cedar-policy to v4.15.0 ([#3139](https://github.com/damacus/med-tracker/issues/3139)) ([6cc3e7e](https://github.com/damacus/med-tracker/commit/6cc3e7e31decfc6359495f7ab6b9cb875ea85770))
+* **deps:** update rust crate clap to v4.6.8 ([#3143](https://github.com/damacus/med-tracker/issues/3143)) ([5764ba5](https://github.com/damacus/med-tracker/commit/5764ba5a35a1afd135ae69f852df3599e8806566))
+* **deps:** update rust crate zip to v9.6.1 ([#3137](https://github.com/damacus/med-tracker/issues/3137)) ([9a381d9](https://github.com/damacus/med-tracker/commit/9a381d9981330955bbdfd5e677252dbda63eaf14))
+* publish releases after images ([#3148](https://github.com/damacus/med-tracker/issues/3148)) ([c35a339](https://github.com/damacus/med-tracker/commit/c35a33998fc7a59e50dc563eebb6231fc74f6a6f))
+* restore production image name ([#3140](https://github.com/damacus/med-tracker/issues/3140)) ([f0095bb](https://github.com/damacus/med-tracker/commit/f0095bb0e247f79a240f3e249984001c6c298869))
+* wait before auto-merging updates ([#3146](https://github.com/damacus/med-tracker/issues/3146)) ([75c4c4a](https://github.com/damacus/med-tracker/commit/75c4c4a0c6846ad085d339180bdc2245ceacc8e8))
+
 ## [0.6.8](https://github.com/damacus/med-tracker/compare/v0.6.7...v0.6.8) (2026-11-16)
 
 
