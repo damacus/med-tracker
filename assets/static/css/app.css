@@ -102,3 +102,9 @@ html:has(.app-household) { scrollbar-gutter: stable; }
   .login-primary { min-height: 4.5rem; padding-block: 1.5rem; }
 }
 @media (min-width: 1024px) { .login-page { padding-inline: 2rem; } .login-form-panel { padding: 4rem; } }
+
+.inventory-card { background: var(--surface-container-lowest); border: 1px solid var(--outline); }
+.location-link { border-radius: inherit; text-decoration: none; min-height: 44px; }
+.location-link:hover { background: var(--surface-container-high); }
+.location-medications { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; }
+.location-medications .card-title, .inventory-card .card-title { overflow-wrap: anywhere; }
