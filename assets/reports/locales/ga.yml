@@ -1347,6 +1347,12 @@ ga:
         manage_medication: Bainistigh cógas
         adjust_stock: Coigeartaigh stoc
         stock_adjustment_page: Leathanach coigeartaithe stoic
+        update_stock: "Nuashonraigh stoc"
+        what_changed: "Cad a d’athraigh?"
+        stock_received: "Stoc faighte"
+        stock_counted: "Stoc atá fágtha comhairthe"
+        panel_failed: "Níorbh fhéidir an fhoirm a lódáil. Dún í agus bain triail eile as."
+        panel_uncertain: "Seans gur críochnaíodh an t-athrú. Athnuaigh an leigheas seo sula ndéanann tú iarracht eile."
         edit_medication: Cuir Cógas in Eagar
         move_medication: Bog Cógas
         moved_from_to: "Bogadh %{medication} ó %{from} go %{to}."

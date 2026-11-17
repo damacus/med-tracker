@@ -88,3 +88,6 @@ mod personal_profile;
 mod medication_location_move;
 #[path = "browser/report_table_layout.rs"]
 mod report_table_layout;
+
+#[path = "browser/medication_management.rs"]
+mod medication_management;

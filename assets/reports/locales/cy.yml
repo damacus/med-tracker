@@ -1352,6 +1352,12 @@ cy:
         manage_medication: Rheoli meddyginiaeth
         adjust_stock: Addasu stoc
         stock_adjustment_page: Tudalen addasu stoc
+        update_stock: "Diweddaru stoc"
+        what_changed: "Beth newidiodd?"
+        stock_received: "Stoc wedi dod i law"
+        stock_counted: "Stoc sy’n weddill wedi’i chyfrif"
+        panel_failed: "Ni ellid llwytho’r ffurflen. Caewch a rhowch gynnig arall arni."
+        panel_uncertain: "Efallai bod y newid wedi’i gwblhau. Adnewyddwch y feddyginiaeth hon cyn rhoi cynnig arall arni."
         edit_medication: Golygu Meddyginiaeth
         move_medication: Symud Meddyginiaeth
         moved_from_to: "Symudwyd %{medication} o %{from} i %{to}."

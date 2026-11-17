@@ -1371,6 +1371,12 @@ en:
         manage_medication: Manage medication
         adjust_stock: Adjust stock
         stock_adjustment_page: Stock adjustment page
+        update_stock: "Update stock"
+        what_changed: "What changed?"
+        stock_received: "Received stock"
+        stock_counted: "Counted remaining stock"
+        panel_failed: "The form could not be loaded. Close and try again."
+        panel_uncertain: "The change may have completed. Refresh this medicine before trying again."
         edit_medication: Edit Medication
         move_medication: Move Medication
         moved_from_to: "Moved %{medication} from %{from} to %{to}."

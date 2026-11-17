@@ -1358,6 +1358,12 @@ es:
         manage_medication: Gestionar medicamento
         adjust_stock: Ajustar existencias
         stock_adjustment_page: Página de ajuste de existencias
+        update_stock: "Actualizar existencias"
+        what_changed: "¿Qué ha cambiado?"
+        stock_received: "Existencias recibidas"
+        stock_counted: "Recuento de existencias restantes"
+        panel_failed: "No se pudo cargar el formulario. Ciérrelo e inténtelo de nuevo."
+        panel_uncertain: "Es posible que el cambio se haya completado. Actualice este medicamento antes de volver a intentarlo."
         edit_medication: Editar medicamento
         move_medication: Mover medicamento
         moved_from_to: "Se movió %{medication} de %{from} a %{to}."

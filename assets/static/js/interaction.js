@@ -10,7 +10,9 @@ document.addEventListener('click', event => {
   const latest = event.target.closest('[data-refill-use-latest]');
   const updatedDose = event.target.closest('[data-dose-confirm-current]');
   if (latest) {
-    latest.closest('dialog')?.querySelector('input[name="etag"]')?.setAttribute('value', latest.dataset.refillUseLatest);
+    const dialog = latest.closest('dialog');
+    const stockForm = dialog?.querySelector('[data-stock-operation]:not([hidden])');
+    (stockForm || dialog)?.querySelector('input[name="etag"]')?.setAttribute('value', latest.dataset.refillUseLatest);
     latest.disabled = true;
   }
   if (updatedDose) {
