@@ -1,5 +1,185 @@
 use super::*;
 use loco_rs::model::TenantQueryExt;
+use std::collections::BTreeSet;
+
+pub(super) const MAX_PROJECTION_ROWS: usize = 10_000;
+
+pub(super) fn capacity_error() -> OperationError {
+    invalid(
+        "date_range",
+        "This timeline is too large to display. Choose a shorter date range or review the schedule.",
+    )
+}
+
+pub(super) fn check_capacity(count: usize) -> Result<(), OperationError> {
+    if count > MAX_PROJECTION_ROWS {
+        Err(capacity_error())
+    } else {
+        Ok(())
+    }
+}
+
+pub(super) struct ProjectionContext<'a> {
+    settings: Option<&'a Value>,
+    execution: bool,
+    remaining_rows: usize,
+    remaining_days: usize,
+    remaining_work: usize,
+}
+
+impl<'a> ProjectionContext<'a> {
+    pub(super) fn new(settings: Option<&'a Value>, execution: bool) -> Self {
+        Self {
+            settings,
+            execution,
+            remaining_rows: MAX_PROJECTION_ROWS,
+            remaining_days: MAX_PROJECTION_ROWS,
+            remaining_work: MAX_PROJECTION_ROWS,
+        }
+    }
+
+    fn prepare(
+        &mut self,
+        source: &Source,
+        range: (NaiveDate, NaiveDate),
+        persisted: &[dose_occurrence::Model],
+        pauses: &[pause_period::Model],
+        takes: &[medication_take::Model],
+        settings: Option<&Value>,
+    ) -> Result<(), OperationError> {
+        if !self.execution {
+            return Ok(());
+        }
+        check_capacity(takes.len())?;
+        check_capacity(pauses.len())?;
+        let days =
+            usize::try_from((range.1 - range.0).num_days() + 1).map_err(|_| capacity_error())?;
+        if days > self.remaining_days {
+            return Err(capacity_error());
+        }
+        check_capacity(persisted.len())?;
+        let mut identities = BTreeSet::new();
+        for row in persisted.iter().filter(|row| {
+            row.window_starts_on <= range.1
+                && row.window_ends_on.unwrap_or(row.window_starts_on) >= range.0
+        }) {
+            reserve_identity(
+                &mut identities,
+                (row.window_starts_on, row.position),
+                self.remaining_rows,
+            )?;
+        }
+        let mut work = self.remaining_work;
+        let mut day = range.0;
+        while day <= range.1 {
+            match source {
+                Source::Schedule(schedule)
+                    if schedule_applies(schedule, day)
+                        && !schedule_as_needed(schedule)
+                        && (source.active() || !pauses.is_empty()) =>
+                {
+                    if let Some(config) = schedule_config_on(schedule, day) {
+                        let times = if config.get("times").is_none() {
+                            &schedule.schedule_config
+                        } else {
+                            config
+                        }
+                        .get("times")
+                        .and_then(Value::as_array);
+                        if let Some(times) = times {
+                            check_capacity(times.len())?;
+                            work = work.checked_sub(times.len()).ok_or_else(capacity_error)?;
+                        }
+                        let mut valid = false;
+                        for (index, time) in times
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|value| {
+                                value.as_str().and_then(|time| {
+                                    calendar::scheduled_time_in_zone(
+                                        day,
+                                        time,
+                                        calendar::current_zone(settings),
+                                    )
+                                })
+                            })
+                            .enumerate()
+                        {
+                            valid = true;
+                            if !pauses.iter().any(|period| pause_covers(period, time)) {
+                                let position =
+                                    i32::try_from(index + 1).map_err(|_| capacity_error())?;
+                                reserve_identity(
+                                    &mut identities,
+                                    (day, position),
+                                    self.remaining_rows,
+                                )?;
+                            }
+                        }
+                        if !valid {
+                            let count = schedule_count(schedule, config, true)?;
+                            work = work
+                                .checked_sub(usize::try_from(count).map_err(|_| capacity_error())?)
+                                .ok_or_else(capacity_error)?;
+                            if !fully_paused(source, day, day, pauses, settings) {
+                                for position in 1..=count {
+                                    reserve_identity(
+                                        &mut identities,
+                                        (day, position),
+                                        self.remaining_rows,
+                                    )?;
+                                }
+                            }
+                        }
+                    }
+                }
+                Source::Assignment(assignment)
+                    if assignment.administration_kind == 0
+                        && (source.active() || !pauses.is_empty())
+                        && cycle_bounds(day, source.dose_cycle()).0 == day =>
+                {
+                    let (_, finish) = cycle_bounds(day, source.dose_cycle());
+                    if finish >= local_date(source.created_at(), settings) {
+                        let count = source.max_daily_doses().max(1);
+                        work = work
+                            .checked_sub(usize::try_from(count).map_err(|_| capacity_error())?)
+                            .ok_or_else(capacity_error)?;
+                        if !fully_paused(source, day, finish, pauses, settings) {
+                            for position in 1..=count {
+                                reserve_identity(
+                                    &mut identities,
+                                    (day, position),
+                                    self.remaining_rows,
+                                )?;
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+            day += Duration::days(1);
+        }
+        self.remaining_rows -= identities.len();
+        self.remaining_days -= days;
+        self.remaining_work = work;
+        Ok(())
+    }
+}
+
+fn reserve_identity(
+    identities: &mut BTreeSet<(NaiveDate, i32)>,
+    identity: (NaiveDate, i32),
+    limit: usize,
+) -> Result<(), OperationError> {
+    if identities.contains(&identity) {
+        return Ok(());
+    }
+    if identities.len() >= limit {
+        return Err(capacity_error());
+    }
+    identities.insert(identity);
+    Ok(())
+}
 
 #[derive(Clone)]
 pub(super) struct Occurrence {
@@ -49,6 +229,27 @@ pub(super) async fn projected(
     start: NaiveDate,
     end: NaiveDate,
     settings: Option<&serde_json::Value>,
+) -> Result<Vec<Occurrence>, ApiError> {
+    projected_in_mode(db, source, start, end, settings, false).await
+}
+
+pub(super) async fn projected_execution(
+    db: &DatabaseTransaction,
+    source: &Source,
+    start: NaiveDate,
+    end: NaiveDate,
+    settings: Option<&serde_json::Value>,
+) -> Result<Vec<Occurrence>, ApiError> {
+    projected_in_mode(db, source, start, end, settings, true).await
+}
+
+async fn projected_in_mode(
+    db: &DatabaseTransaction,
+    source: &Source,
+    start: NaiveDate,
+    end: NaiveDate,
+    settings: Option<&serde_json::Value>,
+    execution: bool,
 ) -> Result<Vec<Occurrence>, ApiError> {
     let source_settings = source.calendar_settings(settings);
     let settings = source_settings.as_ref();
@@ -117,9 +318,14 @@ pub(super) async fn projected(
         }
     };
     let takes = takes.all(db).await.map_err(database_error)?;
-    Ok(projected_loaded(
-        source, scan_start, scan_end, &persisted, &pauses, &takes, settings,
-    ))
+    projected_loaded_in_mode(
+        source,
+        (scan_start, scan_end),
+        &persisted,
+        &pauses,
+        &takes,
+        &mut ProjectionContext::new(settings, execution),
+    )
 }
 
 pub(super) fn scan_bounds(
@@ -136,6 +342,7 @@ pub(super) fn scan_bounds(
     }
 }
 
+#[cfg(test)]
 pub(super) fn projected_loaded(
     source: &Source,
     scan_start: NaiveDate,
@@ -145,8 +352,29 @@ pub(super) fn projected_loaded(
     takes: &[medication_take::Model],
     settings: Option<&serde_json::Value>,
 ) -> Vec<Occurrence> {
-    let source_settings = source.calendar_settings(settings);
+    projected_loaded_in_mode(
+        source,
+        (scan_start, scan_end),
+        persisted,
+        pauses,
+        takes,
+        &mut ProjectionContext::new(settings, false),
+    )
+    .unwrap()
+}
+
+pub(super) fn projected_loaded_in_mode(
+    source: &Source,
+    range: (NaiveDate, NaiveDate),
+    persisted: &[dose_occurrence::Model],
+    pauses: &[pause_period::Model],
+    takes: &[medication_take::Model],
+    context: &mut ProjectionContext<'_>,
+) -> Result<Vec<Occurrence>, OperationError> {
+    let (scan_start, scan_end) = range;
+    let source_settings = source.calendar_settings(context.settings);
     let settings = source_settings.as_ref();
+    context.prepare(source, range, persisted, pauses, takes, settings)?;
     let mut rows: BTreeMap<(NaiveDate, i32), Occurrence> = BTreeMap::new();
     let mut day = scan_start;
     while day <= scan_end {
@@ -164,11 +392,7 @@ pub(super) fn projected_loaded(
                     };
                     if times.is_empty() {
                         if !fully_paused(source, day, day, pauses, settings) {
-                            let fallback = effective_count(
-                                &schedule.schedule_config,
-                                source.max_daily_doses(),
-                            );
-                            let count = effective_count(config, fallback);
+                            let count = schedule_count(schedule, config, context.execution)?;
                             for position in 1..=count {
                                 rows.insert(
                                     (day, position),
@@ -276,7 +500,78 @@ pub(super) fn projected_loaded(
             row.legacy_take_id = Some(take.id);
         }
     }
-    rows.into_values().collect()
+    Ok(rows.into_values().collect())
+}
+
+fn schedule_count(
+    schedule: &schedule::Model,
+    config: &Value,
+    execution: bool,
+) -> Result<i32, OperationError> {
+    let fallback = if execution {
+        execution_count(schedule, config)?
+    } else {
+        schedule.max_daily_doses.unwrap_or(1)
+    };
+    if execution {
+        let limit = i64::try_from(MAX_PROJECTION_ROWS).map_err(|_| capacity_error())?;
+        for config in [&schedule.schedule_config, config] {
+            for name in ["max_daily_doses", "max_doses", "max"] {
+                if let Some(value) = config.get(name) {
+                    let count = value
+                        .as_i64()
+                        .or_else(|| value.as_str().and_then(|value| value.parse::<i64>().ok()));
+                    if count.is_some_and(|count| count > limit)
+                        || value.is_number() && count.is_none()
+                        || value.as_str().is_some_and(|value| {
+                            !value.is_empty()
+                                && value
+                                    .trim_start_matches('+')
+                                    .bytes()
+                                    .all(|byte| byte.is_ascii_digit())
+                                && count.is_none()
+                        })
+                    {
+                        return Err(capacity_error());
+                    }
+                }
+            }
+        }
+    }
+    Ok(effective_count(
+        config,
+        effective_count(&schedule.schedule_config, fallback),
+    ))
+}
+
+fn execution_count(schedule: &schedule::Model, config: &Value) -> Result<i32, OperationError> {
+    if let Some(maximum) = schedule.max_daily_doses {
+        return Ok(maximum);
+    }
+    let hours = doses::config_decimal(config, &["min_hours_between_doses", "min_hours"])
+        .or_else(|| {
+            doses::config_decimal(
+                &schedule.schedule_config,
+                &["min_hours_between_doses", "min_hours"],
+            )
+        })
+        .or(schedule
+            .min_hours_between_doses
+            .map(sea_orm::prelude::Decimal::from));
+    let Some(hours) = hours.filter(|hours| *hours > sea_orm::prelude::Decimal::ZERO) else {
+        return Ok(1);
+    };
+    let count = sea_orm::prelude::Decimal::from(24)
+        .checked_div(hours)
+        .ok_or_else(capacity_error)?
+        .ceil();
+    let limit = sea_orm::prelude::Decimal::from(
+        u64::try_from(MAX_PROJECTION_ROWS).map_err(|_| capacity_error())?,
+    );
+    if count > limit {
+        return Err(capacity_error());
+    }
+    count.to_string().parse().map_err(|_| capacity_error())
 }
 
 #[cfg(test)]
@@ -354,6 +649,272 @@ mod tests {
             source_dosage_option_id: None,
             updated_at: created_at,
         }
+    }
+
+    #[test]
+    fn interval_execution_slots_preserve_report_projection_and_signed_identity() {
+        let day = ymd(2026, 11, 16);
+        let mut schedule = make_schedule(0, json!({}), day, day);
+        schedule.min_hours_between_doses = Some(6);
+        schedule.clinical_revision = Some(3);
+        let source = Source::Schedule(schedule);
+        let reports = projected_loaded(&source, day, day, &[], &[], &[], None);
+        let execution = projected_loaded_in_mode(
+            &source,
+            (day, day),
+            &[],
+            &[],
+            &[],
+            &mut ProjectionContext::new(None, true),
+        )
+        .unwrap();
+        assert_eq!(reports.len(), 1);
+        assert_eq!(execution.len(), 4);
+        let secret = Arc::from("synthetic-interval-key-at-least-32-bytes".as_bytes());
+        let second = key(
+            &secret,
+            &source,
+            execution[1].window_start,
+            execution[1].position,
+        );
+        assert_eq!(decode_key(&secret, &source, &second), Some((day, 2)));
+        assert_eq!(source.max_daily_doses(), 1);
+    }
+
+    #[test]
+    fn interval_execution_count_rejects_decimal_overflow_without_panicking() {
+        let day = ymd(2026, 11, 16);
+        let schedule = make_schedule(5, json!({}), day, day);
+        let result = std::panic::catch_unwind(|| {
+            execution_count(
+                &schedule,
+                &json!({"min_hours":"0.0000000000000000000000000001"}),
+            )
+        });
+        assert!(
+            result.is_ok(),
+            "a valid tiny interval must not panic projection"
+        );
+        assert!(result.unwrap().is_err());
+    }
+
+    #[test]
+    fn execution_projection_rejects_unsafe_counts_before_materialising_rows() {
+        let day = ymd(2026, 11, 16);
+        for config in [
+            json!({"min_hours":"0.000001"}),
+            json!({"max_daily_doses":10_001}),
+            json!({"max_daily_doses":"999999999999999999999999999999"}),
+        ] {
+            let source = Source::Schedule(make_schedule(0, config, day, day));
+            assert!(
+                projected_loaded_in_mode(
+                    &source,
+                    (day, day),
+                    &[],
+                    &[],
+                    &[],
+                    &mut ProjectionContext::new(None, true)
+                )
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn execution_projection_budget_is_shared_and_never_truncates() {
+        let day = ymd(2026, 11, 16);
+        let source = Source::Schedule(make_schedule(
+            0,
+            json!({"times":["00:00","12:00"]}),
+            day,
+            day,
+        ));
+        let mut context = ProjectionContext::new(None, true);
+        context.remaining_rows = 3;
+        context.remaining_days = 3;
+        let rows =
+            projected_loaded_in_mode(&source, (day, day), &[], &[], &[], &mut context).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(context.remaining_rows, 1);
+        assert!(
+            projected_loaded_in_mode(&source, (day, day), &[], &[], &[], &mut context).is_err()
+        );
+        assert_eq!(context.remaining_rows, 1);
+        let source = Source::Schedule(make_schedule(4, json!({}), day, day + Duration::days(3)));
+        assert!(
+            projected_loaded_in_mode(
+                &source,
+                (day, day + Duration::days(3)),
+                &[],
+                &[],
+                &[],
+                &mut context
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn persisted_decision_replaces_expected_identity_within_projection_budget() {
+        let day = ymd(2026, 11, 16);
+        let now = day.and_hms_opt(0, 0, 0).unwrap();
+        let source = Source::Schedule(make_schedule(0, json!({"times":["00:00"]}), day, day));
+        let mut record = dose_occurrence::Model {
+            id: 1,
+            household_id: 1,
+            schedule_id: Some(1),
+            person_medication_id: None,
+            medication_take_id: None,
+            resolved_by_membership_id: Some(1),
+            portable_id: "record".into(),
+            window_starts_on: day,
+            window_ends_on: Some(day),
+            position: 1,
+            scheduled_at: Some(now),
+            outcome: "not_taken".into(),
+            reason: None,
+            note: None,
+            resolved_at: Some(now),
+            created_at: now,
+            updated_at: now,
+        };
+        let mut context = ProjectionContext::new(None, true);
+        context.remaining_rows = 1;
+        let rows = projected_loaded_in_mode(
+            &source,
+            (day, day),
+            std::slice::from_ref(&record),
+            &[],
+            &[],
+            &mut context,
+        )
+        .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].record.as_ref().unwrap().outcome, "not_taken");
+        assert_eq!(context.remaining_rows, 0);
+        record.position = 2;
+        let mut context = ProjectionContext::new(None, true);
+        context.remaining_rows = 1;
+        assert!(
+            projected_loaded_in_mode(&source, (day, day), &[record], &[], &[], &mut context)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn paused_candidates_consume_shared_work_budget_without_removing_doses() {
+        let day = ymd(2026, 11, 16);
+        let now = day.and_hms_opt(0, 0, 0).unwrap();
+        let source = Source::Schedule(make_schedule(0, json!({"max_daily_doses":3}), day, day));
+        let pause = pause_period::Model {
+            id: 1,
+            household_id: 1,
+            schedule_id: Some(1),
+            person_medication_id: None,
+            portable_id: "pause".into(),
+            reason: "other".into(),
+            note: None,
+            recorded_by_membership_id: Some(1),
+            resumed_by_membership_id: None,
+            started_at: Some(now),
+            ended_at: None,
+            created_at: now,
+            updated_at: now,
+            canonical_resume_id: None,
+            canonical_person_schedule_id: None,
+            canonical_pause_revision: None,
+            imported_actor_references: json!({}),
+            imported_context: false,
+            legacy_context: false,
+        };
+        let mut context = ProjectionContext::new(None, true);
+        context.remaining_work = 3;
+        let rows = projected_loaded_in_mode(
+            &source,
+            (day, day),
+            &[],
+            std::slice::from_ref(&pause),
+            &[],
+            &mut context,
+        )
+        .unwrap();
+        assert!(rows.is_empty());
+        assert_eq!(context.remaining_work, 0);
+        assert_eq!(context.remaining_rows, MAX_PROJECTION_ROWS);
+        assert!(
+            projected_loaded_in_mode(&source, (day, day), &[], &[pause], &[], &mut context)
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn dashboard_source_dates_cover_opposite_date_line_timezones() {
+        let day = ymd(2026, 11, 16);
+        let mut schedule = make_schedule(
+            0,
+            json!({"times":["00:00","12:00","23:59"]}),
+            day - Duration::days(3),
+            day + Duration::days(3),
+        );
+        schedule.origin_time_zone = Some("Pacific/Kiritimati".into());
+        let source = Source::Schedule(schedule);
+        with_dashboard_timezone("Etc/GMT+12".parse().unwrap(), async {
+            let range = dashboard_projection::scan_bounds(&source, day, day, true, None);
+            assert_eq!(range, (day + Duration::days(1), day + Duration::days(2)));
+            let rows = projected_loaded_in_mode(
+                &source,
+                range,
+                &[],
+                &[],
+                &[],
+                &mut ProjectionContext::new(None, true),
+            )
+            .unwrap();
+            let visible: Vec<_> = rows
+                .iter()
+                .filter(|row| dashboard_projection::includes(&source, row, day, day, None))
+                .collect();
+            assert_eq!(visible.len(), 3);
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn assignment_execution_key_retains_viewer_date_at_creation_boundary() {
+        let created = ymd_hms(2026, 11, 16, 0, 30, 0);
+        let day = ymd(2026, 11, 15);
+        let source = Source::Assignment(make_assignment(created, Some(0), Some(1)));
+        let settings = json!({"time_zone":"UTC"});
+        with_dashboard_timezone(chrono_tz::Pacific::Honolulu, async {
+            let rows = projected_loaded_in_mode(
+                &source,
+                (day, day),
+                &[],
+                &[],
+                &[],
+                &mut ProjectionContext::new(Some(&settings), true),
+            )
+            .unwrap();
+            assert_eq!(rows.len(), 1);
+            let secret = Arc::from("synthetic-boundary-key-at-least-32-bytes".as_bytes());
+            let signed = key(&secret, &source, rows[0].window_start, rows[0].position);
+            assert_eq!(decode_key(&secret, &source, &signed), Some((day, 1)));
+            assert!(actionable(&source, &rows[0], Some(&settings)));
+        })
+        .await;
+        assert!(
+            projected_loaded_in_mode(
+                &source,
+                (day, day),
+                &[],
+                &[],
+                &[],
+                &mut ProjectionContext::new(Some(&settings), true)
+            )
+            .unwrap()
+            .is_empty()
+        );
     }
 
     #[test]

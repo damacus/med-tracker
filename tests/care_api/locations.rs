@@ -1497,7 +1497,7 @@ async fn browser_move_medication_between_house_utility_and_kitchen_preserves_sto
     .await;
     assert!(house_inventory_html.contains("Synthetic tablets"));
     assert!(house_inventory_html.contains(&format!(
-        "<h2 class=\"card-title\"><a class=\"link\" href=\"/households/{slug}/medications/{medication_id}?filter_location_id={house_id}\">"
+        "<a class=\"btn btn-outline btn-sm\" href=\"/households/{slug}/medications/{medication_id}?filter_location_id={house_id}\">"
     )));
     assert!(house_inventory_html.contains(&format!(
         "/households/{slug}/medications/{medication_id}/move?filter_location_id={house_id}"

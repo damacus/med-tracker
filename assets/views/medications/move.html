@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-3xl mx-auto">
+<section data-medication-fragment class="max-w-3xl mx-auto">
   <h1 class="text-3xl font-semibold">{{ title }}</h1>
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   {% if changed %}<a class="link mt-4 inline-block" href="{{ latest_url }}">{{ labels.medications.move.review_latest }}</a>{% endif %}
@@ -25,7 +25,7 @@
       <p class="text-sm">{{ labels.medications.move.missing_location_hint }} <a class="link font-semibold" href="{{ add_location_url }}">{{ labels.locations.index.add_location }}</a></p>
       <div class="flex flex-wrap items-center justify-start gap-3 mt-2">
         <button type="submit" class="btn btn-neutral w-fit">{{ labels.medications.move.submit }}</button>
-        <a class="btn btn-ghost w-fit" href="{{ back_url }}">{{ labels.medications.move.cancel }}</a>
+        <a data-medication-cancel class="btn btn-ghost w-fit" href="{{ back_url }}">{{ labels.medications.move.cancel }}</a>
       </div>
     </form>
   </div></div>

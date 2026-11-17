@@ -13,7 +13,7 @@
 {% if error %}<div class="alert border border-error my-4" role="alert"><div><p>{{ error }}</p>{% for field, messages in errors %}{% for message in messages %}<p>{{ message }}</p>{% endfor %}{% endfor %}<a class="link" href="{{ path }}{% if not range_invalid %}?start_date={{ start_date }}&amp;end_date={{ end_date }}{% endif %}">{{ ui.review }}</a></div></div>{% endif %}
 <div class="grid gap-6">
 {% for row in rows %}
-<article class="card border border-base-300 bg-base-100" aria-label="{{ ui.dose }} {{ row.position }} {{ ui.on }} {{ row.window_starts_on }}"><div class="card-body gap-4">
+<article id="dose-occurrence-{{ row.key }}" tabindex="-1" class="card border border-base-300 bg-base-100 scroll-mt-24" aria-label="{{ ui.dose }} {{ row.position }} {{ ui.on }} {{ row.window_starts_on }}"><div class="card-body gap-4">
   <h2 class="text-xl font-semibold">{{ ui.dose }} {{ row.position }} {{ ui.on }} {{ row.window_starts_on }}</h2>
   <p data-dose-outcome>{% if row.outcome == "taken" %}{{ ui.taken }}{% elif row.outcome == "not_taken" %}{{ ui.not_taken }}{% else %}{{ ui.open }}{% endif %}</p>
   {% if row.scheduled_at %}<p>{{ ui.scheduled }} <time data-dose-scheduled datetime="{{ row.scheduled_at }}">{{ row.scheduled_at_display }}</time></p>{% endif %}

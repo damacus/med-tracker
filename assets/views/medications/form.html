@@ -1,8 +1,7 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-3xl mx-auto">
+<section data-medication-fragment class="max-w-3xl mx-auto">
   <h1 class="text-3xl font-semibold">{{ title }}</h1>
-  {% if dosage_options_url %}<a class="link mt-4 inline-block" href="{{ dosage_options_url }}">Manage Dose Options</a>{% endif %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   {% if changed %}<a class="link mt-4 inline-block" href="{{ latest_url }}">Review latest details</a>{% endif %}
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
@@ -14,11 +13,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {% for field in identity_fields %}{% include "medications/input.html" %}{% endfor %}
         </div>
-        <div class="grid gap-2 min-w-0"><label for="location_id" class="font-semibold">Location</label>
+        {% if dosage_options_url %}<input type="hidden" name="location_id" value="{{ selected_location }}">{% else %}<div class="grid gap-2 min-w-0"><label for="location_id" class="font-semibold">Location</label>
           <select id="location_id" name="location_id" class="select w-full min-w-0" required {% if location_invalid %}aria-invalid="true" aria-describedby="form-error-location_id"{% endif %}>
             <option value="">Select a location...</option>
             {% for location in locations %}<option value="{{ location.id }}" {% if location.id == selected_location %}selected{% endif %}>{{ location.name }}</option>{% endfor %}
-          </select></div>
+          </select></div>{% endif %}
       </fieldset>
       {% if options_mode %}<p class="text-sm text-base-content/70">This medication uses dosage options. They remain unchanged when you save these details.</p>
       {% else %}
@@ -33,7 +32,7 @@
       <fieldset class="grid gap-4 border-b border-base-300 pb-6">
         <legend class="text-lg font-semibold mb-3">Stock</legend>
         <div class="grid grid-cols-2 gap-4">
-          {% for field in stock_fields %}{% include "medications/input.html" %}{% endfor %}
+          {% for field in stock_fields %}{% if dosage_options_url and field.name == "current_supply" %}<input type="hidden" name="current_supply" value="{{ field.value }}">{% else %}{% include "medications/input.html" %}{% endif %}{% endfor %}
         </div>
       </fieldset>
       {% endif %}
@@ -43,7 +42,7 @@
       </fieldset>
       <div class="flex flex-wrap items-center justify-start gap-3 mt-4">
         <button type="submit" class="btn btn-neutral w-fit">Save Medication</button>
-        <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications">Back to Medications</a>
+        <a data-medication-cancel class="btn btn-ghost w-fit" href="{% if dosage_options_url %}{{ action }}{% else %}/households/{{ slug }}/medications{% endif %}">Cancel</a>
       </div>
     </form>
   </div></div>

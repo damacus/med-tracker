@@ -10,7 +10,9 @@ document.addEventListener('click', event => {
   const latest = event.target.closest('[data-refill-use-latest]');
   const updatedDose = event.target.closest('[data-dose-confirm-current]');
   if (latest) {
-    latest.closest('dialog')?.querySelector('input[name="etag"]')?.setAttribute('value', latest.dataset.refillUseLatest);
+    const dialog = latest.closest('dialog');
+    const stockForm = dialog?.querySelector('[data-stock-operation]:not([hidden])');
+    (stockForm || dialog)?.querySelector('input[name="etag"]')?.setAttribute('value', latest.dataset.refillUseLatest);
     latest.disabled = true;
   }
   if (updatedDose) {
@@ -101,23 +103,27 @@ document.addEventListener('DOMContentLoaded', () => {
       dialog.showModal();
       let opener = document.querySelector(`[data-dialog-open="${dialog.id}"]`);
       const url = new URL(window.location.href);
-      const recordingKeys = ['record_medication_id', 'record_source_type', 'record_source_id', 'record_person_id'];
+      const sourceKeys = ['record_medication_id', 'record_source_type', 'record_source_id', 'record_person_id'];
+      const recordingKeys = [...sourceKeys, 'record_occurrence_key', 'record_occurrence_etag'];
       const dashboardRecording = dialog.id === 'record-dose-dialog' && url.searchParams.has('record_medication_id');
-      if (dashboardRecording) {
-        opener = Array.from(document.querySelectorAll('#dashboard a[href]')).find(link => {
-          const destination = new URL(link.href);
-          return destination.origin === url.origin && destination.pathname === url.pathname &&
-            recordingKeys.every(key => url.searchParams.has(key) && destination.searchParams.get(key) === url.searchParams.get(key));
-        });
-      }
       dialog.addEventListener('close', () => {
         if (dashboardRecording) {
           const current = new URL(window.location.href);
           for (const key of recordingKeys) current.searchParams.delete(key);
           window.history.replaceState(window.history.state, '', current);
+          const matches = link => {
+            if (!link) return false;
+            const destination = new URL(link.href);
+            return destination.origin === url.origin && destination.pathname === url.pathname &&
+              sourceKeys.every(key => url.searchParams.has(key) && destination.searchParams.get(key) === url.searchParams.get(key)) &&
+              destination.searchParams.get('record_occurrence_key') === url.searchParams.get('record_occurrence_key') &&
+              link.getClientRects().length > 0;
+          };
+          const trayAction = document.querySelector('#dashboard [data-dashboard-next-action] a[data-dashboard-action][href]');
+          opener = matches(trayAction) ? trayAction : Array.from(document.querySelectorAll('#dashboard a[data-dashboard-action][href]')).find(matches);
         }
         opener?.focus();
-        if (dashboardRecording) opener?.scrollIntoView({ block: 'center' });
+        if (dashboardRecording && !opener?.closest('[data-dashboard-next-action]')) opener?.scrollIntoView({ block: 'center' });
       }, { once: true });
       dialog.querySelector('[data-dialog-error-focus]')?.focus();
     }

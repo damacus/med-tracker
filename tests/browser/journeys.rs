@@ -1087,7 +1087,7 @@ window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
                 .click(None)
                 .await
                 .unwrap();
-            expect(page.get_by_role(AriaRole::Dialog, named("Refill inventory")))
+            expect(page.get_by_role(AriaRole::Dialog, named("Update stock")))
                 .to_be_visible()
                 .await
                 .unwrap();
@@ -1095,7 +1095,7 @@ window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
                 .to_be_visible()
                 .await
                 .unwrap();
-            let refill = page.get_by_role(AriaRole::Dialog, named("Refill inventory"));
+            let refill = page.get_by_role(AriaRole::Dialog, named("Update stock"));
             expect(refill.clone())
                 .to_contain_text("Synthetic tablets")
                 .await

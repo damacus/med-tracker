@@ -829,7 +829,7 @@ async fn member_dashboard_offers_record_but_not_manage_for_another_participant()
                 household_id: app.fixture.household.id,
                 request_id: "synthetic-member-dashboard".to_owned(),
             },
-            None,
+            app.context.config.settings.as_ref(),
         )
         .await
         .map_err(|_| DbErr::Custom("Expected ordinary member scope".to_owned()))?;
