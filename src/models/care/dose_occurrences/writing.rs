@@ -152,7 +152,7 @@ pub async fn list(
         id,
         query,
         secret,
-        false,
+        true,
         |secret, source, row| row_value(secret, source, row, tenant.settings()),
     )
     .await

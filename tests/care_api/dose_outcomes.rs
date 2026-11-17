@@ -75,6 +75,89 @@ async fn occurrence(app: &Application, token: &str, endpoint: &str) -> (u16, Val
 }
 
 #[tokio::test]
+async fn dose_occurrence_api_preserves_browser_interval_keys_and_expected_state() {
+    let app = Application::new().await;
+    let mut source = outcome_sources(&app).await.into_active_model();
+    source.max_daily_doses = Set(None);
+    source.min_hours_between_doses = Set(Some(6));
+    let source = source.update(&app.fixture.admin).await.unwrap();
+    med_tracker::models::entities::account::ActiveModel {
+        id: Set(app.fixture.account.id),
+        preferences: Set(json!({"time_zone":"UTC"})),
+        ..Default::default()
+    }
+    .update(&app.fixture.admin)
+    .await
+    .unwrap();
+    let token = app.token().await;
+    let cookie = platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
+    let day = chrono::Utc::now().date_naive().to_string();
+    let path = format!(
+        "/households/{}/people/{}/treatments/schedules/{}/doses",
+        app.fixture.household.slug, app.fixture.account.person_id, source.id
+    );
+    let (cookie, html) = platform::form_page(
+        &app,
+        &cookie,
+        &format!("{path}?start_date={day}&end_date={day}"),
+    )
+    .await;
+    let document = scraper::Html::parse_document(&html);
+    let selector = scraper::Selector::parse("form[data-outcome-action='not_taken']").unwrap();
+    let key_selector = scraper::Selector::parse("input[name='key']").unwrap();
+    let keys: Vec<_> = document
+        .select(&selector)
+        .map(|form| {
+            form.select(&key_selector)
+                .next()
+                .unwrap()
+                .value()
+                .attr("value")
+                .unwrap()
+                .to_owned()
+        })
+        .collect();
+    assert_eq!(keys.len(), 4);
+    let csrf = platform::hidden_field(&html, "authenticity_token");
+    let response = platform::post_form(
+        &app,
+        &cookie,
+        &format!("{path}/not_taken"),
+        &[
+            ("authenticity_token", &csrf),
+            ("key", &keys[1]),
+            ("etag", ""),
+            ("start_date", &day),
+            ("end_date", &day),
+            ("intent", "not_taken"),
+            ("reason", "refused"),
+        ],
+    )
+    .await;
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.url().path(), path);
+    let endpoint = format!(
+        "{}/api/v1/households/{}/schedules/{}/dose_occurrences",
+        app.origin, app.fixture.household.id, source.id
+    );
+    let (status, body) = occurrence(&app, &token, &endpoint).await;
+    assert_eq!(status, 200);
+    let rows = body["data"].as_array().unwrap();
+    let recorded = rows.iter().find(|row| row["key"] == keys[1]).unwrap();
+    assert_eq!(recorded["outcome"], "not_taken");
+    assert_eq!(
+        recorded["expected"], true,
+        "a browser-recorded interval slot must remain expected in the API"
+    );
+    assert_eq!(rows.len(), 4);
+    for (row, key) in rows.iter().zip(keys) {
+        assert_eq!(row["key"], key);
+        assert_eq!(row["expected"], true);
+    }
+    app.close().await;
+}
+
+#[tokio::test]
 async fn dose_outcomes_not_taken_replay_reopen_and_take_preserve_stock_and_history() {
     let app = Application::new().await;
     let unique_identifier_0 = uuid::Uuid::new_v4().to_string();
