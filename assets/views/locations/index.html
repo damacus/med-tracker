@@ -6,10 +6,10 @@
   {% if can_manage %}<a class="btn btn-neutral mt-4" href="/households/{{ slug }}/locations/new">Add Location</a>{% endif %}
   <ul class="flex flex-col gap-4 mt-6">
   {% for location in locations %}
-    <li class="card bg-base-100 border border-base-300"><div class="card-body">
-      <h2 class="card-title"><a class="link" href="/households/{{ slug }}/locations/{{ location.id }}">{{ location.name }}</a></h2>
+    <li class="card bg-base-100 border border-base-300"><a class="card-body location-link" href="/households/{{ slug }}/locations/{{ location.id }}">
+      <h2 class="card-title">{{ location.name }} <span class="ml-auto" aria-hidden="true">→</span></h2>
       {% if location.description %}<p>{{ location.description }}</p>{% endif %}
-    </div></li>
+    </a></li>
   {% else %}<li>No locations are available in this household.</li>{% endfor %}
   </ul>
 </section>

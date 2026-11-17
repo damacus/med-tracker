@@ -6,6 +6,20 @@ import test from 'node:test';
 const source = readFileSync('assets/static/js/dashboard.js', 'utf8');
 const template = readFileSync('assets/views/dashboard/show.html', 'utf8');
 
+test('dashboard only presents actionable insights and a single menu chevron', () => {
+  assert.doesNotMatch(template, /⌃⌄/);
+  assert.match(template, /if insights\.insights \| length > 0/);
+});
+
+test('location stock distinguishes zero from untracked and retains authorised moves', () => {
+  const location = readFileSync('assets/views/locations/show.html', 'utf8');
+  assert.doesNotMatch(location, /Stock is not tracked/);
+  assert.match(location, /medication.quantity != null/);
+  assert.match(location, /aria-label="Breadcrumb"/);
+  assert.match(location, /aria-current="page"/);
+  assert.match(location, /if can_manage[^]*?\/move\?filter_location_id/);
+});
+
 function picker() {
   const listeners = {};
   const selector = { open: true, dataset: { selectedPerson: '1' }, contains() { return true; } };
