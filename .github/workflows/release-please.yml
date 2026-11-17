@@ -16,7 +16,6 @@ jobs:
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
-      release_id: ${{ steps.release.outputs.id }}
     steps:
       - name: Generate GitHub App Token
         id: generate_token
@@ -59,12 +58,7 @@ jobs:
       - name: Publish the release after image verification
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_ID: ${{ needs.release-please.outputs.release_id }}
           RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
         run: |
-          [[ "$RELEASE_ID" =~ ^[0-9]+$ ]]
-          release=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")
-          test "$(jq -r .tag_name <<< "$release")" = "$RELEASE_TAG"
-          if [ "$(jq -r .draft <<< "$release")" = true ]; then
-            gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false --silent
-          fi
+          test -n "$RELEASE_TAG"
+          gh release edit "$RELEASE_TAG" --draft=false --verify-tag
