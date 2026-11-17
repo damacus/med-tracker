@@ -14,6 +14,8 @@ export function mountMedicationManagement(document) {
   const medicine = new URL(host.dataset.medicationManagement, location.origin);
   const inline = host.querySelector('[data-medication-inline]');
   const options = host.querySelector('[data-medication-options]');
+  const optionsSummary = host.querySelector('[data-dose-options-summary]');
+  const optionsEntry = host.querySelector('[data-medication-panel="options"]');
   const move = host.querySelector('[data-medication-move-dialog]');
   const status = host.querySelector('[data-medication-status]');
   let target;
@@ -22,14 +24,18 @@ export function mountMedicationManagement(document) {
   let busy = false;
 
   const focus = root => {
-    const element = root.querySelector('[role="alert"]') || root.querySelector('h1, h2, input:not([type="hidden"]), select');
-    if (element) { element.tabIndex = -1; element.focus(); }
+    const element = root.querySelector('[role="alert"]') || root.querySelector('h1, h2, input:not([type="hidden"]), select, a[href], button');
+    if (element) {
+      if (!element.matches('a[href], button, input, select, textarea, [tabindex]')) element.tabIndex = -1;
+      element.focus();
+    }
   };
   const close = () => {
     if (busy) return;
     request?.abort();
     if (target && move.contains(target)) move.close();
     else if (target) { target.replaceChildren(); target.hidden = true; }
+    if (target === options) { optionsSummary.hidden = false; optionsEntry.hidden = false; }
     opener?.setAttribute('aria-expanded', 'false');
     opener?.focus();
     target = null;
@@ -41,6 +47,14 @@ export function mountMedicationManagement(document) {
     message.tabIndex = -1;
     message.textContent = mutation ? host.dataset.uncertain : host.dataset.failed;
     target.append(message);
+    if (!move.contains(target) && !target.querySelector('[data-medication-cancel], [data-medication-close]')) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'btn btn-ghost min-h-11';
+      cancel.dataset.medicationClose = '';
+      cancel.textContent = host.dataset.cancel;
+      target.append(cancel);
+    }
     message.focus();
   };
   const send = async (url, init = {}) => {
@@ -69,6 +83,10 @@ export function mountMedicationManagement(document) {
       const root = parsed.querySelector('[data-medication-fragment]');
       if (!root || root.querySelector('script') || ![200, 409, 422].includes(response.status)) throw Error('Medicine form unavailable');
       if (request !== current || current.signal.aborted) return;
+      if (target === options && root.hasAttribute('data-dose-options-list')) {
+        root.querySelector('[data-dose-options-list-heading]')?.remove();
+        root.querySelector('[data-dose-options-list-context]')?.remove();
+      }
       root.querySelectorAll('h1').forEach(heading => { const h2 = document.createElement('h2'); h2.className = heading.className; h2.textContent = heading.textContent; heading.replaceWith(h2); });
       root.querySelectorAll('[data-medication-cancel]').forEach(link => { link.textContent = host.dataset.cancel; });
       if (move.contains(target)) root.querySelectorAll('[data-medication-cancel]').forEach(link => { link.remove(); });
@@ -105,6 +123,7 @@ export function mountMedicationManagement(document) {
       opener = stockOrigin ? host.querySelector('[data-dialog-open="refill-inventory-dialog"]') : link;
       link.setAttribute('aria-expanded', 'true');
       target.hidden = false;
+      if (target === options) { optionsSummary.hidden = true; optionsEntry.hidden = true; }
       if (move.contains(target)) move.showModal();
     }
     void send(url);

@@ -53,10 +53,12 @@ pub(super) async fn find_row(
     let Some((date, position)) = decode_key(secret, source, key_value) else {
         return Ok(None);
     };
-    Ok(projected(db, source, date, date, settings)
-        .await?
-        .into_iter()
-        .find(|row| row.window_start == date && row.position == position))
+    Ok(
+        projection::projected_execution(db, source, date, date, settings)
+            .await?
+            .into_iter()
+            .find(|row| row.window_start == date && row.position == position),
+    )
 }
 
 pub(super) fn actionable(

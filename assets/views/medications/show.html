@@ -1,7 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="max-w-6xl mx-auto" data-medication-management="/households/{{ slug }}/medications/{{ medication_id }}" data-cancel="{{ labels.medications.show.browser.cancel }}" data-failed="{{ labels.medications.show.browser.panel_failed }}" data-uncertain="{{ labels.medications.show.browser.panel_uncertain }}">
-  <a class="link" href="{{ inventory_url | default(value='/households/' ~ slug ~ '/medications') }}">{{ labels.medications.index.title }}</a>
   <div class="border-b border-base-300 pb-6 mt-4">
     <p class="text-sm font-semibold text-base-content/70">{{ labels.medications.show.profile }}</p>
     <div class="flex flex-wrap items-center justify-between gap-3"><h1 class="text-3xl font-semibold mt-1">{{ name }}</h1>{% if can_adjust %}<a class="btn btn-outline min-h-11" data-medication-panel="edit" aria-expanded="false" aria-controls="medication-inline" href="/households/{{ slug }}/medications/{{ medication_id }}/edit">{{ labels.medications.show.browser.edit_medication }}</a>{% endif %}</div>
@@ -35,8 +34,13 @@
     {% if can_record_any %}<button type="button" class="btn btn-neutral w-fit" data-dialog-open="record-dose-dialog">{{ dose_i18n.record }}</button>{% else %}<p>{{ labels.medications.show.browser.no_source }}</p>{% endif %}
     <noscript><p class="text-sm text-base-content/70">{{ labels.medications.show.browser.js_required }}</p></noscript>
   </div></section>
-  {% if dose_options | length > 0 %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-4{% elif description or warnings %}lg:row-start-3{% else %}lg:row-start-2{% endif %}" aria-labelledby="dose-options-heading"><div class="card-body">
-    <h2 class="card-title" id="dose-options-heading">{{ labels.medications.show.browser.dose_options }}</h2>
+  <section data-dose-options-card class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-4{% elif description or warnings %}lg:row-start-3{% else %}lg:row-start-2{% endif %}" aria-labelledby="dose-options-heading"><div class="card-body">
+    <header class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="card-title" id="dose-options-heading">{{ labels.medications.show.browser.dose_options }}</h2>
+      {% if can_adjust %}<a class="btn btn-outline min-h-11 w-fit" data-medication-panel="options" aria-expanded="false" aria-controls="medication-options" href="/households/{{ slug }}/medications/{{ medication_id }}/dosage_options">{{ labels.medications.show.browser.manage_dose_options }}</a>{% endif %}
+    </header>
+    <div data-dose-options-summary>
+      {% if dose_options | length > 0 %}
     <div class="grid gap-3 sm:grid-cols-2">{% for option in dose_options %}
       <article class="rounded-box border border-base-300 p-4 min-w-0">
         <h3 class="font-semibold">{% if option.description %}{{ option.description }}{% else %}{{ option.dose_label }}{% endif %}</h3>
@@ -47,11 +51,10 @@
         {% if option.supply %}<p class="text-sm text-base-content/70">{{ labels.medications.show.browser.remaining | replace(from="%{amount}", to=option.supply) | replace(from="%{unit}", to=option.supply_unit) }}</p>{% endif %}
       </article>
     {% endfor %}</div>
-    {% if can_adjust %}<a class="btn btn-ghost min-h-11 w-fit" data-medication-panel="options" href="/households/{{ slug }}/medications/{{ medication_id }}/dosage_options">{{ labels.medications.show.browser.manage_dose_options }}</a><div data-medication-options class="mt-4" hidden></div>{% endif %}
-  </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-4{% elif description or warnings %}lg:row-start-3{% else %}lg:row-start-2{% endif %}" aria-label="{{ labels.medications.show.browser.dose_options }}">
-    <details><summary class="cursor-pointer font-semibold text-base-content/70">{{ labels.medications.show.browser.dose_options }}</summary><p class="mt-2">{{ labels.medications.show.browser.no_dose_options }}</p></details>
-    {% if can_adjust %}<a class="link inline-block mt-2" data-medication-panel="options" href="/households/{{ slug }}/medications/{{ medication_id }}/dosage_options">{{ labels.medications.show.browser.manage_dose_options }}</a><div data-medication-options class="mt-4" hidden></div>{% endif %}
-  </section>{% endif %}
+      {% else %}<p>{{ labels.medications.show.browser.no_dose_options }}</p>{% endif %}
+    </div>
+    {% if can_adjust %}<div id="medication-options" data-medication-options hidden></div>{% endif %}
+  </div></section>
   {% if dose_history | length > 0 %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-5{% elif description or warnings %}lg:row-start-4{% else %}lg:row-start-3{% endif %}" role="region" aria-labelledby="dose-history-heading"><div class="card-body">
     <h2 class="card-title" id="dose-history-heading">{{ labels.medications.show.browser.dose_history }}</h2>
     <ol class="space-y-2">{% for take in dose_history %}

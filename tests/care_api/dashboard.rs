@@ -1,4 +1,5 @@
 use super::*;
+use chrono::Timelike;
 use med_tracker::models::_entities::{medication_takes, schedules};
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
@@ -49,6 +50,465 @@ fn take(
         updated_at: Set(now),
         ..Default::default()
     }
+}
+
+#[tokio::test]
+async fn dashboard_next_action_selects_exact_due_slot_without_completed_or_prn_rows() {
+    let app = Application::new().await;
+    let source = schedule(&app, 0, json!({"times":["00:00","00:00"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let before = snapshot(&app).await;
+    let first = before["timeline_rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+        .unwrap();
+    assert_eq!(&before["next_action"], first);
+    assert_eq!(before["next_action"]["can_record"], true);
+    assert_eq!(before["next_action"]["as_needed"], false);
+    take(
+        &app,
+        None,
+        Some(source.id),
+        2,
+        chrono::Utc::now().naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let after = snapshot(&app).await;
+    let second = after["timeline_rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| {
+            row["source_type"] == "schedule"
+                && row["source_id"] == source.id
+                && row["outcome"] == "open"
+        })
+        .unwrap();
+    assert_eq!(&after["next_action"], second);
+    assert_ne!(
+        after["next_action"]["occurrence_key"],
+        before["next_action"]["occurrence_key"]
+    );
+    assert_eq!(after["next_action"]["record_url"], second["record_url"]);
+    let tenant = access::begin(
+        &app.context.db,
+        &HouseholdScope {
+            actor: Actor {
+                account_id: app.fixture.account.id,
+            },
+            household_id: app.fixture.household.id,
+            request_id: "next-action-person-filter".into(),
+        },
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let selected = dashboard::read(
+        &tenant,
+        chrono_tz::UTC,
+        Some(app.fixture.minor.id),
+        &app.fixture.household.slug,
+        &json!({}),
+    )
+    .await
+    .unwrap();
+    assert!(selected["next_action"].is_null());
+    assert!(selected["timeline_rows"].as_array().unwrap().is_empty());
+    tenant.commit().await.unwrap();
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_next_action_uses_upcoming_fallback_and_is_null_when_blocked_or_complete() {
+    let app = Application::new().await;
+    let zone = if chrono::Utc::now().time() < chrono::NaiveTime::from_hms_opt(12, 0, 0).unwrap() {
+        chrono_tz::UTC
+    } else {
+        "Etc/GMT+12".parse().unwrap()
+    };
+    let source = schedule(&app, 0, json!({"times":["23:59"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let upcoming = snapshot_in_zone(&app, zone).await;
+    let row = upcoming["timeline_rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+        .unwrap();
+    assert_eq!(&upcoming["next_action"], row);
+    assert_eq!(upcoming["next_action"]["status"], "upcoming");
+    assert_eq!(upcoming["next_action"]["can_record"], false);
+    let mut medicine = app.fixture.medication.clone().into_active_model();
+    medicine.current_supply = Set(Some(Decimal::ZERO));
+    medicine.update(&app.fixture.admin).await.unwrap();
+    let blocked = snapshot_in_zone(&app, zone).await;
+    assert!(blocked["next_action"].is_null());
+    let mut medicine = app.fixture.medication.clone().into_active_model();
+    medicine.current_supply = Set(app.fixture.medication.current_supply);
+    medicine.update(&app.fixture.admin).await.unwrap();
+    take(
+        &app,
+        None,
+        Some(source.id),
+        2,
+        chrono::Utc::now().naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let complete = snapshot_in_zone(&app, zone).await;
+    assert!(
+        complete["timeline_rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+            .all(|row| row["outcome"] == "taken")
+    );
+    assert!(
+        complete["as_needed_rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["can_record"] == true)
+    );
+    assert!(complete["next_action"].is_null());
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_complete_timeline_keeps_every_slot_and_its_actual_dose_once() {
+    let app = Application::new().await;
+    let scheduled = schedule(&app, 0, json!({"times":["00:00","12:00","23:59"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let actual = chrono::Utc::now().naive_utc().with_nanosecond(0).unwrap();
+    take(&app, None, Some(scheduled.id), 3, actual)
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let data = snapshot(&app).await;
+    let rows: Vec<_> = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["source_type"] == "schedule" && row["source_id"] == scheduled.id)
+        .collect();
+    assert_eq!(
+        rows.len(),
+        3,
+        "every scheduled slot must appear once: {rows:?}"
+    );
+    let keys: std::collections::HashSet<_> = rows
+        .iter()
+        .map(|row| row["occurrence_key"].as_str().unwrap())
+        .collect();
+    assert_eq!(keys.len(), 3);
+    let taken: Vec<_> = rows
+        .iter()
+        .filter(|row| row["outcome"] == "taken")
+        .collect();
+    assert_eq!(taken.len(), 1);
+    assert_eq!(taken[0]["dose"], "3 tablets");
+    assert_eq!(taken[0]["actual_taken_at"], actual.and_utc().to_rfc3339());
+    for row in rows {
+        assert!(row["scheduled_at"].is_string());
+        assert!(
+            row["record_url"]
+                .as_str()
+                .unwrap()
+                .contains("record_occurrence_key=")
+        );
+    }
+    assert!(data["now_at"].is_string());
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_complete_timeline_uses_viewer_day_and_source_calendar() {
+    let app = Application::new().await;
+    let zone = chrono_tz::Pacific::Kiritimati;
+    let mut source = schedule(&app, 0, json!({"times":["00:00","12:00","23:59"]}));
+    source.origin_time_zone = Set(Some("UTC".into()));
+    let source = source.insert(&app.fixture.admin).await.unwrap();
+    let data = snapshot_in_zone(&app, zone).await;
+    let today = chrono::Utc::now().with_timezone(&zone).date_naive();
+    let rows: Vec<_> = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+        .collect();
+    assert_eq!(rows.len(), 3);
+    for row in rows {
+        let instant =
+            chrono::DateTime::parse_from_rfc3339(row["scheduled_at"].as_str().unwrap()).unwrap();
+        assert_eq!(instant.with_timezone(&zone).date_naive(), today, "{row}");
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_complete_timeline_batches_queries_as_slot_count_grows() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    let mut app = Application::new().await;
+    let source = schedule(&app, 0, json!({"times":["00:00"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let reads = Arc::new(AtomicUsize::new(0));
+    let observed = Arc::clone(&reads);
+    app.context.db.set_metric_callback(move |info| {
+        if info.statement.sql.starts_with("SELECT ") {
+            observed.fetch_add(1, Ordering::Relaxed);
+        }
+    });
+    let before = snapshot(&app).await;
+    let one_slot_reads = reads.swap(0, Ordering::Relaxed);
+    let mut changed = source.into_active_model();
+    changed.schedule_config =
+        Set(json!({"times":["00:00","04:00","08:00","12:00","16:00","20:00"]}));
+    let source = changed.update(&app.fixture.admin).await.unwrap();
+    let after = snapshot(&app).await;
+    let six_slot_reads = reads.load(Ordering::Relaxed);
+    assert_eq!(
+        one_slot_reads, six_slot_reads,
+        "slot count must not add queries"
+    );
+    let source_rows = |data: &Value| {
+        data["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+            .count()
+    };
+    assert_eq!(source_rows(&before), 1);
+    assert_eq!(source_rows(&after), 6);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_complete_timeline_keeps_linked_take_at_its_scheduled_slot() {
+    use med_tracker::models::entities::dose_occurrence;
+    let app = Application::new().await;
+    let source = schedule(&app, 0, json!({"times":["00:00","12:00","23:59"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let actual = chrono::Utc::now().naive_utc().with_nanosecond(0).unwrap();
+    let taken = take(&app, None, Some(source.id), 3, actual)
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let day = actual.date();
+    let scheduled_at = day.and_hms_opt(12, 0, 0).unwrap();
+    dose_occurrence::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        schedule_id: Set(Some(source.id)),
+        medication_take_id: Set(Some(taken.id)),
+        window_starts_on: Set(day),
+        window_ends_on: Set(Some(day)),
+        position: Set(2),
+        scheduled_at: Set(Some(scheduled_at)),
+        outcome: Set("taken".into()),
+        resolved_at: Set(Some(actual)),
+        resolved_by_membership_id: Set(Some(app.fixture.membership.id)),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(actual),
+        updated_at: Set(actual),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let data = snapshot(&app).await;
+    let rows: Vec<_> = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+        .collect();
+    assert_eq!(rows.len(), 3);
+    let taken: Vec<_> = rows
+        .iter()
+        .filter(|row| row["outcome"] == "taken")
+        .collect();
+    assert_eq!(taken.len(), 1);
+    assert_eq!(taken[0]["time"], "12:00");
+    assert_eq!(
+        taken[0]["scheduled_at"],
+        scheduled_at.and_utc().to_rfc3339()
+    );
+    assert_eq!(taken[0]["actual_taken_at"], actual.and_utc().to_rfc3339());
+    assert_eq!(taken[0]["dose"], "3 tablets");
+    assert!(taken[0]["occurrence_etag"].is_string());
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_complete_timeline_keeps_not_taken_and_untimed_windows_once() {
+    use med_tracker::models::entities::dose_occurrence;
+    let app = Application::new().await;
+    let source = schedule(&app, 0, json!({"times":["00:00","12:00","23:59"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let now = chrono::Utc::now().naive_utc();
+    let day = now.date();
+    dose_occurrence::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        schedule_id: Set(Some(source.id)),
+        window_starts_on: Set(day),
+        window_ends_on: Set(Some(day)),
+        position: Set(2),
+        scheduled_at: Set(Some(day.and_hms_opt(12, 0, 0).unwrap())),
+        outcome: Set("not_taken".into()),
+        resolved_at: Set(Some(now)),
+        resolved_by_membership_id: Set(Some(app.fixture.membership.id)),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let mut assignment = app.fixture.assignment.clone().into_active_model();
+    assignment.administration_kind = Set(0);
+    assignment.max_daily_doses = Set(Some(1));
+    assignment.dose_cycle = Set(Some(2));
+    assignment.created_at = Set(now - chrono::Duration::days(60));
+    assignment.update(&app.fixture.admin).await.unwrap();
+    let data = snapshot(&app).await;
+    let rows = data["rows"].as_array().unwrap();
+    let scheduled: Vec<_> = rows
+        .iter()
+        .filter(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+        .collect();
+    assert_eq!(scheduled.len(), 3);
+    assert_eq!(
+        scheduled
+            .iter()
+            .filter(|row| row["outcome"] == "not_taken")
+            .count(),
+        1
+    );
+    assert_eq!(
+        rows.iter()
+            .filter(|row| row["source_type"] == "person_medication"
+                && row["source_id"] == app.fixture.assignment.id)
+            .count(),
+        1
+    );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_complete_timeline_keeps_today_take_from_another_occurrence_window_once() {
+    use med_tracker::models::entities::dose_occurrence;
+    let app = Application::new().await;
+    let source = schedule(&app, 0, json!({"times":["00:00","12:00","23:59"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let actual = chrono::Utc::now().naive_utc();
+    let taken = take(&app, None, Some(source.id), 3, actual)
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let day = actual.date() - chrono::Duration::days(1);
+    dose_occurrence::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        schedule_id: Set(Some(source.id)),
+        medication_take_id: Set(Some(taken.id)),
+        window_starts_on: Set(day),
+        window_ends_on: Set(Some(day)),
+        position: Set(2),
+        scheduled_at: Set(Some(day.and_hms_opt(12, 0, 0).unwrap())),
+        outcome: Set("taken".into()),
+        resolved_at: Set(Some(actual)),
+        resolved_by_membership_id: Set(Some(app.fixture.membership.id)),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(actual),
+        updated_at: Set(actual),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let data = snapshot(&app).await;
+    let rows: Vec<_> = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["source_type"] == "schedule" && row["source_id"] == source.id)
+        .collect();
+    assert_eq!(rows.len(), 4);
+    let recorded: Vec<_> = rows
+        .iter()
+        .filter(|row| row["outcome"] == "taken")
+        .collect();
+    assert_eq!(recorded.len(), 1);
+    assert!(recorded[0]["scheduled_at"].is_null());
+    assert_eq!(recorded[0]["dose"], "3 tablets");
+    assert_eq!(data["completed"].as_array().unwrap().len(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_complete_timeline_disables_obsolete_open_occurrences() {
+    use med_tracker::models::entities::dose_occurrence;
+    let app = Application::new().await;
+    let source = schedule(&app, 0, json!({"times":["00:00"]}))
+        .insert(&app.fixture.admin)
+        .await
+        .unwrap();
+    let now = chrono::Utc::now().naive_utc();
+    let day = now.date();
+    dose_occurrence::ActiveModel {
+        household_id: Set(app.fixture.household.id),
+        schedule_id: Set(Some(source.id)),
+        window_starts_on: Set(day),
+        window_ends_on: Set(Some(day)),
+        position: Set(2),
+        scheduled_at: Set(Some(day.and_hms_opt(0, 0, 0).unwrap())),
+        outcome: Set("open".into()),
+        portable_id: Set(uuid::Uuid::new_v4().to_string()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let data = snapshot(&app).await;
+    let row = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| {
+            row["source_type"] == "schedule"
+                && row["source_id"] == source.id
+                && row["position"] == 2
+        })
+        .unwrap();
+    assert_eq!(row["status"], "unavailable");
+    assert_eq!(row["can_record"], false);
+    assert_eq!(row["can_record_outcome"], false);
+    app.close().await;
 }
 
 #[tokio::test]
@@ -131,7 +591,13 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     let mut assignment = app.fixture.assignment.clone().into_active_model();
     assignment.max_daily_doses = Set(Some(0));
     assignment.update(&app.fixture.admin).await.unwrap();
-    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+    let tenant = access::begin(
+        &app.context.db,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
     let labels = json!({"dashboard":{"statuses":{"max_reached":"Daily max reached"}}});
     let data = dashboard::read(
         &tenant,
@@ -193,7 +659,13 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     membership.revoked_at = Set(Some(chrono::Utc::now().naive_utc()));
     membership.permissions_version = Set(app.fixture.minor_membership.permissions_version + 1);
     membership.update(&app.fixture.admin).await.unwrap();
-    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+    let tenant = access::begin(
+        &app.context.db,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
     assert!(
         dashboard::read(
             &tenant,
@@ -220,7 +692,13 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     .insert(&app.fixture.admin)
     .await
     .unwrap();
-    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+    let tenant = access::begin(
+        &app.context.db,
+        &scope,
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
     let data = dashboard::read(
         &tenant,
         chrono_tz::UTC,
@@ -258,7 +736,7 @@ async fn snapshot_in_zone(app: &Application, zone: chrono_tz::Tz) -> serde_json:
             household_id: app.fixture.household.id,
             request_id: "dashboard-regression".into(),
         },
-        None,
+        app.context.config.settings.as_ref(),
     )
     .await
     .unwrap();
@@ -535,6 +1013,7 @@ async fn dashboard_history_is_actual_today_takes_and_interval_work_remains() {
     let mut interval = schedule(&app, 0, json!({}));
     interval.frequency = Set(Some("Every 2 hours".into()));
     interval.min_hours_between_doses = Set(Some(2));
+    interval.max_daily_doses = Set(Some(4));
     let interval = interval.insert(&app.fixture.admin).await.unwrap();
     take(
         &app,
@@ -564,7 +1043,7 @@ async fn dashboard_history_is_actual_today_takes_and_interval_work_remains() {
                 && row["outcome"] == "open"
                 && row["status"] == "cooldown")
     );
-    assert_eq!(data["tasks_left"], 1);
+    assert_eq!(data["tasks_left"], 3);
     app.close().await;
 }
 

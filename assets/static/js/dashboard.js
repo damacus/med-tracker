@@ -1,5 +1,5 @@
 document.addEventListener('click', event => {
-  document.querySelectorAll('details[data-testid="dashboard-person-selector-disclosure"][open]').forEach(selector => {
+  document.querySelectorAll('details[data-testid="dashboard-person-selector-disclosure"][open], details.dashboard-row-menu[open]').forEach(selector => {
     if (!selector.contains(event.target)) selector.open = false;
   });
   const option = event.target.closest('[data-person-id]');
@@ -12,13 +12,14 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('keydown', event => {
-  const selector = event.target.closest('details[data-testid="dashboard-person-selector-disclosure"]');
-  if (event.key === 'Escape' && selector?.open) {
+  const disclosure = event.target.closest('details[data-testid="dashboard-person-selector-disclosure"], details.dashboard-row-menu');
+  if (event.key === 'Escape' && disclosure?.open) {
     event.preventDefault();
-    selector.open = false;
-    selector.querySelector('summary').focus();
+    disclosure.open = false;
+    disclosure.querySelector('summary').focus();
     return;
   }
+  const selector = event.target.closest('details[data-testid="dashboard-person-selector-disclosure"]');
   const option = event.target.closest('[data-person-id]');
   if (!option || !selector || !['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
   event.preventDefault();
@@ -30,6 +31,34 @@ document.addEventListener('keydown', event => {
 });
 
 document.addEventListener('focusout', event => {
-  const selector = event.target.closest('details[data-testid="dashboard-person-selector-disclosure"]');
+  const selector = event.target.closest('details[data-testid="dashboard-person-selector-disclosure"], details.dashboard-row-menu');
   if (selector?.open && !selector.contains(event.relatedTarget)) selector.open = false;
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  const dashboard = document.querySelector('#dashboard');
+  if (!dashboard) return;
+  const desktop = window.matchMedia('(min-width: 1024px)');
+  const panels = dashboard.querySelectorAll('[data-dashboard-responsive-panel]');
+  const arrangePanels = () => panels.forEach(panel => {
+    if (!desktop.matches && panel.contains(document.activeElement)) return;
+    panel.open = desktop.matches;
+  });
+  arrangePanels();
+  desktop.addEventListener('change', arrangePanels);
+
+  const tray = dashboard.querySelector('[data-dashboard-next-action]');
+  if (!tray) return;
+  const dock = document.querySelector('[data-mobile-shortcuts]');
+  const measure = () => {
+    dashboard.style.setProperty('--dashboard-tray-height', `${Math.ceil(tray.getBoundingClientRect().height)}px`);
+    dashboard.style.setProperty('--dashboard-dock-height', `${Math.ceil(dock?.getBoundingClientRect().height ?? 0)}px`);
+  };
+  measure();
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(measure);
+    observer.observe(tray);
+    if (dock) observer.observe(dock);
+  }
+  window.addEventListener('resize', measure);
 });

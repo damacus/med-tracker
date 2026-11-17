@@ -170,10 +170,16 @@ async fn management(viewport: Viewport, size: &'static str) {
                 .click(None)
                 .await
                 .unwrap();
-            expect(page.locator("[data-medication-options] h2"))
-                .to_contain_text("Dose Options")
+            expect(page.locator("[data-dose-options-card]"))
+                .to_be_visible()
                 .await
                 .unwrap();
+            expect(page.locator("[data-medication-options] [data-dose-options-list]"))
+                .to_be_visible()
+                .await
+                .unwrap();
+            assert!(page.evaluate::<(), bool>("() => { const card = document.querySelector('[data-dose-options-card]'); return card.querySelectorAll('h2').length === 1 && card.querySelector('[data-dose-options-summary]').hidden && card.querySelector('[data-medication-panel=options]').hidden && !card.querySelector('details'); }", None).await.unwrap());
+            assert!(page.evaluate::<(), bool>("() => document.querySelector('[data-medication-options] a').tabIndex === 0", None).await.unwrap());
             capture(page, "dose-options", size).await;
             page.locator("[data-medication-options]")
                 .get_by_role(AriaRole::Link, named("Add dose option"))
@@ -276,6 +282,14 @@ async fn management(viewport: Viewport, size: &'static str) {
             panel
                 .locator("[data-medication-cancel]")
                 .click(None)
+                .await
+                .unwrap();
+            expect(page.locator("[data-dose-options-summary]"))
+                .to_be_visible()
+                .await
+                .unwrap();
+            expect(page.get_by_role(AriaRole::Link, named("Manage Dose Options")))
+                .to_be_focused()
                 .await
                 .unwrap();
             page.get_by_role(AriaRole::Link, named("Move Medication"))

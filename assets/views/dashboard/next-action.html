@@ -1,0 +1,6 @@
+{% if next_action %}{% set row = next_action %}{% set tray = true %}
+<div class="dashboard-next-action-backdrop" aria-hidden="true"></div>
+<aside class="dashboard-next-action card card-sm card-border border-primary/40 bg-base-100 shadow-sm lg:hidden" data-dashboard-next-action data-occurrence-key="{{ row.occurrence_key }}" data-row-id="{{ row.id }}" aria-label="{{ labels.dashboard.stats.next_dose }}">
+  <div class="card-body gap-1"><div class="dashboard-row-content min-w-0" role="region" aria-label="{{ labels.dashboard.stats.next_dose }}" tabindex="0"><p class="text-xs font-bold text-primary">{% if row.can_record %}{{ labels.dashboard.stats.due_now }}{% else %}{{ row.status_label }}{% endif %} · {% if row.scheduled_at %}<time datetime="{{ row.scheduled_at }}">{{ row.time }}</time>{% else %}<span>{{ row.time }}</span>{% endif %}</p><h2 class="card-title block text-base leading-snug">{{ row.medication }}<span class="text-sm font-normal"> · {{ row.dose }}</span></h2></div>{% include "dashboard/identity.html" %}<div class="dashboard-row-footer card-actions">{% include "dashboard/actions.html" %}</div></div>
+</aside>
+{% endif %}
