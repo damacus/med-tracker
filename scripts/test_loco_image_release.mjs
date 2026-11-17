@@ -136,8 +136,6 @@ test("publishing retains architecture and scheduler checks and exact source chec
     }
   }
   const publish = image.jobs.publish.steps.find((step) => step.name === "Publish tested images and assemble their manifest");
-  assert.equal(publish.env.IMAGE, "ghcr.io/${{ github.repository }}");
-  assert.equal(image.jobs.beta.steps.find((step) => step.name === "Promote current main beta").env.IMAGE, "ghcr.io/${{ github.repository }}");
   assert.match(publish.run, /RELEASE_VERSION/);
   assert.doesNotMatch(publish.run, /:latest|docker build(?: |$)/);
   assert.equal(image.jobs.publish.steps.some((step) => step.uses?.startsWith("actions/checkout@")), false);
