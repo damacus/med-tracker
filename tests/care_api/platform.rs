@@ -6587,7 +6587,13 @@ async fn platform_account_security_shows_scoped_navigation_links() {
     );
     assert_eq!(
         support_link.value().attr("href"),
-        Some("/profile?panel=support#security")
+        Some(
+            format!(
+                "/profile?panel=support&household={}#security",
+                household_named(&app, "supported-fixture").await.slug
+            )
+            .as_str()
+        )
     );
     assert_eq!(
         support_link.value().attr("data-profile-flow-entry"),

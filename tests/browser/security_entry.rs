@@ -266,7 +266,7 @@ async fn profile_dialogs_native_fallback_survives_disabled_download_and_initiali
             expect(page.get_by_role(AriaRole::Heading, named("My Profile"))).to_be_visible().await.unwrap();
             expect(page.get_by_label("New email address", true)).to_be_visible().await.unwrap();
             assert!(page.url().contains("/profile?panel=email"));
-            expect(page.locator("[data-profile-flow-root] > [data-profile-flow-done]")).to_have_attribute("href", "/profile#security").await.unwrap();
+            expect(page.locator("[data-profile-flow-root] > [data-profile-flow-done]")).to_have_attribute("href", "/profile?household=persistence-fixture#security").await.unwrap();
             context.close().await.unwrap();
         }
     })).await;

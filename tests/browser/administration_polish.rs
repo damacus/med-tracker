@@ -48,7 +48,7 @@ async fn administration_polish_overview_and_forms() {
         harness::sign_in(journey).await;
         page.goto(&format!("{}/households/persistence-fixture/admin",journey.origin),None).await.unwrap();
         expect(page.locator("#expired-invitations")).to_contain_text("Expired invitations").await.unwrap();
-        expect(page.get_by_role(AriaRole::Button, Some(playwright_rs::protocol::GetByRoleOptions::default().name("Rename household")))).to_be_visible().await.unwrap();
+        expect(page.locator("summary[aria-label^='Rename household:']")).to_be_visible().await.unwrap();
         assert!(!page.locator("main").text_content().await.unwrap().unwrap().contains("private clinical sentinel"));
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         harness::device_appearance(page, "dark").await;

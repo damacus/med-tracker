@@ -36,9 +36,8 @@ async fn household_ai_consent_is_explicit_accessible_and_withdrawable() {
                     .unwrap();
                 let rejected = page.evaluate::<(), u16>("async () => (await fetch(document.querySelector('input[name=settings_scope][value=ai]').form.action, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'settings_scope=ai&ai_suggestions_enabled=true'})).status", None).await.unwrap();
                 assert_eq!(rejected, 403);
-                page.get_by_role(AriaRole::Button, named("Rename household: Synthetic household"))
-                    .click(None).await.unwrap();
-                let rename = page.locator("dialog[open]");
+                let rename = page.locator("details:has(> summary[aria-label='Rename household: Synthetic household'])");
+                rename.locator("summary").click(None).await.unwrap();
                 rename.get_by_label("Household name", true).fill("   ", None).await.unwrap();
                 rename.get_by_role(AriaRole::Button, named("Save household")).click(None).await.unwrap();
                 expect(page.locator("[role=alert]")).to_be_visible().await.unwrap();
