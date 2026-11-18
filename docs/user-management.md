@@ -82,6 +82,9 @@ never give those credentials to the web server or worker.
 rtk task host:platform-admin:bootstrap EMAIL=owner@example.com OPERATOR=installation-owner REASON='Initial system administrator'
 ```
 
+The wrapper selects production explicitly. Use `BOOTSTRAP_ENVIRONMENT=development`
+only when appointing an administrator in an isolated development installation.
+
 The task records the operator and reason in the audit trail, leaves household
 membership unchanged, and can safely be repeated for the same active administrator.
 It refuses to appoint another account once a usable system administrator exists.
