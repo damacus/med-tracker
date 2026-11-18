@@ -9,6 +9,110 @@ use loco_rs::prelude::ConnectionTrait;
 use migration::MigratorTrait;
 
 #[tokio::test]
+async fn platform_bootstrap_requires_operator_and_audits_only_the_first_verified_admin() {
+    use med_tracker::models::{
+        entities::{account, membership, platform_admin, version},
+        platform::bootstrap::appoint,
+    };
+    use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
+    let fixture = scenario::Scenario::new().await;
+    let other = scenario::Scenario::new().await;
+    let email = &fixture.account.email;
+    let audit = || {
+        version::Entity::find()
+            .filter(version::Column::ItemId.eq(fixture.account.id))
+            .filter(version::Column::Event.eq("platform/administrator/bootstrapped"))
+    };
+    assert!(
+        appoint(&fixture.runtime, email, "owner", "Initial installation")
+            .await
+            .is_err()
+    );
+    assert!(
+        appoint(&fixture.admin, email, "", "Initial installation")
+            .await
+            .is_err()
+    );
+    account::Entity::update_many()
+        .col_expr(
+            account::Column::Active,
+            sea_orm::sea_query::Expr::value(false),
+        )
+        .filter(account::Column::Id.eq(fixture.account.id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    assert!(
+        appoint(&fixture.admin, email, "owner", "Initial installation")
+            .await
+            .is_err()
+    );
+    account::Entity::update_many()
+        .col_expr(
+            account::Column::Active,
+            sea_orm::sea_query::Expr::value(true),
+        )
+        .filter(account::Column::Id.eq(fixture.account.id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    account::Entity::update_many()
+        .col_expr(account::Column::Status, sea_orm::sea_query::Expr::value(1))
+        .filter(account::Column::Id.eq(fixture.account.id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    assert!(
+        appoint(&fixture.admin, email, "owner", "Initial installation")
+            .await
+            .is_err()
+    );
+    account::Entity::update_many()
+        .col_expr(account::Column::Status, sea_orm::sea_query::Expr::value(2))
+        .filter(account::Column::Id.eq(fixture.account.id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(audit().count(&fixture.admin).await.unwrap(), 0);
+    let (first, second) = tokio::join!(
+        appoint(&fixture.admin, email, "owner", "Initial installation"),
+        appoint(&fixture.admin, email, "owner", "Initial installation")
+    );
+    assert_ne!(first.unwrap(), second.unwrap());
+    let row = audit().one(&fixture.admin).await.unwrap().unwrap();
+    assert_eq!(audit().count(&fixture.admin).await.unwrap(), 1);
+    assert_eq!(row.audit_context["operator"], "owner");
+    assert_eq!(row.audit_context["reason"], "Initial installation");
+    assert!(row.whodunnit.is_none());
+    assert!(
+        appoint(
+            &fixture.admin,
+            &other.account.email,
+            "owner",
+            "Another admin"
+        )
+        .await
+        .is_err()
+    );
+    assert_eq!(
+        membership::Entity::find_by_id(fixture.membership.id)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap()
+            .role,
+        fixture.membership.role
+    );
+    platform_admin::Entity::delete_many()
+        .filter(platform_admin::Column::AccountId.eq(fixture.account.id))
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    other.close().await;
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn household_ai_consent_upgrade_and_new_households_default_off() {
     schema_case(async {
         use med_tracker::models::_entities::households;

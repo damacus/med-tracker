@@ -19,6 +19,59 @@ fn job(run: &str) -> Job {
 }
 
 #[test]
+fn platform_bootstrap_task_wrapper_uses_selected_environment() {
+    use std::os::unix::fs::PermissionsExt;
+    let directory = tempfile::tempdir().unwrap();
+    let bin = directory.path().join("bin");
+    let config = directory.path().join("config");
+    std::fs::create_dir(&bin).unwrap();
+    std::fs::create_dir(&config).unwrap();
+    for environment in ["production", "development"] {
+        std::fs::write(
+            config.join(format!("{environment}.yaml")),
+            format!("<%= {environment}_sentinel() %>"),
+        )
+        .unwrap();
+    }
+    let cargo = bin.join("cargo");
+    std::fs::write(&cargo, "#!/usr/bin/env node\nconst {spawnSync}=require('node:child_process');\nconst args=process.argv.slice(2);\nconst result=spawnSync(process.env.MEDTRACKER_BOOTSTRAP_TEST_BINARY,args.slice(args.indexOf('--')+1),{stdio:'inherit'});\nif(result.error) throw result.error;\nprocess.exit(result.status ?? 1);\n").unwrap();
+    std::fs::set_permissions(&cargo, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let inherited_path = std::env::var_os("PATH").unwrap();
+    let paths = std::iter::once(bin).chain(std::env::split_paths(&inherited_path));
+    let path = std::env::join_paths(paths).unwrap();
+    for selected in [None, Some("development"), Some("production")] {
+        let mut command = std::process::Command::new("task");
+        command
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .args([
+                "host:platform-admin:bootstrap",
+                "EMAIL=unavailable@example.test",
+                "OPERATOR=process-test",
+                "REASON=Environment selection",
+            ])
+            .env("PATH", &path)
+            .env("LOCO_CONFIG_FOLDER", &config)
+            .env(
+                "MEDTRACKER_BOOTSTRAP_TEST_BINARY",
+                env!("CARGO_BIN_EXE_med-tracker"),
+            )
+            .env_remove("LOCO_ENV")
+            .env_remove("RAILS_ENV")
+            .env_remove("NODE_ENV");
+        if let Some(selected) = selected {
+            command.arg(format!("BOOTSTRAP_ENVIRONMENT={selected}"));
+        }
+        let output = command.output().unwrap();
+        let error = String::from_utf8_lossy(&output.stderr);
+        assert!(!output.status.success());
+        assert!(
+            error.contains(&format!("{}_sentinel", selected.unwrap_or("production"))),
+            "{error}"
+        );
+    }
+}
+
+#[test]
 fn container_scheduler_rejects_invalid_arguments_before_starting() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("scheduler.yaml");

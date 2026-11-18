@@ -65,10 +65,32 @@ If you have platform access, open **Platform administration** from your account
 security page. Household administration remains available to household owners
 and administrators.
 
-To import an NHS dm+d release, sign in as a platform administrator and open
-`/admin/nhs-dmd` directly; there is currently no importer link in the
-administration menus. Household administration access alone is not enough.
+To import an NHS dm+d release, sign in as a platform administrator and select
+**Import NHS dm+d release** in the desktop sidebar or mobile navigation, or
+**Upload NHS dm+d** in platform administration. The importer remains at
+`/admin/nhs-dmd`. Household administration access alone is not enough.
 See [NHS dm+d import instructions](nhs-dmd-integration.md#loco-migration-checkout).
+
+### Appoint the first system administrator
+
+An installation operator appoints an existing verified, enabled account with
+the native bootstrap task. Use a separate operator process with the database
+superuser connection supplied through the normal PostgreSQL configuration;
+never give those credentials to the web server or worker.
+
+```fish
+rtk task host:platform-admin:bootstrap EMAIL=owner@example.com OPERATOR=installation-owner REASON='Initial system administrator'
+```
+
+The wrapper selects production explicitly. Use `BOOTSTRAP_ENVIRONMENT=development`
+only when appointing an administrator in an isolated development installation.
+
+The task records the operator and reason in the audit trail, leaves household
+membership unchanged, and can safely be repeated for the same active administrator.
+It refuses to appoint another account once a usable system administrator exists.
+After bootstrap, administrators grant further access through **Platform users**,
+with the normal fresh sign-in confirmation. This task does not create accounts,
+change passwords or run migrations.
 
 ## Add a person
 
