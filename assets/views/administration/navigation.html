@@ -1,8 +1,20 @@
-<nav aria-label="{% if admin_labels %}{{ admin_labels.nav.label }}{% else %}Household administration{% endif %}" class="admin-navigation section-switcher">
-  <a class="section-switcher-item" href="/households/{{ slug }}/admin{{ language_suffix }}" {% if admin_section == 'overview' %}aria-current="page"{% endif %}>{% if admin_labels %}{{ admin_labels.nav.overview }}{% else %}Overview{% endif %}</a>
-  <a class="section-switcher-item" href="{% if members_navigation_url %}{{ members_navigation_url }}{% else %}/households/{{ slug }}/admin/users{{ language_suffix }}{% endif %}" {% if admin_section == 'users' %}aria-current="page"{% endif %}>{% if admin_labels %}{{ admin_labels.nav.members }}{% else %}Members{% endif %}</a>
-  <a class="section-switcher-item" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}" {% if admin_section == 'relationships' %}aria-current="page"{% endif %}>{% if admin_labels %}{{ admin_labels.nav.relationships }}{% else %}Care relationships{% endif %}</a>
-  <a class="section-switcher-item" href="/households/{{ slug }}/admin/invitations{{ language_suffix }}" {% if admin_section == 'invitations' %}aria-current="page"{% endif %}>{% if admin_labels %}{{ admin_labels.nav.invitations }}{% else %}Invitations{% endif %}</a>
-  <a class="section-switcher-item" href="/households/{{ slug }}/admin/audit_logs{{ language_suffix }}" {% if admin_section == 'audit' %}aria-current="page"{% endif %}>{{ admin_labels.audit.title }}</a>
-  <a class="section-switcher-item" href="/households/{{ slug }}/admin/household/edit{{ language_suffix }}" {% if admin_section == 'settings' %}aria-current="page"{% endif %}>{% if admin_labels %}{{ admin_labels.nav.settings }}{% else %}Household settings{% endif %}</a>
+{% set service_context = system_administration | default(value=false) %}
+{% set system_tools = service_context or (shell and shell.system_administrator) %}
+{% set household_tools = (shell and shell.can_manage_household) or (not service_context and slug) %}
+{% set admin_slug = slug | default(value="") %}
+{% if shell and admin_slug == "" %}{% set admin_slug = shell.slug %}{% endif %}
+{% set lang_link = language_suffix | default(value="") %}
+<nav aria-label="Administration sections" class="admin-navigation section-switcher">
+  <a class="section-switcher-item" href="{% if household_tools %}/households/{{ admin_slug }}/admin{{ lang_link }}{% else %}/administration{% endif %}" {% if admin_section == 'overview' %}aria-current="page"{% endif %}>{% if labels and labels.administration and labels.administration.nav %}{{ labels.administration.nav.overview }}{% else %}Overview{% endif %}</a>
+  <a class="section-switcher-item" href="{% if members_navigation_url %}{{ members_navigation_url }}{% elif household_tools %}/households/{{ admin_slug }}/admin/users{{ lang_link }}{% else %}/administration/users{% endif %}" {% if admin_section == 'users' %}aria-current="page"{% endif %}>Users</a>
+  {% if household_tools %}
+  <a class="section-switcher-item" href="/households/{{ admin_slug }}/admin/carer_relationships{{ lang_link }}" {% if admin_section == 'relationships' %}aria-current="page"{% endif %}>{% if labels and labels.administration and labels.administration.nav %}{{ labels.administration.nav.relationships }}{% else %}Care relationships{% endif %}</a>
+  <a class="section-switcher-item" href="/households/{{ admin_slug }}/admin/audit_logs{{ lang_link }}" {% if admin_section == 'audit' %}aria-current="page"{% endif %}>{% if labels and labels.administration and labels.administration.nav %}{{ labels.administration.nav.audit }}{% else %}Security audit{% endif %}</a>
+  {% endif %}
+  {% if system_tools %}
+  <a class="section-switcher-item" href="/administration/settings" {% if admin_section == 'service_settings' %}aria-current="page"{% endif %}>Service settings</a>
+  <a class="section-switcher-item" href="/administration/nhs-dmd" {% if admin_section == 'nhs_dmd' %}aria-current="page"{% endif %}>NHS dm+d</a>
+  <a class="section-switcher-item" href="/administration/support" {% if admin_section == 'support' %}aria-current="page"{% endif %}>Support access</a>
+  <a class="section-switcher-item" href="/administration/owner-recovery" {% if admin_section == 'owner_recovery' %}aria-current="page"{% endif %}>Owner recovery</a>
+  {% endif %}
 </nav>

@@ -90,7 +90,7 @@ async fn submit(journey: &harness::Journey, recipient: &str) {
         .page
         .goto(
             &format!(
-                "{}/households/persistence-fixture/admin/invitations",
+                "{}/households/persistence-fixture/admin/users/invitations",
                 journey.origin
             ),
             None,

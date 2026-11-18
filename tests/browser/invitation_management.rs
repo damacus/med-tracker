@@ -39,8 +39,9 @@ async fn invitation_management_search_delivery_and_keyboard_actions() {
         let maya = crate::fixtures::browser::seed_invitation_management(&journey.admin).await;
         harness::sign_in(journey).await;
         let page=&journey.page;
-        let path=format!("{}/households/persistence-fixture/admin/invitations?lang=en",journey.origin);
+        let path=format!("{}/households/persistence-fixture/admin/users/invitations?lang=en",journey.origin);
         page.goto(&path,None).await.unwrap();
+        expect(page.locator(".admin-navigation a[aria-current=page]")).to_have_text("Users").await.unwrap();
         expect(page.get_by_role(AriaRole::Button,named("Resend maya@example.test"))).to_be_visible().await.unwrap();
         expect(page.locator(".admin-invitations")).to_contain_text("Not tracked").await.unwrap();
         expect(page.locator(".admin-invitations")).to_contain_text("This attempt will not be sent again.").await.unwrap();

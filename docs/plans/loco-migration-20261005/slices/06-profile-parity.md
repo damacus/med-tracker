@@ -1,5 +1,186 @@
 # Profile page parity subplan
 
+Current planning: [Modern profile consolidation, 18 November 2026](#modern-profile-consolidation-18-november-2026).
+Historical checks below do not establish acceptance of this consolidation.
+
+## Modern profile consolidation, 18 November 2026
+
+Status: the owner approved application implementation after reviewing the HTML
+prototype. Publication, merge, deployment, live-role changes and data import
+require their own authorisation.
+
+Latest prototype review decisions: combine full name, date of birth and account
+details in one card. Put Use a display name beside Full name and reveal the alias
+field only when checked. Put appearance, time zone and mobile shortcuts in Look
+and feel. Colour themes follow the selected household as a visual cue, with a
+personal fallback when there is no household. Light and dark mode remain a
+personal preference. In Notifications, put Personal notifications beneath Push
+notifications; keep household reminders in the same tab with their household
+selector. Use direct consent wording in Security.
+Coordinated plan: [unified Administration](../../2026-10-21-admin-day-one.md#unified-administration-18-november-2026).
+
+### Agreed outcome and reference
+
+Make `/profile` the canonical personal destination. Port the modern presentation
+and fast local tab switching from `/households/{slug}/profile` to it. Merge both
+sets of capabilities, then remove the older standalone presentation and the
+household profile page/routes. The URL `/profile` itself remains. Layout, navigation
+and placement may change; permissions and account capabilities must survive.
+Leaving the final household must retain personal settings, history and plans,
+as required by ADRs 0014/0015 and `tests/browser/personal_profile.rs`.
+
+Source inspected at `9faf79b35ca42bdf1cf79bd9cb56ec8d6f6bfc49`.
+Both URLs render `assets/views/profile/show.html`; both use `profile.js` and
+`profile-dialogs.js`. The split is conditional composition and request handling,
+not two independent designs. Keep reusable templates and operations where useful.
+Remove the obsolete presentation branch rather than deleting shared services.
+
+Historical images inspected read-only in
+`/Users/damacus/.codex/worktrees/bd02/med-tracker/docs/screenshots/`:
+`native-auth/profile-security-desktop.png` and
+`shared-layout/account-security-320.png`. They show the modern shell and grouped
+security cards, including narrow-width wrapping. They are historical evidence,
+not proof that the current revision renders or every control works. The owner
+reports inconsistent Security/Advanced framing and unfinished controls; neither
+claim is treated as resolved by source inspection.
+
+### Feature inventory and intended home
+
+| Capability | Current source behaviour | Proposed modern destination / acceptance |
+| --- | --- | --- |
+| Account display name | Standalone-only form and save branch | Profile; save/reload, validation and account identity remain distinct from clinical identity |
+| Clinical name and date of birth | Standalone-only form and save branch | Profile; preserve self-edit authority, validation, clinical audit and other-household disclosure rules |
+| Personal dose history | Standalone link; dialog reusable in household view | Profile history dialog and full-page fallback; preserve cursor pagination and personal-only cross-household reading |
+| Personal plans | Standalone link; dialog reusable | Profile plans dialog/fallback; view, edit, pause, resume and retire with original timezone/provenance and revision rules |
+| Avatar and Gravatar preference | Account and household routes exist | Profile; upload, replace, remove, invalid file/storage failure and disclosure opt-in remain functional |
+| Timezone, appearance and mobile shortcuts | Shared composition | Profile; persist/reload, applied theme and usable ordered shortcuts, not merely saved values |
+| Email, password and provider links | Shared Security and account endpoints | Security; verified changes, configured/unconfigured provider, correct completion and cancellation destinations |
+| TOTP, backup codes and passkeys | Shared Security | Security; setup/removal, single-use codes, proof/replay failures and secret clearing |
+| Personal API keys and sessions | Shared Security | Security; create/revoke, one-time secret display, current/other session state and cross-session revocation |
+| Account support access | Shared Security/dialog | Agreed Security; approvals and ending access stay controlled by the account holder |
+| Guardian declarations | `/profile/guardian-declarations`, including withdrawal | Reachable modern Profile flow; preserve history, pagination, revision checks and effective withdrawal |
+| Notifications and push | Household-only composition and routes | Agreed: Notifications in canonical `/profile`; account/person preferences remain personal, while genuine household operations retain explicit context and existing authority |
+| JSON/ZIP exports | Household-only Advanced | Agreed: Advanced in canonical `/profile`; clearly name the applicable household and retain scoped export warnings/download authority; no global export |
+| Version/release information | Shared Advanced | Advanced; accurate release link and existing environment-dependent visibility |
+| Account closure | Current `security.html`; historical plan places it in Advanced | Agreed: Advanced's Danger Zone; preserve fresh proof, sole-owner protection and retained shared-care explanation |
+
+### Canonical destination and route transfer
+
+Owner clarification: profiles belong to people/accounts, not households. There
+will be one modern personal Profile at `/profile`, including for an account with
+no household. Do not introduce `/account/profile` or a competing account-only UI.
+The modern shell must work without fabricating household membership or links.
+Notifications and exports move to canonical `/profile`, as explicitly chosen by
+the owner. Household-only operations require explicit context and retain existing
+authority; this does not turn household exports into a global personal export.
+Old household URLs can be removed: the owner accepts breaking
+pre-beta navigation and rejects transitional duplicate UI, redirects and layers.
+
+| Existing route / caller | Required transfer |
+| --- | --- |
+| GET/POST `/profile` | Keep canonical URL and self-edit authority; modern shell, cards and full feature composition replace old framing |
+| GET `/profile/history` | Retain personal-history fallback and dialog in modern framing; verify generated cursor URLs and return to canonical Profile |
+| GET `/profile/schedules`, POST `/profile/schedules/{id}` | Retain personal plans/actions; modern fallback, success return and dialog allowlist |
+| GET/POST `/profile/avatar`, POST `/profile/avatar/remove` | Canonical account avatar endpoints; transfer household image/form callers |
+| GET `/profile/guardian-declarations`, POST `/{id}/withdraw` | Retain account-owned routes in modern Profile flow; verify pagination and post-withdraw return |
+| `/account/security/**`, `/account/support/**` | Preserve operation contracts as appropriate; replace fallback rendering and completion/cancel links with modern framing |
+| `/households/{slug}/profile` and its navigation/avatar/settings routes | Remove after all callers use canonical Profile and account avatar/navigation handlers; no compatibility redirects |
+| Household profile notifications, push/status/test and export endpoints | Rehome under canonical personal Profile, carrying explicit household context where required; retain binding/authority and remove superseded routes without compatibility layers |
+| Chooser, invitation/shared-care links and shell account menu | Modern destination chosen from current identity/membership, including last-household departure |
+| Password reset, provider callbacks, passkey/proof scripts | Validated internal modern returns; no obsolete page fallback or open redirect |
+
+Audit `profile/dialogs.rs`, `profile-dialogs.js`, `add-passkey.js`,
+`security-proof.js`, identity onboarding/security rendering, shared base layout,
+profile navigation, avatars and all generated href/action values. Preserve
+`/api/v1/auth/profile/**`, household API paths, mobile OAuth and MCP contracts;
+their `profile` name alone is not a reason to remove them. The profile service
+worker is not a legacy page and must retain push delivery behaviour.
+
+Breaking old browser routes is approved. Remove superseded household profile
+routes after all application callers are transferred; add no bookmark redirects
+or mutation forwarding. Identity callback endpoints are protocol operations, not
+obsolete profile pages: update their validated return destinations while retaining
+required protocol behaviour. If a concrete external consumer creates a new
+contract question, document that evidence rather than adding a speculative layer.
+
+### Delivery slices
+
+| Slice | User outcome and completion evidence | Dependencies / risk |
+| --- | --- | --- |
+| P1: modern personal identity | Canonical `/profile` uses modern tabs/shell, edits both names and DOB, opens personal history/plans and works after final-household departure | Destination approved; acceptance covers invalid input, revoked membership, cross-account denial and persisted/audited results |
+| P2: complete personal care flows | History pagination and all plan actions stay in modern dialogs or equivalent full-page fallback | P1; preserve clinical authority, timezone, retirement, immutable history and no extra stock/reminder side effects |
+| P3: consistent account controls | Security, support, declarations, Notifications and Advanced complete at canonical Profile; closure is in Advanced | P1; explicit context for household operations; test fresh proof, cancellation, expiry and failures |
+| P4: retire old profile presentation and household routes | Chooser, invitation, callback and fallback journeys use `/profile` and never render old framing | P1–P3; route/link audit and direct removed-URL tests; no redirects |
+
+Each slice must provide a complete visible journey before separate PR publication
+by the delivery controller. Coordinated shell changes must work both with and
+without a household; Administration must not introduce a dependency that blocks
+ordinary Profile access.
+
+### Acceptance and functional audit
+
+For every inventory row record: visible control; expected operation; observed
+success; persisted result; invalid/denied/error result; audit where applicable;
+return/focus; evidence path; verdict. A link, placeholder, disabled control or
+saved preference with no effect is not completion. Classify defects separately
+from placement changes and obtain decisions for new behaviour.
+
+Retain no-reload Profile tab selection, direct hash entry, refresh, arrow keys,
+Home/End and focus. Current code uses `replaceState` for tab changes: preserve
+that default; back from a subflow restores its initiating tab. Do not silently
+turn every tab click into a new history entry. Test loading, uncertain writes,
+double submission, stale responses, expired sessions, errors, cancellation,
+dialog focus restoration, safe inline fallback and JavaScript-disabled access.
+
+Use synthetic household member/manager, multiple-household, former-member,
+no-household and system-administrator-without-household fixtures. Include another
+account and revoked/stale credentials for denial. System authority must never
+become personal clinical authority. Preserve restricted runtime RLS, disclosure,
+mail outbox, closure protections and account-owned clinical audit.
+
+Before implementation capture current desktop 1440×1000, mobile 390×844 and 320px
+with doubled text, light/dark, English and the other four locales. Record revision,
+fixture role, timezone and theme under `docs/screenshots/`. Compare ordinary,
+empty, invalid, denied, loading and relevant error states side by side with the
+replacement; record visual verdicts, keyboard/focus, contrast and dialog checks.
+No new baseline was captured or runtime functional test run during this planning.
+
+Application delivery requires failing observable tests before executable edits,
+focused journeys, `task ci`, `task docs:build` and `git diff --check` through RTK.
+No schema/data migration, credential replacement, import or worker redesign is
+planned. Existing export, reminder, push and security side effects must remain
+unchanged. Reverting source/routes is the proposed rollback; release and rollback
+execution belong to the delivery controller and require separate authorisation.
+
+### Settled placements and remaining context detail
+
+The owner explicitly chose Notifications and export controls in canonical personal
+`/profile`; do not reopen placement elsewhere under household administration.
+The owner also answered yes to closure in Advanced's Danger Zone. Earlier questions
+about a separate account-only destination and old-route redirects are superseded.
+
+Proposed context behaviour: show the applicable household beside any genuinely
+household-scoped operation, with an explicit selector when more than one is
+available. Preselect a still-authorised active household; otherwise require a
+choice. Carry that choice in each submitted operation and retain its original
+binding across household switches. A no-household account retains its personal
+preferences, care and security, while household-only operations explain their
+unavailability. Do not invent global export or disclosure authority. Selector
+default and wording are proposals to confirm if they create a consequential
+difference during detailed slice planning; the destination decision is settled.
+
+The owner explicitly chose Profile / Security for approving and ending support
+access. Operator requests, activation and inspection use the ordinary
+Administration / Support access tab. Consent must not require administration
+permissions. No consequential placement question remains from this owner Q&A.
+The owner approved implementation after prototype review.
+
+Planning verification: `git diff --check` passed. `task docs:build` passed with
+five existing missing-page warnings in `2026-10-23-typed-handoff-stack.md`.
+Application tests were not run: only planning documents changed.
+
+## Historical profile delivery record
+
 Recorded 7 October 2026. Parent: [browser delivery](06-browser.md).
 
 ## Outcome and audit limits

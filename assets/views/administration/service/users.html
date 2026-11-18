@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set system_administration = true %}
+{% set admin_section = "users" %}
+<section class="platform-page">
+  <h1 class="sr-only">Users</h1>
+  {% include "administration/navigation.html" %}
+  {% include "administration/user_scope.html" %}
+  {% set directory_slug = slug | default(value="") %}
+  {% if shell and directory_slug == "" %}{% set directory_slug = shell.slug %}{% endif %}
+  {% set directory_lang = lang | default(value="en") %}
+  <form method="get" action="/administration/users" class="platform-search-panel">
+    {% if shell and shell.can_manage_household %}<input type="hidden" name="household" value="{{ directory_slug }}">{% endif %}
+    <input type="hidden" name="lang" value="{{ directory_lang }}">
+    <div class="platform-search-field">
+      <label for="platform-users-query">Search by email</label>
+      <input class="input input-bordered w-full" type="search" id="platform-users-query" name="q" value="{{ query }}" placeholder="e.g. name@example.com">
+    </div>
+    <button class="btn btn-primary" type="submit">Search</button>
+    {% if query %}<a class="btn btn-ghost" href="/administration/users?lang={{ directory_lang }}{% if shell and shell.can_manage_household %}&amp;household={{ directory_slug }}{% endif %}">Clear search</a>{% endif %}
+  </form>
+  <section class="platform-directory" aria-labelledby="platform-directory-heading">
+    <div class="platform-directory-heading">
+      <div><h2 id="platform-directory-heading">User directory</h2><p class="shell-muted">{% if query %}Results for “{{ query }}”{% else %}Sign-in access and platform permissions{% endif %}</p></div>
+      <span class="platform-count">{{ total }} {% if total == 1 %}user{% else %}users{% endif %}</span>
+    </div>
+    {% if users | length > 0 %}
+    <div class="platform-desktop-directory" data-testid="platform-users-table">
+      <table class="table platform-users-table">
+        <caption class="sr-only">All accounts and their access</caption>
+        <thead><tr><th scope="col">User</th><th scope="col">System access</th><th scope="col">Account</th><th scope="col">Sign-in</th><th scope="col">Actions</th></tr></thead>
+        <tbody>{% for user in users %}
+          <tr data-platform-user="{{ user.id }}"><th scope="row">{% include "administration/service/user_identity.html" %}</th><td>{% include "administration/service/user_access.html" %}</td><td>{% include "administration/service/user_account.html" %}</td><td>{% include "administration/service/user_sign_in.html" %}</td><td>{% include "administration/service/user_actions.html" %}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+    <div class="platform-mobile-directory" data-testid="platform-users-mobile">
+      {% for user in users %}<article class="platform-user-card" data-platform-user="{{ user.id }}">
+        {% include "administration/service/user_identity.html" %}
+        <dl class="platform-user-details"><div><dt>Platform access</dt><dd>{% include "administration/service/user_access.html" %}</dd></div><div><dt>Account</dt><dd>{% include "administration/service/user_account.html" %}</dd></div><div><dt>Sign-in</dt><dd>{% include "administration/service/user_sign_in.html" %}</dd></div></dl>
+        {% include "administration/service/user_actions.html" %}
+      </article>{% endfor %}
+    </div>
+    {% else %}
+    <div class="platform-empty-state"><h3>No users found</h3><p>Try a different email address or clear the search to see all users.</p></div>
+    {% endif %}
+    <footer class="platform-pagination">
+      <p class="shell-muted">Showing {{ users | length }} of {{ total }} {% if total == 1 %}user{% else %}users{% endif %}{% if pages > 1 %} · Page {{ page }} of {{ pages }}{% endif %}</p>
+      {% if page_links | length > 1 %}<nav class="join" aria-label="User pages">
+      {% for number in page_links %}{% if number == page %}<span class="join-item btn btn-sm btn-active" aria-current="page">{{ number }}</span>{% else %}<a class="join-item btn btn-sm" aria-label="Page {{ number }}" href="/administration/users?q={{ query_encoded }}&amp;page={{ number }}&amp;lang={{ directory_lang }}{% if shell and shell.can_manage_household %}&amp;household={{ directory_slug }}{% endif %}">{{ number }}</a>{% endif %}{% endfor %}
+      </nav>{% endif %}
+    </footer>
+  </section>
+</section>
+{% endblock content %}

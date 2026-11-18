@@ -149,15 +149,9 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                 .await
                 .unwrap();
 
-                page.goto(
-                    &format!(
-                        "{}/households/persistence-fixture/profile#security",
-                        journey.origin
-                    ),
-                    None,
-                )
-                .await
-                .unwrap();
+                page.goto(&format!("{}/profile#security", journey.origin), None)
+                    .await
+                    .unwrap();
                 expect(page.locator("#profile-tab-security"))
                     .to_be_visible()
                     .await

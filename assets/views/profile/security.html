@@ -27,6 +27,5 @@
       <form method="post" action="/logout"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn justify-self-start" type="submit">{{ labels.profiles.security.sign_out }}</button></form>
     </section>
     {% if account_access.support_access %}<nav class="card card-body bg-base-100 border border-base-300 gap-3" aria-label="{{ labels.layouts.profile_menu.my_account }}">{% if account_access.support_access %}<a class="link" href="{{ profile_path }}?panel=support#security" data-profile-flow-entry="support">{{ labels.profiles.security.support_access }}</a>{% endif %}</nav>{% endif %}
-    <section id="profile-account-closure" class="card card-body bg-base-100 border border-base-300 gap-4"><h3 class="card-title">{{ labels.profiles.browser.danger_zone }}</h3><p>{{ labels.profiles.browser.closure_description }}</p><form method="post" data-profile-flow-entry="operation" action="/account/security/operation?profile_flow=operation{% if slug %}&amp;profile_household={{ slug }}{% endif %}"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="close_account"><button class="btn btn-error" type="submit">{{ labels.profiles.browser.close_account }}</button></form></section>
   </div>
 </div>

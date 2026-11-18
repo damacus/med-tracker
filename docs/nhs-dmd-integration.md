@@ -12,7 +12,7 @@ not call live NHS or Open Food Facts services. The live-provider instructions
 below apply to the Rails reference application.
 
 Accounts with an active platform administrator record upload releases at
-`/admin/nhs-dmd`. Household owner or administrator access alone does not qualify.
+`/administration/nhs-dmd`. Household owner or administrator access alone does not qualify.
 The development/test seed does not create a platform administrator, and the
 current administration navigation has no importer link. See [platform
 administrators](user-management.md#platform-administrators) and the [seed and
@@ -114,7 +114,7 @@ return results.
 
 ## Import NHS release data
 
-In the root Rust application, platform administrators open `/admin/nhs-dmd`
+In the root Rust application, system administrators open `/administration/nhs-dmd`
 directly and upload the NHSBSA release ZIP. There is currently no importer link
 in the administration menus. MedTracker stores the archive, queues the import,
 shows progress and record counts, and removes the archive when the run ends.

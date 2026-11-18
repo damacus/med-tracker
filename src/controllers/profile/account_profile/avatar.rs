@@ -78,7 +78,7 @@ pub(super) async fn upload(
     headers: HeaderMap,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
-    request: Option<Extension<LocoRequestId>>,
+    (Query(query), request): (Query<ProfileQuery>, Option<Extension<LocoRequestId>>),
     form: std::result::Result<Multipart, MultipartRejection>,
 ) -> Response {
     let page = AccountPage {
@@ -88,6 +88,7 @@ pub(super) async fn upload(
         token: &token,
         view: &view,
         request_id: request_id(request),
+        household: query.household.as_deref(),
     };
     let (principal, transaction) = match begin(&ctx, &session, false).await {
         Ok(value) => value,
@@ -150,7 +151,7 @@ pub(super) async fn upload(
     .await
     {
         Ok(_) => match transaction.commit().await {
-            Ok(()) => private(redirect()),
+            Ok(()) => private(redirect(page.household, "profile")),
             Err(_) => {
                 avatar::discard_upload(&ctx, &storage, &key).await;
                 failure(
@@ -177,6 +178,7 @@ pub(super) async fn remove(
     session: Session<SessionPgPool>,
     token: CsrfToken,
     request: Option<Extension<LocoRequestId>>,
+    Query(query): Query<ProfileQuery>,
     Form(fields): Form<HashMap<String, String>>,
 ) -> Response {
     if token
@@ -202,7 +204,7 @@ pub(super) async fn remove(
     .await
     {
         Ok(_) => match transaction.commit().await {
-            Ok(()) => private(redirect()),
+            Ok(()) => private(redirect(query.household.as_deref(), "profile")),
             Err(error) => private(operation_error(error.into())),
         },
         Err(error) => private(operation_error(error)),

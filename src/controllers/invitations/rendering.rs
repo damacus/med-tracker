@@ -18,7 +18,7 @@ pub(super) fn data(
     ));
     data["slug"] = json!(slug);
     data["household_name"] = json!(household_name);
-    data["admin_section"] = json!("invitations");
+    data["admin_section"] = json!("users");
     let defaults = vec![
         ("email".into(), String::new()),
         ("membership_role".into(), "member".into()),
@@ -134,7 +134,7 @@ pub(super) fn render(
         return unavailable();
     };
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "invitations/index.html", data) {
+    match format::render().view(view, "administration/user_invitations.html", data) {
         Ok(response) => (
             error.map(forms::status).unwrap_or(StatusCode::OK),
             token.clone(),

@@ -185,7 +185,7 @@ pub(super) async fn save(
                 [
                     (
                         header::LOCATION,
-                        format!("/households/{slug}/profile#notifications"),
+                        super::profile_url(Some(&slug), "notifications"),
                     ),
                     (header::CACHE_CONTROL, "no-store".into()),
                 ],
@@ -197,9 +197,9 @@ pub(super) async fn save(
                 return unavailable();
             }
             draft.insert("setting".into(), "notifications".into());
-            Page {
+            super::account_profile::AccountPage {
                 ctx: &ctx,
-                slug: &slug,
+                household: Some(&slug),
                 session: &session,
                 request_id,
                 headers: &headers,

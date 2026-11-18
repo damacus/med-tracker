@@ -1,8 +1,10 @@
 {% extends "layouts/base.html" %}
 {% block content %}
+{% set system_administration = true %}
+{% set admin_section = "support" %}
 <section class="platform-page">
   <header class="platform-page-header"><p class="platform-eyebrow">Temporary support</p><h1>Support access: {{ household_name }}</h1><p class="platform-description">Read-only support view. Access expires at {{ expires_at }}.</p></header>
-  {% include "platform/navigation.html" %}
+  {% include "administration/navigation.html" %}
   <div class="platform-read-grid">
   <section class="platform-panel">
   <h2 class="platform-section-title">Household members</h2>

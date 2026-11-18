@@ -59,7 +59,7 @@ async fn core_pages(viewport: Viewport, size: &'static str) {
                     "/households/persistence-fixture/people/73001/treatments/schedules/new",
                     "schedule-form",
                 ),
-                ("/households/persistence-fixture/profile", "profile"),
+                ("/profile", "profile"),
             ] {
                 visit(page, &journey.origin, path).await;
                 reports.push(audit(page, &format!("{name}-{size}")).await);

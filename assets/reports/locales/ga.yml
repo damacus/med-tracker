@@ -1981,6 +1981,11 @@ ga:
     overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
   profiles:
     personal:
+      full_name: "Ainm iomlán"
+      use_display_name: "Úsáid ainm taispeána"
+      household: "Teaghlach"
+      choose_household: "Roghnaigh teaghlach"
+      household_required: "Roghnaigh teaghlach chun na socruithe seo a úsáid."
       plans: "Mo phleananna cóireála"
       plans_description: "Fanann do phleananna leat nuair a fhágann tú teaghlach. Ní nuashonraíonn athruithe ach nasc reatha le teaghlach."
       plans_empty: "Níl aon phleananna cóireála pearsanta taifeadta."
@@ -2194,6 +2199,8 @@ ga:
       "on": Ar siúl
       "off": As
     sections:
+      look-and-feel:
+        title: "Cuma agus mothú"
       profile:
         title: Próifíl
       security:

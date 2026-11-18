@@ -8,7 +8,6 @@ use uuid::Uuid;
 #[derive(Clone, Copy)]
 pub(super) enum Screen {
     Index,
-    Settings,
     Users,
     Member(
         administration::member_browser::MembershipId,
@@ -115,11 +114,10 @@ impl<'a> Page<'a> {
         let result = self
             .data(&tenant, screen, submitted, error, principal.time_zone())
             .await;
-        let (template, data) = match result {
+        let (template, mut data) = match result {
             Ok(value) => value,
             Err(error) => return super::presentation_error(self.view, self.language, error),
         };
-        let response = rendering::render(self.view, self.token, template, data, error);
         if tenant.commit().await.is_err() {
             return super::presentation_error(
                 self.view,
@@ -127,10 +125,60 @@ impl<'a> Page<'a> {
                 OperationError::Unavailable,
             );
         }
+        if matches!(screen, Screen::Index) {
+            match self.workspace_overview(&principal).await {
+                Ok((cards, service_status)) => {
+                    data["household_cards"] = json!(cards);
+                    data["service_status"] = json!(service_status);
+                    data["settings_error"] = json!(
+                        submitted.is_some_and(|draft| draft.contains_key("name"))
+                            && error.is_some()
+                    );
+                    if let Some(draft) = submitted {
+                        data["draft_household_name"] = json!(forms::field(draft, "name"));
+                    }
+                }
+                Err(error) => return super::presentation_error(self.view, self.language, error),
+            }
+        }
+        let response = rendering::render(self.view, self.token, template, data, error);
         if response.status().is_success() && matches!(screen, Screen::Users) {
             super::bulk_members::clear_review(self.session);
         }
         response
+    }
+
+    async fn workspace_overview(
+        &self,
+        principal: &crate::models::identity::browser::BrowserPrincipal,
+    ) -> std::result::Result<
+        (
+            Vec<super::HouseholdCard>,
+            Option<super::super::platform::ServiceStatus>,
+        ),
+        OperationError,
+    > {
+        let cards = super::household_cards(self.ctx, principal, &self.request_id).await?;
+        let transaction = crate::models::platform::begin(&self.ctx.db).await?;
+        let service_status = match crate::models::platform::administrator(
+            &transaction,
+            principal.account_id(),
+        )
+        .await
+        {
+            Ok(_) => Some(
+                super::super::platform::service_status(
+                    self.ctx,
+                    &transaction,
+                    principal.account_id(),
+                )
+                .await?,
+            ),
+            Err(OperationError::Forbidden | OperationError::Unauthenticated) => None,
+            Err(error) => return Err(error),
+        };
+        transaction.commit().await?;
+        Ok((cards, service_status))
     }
 
     async fn data(
@@ -168,7 +216,6 @@ impl<'a> Page<'a> {
         data["household_name"] = json!(household_name);
         let (title_key, section) = match screen {
             Screen::Index => ("overview", "overview"),
-            Screen::Settings => ("settings", "settings"),
             Screen::Users | Screen::Role(_) | Screen::Member(_, _) => ("members", "users"),
             Screen::Relationships
             | Screen::NewRelationship
@@ -213,17 +260,18 @@ impl<'a> Page<'a> {
                 )?);
                 "administration/index.html"
             }
-            Screen::Settings => {
-                let current = administration::settings::read(tenant).await?;
-                data["draft"] = submitted.map_or_else(
-                    || json!({"name":current["data"]["name"],"ai_suggestions_enabled":current["data"]["ai_suggestions_enabled"]}),
-                    |draft| json!({"name":forms::field(draft,"name"),"ai_suggestions_enabled":forms::field(draft,"ai_suggestions_enabled") == "true"}),
-                );
-                "administration/household.html"
-            }
             Screen::Users => {
                 let listing =
                     administration::member_browser::list(tenant, &self.member_query).await?;
+                data["invitation_panel"] = super::super::invitations::users_panel(
+                    tenant,
+                    self.slug,
+                    &household_name,
+                    &labels,
+                    zone,
+                    (self.explicit_language || self.language != "en").then_some(self.language),
+                )
+                .await?;
                 data["members"] = json!(listing.members);
                 data["total"] = json!(listing.total);
                 data["page"] = json!(listing.page);
@@ -463,18 +511,22 @@ impl<'a> Page<'a> {
         let result = async {
             match change {
                 Change::Settings => {
-                    administration::settings::update(
-                        &tenant,
-                        administration::settings::HouseholdSettingsInput::from_form_name(
-                            forms::field(&draft, "name"),
-                        )
-                        .with_ai_suggestions(
-                            forms::field(&draft, "ai_suggestions_enabled") == "true",
-                        ),
-                        provenance,
-                    )
-                    .await?;
-                    Ok(("household/edit", Screen::Settings))
+                    let input = if forms::field(&draft, "settings_scope") == "ai" {
+                        administration::settings::HouseholdSettingsInput::default()
+                            .with_ai_suggestions(
+                                forms::field(&draft, "ai_suggestions_enabled") == "true",
+                            )
+                    } else {
+                        let name = crate::models::identity::browser::household_name(forms::field(
+                            &draft, "name",
+                        ))
+                        .ok_or_else(|| OperationError::Validation {
+                            details: json!({"errors":{"name":["is invalid"]}}),
+                        })?;
+                        administration::settings::HouseholdSettingsInput::from_form_name(name)
+                    };
+                    administration::settings::update(&tenant, input, provenance).await?;
+                    Ok(("", Screen::Index))
                 }
                 Change::Role(id) => {
                     let member = self.member(&tenant, id).await?;
@@ -589,6 +641,8 @@ impl<'a> Page<'a> {
                                     separator,
                                     action.notice()
                                 )
+                            } else if matches!(change, Change::Settings) {
+                                format!("/households/{}/admin{}", self.slug, super::language_suffix(self.language, self.explicit_language))
                             } else if matches!(change, Change::Role(_)) {
                                 format!(
                                     "/households/{}/admin/users{}",
@@ -625,7 +679,7 @@ impl<'a> Page<'a> {
                     );
                 }
                 let screen = match change {
-                    Change::Settings => Screen::Settings,
+                    Change::Settings => Screen::Index,
                     Change::Role(id) => Screen::Role(id),
                     Change::Membership(id, _) if self.member_query.return_to_member => {
                         Screen::Member(id, None)

@@ -2325,6 +2325,11 @@ en:
         metric_value: Schedule
   profiles:
     personal:
+      full_name: "Full name"
+      use_display_name: "Use a display name"
+      household: "Household"
+      choose_household: "Choose household"
+      household_required: "Choose a household to use these settings."
       plans: "My treatment plans"
       plans_description: "Your plans stay with you when you leave a household. Changes update only a current household connection."
       plans_empty: "No personal treatment plans have been recorded."
@@ -2539,6 +2544,8 @@ en:
       "on": "On"
       "off": "Off"
     sections:
+      look-and-feel:
+        title: "Look and feel"
       profile:
         title: Profile
       security:

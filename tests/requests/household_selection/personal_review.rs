@@ -26,8 +26,8 @@ async fn personal_review_clinical_edit_publishes_to_each_active_household() -> T
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("authenticity_token", csrf),
-            ("setting", "clinical"),
-            ("name", "Updated own clinical name"),
+            ("setting", "identity"),
+            ("full_name", "Updated own clinical name"),
             ("date_of_birth", "1990-02-03"),
         ])
         .await;
@@ -171,7 +171,7 @@ async fn personal_review_shortcuts_are_filtered_in_current_household() -> TestRe
         ])
         .await;
     assert_eq!(saved.status_code(), 303, "{}", saved.text());
-    let endpoint = format!("/households/{}/profile/navigation", fixture.household.slug);
+    let endpoint = format!("/profile/households/{}/navigation", fixture.household.slug);
     let owner = request.get(&endpoint).await;
     assert_eq!(owner.status_code(), 200, "{}", owner.text());
     let owner: Value = owner.json();

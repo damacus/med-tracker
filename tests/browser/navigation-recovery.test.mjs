@@ -4,6 +4,16 @@ import test from 'node:test';
 
 const read = path => readFileSync(path, 'utf8');
 
+test('shared chrome links to canonical Profile and has one Administration entry', () => {
+  const links = read('assets/views/components/shell-links.html');
+  const sidebar = read('assets/views/components/app-sidebar.html');
+  const shell = read('src/controllers/shell.rs');
+  assert.match(links, /href="\/profile" data-section="profile"/);
+  assert.match(sidebar, /class="app-sidebar-person" href="\/profile"/);
+  assert.doesNotMatch(links, /platform_url|platform_administration/);
+  assert.doesNotMatch(shell, /"\/platform\/users"/);
+});
+
 test('household chrome requires the complete authorised shell rather than a slug', () => {
   const base = read('assets/views/layouts/base.html');
   assert.doesNotMatch(base, /{% if slug(?: %}| or standalone_navigation)/);
@@ -17,7 +27,7 @@ test('household chrome requires the complete authorised shell rather than a slug
 
 test('optional shell decoration classifies authority failures without swallowing unavailable errors', () => {
   const source = read('src/controllers/shell.rs');
-  const fallback = source.split('fn optional_shell_error(')[1]?.split('\npub(crate) struct ShellView')[0];
+  const fallback = source.split('fn optional_shell_error<T>(')[1]?.split('\npub(crate) struct ShellView')[0];
   assert.ok(fallback, 'typed optional-shell classification is missing');
   for (const denial of ['Unauthenticated', 'Forbidden', 'NotFound', 'InsufficientScope']) {
     assert.ok(fallback.includes(`AuthenticationError::${denial}`), `${denial} is unclassified`);

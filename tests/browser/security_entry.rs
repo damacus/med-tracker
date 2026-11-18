@@ -132,7 +132,7 @@ async fn security_entry_forms_group_fields_and_name_support_proof() {
                 .insert(&journey.admin)
                 .await
                 .unwrap();
-                page.goto(&format!("{}/platform/support", journey.origin), None)
+                page.goto(&format!("{}/administration/support", journey.origin), None)
                     .await
                     .unwrap();
                 page.get_by_label("Household", true)
@@ -191,7 +191,7 @@ async fn profile_dialogs_keep_failed_proofs_and_synthetic_secret_results_in_plac
     harness::journey(Viewport { width: 390, height: 844 }, |journey| Box::pin(async move {
         harness::sign_in(journey).await;
         let page = &journey.page;
-        let profile = format!("{}/households/persistence-fixture/profile#security", journey.origin);
+        let profile = format!("{}/profile#security", journey.origin);
         page.goto(&profile, None).await.unwrap();
         expect(page.locator("[data-profile-dialogs-ready=true]")).to_be_visible().await.unwrap();
         for panel in ["email", "password", "totp", "passkey", "keys"] {
@@ -226,7 +226,7 @@ async fn profile_dialogs_keep_failed_proofs_and_synthetic_secret_results_in_plac
                 window.__profileMutationCount += 1;
                 return new Promise(resolve => { window.__finishProfileMutation = () => resolve({
                     url: String(url), headers: new Headers({'Content-Type':'text/html'}),
-                    text: async () => '<section data-profile-flow-root data-flow-kind="keys" data-flow-outcome="secret-result" data-flow-secret="true" data-flow-profile="/households/persistence-fixture/profile"><h1>Synthetic one-time result</h1><label for="synthetic-key">Synthetic key</label><input id="synthetic-key" readonly value="synthetic-secret-visible-once"><a href="/households/persistence-fixture/profile#security" data-profile-flow-done>Done</a></section>'
+                    text: async () => '<section data-profile-flow-root data-flow-kind="keys" data-flow-outcome="secret-result" data-flow-secret="true" data-flow-profile="/profile"><h1>Synthetic one-time result</h1><label for="synthetic-key">Synthetic key</label><input id="synthetic-key" readonly value="synthetic-secret-visible-once"><a href="/profile#security" data-profile-flow-done>Done</a></section>'
                 }); });
             };
         }"#, None).await.unwrap();
@@ -261,12 +261,12 @@ async fn profile_dialogs_native_fallback_survives_disabled_download_and_initiali
             if failure == "initialisation" {
                 page.add_init_script("document.addEventListener('DOMContentLoaded', () => {}); Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {value: undefined});").await.unwrap();
             }
-            page.goto(&format!("{}/households/persistence-fixture/profile#security", journey.origin), None).await.unwrap();
+            page.goto(&format!("{}/profile#security", journey.origin), None).await.unwrap();
             page.locator("#security [data-profile-flow-entry=email]").click(None).await.unwrap();
             expect(page.get_by_role(AriaRole::Heading, named("My Profile"))).to_be_visible().await.unwrap();
             expect(page.get_by_label("New email address", true)).to_be_visible().await.unwrap();
             assert!(page.url().contains("/profile?panel=email"));
-            expect(page.locator("[data-profile-flow-root] > [data-profile-flow-done]")).to_have_attribute("href", "/households/persistence-fixture/profile#security").await.unwrap();
+            expect(page.locator("[data-profile-flow-root] > [data-profile-flow-done]")).to_have_attribute("href", "/profile#security").await.unwrap();
             context.close().await.unwrap();
         }
     })).await;

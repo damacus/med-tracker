@@ -155,7 +155,7 @@ export function mountProfileDialogs(document) {
     if (!url) throw Error('Unexpected profile destination');
     if (url.pathname !== profile.pathname && !url.searchParams.has('profile_done')) {
       url.searchParams.set('profile_flow', kind || 'operation');
-      const household = profile.pathname.match(/^\/households\/([^/]+)\/profile$/)?.[1];
+      const household = host.dataset.profileHousehold;
       if (household) url.searchParams.set('profile_household', household);
     }
     return url;

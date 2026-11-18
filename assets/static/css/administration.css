@@ -1,9 +1,9 @@
-.admin-page { max-width:68rem; margin-inline:auto; min-width:0; }
+:is(.admin-page, .platform-page) { max-width:68rem; margin-inline:auto; min-width:0; }
+.admin-card-surface { background:var(--surface-container-lowest); border:1px solid var(--border-color); }
 .admin-page h1 { overflow-wrap:anywhere; }
 .admin-page > p { color:var(--on-surface-variant); font-size:.875rem; }
-.admin-navigation { margin-block:1.5rem; }
-.admin-navigation .section-switcher-item { min-width:0; word-break:normal; white-space:normal; }
-@media (min-width:481px) and (max-width:1100px) { .admin-navigation { grid-auto-flow:row; grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.admin-navigation.section-switcher { display:flex; gap:.15rem; margin-block:1.5rem; overflow-x:auto; padding:.2rem; }
+.admin-navigation .section-switcher-item { flex:1 0 auto; padding-inline:.65rem; white-space:nowrap; }
 .admin-attention { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border:1px solid var(--border-color); border-left:3px solid var(--warning); border-radius:1rem; background:var(--card); padding:1rem 1.25rem; margin-block:1.25rem; }
 .admin-attention h2 { font-size:.875rem; font-weight:750; }
 .admin-attention p { font-size:.8125rem; color:var(--on-surface-variant); margin-top:.25rem; }
@@ -52,9 +52,6 @@
 .admin-invitations .card-body > p { grid-column:1; }
 .platform-page-header h1 { font-size:1.5rem; }
 .platform-page-header { margin-bottom:1.25rem; }
-.platform-nav a { font-size:.8125rem; padding:.5rem .875rem; border-radius:1.25rem; }
-.platform-nav { background:transparent; border:0; border-bottom:1px solid var(--border-color); border-radius:0; width:100%; padding:0 0 .75rem; margin-bottom:1.5rem; }
-.platform-nav a[aria-current=page] { background:var(--secondary-container); color:var(--on-secondary-container); box-shadow:none; }
 body:not(.app-household) .shell-header-inner > a:first-child { display:flex; align-items:center; gap:.625rem; font-size:1rem; font-weight:800; }
 body:not(.app-household) .shell-header-inner > a:first-child::before { content:'M'; display:grid; place-items:center; width:2.25rem; height:2.25rem; border-radius:.75rem; background:var(--primary); color:var(--primary-foreground); }
 @media (max-width:1100px) { .admin-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }

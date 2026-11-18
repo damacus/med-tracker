@@ -165,8 +165,8 @@ async fn audit_browser_locales_show_safe_list_detail_overview_and_invalid_filter
             "{language}: removed activity section returned"
         );
         assert!(
-            overview_body.contains("data-admin-metric=\"recent-audit-events\""),
-            "{language}: audit metric missing"
+            !overview_body.contains("data-admin-metric=\"recent-audit-events\""),
+            "{language}: removed audit metric returned"
         );
         assert!(
             !overview_body.contains(&format!(

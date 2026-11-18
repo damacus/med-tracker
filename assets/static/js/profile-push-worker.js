@@ -48,6 +48,16 @@ self.addEventListener('message', event => {
   })());
 });
 
+function notificationHousehold(url) {
+  if (url.origin !== self.location.origin) return null;
+  if (url.pathname === '/profile') {
+    const contexts = url.searchParams.getAll('household');
+    return contexts.length === 1 && /^[a-zA-Z0-9_-]{1,128}$/.test(contexts[0])
+      ? contexts[0] : null;
+  }
+  return url.pathname.match(/^\/households\/([a-zA-Z0-9_-]{1,128})\//)?.[1] ?? null;
+}
+
 self.addEventListener('push', event => {
   if (!event.data) return;
   let data;
@@ -55,11 +65,11 @@ self.addEventListener('push', event => {
   if (typeof data.title !== 'string' || typeof data.body !== 'string' || !/^\d+$/.test(data.account_id)) return;
   let url;
   try { url = new URL(typeof data.path === 'string' ? data.path : '/', self.location.origin); } catch { return; }
-  const match = url.origin === self.location.origin && url.pathname.match(/^\/households\/([^/]+)\//);
-  if (!match) return;
+  const slug = notificationHousehold(url);
+  if (!slug) return;
   const path = url.pathname + url.search + url.hash;
   const display = (async () => {
-    if (!await currentAccount(match[1], data.account_id) || transitionStarting || await transitionState()) return;
+    if (!await currentAccount(slug, data.account_id) || transitionStarting || await transitionState()) return;
     await self.registration.showNotification(data.title, { body: data.body, icon: '/static/icon.png', data: { path, account_id: data.account_id } });
   })();
   pendingDisplays.add(display);
@@ -70,10 +80,10 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
   let url;
   try { url = new URL(event.notification.data?.path || '/', self.location.origin); } catch { return; }
-  const match = url.origin === self.location.origin && url.pathname.match(/^\/households\/([^/]+)\//);
-  if (!match) return;
+  const slug = notificationHousehold(url);
+  if (!slug) return;
   event.waitUntil((async () => {
-    if (!await currentAccount(match[1], event.notification.data?.account_id) || transitionStarting || await transitionState()) return;
+    if (!await currentAccount(slug, event.notification.data?.account_id) || transitionStarting || await transitionState()) return;
     await self.clients.openWindow(url.href);
   })());
 });
@@ -81,7 +91,7 @@ async function currentAccount(slug, expected) {
   if (!/^\d+$/.test(expected)) return false;
   try {
     if (transitionStarting || await transitionState()) return false;
-    const response = await fetch(`/households/${slug}/profile/push`, { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(3000) });
+    const response = await fetch(`/profile/households/${slug}/push`, { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(3000) });
     if (!response.ok) return false;
     return (await response.json()).account_id === expected;
   } catch { return false; }

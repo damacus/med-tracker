@@ -151,7 +151,7 @@ async fn login_images_follow_viewport_and_selected_appearance() {
             page.goto(&format!("{}/households/choose", journey.origin), None).await.unwrap();
             page.get_by_role(AriaRole::Button, harness::named("Open household: Synthetic household"))
                 .click(None).await.unwrap();
-            page.goto(&format!("{}/households/persistence-fixture/profile", journey.origin), None).await.unwrap();
+            page.goto(&format!("{}/profile#look-and-feel", journey.origin), None).await.unwrap();
             expect(page.locator("html")).to_have_attribute("data-theme", "default-dark").await.unwrap();
             page.locator("#appearance-dialog > summary").press("Enter", None).await.unwrap();
             expect(page.locator("[data-appearance-choice='light']")).to_be_visible().await.unwrap();

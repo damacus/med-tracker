@@ -357,7 +357,7 @@ async fn canonical_invitation_browser_offers_membership_without_care_authority()
 
         app.fixture.admin.execute_raw(app.fixture.admin.get_database_backend().build(&Query::update().table("household_memberships").value("role",Expr::val("administrator")).value("permissions_version",Expr::col("permissions_version").add(Expr::val(1))).and_where(Expr::col("id").eq(Expr::val(app.fixture.membership.id))).to_owned())).await?;
         let cookie=super::super::platform::sign_in(&app,app.fixture.account.id,app.fixture.account.email.as_str()).await;
-        let (_,html)=super::super::platform::form_page(&app,&cookie,&format!("/households/{generated_slug}/admin/invitations",generated_slug=app.fixture.household.slug)).await;
+        let (_,html)=super::super::platform::form_page(&app,&cookie,&format!("/households/{generated_slug}/admin/users/invitations",generated_slug=app.fixture.household.slug)).await;
         require(html.contains("name=\"email\"") && html.contains("name=\"membership_role\"")
             && !html.contains("name=\"relationship_type\"") && !html.contains("name=\"access_level\"")
             && !html.contains("name=\"dependent_ids[]\""),
@@ -377,9 +377,9 @@ async fn canonical_invitation_browser_rejects_parent_manage_promises_without_eff
 
         app.fixture.admin.execute_raw(app.fixture.admin.get_database_backend().build(&Query::update().table("household_memberships").value("role",Expr::val("administrator")).value("permissions_version",Expr::col("permissions_version").add(Expr::val(1))).and_where(Expr::col("id").eq(Expr::val(app.fixture.membership.id))).to_owned())).await?;
         let cookie=super::super::platform::sign_in(&app,app.fixture.account.id,app.fixture.account.email.as_str()).await;
-        let (cookie,html)=super::super::platform::form_page(&app,&cookie,&format!("/households/{generated_slug}/admin/invitations",generated_slug=app.fixture.household.slug)).await;
+        let (cookie,html)=super::super::platform::form_page(&app,&cookie,&format!("/households/{generated_slug}/admin/users/invitations",generated_slug=app.fixture.household.slug)).await;
         let csrf=super::super::platform::hidden_field(&html,"authenticity_token");
-        let response=super::super::platform::post_form(&app,&cookie,&format!("/households/{generated_slug}/admin/invitations",generated_slug=app.fixture.household.slug),&[
+        let response=super::super::platform::post_form(&app,&cookie,&format!("/households/{generated_slug}/admin/users/invitations",generated_slug=app.fixture.household.slug),&[
             ("email",&case_email(&app,"synthetic-membership-only@example.test")),("membership_role","member"),
             ("relationship_type","parent"),("access_level","manage"),("dependent_ids[]",app.fixture.minor.id.to_string().as_str()),
             ("authenticity_token",&csrf)]).await;

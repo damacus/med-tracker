@@ -3,28 +3,27 @@ use med_tracker::models::_entities::{nhs_dmd_imports, platform_admins};
 use sea_orm::{ActiveModelTrait, Set};
 
 #[tokio::test]
-async fn nhs_dmd_upload_link_requires_system_administrator_and_connects_platform_pages() {
+async fn nhs_dmd_upload_link_requires_system_administrator_and_connects_administration_pages() {
     let (fixture, boot) = boot_shared_fixture().await;
     let mut request = server(&boot);
     install_browser_session(&mut request, &boot, fixture.account.id).await;
-    let dashboard = format!("/households/{}/dashboard", fixture.household.slug);
-    let before = request.get(&dashboard).await;
-    assert!(!before.text().contains("href=\"/admin/nhs-dmd\""));
-    assert_eq!(request.get("/admin/nhs-dmd").await.status_code(), 403);
-    platform_admin(&fixture).await;
-    let after = request.get(&dashboard).await;
-    assert!(after.text().contains("href=\"/admin/nhs-dmd\""));
-    let platform = request.get("/platform/users").await;
-    assert_eq!(platform.status_code(), 200);
-    assert!(platform.text().contains("href=\"/admin/nhs-dmd\""));
-    let importer = request.get("/admin/nhs-dmd").await;
-    assert_eq!(importer.status_code(), 200);
-    assert!(importer.text().contains("href=\"/platform/users\""));
-    assert!(
-        importer
-            .text()
-            .contains("aria-current=\"page\">Upload NHS dm+d")
+    let overview = format!("/households/{}/admin", fixture.household.slug);
+    let before = request.get(&overview).await;
+    assert!(!before.text().contains("href=\"/administration/nhs-dmd\""));
+    assert_eq!(
+        request.get("/administration/nhs-dmd").await.status_code(),
+        403
     );
+    platform_admin(&fixture).await;
+    let after = request.get(&overview).await;
+    assert!(after.text().contains("href=\"/administration/nhs-dmd\""));
+    let platform = request.get("/administration/users").await;
+    assert_eq!(platform.status_code(), 200);
+    assert!(platform.text().contains("href=\"/administration/nhs-dmd\""));
+    let importer = request.get("/administration/nhs-dmd").await;
+    assert_eq!(importer.status_code(), 200);
+    assert!(importer.text().contains("href=\"/administration/users\""));
+    assert!(importer.text().contains("aria-current=\"page\">NHS dm+d"));
     drop(request);
     close_shared(fixture, boot).await;
 }
@@ -93,7 +92,7 @@ async fn nhs_dmd_admin_shows_trace_reference_only_for_failed_imports() {
         .insert(&fixture.admin)
         .await
         .unwrap();
-    let response = request.get("/admin/nhs-dmd").await;
+    let response = request.get("/administration/nhs-dmd").await;
     let html = response.text();
     drop(request);
     close_shared(fixture, boot).await;

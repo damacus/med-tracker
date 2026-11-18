@@ -5,6 +5,6 @@
   <nav class="app-sidebar-navigation" aria-label="{{ shell.labels.mobile_rail.primary_navigation }}" data-sidebar-navigation>{% include "components/shell-links.html" %}</nav>
   <div class="app-sidebar-account">
     {% set selector_id = "sidebar-households" %}{% include "components/household-selector.html" %}
-    <a class="app-sidebar-person" href="/households/{{ slug }}/profile" title="{{ shell.name }}"><span class="app-avatar" data-sidebar-avatar aria-hidden="true">{% include "components/shell-avatar.html" %}</span><span class="app-sidebar-text" data-sidebar-name>{{ shell.name }}</span><span class="sr-only app-sidebar-rail-label">{{ shell.name }} · {{ shell.labels.profile_menu.profile }}</span></a>
+    <a class="app-sidebar-person" href="/profile" title="{{ shell.name }}"><span class="app-avatar" data-sidebar-avatar aria-hidden="true">{% include "components/shell-avatar.html" %}</span><span class="app-sidebar-text" data-sidebar-name>{{ shell.name }}</span><span class="sr-only app-sidebar-rail-label">{{ shell.name }} · {{ shell.labels.profile_menu.profile }}</span></a>
   </div>
 </aside>

@@ -30,13 +30,16 @@ test('profile session dates retain semantic timestamps and System Information is
 
 test('shared profile exposes protected security controls without another index or profile-form interception', () => {
   const security = read('assets/views/profile/security.html');
-  for (const action of ['unlink_provider', 'remove_password', 'remove_passkey', 'close_account']) {
+  for (const action of ['unlink_provider', 'remove_password', 'remove_passkey']) {
     assert.ok(security.includes(`value="${action}"`), `${action} is absent from the profile`);
   }
   assert.match(security, /action="\/account\/security\/totp\/backup-codes\?profile_flow=totp/);
   assert.match(security, /data-passkey-id=/);
   assert.match(security, /{% if security.oidc %}<p[^>]*>{{ labels.profiles.security.provider_linked }}<\/p>{% endif %}/);
   assert.doesNotMatch(security, /data-profile-form|href="\/account\/security"/);
+  assert.doesNotMatch(security, /value="close_account"/);
+  const profile = read('assets/views/profile/show.html');
+  assert.match(profile, /id="advanced"[\s\S]*value="close_account"/);
 });
 
 test('header exposes account shortcuts and CSRF-protected sign out before scripts run', () => {

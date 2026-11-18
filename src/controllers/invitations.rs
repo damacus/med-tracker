@@ -20,13 +20,13 @@ use serde_json::{Value, json};
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/households")
-        .add("/{slug}/admin/invitations", get(index).post(create))
+        .add("/{slug}/admin/users/invitations", get(index).post(create))
         .add(
-            "/{slug}/admin/dependent-sharing-invitations",
+            "/{slug}/admin/users/dependent-sharing-invitations",
             post(create).layer(Extension(DependentSharing)),
         )
-        .add("/{slug}/admin/invitations/{id}/resend", post(resend))
-        .add("/{slug}/admin/invitations/{id}/cancel", post(cancel))
+        .add("/{slug}/admin/users/invitations/{id}/resend", post(resend))
+        .add("/{slug}/admin/users/invitations/{id}/cancel", post(cancel))
 }
 
 pub fn acceptance_routes() -> Routes {
@@ -43,6 +43,36 @@ pub fn acceptance_routes() -> Routes {
 
 #[derive(Clone)]
 pub(super) struct DependentSharing;
+
+pub(super) async fn users_panel(
+    tenant: &crate::models::access::TenantTransaction,
+    slug: &str,
+    household_name: &str,
+    labels: &Value,
+    zone: chrono_tz::Tz,
+    language: Option<&str>,
+) -> Result<Value, OperationError> {
+    let records = invitations::browser::browse(tenant, None, &Default::default()).await?;
+    let mut data = rendering::data(slug, household_name, &records, None, None, labels, zone)?;
+    data["filters"] = json!({"q":"","role":"","status":""});
+    data["context"] = json!(
+        language
+            .map(|lang| vec![json!({"name":"lang","value":lang})])
+            .unwrap_or_default()
+    );
+    data["next_url"] = json!(records.next_cursor.map(|cursor| {
+        let mut query = url::form_urlencoded::Serializer::new(String::new());
+        query.append_pair("cursor", &cursor);
+        if let Some(lang) = language {
+            query.append_pair("lang", lang);
+        }
+        format!(
+            "/households/{slug}/admin/users/invitations?{}",
+            query.finish()
+        )
+    }));
+    Ok(data)
+}
 
 async fn index(
     State(ctx): State<AppContext>,

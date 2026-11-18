@@ -7,7 +7,7 @@ const templates = readdirSync('assets/views/administration', { recursive: true }
   .filter(path => path.endsWith('.html'));
 
 test('medicine lookup uses a ranked list with accessible reorder controls', () => {
-  const page = read('assets/views/platform/settings.html');
+  const page = read('assets/views/administration/service/settings.html');
   assert.doesNotMatch(page, /Some previously saved sources/);
   assert.match(page, /data-lookup-priority/);
   assert.match(page, /Move {{ source.name }} up/);
@@ -15,8 +15,8 @@ test('medicine lookup uses a ranked list with accessible reorder controls', () =
   assert.doesNotMatch(page, /type="text"[^>]*medicine_lookup_source_priority/);
 });
 
-test('platform settings identifies inactive medicine lookup service URLs', () => {
-  const page = read('assets/views/platform/settings.html');
+test('service settings identifies inactive medicine lookup service URLs', () => {
+  const page = read('assets/views/administration/service/settings.html');
   assert.doesNotMatch(page, /type="url"/);
   assert.doesNotMatch(page, /name="medicine_lookup_(?:base|token)_url" type="url"/);
 });
@@ -28,23 +28,24 @@ test('household administration headings have no redundant standalone back links'
     const header = source.slice(0, source.indexOf('<h1'));
     assert.doesNotMatch(header, /<a\b/, `${path} has a link above its heading`);
   }
-  assert.match(read('assets/views/administration/household.html'), /<a[^>]+href="\/households\/{{ slug }}\/admin{{ language_suffix }}">{{ labels.admin.users.form.cancel }}/);
   assert.match(read('assets/views/administration/role.html'), /href="{{ member_return_url }}">{{ labels.admin.users.form.cancel }}/);
   assert.match(read('assets/views/administration/bulk_members.html'), /href="{{ return_url }}">{{ bulk_labels.back }}/);
 });
 
-test('administration switcher keeps six ordinary localised route links and current-page semantics', () => {
+test('administration switcher uses a shared route bar and gates service destinations', () => {
   const navigation = read('assets/views/administration/navigation.html');
   assert.match(navigation, /<nav[^>]+class="admin-navigation section-switcher"/);
-  assert.doesNotMatch(navigation, /role="tab(?:list)?"|aria-selected|\bbtn(?:-neutral|-ghost)?\b/);
+  assert.match(navigation, /shell\.system_administrator/);
+  assert.match(navigation, /shell\.can_manage_household/);
+  assert.doesNotMatch(navigation, /\/platform|\/admin\/invitations|\/admin\/household\/edit/);
   const links = [...navigation.matchAll(/<a\b[^>]+>/g)].map(match => match[0]);
-  const paths = ['', '/users', '/carer_relationships', '/invitations', '/audit_logs', '/household/edit'];
-  assert.equal(links.length, paths.length);
-  for (const [index, link] of links.entries()) {
-    const route = `/households/{{ slug }}/admin${paths[index]}{{ language_suffix }}`;
-    assert.ok(link.includes(index === 1 ? route : `href="${route}"`));
+  assert.equal(links.length, 8);
+  for (const link of links) {
     assert.match(link, /class="section-switcher-item"/);
-    assert.match(link, /{% if admin_section == '[a-z]+' %}aria-current="page"{% endif %}/);
+    assert.match(link, /aria-current="page"/);
+  }
+  for (const route of ['settings', 'nhs-dmd', 'support', 'owner-recovery']) {
+    assert.ok(navigation.includes(`href="/administration/${route}"`));
   }
 });
 
@@ -52,7 +53,7 @@ test('member detail carries its validated filtered list return through the Membe
   const member = read('assets/views/administration/member.html');
   assert.match(member, /{% set members_navigation_url = member_return_url %}\s*{% include "administration\/navigation\.html" %}/);
   const navigation = read('assets/views/administration/navigation.html');
-  assert.match(navigation, /href="{% if members_navigation_url %}{{ members_navigation_url }}{% else %}\/households\/{{ slug }}\/admin\/users{{ language_suffix }}{% endif %}"/);
+  assert.ok(navigation.includes('{% if members_navigation_url %}{{ members_navigation_url }}'));
   assert.doesNotMatch(member.slice(0, member.indexOf('<h1')), /<a\b/);
   assert.doesNotMatch(read('assets/views/administration/role.html'), /members_navigation_url/);
   assert.match(read('assets/views/administration/role.html'), /href="{{ member_return_url }}">{{ labels.admin.users.form.cancel }}/);
@@ -72,15 +73,19 @@ test('profile and administration use one raised switcher with visible focus and 
   assert.doesNotMatch(read('assets/static/css/administration.css'), /\.admin-navigation \.btn/);
 });
 
-test('overview retains six actions in shared content-sized rows and removes its recent activity feed', () => {
+test('overview contains household actions and service status cards without duplicate links', () => {
   const overview = read('assets/views/administration/index.html');
-  const styles = read('assets/static/css/administration.css');
-  assert.equal([...overview.matchAll(/class="admin-action-row shell-panel"/g)].length, 6);
-  assert.match(overview, /href="\/households\/{{ slug }}\/admin\/audit_logs{{ language_suffix }}"/);
-  assert.doesNotMatch(overview, /recent-activity-heading|recent_activity|admin-activity|overview_labels\.recent|overview_labels\.no_recent/);
-  assert.match(styles, /@media \(min-width:768px\)[\s\S]*\.admin-action-groups > section[^}]+grid-template-rows:subgrid/);
-  assert.match(styles, /\.admin-action-list[^}]+grid-template-rows:subgrid/);
-  assert.doesNotMatch(styles.match(/\.admin-action-row \{([^}]+)\}/)?.[1] || '', /(?:^|;)\s*(?:max-)?height:/);
+  const service = read('assets/views/administration/service/status.html');
+  const households = read('assets/views/administration/household_cards.html');
+  assert.match(overview, /include "administration\/household_cards\.html"/);
+  assert.match(households, /Rename household/);
+  assert.match(households, /Manage users/);
+  assert.match(overview, /{% if service_status %}{% include "administration\/service\/status\.html" %}/);
+  assert.doesNotMatch(service, /<a\b|<button\b|View all accounts/);
+  assert.match(service, /Last successful import/);
+  assert.match(service, /Open requests/);
+  assert.match(service, /Active sessions/);
+  assert.match(service, /Managed by system configuration/);
 });
 
 test('care deactivation stays a content-width touch target with its existing confirmation', () => {
@@ -94,12 +99,11 @@ test('care deactivation stays a content-width touch target with its existing con
 });
 
 test('all invitation sections share full-width panels and gutters without changing form endpoints', () => {
-  const invitations = read('assets/views/invitations/index.html');
+  const invitations = read('assets/views/administration/invitation_panel.html');
   const styles = read('assets/static/css/administration.css');
-  assert.match(invitations, /class="admin-page admin-invitations-page"/);
-  assert.doesNotMatch(invitations.slice(0, invitations.indexOf('<h1')), /<a\b/);
+  assert.match(read('assets/views/administration/users.html'), /administration\/invitation_panel\.html/);
   for (const [action, method] of [['invitations', 'post'], ['dependent-sharing-invitations', 'post'], ['invitations', 'get']]) {
-    assert.ok(invitations.includes(`action="/households/{{ slug }}/admin/${action}" method="${method}"`));
+    assert.ok(invitations.includes(`action="/households/{{ slug }}/admin/users/${action}" method="${method}"`));
   }
   assert.match(invitations, /class="admin-filter shell-panel grid/);
   assert.doesNotMatch(styles, /\.admin-page[^\n]*(?:max-width:[^\n]*#invitation-form|#invitation-form[^\n]*max-width)/);
@@ -108,24 +112,14 @@ test('all invitation sections share full-width panels and gutters without changi
   assert.match(styles, /\.admin-invitations \.card-body \{[^}]*padding:1\.25rem;/);
 });
 
-for (const [page, description] of [
-  ['administration/index.html', 'overview_labels.summary'],
-  ['administration/users.html', 'admin_labels.overview.review_access'],
-  ['administration/relationships.html', 'labels.admin.carer_relationships.index.subtitle'],
-  ['invitations/index.html', 'invite.subtitle'],
-  ['administration/audit_logs/index.html', 'admin_labels.audit.description'],
-  ['administration/household.html', 'labels.admin.households.subtitle'],
+for (const page of [
+  "index", "users", "relationships", "user_invitations", "audit_logs/index",
+  "service/index", "service/users", "service/settings", "service/nhs-dmd",
+  "service/support", "service/owner_recovery",
 ]) {
-  test(`${page} orders its heading, one translated description and section switcher consistently`, () => {
-    const source = read(`assets/views/${page}`);
-    const navigation = source.indexOf('{% include "administration/navigation.html" %}');
-    assert.ok(navigation > 0, `${page} switcher missing`);
-    const header = source.slice(source.indexOf('<section'), navigation).trim();
-    assert.match(header, /^<section[^>]*>\s*<h1\b/);
-    assert.doesNotMatch(header, /administration\/context\.html/);
-    assert.equal([...header.matchAll(/<h1\b/g)].length, 1);
-    assert.equal([...header.matchAll(/<p\b/g)].length, 1);
-    assert.match(header, /<\/h1>\s*<p\b[^>]*>[\s\S]*<\/p>$/);
-    assert.ok(header.includes(`{{ ${description} }}`), `${page} translated description missing`);
+  test(`${page} starts with the Administration switcher and a visually hidden heading`, () => {
+    const source = read(`assets/views/administration/${page}.html`);
+    const section = source.slice(source.indexOf("<section"));
+    assert.match(section, /^<section[^>]*>\s*<h1 class="sr-only">[^\n]+<\/h1>\s*{% include "administration\/navigation.html" %}/);
   });
 }

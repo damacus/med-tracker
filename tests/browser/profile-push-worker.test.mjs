@@ -157,10 +157,10 @@ test('an abandoned transition expires without disabling push permanently', async
 test('push worker suppresses private reminder content after a browser account switch', async () => {
   const state = worker('71002');
   let pending;
-  state.handlers.push({ data: { json: () => ({ title: 'Medication reminder', body: 'Private medication name', path: '/households/synthetic/profile#notifications', account_id: '71001' }) }, waitUntil: value => { pending = value; } });
+  state.handlers.push({ data: { json: () => ({ title: 'Medication reminder', body: 'Private medication name', path: '/profile?household=synthetic#notifications', account_id: '71001' }) }, waitUntil: value => { pending = value; } });
   await pending;
   assert.deepEqual(state.shown, []);
-  assert.deepEqual(state.fetched, ['/households/synthetic/profile/push']);
+  assert.deepEqual(state.fetched, ['/profile/households/synthetic/push']);
 });
 
 test('push worker suppresses legacy and signed-out reminder payloads', async () => {
@@ -175,15 +175,15 @@ test('push worker suppresses legacy and signed-out reminder payloads', async () 
 test('push worker displays the supplied message and opens only its same-origin destination', async () => {
   const state = worker();
   let pending;
-  state.handlers.push({ data: { json: () => ({ title: 'MedTracker', body: 'A dose is due.', path: '/households/synthetic/profile#notifications', account_id: '71001' }) }, waitUntil: value => { pending = value; } });
+  state.handlers.push({ data: { json: () => ({ title: 'MedTracker', body: 'A dose is due.', path: '/profile?household=synthetic#notifications', account_id: '71001' }) }, waitUntil: value => { pending = value; } });
   await pending;
   assert.equal(state.shown[0].body, 'A dose is due.');
   let closed = false;
   state.handlers.notificationclick({ notification: { data: state.shown[0].data, close: () => { closed = true; } }, waitUntil: value => { pending = value; } });
   await pending;
   assert.equal(closed, true);
-  assert.deepEqual(state.opened, ['https://medtracker.example.test/households/synthetic/profile#notifications']);
-  assert.deepEqual(state.fetched, ['/households/synthetic/profile/push', '/households/synthetic/profile/push']);
+  assert.deepEqual(state.opened, ['https://medtracker.example.test/profile?household=synthetic#notifications']);
+  assert.deepEqual(state.fetched, ['/profile/households/synthetic/push', '/profile/households/synthetic/push']);
 });
 
 test('push worker does not open a retained notification after the account changes', async () => {

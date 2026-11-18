@@ -52,7 +52,7 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
         .json(&json!({"email":fixture.account.email,"password":"password"}))
         .await;
     assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
-    let profile = format!("/households/{}/profile", fixture.household.slug);
+    let profile = "/profile";
     let administrator_support = request
         .get(&format!("{profile}?panel=support"))
         .add_header("accept", "text/vnd.medtracker.profile-flow+html")
@@ -178,7 +178,7 @@ async fn account_authentication_profile_flows_keep_native_errors_and_fragment_ou
         assert!(!invalid.text().contains("<html"));
         assert!(!invalid.text().contains("Profile updated"));
     }
-    let security = request.get(&profile).await;
+    let security = request.get(profile).await;
     assert_eq!(security.status_code(), 200, "{}", security.text());
     let csrf = profile_flow_field(
         &security.text(),
@@ -772,7 +772,7 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
     assert_eq!(listing.status_code(), 200, "{}", listing.text());
     assert!(listing.text().contains("later-active-personal"));
     let profile = request
-        .get(&format!("/households/{}/profile", fixture.household.slug))
+        .get("/profile")
         .add_header("cookie", owner_cookie.clone())
         .await;
     assert_eq!(profile.status_code(), 200, "{}", profile.text());
@@ -1039,10 +1039,10 @@ async fn account_authentication_without_clinical_records_can_login_and_refresh()
         .await;
     assert_eq!(registration.status_code(), 200, "{}", registration.text());
     let clinical = request
-        .get(&format!("/households/{}/profile", fixture.household.slug))
+        .get(&format!("/profile?household={}", fixture.household.slug))
         .add_header("cookie", cookie)
         .await;
-    assert_eq!(clinical.status_code(), 403, "{}", clinical.text());
+    assert_eq!(clinical.status_code(), 404, "{}", clinical.text());
     let audit = versions::Entity::find()
         .filter(versions::Column::ItemType.eq("NativeAuthentication"))
         .filter(versions::Column::ItemId.eq(fixture.foreign.account.id))
@@ -1140,10 +1140,7 @@ async fn account_authentication_locked_session_cannot_authenticate_or_change_cre
         .add_header("cookie", cookie.clone())
         .await;
     assert_eq!(registration.status_code(), 401);
-    let clinical = request
-        .get(&format!("/households/{}/profile", fixture.household.slug))
-        .add_header("cookie", cookie)
-        .await;
+    let clinical = request.get("/profile").add_header("cookie", cookie).await;
     assert_eq!(clinical.status_code(), 303);
     assert!(
         clinical

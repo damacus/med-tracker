@@ -1,0 +1,12 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set system_administration = true %}
+{% set admin_section = 'overview' %}
+<section class="admin-page">
+  <h1 class="sr-only">Administration</h1>
+  {% include "administration/navigation.html" %}
+  <h2 class="text-xl font-semibold">Overview</h2>
+  {% if household_cards | length > 0 %}{% include "administration/household_cards.html" %}{% endif %}
+  {% include "administration/service/status.html" %}
+</section>
+{% endblock content %}

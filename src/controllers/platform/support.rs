@@ -29,6 +29,7 @@ fn render_index(
         return unavailable();
     };
     let mut data = crate::controllers::medications::rendering::appearance_context();
+    data["standalone_navigation"] = json!(true);
     data["title"] = json!("Support access");
     data["sessions"] = json!(sessions_json(&page.sessions));
     data["page"] = json!(page.page);
@@ -41,7 +42,7 @@ fn render_index(
             .collect::<Vec<Value>>()
     );
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/support.html", data) {
+    match format::render().view(view, "administration/service/support.html", data) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),
@@ -62,6 +63,7 @@ fn render_read(
         return unavailable();
     };
     let mut data = crate::controllers::medications::rendering::appearance_context();
+    data["standalone_navigation"] = json!(true);
     data["title"] = json!("Support access");
     data["household_name"] = json!(read.household_name);
     data["expires_at"] = json!(read.expires_at);
@@ -91,7 +93,7 @@ fn render_read(
             .collect::<Vec<Value>>()
     );
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/support_read.html", data) {
+    match format::render().view(view, "administration/service/support_read.html", data) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),
@@ -123,7 +125,7 @@ async fn platform_account(
 
 pub(super) async fn index(
     State(ctx): State<AppContext>,
-    Query(params): Query<UsersQuery>,
+    Query(params): Query<platform::UsersQuery>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     token: CsrfToken,
@@ -237,7 +239,7 @@ pub(super) async fn end(
         token,
         form.support_id,
         &form.authenticity_token,
-        "/platform/support",
+        "/administration/support",
     )
     .await
 }

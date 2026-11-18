@@ -619,10 +619,10 @@ async fn native_oidc_custom_callback_and_provider_branding_use_generic_configura
     for path in [
         "/profile?panel=provider".to_owned(),
         format!(
-            "/households/{}/profile?panel=provider",
+            "/profile?panel=provider&household={}",
             app.fixture.household.slug
         ),
-        format!("/households/{}/profile", app.fixture.household.slug),
+        format!("/profile?household={}", app.fixture.household.slug),
     ] {
         let response = app
             .client
@@ -1094,7 +1094,7 @@ async fn provider_support_retry(
         .await
         .unwrap();
     assert_eq!(retry.status().as_u16(), 303);
-    assert_eq!(retry.headers()["location"], "/platform/support");
+    assert_eq!(retry.headers()["location"], "/administration/support");
     assert!(verification(app, &identifier).await.is_none());
     assert_eq!(support_requests(app, admin.id).await, 1);
     let replay = app

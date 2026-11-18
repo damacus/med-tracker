@@ -839,7 +839,7 @@ async fn real_listing_and_worker_overlap_without_deadlock_or_lost_audits()
         let client = app.client.clone();
         let origin = app.origin.clone();
         listing = Some(tokio::spawn(async move {
-            client.get(format!("{origin}/platform/support")).header("cookie",cookie)
+            client.get(format!("{origin}/administration/support")).header("cookie",cookie)
                 .timeout(std::time::Duration::from_secs(30)).send().await.map(|response|response.status())
         }));
         let mut listing_pid = None;

@@ -1,5 +1,6 @@
 .profile-page { overflow-wrap: anywhere; }
 .profile-page * { min-width: 0; }
+#profile-identity-form:not(:has(#use-display-name:checked)) #profile-display-name { display: none; }
 [data-profile-status]:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
 .profile-setting:not(details) { grid-template-columns: minmax(0,1fr) auto; gap: .3rem 1rem; }
 .profile-setting > span { grid-column: 1; color: var(--on-surface-variant); }

@@ -120,7 +120,7 @@ impl<'a> Page<'a> {
         }
         let query = query.finish();
         format!(
-            "/households/{}/admin/invitations{}{}",
+            "/households/{}/admin/users/invitations{}{}",
             self.slug,
             if query.is_empty() { "" } else { "?" },
             query

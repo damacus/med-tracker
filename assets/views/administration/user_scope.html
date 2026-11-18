@@ -1,0 +1,9 @@
+{% set directory_slug = slug | default(value="") %}
+{% if shell and directory_slug == "" %}{% set directory_slug = shell.slug %}{% endif %}
+{% set directory_lang = lang | default(value="en") %}
+{% if shell and shell.system_administrator and shell.can_manage_household %}
+<nav aria-label="User scope" class="section-switcher mt-4">
+  <a class="section-switcher-item" href="/households/{{ directory_slug }}/admin/users?lang={{ directory_lang }}" {% if not (system_administration | default(value=false)) %}aria-current="page"{% endif %}>This household</a>
+  <a class="section-switcher-item" href="/administration/users?household={{ directory_slug }}&amp;lang={{ directory_lang }}" {% if system_administration | default(value=false) %}aria-current="page"{% endif %}>All accounts</a>
+</nav>
+{% endif %}

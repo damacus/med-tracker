@@ -61,14 +61,13 @@ Platform administrators need the household owner's approval for temporary
 support access to household care records. Platform status alone does not give
 them unrestricted access to everyone's care.
 
-If you have platform access, open **Platform administration** from your account
-security page. Household administration remains available to household owners
-and administrators.
+Open **Administration** from the main navigation. Household owners and
+administrators can manage their household. System administrators can also open
+**All accounts** in Users and see the service tabs, even without household
+membership.
 
-To import an NHS dm+d release, sign in as a platform administrator and select
-**Import NHS dm+d release** in the desktop sidebar or mobile navigation, or
-**Upload NHS dm+d** in platform administration. The importer remains at
-`/admin/nhs-dmd`. Household administration access alone is not enough.
+To import an NHS dm+d release, open **Administration → NHS dm+d** as a system
+administrator. Household administration access alone is not enough.
 See [NHS dm+d import instructions](nhs-dmd-integration.md#loco-migration-checkout).
 
 ### Appoint the first system administrator
@@ -88,7 +87,7 @@ only when appointing an administrator in an isolated development installation.
 The task records the operator and reason in the audit trail, leaves household
 membership unchanged, and can safely be repeated for the same active administrator.
 It refuses to appoint another account once a usable system administrator exists.
-After bootstrap, administrators grant further access through **Platform users**,
+After bootstrap, administrators grant further access through **Administration → Users**,
 with the normal fresh sign-in confirmation. This task does not create accounts,
 change passwords or run migrations.
 

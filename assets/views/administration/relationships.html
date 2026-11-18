@@ -1,8 +1,7 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="admin-page">
-  <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.nav.relationships }}</h1>
-  <p class="mt-2">{{ labels.admin.carer_relationships.index.subtitle }}</p>
+  <h1 class="sr-only">{{ admin_labels.nav.relationships }}</h1>
   {% include "administration/navigation.html" %}
   <a class="btn btn-primary mt-5" href="/households/{{ slug }}/admin/carer_relationships/recover{{ language_suffix }}">{{ admin_labels.recovery.open }}</a>
   <div class="mt-6">{% include "components/form_errors.html" %}</div>

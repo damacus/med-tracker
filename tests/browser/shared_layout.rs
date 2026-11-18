@@ -2,7 +2,7 @@ use crate::harness::{self, named};
 use playwright_rs::expect;
 use playwright_rs::protocol::{Animations, ScreenshotOptions, Viewport};
 use playwright_rs::protocol::{AriaRole, BrowserContextOptions};
-use sea_orm::ConnectionTrait;
+use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, IntoActiveModel, Set};
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
@@ -286,8 +286,13 @@ async fn shared_layout_mobile_drawer_and_narrow_pages() {
                         ("reports", "reports"),
                         ("add-medication", "inventory"),
                     ] {
+                        let destination = if path == "profile" {
+                            "/profile".to_owned()
+                        } else {
+                            format!("/households/persistence-fixture/{path}")
+                        };
                         page.goto(
-                            &format!("{}/households/persistence-fixture/{path}", journey.origin),
+                            &format!("{}{destination}", journey.origin),
                             None,
                         )
                         .await
@@ -377,7 +382,7 @@ async fn shared_layout_fallback_and_permission_boundaries() {
             expect(fallback.locator("[data-dashboard-selector]")).to_have_attribute("data-selected-person", "all").await.unwrap();
             expect(fallback.locator("[data-dashboard-selector] button")).to_have_count(0).await.unwrap();
             no_script.close().await.unwrap();
-            page.route("**/profile/navigation",|route|async move {route.abort(None).await}).await.unwrap();
+            page.route("**/profile/households/*/navigation",|route|async move {route.abort(None).await}).await.unwrap();
             page.route("**/static/js/app-navigation.js*",|route|async move {route.abort(None).await}).await.unwrap();
             page.reload(None).await.unwrap();
             expect(page.locator(".app-sidebar [data-section=dashboard]")).to_be_visible().await.unwrap();
@@ -386,7 +391,7 @@ async fn shared_layout_fallback_and_permission_boundaries() {
             page.locator("#profile-tab-security").click(None).await.unwrap();
             expect(page.locator("#security form[action='/logout'] button")).to_be_visible().await.unwrap();
             page.unroute("**/static/js/app-navigation.js*").await.unwrap();
-            page.unroute("**/profile/navigation").await.unwrap();
+            page.unroute("**/profile/households/*/navigation").await.unwrap();
             journey.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
             page.reload(None).await.unwrap();
             expect(page.locator("[data-app-profile]")).to_be_visible().await.unwrap();
@@ -410,11 +415,12 @@ async fn shared_layout_server_navigation_and_rail_persist_across_household_pages
         let page = &journey.page;
         page.locator("label[for=app-sidebar-expanded]").click(None).await.unwrap();
         for path in ["dashboard", "medications", "people", "locations", "reports", "profile", "admin"] {
-            page.goto(&format!("{}/households/persistence-fixture/{path}", journey.origin), None).await.unwrap();
-            assert!(page.evaluate::<(), bool>("() => { const toggle = document.querySelector('[data-sidebar-expanded]'); return !toggle.checked && !toggle.hasAttribute('checked') && document.querySelector('.app-sidebar').getBoundingClientRect().width === 80 && !performance.getEntriesByType('resource').some(entry => new URL(entry.name).pathname.endsWith('/profile/navigation')); }", None).await.unwrap(), "{path}");
+            let destination = if path == "profile" { "/profile".to_owned() } else { format!("/households/persistence-fixture/{path}") };
+            page.goto(&format!("{}{destination}", journey.origin), None).await.unwrap();
+            assert!(page.evaluate::<(), bool>("() => { const toggle = document.querySelector('[data-sidebar-expanded]'); return !toggle.checked && !toggle.hasAttribute('checked') && document.querySelector('.app-sidebar').getBoundingClientRect().width === 80 && !performance.getEntriesByType('resource').some(entry => new URL(entry.name).pathname.match(/^\\/profile\\/households\\/[^/]+\\/navigation$/)); }", None).await.unwrap(), "{path}");
             expect(page.get_by_role(AriaRole::Link, named("MedTracker"))).to_be_visible().await.unwrap();
             assert!(page.evaluate::<(), bool>("() => getComputedStyle(document.querySelector('.app-sidebar-search kbd')).display === 'none'", None).await.unwrap(), "shortcut hint visible in {path} icon rail");
-            expect(page.locator("[data-account-section=profile]")).to_have_attribute("href", "/households/persistence-fixture/profile").await.unwrap();
+            expect(page.locator("[data-account-section=profile]")).to_have_attribute("href", "/profile").await.unwrap();
             page.locator(".app-sidebar [data-household-trigger]").click(None).await.unwrap();
             expect(page.locator("#sidebar-households button[aria-current=true]")).to_be_visible().await.unwrap();
             page.keyboard().press("Escape", None).await.unwrap();
@@ -501,34 +507,122 @@ async fn shared_layout_direct_pages_persist_new_csrf_cookie_for_shell_forms() {
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser"]
-async fn shared_layout_platform_and_account_frames_do_not_invent_household_navigation() {
-    harness::journey(Viewport {width:1440,height:1000}, |journey| {
-        Box::pin(async move {
-            let page=&journey.page;
-            harness::sign_in(journey).await;
-            journey.admin.execute_unprepared("INSERT INTO platform_admins (account_id,status,created_at,updated_at) VALUES (71001,'active',now(),now())").await.unwrap();
-            page.reload(None).await.unwrap();
-            page.locator("[data-app-profile]").click(None).await.unwrap();
-            page.locator("[data-account-section=profile]").click(None).await.unwrap();
-            page.locator("#profile-tab-security").click(None).await.unwrap();
-            let platform_link=page.locator(".app-sidebar [data-sidebar-navigation] a[href='/platform/users']");
-            expect(platform_link.clone()).to_be_visible().await.unwrap();
-            platform_link.click(None).await.unwrap();
-            expect(page.locator(".platform-nav")).to_be_visible().await.unwrap();
-            assert_eq!(page.locator(".app-sidebar").count().await.unwrap(),0);
-            capture(page,"platform-desktop").await;
-            page.set_viewport_size(Viewport {width:390,height:844}).await.unwrap();
-            page.goto(&format!("{}/admin/nhs-dmd",journey.origin),None).await.unwrap();
-            expect(page.get_by_role(AriaRole::Link, named("Profile"))).to_be_visible().await.unwrap();
-            page.set_viewport_size(Viewport {width:1440,height:1000}).await.unwrap();
-            page.goto(&format!("{}/account/security",journey.origin),None).await.unwrap();
-            assert_eq!(page.locator(".app-sidebar").count().await.unwrap(),0);
-            capture(page,"account-security-desktop").await;
-            page.set_viewport_size(Viewport {width:320,height:844}).await.unwrap();
-            assert!(!page.evaluate::<(),bool>("() => document.documentElement.scrollWidth > innerWidth",None).await.unwrap());
-            capture(page,"account-security-320").await;
-        })
-    }).await;
+async fn shared_layout_system_administration_and_profile_work_without_a_household() {
+    harness::journey(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        |journey| {
+            Box::pin(async move {
+                let page = &journey.page;
+                harness::sign_in(journey).await;
+                let now = chrono::Utc::now().naive_utc();
+                med_tracker::models::_entities::platform_admins::ActiveModel {
+                    account_id: Set(71001),
+                    status: Set("active".into()),
+                    created_at: Set(now),
+                    updated_at: Set(now),
+                    ..Default::default()
+                }
+                .insert(&journey.admin)
+                .await
+                .unwrap();
+                page.reload(None).await.unwrap();
+                page.locator("[data-app-profile]")
+                    .click(None)
+                    .await
+                    .unwrap();
+                page.locator("[data-account-section=profile]")
+                    .click(None)
+                    .await
+                    .unwrap();
+                page.locator("#profile-tab-security")
+                    .click(None)
+                    .await
+                    .unwrap();
+                let administration = page.locator(".app-sidebar [data-section=administration]");
+                expect(administration.clone())
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                assert_eq!(administration.count().await.unwrap(), 1);
+                if let Err(error) = administration.click(None).await {
+                    let hit = page.evaluate::<(), serde_json::Value>(
+                        "() => { const link = document.querySelector('.app-sidebar [data-section=administration]'); if (!link) return { missing: true }; const bounds = link.getBoundingClientRect(); const hit = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); return { withinLink: link.contains(hit), hitTag: hit?.tagName, hitClass: hit?.getAttribute('class'), openDialogs: [...document.querySelectorAll('dialog[open]')].map(dialog => dialog.id) }; }",
+                        None,
+                    ).await;
+                    panic!("Administration click failed: {error}; hit test: {hit:?}");
+                }
+                expect(page.locator(".admin-navigation a[href='/administration/nhs-dmd']"))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                assert_eq!(page.locator(".app-sidebar").count().await.unwrap(), 1);
+                capture(page, "administration-desktop").await;
+                let mut membership =
+                    med_tracker::models::_entities::household_memberships::Entity::find_by_id(
+                        74001,
+                    )
+                    .one(&journey.admin)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .into_active_model();
+                membership.status = Set("revoked".into());
+                membership.revoked_at = Set(Some(now));
+                membership.update(&journey.admin).await.unwrap();
+                page.set_viewport_size(Viewport {
+                    width: 390,
+                    height: 844,
+                })
+                .await
+                .unwrap();
+                page.goto(&format!("{}/administration/nhs-dmd", journey.origin), None)
+                    .await
+                    .unwrap();
+                expect(page.locator(
+                    ".admin-navigation a[href='/administration/nhs-dmd'][aria-current=page]",
+                ))
+                .to_be_visible()
+                .await
+                .unwrap();
+                assert_eq!(page.locator(".app-sidebar").count().await.unwrap(), 0);
+                expect(page.get_by_role(AriaRole::Link, named("Profile")))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                page.set_viewport_size(Viewport {
+                    width: 1440,
+                    height: 1000,
+                })
+                .await
+                .unwrap();
+                page.goto(&format!("{}/account/security", journey.origin), None)
+                    .await
+                    .unwrap();
+                assert_eq!(page.locator(".app-sidebar").count().await.unwrap(), 0);
+                capture(page, "account-security-desktop").await;
+                page.set_viewport_size(Viewport {
+                    width: 320,
+                    height: 844,
+                })
+                .await
+                .unwrap();
+                assert!(
+                    !page
+                        .evaluate::<(), bool>(
+                            "() => document.documentElement.scrollWidth > innerWidth",
+                            None
+                        )
+                        .await
+                        .unwrap()
+                );
+                capture(page, "account-security-320").await;
+            })
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

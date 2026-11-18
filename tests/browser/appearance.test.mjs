@@ -124,7 +124,7 @@ test('shortcut changes fetch only after profile saving and follow the selected p
     assert.equal(request, undefined);
     assert.equal(listeners.DOMContentLoaded, undefined);
     await listeners['profile-saved']();
-    assert.equal(request.url, '/households/persistence-fixture/profile/navigation');
+    assert.equal(request.url, '/profile/households/persistence-fixture/navigation');
     assert.equal(request.options.headers.Accept, 'application/json');
     assert.equal(request.options.cache, 'no-store');
     assert.equal(request.options.headers['Accept-Language'], language || undefined);
@@ -147,8 +147,30 @@ function boot(saved, dark = false, allowPalette = true, throws = false) {
   const document = { documentElement: root, querySelector() { return null; }, querySelectorAll() { return []; }, addEventListener(name, fn) { listeners[name] = fn; } };
   const window = { matchMedia() { return media; } };
   runInNewContext(source(), { document, window, localStorage: { getItem(key) { if (throws) throw Error('blocked'); return storage.get(key) ?? null; }, setItem(key, value) { if (throws) throw Error('blocked'); storage.set(key, value); } } });
-  return { root, media, listeners, storage, window };
+  return { root, media, listeners, storage, window, document };
 }
+
+test('households keep independent colour palettes while using personal dark mode', () => {
+  const state = boot({ 'med-tracker-theme': 'warm-earth', 'med-tracker-appearance': 'dark' });
+  const household = slug => {
+    state.document.body = { dataset: { navigationHousehold: slug } };
+    state.listeners.DOMContentLoaded();
+  };
+  const choose = paletteChoice => state.listeners.click({
+    target: { closest(selector) { return selector === '[data-palette-choice]' ? { dataset: { paletteChoice } } : null; } },
+  });
+  household('willow');
+  choose('deep-lavender');
+  household('oak');
+  assert.equal(state.root.dataset.theme, 'warm-earth-dark');
+  choose('serene-sage');
+  household('willow');
+  assert.equal(state.root.dataset.theme, 'deep-lavender-dark');
+  household('oak');
+  assert.equal(state.root.dataset.theme, 'serene-sage-dark');
+  household('');
+  assert.equal(state.root.dataset.theme, 'warm-earth-dark');
+});
 
 test('saved palette and system appearance apply before document readiness', () => {
   const state = boot({ 'med-tracker-theme': 'warm-earth', 'med-tracker-appearance': 'system' }, true);
@@ -202,7 +224,7 @@ test('local font families ship woff2 assets and carry their licences', () => {
 
 
 test('browser template families share the application frame and keep document adapters separate', () => {
-  const families = new Set(['administration', 'admin', 'people', 'person_carers', 'locations', 'dashboard', 'medications', 'dosage_options', 'treatments', 'health_events', 'dose_occurrences', 'reviews', 'reports', 'searches', 'profile', 'platform', 'auth', 'identity_onboarding', 'home', 'invitations', 'oauth']);
+  const families = new Set(['administration', 'people', 'person_carers', 'locations', 'dashboard', 'medications', 'dosage_options', 'treatments', 'health_events', 'dose_occurrences', 'reviews', 'reports', 'searches', 'profile', 'auth', 'identity_onboarding', 'home', 'invitations', 'oauth']);
   const documents = new Set(['reports/pdf_base.html', 'oauth/form_post.html']);
   const seen = new Set();
   function visit(directory, prefix = '') {

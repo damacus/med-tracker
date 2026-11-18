@@ -14,6 +14,8 @@ use serde_json::json;
 pub(crate) struct Snapshot {
     pub account_id: AccountId,
     pub name: Option<String>,
+    pub saved_display_name: Option<String>,
+    pub display_name_enabled: bool,
     pub email: String,
     pub time_zone: chrono_tz::Tz,
     pub gravatar_enabled: bool,
@@ -62,9 +64,15 @@ enum TimeZone {
 
 pub(crate) struct Changes {
     name: Option<Name>,
+    display_name: Option<DisplayName>,
     time_zone: Option<TimeZone>,
     gravatar_enabled: Option<bool>,
     mobile_shortcuts: Option<Vec<Shortcut>>,
+}
+
+struct DisplayName {
+    enabled: bool,
+    saved: Option<Name>,
 }
 
 impl Changes {
@@ -110,10 +118,26 @@ impl Changes {
             .transpose()?;
         Ok(Self {
             name,
+            display_name: None,
             time_zone,
             gravatar_enabled,
             mobile_shortcuts,
         })
+    }
+
+    pub(crate) fn with_display_name(
+        mut self,
+        enabled: bool,
+        alias: Option<&str>,
+    ) -> Result<Self, OperationError> {
+        self.display_name = Some(DisplayName {
+            enabled,
+            saved: alias
+                .filter(|value| !value.trim().is_empty())
+                .map(Name::parse)
+                .transpose()?,
+        });
+        Ok(self)
     }
 }
 
@@ -171,6 +195,16 @@ pub(crate) async fn read(
             .ok_or(OperationError::Unavailable)?
             .try_get("", "attached")?,
         mobile_shortcuts,
+        saved_display_name: account
+            .preferences
+            .get("saved_display_name")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned),
+        display_name_enabled: account
+            .preferences
+            .get("display_name_enabled")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or_default(),
         name: account.name,
         email: account.email,
     })
@@ -206,6 +240,12 @@ pub(crate) async fn update(
     }
     if let Some(shortcuts) = changes.mobile_shortcuts {
         preferences.insert("mobile_shortcuts".into(), json!(shortcuts));
+    }
+    if let Some(display) = changes.display_name {
+        preferences.insert("display_name_enabled".into(), json!(display.enabled));
+        if let Some(alias) = display.saved {
+            preferences.insert("saved_display_name".into(), json!(alias.0));
+        }
     }
     let preferences = serde_json::Value::Object(preferences);
     let name = changes

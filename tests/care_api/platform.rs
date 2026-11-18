@@ -483,7 +483,7 @@ async fn platform_users_requires_sign_in() {
         .unwrap();
     let response = client
         .get(format!(
-            "{}/platform/users?q={}",
+            "{}/administration/users?q={}",
             app.origin, app.fixture.client_uuid
         ))
         .send()
@@ -508,7 +508,7 @@ async fn platform_users_rejects_a_household_administrator_without_platform_right
     let cookie = fixture_session(&app, app.fixture.account.id).await;
     let response = app
         .client
-        .get(format!("{}/platform/users", app.origin))
+        .get(format!("{}/administration/users", app.origin))
         .header("cookie", cookie)
         .send()
         .await
@@ -541,7 +541,7 @@ async fn platform_users_lists_users_for_an_active_platform_administrator() {
         .await
         .unwrap();
     let cookie = fixture_session(&app, app.fixture.account.id).await;
-    let mut endpoint = url::Url::parse(&format!("{}/platform/users", app.origin)).unwrap();
+    let mut endpoint = url::Url::parse(&format!("{}/administration/users", app.origin)).unwrap();
     endpoint
         .query_pairs_mut()
         .append_pair("q", &app.fixture.account.email);
@@ -586,7 +586,7 @@ async fn platform_users_search_filters_the_listing() {
     let matching = app
         .client
         .get(format!(
-            "{}/platform/users?q={}",
+            "{}/administration/users?q={}",
             app.origin, app.fixture.account.email
         ))
         .header("cookie", &cookie)
@@ -598,7 +598,10 @@ async fn platform_users_search_filters_the_listing() {
         .unwrap();
     let other = app
         .client
-        .get(format!("{}/platform/users?q=someone-else", app.origin))
+        .get(format!(
+            "{}/administration/users?q=someone-else",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -637,7 +640,7 @@ async fn platform_users_clamps_pages_beyond_the_listing() {
     let response = app
         .client
         .get(format!(
-            "{}/platform/users?q={}&page=2",
+            "{}/administration/users?q={}&page=2",
             app.origin, app.fixture.account.email
         ))
         .header("cookie", &cookie)
@@ -688,7 +691,7 @@ async fn platform_users_rechecks_withdrawn_platform_rights() {
         .unwrap();
     let response = app
         .client
-        .get(format!("{}/platform/users", app.origin))
+        .get(format!("{}/administration/users", app.origin))
         .header("cookie", cookie)
         .send()
         .await
@@ -738,7 +741,7 @@ async fn platform_users_rechecks_a_deactivated_account() {
         .build()
         .unwrap();
     let response = client
-        .get(format!("{}/platform/users", app.origin))
+        .get(format!("{}/administration/users", app.origin))
         .header("cookie", cookie)
         .send()
         .await
@@ -793,7 +796,7 @@ async fn platform_users_requires_a_live_identity_session() {
         .build()
         .unwrap();
     let response = client
-        .get(format!("{}/platform/users", app.origin))
+        .get(format!("{}/administration/users", app.origin))
         .header("cookie", cookie)
         .send()
         .await
@@ -1894,16 +1897,19 @@ async fn platform_users_page_shows_user_state_and_action_forms() {
     let (_cookies, body) = form_page(
         &app,
         &cookie,
-        &format!("/platform/users?q={}", app.fixture.client_uuid),
+        &format!("/administration/users?q={}", app.fixture.client_uuid),
     )
     .await;
 
     assert!(!hidden_field(&body, "authenticity_token").is_empty());
     assert!(str::contains(
         &body,
-        "action=\"/platform/users/administrator\""
+        "action=\"/administration/users/administrator?q="
     ));
-    assert!(str::contains(&body, "action=\"/platform/users/active\""));
+    assert!(str::contains(
+        &body,
+        "action=\"/administration/users/active?q="
+    ));
     assert!(str::contains(
         &body,
         format!(
@@ -1935,7 +1941,7 @@ async fn platform_users_page_links_are_bounded() {
         &app,
         &cookie,
         &format!(
-            "/platform/users?q=bulk-{}&page=9223372036854775807",
+            "/administration/users?q=bulk-{}&page=9223372036854775807",
             app.fixture.client_uuid
         ),
     )
@@ -1963,12 +1969,29 @@ async fn platform_browser_administrator_grant_roundtrip() {
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
+    let (cookies, body) = form_page(
+        &app,
+        &cookie,
+        "/administration/users?q=platform-second&lang=cy",
+    )
+    .await;
     let token = hidden_field(&body, "authenticity_token");
+    let action = {
+        let document = scraper::Html::parse_document(&body);
+        let forms = scraper::Selector::parse("form[action^='/administration/users/administrator']")
+            .unwrap();
+        document
+            .select(&forms)
+            .next()
+            .and_then(|form| form.value().attr("action"))
+            .unwrap()
+            .to_owned()
+    };
+    assert!(action.contains("q=platform-second&page=1&lang=cy"));
     let response = post_form(
         &app,
         &cookies,
-        "/platform/users/administrator",
+        &action,
         &[
             (
                 "account_id",
@@ -1992,6 +2015,11 @@ async fn platform_browser_administrator_grant_roundtrip() {
     );
     let (confirmed, outcome) = browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
     assert_eq!(confirmed, reqwest::StatusCode::OK, "{outcome}");
+    assert!(
+        outcome.contains("Results for “platform-second”"),
+        "{outcome}"
+    );
+    assert!(outcome.contains("lang=\"cy\""), "{outcome}");
     assert_eq!(
         admin_status(&app, actor(&app, "platform-second").await.account.id)
             .await
@@ -2008,11 +2036,11 @@ async fn platform_browser_preserves_the_authentication_origin_boundary() {
     let app = Application::new().await;
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/users").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = app
         .client
-        .post(format!("{}/platform/users/administrator", app.origin))
+        .post(format!("{}/administration/users/administrator", app.origin))
         .header("cookie", cookies)
         .header("host", "untrusted.example.test")
         .header("origin", "https://untrusted.example.test")
@@ -2197,12 +2225,12 @@ async fn platform_browser_administrator_revoke_roundtrip() {
         .await
         .unwrap();
     let cookie = admin_session(&app).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/users").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
         &app,
         &cookies,
-        "/platform/users/administrator",
+        "/administration/users/administrator",
         &[
             (
                 "account_id",
@@ -2239,12 +2267,12 @@ async fn platform_browser_user_disable_and_enable_roundtrip() {
     synthetic_account(&app, "platform-second", 2).await;
     let cookie = admin_session(&app).await;
     for (active, expected) in [("false", false), ("true", true)] {
-        let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
+        let (cookies, body) = form_page(&app, &cookie, "/administration/users").await;
         let token = hidden_field(&body, "authenticity_token");
         let response = post_form(
             &app,
             &cookies,
-            "/platform/users/active",
+            "/administration/users/active",
             &[
                 (
                     "account_id",
@@ -2287,7 +2315,7 @@ async fn platform_browser_forms_require_csrf_and_platform_rights() {
     let denied = post_form(
         &app,
         &cookie,
-        "/platform/users/administrator",
+        "/administration/users/administrator",
         &[
             (
                 "account_id",
@@ -2301,7 +2329,7 @@ async fn platform_browser_forms_require_csrf_and_platform_rights() {
     let bogus = post_form(
         &app,
         &cookie,
-        "/platform/users/administrator",
+        "/administration/users/administrator",
         &[
             (
                 "account_id",
@@ -2331,7 +2359,7 @@ async fn platform_browser_forms_require_csrf_and_platform_rights() {
     let forbidden = post_form(
         &app,
         &cookies,
-        "/platform/users/administrator",
+        "/administration/users/administrator",
         &[
             (
                 "account_id",
@@ -2357,12 +2385,12 @@ async fn platform_browser_last_administrator_revoke_conflicts() {
     let app = Application::new().await;
     let admins_before = isolate_administrators(&app).await;
     let cookie = admin_session(&app).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/users").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
         &app,
         &cookies,
-        "/platform/users/administrator",
+        "/administration/users/administrator",
         &[
             ("account_id", &(app.fixture.account.id).to_string()),
             ("grant", "false"),
@@ -2450,13 +2478,13 @@ async fn platform_settings_requires_platform_administrator() {
         .build()
         .unwrap();
     let anonymous = client
-        .get(format!("{}/platform/settings", app.origin))
+        .get(format!("{}/administration/settings", app.origin))
         .send()
         .await
         .unwrap();
     assert!(anonymous.status().is_redirection());
     let member = client
-        .get(format!("{}/platform/settings", app.origin))
+        .get(format!("{}/administration/settings", app.origin))
         .header(
             "cookie",
             fixture_session(&app, app.fixture.account.id).await,
@@ -2466,7 +2494,7 @@ async fn platform_settings_requires_platform_administrator() {
         .unwrap();
     assert_eq!(member.status(), reqwest::StatusCode::FORBIDDEN);
     let cookie = admin_fixture_session(&app).await;
-    let (_cookies, body) = form_page(&app, &cookie, "/platform/settings").await;
+    let (_cookies, body) = form_page(&app, &cookie, "/administration/settings").await;
 
     assert!(str::contains(&body, "Medicine lookup order"));
     assert!(!str::contains(
@@ -2486,13 +2514,13 @@ async fn platform_settings_update_via_browser_proof() {
     let app = Application::new().await;
     let settings_before = isolate_settings(&app).await;
     let cookie = admin_session(&app).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/settings").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/settings").await;
     let token = hidden_field(&body, "authenticity_token");
     let before = platform_version_events(&app, "AppSettings").await;
     let response = post_form(
         &app,
         &cookies,
-        "/platform/settings",
+        "/administration/settings",
         &[
             ("invite_only", "true"),
             (
@@ -2559,7 +2587,7 @@ async fn platform_settings_rejects_insecure_and_unknown_values() {
             .to_string()
             .contains("supported medicine lookup source")
     );
-    let (cookies, body) = form_page(&app, &cookie, "/platform/settings").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/settings").await;
     let token = hidden_field(&body, "authenticity_token");
     for form in [
         vec![
@@ -2625,7 +2653,7 @@ async fn platform_settings_rejects_insecure_and_unknown_values() {
             ("authenticity_token", token.as_str()),
         ],
     ] {
-        let response = post_form(&app, &cookies, "/platform/settings", &form).await;
+        let response = post_form(&app, &cookies, "/administration/settings", &form).await;
         let status = response.status();
         let cookies = response_cookies(&cookies, &response);
         let body = response.text().await.unwrap_or_default();
@@ -2654,12 +2682,12 @@ async fn platform_settings_audit_failure_rolls_back() {
     let app = Application::new().await;
     let settings_before = isolate_settings(&app).await;
     let cookie = admin_session(&app).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/settings").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/settings").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
         &app,
         &cookies,
-        "/platform/settings",
+        "/administration/settings",
         &[
             ("invite_only", "true"),
             (
@@ -2967,12 +2995,12 @@ async fn request_support(
     household_id: i64,
     reason: &str,
 ) -> (String, String, String) {
-    let (cookies, body) = form_page(app, admin_cookie, "/platform/support").await;
+    let (cookies, body) = form_page(app, admin_cookie, "/administration/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
         app,
         &cookies,
-        "/platform/support",
+        "/administration/support",
         &[
             ("household_id", &household_id.to_string()),
             ("reason", reason),
@@ -3024,7 +3052,7 @@ async fn approve_support(
     submit_support_form(
         app,
         owner_cookie,
-        "/account/support",
+        "/profile?panel=support#security",
         "/account/support/approve",
         support_id,
     )
@@ -3039,8 +3067,8 @@ async fn activate_support(
     submit_support_form(
         app,
         admin_cookie,
-        "/platform/support",
-        "/platform/support/activate",
+        "/administration/support",
+        "/administration/support/activate",
         support_id,
     )
     .await
@@ -3093,7 +3121,7 @@ async fn platform_owner_recovery_page_requires_platform_administrator() {
         .unwrap();
     let anonymous = client
         .get(format!(
-            "{}/platform/owner-recovery?search={}",
+            "{}/administration/owner-recovery?search={}",
             app.origin, app.fixture.client_uuid
         ))
         .send()
@@ -3101,7 +3129,7 @@ async fn platform_owner_recovery_page_requires_platform_administrator() {
         .unwrap();
     assert!(anonymous.status().is_redirection());
     let member = client
-        .get(format!("{}/platform/owner-recovery", app.origin))
+        .get(format!("{}/administration/owner-recovery", app.origin))
         .header(
             "cookie",
             fixture_session(&app, app.fixture.account.id).await,
@@ -3114,7 +3142,7 @@ async fn platform_owner_recovery_page_requires_platform_administrator() {
     let (status, body) = {
         let response = app
             .client
-            .get(format!("{}/platform/owner-recovery", app.origin))
+            .get(format!("{}/administration/owner-recovery", app.origin))
             .header("cookie", &cookie)
             .send()
             .await
@@ -3125,7 +3153,7 @@ async fn platform_owner_recovery_page_requires_platform_administrator() {
         let response = app
             .client
             .get(format!(
-                "{}/platform/owner-recovery?household={identity_72601}",
+                "{}/administration/owner-recovery?household={identity_72601}",
                 app.origin,
                 identity_72601 = household_named(&app, "recovery-fixture").await.id
             ))
@@ -3158,7 +3186,7 @@ async fn platform_owner_recovery_promotes_eligible_member_via_browser_proof() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -3167,7 +3195,7 @@ async fn platform_owner_recovery_promotes_eligible_member_via_browser_proof() {
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -3231,7 +3259,7 @@ async fn platform_owner_recovery_resulting_owner_authority_is_immediate() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -3240,7 +3268,7 @@ async fn platform_owner_recovery_resulting_owner_authority_is_immediate() {
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -3293,7 +3321,7 @@ async fn platform_owner_recovery_requires_csrf() {
     let response = post_form(
         &app,
         &cookie,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -3335,7 +3363,7 @@ async fn platform_owner_recovery_refuses_self_promotion() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -3344,7 +3372,7 @@ async fn platform_owner_recovery_refuses_self_promotion() {
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             ("household_id", &(app.fixture.household.id).to_string()),
             ("membership_id", &(app.fixture.membership.id).to_string()),
@@ -3571,7 +3599,7 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
             &app,
             &cookie,
             &format!(
-                "/platform/owner-recovery?household={identity_72601}",
+                "/administration/owner-recovery?household={identity_72601}",
                 identity_72601 = household_named(&app, "recovery-fixture").await.id
             ),
         )
@@ -3580,7 +3608,7 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
         let response = post_form(
             &app,
             &cookies,
-            "/platform/owner-recovery",
+            "/administration/owner-recovery",
             &[
                 (
                     "household_id",
@@ -3627,12 +3655,12 @@ async fn platform_owner_recovery_refuses_healthy_owner_household() {
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_session(&app).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/users").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -3692,7 +3720,7 @@ async fn platform_owner_recovery_refuses_cross_household_target() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -3701,7 +3729,7 @@ async fn platform_owner_recovery_refuses_cross_household_target() {
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -3760,7 +3788,7 @@ async fn platform_owner_recovery_refused_when_admin_rights_withdrawn_before_conf
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -3769,7 +3797,7 @@ async fn platform_owner_recovery_refused_when_admin_rights_withdrawn_before_conf
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -3841,7 +3869,7 @@ async fn platform_owner_recovery_proof_binds_household_target_and_reason() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -3850,7 +3878,7 @@ async fn platform_owner_recovery_proof_binds_household_target_and_reason() {
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -3998,7 +4026,7 @@ async fn platform_owner_recovery_serializes_concurrent_confirmations() {
             &app,
             cookie,
             &format!(
-                "/platform/owner-recovery?household={identity_72601}",
+                "/administration/owner-recovery?household={identity_72601}",
                 identity_72601 = household_named(&app, "recovery-fixture").await.id
             ),
         )
@@ -4007,7 +4035,7 @@ async fn platform_owner_recovery_serializes_concurrent_confirmations() {
         let response = post_form(
             &app,
             &cookies,
-            "/platform/owner-recovery",
+            "/administration/owner-recovery",
             &[
                 (
                     "household_id",
@@ -4090,7 +4118,7 @@ async fn platform_owner_recovery_audit_failure_rolls_back() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -4099,7 +4127,7 @@ async fn platform_owner_recovery_audit_failure_rolls_back() {
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -4169,13 +4197,13 @@ async fn platform_support_requires_platform_administrator() {
         .build()
         .unwrap();
     let anonymous = client
-        .get(format!("{}/platform/support", app.origin))
+        .get(format!("{}/administration/support", app.origin))
         .send()
         .await
         .unwrap();
     assert!(anonymous.status().is_redirection());
     let member = client
-        .get(format!("{}/platform/support", app.origin))
+        .get(format!("{}/administration/support", app.origin))
         .header(
             "cookie",
             fixture_session(&app, app.fixture.account.id).await,
@@ -4187,7 +4215,7 @@ async fn platform_support_requires_platform_administrator() {
     let cookie = admin_fixture_session(&app).await;
     let response = app
         .client
-        .get(format!("{}/platform/support", app.origin))
+        .get(format!("{}/administration/support", app.origin))
         .header("cookie", &cookie)
         .send()
         .await
@@ -4220,17 +4248,24 @@ async fn platform_support_pagination_keeps_older_approved_requests_reachable() {
         newer.ended_at = Set(Some(chrono::Utc::now().naive_utc()));
         newer.insert(&app.fixture.admin).await.unwrap();
     }
-    let (_, first) = form_page(&app, &cookie, "/platform/support").await;
-    let (_, second) = form_page(&app, &cookie, "/platform/support?page=2").await;
-    let (_, oversized) =
-        form_page(&app, &cookie, "/platform/support?page=9223372036854775807").await;
+    let (_, first) = form_page(&app, &cookie, "/administration/support").await;
+    let (_, second) = form_page(&app, &cookie, "/administration/support?page=2").await;
+    let (_, oversized) = form_page(
+        &app,
+        &cookie,
+        "/administration/support?page=9223372036854775807",
+    )
+    .await;
 
-    assert!(str::contains(&first, "href=\"/platform/support?page=2\""));
+    assert!(str::contains(
+        &first,
+        "href=\"/administration/support?page=2\""
+    ));
     assert!(!str::contains(&first, "Confidential support reason alpha"));
     assert!(str::contains(&second, "Confidential support reason alpha"));
     assert!(str::contains(
         &second,
-        "action=\"/platform/support/activate\""
+        "action=\"/administration/support/activate\""
     ));
     assert!(str::contains(
         &second,
@@ -4249,12 +4284,12 @@ async fn platform_support_request_requires_reason_and_sets_request_deadline() {
     let app = Application::new().await;
     supported_household(&app).await;
     let cookie = admin_session(&app).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/support").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let missing = post_form(
         &app,
         &cookies,
-        "/platform/support",
+        "/administration/support",
         &[
             (
                 "household_id",
@@ -4288,12 +4323,12 @@ async fn platform_support_request_requires_reason_and_sets_request_deadline() {
             .is_none(),
         "no row without reason"
     );
-    let (cookies, body) = form_page(&app, &cookie, "/platform/support").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
         &app,
         &cookies,
-        "/platform/support",
+        "/administration/support",
         &[
             (
                 "household_id",
@@ -4440,7 +4475,7 @@ async fn platform_support_approval_read_and_termination_journey() {
     .await;
     let nonowner = app
         .client
-        .get(format!("{}/account/support", app.origin))
+        .get(format!("{}/profile?panel=support", app.origin))
         .header("cookie", &member)
         .send()
         .await
@@ -4471,7 +4506,7 @@ async fn platform_support_approval_read_and_termination_journey() {
     );
     let page = app
         .client
-        .get(format!("{}/account/support", app.origin))
+        .get(format!("{}/profile?panel=support", app.origin))
         .header("cookie", &owner)
         .send()
         .await
@@ -4548,7 +4583,10 @@ async fn platform_support_activate_replay_and_wrong_operator_rejected() {
 async fn assert_support_is_read_only(app: &Application, cookie: &str, support_id: i64) {
     let read = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", cookie)
         .send()
         .await
@@ -4648,7 +4686,7 @@ async fn assert_support_end_is_idempotent_and_audited(
         &actor(app, "support-owner").await.account.email,
     )
     .await;
-    let (cookies, body) = form_page(app, &owner, "/account/support").await;
+    let (cookies, body) = form_page(app, &owner, "/profile?panel=support#security").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
         app,
@@ -4683,7 +4721,10 @@ async fn assert_support_end_is_idempotent_and_audited(
     assert!(first.2.is_some(), "ending must stamp ended_at");
     let read = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", cookie)
         .send()
         .await
@@ -4692,12 +4733,12 @@ async fn assert_support_end_is_idempotent_and_audited(
         !read.status().is_success(),
         "terminated support must not read"
     );
-    let (cookies, body) = form_page(app, cookie, "/platform/support").await;
+    let (cookies, body) = form_page(app, cookie, "/administration/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let again = post_form(
         app,
         &cookies,
-        "/platform/support/end",
+        "/administration/support/end",
         &[
             ("support_id", &support_id.to_string()),
             ("authenticity_token", &token),
@@ -4773,7 +4814,10 @@ async fn platform_support_expiry_revokes_read_access() {
         .unwrap();
     let read = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -4784,7 +4828,10 @@ async fn platform_support_expiry_revokes_read_access() {
         .unwrap();
     let again = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -4841,7 +4888,10 @@ async fn platform_support_read_denied_after_authority_changes() {
             .redirect(reqwest::redirect::Policy::none())
             .build()
             .unwrap()
-            .get(format!("{}/platform/support/{support_id}", app.origin))
+            .get(format!(
+                "{}/administration/support/{support_id}",
+                app.origin
+            ))
             .header("cookie", &cookie)
             .send()
             .await
@@ -4880,7 +4930,10 @@ async fn platform_support_reason_is_not_leaked_in_denied_responses() {
         .unwrap();
     let denied = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -4888,7 +4941,10 @@ async fn platform_support_reason_is_not_leaked_in_denied_responses() {
     let denied_body = denied.text().await.unwrap();
     let anonymous = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .send()
         .await
         .unwrap();
@@ -5225,7 +5281,7 @@ async fn platform_owner_recovery_page_omits_the_administrator_membership() {
         let response = app
             .client
             .get(format!(
-                "{}/platform/owner-recovery?household={identity_72601}",
+                "{}/administration/owner-recovery?household={identity_72601}",
                 app.origin,
                 identity_72601 = household_named(&app, "recovery-fixture").await.id
             ))
@@ -5335,7 +5391,7 @@ async fn platform_owner_recovery_excludes_accountless_participants() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -5371,7 +5427,7 @@ async fn platform_owner_recovery_excludes_accountless_participants() {
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -5485,7 +5541,7 @@ async fn platform_owner_recovery_treats_accountless_owner_as_unusable() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72603}",
+            "/administration/owner-recovery?household={identity_72603}",
             identity_72603 = household_named(&app, "accountless-owner-fixture").await.id
         ),
     )
@@ -5495,7 +5551,7 @@ async fn platform_owner_recovery_treats_accountless_owner_as_unusable() {
     let response = post_form(
         &app,
         &cookies,
-        "/platform/owner-recovery",
+        "/administration/owner-recovery",
         &[
             (
                 "household_id",
@@ -5592,7 +5648,7 @@ async fn platform_support_read_waiting_on_row_lock_denies_after_deadline() {
     let read_cookie = cookie.clone();
     let pending = tokio::spawn(async move {
         read_client
-            .get(format!("{read_origin}/platform/support/{support_id}"))
+            .get(format!("{read_origin}/administration/support/{support_id}"))
             .header("cookie", read_cookie)
             .send()
             .await
@@ -5662,7 +5718,10 @@ async fn platform_support_read_waiting_on_row_lock_denies_after_deadline() {
     let audits = support_audit_count(&app, "platform/support/expired", support_id).await;
     let second = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -5857,7 +5916,10 @@ async fn platform_support_expiry_audit_failure_rolls_back() -> Result<(), Box<dy
     reject_expiry_audit(&app).await?;
     let failed = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -5873,7 +5935,10 @@ async fn platform_support_expiry_audit_failure_rolls_back() -> Result<(), Box<dy
     let audits = support_audit_count(&app, "platform/support/expired", support_id).await;
     let retry = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -5978,7 +6043,10 @@ async fn platform_support_read_includes_allocation_and_schedule_details() {
         .unwrap();
     let response = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -6023,7 +6091,7 @@ async fn platform_support_owner_page_shows_requester_reason_and_scope() {
     assert_eq!(confirmed, reqwest::StatusCode::OK, "{outcome}");
     let page = app
         .client
-        .get(format!("{}/account/support", app.origin))
+        .get(format!("{}/profile?panel=support", app.origin))
         .header("cookie", &owner)
         .send()
         .await
@@ -6074,7 +6142,7 @@ async fn platform_support_pages_render_readable_utc_deadlines() {
     let support_id = active_fixture_support(&app, &cookie).await;
     let list = app
         .client
-        .get(format!("{}/platform/support", app.origin))
+        .get(format!("{}/administration/support", app.origin))
         .header("cookie", &cookie)
         .send()
         .await
@@ -6083,7 +6151,10 @@ async fn platform_support_pages_render_readable_utc_deadlines() {
     let list_body = list.text().await.unwrap_or_default();
     let read = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -6120,7 +6191,7 @@ async fn platform_owner_recovery_reason_has_a_visible_label() {
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -6232,7 +6303,7 @@ async fn platform_support_read_waiting_on_authority_query_denies_after_deadline(
     let read_cookie = cookie.clone();
     let pending = tokio::spawn(async move {
         read_client
-            .get(format!("{read_origin}/platform/support/{support_id}"))
+            .get(format!("{read_origin}/administration/support/{support_id}"))
             .header("cookie", read_cookie)
             .send()
             .await
@@ -6262,7 +6333,10 @@ async fn platform_support_read_waiting_on_authority_query_denies_after_deadline(
     assert_eq!(audits, 1);
     let repeat = app
         .client
-        .get(format!("{}/platform/support/{support_id}", app.origin))
+        .get(format!(
+            "{}/administration/support/{support_id}",
+            app.origin
+        ))
         .header("cookie", &cookie)
         .send()
         .await
@@ -6305,7 +6379,7 @@ async fn platform_support_approval_waiting_on_owner_lock_denies_after_deadline()
     let (cookies, operation_id, confirm_token) = start_support_form(
         &app,
         &owner,
-        "/account/support",
+        "/profile?panel=support#security",
         "/account/support/approve",
         support_id,
     )
@@ -6388,7 +6462,7 @@ async fn platform_support_activation_waiting_on_authority_query_denies_after_dea
         submit_support_form(
             &app,
             &owner,
-            "/account/support",
+            "/profile?panel=support#security",
             "/account/support/approve",
             support_id,
         )
@@ -6399,8 +6473,8 @@ async fn platform_support_activation_waiting_on_authority_query_denies_after_dea
     let (cookies, operation_id, confirm_token) = start_support_form(
         &app,
         &cookie,
-        "/platform/support",
-        "/platform/support/activate",
+        "/administration/support",
+        "/administration/support/activate",
         support_id,
     )
     .await;
@@ -6462,23 +6536,40 @@ async fn security_page(app: &Application, cookie: &str) -> (reqwest::StatusCode,
 #[tokio::test]
 async fn platform_account_security_shows_scoped_navigation_links() {
     let app = Application::new().await;
-    let support_entry = scraper::Selector::parse("a[data-profile-flow-entry='support'], a[href='/profile?panel=support#security'], a[href='/account/support']").unwrap();
-    let platform_entry = scraper::Selector::parse("a[href='/platform/users']").unwrap();
-    let platform_navigation = scraper::Selector::parse(
-        "[data-profile-navigation-fallback] nav a[href='/platform/users']",
+    let support_entry = scraper::Selector::parse(
+        "a[data-profile-flow-entry='support'], a[href='/profile?panel=support#security']",
     )
     .unwrap();
+    let platform_entry = scraper::Selector::parse("a[href='/administration']").unwrap();
+    let administration_navigation =
+        scraper::Selector::parse(".app-sidebar a[data-section='administration']").unwrap();
     supported_household(&app).await;
     let admin = admin_fixture_session(&app).await;
     let owner = fixture_session(&app, actor(&app, "support-owner").await.account.id).await;
     let member = fixture_session(&app, actor(&app, "supported-member").await.account.id).await;
+    let legacy_response = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .unwrap()
+        .get(format!("{}/account/support", app.origin))
+        .header("cookie", &owner)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(legacy_response.status(), reqwest::StatusCode::NOT_FOUND);
     let (status, body) = security_page(&app, &admin).await;
     assert_eq!(status, reqwest::StatusCode::OK, "{body}");
     let document = scraper::Html::parse_document(&body);
-    assert!(
-        document.select(&platform_navigation).next().is_some(),
-        "platform administrators need the platform administration link: {body}"
-    );
+    let sidebar = document
+        .select(&scraper::Selector::parse(".app-sidebar").unwrap())
+        .next()
+        .unwrap();
+    let administration_links =
+        scraper::Selector::parse("a[data-section='administration']").unwrap();
+    assert_eq!(sidebar.select(&administration_links).count(), 1, "{body}");
+    let administration_link = document.select(&administration_navigation).next().unwrap();
+    let overview_path = administration_link.value().attr("href").unwrap();
+    assert!(overview_path.starts_with("/households/") && overview_path.ends_with("/admin"));
     assert!(
         document.select(&support_entry).next().is_none(),
         "non-owner administrators must not see the owner support link: {body}"
@@ -6568,7 +6659,7 @@ async fn platform_support_read_rechecks_admin_authority_after_authority_wait() {
     let read_cookie = cookie.clone();
     let pending = tokio::spawn(async move {
         read_client
-            .get(format!("{read_origin}/platform/support/{support_id}"))
+            .get(format!("{read_origin}/administration/support/{support_id}"))
             .header("cookie", read_cookie)
             .send()
             .await
@@ -6635,7 +6726,7 @@ async fn platform_support_approval_rechecks_owner_lockout_after_row_wait() {
     let (cookies, operation_id, confirm_token) = start_support_form(
         &app,
         &owner,
-        "/account/support",
+        "/profile?panel=support#security",
         "/account/support/approve",
         support_id,
     )
@@ -6714,8 +6805,8 @@ async fn platform_support_activation_rechecks_admin_after_row_wait() {
     let (cookies, operation_id, confirm_token) = start_support_form(
         &app,
         &cookie,
-        "/platform/support",
-        "/platform/support/activate",
+        "/administration/support",
+        "/administration/support/activate",
         support_id,
     )
     .await;
@@ -6785,8 +6876,8 @@ async fn platform_support_activation_rechecks_household_after_row_wait() {
     let (cookies, operation_id, confirm_token) = start_support_form(
         &app,
         &cookie,
-        "/platform/support",
-        "/platform/support/activate",
+        "/administration/support",
+        "/administration/support/activate",
         support_id,
     )
     .await;
@@ -6834,7 +6925,7 @@ async fn platform_support_end_rechecks_actor_after_row_wait() {
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/support").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let public = app.context.config.server.full_url();
     let url = url::Url::parse(&public).unwrap();
@@ -6851,7 +6942,7 @@ async fn platform_support_end_rechecks_actor_after_row_wait() {
     let request_cookies = cookies.clone();
     let end = tokio::spawn(async move {
         client
-            .post(format!("{origin}/platform/support/end"))
+            .post(format!("{origin}/administration/support/end"))
             .header("cookie", request_cookies)
             .header("host", authority)
             .header("origin", public.trim_end_matches('/'))
@@ -7014,7 +7105,7 @@ async fn platform_support_pending_expiry_audit_failure_rolls_back()
     let (owner_cookies, approval_id, approval_token) = start_support_form(
         &app,
         &owner,
-        "/account/support",
+        "/profile?panel=support#security",
         "/account/support/approve",
         support_id,
     )
@@ -7100,12 +7191,12 @@ async fn platform_support_end_on_expired_session_records_expiry_once() {
         })
         .await
         .unwrap();
-    let (cookies, body) = form_page(&app, &cookie, "/platform/support").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let response = post_form(
         &app,
         &cookies,
-        "/platform/support/end",
+        "/administration/support/end",
         &[
             ("support_id", &support_id.to_string()),
             ("authenticity_token", &token),
@@ -7146,12 +7237,12 @@ async fn platform_owner_recovery_search_does_not_place_csrf_tokens_in_urls() {
     let app = Application::new().await;
     let cookie = admin_fixture_session(&app).await;
     recovery_household(&app).await;
-    let (_, body) = form_page(&app, &cookie, "/platform/owner-recovery").await;
+    let (_, body) = form_page(&app, &cookie, "/administration/owner-recovery").await;
     let (_, detail) = form_page(
         &app,
         &cookie,
         &format!(
-            "/platform/owner-recovery?household={identity_72601}",
+            "/administration/owner-recovery?household={identity_72601}",
             identity_72601 = household_named(&app, "recovery-fixture").await.id
         ),
     )
@@ -7193,7 +7284,7 @@ async fn platform_settings_get_renders_defaults_without_creating_the_singleton()
         })
         .await
         .unwrap();
-    let (_, body) = form_page(&app, &cookie, "/platform/settings").await;
+    let (_, body) = form_page(&app, &cookie, "/administration/settings").await;
     let persisted = app_settings(&app).await;
 
     assert!(
@@ -7213,7 +7304,7 @@ async fn platform_audit_does_not_trust_spoofed_forwarded_for() {
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/support").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let public = app.context.config.server.full_url();
     let url = url::Url::parse(&public).unwrap();
@@ -7222,7 +7313,7 @@ async fn platform_audit_does_not_trust_spoofed_forwarded_for() {
         None => url.host_str().unwrap().to_owned(),
     };
     app.client
-        .post(format!("{}/platform/support/end", app.origin))
+        .post(format!("{}/administration/support/end", app.origin))
         .header("cookie", &cookies)
         .header("host", authority)
         .header("origin", public.trim_end_matches('/'))
@@ -7306,7 +7397,7 @@ async fn platform_support_listing_expiry_audit_is_race_safe()
     let (lock, _) = session_lock(&app, support_id).await;
     let listing = || {
         app.client
-            .get(format!("{}/platform/support", app.origin))
+            .get(format!("{}/administration/support", app.origin))
             .header("cookie", &cookie)
             .timeout(std::time::Duration::from_secs(5))
             .send()
@@ -7432,12 +7523,12 @@ async fn platform_support_listing_does_not_expire_an_ended_session() {
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
-    let (cookies, body) = form_page(&app, &cookie, "/platform/support").await;
+    let (cookies, body) = form_page(&app, &cookie, "/administration/support").await;
     let token = hidden_field(&body, "authenticity_token");
     let ended = post_form(
         &app,
         &cookies,
-        "/platform/support/end",
+        "/administration/support/end",
         &[
             ("support_id", &support_id.to_string()),
             ("authenticity_token", &token),
@@ -7470,7 +7561,7 @@ async fn platform_support_listing_does_not_expire_an_ended_session() {
         })
         .await
         .unwrap();
-    let (_, body) = form_page(&app, &cookie, "/platform/support").await;
+    let (_, body) = form_page(&app, &cookie, "/administration/support").await;
     let expired = support_session(&app, household_named(&app, "supported-fixture").await.id)
         .await
         .unwrap()

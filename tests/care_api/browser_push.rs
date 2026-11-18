@@ -73,7 +73,7 @@ async fn browser_push_test_delivery_is_scoped_audited_and_cleans_only_expired_ow
         assert_eq!(
             transport.payloads.lock().unwrap().as_slice(),
             &[
-                json!({"title":"MedTracker","body":"Test notification","path":format!("/households/{}/profile#notifications", app.fixture.household.slug),"account_id":app.fixture.account.id.to_string()})
+                json!({"title":"MedTracker","body":"Test notification","path":format!("/profile?household={}#notifications", app.fixture.household.slug),"account_id":app.fixture.account.id.to_string()})
             ]
         );
         tenant.commit().await.unwrap();

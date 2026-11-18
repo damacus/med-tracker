@@ -1,9 +1,11 @@
 {% extends "layouts/base.html" %}
 {% block content %}
+{% set system_administration = true %}
+{% set admin_section = "owner_recovery" %}
 <section class="platform-page">
-  <header class="platform-page-header"><p class="platform-eyebrow">Administration</p><h1>Owner recovery</h1><p class="platform-description">Promote an eligible member to owner for households that have no usable owner. This change requires fresh sign-in confirmation.</p></header>
-  {% include "platform/navigation.html" %}
-  <form method="get" action="/platform/owner-recovery" class="platform-search-panel">
+  <h1 class="sr-only">Owner recovery</h1>
+  {% include "administration/navigation.html" %}
+  <form method="get" action="/administration/owner-recovery" class="platform-search-panel">
     <div class="platform-search-field"><label for="household-search">Household search</label>
     <input class="input input-bordered w-full" id="household-search" type="search" name="search" value="{{ search }}">
     </div><button class="btn btn-primary" type="submit">Search</button>
@@ -14,7 +16,7 @@
   {% endif %}
   <ul class="platform-household-list">
     {% for household in households %}
-    <li><a class="link" href="/platform/owner-recovery?household={{ household.id }}">{{ household.name }}</a></li>
+    <li><a class="link" href="/administration/owner-recovery?household={{ household.id }}">{{ household.name }}</a></li>
     {% endfor %}
   </ul>
   </aside>
@@ -35,7 +37,7 @@
           <dt class="font-medium">Email</dt>
           <dd>{{ member.email }}</dd>
         </dl>
-        <form method="post" action="/platform/owner-recovery" class="platform-recovery-form">
+        <form method="post" action="/administration/owner-recovery" class="platform-recovery-form">
           <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
           <input type="hidden" name="household_id" value="{{ selected.id }}">
           <input type="hidden" name="membership_id" value="{{ member.id }}">
