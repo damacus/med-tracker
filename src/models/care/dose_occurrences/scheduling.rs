@@ -60,7 +60,7 @@ pub(crate) fn schedule_as_needed(schedule: &schedule::Model) -> bool {
         || schedule.schedule_config.get("as_needed") == Some(&Value::Bool(true))
 }
 
-pub(super) fn effective_count(config: &Value, fallback: i32) -> i32 {
+pub(in crate::models::care) fn configured_count(config: &Value) -> Option<i32> {
     ["max_daily_doses", "max_doses", "max"]
         .iter()
         .find_map(|name| {
@@ -71,8 +71,10 @@ pub(super) fn effective_count(config: &Value, fallback: i32) -> i32 {
             })
         })
         .and_then(|value| i32::try_from(value).ok())
-        .unwrap_or(fallback)
-        .max(1)
+}
+
+pub(super) fn effective_count(config: &Value, fallback: i32) -> i32 {
+    configured_count(config).unwrap_or(fallback).max(1)
 }
 
 pub(crate) fn weekday_matches(value: &Value, day: NaiveDate) -> bool {
