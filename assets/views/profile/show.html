@@ -42,8 +42,8 @@
           <label class="grid gap-1" for="clinical-date-of-birth">{{ labels.people.form.date_of_birth }}<input id="clinical-date-of-birth" name="date_of_birth" type="date" value="{{ clinical_date }}" class="input w-full" autocomplete="bday" required></label>
           <button class="btn btn-primary justify-self-start" type="submit">{{ labels.people.form.save }}</button>
         </form>
-        <a class="link" href="{{ profile_path }}?panel=history#profile" data-profile-flow-entry="history">{{ labels.profiles.personal.history }}</a>
-        <a class="link" href="{{ profile_path }}?panel=plans#profile" data-profile-flow-entry="plans">{{ labels.profiles.personal.plans }}</a>
+        <a class="link" href="{{ profile_path }}?panel=history{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#profile" data-profile-flow-entry="history">{{ labels.profiles.personal.history }}</a>
+        <a class="link" href="{{ profile_path }}?panel=plans{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#profile" data-profile-flow-entry="plans">{{ labels.profiles.personal.plans }}</a>
         <a class="link" href="/profile/guardian-declarations">{{ labels.guardian_declarations.title }}</a>
       </section>
       <div class="profile-settings grid gap-3">

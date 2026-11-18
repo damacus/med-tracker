@@ -153,9 +153,13 @@ export function mountProfileDialogs(document) {
   const destination = value => {
     const url = localFlowUrl(value, profile);
     if (!url) throw Error('Unexpected profile destination');
-    if (url.pathname !== profile.pathname && !url.searchParams.has('profile_done')) {
+    const household = host.dataset.profileHousehold;
+    if (url.pathname === profile.pathname) {
+      if (household && !url.searchParams.has('household') && !url.searchParams.has('profile_household')) {
+        url.searchParams.set('household', household);
+      }
+    } else if (!url.searchParams.has('profile_done')) {
       url.searchParams.set('profile_flow', kind || 'operation');
-      const household = host.dataset.profileHousehold;
       if (household) url.searchParams.set('profile_household', household);
     }
     return url;
@@ -253,7 +257,7 @@ export function mountProfileDialogs(document) {
       if (!url) return;
       event.preventDefault();
       setBusy(false);
-      const destinationUrl = url.pathname === '/account/security' ? new URL(`${profile.pathname}?profile_done=${kind}`, profile) : destination(url.href);
+      const destinationUrl = destination(url.pathname === '/account/security' ? `${profile.pathname}?profile_done=${kind}` : url.href);
       void send(destinationUrl);
     });
     document.addEventListener('security-flow-result', event => { if (root?.contains(event.target) || event.target === root) { setBusy(false); status.textContent = ''; } });

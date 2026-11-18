@@ -410,11 +410,17 @@ impl AccountPage<'_> {
         data["labels"] = labels.clone();
         data["lang"] = json!(locale);
         data["slug"] = json!(slug);
-        data["profile_query"] = json!(if slug.is_empty() {
-            String::new()
-        } else {
-            format!("?household={slug}")
+        let context_query = scope.map(|_| {
+            url::form_urlencoded::Serializer::new(String::new())
+                .append_pair("household", slug)
+                .finish()
         });
+        data["profile_query"] = json!(
+            context_query
+                .as_ref()
+                .map_or_else(String::new, |query| format!("?{query}"))
+        );
+        data["profile_context_query"] = json!(context_query);
         data["name"] = json!(name);
         data["email"] = json!(snapshot.email);
         data["initials"] = json!(
@@ -502,7 +508,11 @@ impl AccountPage<'_> {
             .as_ref()
             .and_then(|fields| fields.get("avatar_error"))
             .map_or(Value::Null, |key| labels["profiles"]["avatar"][key].clone());
-        data["shortcut_choices"] = json!(super::shortcut_choices(slug, &labels, can_manage));
+        data["shortcut_choices"] = json!(super::shortcut_choices(
+            slug,
+            &labels,
+            can_manage || self.view.system_administrator()
+        ));
         let stored = serde_json::to_value(snapshot.mobile_shortcuts).unwrap_or_default();
         data["shortcut_slots"] = json!((1..=3).map(|slot| {
             let selected = if setting == Some("shortcuts") { draft.as_ref().and_then(|fields| fields.get(&format!("shortcut_{slot}"))).cloned().unwrap_or_default() } else { stored[slot - 1].as_str().unwrap_or_default().into() };

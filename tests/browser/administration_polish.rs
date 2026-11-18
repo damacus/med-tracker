@@ -92,7 +92,7 @@ async fn administration_polish_overview_and_forms() {
         page.keyboard().press("Escape", None).await.unwrap();
         expect(detail).to_be_focused().await.unwrap();
         page.goto(&format!("{}/households/persistence-fixture/admin",journey.origin),None).await.unwrap();
-        page.locator("button[data-dialog-open^=rename-]").click(None).await.unwrap();
+        page.locator("summary[aria-label^='Rename household:']").click(None).await.unwrap();
         page.get_by_label("Household name",true).fill("   ",None).await.unwrap();
         page.get_by_role(AriaRole::Button,named("Save household")).click(None).await.unwrap();
         expect(page.locator("[role=alert]")).to_be_visible().await.unwrap();

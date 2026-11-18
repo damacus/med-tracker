@@ -302,6 +302,12 @@ pub(crate) struct ShellView {
 pub(crate) struct ShellViewEngine<E>(pub E);
 
 impl ShellView {
+    pub(super) fn system_administrator(&self) -> bool {
+        self.shell
+            .as_ref()
+            .is_some_and(|shell| shell.system_administrator)
+    }
+
     pub(crate) fn provider_name(&self) -> &str {
         &self.provider_name
     }

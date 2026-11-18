@@ -6,19 +6,18 @@
         <h3 class="card-title">{{ household.name }}</h3>
         <p>{{ household.active_members }} {% if household.active_members == 1 %}{{ overview_labels.active_member }}{% else %}{{ overview_labels.active_members }}{% endif %} · {{ household.pending_invitations }} {% if household.pending_invitations == 1 %}{{ overview_labels.pending_invitation }}{% else %}{{ overview_labels.pending_invitations }}{% endif %}</p>
         <div class="flex flex-wrap gap-2">
-          {% if not settings_error or household.slug != slug %}<button type="button" class="btn btn-outline" data-dialog-open="rename-{{ household.slug }}" aria-label="Rename household: {{ household.name }}">Rename household</button>{% endif %}
           <a class="btn btn-outline" href="/households/{{ household.slug }}/admin/users{{ language_suffix }}" aria-label="Manage users in {{ household.name }}">Manage users</a>
         </div>
         {% if not settings_error or household.slug != slug %}
-        <dialog id="rename-{{ household.slug }}" class="modal" aria-labelledby="rename-title-{{ household.slug }}">
-          <form class="modal-box grid gap-4" method="post" action="/households/{{ household.slug }}/admin/household">
-            <h4 id="rename-title-{{ household.slug }}" class="text-xl font-semibold">Rename household</h4>
+        <details>
+          <summary class="btn btn-outline w-fit" aria-label="Rename household: {{ household.name }}">Rename household</summary>
+          <form class="grid gap-4 mt-2" method="post" action="/households/{{ household.slug }}/admin/household">
             <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
             {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
             <label class="grid gap-2">{{ labels.admin.households.name }} <input class="input w-full" name="name" maxlength="100" value="{{ household.name }}" required></label>
-            <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.admin.users.form.cancel }}</button><button type="submit" class="btn btn-neutral">{{ labels.admin.households.save }}</button></div>
+            <button type="submit" class="btn btn-neutral justify-self-start">{{ labels.admin.households.save }}</button>
           </form>
-        </dialog>
+        </details>
         {% endif %}
         <details class="mt-2">
           <summary class="cursor-pointer">{{ labels.admin.households.ai_suggestions_enabled }}</summary>
