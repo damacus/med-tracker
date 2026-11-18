@@ -3,6 +3,7 @@
 <section class="max-w-3xl mx-auto">
   <a href="/" class="link">Households</a>
   <h1 class="text-3xl font-semibold mt-4">NHS dm+d catalogue</h1>
+  {% include "platform/navigation.html" %}
   <p class="mt-2">Upload a release archive to update the local barcode catalogue. Imports continue when you leave this page.</p>
   {% if error %}<p role="alert" class="alert alert-error mt-4">{{ error }}</p>{% endif %}
   <form method="post" enctype="multipart/form-data" class="card card-body border border-base-300 mt-6">

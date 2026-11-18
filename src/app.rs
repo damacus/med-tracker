@@ -463,6 +463,7 @@ impl Hooks for App {
     }
 
     fn register_tasks(tasks: &mut Tasks) {
+        tasks.register(crate::models::platform::bootstrap::BootstrapTask);
         tasks.register(crate::models::platform::database_setup::DatabaseSetupTask);
         tasks.register(crate::models::canary::CapabilitiesTask);
         tasks.register(crate::models::canary::SeedTask);
@@ -498,5 +499,11 @@ mod setup_tests {
         let mut tasks = Tasks::default();
         App::register_tasks(&mut tasks);
         assert!(tasks.names().iter().any(|name| name == "database-setup"));
+        assert!(
+            tasks
+                .names()
+                .iter()
+                .any(|name| name == "platform-admin-bootstrap")
+        );
     }
 }
