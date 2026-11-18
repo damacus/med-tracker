@@ -34,7 +34,7 @@ fn platform_bootstrap_task_wrapper_uses_selected_environment() {
         .unwrap();
     }
     let cargo = bin.join("cargo");
-    std::fs::write(&cargo, "#!/usr/bin/env fish\nset -l separator (contains -i -- -- $argv)\nexec \"$MEDTRACKER_BOOTSTRAP_TEST_BINARY\" $argv[(math $separator + 1)..-1]\n").unwrap();
+    std::fs::write(&cargo, "#!/usr/bin/env node\nconst {spawnSync}=require('node:child_process');\nconst args=process.argv.slice(2);\nconst result=spawnSync(process.env.MEDTRACKER_BOOTSTRAP_TEST_BINARY,args.slice(args.indexOf('--')+1),{stdio:'inherit'});\nif(result.error) throw result.error;\nprocess.exit(result.status ?? 1);\n").unwrap();
     std::fs::set_permissions(&cargo, std::fs::Permissions::from_mode(0o700)).unwrap();
     let inherited_path = std::env::var_os("PATH").unwrap();
     let paths = std::iter::once(bin).chain(std::env::split_paths(&inherited_path));
