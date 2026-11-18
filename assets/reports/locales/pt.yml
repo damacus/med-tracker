@@ -2317,6 +2317,11 @@ pt:
         metric_value: Horário
   profiles:
     personal:
+      full_name: "Nome completo"
+      use_display_name: "Usar um nome de exibição"
+      household: "Agregado familiar"
+      choose_household: "Escolher agregado familiar"
+      household_required: "Escolha um agregado familiar para usar estas definições."
       plans: "Os meus planos de tratamento"
       plans_description: "Os seus planos permanecem consigo quando sai de um agregado. As alterações só atualizam uma ligação atual a um agregado."
       plans_empty: "Não foram registados planos de tratamento pessoais."
@@ -2530,6 +2535,8 @@ pt:
       "on": Ligado
       "off": Desligado
     sections:
+      look-and-feel:
+        title: "Aparência"
       profile:
         title: Perfil
       security:

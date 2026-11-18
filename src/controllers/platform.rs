@@ -14,8 +14,11 @@ use axum::{
     response::{IntoResponse, Redirect},
 };
 use axum_csrf::CsrfToken;
+use axum_session::Session;
+use axum_session_sqlx::SessionPgPool;
 use better_auth_core::{AuthRequest, HttpMethod};
 use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -24,32 +27,163 @@ mod support;
 
 pub fn routes() -> Routes {
     Routes::new()
-        .add("/platform", get(index))
-        .add("/platform/users", get(users))
-        .add("/platform/users/administrator", post(administrator_form))
-        .add("/platform/users/active", post(active_form))
-        .add("/platform/settings", get(settings).post(update_settings))
+        .add("/administration", get(index))
+        .add("/administration/users", get(users))
         .add(
-            "/platform/owner-recovery",
+            "/administration/users/administrator",
+            post(administrator_form),
+        )
+        .add("/administration/users/active", post(active_form))
+        .add(
+            "/administration/settings",
+            get(settings).post(update_settings),
+        )
+        .add(
+            "/administration/owner-recovery",
             get(recovery::show).post(recovery::submit),
         )
         .add(
-            "/platform/support",
+            "/administration/support",
             get(support::index).post(support::request),
         )
-        .add("/platform/support/activate", post(support::activate))
-        .add("/platform/support/end", post(support::end))
-        .add("/platform/support/{id}", get(support::read))
+        .add("/administration/support/activate", post(support::activate))
+        .add("/administration/support/end", post(support::end))
+        .add("/administration/support/{id}", get(support::read))
 }
 
-async fn index() -> Response {
-    Redirect::to("/platform/users").into_response()
+async fn index(
+    State(ctx): State<AppContext>,
+    session: Session<SessionPgPool>,
+    token: CsrfToken,
+    request: Option<Extension<LocoRequestId>>,
+    headers: HeaderMap,
+    ViewEngine(view): ViewEngine<TeraView>,
+) -> Response {
+    let principal = match crate::models::identity::browser::authenticate(
+        &ctx.db,
+        &session,
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
+        Ok(principal) => principal,
+        Err(error) => return super::medications::authentication_error(error),
+    };
+    let Ok(transaction) = platform::begin(&ctx.db).await else {
+        return unavailable();
+    };
+    let status = service_status(&ctx, &transaction, principal.account_id()).await;
+    let status = match status {
+        Ok(status) => status,
+        Err(error) => {
+            if let Err(rollback) = transaction.rollback().await {
+                return operation_error(rollback.into());
+            }
+            return operation_error(error);
+        }
+    };
+    if let Err(error) = transaction.commit().await {
+        return operation_error(error.into());
+    }
+    let cards = match super::administration::household_cards(
+        &ctx,
+        &principal,
+        &super::medications::request_id(request),
+    )
+    .await
+    {
+        Ok(cards) => cards,
+        Err(error) => return operation_error(error),
+    };
+    let locale = crate::models::care::report_pdf::locale(
+        headers
+            .get(header::ACCEPT_LANGUAGE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("en"),
+    );
+    let Ok(labels) = crate::models::care::report_pdf::translations(locale) else {
+        return unavailable();
+    };
+    let Ok(authenticity) = token.authenticity_token() else {
+        return unavailable();
+    };
+    let mut data = super::medications::rendering::appearance_context();
+    data["title"] = json!("Administration");
+    data["standalone_navigation"] = json!(true);
+    data["service_status"] = json!(status);
+    data["household_cards"] = json!(cards);
+    data["authenticity_token"] = json!(authenticity);
+    data["lang"] = json!(locale);
+    data["language_suffix"] = json!(super::administration::language_suffix(
+        locale,
+        locale != "en"
+    ));
+    data["overview_labels"] = labels["administration"]["overview"].clone();
+    data["labels"] = labels;
+    match format::render().view(&view, "administration/service/index.html", data) {
+        Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        Err(_) => unavailable(),
+    }
 }
 
-#[derive(Deserialize)]
-pub struct UsersQuery {
-    q: Option<String>,
-    page: Option<i64>,
+#[derive(serde::Serialize)]
+pub(super) struct ServiceStatus {
+    registration_invite_only: bool,
+    registration_locked: bool,
+    open_requests: u64,
+    active_sessions: u64,
+    import_status: &'static str,
+    last_import: Option<String>,
+}
+
+pub(super) async fn service_status(
+    ctx: &AppContext,
+    transaction: &sea_orm::DatabaseTransaction,
+    account_id: i64,
+) -> std::result::Result<ServiceStatus, OperationError> {
+    use crate::models::{_entities::support_access_sessions as support, entities::nhs_dmd_import};
+    let settings =
+        platform::settings(transaction, account_id, ctx.config.settings.as_ref()).await?;
+    let sessions = support::Entity::find()
+        .filter(support::Column::EndedAt.is_null())
+        .filter(support::Column::ExpiredAt.is_null())
+        .filter(support::Column::ExpiresAt.gt(chrono::Utc::now().naive_utc()));
+    let open_requests = sessions
+        .clone()
+        .filter(support::Column::ActivatedAt.is_null())
+        .count(transaction)
+        .await?;
+    let active_sessions = sessions
+        .filter(support::Column::ActivatedAt.is_not_null())
+        .count(transaction)
+        .await?;
+    let latest = nhs_dmd_import::Entity::find()
+        .order_by_desc(nhs_dmd_import::Column::Id)
+        .one(transaction)
+        .await?;
+    let completed = nhs_dmd_import::Entity::find()
+        .filter(nhs_dmd_import::Column::Status.eq(4))
+        .order_by_desc(nhs_dmd_import::Column::Id)
+        .one(transaction)
+        .await?;
+    Ok(ServiceStatus {
+        registration_invite_only: settings.invite_only,
+        registration_locked: settings.invite_only_locked,
+        open_requests,
+        active_sessions,
+        import_status: latest.map_or("No catalogue imported", |row| match row.status {
+            0 => "Import queued",
+            1..=3 => "Import in progress",
+            4 => "Last import completed",
+            _ => "Latest import failed",
+        }),
+        last_import: completed.map(|row| {
+            row.completed_at
+                .unwrap_or(row.updated_at)
+                .format("%d %B %Y")
+                .to_string()
+        }),
+    })
 }
 
 pub(super) fn session_request(headers: &HeaderMap) -> AuthRequest {
@@ -66,12 +200,19 @@ pub(super) fn session_request(headers: &HeaderMap) -> AuthRequest {
     request
 }
 
-fn render(view: &TeraView, token: &CsrfToken, page: &platform::UsersPage) -> Response {
+fn render(
+    view: &TeraView,
+    token: &CsrfToken,
+    page: &platform::UsersPage,
+    language: &str,
+) -> Response {
     let Ok(authenticity) = token.authenticity_token() else {
         return unavailable();
     };
     let mut data = super::medications::rendering::appearance_context();
-    data["title"] = json!("Platform users");
+    data["standalone_navigation"] = json!(true);
+    data["title"] = json!("Users");
+    data["lang"] = json!(language);
     data["users"] = json!(
         page.users
             .iter()
@@ -94,7 +235,7 @@ fn render(view: &TeraView, token: &CsrfToken, page: &platform::UsersPage) -> Res
     data["page_links"] = json!(page.page_links);
     data["total"] = json!(page.total);
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/users.html", data) {
+    match format::render().view(view, "administration/service/users.html", data) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),
@@ -110,7 +251,7 @@ async fn users(
     State(ctx): State<AppContext>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    Query(params): Query<UsersQuery>,
+    Query(params): Query<platform::UsersQuery>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
@@ -151,7 +292,19 @@ async fn users(
             };
         }
     };
-    let response = render(&view, &token, &page);
+    let language = params
+        .lang
+        .as_deref()
+        .filter(|language| matches!(*language, "en" | "cy" | "ga" | "pt" | "es"))
+        .unwrap_or_else(|| {
+            crate::models::care::report_pdf::locale(
+                headers
+                    .get(header::ACCEPT_LANGUAGE)
+                    .and_then(|value| value.to_str().ok())
+                    .unwrap_or("en"),
+            )
+        });
+    let response = render(&view, &token, &page, language);
     if transaction.commit().await.is_err() {
         return unavailable();
     }
@@ -257,6 +410,7 @@ async fn administrator_form(
     request_id: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(directory): Query<platform::UsersQuery>,
     Form(form): Form<AdministratorForm>,
 ) -> Response {
     proof(
@@ -266,7 +420,7 @@ async fn administrator_form(
         token,
         &view,
         &form.authenticity_token,
-        (json!({"action":"platform_administrator","account_id":form.account_id,"grant":form.grant}), "platform administrator change"),
+        (json!({"action":"platform_administrator","account_id":form.account_id,"grant":form.grant,"directory":directory}), "platform administrator change"),
     )
     .await
 }
@@ -284,6 +438,7 @@ async fn active_form(
     request_id: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(directory): Query<platform::UsersQuery>,
     Form(form): Form<ActiveForm>,
 ) -> Response {
     proof(
@@ -294,7 +449,7 @@ async fn active_form(
         &view,
         &form.authenticity_token,
         (
-            json!({"action":"platform_user","account_id":form.account_id,"active":form.active}),
+            json!({"action":"platform_user","account_id":form.account_id,"active":form.active,"directory":directory}),
             "platform user change",
         ),
     )
@@ -306,7 +461,8 @@ fn render_settings(view: &TeraView, token: &CsrfToken, settings: &platform::Sett
         return unavailable();
     };
     let mut data = super::medications::rendering::appearance_context();
-    data["title"] = json!("Platform settings");
+    data["standalone_navigation"] = json!(true);
+    data["title"] = json!("Registration and medicine settings");
     data["invite_only"] = json!(settings.invite_only);
     data["invite_only_locked"] = json!(settings.invite_only_locked);
     data["medicine_lookup_base_url"] = json!(settings.medicine_lookup_base_url);
@@ -350,7 +506,7 @@ fn render_settings(view: &TeraView, token: &CsrfToken, settings: &platform::Sett
             .collect::<Vec<_>>()
     );
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/settings.html", data) {
+    match format::render().view(view, "administration/service/settings.html", data) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),

@@ -22,6 +22,57 @@ use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
+#[derive(serde::Serialize)]
+pub(super) struct HouseholdCard {
+    slug: String,
+    name: String,
+    active_members: u64,
+    pending_invitations: u64,
+    ai_suggestions_enabled: bool,
+}
+
+pub(super) async fn household_cards(
+    ctx: &AppContext,
+    principal: &crate::models::identity::browser::BrowserPrincipal,
+    request_id: &str,
+) -> std::result::Result<Vec<HouseholdCard>, OperationError> {
+    let mut cards = Vec::new();
+    let households = principal
+        .households(&ctx.db)
+        .await
+        .map_err(|_| OperationError::Unavailable)?;
+    for household in households {
+        let tenant = match principal
+            .begin_household_slug(
+                &ctx.db,
+                &household.slug,
+                request_id.to_owned(),
+                ctx.config.settings.as_ref(),
+            )
+            .await
+        {
+            Ok(tenant) => tenant,
+            Err(AuthenticationError::Forbidden | AuthenticationError::NotFound) => continue,
+            Err(_) => return Err(OperationError::Unavailable),
+        };
+        if administration::can_manage(&tenant).await? {
+            let summary = administration::overview::read(&tenant).await?;
+            let settings = administration::settings::read(&tenant).await?;
+            cards.push(HouseholdCard {
+                slug: household.slug,
+                name: summary.household_name,
+                active_members: summary.active_members,
+                pending_invitations: summary.pending_invitations,
+                ai_suggestions_enabled: settings["data"]["ai_suggestions_enabled"]
+                    .as_bool()
+                    .unwrap_or(false),
+            });
+        }
+        tenant.commit().await?;
+    }
+    Ok(cards)
+}
+
 pub(super) fn presentation_language(
     raw: Option<&str>,
     headers: &HeaderMap,
@@ -91,7 +142,6 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("/households")
         .add("/{slug}/admin", get(index))
-        .add("/{slug}/admin/household/edit", get(settings))
         .add("/{slug}/admin/household", post(save_settings))
         .add("/{slug}/admin/users", get(users))
         .add(
@@ -154,27 +204,6 @@ async fn index(
         .with_language(language)
         .with_explicit_language(incoming.uri().query().is_some())
         .show(page::Screen::Index, None, None)
-        .await
-}
-async fn settings(
-    State(ctx): State<AppContext>,
-    Path(slug): Path<String>,
-    session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
-    token: CsrfToken,
-    ViewEngine(view): ViewEngine<TeraView>,
-    incoming: Request,
-) -> Response {
-    let language = match presentation_language(incoming.uri().query(), incoming.headers()) {
-        Ok(language) => language,
-        Err(_) => {
-            return rendering::invalid_link(&view, fallback_language(incoming.headers()));
-        }
-    };
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(language)
-        .with_explicit_language(incoming.uri().query().is_some())
-        .show(page::Screen::Settings, None, None)
         .await
 }
 async fn users(

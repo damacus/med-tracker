@@ -1,9 +1,10 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section id="administration-form" tabindex="-1" class="admin-page">
-  <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.nav.members }}</h1>
-  <p class="mt-2">{{ admin_labels.overview.review_access }}</p>
+  <h1 class="sr-only">{{ admin_labels.nav.members }}</h1>
   {% include "administration/navigation.html" %}
+  {% include "administration/user_scope.html" %}
+  <p class="mt-4"><a class="btn btn-neutral" href="#invitation-form">{{ labels.admin.invitations.index.form.submit }}</a></p>
   {% if member_notice %}<div role="status" class="alert alert-success mt-4">{{ member_labels.changed }} {{ member_labels[member_notice] }}.</div>{% endif %}
   <div class="mt-4">{% include "components/form_errors.html" %}</div>
   <form method="get" action="/households/{{ slug }}/admin/users" class="shell-panel admin-filter grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
@@ -31,6 +32,20 @@
   </td></tr>{% else %}<tr><td colspan="5">{{ member_labels.no_results }}</td></tr>{% endfor %}
   </tbody></table></div>
   <nav aria-label="{{ admin_labels.nav.members }}" class="flex gap-4 mt-4">{% if previous_url != "" %}<a class="link" href="/households/{{ slug }}/admin/users{{ previous_url }}">{{ member_labels.previous }}</a>{% endif %}{% if next_url != "" %}<a class="link" href="/households/{{ slug }}/admin/users{{ next_url }}">{{ member_labels.next }}</a>{% endif %}</nav>
+</section>
+{% set invite_labels = labels.admin.invitations %}
+{% set role_labels = labels.admin.labels.membership_roles %}
+{% set invitations = invitation_panel.invitations %}
+{% set invitation_draft = invitation_panel.draft %}
+{% set invitation_roles = invitation_panel.roles %}
+{% set filters = invitation_panel.filters %}
+{% set context = invitation_panel.context | default(value=[]) %}
+{% set next_url = invitation_panel.next_url | default(value="") %}
+{% set email_invalid = false %}
+{% set membership_role_invalid = false %}
+<section class="admin-page admin-invitations-page" aria-labelledby="users-invitation-title">
+  <h2 id="users-invitation-title" class="text-xl font-semibold">{{ invite_labels.index.title }}</h2>
+  {% include "administration/invitation_panel.html" %}
 </section>
 <script src="/static/js/bulk-member-selection.js?v={{ asset_version }}" defer></script>
 {% endblock content %}

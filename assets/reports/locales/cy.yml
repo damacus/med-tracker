@@ -2008,6 +2008,11 @@ cy:
     overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
     personal:
+      full_name: "Enw llawn"
+      use_display_name: "Defnyddio enw arddangos"
+      household: "Aelwyd"
+      choose_household: "Dewis aelwyd"
+      household_required: "Dewiswch aelwyd i ddefnyddio'r gosodiadau hyn."
       plans: "Fy nghynlluniau triniaeth"
       plans_description: "Mae eich cynlluniau'n aros gyda chi pan fyddwch yn gadael cartref. Dim ond cysylltiad cartref cyfredol sy'n cael ei ddiweddaru gan newidiadau."
       plans_empty: "Nid oes cynlluniau triniaeth personol wedi'u cofnodi."
@@ -2221,6 +2226,8 @@ cy:
       "on": Ymlaen
       "off": I ffwrdd
     sections:
+      look-and-feel:
+        title: "Golwg a theimlad"
       profile:
         title: Proffil
       security:

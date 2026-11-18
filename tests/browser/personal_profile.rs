@@ -63,6 +63,8 @@ async fn household_free_profile_preserves_editing_and_personal_history() {
                     .to_be_visible()
                     .await
                     .unwrap();
+                expect(page.locator("[data-profile-tab=look-and-feel]")).to_be_visible().await.unwrap();
+                expect(page.locator("#use-display-name")).to_be_visible().await.unwrap();
                 assert_eq!(
                     page.locator("[data-app-drawer-layout]")
                         .count()
@@ -70,18 +72,28 @@ async fn household_free_profile_preserves_editing_and_personal_history() {
                         .unwrap(),
                     0
                 );
+                page.locator("#use-display-name").check(None).await.unwrap();
                 for name in ["Synthetic account first", "Synthetic account final"] {
                     page.locator("#account-display-name").fill(name, None).await.unwrap();
-                    page.locator("#profile-account-name-form button[type=submit]").click(None).await.unwrap();
-                    expect(page.locator("#profile-account-name-form:not([data-submitting]) button[type=submit]")).to_be_focused().await.unwrap();
+                    page.locator("#profile-identity-form button[type=submit]").click(None).await.unwrap();
+                    expect(page.locator("#profile-identity-form:not([data-submitting]) button[type=submit]")).to_be_focused().await.unwrap();
                     assert_eq!(page.evaluate::<(), String>("() => document.querySelector('#account-display-name').value", None).await.unwrap(), name);
                 }
                 for name in ["Synthetic clinical first", "Synthetic clinical final"] {
                     page.locator("#clinical-name").fill(name, None).await.unwrap();
-                    page.locator("#profile-clinical-form button[type=submit]").click(None).await.unwrap();
-                    expect(page.locator("#profile-clinical-form:not([data-submitting]) button[type=submit]")).to_be_focused().await.unwrap();
+                    page.locator("#profile-identity-form button[type=submit]").click(None).await.unwrap();
+                    expect(page.locator("#profile-identity-form:not([data-submitting]) button[type=submit]")).to_be_focused().await.unwrap();
                     assert_eq!(page.evaluate::<(), String>("() => document.querySelector('#clinical-name').value", None).await.unwrap(), name);
                 }
+                page.locator("#use-display-name").uncheck(None).await.unwrap();
+                expect(page.locator("#account-display-name")).not().to_be_visible().await.unwrap();
+                page.locator("#profile-identity-form button[type=submit]").click(None).await.unwrap();
+                expect(page.locator("#profile-identity-form:not([data-submitting]) button[type=submit]")).to_be_focused().await.unwrap();
+                let identity = accounts::Entity::find_by_id(account.id).one(&journey.admin).await.unwrap().unwrap();
+                assert_eq!(identity.name.as_deref(), Some("Synthetic clinical final"));
+                page.locator("#use-display-name").check(None).await.unwrap();
+                assert_eq!(page.evaluate::<(), String>("() => document.querySelector('#account-display-name').value", None).await.unwrap(), "Synthetic account final");
+                page.locator("#use-display-name").uncheck(None).await.unwrap();
                 page.locator("#profile-avatar > summary").click(None).await.unwrap();
                 let bytes = base64::engine::general_purpose::STANDARD.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEX/AAAZ4gk3AAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg==").unwrap();
                 page.locator("#profile-avatar-file").set_input_files_payload(FilePayload::new("synthetic.png", "image/png", bytes), None).await.unwrap();
@@ -91,6 +103,7 @@ async fn household_free_profile_preserves_editing_and_personal_history() {
                 page.locator("form[action='/profile/avatar/remove'] button").click(None).await.unwrap();
                 expect(page.locator("form[action='/profile/avatar/remove']")).to_have_count(0).await.unwrap();
                 page.locator("#profile-avatar > summary").click(None).await.unwrap();
+                page.locator("[data-profile-tab=look-and-feel]").click(None).await.unwrap();
                 page.locator("#profile-timezone > summary")
                     .click(None)
                     .await
@@ -149,6 +162,7 @@ async fn household_free_profile_preserves_editing_and_personal_history() {
                         .unwrap();
                     }
                 }
+                page.locator("[data-profile-tab=profile]").click(None).await.unwrap();
                 page.get_by_role(AriaRole::Link, named("My taken-dose history"))
                     .click(None)
                     .await

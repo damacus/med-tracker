@@ -251,7 +251,7 @@ mod tests {
         assert!(html.contains("data-passkey-id=\"3\""));
         assert!(html.contains("Named test key"));
         assert!(html.contains("value=\"remove_passkey\""));
-        assert!(html.contains("value=\"close_account\""));
+        assert!(!html.contains("value=\"close_account\""));
         assert!(!html.contains("data-profile-form"));
     }
 

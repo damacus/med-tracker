@@ -1,12 +1,7 @@
-.platform-page { max-width: 72rem; margin-inline: auto; }
 .platform-page-header { margin-bottom: 2rem; }
 .platform-eyebrow, .platform-search-field label, .platform-user-details dt { font-size: .6875rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; color: var(--on-surface-variant); }
 .platform-page-header h1 { margin-block: .5rem .75rem; font-size: clamp(2rem, 4vw, 2.75rem); line-height: 1.12; font-weight: 800; letter-spacing: -.035em; }
 .platform-description { color: var(--on-surface-variant); max-width: 42rem; line-height: 1.6; }
-.platform-nav { display: flex; flex-wrap: wrap; gap: .375rem; padding: .375rem; margin-bottom: 2rem; border: 1px solid var(--border-color); border-radius: 1rem; background: var(--surface-container-low); width: fit-content; }
-.platform-nav a { padding: .625rem 1rem; border-radius: .75rem; font-size: .875rem; font-weight: 600; text-decoration: none; }
-.platform-nav a:hover { background: var(--surface-container-high); }
-.platform-nav a[aria-current="page"] { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--elevation-1); }
 .platform-search-panel { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); border-radius: 1.5rem; background: var(--surface-container-low); }
 .platform-search-field { flex: 1; min-width: min(100%, 16rem); }
 .platform-search-field label { display: block; margin: 0 0 .625rem .125rem; }
@@ -74,7 +69,7 @@
 @media (max-width: 767px) { .platform-recovery-layout { grid-template-columns: minmax(0, 1fr); } .platform-panel { padding: 1.25rem; } }
 .platform-pagination { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1.25rem 1.5rem; border-top: 1px solid var(--border-color); font-size: .8125rem; }
 @media (min-width: 1024px) { .platform-desktop-directory { display: block; } .platform-mobile-directory { display: none; } }
-@media (max-width: 480px) { .platform-nav { width: 100%; gap: .25rem; } .platform-nav a { flex: 1 1 44%; text-align: center; padding: .625rem .5rem; font-size: .8125rem; } .platform-search-panel { padding: 1.25rem; } .platform-directory-heading { padding: 1.25rem; } }
+@media (max-width: 480px) { .platform-search-panel { padding: 1.25rem; } .platform-directory-heading { padding: 1.25rem; } }
   .lookup-priority-list { display: grid; gap: 12px; padding: 0; margin: 20px 0 0; list-style: none; }
   .lookup-priority-item { display: flex; align-items: center; gap: 12px; padding: 16px 12px; }
   .lookup-drag-handle.btn { min-width: 32px; width: 32px; padding: 0; cursor: grab; touch-action: none; color: var(--color-base-content); opacity: .65; }

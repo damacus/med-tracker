@@ -6,7 +6,14 @@ use crate::models::{
     ids::AccountId,
     profile::self_account,
 };
+use axum::extract::{Form, Query};
 use sea_orm::DatabaseTransaction;
+use serde::Deserialize;
+
+#[derive(Default, Deserialize)]
+struct ProfileQuery {
+    household: Option<String>,
+}
 
 mod avatar;
 pub(crate) mod history;
@@ -38,13 +45,14 @@ async fn begin(
     Ok((principal, transaction))
 }
 
-struct AccountPage<'a> {
-    ctx: &'a AppContext,
-    session: &'a Session<SessionPgPool>,
-    headers: &'a HeaderMap,
-    token: &'a CsrfToken,
-    view: &'a TeraView,
-    request_id: String,
+pub(super) struct AccountPage<'a> {
+    pub(super) ctx: &'a AppContext,
+    pub(super) session: &'a Session<SessionPgPool>,
+    pub(super) headers: &'a HeaderMap,
+    pub(super) token: &'a CsrfToken,
+    pub(super) view: &'a TeraView,
+    pub(super) request_id: String,
+    pub(super) household: Option<&'a str>,
 }
 
 async fn show(
@@ -53,6 +61,7 @@ async fn show(
     headers: HeaderMap,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(query): Query<ProfileQuery>,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
     if view
@@ -76,6 +85,7 @@ async fn show(
         token: &token,
         view: &view,
         request_id: request_id(request),
+        household: query.household.as_deref(),
     }
     .render(None)
     .await
@@ -84,26 +94,6 @@ async fn show(
 fn changes(
     draft: &HashMap<String, String>,
 ) -> std::result::Result<self_account::Changes, OperationError> {
-    if draft
-        .get("setting")
-        .is_some_and(|setting| setting == "name")
-    {
-        if draft
-            .keys()
-            .any(|key| !["setting", "name", "authenticity_token"].contains(&key.as_str()))
-        {
-            return Err(profile::validation(
-                "profile",
-                "contains an unsupported field",
-            ));
-        }
-        return self_account::Changes::parse(
-            Some(draft.get("name").map_or("", String::as_str)),
-            None,
-            None,
-            None,
-        );
-    }
     let parsed = super::parse_preferences(draft)?;
     self_account::Changes::parse(
         None,
@@ -119,7 +109,7 @@ async fn save(
     headers: HeaderMap,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
-    request: Option<Extension<LocoRequestId>>,
+    (Query(query), request): (Query<ProfileQuery>, Option<Extension<LocoRequestId>>),
     Form(draft): Form<HashMap<String, String>>,
 ) -> Response {
     if token
@@ -135,6 +125,7 @@ async fn save(
         token: &token,
         view: &view,
         request_id: request_id(request),
+        household: query.household.as_deref(),
     };
     let (principal, transaction) = match begin(&ctx, &session, true).await {
         Ok(value) => value,
@@ -142,35 +133,9 @@ async fn save(
     };
     let result = if draft
         .get("setting")
-        .is_some_and(|setting| setting == "clinical")
+        .is_some_and(|setting| setting == "identity")
     {
-        let parsed = if draft.keys().any(|key| {
-            !["authenticity_token", "setting", "name", "date_of_birth"].contains(&key.as_str())
-        }) {
-            Err(profile::validation(
-                "profile",
-                "contains an unsupported field",
-            ))
-        } else {
-            crate::models::care::people::SelfClinicalChanges::parse(
-                draft.get("name").map_or("", String::as_str),
-                draft.get("date_of_birth").map_or("", String::as_str),
-            )
-        };
-        match parsed {
-            Ok(changes) => {
-                crate::models::care::people::update_self(
-                    &transaction,
-                    AccountId::from_database(principal.account_id()),
-                    changes,
-                    principal.time_zone(),
-                    &page.request_id,
-                    principal.provenance(),
-                )
-                .await
-            }
-            Err(error) => Err(error),
-        }
+        update_identity(&transaction, &principal, &page.request_id, &draft).await
     } else {
         match changes(&draft) {
             Ok(changes) => {
@@ -187,7 +152,13 @@ async fn save(
     };
     match result {
         Ok(()) => match transaction.commit().await {
-            Ok(()) => redirect(),
+            Ok(()) => redirect(
+                page.household,
+                match draft.get("setting").map(String::as_str) {
+                    Some("time_zone" | "shortcuts") => "look-and-feel",
+                    _ => "profile",
+                },
+            ),
             Err(error) => operation_error(error.into()),
         },
         Err(error) => {
@@ -203,19 +174,67 @@ async fn save(
     }
 }
 
-fn redirect() -> Response {
+async fn update_identity(
+    transaction: &DatabaseTransaction,
+    principal: &browser::BrowserPrincipal,
+    request_id: &str,
+    draft: &HashMap<String, String>,
+) -> std::result::Result<(), OperationError> {
+    if draft.keys().any(|key| {
+        ![
+            "authenticity_token",
+            "setting",
+            "full_name",
+            "date_of_birth",
+            "use_display_name",
+            "display_name",
+        ]
+        .contains(&key.as_str())
+    }) {
+        return Err(profile::validation(
+            "profile",
+            "contains an unsupported field",
+        ));
+    }
+    let name = draft.get("full_name").map_or("", String::as_str);
+    let alias = draft.get("display_name").map(String::as_str);
+    let account_name = match draft.get("use_display_name").map(String::as_str) {
+        Some("true") => alias.unwrap_or_default(),
+        None => name,
+        Some(_) => return Err(profile::validation("display_name", "is invalid")),
+    };
+    let identity = self_account::Changes::parse(Some(account_name), None, None, None)?
+        .with_display_name(draft.contains_key("use_display_name"), alias)?;
+    let clinical = crate::models::care::people::SelfClinicalChanges::parse(
+        name,
+        draft.get("date_of_birth").map_or("", String::as_str),
+    )?;
+    let account = AccountId::from_database(principal.account_id());
+    crate::models::care::people::update_self(
+        transaction,
+        account,
+        clinical,
+        principal.time_zone(),
+        request_id,
+        principal.provenance(),
+    )
+    .await?;
+    self_account::update(transaction, account, request_id, identity).await
+}
+
+fn redirect(household: Option<&str>, tab: &str) -> Response {
     (
         StatusCode::SEE_OTHER,
         [
-            (header::LOCATION, "/profile#profile"),
-            (header::CACHE_CONTROL, "no-store"),
+            (header::LOCATION, super::profile_url(household, tab)),
+            (header::CACHE_CONTROL, "no-store".to_owned()),
         ],
     )
         .into_response()
 }
 
 impl AccountPage<'_> {
-    async fn render(&self, draft: Option<HashMap<String, String>>) -> Response {
+    pub(super) async fn render(&self, draft: Option<HashMap<String, String>>) -> Response {
         let (principal, transaction) = match begin(self.ctx, self.session, false).await {
             Ok(value) => value,
             Err(error) => return authentication_error(error),
@@ -302,7 +321,78 @@ impl AccountPage<'_> {
                 palette["label"] = labels["profiles"]["theme_picker"]["themes"][&key].clone();
             }
         }
-        let name = snapshot.name.as_deref().unwrap_or(&snapshot.email);
+        let households = match principal.households(&self.ctx.db).await {
+            Ok(value) => value,
+            Err(error) => return authentication_error(error),
+        };
+        let active = if self.household.is_none() {
+            match principal.active_household(&self.ctx.db).await {
+                Ok(value) => value,
+                Err(error) => return authentication_error(error),
+            }
+        } else {
+            None
+        };
+        let selected = self
+            .household
+            .or_else(|| active.as_ref().map(|household| household.slug.as_str()));
+        let scope = match selected {
+            Some(slug) => match households.iter().find(|household| household.slug == slug) {
+                Some(value) => Some(value),
+                None if self.household.is_some() => {
+                    return operation_error(OperationError::NotFound);
+                }
+                None => None,
+            },
+            None if households.len() == 1 => households.first(),
+            None => None,
+        };
+        let slug = scope.map_or("", |household| household.slug.as_str());
+        let can_manage = if scope.is_some() {
+            let tenant = match principal
+                .begin_household_slug(
+                    &self.ctx.db,
+                    slug,
+                    self.request_id.clone(),
+                    self.ctx.config.settings.as_ref(),
+                )
+                .await
+            {
+                Ok(value) => value,
+                Err(error) => return authentication_error(error),
+            };
+            let notifications = match super::notifications::context(
+                &tenant,
+                principal.account_id(),
+                &labels,
+                draft.as_ref(),
+            )
+            .await
+            {
+                Ok(value) => value,
+                Err(error) => return operation_error(error),
+            };
+            let can_manage = match crate::models::care::administration::can_manage(&tenant).await {
+                Ok(value) => value,
+                Err(error) => return operation_error(error),
+            };
+            if let Err(error) = tenant.commit().await {
+                return operation_error(error);
+            }
+            data["notifications"] = notifications;
+            can_manage
+        } else {
+            true
+        };
+        data["profile_households"] = json!(
+            households
+                .iter()
+                .map(|household| { json!({"slug": household.slug, "name": household.name}) })
+                .collect::<Vec<_>>()
+        );
+        data["profile_has_household"] = json!(scope.is_some());
+        data["profile_household_name"] = json!(scope.map(|household| household.name.as_str()));
+        let name = snapshot.name.as_deref().unwrap_or(&person.name);
         let selected_zone = draft
             .as_ref()
             .and_then(|fields| fields.get("time_zone"))
@@ -319,8 +409,18 @@ impl AccountPage<'_> {
         data["title"] = labels["profiles"]["show"]["title"].clone();
         data["labels"] = labels.clone();
         data["lang"] = json!(locale);
-        data["slug"] = json!("");
-        data["personal_profile"] = json!(true);
+        data["slug"] = json!(slug);
+        let context_query = scope.map(|_| {
+            url::form_urlencoded::Serializer::new(String::new())
+                .append_pair("household", slug)
+                .finish()
+        });
+        data["profile_query"] = json!(
+            context_query
+                .as_ref()
+                .map_or_else(String::new, |query| format!("?{query}"))
+        );
+        data["profile_context_query"] = json!(context_query);
         data["name"] = json!(name);
         data["email"] = json!(snapshot.email);
         data["initials"] = json!(
@@ -333,14 +433,18 @@ impl AccountPage<'_> {
         data["clinical_name"] = json!(
             draft
                 .as_ref()
-                .filter(|_| setting == Some("clinical"))
-                .and_then(|fields| fields.get("name"))
+                .filter(|_| setting == Some("identity"))
+                .and_then(|fields| fields.get(if setting == Some("identity") {
+                    "full_name"
+                } else {
+                    "name"
+                }))
                 .map_or(person.name.as_str(), String::as_str)
         );
         data["clinical_date"] = json!(
             draft
                 .as_ref()
-                .filter(|_| setting == Some("clinical"))
+                .filter(|_| setting == Some("identity"))
                 .and_then(|fields| fields.get("date_of_birth"))
                 .cloned()
                 .unwrap_or_else(|| person
@@ -379,20 +483,36 @@ impl AccountPage<'_> {
         data["timezone_error"] = json!(setting == Some("time_zone"));
         data["shortcuts_error"] = json!(setting == Some("shortcuts"));
         data["gravatar_error"] = json!(setting == Some("gravatar"));
-        data["clinical_error"] = json!(setting == Some("clinical"));
-        data["name_error"] = json!(setting == Some("name"));
+        data["clinical_error"] = json!(setting == Some("identity"));
+        data["notifications_error"] = json!(setting == Some("notifications"));
+        data["use_display_name"] = json!(if setting == Some("identity") {
+            draft
+                .as_ref()
+                .is_some_and(|fields| fields.contains_key("use_display_name"))
+        } else {
+            name != person.name || snapshot.display_name_enabled
+        });
         data["account_name_draft"] = json!(
             draft
                 .as_ref()
-                .filter(|_| setting == Some("name"))
-                .and_then(|fields| fields.get("name"))
-                .map_or(name, String::as_str)
+                .filter(|_| setting == Some("identity"))
+                .and_then(|fields| fields.get("display_name").map(String::as_str))
+                .or_else(|| if name == person.name {
+                    snapshot.saved_display_name.as_deref()
+                } else {
+                    Some(name)
+                })
+                .unwrap_or_default()
         );
         data["avatar_error"] = draft
             .as_ref()
             .and_then(|fields| fields.get("avatar_error"))
             .map_or(Value::Null, |key| labels["profiles"]["avatar"][key].clone());
-        data["shortcut_choices"] = json!(super::shortcut_choices("", &labels, true));
+        data["shortcut_choices"] = json!(super::shortcut_choices(
+            slug,
+            &labels,
+            can_manage || self.view.system_administrator()
+        ));
         let stored = serde_json::to_value(snapshot.mobile_shortcuts).unwrap_or_default();
         data["shortcut_slots"] = json!((1..=3).map(|slot| {
             let selected = if setting == Some("shortcuts") { draft.as_ref().and_then(|fields| fields.get(&format!("shortcut_{slot}"))).cloned().unwrap_or_default() } else { stored[slot - 1].as_str().unwrap_or_default().into() };

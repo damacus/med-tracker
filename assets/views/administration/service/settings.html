@@ -1,20 +1,22 @@
 {% extends "layouts/base.html" %}
 {% block content %}
+{% set system_administration = true %}
+{% set admin_section = "service_settings" %}
 <section class="platform-page">
-  <header class="platform-page-header"><p class="platform-eyebrow">Administration</p><h1>Platform settings</h1><p class="platform-description">Control registration and medicine lookup for MedTracker. Changes require fresh sign-in confirmation.</p></header>
-  {% include "platform/navigation.html" %}
-  <form method="post" action="/platform/settings" class="platform-settings-form">
+  <h1 class="sr-only">Registration and medicine settings</h1>
+  {% include "administration/navigation.html" %}
+  <form method="post" action="/administration/settings" class="platform-settings-form">
     <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-    <section class="platform-panel"><h2>Registration access</h2><p class="platform-panel-description">Choose whether new accounts need an invitation.</p>
+    <section class="platform-panel{% if invite_only_locked %} bg-base-200{% endif %}"><h2>Registration access</h2><p class="platform-panel-description">Choose whether new accounts need an invitation.</p>
     <fieldset class="fieldset">
       <label class="label" for="invite-only">Registration</label>
       {% if invite_only_locked %}
       <input type="hidden" name="invite_only" value="{{ invite_only }}">
       <select id="invite-only" class="select select-bordered" disabled>
         <option value="false"{% if not invite_only %} selected{% endif %}>Open registration</option>
-        <option value="true"{% if invite_only %} selected{% endif %}>Invite only</option>
+        <option value="true"{% if invite_only %} selected{% endif %}>Registration closed</option>
       </select>
-      <p class="platform-notice">Fixed by the INVITE_ONLY environment variable.</p>
+      <p class="platform-notice">Managed by system configuration</p>
       {% else %}
       <select id="invite-only" name="invite_only" class="select select-bordered">
         <option value="false"{% if not invite_only %} selected{% endif %}>Open registration</option>

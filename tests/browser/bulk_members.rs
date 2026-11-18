@@ -120,7 +120,7 @@ async fn bulk_member_selection_confirmation_partial_retry_and_responsive_journey
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         page.get_by_label("Select Bulk Alpha",true).press("Space",None).await.unwrap();
         page.get_by_label("Name or email",true).fill("Bulk Beta",None).await.unwrap();
-        page.get_by_role(AriaRole::Button,named("Apply filters")).press("Enter",None).await.unwrap();
+        page.locator("#administration-form").get_by_role(AriaRole::Button,named("Apply filters")).press("Enter",None).await.unwrap();
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         assert_eq!(page.evaluate::<(),i64>("() => document.querySelectorAll('input[name=membership_ids]:checked').length",None).await.unwrap(),0);
         page.goto(&listing,None).await.unwrap();

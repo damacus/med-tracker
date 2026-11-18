@@ -16,7 +16,7 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde_json::json;
 
 pub fn routes() -> Routes {
-    Routes::new().prefix("/admin").add(
+    Routes::new().prefix("/administration").add(
         "/nhs-dmd",
         get(index).post(upload).layer(DefaultBodyLimit::max(
             nhs_dmd::storage::MAX_ARCHIVE_BYTES + 1024 * 1024,
@@ -74,7 +74,7 @@ async fn render(
     data["authenticity_token"] = json!(authenticity);
     data["error"] = json!(error.map(crate::controllers::medications::forms::message));
     data["imports"]=json!(rows.into_iter().map(|row|json!({"id":row.id,"filename":row.uploaded_filename,"status":match row.status{0=>"Queued",1=>"Extracting",2=>"Counting",3=>"Importing",4=>"Completed",_=>"Failed"},"active":row.status<4,"total":row.total_records,"processed":row.processed_records,"created":row.created_count,"updated":row.updated_count,"unchanged":row.unchanged_count,"skipped":row.skipped_count,"error":row.error_message,"reference":row.trace_id})).collect::<Vec<_>>());
-    match format::render().view(view, "admin/nhs-dmd.html", data) {
+    match format::render().view(view, "administration/service/nhs-dmd.html", data) {
         Ok(response) => (
             error
                 .map(crate::controllers::medications::forms::status)
@@ -148,7 +148,7 @@ async fn upload(
         Ok(_) => (
             StatusCode::SEE_OTHER,
             [
-                (header::LOCATION, "/admin/nhs-dmd"),
+                (header::LOCATION, "/administration/nhs-dmd"),
                 (header::CACHE_CONTROL, "no-store"),
             ],
         )

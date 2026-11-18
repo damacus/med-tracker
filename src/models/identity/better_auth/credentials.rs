@@ -22,10 +22,14 @@ pub(super) enum Action {
     PlatformAdministrator {
         account_id: i64,
         grant: bool,
+        #[serde(default)]
+        directory: crate::models::platform::UsersQuery,
     },
     PlatformUser {
         account_id: i64,
         active: bool,
+        #[serde(default)]
+        directory: crate::models::platform::UsersQuery,
     },
     PlatformSettings {
         invite_only: bool,
@@ -59,17 +63,19 @@ pub(super) async fn validate_in(
     action: &Action,
 ) -> AuthResult<()> {
     match action {
-        Action::PlatformAdministrator { account_id, grant } => {
-            crate::models::platform::check_rights(
-                transaction,
-                clinical_id(&user.id.display_string()?)?,
-                *account_id,
-                *grant,
-            )
-            .await
-            .map_err(platform_error)
-        }
-        Action::PlatformUser { account_id, active } => crate::models::platform::check_user(
+        Action::PlatformAdministrator {
+            account_id, grant, ..
+        } => crate::models::platform::check_rights(
+            transaction,
+            clinical_id(&user.id.display_string()?)?,
+            *account_id,
+            *grant,
+        )
+        .await
+        .map_err(platform_error),
+        Action::PlatformUser {
+            account_id, active, ..
+        } => crate::models::platform::check_user(
             transaction,
             clinical_id(&user.id.display_string()?)?,
             *account_id,
@@ -240,7 +246,12 @@ pub(super) async fn complete_in(
     pending: PendingPassword,
 ) -> AuthResult<AuthResponse> {
     validate_in(store, transaction, user, &pending.action).await?;
-    if let Action::PlatformAdministrator { account_id, grant } = &pending.action {
+    if let Action::PlatformAdministrator {
+        account_id,
+        grant,
+        directory,
+    } = &pending.action
+    {
         let (session_reference, request_id, ip) = platform_audit(session, request)?;
         crate::models::platform::change_rights(
             transaction,
@@ -253,9 +264,14 @@ pub(super) async fn complete_in(
         )
         .await
         .map_err(platform_error)?;
-        return AuthResponse::json(200, &json!({"status":true,"redirect":"/platform/users"}));
+        return AuthResponse::json(200, &json!({"status":true,"redirect":directory.path()}));
     }
-    if let Action::PlatformUser { account_id, active } = &pending.action {
+    if let Action::PlatformUser {
+        account_id,
+        active,
+        directory,
+    } = &pending.action
+    {
         let (session_reference, request_id, ip) = platform_audit(session, request)?;
         crate::models::platform::change_user(
             transaction,
@@ -268,7 +284,7 @@ pub(super) async fn complete_in(
         )
         .await
         .map_err(platform_error)?;
-        return AuthResponse::json(200, &json!({"status":true,"redirect":"/platform/users"}));
+        return AuthResponse::json(200, &json!({"status":true,"redirect":directory.path()}));
     }
     if let Action::PlatformSettings {
         invite_only,
@@ -290,7 +306,10 @@ pub(super) async fn complete_in(
         )
         .await
         .map_err(platform_error)?;
-        return AuthResponse::json(200, &json!({"status":true,"redirect":"/platform/settings"}));
+        return AuthResponse::json(
+            200,
+            &json!({"status":true,"redirect":"/administration/settings"}),
+        );
     }
     if let Action::PlatformOwnerRecovery {
         household_id,
@@ -310,7 +329,7 @@ pub(super) async fn complete_in(
         .map_err(platform_error)?;
         return AuthResponse::json(
             200,
-            &json!({"status":true,"redirect":"/platform/owner-recovery"}),
+            &json!({"status":true,"redirect":"/administration/owner-recovery"}),
         );
     }
     if let Action::SupportRequest {
@@ -327,7 +346,10 @@ pub(super) async fn complete_in(
         )
         .await
         .map_err(platform_error)?;
-        return AuthResponse::json(200, &json!({"status":true,"redirect":"/platform/support"}));
+        return AuthResponse::json(
+            200,
+            &json!({"status":true,"redirect":"/administration/support"}),
+        );
     }
     if let Action::SupportApprove { support_id } = &pending.action {
         let result = crate::models::platform::support::approve(
@@ -341,7 +363,7 @@ pub(super) async fn complete_in(
             Ok(crate::models::platform::support::SupportDecision::Applied) => {
                 return AuthResponse::json(
                     200,
-                    &json!({"status":true,"redirect":"/account/support"}),
+                    &json!({"status":true,"redirect":"/profile?panel=support#security"}),
                 );
             }
             Ok(crate::models::platform::support::SupportDecision::Expired) => {
@@ -365,7 +387,7 @@ pub(super) async fn complete_in(
             Ok(crate::models::platform::support::SupportDecision::Applied) => {
                 return AuthResponse::json(
                     200,
-                    &json!({"status":true,"redirect":"/platform/support"}),
+                    &json!({"status":true,"redirect":"/administration/support"}),
                 );
             }
             Ok(crate::models::platform::support::SupportDecision::Expired) => {

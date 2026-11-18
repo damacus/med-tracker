@@ -1980,6 +1980,11 @@ es:
     overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
   profiles:
     personal:
+      full_name: "Nombre completo"
+      use_display_name: "Usar un nombre visible"
+      household: "Hogar"
+      choose_household: "Elegir hogar"
+      household_required: "Elige un hogar para usar estos ajustes."
       plans: "Mis planes de tratamiento"
       plans_description: "Tus planes permanecen contigo cuando dejas un hogar. Los cambios solo actualizan una conexión actual con un hogar."
       plans_empty: "No se han registrado planes de tratamiento personales."
@@ -2193,6 +2198,8 @@ es:
       "on": Activado
       "off": Desactivado
     sections:
+      look-and-feel:
+        title: "Apariencia"
       profile:
         title: Perfil
       security:

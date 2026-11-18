@@ -72,7 +72,7 @@ async fn canonical_account_suspension_blocks_existing_and_new_authentication() {
         .build()
         .unwrap();
     let browser_status = client
-        .get(format!("{}/platform/users", app.origin))
+        .get(format!("{}/administration/users", app.origin))
         .header("cookie", cookie)
         .send()
         .await
@@ -132,7 +132,7 @@ async fn platform_account_works_without_a_second_profile_record() {
         .build()
         .unwrap();
     let status = client
-        .get(format!("{}/platform/users", app.origin))
+        .get(format!("{}/administration/users", app.origin))
         .header("cookie", cookie)
         .send()
         .await

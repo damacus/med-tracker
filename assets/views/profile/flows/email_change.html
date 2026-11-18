@@ -11,5 +11,5 @@
   {% else %}
   <p>{{ flow.email_pending_hint }}</p>
   {% endif %}
-  <a class="link" href="{% if profile_flow %}{{ profile_flow.profile }}{% else %}/profile{% endif %}#security" data-profile-flow-done>{{ flow.back }}</a>
+  <a class="link" href="{% if profile_flow %}{{ profile_flow.profile }}{{ profile_return_query | default(value="") }}{% else %}/profile{% endif %}#security" data-profile-flow-done>{{ flow.back }}</a>
 </div></section>

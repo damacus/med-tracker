@@ -1,4 +1,15 @@
 const tablist = document.querySelector('[data-profile-tabs]');
+function updateDisplayName(toggle) {
+  const input = document.getElementById('account-display-name');
+  if (!input) return;
+  document.getElementById('profile-display-name').hidden = !toggle.checked;
+  input.required = toggle.checked;
+}
+const displayNameToggle = document.getElementById('use-display-name');
+if (displayNameToggle) updateDisplayName(displayNameToggle);
+document.addEventListener('change', event => {
+  if (event.target.id === 'use-display-name') updateDisplayName(event.target);
+});
 const appearanceSummaries = document.querySelectorAll('[data-profile-appearance]');
 if (appearanceSummaries.length) {
   const updateSummary = () => {
@@ -84,12 +95,18 @@ document.addEventListener('submit', async event => {
     (region || form).replaceWith(replacement);
     for (const id of expanded) replacement.querySelector(`#${CSS.escape(id)}`)?.setAttribute('open', '');
     if (response.status === 422) {
+      const toggle = document.getElementById('use-display-name');
+      if (toggle) updateDisplayName(toggle);
       (dialog || replacement).querySelector('[data-dialog-error-focus]')?.focus();
       return;
     }
     const personal = documentResult.querySelector('[data-testid="profile-personal-info-card"]');
     for (const summary of documentResult.querySelectorAll('[data-profile-summary][id]')) document.getElementById(summary.id)?.replaceWith(summary);
-    if (personal) document.querySelector('[data-testid="profile-personal-info-card"]')?.replaceWith(personal);
+    if (personal) {
+      document.querySelector('[data-testid="profile-personal-info-card"]')?.replaceWith(personal);
+      const toggle = document.getElementById('use-display-name');
+      if (toggle) updateDisplayName(toggle);
+    }
     const avatar = documentResult.querySelector('main [data-profile-avatar]');
     if (avatar) for (const current of document.querySelectorAll('[data-profile-avatar], [data-sidebar-avatar]')) current.replaceChildren(...avatar.cloneNode(true).childNodes);
     if (dialog) dialog.close();

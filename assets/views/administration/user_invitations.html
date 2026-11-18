@@ -1,0 +1,16 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set invite = invite_labels.index %}
+{% set invitation_draft = draft %}
+{% set invitation_roles = roles %}
+<section class="admin-page admin-invitations-page">
+  <h1 class="sr-only">Users</h1>
+  {% include "administration/navigation.html" %}
+  {% include "administration/user_scope.html" %}
+  <a class="link" href="/households/{{ slug }}/admin/users{{ language_suffix }}">{{ admin_labels.nav.members }}</a>
+  {% if notice %}<p class="alert border border-success bg-success/10 text-base-content mt-6" role="status">{{ notice }}</p>{% endif %}
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  <h2 class="text-xl font-semibold mt-4">{{ invite.title }}</h2>
+  {% include "administration/invitation_panel.html" %}
+</section>
+{% endblock content %}

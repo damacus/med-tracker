@@ -1,5 +1,5 @@
 <section class="grid gap-6 max-w-3xl">
-  <a class="link" href="{% if profile_flow %}{{ profile_flow.profile }}{% else %}/profile{% endif %}" data-profile-flow-done>{{ labels.profiles.sections.profile.title }}</a>
+  <a class="link" href="{% if profile_flow %}{{ profile_flow.profile }}{{ profile_return_query | default(value="") }}{% else %}/profile{% endif %}" data-profile-flow-done>{{ labels.profiles.sections.profile.title }}</a>
   <h1 class="text-3xl font-semibold">{{ labels.profiles.personal.plans }}</h1>
   <p>{{ labels.profiles.personal.plans_description }}</p>
   {% if error %}<p id="personal-plan-error" class="alert alert-error" role="alert" tabindex="-1" autofocus>{{ labels.profiles.personal[error] }}</p>{% endif %}

@@ -103,18 +103,17 @@ pub(crate) struct Presentation {
     pub household: Option<String>,
     pub fragment: bool,
     pub complete: bool,
+    advanced: bool,
 }
 
 impl Presentation {
     pub(crate) fn from_request(parts: &Parts) -> Result<Option<Self>, Box<Response>> {
         let path = parts.uri.path();
-        let canonical = path == "/profile"
-            || path
-                .strip_prefix("/households/")
-                .is_some_and(|value| value.ends_with("/profile"));
+        let canonical = path == "/profile";
         let mut selected = None;
         let mut household = None;
         let mut complete = false;
+        let mut advanced = false;
         for (key, value) in
             url::form_urlencoded::parse(parts.uri.query().unwrap_or_default().as_bytes())
         {
@@ -133,7 +132,7 @@ impl Presentation {
                     })?);
                     complete = key == "profile_done";
                 }
-                "profile_household" => {
+                "profile_household" | "household" if key == "profile_household" || canonical => {
                     if household.is_some()
                         || value.is_empty()
                         || value.len() > 128
@@ -147,6 +146,7 @@ impl Presentation {
                     }
                     household = Some(value.into_owned());
                 }
+                "profile_tab" if value == "advanced" => advanced = true,
                 _ => {}
             }
         }
@@ -158,7 +158,6 @@ impl Presentation {
         };
         if !canonical
             && !(path.starts_with("/account/security/")
-                || path == "/account/support"
                 || path.starts_with("/account/support/")
                 || path == "/profile/history"
                 || path == "/profile/schedules"
@@ -170,16 +169,11 @@ impl Presentation {
                 axum::http::StatusCode::BAD_REQUEST.into_response(),
             ));
         }
-        if let Some(slug) = path
-            .strip_prefix("/households/")
-            .and_then(|path| path.strip_suffix("/profile"))
-        {
-            household = Some(slug.to_owned());
-        }
         Ok(Some(Self {
             kind,
             household,
             complete,
+            advanced: advanced && matches!(kind, FlowKind::Operation),
             fragment: parts
                 .headers
                 .get(header::ACCEPT)
@@ -187,10 +181,7 @@ impl Presentation {
         }))
     }
     pub(crate) fn profile(&self) -> String {
-        self.household.as_ref().map_or_else(
-            || "/profile".into(),
-            |slug| format!("/households/{slug}/profile"),
-        )
+        "/profile".to_owned()
     }
     pub(crate) fn suffix(&self) -> String {
         let mut query = url::form_urlencoded::Serializer::new(String::new());
@@ -198,18 +189,42 @@ impl Presentation {
         if let Some(slug) = &self.household {
             query.append_pair("profile_household", slug);
         }
+        if self.advanced {
+            query.append_pair("profile_tab", "advanced");
+        }
         format!("?{}", query.finish())
     }
+    fn return_tab(&self) -> &'static str {
+        if self.advanced {
+            "advanced"
+        } else if matches!(self.kind, FlowKind::History | FlowKind::Plans) {
+            "profile"
+        } else {
+            "security"
+        }
+    }
     pub(crate) fn destination(&self, path: &str) -> String {
+        let scope = self
+            .household
+            .as_ref()
+            .map_or_else(String::new, |slug| format!("&household={slug}"));
         match path {
             "/account/security" | "/profile#security" => format!(
-                "{}?profile_done={}#security",
+                "{}?profile_done={}{scope}{}#{}",
                 self.profile(),
-                self.kind.name()
+                self.kind.name(),
+                if self.advanced {
+                    "&profile_tab=advanced"
+                } else {
+                    ""
+                },
+                self.return_tab()
             ),
-            "/account/security/keys" => format!("{}?panel=keys#security", self.profile()),
-            "/account/support" => format!("{}?panel=support#security", self.profile()),
-            "/profile/schedules" => format!("{}?panel=plans#profile", self.profile()),
+            "/account/security/keys" => format!("{}?panel=keys{scope}#security", self.profile()),
+            "/profile?panel=support#security" => {
+                format!("{}?panel=support{scope}#security", self.profile())
+            }
+            "/profile/schedules" => format!("{}?panel=plans{scope}#profile", self.profile()),
             _ => path.to_owned(),
         }
     }
@@ -311,7 +326,7 @@ impl Frame {
             "identity_onboarding/keys.html" => "keys",
             "identity_onboarding/key_result.html" => "key_result",
             "identity_onboarding/provider_link.html" => "provider_link",
-            "identity_onboarding/support.html" => "support",
+            "profile/flows/support.html" => "support",
             "profile/history.html" => "history",
             "profile/schedules.html" => "schedules",
             "profile/show.html" if self.presentation.complete => "complete",
@@ -327,8 +342,14 @@ impl Frame {
         let outcome = Outcome::for_body(body, &data);
         data["labels"] = self.labels.clone();
         data["lang"] = json!(self.locale);
-        data["profile_flow"] = json!({"kind":self.presentation.kind,"profile":self.presentation.profile(),"body":body,"outcome":outcome,"secret":secret,"name":self.name,"email":self.email});
+        data["profile_flow"] = json!({"kind":self.presentation.kind,"profile":self.presentation.profile(),"return_tab":self.presentation.return_tab(),"body":body,"outcome":outcome,"secret":secret,"name":self.name,"email":self.email});
         data["profile_flow_query"] = json!(self.presentation.suffix());
+        data["profile_return_query"] = json!(
+            self.presentation
+                .household
+                .as_ref()
+                .map_or_else(String::new, |slug| format!("?household={slug}"))
+        );
         data["profile_flow_tail"] = json!(self.presentation.suffix().trim_start_matches('?'));
         data["profile_path"] = json!(self.presentation.profile());
         if data.get("flow").is_none() {
@@ -455,17 +476,17 @@ mod tests {
 
     #[test]
     fn profile_presentation_keeps_household_and_protected_continuations() {
-        let selected = Presentation::from_request(&request("/households/home/profile?panel=keys"))
+        let selected = Presentation::from_request(&request("/profile?panel=keys&household=home"))
             .unwrap()
             .unwrap();
-        assert_eq!(selected.profile(), "/households/home/profile");
+        assert_eq!(selected.profile(), "/profile");
         assert_eq!(
             selected.suffix(),
             "?profile_flow=keys&profile_household=home"
         );
         assert_eq!(
             selected.destination("/account/security"),
-            "/households/home/profile?profile_done=keys#security"
+            "/profile?profile_done=keys&household=home#security"
         );
         assert_eq!(selected.destination("/login"), "/login");
         let proof = Presentation::from_request(&request(
@@ -475,6 +496,23 @@ mod tests {
         .unwrap();
         assert_eq!(proof.profile(), selected.profile());
         assert!(!proof.complete);
+    }
+
+    #[test]
+    fn account_closure_fallback_returns_to_advanced_after_proof() {
+        let presentation = Presentation::from_request(&request(
+            "/account/security/operation?profile_flow=operation&profile_household=home&profile_tab=advanced",
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            presentation.suffix(),
+            "?profile_flow=operation&profile_household=home&profile_tab=advanced"
+        );
+        assert_eq!(
+            presentation.destination("/account/security"),
+            "/profile?profile_done=operation&household=home&profile_tab=advanced#advanced"
+        );
     }
 
     #[test]

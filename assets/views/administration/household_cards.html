@@ -1,0 +1,44 @@
+  <section class="mt-6" aria-labelledby="household-cards-title">
+    <h2 id="household-cards-title" class="text-xl font-semibold">Your households</h2>
+    <div class="grid gap-4 mt-3 sm:grid-cols-2 lg:grid-cols-3">
+      {% for household in household_cards %}
+      <article class="card card-body admin-card-surface">
+        <h3 class="card-title">{{ household.name }}</h3>
+        <p>{{ household.active_members }} {% if household.active_members == 1 %}{{ overview_labels.active_member }}{% else %}{{ overview_labels.active_members }}{% endif %} · {{ household.pending_invitations }} {% if household.pending_invitations == 1 %}{{ overview_labels.pending_invitation }}{% else %}{{ overview_labels.pending_invitations }}{% endif %}</p>
+        <div class="flex flex-wrap gap-2">
+          <a class="btn btn-outline" href="/households/{{ household.slug }}/admin/users{{ language_suffix }}" aria-label="Manage users in {{ household.name }}">Manage users</a>
+        </div>
+        {% if not settings_error or household.slug != slug %}
+        <details>
+          <summary class="btn btn-outline w-fit" aria-label="Rename household: {{ household.name }}">Rename household</summary>
+          <form class="grid gap-4 mt-2" method="post" action="/households/{{ household.slug }}/admin/household">
+            <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+            {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+            <label class="grid gap-2">{{ labels.admin.households.name }} <input class="input w-full" name="name" maxlength="100" value="{{ household.name }}" required></label>
+            <button type="submit" class="btn btn-neutral justify-self-start">{{ labels.admin.households.save }}</button>
+          </form>
+        </details>
+        {% endif %}
+        <details class="mt-2">
+          <summary class="cursor-pointer">{{ labels.admin.households.ai_suggestions_enabled }}</summary>
+          <form class="grid gap-2 mt-2" method="post" action="/households/{{ household.slug }}/admin/household">
+            <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+            <input type="hidden" name="settings_scope" value="ai">
+            {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+            <label class="flex gap-2 items-start"><input class="checkbox" type="checkbox" name="ai_suggestions_enabled" value="true" {% if household.ai_suggestions_enabled %}checked{% endif %}> {{ labels.admin.households.ai_suggestions_enabled }}</label>
+            <p class="text-sm">{{ labels.admin.households.ai_suggestions_disclosure }}</p>
+            <button class="btn btn-outline btn-sm justify-self-start" type="submit">{{ labels.admin.households.save }}</button>
+          </form>
+        </details>
+      </article>
+      {% endfor %}
+    </div>
+    {% if settings_error %}
+      <form class="card card-body admin-card-surface mt-3" method="post" action="/households/{{ slug }}/admin/household">
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+        {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+        <label class="grid gap-2">{{ labels.admin.households.name }} <input class="input w-full" name="name" maxlength="100" value="{{ draft_household_name }}" autofocus required></label>
+        <button class="btn btn-neutral justify-self-start" type="submit">{{ labels.admin.households.save }}</button>
+      </form>
+    {% endif %}
+  </section>

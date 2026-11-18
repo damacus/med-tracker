@@ -13,11 +13,12 @@ function navigationSection(pathname, choices) {
 
 async function refreshMobileShortcuts() {
   const match = location.pathname.match(/^\/households\/([^/]+)\//);
-  if (!match) return;
+  const slug = match?.[1] || document.body?.dataset.navigationHousehold;
+  if (!slug) return;
   try {
     const headers = { Accept: "application/json" };
     if (document.documentElement.lang) headers["Accept-Language"] = document.documentElement.lang;
-    const response = await fetch(`/households/${match[1]}/profile/navigation`, { headers, cache: 'no-store' });
+    const response = await fetch(`/profile/households/${encodeURIComponent(slug)}/navigation`, { headers, cache: 'no-store' });
     if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
       document.body?.setAttribute('data-navigation-failed', 'true');
       return;
@@ -34,9 +35,12 @@ async function refreshMobileShortcuts() {
     navigation.setAttribute('aria-label', data.label);
     navigation.replaceChildren(...data.links.flatMap(link => {
       const url = new URL(link.href, location.origin);
-      if (url.origin !== location.origin || !url.pathname.startsWith(`/households/${match[1]}/`)) return [];
+      if (url.origin !== location.origin) return [];
+      const accountLink = (link.id === 'profile' && url.pathname === '/profile')
+        || (link.id === 'administration' && url.pathname === '/administration');
+      if (!accountLink && !url.pathname.startsWith(`/households/${slug}/`)) return [];
       const anchor = document.createElement('a');
-      anchor.href = url.pathname;
+      anchor.href = url.pathname + url.search;
       anchor.setAttribute('aria-label', link.label);
       const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       icon.setAttribute('width', '24');

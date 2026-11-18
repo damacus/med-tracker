@@ -64,7 +64,7 @@ async fn personal_history_missing_and_revoked_identity_refusals_do_not_write_aud
         ),
         (
             format!(
-                "/households/{}/profile?panel=history",
+                "/profile?panel=history&household={}",
                 fixture.household.slug
             ),
             303,
@@ -140,9 +140,7 @@ async fn personal_history_missing_and_revoked_identity_refusals_do_not_write_aud
         ] {
             assert!(!event.contains(identity_field));
         }
-        if event.contains("/households/") {
-            assert!(event.contains("/households/{slug}/profile"));
-        }
+        assert!(!event.contains("/households/"));
     }
     drop(request);
     close_request(fixture, boot).await;

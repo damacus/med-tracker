@@ -8,6 +8,7 @@ use sea_orm::{
     PaginatorTrait, QueryFilter, QueryOrder, QueryResult, Statement, TransactionTrait,
     sea_query::Expr,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 const PER_PAGE: i64 = 25;
@@ -121,6 +122,27 @@ pub struct UsersPage {
     pub per_page: i64,
     pub total: i64,
     pub query: String,
+}
+
+#[derive(Debug, Default, Deserialize, PartialEq, Serialize)]
+pub(crate) struct UsersQuery {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub q: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub household: Option<String>,
+}
+
+impl UsersQuery {
+    pub(crate) fn path(&self) -> String {
+        match serde_urlencoded::to_string(self) {
+            Ok(query) if !query.is_empty() => format!("/administration/users?{query}"),
+            _ => "/administration/users".into(),
+        }
+    }
 }
 
 pub async fn begin(db: &DatabaseConnection) -> Result<DatabaseTransaction, OperationError> {

@@ -55,7 +55,7 @@ async fn invitation_browser_pages_fifty_stably_and_preserves_locale() -> Result<
             .await?;
         }
         let first_url = format!(
-            "{}/households/{generated_slug}/admin/invitations?lang=es",
+            "{}/households/{generated_slug}/admin/users/invitations?lang=es",
             app.origin,
             generated_slug = app.fixture.household.slug
         );
@@ -95,7 +95,7 @@ async fn invitation_browser_pages_fifty_stably_and_preserves_locale() -> Result<
                 assert_eq!(
                     next.path(),
                     &format!(
-                        "/households/{generated_slug}/admin/invitations",
+                        "/households/{generated_slug}/admin/users/invitations",
                         generated_slug = app.fixture.household.slug
                     )
                 );
@@ -375,7 +375,7 @@ async fn invitation_acceptance_selects_only_the_current_session() -> Result<(), 
         let navigation = app
             .client
             .get(format!(
-                "{}/households/{generated_target_slug}/profile/navigation",
+                "{}/profile/households/{generated_target_slug}/navigation",
                 app.origin,
                 generated_target_slug = acceptance.target_slug
             ))
@@ -600,7 +600,7 @@ async fn invitation_browser_empty_and_terminal_states_expose_only_permitted_acti
         let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
 
         let path = &format!(
-            "/households/{generated_slug}/admin/invitations?lang=es",
+            "/households/{generated_slug}/admin/users/invitations?lang=es",
             generated_slug = app.fixture.household.slug
         );
         let empty = app
@@ -667,7 +667,7 @@ async fn invitation_browser_locales_preserve_forms_feedback_and_recovery()
     let result = async {
         let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
         let path = &format!(
-            "/households/{generated_slug}/admin/invitations",
+            "/households/{generated_slug}/admin/users/invitations",
             generated_slug = app.fixture.household.slug
         );
         for (locale, heading) in [
@@ -815,7 +815,7 @@ async fn invitation_browser_stale_actions_recheck_manager_and_invitation_state()
         let acceptance = super::seed_acceptance(&app).await;
         let cookie = super::super::platform::fixture_session(&app, app.fixture.account.id).await;
         let path = &format!(
-            "/households/{generated_slug}/admin/invitations",
+            "/households/{generated_slug}/admin/users/invitations",
             generated_slug = app.fixture.household.slug
         );
         let (cookie, html) =
@@ -824,7 +824,7 @@ async fn invitation_browser_stale_actions_recheck_manager_and_invitation_state()
         let foreign = app
             .client
             .get(format!(
-                "{}/households/{generated_target_slug}/admin/invitations?lang=es",
+                "{}/households/{generated_target_slug}/admin/users/invitations?lang=es",
                 app.origin,
                 generated_target_slug = acceptance.target_slug
             ))

@@ -867,7 +867,10 @@ async fn development_seed_creates_a_usable_account_and_household() {
             .await;
         assert_eq!(medicines.status_code(), 200, "{}", medicines.text());
         assert!(medicines.text().contains("Synthetic"));
-        assert_eq!(server.get("/admin/nhs-dmd").await.status_code(), 403);
+        assert_eq!(
+            server.get("/administration/nhs-dmd").await.status_code(),
+            403
+        );
         drop(server);
         let mut platform_server = loco_rs::TestServer::new(
             boot.router
@@ -882,15 +885,18 @@ async fn development_seed_creates_a_usable_account_and_household() {
             .json(&serde_json::json!({"email":"platform-admin@example.test","password":"password"}))
             .await;
         assert_eq!(login.status_code(), 200, "{}", login.text());
-        let platform_users = platform_server.get("/platform/users").await;
+        let platform_users = platform_server.get("/administration/users").await;
         assert_eq!(
             platform_users.status_code(),
             200,
             "{}",
             platform_users.text()
         );
-        let importer = platform_server.get("/admin/nhs-dmd").await;
+        let importer = platform_server.get("/administration/nhs-dmd").await;
         assert_eq!(importer.status_code(), 200, "{}", importer.text());
+        for obsolete in ["/platform/users", "/admin/nhs-dmd"] {
+            assert_eq!(platform_server.get(obsolete).await.status_code(), 404);
+        }
         assert_eq!(
             platform_server
                 .get("/households/persistence-fixture/admin")

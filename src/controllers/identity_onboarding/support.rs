@@ -77,7 +77,7 @@ pub(crate) async fn page(
             .collect::<Vec<Value>>()
     );
     data["authenticity_token"] = json!(authenticity);
-    let response = match format::render().view(&view, "identity_onboarding/support.html", data) {
+    let response = match format::render().view(&view, "profile/flows/support.html", data) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),
@@ -151,7 +151,7 @@ pub(super) async fn end(
         token,
         form.support_id,
         &form.authenticity_token,
-        &view.profile_destination("/account/support"),
+        &view.profile_destination("/profile?panel=support#security"),
     )
     .await
 }

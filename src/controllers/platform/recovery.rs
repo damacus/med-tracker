@@ -26,6 +26,7 @@ fn render(
         return unavailable();
     };
     let mut data = crate::controllers::medications::rendering::appearance_context();
+    data["standalone_navigation"] = json!(true);
     data["title"] = json!("Owner recovery");
     data["search"] = json!(search);
     data["households"] = json!(
@@ -36,7 +37,7 @@ fn render(
     );
     data["selected"] = json!(selected.map(household_json));
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/owner_recovery.html", data) {
+    match format::render().view(view, "administration/service/owner_recovery.html", data) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),

@@ -1231,28 +1231,11 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
     close_request(fixture, boot).await;
     assert_eq!(overview_status, 200, "{html}");
     assert_eq!(overview_cache, "no-store");
-    assert!(html.contains("Synthetic household administration"));
+    assert!(html.contains("Your households"));
     assert!(html.contains("3 active members"));
-    assert!(html.contains("3 people"));
     assert!(html.contains("1 pending invitation"));
     let document = scraper::Html::parse_document(&html);
-    for (metric, count) in [
-        ("expired-invitations", "1"),
-        ("active-schedules", "1"),
-        ("recent-memberships", "2"),
-    ] {
-        let selector = scraper::Selector::parse(&format!("[data-admin-metric='{metric}'] dd"))
-            .map_err(|_| "metric selector")?;
-        let text = document
-            .select(&selector)
-            .next()
-            .ok_or("missing administration metric")?
-            .text()
-            .collect::<String>();
-        assert_eq!(text.trim(), count, "{metric}");
-    }
     assert!(html.contains("id=\"expired-invitations\""));
-    assert!(html.contains(format!("href=\"/households/{slug}/admin/invitations\"").as_str()));
     let main = scraper::Selector::parse("#main").map_err(|_| "main content selector")?;
     let main_text = document
         .select(&main)
@@ -1260,7 +1243,7 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
         .ok_or("main content missing")?
         .text()
         .collect::<String>();
-    assert!(!main_text.contains("Other household"));
+    assert!(main_text.contains("Other household"));
     let options = scraper::Selector::parse("[data-household-selector] input[name='household_id']")
         .map_err(|_| "household option selector")?;
     let household_options = document
@@ -1274,9 +1257,8 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
     );
     assert!(!html.contains(other_invitation.email.as_str()));
     assert_eq!(other_status, 200, "{other_html}");
-    assert!(other_html.contains("Other household administration"));
+    assert!(other_html.contains("Other household"));
     assert!(other_html.contains("2 active members"));
-    assert!(other_html.contains("2 people"));
     assert!(other_html.contains("1 pending invitation"));
     let other_document = scraper::Html::parse_document(&other_html);
     let other_main = other_document
@@ -1285,7 +1267,7 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
         .ok_or("other main content missing")?
         .text()
         .collect::<String>();
-    assert!(!other_main.contains("Synthetic household"));
+    assert!(other_main.contains("Synthetic household"));
     assert_eq!(shared_person, person_id);
     assert_eq!(shared_households, 2);
     assert!([403, 404].contains(&foreign_status));
@@ -1295,7 +1277,7 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
 }
 
 #[tokio::test]
-async fn administration_overview_retains_scoped_audit_metric_without_activity_feed() -> TestResult {
+async fn administration_overview_links_to_audit_without_exposing_activity() -> TestResult {
     let (fixture, boot) = boot_request_fixture_with(|config| {
         let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
@@ -1340,20 +1322,7 @@ async fn administration_overview_retains_scoped_audit_metric_without_activity_fe
     assert!(!populated_html.contains("recent-activity-heading"));
     assert!(!populated_html.contains("admin-activity"));
     assert!(populated_html.contains(&format!("href=\"/households/{slug}/admin/audit_logs\"")));
-    let document = scraper::Html::parse_document(&populated_html);
-    let metric = scraper::Selector::parse("[data-admin-metric='recent-audit-events'] dd")
-        .map_err(|_| "audit metric selector")?;
-    assert_eq!(
-        document
-            .select(&metric)
-            .next()
-            .ok_or("audit metric missing")?
-            .text()
-            .collect::<String>()
-            .trim(),
-        "1",
-        "future and foreign events are outside the 24-hour window"
-    );
+    assert!(!populated_html.contains("data-admin-metric"));
     assert_eq!(populated_html.matches("View audit event").count(), 0);
     assert!(
         recent
@@ -1384,10 +1353,11 @@ async fn navigation_exposes_platform_tools_only_while_platform_authority_is_acti
     let mut request = server(&boot);
     request.save_cookies();
     select_household(&mut request, &fixture, &boot).await?;
-    let path = format!("/households/{slug}/profile/navigation");
+    let path = format!("/households/{slug}/admin");
     let ordinary = request.get(&path).await;
     let ordinary_status = ordinary.status_code();
     let ordinary_body = ordinary.text();
+    let ordinary_service = request.get("/administration").await.status_code();
     let now = chrono::Utc::now().naive_utc();
     platform_admins::ActiveModel {
         account_id: Set(fixture.account.id),
@@ -1401,6 +1371,14 @@ async fn navigation_exposes_platform_tools_only_while_platform_authority_is_acti
     let elevated = request.get(&path).await;
     let elevated_status = elevated.status_code();
     let elevated_body = elevated.text();
+    let service = request.get("/administration").await;
+    let service_status = service.status_code();
+    let service_html = service.text();
+    let old_platform_status = request.get("/platform/users").await.status_code();
+    let old_household_settings_status = request
+        .get(format!("/households/{slug}/admin/household/edit").as_str())
+        .await
+        .status_code();
     platform_admins::Entity::update_many()
         .col_expr(platform_admins::Column::Status, Expr::value("disabled"))
         .filter(platform_admins::Column::AccountId.eq(fixture.account.id))
@@ -1412,11 +1390,17 @@ async fn navigation_exposes_platform_tools_only_while_platform_authority_is_acti
     drop(request);
     close_request(fixture, boot).await;
     assert_eq!(ordinary_status, 200, "{ordinary_body}");
-    assert!(!ordinary_body.contains("/platform/users"));
+    assert!(!ordinary_body.contains("/administration/nhs-dmd"));
+    assert_eq!(ordinary_service, 403);
     assert_eq!(elevated_status, 200, "{elevated_body}");
-    assert!(elevated_body.contains("/platform/users"));
+    assert!(elevated_body.contains("/administration/nhs-dmd"));
+    assert_eq!(service_status, 200, "{service_html}");
+    assert!(service_html.contains("Service status"));
+    assert!(service_html.contains("Your households"));
+    assert_eq!(old_platform_status, 404);
+    assert_eq!(old_household_settings_status, 404);
     assert_eq!(revoked_status, 200, "{revoked_body}");
-    assert!(!revoked_body.contains("/platform/users"));
+    assert!(!revoked_body.contains("/administration/nhs-dmd"));
     Ok(())
 }
 
@@ -1462,10 +1446,6 @@ async fn administration_overview_locales_preserve_language_and_household_navigat
             html.contains(&format!("/admin/users?lang={language}")),
             "{language}: member link lost language"
         );
-        assert!(
-            html.contains(&format!("/admin/invitations?lang={language}")),
-            "{language}: invitation link lost language"
-        );
         assert!(html.contains("Synthetic household"));
         assert!(
             html.contains("/admin/audit_logs"),
@@ -1496,10 +1476,9 @@ async fn administration_locale_selection_survives_shared_links_and_forms() -> Te
         for path in [
             "users",
             user_edit_path.as_str(),
-            "household/edit",
             "carer_relationships",
             "carer_relationships/new",
-            "invitations",
+            "users/invitations",
         ] {
             let response = request
                 .get(&format!("/households/{slug}/admin/{path}?lang={language}"))
@@ -1561,7 +1540,7 @@ async fn administration_locale_invalid_links_return_safe_translated_html() -> Te
         for path in [
             "admin?lang=es&lang=en",
             "admin?lang=private-sentinel",
-            "admin/invitations?lang=es&lang=en",
+            "admin/users/invitations?lang=es&lang=en",
         ] {
             let response = request
                 .get(&format!("/households/{slug}/{path}"))
@@ -2005,7 +1984,7 @@ async fn invitation_management_filters_are_literal_bounded_and_preserve_action_c
     let mut request = server(&boot);
     request.save_cookies();
     select_household(&mut request, &fixture, &boot).await?;
-    let path = format!("/households/{slug}/admin/invitations");
+    let path = format!("/households/{slug}/admin/users/invitations");
     let literal = request
         .get(&format!(
             "{path}?q=%25_&role=administrator&status=expired&lang=es"
@@ -2200,7 +2179,7 @@ async fn invitation_actions_reject_cross_filter_and_household_cursors_without_mu
     request.save_cookies();
     select_household(&mut request, &fixture, &boot).await?;
     let page = request
-        .get(format!("/households/{slug}/admin/invitations").as_str())
+        .get(format!("/households/{slug}/admin/users/invitations").as_str())
         .await;
     let html = page.text();
     let token = authenticity_token(&html).ok_or("invitation token missing")?;
@@ -2225,7 +2204,7 @@ async fn invitation_actions_reject_cross_filter_and_household_cursors_without_mu
         let before = invitation_state(&fixture, invitations[0].id).await?;
         let rejected = request
             .post(
-                format!("/households/{slug}/admin/invitations/{first_invitation_id}/resend")
+                format!("/households/{slug}/admin/users/invitations/{first_invitation_id}/resend")
                     .as_str(),
             )
             .add_header("sec-fetch-site", "same-origin")

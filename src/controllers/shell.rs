@@ -42,7 +42,8 @@ pub(super) struct ShellContext {
     pub choices: Vec<NavigationLink>,
     pub households: Vec<BrowserHousehold>,
     pub active_household_id: Option<String>,
-    pub platform_url: Option<&'static str>,
+    pub can_manage_household: bool,
+    pub system_administrator: bool,
     pub labels: Value,
     pub navigation_label: String,
     pub slug: String,
@@ -80,7 +81,11 @@ pub(super) fn choices(slug: &str, labels: &Value, can_manage: bool) -> Vec<Navig
         NavigationLink {
             id,
             label: label.as_str().unwrap_or_default().to_owned(),
-            href: format!("/households/{slug}/{path}"),
+            href: if id == "profile" {
+                "/profile".to_owned()
+            } else {
+                format!("/households/{slug}/{path}")
+            },
         }
     })
     .collect()
@@ -125,20 +130,18 @@ async fn load_authorized(
             .unwrap_or("en"),
     );
     let labels = report_pdf::translations(locale).map_err(|_| unavailable())?;
-    let choices = choices(slug, &labels, can_manage);
-    let links = super::profile::stored_shortcuts(&account)
-        .into_iter()
-        .filter_map(|id| choices.iter().find(|choice| choice.id == id).cloned())
-        .collect();
     let person =
         match profile::linked_person(&tenant, principal.account_id(), PersonAccess::View).await {
             Ok(person) => Some(person),
             Err(OperationError::Forbidden | OperationError::NotFound) => None,
             Err(error) => return Err(Box::new(operation_error(error))),
         };
-    let name = person
-        .as_ref()
-        .map_or(account.email.as_str(), |person| person.name.as_str())
+    let name = account
+        .name
+        .as_deref()
+        .filter(|name| !name.trim().is_empty())
+        .or_else(|| person.as_ref().map(|person| person.name.as_str()))
+        .unwrap_or(&account.email)
         .to_owned();
     let initials = name
         .split_whitespace()
@@ -162,20 +165,6 @@ async fn load_authorized(
         None
     };
     let authenticity_token = token.authenticity_token().map_err(|_| unavailable())?;
-    let sidebar = choices
-        .iter()
-        .filter(|link| link.id != "profile")
-        .cloned()
-        .map(|mut link| {
-            if link.id != "profile" {
-                link.label = labels["layouts"]["sidebar"][link.id]
-                    .as_str()
-                    .unwrap_or_default()
-                    .to_owned();
-            }
-            link
-        })
-        .collect();
     tenant.commit().await.map_err(operation_error)?;
     let households = principal
         .households(&ctx.db)
@@ -190,28 +179,58 @@ async fn load_authorized(
         .map_err(authentication_error)?
         .map(|household| household.id.to_string());
     let transaction = platform::begin(&ctx.db).await.map_err(operation_error)?;
-    let platform_url = match platform::administrator(&transaction, principal.account_id()).await {
-        Ok(_) => {
-            transaction
-                .commit()
-                .await
-                .map_err(|error| operation_error(error.into()))?;
-            Some("/platform/users")
-        }
-        Err(OperationError::Forbidden | OperationError::Unauthenticated) => {
-            transaction
-                .rollback()
-                .await
-                .map_err(|error| operation_error(error.into()))?;
-            None
-        }
-        Err(error) => return Err(Box::new(operation_error(error))),
-    };
+    let system_administrator =
+        match platform::administrator(&transaction, principal.account_id()).await {
+            Ok(_) => {
+                transaction
+                    .commit()
+                    .await
+                    .map_err(|error| operation_error(error.into()))?;
+                true
+            }
+            Err(OperationError::Forbidden | OperationError::Unauthenticated) => {
+                transaction
+                    .rollback()
+                    .await
+                    .map_err(|error| operation_error(error.into()))?;
+                false
+            }
+            Err(error) => return Err(Box::new(operation_error(error))),
+        };
+    let mut choices = choices(slug, &labels, can_manage || system_administrator);
+    if !can_manage
+        && let Some(administration) = choices.iter_mut().find(|link| link.id == "administration")
+    {
+        administration.href = "/administration".to_owned();
+    }
+    let links = super::profile::stored_shortcuts(&account)
+        .into_iter()
+        .filter_map(|id| choices.iter().find(|choice| choice.id == id).cloned())
+        .collect();
+    let sidebar = choices
+        .iter()
+        .filter(|link| link.id != "profile")
+        .cloned()
+        .map(|mut link| {
+            if link.id != "profile" {
+                link.label = labels["layouts"]["sidebar"][link.id]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned();
+            }
+            link
+        })
+        .collect();
     let selected_section = choices
         .iter()
         .filter(|link| path == link.href || path.starts_with(&format!("{}/", link.href)))
         .max_by_key(|link| link.href.len())
         .map(|link| link.id)
+        .or_else(|| {
+            ((path == "/administration" || path.starts_with("/administration/"))
+                && choices.iter().any(|link| link.id == "administration"))
+            .then_some("administration")
+        })
         .or_else(|| {
             ["add-medication", "dose-occurrences"]
                 .iter()
@@ -239,7 +258,8 @@ async fn load_authorized(
         choices,
         households,
         active_household_id,
-        platform_url,
+        can_manage_household: can_manage,
+        system_administrator,
         navigation_label: labels["ruby_ui"]["common"]["navigation_menu"]
             .as_str()
             .unwrap_or_default()
@@ -258,9 +278,9 @@ async fn load_authorized(
     })
 }
 
-fn optional_shell_error(
+fn optional_shell_error<T>(
     error: AuthenticationError,
-) -> std::result::Result<Option<ShellContext>, Box<Response>> {
+) -> std::result::Result<Option<T>, Box<Response>> {
     match error {
         AuthenticationError::Unauthenticated
         | AuthenticationError::Forbidden
@@ -271,6 +291,7 @@ fn optional_shell_error(
 }
 
 pub(crate) struct ShellView {
+    canonical_workspace: bool,
     engine: TeraView,
     provider_name: String,
     shell: Option<ShellContext>,
@@ -281,6 +302,12 @@ pub(crate) struct ShellView {
 pub(crate) struct ShellViewEngine<E>(pub E);
 
 impl ShellView {
+    pub(super) fn system_administrator(&self) -> bool {
+        self.shell
+            .as_ref()
+            .is_some_and(|shell| shell.system_administrator)
+    }
+
     pub(crate) fn provider_name(&self) -> &str {
         &self.provider_name
     }
@@ -369,7 +396,8 @@ impl FromRequestParts<AppContext> for ShellViewEngine<ShellView> {
             segments.next(),
             segments.next(),
         ) {
-            (Some(""), Some("households"), Some(slug), Some(_)) => Some(slug.to_owned()),
+            (Some(""), Some("households"), Some(slug), Some(_))
+            | (Some(""), Some("profile"), Some("households"), Some(slug)) => Some(slug.to_owned()),
             _ => None,
         }
         .or_else(|| {
@@ -377,6 +405,50 @@ impl FromRequestParts<AppContext> for ShellViewEngine<ShellView> {
                 .as_ref()
                 .and_then(|value| value.household.clone())
         });
+        let path = parts.uri.path();
+        let canonical_profile = path == "/profile" || path.starts_with("/profile/");
+        let canonical_workspace =
+            canonical_profile || path == "/administration" || path.starts_with("/administration/");
+        let slug = if slug.is_none() && canonical_workspace {
+            let explicit =
+                url::form_urlencoded::parse(parts.uri.query().unwrap_or_default().as_bytes())
+                    .find(|(key, _)| key == "household")
+                    .map(|(_, value)| value.into_owned());
+            if explicit.is_some() {
+                explicit
+            } else {
+                let session = Session::<SessionPgPool>::from_request_parts(parts, state)
+                    .await
+                    .map_err(|_| unavailable())?;
+                match crate::models::identity::browser::authenticate(
+                    &state.db,
+                    &session,
+                    state.config.settings.as_ref(),
+                )
+                .await
+                {
+                    Ok(principal) => match principal.active_household(&state.db).await {
+                        Ok(Some(household)) => Some(household.slug),
+                        Ok(None) if canonical_profile => {
+                            match principal.households(&state.db).await {
+                                Ok(mut households) if households.len() == 1 => {
+                                    households.pop().map(|household| household.slug)
+                                }
+                                Ok(_) => None,
+                                Err(error) => {
+                                    optional_shell_error(error).map_err(|response| *response)?
+                                }
+                            }
+                        }
+                        Ok(None) => None,
+                        Err(error) => optional_shell_error(error).map_err(|response| *response)?,
+                    },
+                    Err(error) => optional_shell_error(error).map_err(|response| *response)?,
+                }
+            }
+        } else {
+            slug
+        };
         let shell = if let Some(slug) = slug {
             let session = Session::<SessionPgPool>::from_request_parts(parts, state)
                 .await
@@ -418,6 +490,7 @@ impl FromRequestParts<AppContext> for ShellViewEngine<ShellView> {
             None
         };
         Ok(Self(ShellView {
+            canonical_workspace,
             engine,
             provider_name: crate::models::identity::better_auth::oidc::provider_name(
                 state.config.settings.as_ref(),
@@ -440,6 +513,15 @@ impl ViewRenderer for ShellView {
         {
             data["slug"] = json!(slug);
         }
+        if self.canonical_workspace
+            && data
+                .get("slug")
+                .and_then(Value::as_str)
+                .is_none_or(str::is_empty)
+            && let Some(shell) = &self.shell
+        {
+            data["slug"] = json!(shell.slug);
+        }
         if let Some(shell) = &self.shell
             && data.get("slug").and_then(Value::as_str) == Some(shell.slug.as_str())
         {
@@ -460,9 +542,12 @@ impl ViewRenderer for ShellView {
                 .and_then(Value::as_str)
                 .unwrap_or_default();
             for link in &mut choices {
-                if link.id == "administration" {
-                    link.href.push_str(language_suffix);
+                if link.id == "administration"
+                    && let Some(original) = shell.choices.iter().find(|item| item.id == link.id)
+                {
+                    link.href.clone_from(&original.href);
                 }
+                link.href.push_str(language_suffix);
             }
             let sidebar = choices
                 .iter()

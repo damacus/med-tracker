@@ -1,5 +1,240 @@
 # Administration expansion
 
+Current planning: [Unified Administration, 18 November 2026](#unified-administration-18-november-2026).
+
+## Unified Administration, 18 November 2026
+
+Status: the owner approved application implementation after reviewing the HTML
+prototype. The latest review decisions below supersede earlier proposals.
+Coordinated plan: [modern Profile consolidation](loco-migration-20261005/slices/06-profile-parity.md#modern-profile-consolidation-18-november-2026).
+Publication, merge, deployment, live-role changes and data import require their
+own authorisation.
+
+Latest prototype review decisions:
+
+- Use one row of feature tabs, with horizontal scrolling at narrow widths.
+- Put pending invitations and their existing actions in Users. Remove the separate
+  Invitations tab and page.
+- Show one card for each manageable household in Overview, with Rename household
+  and Manage users. The latter opens that household's Users scope. Remove the
+  dedicated Household settings presentation and preserve any other working
+  household setting within Administration under the same authority.
+- Keep Overview service cards informational: NHS dm+d last successful import and
+  current status, open support requests and active sessions, and effective
+  registration state with its configuration lock. No service-card buttons,
+  duplicate Accounts card or Account security shortcut.
+- When deployment configuration locks registration, show its effective value in
+  a visually muted registration card with a disabled control. Medicine lookup
+  remains independently editable under its existing permission checks.
+
+### Agreed outcome and reference
+
+Move system administration into the normal Administration workspace with one tab
+bar. Each feature tab appears according to the signed-in account's permissions;
+every request also retains server-side permission checks. Do not create an umbrella
+System area, nested system-tool group, visible Household/System section labels or
+a duplicate workspace. This owner decision supersedes the earlier grouped layout.
+A system administrator without a household must still reach permitted tabs.
+The owner chose one shared Users page with an explicit
+**This household / All accounts** selector and permission-dependent actions.
+Administer the same account in the same place; do not introduce competing user
+editors or separate platform-user pages. Preserve registration and medicine lookup
+settings. The selector concerns the directory and administration actions, not a
+second personal Profile.
+
+Completion requires complete removal of the legacy platform UI after transfer:
+no duplicate pages, obsolete header/navigation or links back to that section.
+The owner accepts breaking compatibility for this pre-beta redesign: remove old
+routes without redirects, duplicate transitional UI or speculative compatibility
+layers. Layout, navigation and placement may change;
+permission changes are not authorised.
+
+Source baseline: `9faf79b35ca42bdf1cf79bd9cb56ec8d6f6bfc49`. Inspected
+`platform.rs`, its support/recovery controllers, `nhs_dmd.rs`, platform and upload
+templates, shell links and the profile return integration. Source does not prove
+runtime behaviour. The preceding task reports the administrator promotion,
+dedicated dm+d storage and uploader navigation merged and deployed with a checked
+image; do not repeat those operational changes. This checkout is a separate
+reference: its platform navigation does not contain the uploader link, so refresh
+the implementation base against the delivered revision before finalising edits.
+
+Read-only reference checkout:
+`/Users/damacus/.codex/worktrees/bd02/med-tracker`. It contains unrelated and
+uncommitted administration UI work, including `administration.js`, shared shell,
+templates/locales and `administration_navigation.rs`. Preserve it intact. Its
+intended behaviour includes retained shell during navigation, URL/history and
+locale handling, focus, read retry, race cancellation, uncertain-write handling,
+unsaved-form protection and ordinary no-JavaScript forms. Reuse these decisions
+and inspect the final accepted implementation before extending it; uncommitted
+tests are not passing or accepted evidence.
+
+Inspected historical screenshot
+`docs/screenshots/shared-layout/admin-platform-recovery-390.png` in that checkout:
+it shows the older standalone header, Account security link and separate platform
+navigation. Compare against the modern workspace during implementation. No current
+runtime baseline or functional acceptance was performed for this plan.
+
+### Feature inventory and proposed placement
+
+| Capability | Proposed workspace destination | Behaviour that must survive |
+| --- | --- | --- |
+| Household overview/settings | Overview and Household settings tabs | Existing manager authority, household name and explicit AI consent; no global setting writes |
+| Household Users | Shared Users, household scope | Search/page, membership detail/role/suspend/restore/revoke, bulk review/retry and last-owner rules |
+| Care relationships and guardian recovery | Care relationships tab and its recovery controls | Existing permissions, recovery evidence and guardian safeguards; distinct from system owner recovery |
+| Invitations and audit | Invitations and Audit tabs | Filtered navigation, delivery/outbox, authoritative role checks, safe detail and audit visibility |
+| Global account directory | Shared Users, agreed All accounts scope | Search/page including accounts with no household; distinguish verified/closed state from sign-in enablement |
+| Enable/disable account sign-in | System-authorised Users action | Global effect clearly stated, fresh proof and protection for last usable administrator |
+| Grant/revoke system administrator | System-authorised Users action | Independent of household role; current authority, fresh proof, replay protection and audit |
+| Registration access | Proposed Registration and medicine settings tab | Open or invite-only state, runtime override/locked state and absent/null fallback to stored setting |
+| Medicine lookup settings | Same settings tab | Ordered sources, accessible drag/arrow controls, saved order, existing hidden service URL values and fresh confirmation |
+| NHS dm+d | NHS dm+d / Medicine data tab | ZIP validation/limit, upload, queued/extract/count/import/complete/failure, history/counts, safe error reference, refresh and continued background work |
+| Support operations | Proposed Support access tab | Request, approval state, activation, expiry, read-only authorised household view and ending access |
+| Account-holder support consent | Agreed Profile / Security | Approval and ending remain with the account holder; no automatic approval from system role |
+| Owner recovery | Proposed Owner recovery tab | Household search, eligibility, explicit confirmation, usable-owner protection, live recheck and audit |
+
+### Proposed route/navigation mapping
+
+Route spelling is an implementation proposal. Shared Users scope is agreed.
+Account-level routes under `/administration/**` are independent of household membership;
+there is no `/system` route grouping in this proposal.
+Household routes can retain their current `/households/{slug}/admin/**` paths
+inside the same shell and single tab bar. Administration entry uses a permitted
+tab; a system administrator with no membership sees account-level tabs without an
+invented household. Route ownership and permission boundaries do not create
+visible navigation groups.
+
+| Existing browser routes | Proposed replacement |
+| --- | --- |
+| GET `/platform`, `/platform/users` | Administration Users, explicit All accounts scope; preserve query and page |
+| POST `/platform/users/administrator`, `/platform/users/active` | Shared Users actions under system-authorised routes, with unchanged proof semantics |
+| GET/POST `/platform/settings` | `/administration/settings` |
+| GET/POST `/admin/nhs-dmd` | `/administration/nhs-dmd`; transfer refresh and post-upload return |
+| GET/POST `/platform/support` | `/administration/support` |
+| POST `/platform/support/activate`, `/platform/support/end` | Matching Administration support actions |
+| GET `/platform/support/{id}` | Administration support detail with explicit temporary access banner and read-only scope |
+| GET/POST `/platform/owner-recovery` | `/administration/owner-recovery` |
+| `/households/{slug}/admin/**` and invitations | Retain household journeys in the shared workspace, including deep detail/edit/bulk/recovery routes |
+| `/account/security/**`, `/account/support/**` | Keep account operations as required; modern Profile/proof framing and correct workspace return |
+
+Shared Users decision: household managers see the household directory; system
+administrators can choose This household or All accounts, retaining one page design
+and account editor. A no-household administrator sees All accounts without a fake
+household option. Reuse account identity and add permitted global controls within
+the same record rather than linking to a competing editor.
+Show separate labels for Household role, Membership state, Account state,
+Sign-in enabled and System administrator. Changing one must never imply changing
+another. A system administrator without manager membership gets no household
+management controls. All accounts scope must not expose household clinical information.
+Preserve scope, household, search, page and language through proof and return.
+
+Switching feature tabs should retain the modern shell and use
+normal URLs with direct loading, reload and back/forward support. Profile's local
+tabs currently use `replaceState`; administration page navigation needs its own
+history entries. Matching speed and focus does not require identical history
+implementation. Never cache privileged content across authority loss.
+
+### Removal inventory and completion gate
+
+Transfer useful handlers into the normal administration controller structure,
+then remove obsolete browser routing/rendering from `src/controllers/platform.rs`
+and its `support.rs`/`recovery.rs` modules. Domain models named `platform` may
+remain: they implement system authority rather than a second UI. Integrate the
+dm+d controller/template into the workspace without replacing its worker/storage.
+
+Replace or retire all eleven `assets/views/platform/` templates: `navigation.html`,
+`users.html`, `user_actions.html`, `settings.html`, `support.html`,
+`support_read.html`, `owner_recovery.html`, `user_access.html`, `user_sign_in.html`,
+`user_account.html` and `user_identity.html`. Transfer `assets/views/admin/nhs-dmd.html`.
+Remove old presentation styles only after checking Profile support/proof flows
+for shared `platform-*` classes. Replace links from `shell.rs`, base layout,
+profile navigation, platform forms/pagination, support completion, uploader refresh
+and security operation completion. Include application controller registration,
+documentation, fixtures and tests in the reference audit.
+
+Remove old platform page/action and standalone uploader routes after transferring
+their callers. No bookmark redirects, old mutation endpoints or mutation replay
+through redirects are needed. No external consumer of those routes was established
+by this inspection. API/mobile/MCP and identity callbacks are separate contracts;
+preserve protocol behaviour and transfer validated return destinations. Raise a
+specific newly discovered consumer conflict rather than adding a speculative layer.
+
+Completion proof: all retained functions work through Administration; obsolete
+templates/render calls are gone; an href/action/redirect scan has no application
+links to old pages; direct old-URL requests return the normal removed-route response
+and cannot render legacy UI or mutate state. Historical documentation may name old routes
+but must clearly identify them as history.
+
+### Delivery slices and acceptance
+
+| Slice | User outcome / completion evidence | Dependency and main risk |
+| --- | --- | --- |
+| A1: one workspace | One tab bar uses the modern shell and shows each feature according to permission; a system admin without membership reaches permitted tabs | Reconcile existing administration work; test role matrix, direct URL, refresh/back and revoked authority; no Household/System grouping |
+| A2: shared Users | Membership and global account administration use one clear page/editor with the agreed This household / All accounts selector | Scope agreed; test search/page, proof/return, cross-household denial, global action labels and last-usable-admin safeguards |
+| A3: registration and medicine settings | Registration and medicine lookup can be read, changed and confirmed in their Administration tab | A1; preserve locked config, source order, invalid input and audit/transaction failure behaviour |
+| A4: medicine data | Upload, leave, return and inspect progress/history in its Administration tab | A1; preserve queued work/storage and denial; do not re-upload live data for acceptance |
+| A5: support access | System operator requests/activates/reads/ends support; account holder controls consent in modern Profile | A1 and Profile security return integration; expiry/revocation/session binding and read-only disclosure are essential |
+| A6: owner recovery | Eligible recovery completes in its Administration tab with fresh proof and accurate returns | A1; fresh eligibility, concurrent owner restoration and audit rollback |
+| A7: retire platform UI | Every retained capability is reachable through Administration and the old section is absent | A2–A6; exhaustive route/template/link proof, with old routes removed and no aliases |
+
+Slices are separate complete journeys suitable for individual PRs against main
+through the delivery controller. Temporary overlap during transfer is not final
+acceptance. Do not defer A7 or report migration complete while duplicate UI exists.
+
+For each feature record visible control, expected action, observed result,
+persisted state, denied/error state, audit, return/focus and evidence. Check every
+button and link; report inert or unfinished controls explicitly. Fixing an exposed
+defect must preserve agreed semantics; new functionality requires an owner decision.
+
+Acceptance matrix: anonymous, ordinary household member, manager, system admin
+with household, system admin without household, system admin who is not that
+household's manager, revoked admin, and last usable administrator. Household role
+never grants system authority. System role never grants household clinical access;
+support continues to require its existing consent and live temporary authority.
+Retain fresh proof, CSRF, replay protection, RLS, transactional audit and owner
+safeguards. Include tampered scope/IDs, stale forms, lost responses and audit failure.
+
+Capture baseline and replacement at 1440×1000, 390×844 and 320px/doubled text,
+light/dark and all five locales under `docs/screenshots/`; record revision, role,
+fixture, timezone and visual comparison verdict. Cover ordinary, empty, loading,
+invalid, denied and service-error states. Verify keyboard, selected tab semantics,
+focus, mobile wrapping, dialog cancellation, unsaved forms, race cancellation,
+uncertain-write reconciliation without automatic resubmission, expired session
+and JavaScript-disabled full-page fallback. Preserve sensitive-page no-store rules.
+
+No schema migration, role promotion, live-data operation, import, queue redesign or
+new registration default is planned. Existing jobs continue across navigation.
+Source rollback restores previous routing/presentation without changing records;
+the delivery controller must assess issued links/callbacks before cutover.
+Implementation requires failing behavioural evidence before executable edits,
+focused acceptance and `task ci`; docs require `task docs:build` and
+`git diff --check`, through RTK. This planning exercise has not passed application
+acceptance or independently verified the previous deployment report.
+
+### Settled owner decisions and remaining implementation detail
+
+The owner explicitly chose Profile / Security for account-holder approval and
+ending of support access. Operator requests, activation and temporary views use
+the ordinary Administration / Support access tab. Consent remains accessible to
+an ordinary account holder without administration permissions; its authority and
+required proof are unchanged.
+
+The earlier question about collecting tools under System is superseded and must
+not be asked again. Plan registration/medicine settings, Support access and Owner
+recovery as ordinary tabs; exact labels/order are proposals, not new authority.
+Support-consent placement is settled. Shared Users is
+settled by the owner's explicit first-option answer: one page/editor with This
+household / All accounts and controls according to permission. Compatibility is
+settled: old routes are removable without redirects. No consequential placement
+question remains from this owner Q&A. Proposed new URL spelling and exact tab
+labels/order remain implementation details; they do not authorise new behaviour
+or authority. The owner approved implementation after prototype review.
+
+Planning verification: `git diff --check` passed. `task docs:build` passed with
+five existing missing-page warnings in `2026-10-23-typed-handoff-stack.md`.
+Application tests were not run: only planning documents changed.
+
+## Historical administration delivery record
+
 Approved owner decisions, 21 October 2026. Issue #2707 remains open until its accepted scope is delivered. Each complete vertical slice is a separate PR against main. Unmerged dependencies are named with a focused parent comparison; no stack tooling changes or GitHub merges are authorised.
 
 ## Shared boundaries

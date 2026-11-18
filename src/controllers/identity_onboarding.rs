@@ -104,7 +104,6 @@ pub fn routes(ctx: &AppContext) -> Routes {
             post(password::confirm),
         )
         .add("/account/security/operation", post(credentials::start))
-        .add("/account/support", get(support::page))
         .add("/account/support/approve", post(support::approve))
         .add("/account/support/end", post(support::end))
         .add("/account/security/passkey", get(credentials::passkey))

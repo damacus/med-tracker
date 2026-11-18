@@ -27,17 +27,15 @@ async fn signed_out_root_redirects_to_login_without_profile_controls() -> TestRe
     assert_eq!(login.status_code(), 200);
     assert!(!login.text().contains("appearance-dialog"));
     assert!(!login.text().contains("data-appearance-choice"));
-    assert!(
-        !login
-            .text()
-            .contains("href=\"/households/persistence-fixture/profile\"")
-    );
-    let profile = request
-        .get(&format!("/households/{}/profile", fixture.household.slug))
-        .await;
+    assert!(!login.text().contains("href=\"/profile\""));
+    let profile = request.get("/profile").await;
     assert_eq!(profile.status_code(), 303);
     assert_eq!(profile.header("location"), "/login");
     browser_session(&fixture, &mut request, &boot).await;
+    let obsolete = request
+        .get(&format!("/households/{}/profile", fixture.household.slug))
+        .await;
+    assert_eq!(obsolete.status_code(), 404, "{}", obsolete.text());
     identity_session::Entity::update_many()
         .col_expr(
             identity_session::Column::ExpiresAt,
@@ -1187,9 +1185,11 @@ async fn household_free_profile_uses_account_identity_without_a_household() -> T
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("authenticity_token", csrf),
-            ("setting", "clinical"),
-            ("name", "Own clinical name"),
+            ("setting", "identity"),
+            ("full_name", "Own clinical name"),
             ("date_of_birth", "1990-02-03"),
+            ("use_display_name", "true"),
+            ("display_name", "Own display alias"),
         ])
         .await;
     assert_eq!(saved.status_code(), 303, "{}", saved.text());
@@ -1203,7 +1203,7 @@ async fn household_free_profile_uses_account_identity_without_a_household() -> T
         .one(&fixture.admin)
         .await?
         .ok_or("account missing")?;
-    assert_eq!(account.name, fixture.foreign.account.name);
+    assert_eq!(account.name.as_deref(), Some("Own display alias"));
     let csrf_denied = request
         .post("/profile")
         .add_header("sec-fetch-site", "same-origin")
@@ -1215,8 +1215,9 @@ async fn household_free_profile_uses_account_identity_without_a_household() -> T
         .add_header("sec-fetch-site", "same-origin")
         .form(&[
             ("authenticity_token", csrf),
-            ("setting", "clinical"),
-            ("name", "Forbidden target"),
+            ("setting", "identity"),
+            ("full_name", "Forbidden target"),
+            ("date_of_birth", "1990-02-03"),
             ("person_id", &fixture.account.person_id.to_string()),
         ])
         .await;
@@ -1279,8 +1280,8 @@ async fn household_free_clinical_birth_date_cannot_lock_out_the_account() -> Tes
             .add_header("sec-fetch-site", "same-origin")
             .form(&[
                 ("authenticity_token", csrf),
-                ("setting", "clinical"),
-                ("name", "Must not persist"),
+                ("setting", "identity"),
+                ("full_name", "Must not persist"),
                 ("date_of_birth", date),
             ])
             .await;
@@ -1485,7 +1486,7 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
         first_dashboard.text()
     );
     let navigation = first
-        .get(format!("/households/{slug}/profile/navigation").as_str())
+        .get(format!("/profile/households/{slug}/navigation").as_str())
         .await;
     assert_eq!(navigation.status_code(), 200, "{}", navigation.text());
     assert_eq!(navigation.header("cache-control"), "no-store");

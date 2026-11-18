@@ -1,0 +1,22 @@
+<section class="mt-6" aria-labelledby="service-status-title">
+  <h3 id="service-status-title" class="text-lg font-semibold">Service status</h3>
+  <div class="grid gap-4 mt-3 sm:grid-cols-2 lg:grid-cols-3">
+    <article class="card card-body admin-card-surface">
+      <h4 class="card-title">NHS dm+d</h4>
+      <p>{{ service_status.import_status }}</p>
+      {% if service_status.last_import %}<p>Last successful import: {{ service_status.last_import }}</p>{% endif %}
+    </article>
+    <article class="card card-body admin-card-surface">
+      <h4 class="card-title">Support access</h4>
+      <dl class="grid gap-2">
+        <div class="flex justify-between gap-2"><dt>Open requests</dt><dd>{{ service_status.open_requests }}</dd></div>
+        <div class="flex justify-between gap-2"><dt>Active sessions</dt><dd>{{ service_status.active_sessions }}</dd></div>
+      </dl>
+    </article>
+    <article class="card card-body admin-card-surface">
+      <h4 class="card-title">Registration</h4>
+      <p>{% if service_status.registration_invite_only %}Invite-only{% else %}Open{% endif %}</p>
+      {% if service_status.registration_locked %}<p>Managed by system configuration</p>{% endif %}
+    </article>
+  </div>
+</section>

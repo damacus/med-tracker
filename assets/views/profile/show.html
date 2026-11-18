@@ -1,8 +1,7 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-{% set personal = personal_profile | default(value=false) %}
-{% if personal %}{% set profile_path = '/profile' %}{% set sections = ['profile', 'security', 'advanced'] %}{% else %}{% set profile_path = '/households/' ~ slug ~ '/profile' %}{% set sections = ['profile', 'security', 'notifications', 'advanced'] %}{% endif %}
-<div class="profile-page grid gap-6" data-profile-dialog-host data-flow-close="{{ labels.profiles.dialogs.close | default(value='Close setting') }}" data-flow-loading="{{ labels.profiles.dialogs.loading | default(value='Loading setting…') }}" data-flow-failed="{{ labels.profiles.dialogs.failed | default(value='The setting could not be loaded. Try again or open it inline.') }}" data-flow-uncertain="{{ labels.profiles.dialogs.uncertain | default(value='The request may have completed. Check the current setting before trying again.') }}" data-flow-inline="{{ labels.profiles.dialogs.inline | default(value='Open setting inline') }}" data-flow-title="{{ labels.profiles.dialogs.title | default(value='Profile setting') }}" data-profile-url="{{ profile_path }}">
+{% set profile_path = '/profile' %}{% set sections = ['profile', 'look-and-feel', 'security', 'notifications', 'advanced'] %}
+<div class="profile-page grid gap-6" data-profile-dialog-host data-flow-close="{{ labels.profiles.dialogs.close | default(value='Close setting') }}" data-flow-loading="{{ labels.profiles.dialogs.loading | default(value='Loading setting…') }}" data-flow-failed="{{ labels.profiles.dialogs.failed | default(value='The setting could not be loaded. Try again or open it inline.') }}" data-flow-uncertain="{{ labels.profiles.dialogs.uncertain | default(value='The request may have completed. Check the current setting before trying again.') }}" data-flow-inline="{{ labels.profiles.dialogs.inline | default(value='Open setting inline') }}" data-flow-title="{{ labels.profiles.dialogs.title | default(value='Profile setting') }}" data-profile-url="{{ profile_path }}" data-profile-household="{{ slug }}">
   {% if not shell %}{% include "profile/navigation.html" %}{% endif %}
   <noscript><link rel="stylesheet" href="/static/css/profile-no-script.css?v={{ asset_version }}"><nav class="profile-summary flex flex-wrap gap-2 mt-2 text-sm text-base-content/70" aria-label="{{ labels.profiles.sections.profile.title }}"><a class="link" href="#profile-avatar">{{ labels.profiles.avatar.title }}</a><a class="link" href="#profile-timezone">{{ labels.profiles.time_zone.title }}</a><a class="link" href="#profile-shortcuts">{{ labels.profiles.mobile_shortcuts.title }}</a></nav></noscript>
   <p role="status" aria-live="polite" data-profile-status data-saved-label="{{ labels.profiles.updated }}" data-failure-label="{{ labels.profiles.browser.failure }}"></p>
@@ -11,7 +10,7 @@
     <div><p class="text-sm text-base-content/70">{{ labels.profiles.show.eyebrow }}</p>
       <h1 class="text-3xl font-semibold">{{ labels.profiles.show.title }}</h1><p>{{ email }}</p>
     </div>
-    <p class="shell-muted col-span-full">{% if personal %}{{ labels.profiles.personal.description }}{% else %}{{ labels.profiles.show.description }}{% endif %}</p>
+    <p class="shell-muted col-span-full">{{ labels.profiles.personal.description }}</p>
   </header>
   <nav class="profile-tabs" aria-label="{{ labels.profiles.show.title }}" data-profile-tabs>
     {% for section in sections %}
@@ -32,24 +31,20 @@
           <div><dt class="font-semibold">{{ labels.people.form.person_type }}</dt><dd>{% if person_type == 0 %}{{ labels.profiles.browser.adult }}{% elif person_type == 1 %}{{ labels.profiles.browser.minor }}{% else %}{{ labels.profiles.browser.dependent_adult }}{% endif %}</dd></div>
           <div><dt class="font-semibold">{{ labels.people.overview.has_capacity }}</dt><dd>{% if has_capacity %}{{ labels.profiles.browser.yes }}{% else %}{{ labels.profiles.browser.no }}{% endif %}</dd></div>
         </dl>
-        {% if personal %}
-        <form id="profile-account-name-form" method="post" action="{{ profile_path }}" class="grid gap-3 mt-4" data-profile-form data-profile-form-region>
-          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="name">
-          {% if name_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.browser.failure }}</p>{% endif %}
-          <label for="account-display-name">{{ labels.profiles.personal.account_name }}</label><input id="account-display-name" name="name" value="{{ account_name_draft }}" class="input w-full" required maxlength="100" autocomplete="name" {% if name_error %}aria-invalid="true"{% endif %}>
-          <button class="btn btn-primary justify-self-start" type="submit">{{ labels.people.form.save }}</button>
-        </form>
-        <a class="link" href="{{ profile_path }}?panel=history#profile" data-profile-flow-entry="history">{{ labels.profiles.personal.history }}</a>
-        <a class="link" href="{{ profile_path }}?panel=plans#profile" data-profile-flow-entry="plans">{{ labels.profiles.personal.plans }}</a>
-        <form id="profile-clinical-form" method="post" action="{{ profile_path }}" class="grid gap-3 mt-4" data-profile-form data-profile-form-region>
-          <h4 class="font-semibold">{{ labels.profiles.personal.clinical }}</h4>
-          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="clinical">
+        <form id="profile-identity-form" method="post" action="{{ profile_path }}{{ profile_query }}" class="grid gap-3 mt-4" data-profile-form data-profile-form-region>
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="identity">
           {% if clinical_error %}<p id="clinical-error" role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.personal.clinical_invalid }}</p>{% endif %}
-          <label for="clinical-name">{{ labels.people.form.name }}</label><input id="clinical-name" name="name" value="{{ clinical_name }}" class="input w-full" required maxlength="100" {% if clinical_error %}aria-invalid="true" aria-describedby="clinical-error"{% endif %}>
-          <label for="clinical-date-of-birth">{{ labels.people.form.date_of_birth }}</label><input id="clinical-date-of-birth" name="date_of_birth" type="date" value="{{ clinical_date }}" class="input w-full" required {% if clinical_error %}aria-invalid="true" aria-describedby="clinical-error"{% endif %}>
+          <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <label class="grid gap-1" for="clinical-name">{{ labels.profiles.personal.full_name }}<input id="clinical-name" name="full_name" value="{{ clinical_name }}" class="input w-full" required maxlength="100" autocomplete="name"></label>
+            <label class="flex items-center gap-2 pb-2" for="use-display-name"><input id="use-display-name" class="checkbox" type="checkbox" name="use_display_name" value="true" aria-controls="profile-display-name" {% if use_display_name %}checked{% endif %}>{{ labels.profiles.personal.use_display_name }}</label>
+          </div>
+          <label id="profile-display-name" class="grid gap-1" for="account-display-name">{{ labels.profiles.personal.account_name }}<input id="account-display-name" name="display_name" value="{{ account_name_draft }}" class="input w-full" maxlength="100" autocomplete="nickname"></label>
+          <label class="grid gap-1" for="clinical-date-of-birth">{{ labels.people.form.date_of_birth }}<input id="clinical-date-of-birth" name="date_of_birth" type="date" value="{{ clinical_date }}" class="input w-full" autocomplete="bday" required></label>
           <button class="btn btn-primary justify-self-start" type="submit">{{ labels.people.form.save }}</button>
         </form>
-        {% endif %}
+        <a class="link" href="{{ profile_path }}?panel=history{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#profile" data-profile-flow-entry="history">{{ labels.profiles.personal.history }}</a>
+        <a class="link" href="{{ profile_path }}?panel=plans{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#profile" data-profile-flow-entry="plans">{{ labels.profiles.personal.plans }}</a>
+        <a class="link" href="/profile/guardian-declarations">{{ labels.guardian_declarations.title }}</a>
       </section>
       <div class="profile-settings grid gap-3">
 <details id="profile-avatar" name="profile-settings" class="profile-setting collapse collapse-arrow bg-base-100 border border-base-300" {% if avatar_error or gravatar_error %}open{% endif %}><summary class="collapse-title"><strong>{{ labels.profiles.avatar.title }}</strong><span>{{ labels.profiles.avatar.description }}</span>{% include "profile/avatar-image.html" %}</summary>  <div class="collapse-content"><h2 class="text-2xl font-semibold" id="profile-avatar-title">{{ labels.profiles.avatar.title }}</h2><p>{{ labels.profiles.avatar.description }}</p>
@@ -57,13 +52,13 @@
     <p>{{ labels.profiles.avatar.supported_formats }}</p>
     <div id="profile-avatar-controls" data-profile-form-region>
       {% if avatar_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ avatar_error }}</p>{% endif %}
-      {% if can_edit_profile %}<form method="post" action="{{ profile_path }}/avatar" enctype="multipart/form-data" class="grid gap-3 mt-6" data-profile-form>
+      {% if can_edit_profile %}<form method="post" action="{{ profile_path }}/avatar{{ profile_query }}" enctype="multipart/form-data" class="grid gap-3 mt-6" data-profile-form>
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
         <label for="profile-avatar-file">{{ labels.profiles.avatar.upload_label }}</label><input id="profile-avatar-file" class="file-input w-full" type="file" name="avatar" accept="image/png,image/jpeg,image/webp" required>
         <button class="btn btn-primary" type="submit">{{ labels.profiles.avatar.upload }}</button>
       </form>
-      {% if avatar_attached %}<form method="post" action="{{ profile_path }}/avatar/remove" class="grid gap-3 mt-6" data-profile-form><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button type="submit" class="btn btn-error">{{ labels.profiles.avatar.remove }}</button></form>{% endif %}{% endif %}
-      {% if can_edit_profile %}<form method="post" action="{{ profile_path }}" class="grid gap-3 mt-6" data-profile-form>
+      {% if avatar_attached %}<form method="post" action="{{ profile_path }}/avatar/remove{{ profile_query }}" class="grid gap-3 mt-6" data-profile-form><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button type="submit" class="btn btn-error">{{ labels.profiles.avatar.remove }}</button></form>{% endif %}{% endif %}
+      {% if can_edit_profile %}<form method="post" action="{{ profile_path }}{{ profile_query }}" class="grid gap-3 mt-6" data-profile-form>
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
         <input type="hidden" name="setting" value="gravatar">
         {% if gravatar_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.browser.failure }}</p>{% endif %}
@@ -74,8 +69,20 @@
     </div>
   </div>
 </details>
+      </div>
+    </div>
+  </section>
+  <section id="look-and-feel" class="profile-section min-w-0" aria-labelledby="profile-tab-look-and-feel" data-profile-panel>
+    <h2 class="text-2xl font-semibold mb-4">{{ labels.profiles.sections["look-and-feel"].title }}</h2>
+        {% if profile_households | length > 0 %}<form method="get" action="/profile#look-and-feel" class="grid gap-2 sm:flex sm:items-end">
+          <label class="grid gap-1">{{ labels.profiles.personal.household }}
+            <select class="select" name="household">{% if not profile_has_household %}<option selected disabled>{{ labels.profiles.personal.choose_household }}</option>{% endif %}{% for household in profile_households %}<option value="{{ household.slug }}" {% if household.slug == slug %}selected{% endif %}>{{ household.name }}</option>{% endfor %}</select>
+          </label>
+          <button class="btn btn-neutral" type="submit">{{ labels.profiles.personal.choose_household }}</button>
+        </form>{% endif %}
+    <div class="profile-settings grid gap-3 mt-4">
 <details id="profile-timezone" name="profile-settings" class="profile-setting collapse collapse-arrow bg-base-100 border border-base-300" {% if timezone_error %}open{% endif %}><summary class="collapse-title"><strong>{{ labels.profiles.time_zone.title }}</strong><span>{{ labels.profiles.time_zone.description }}</span><span id="profile-timezone-summary" data-profile-summary>{{ time_zone }}</span></summary>  <div class="collapse-content"><h2 class="text-2xl font-semibold" id="profile-timezone-title">{{ labels.profiles.time_zone.title }}</h2>
-    <form id="profile-timezone-form" data-profile-form-region method="post" action="{{ profile_path }}" class="grid gap-3 mt-6" data-profile-form>
+    <form id="profile-timezone-form" data-profile-form-region method="post" action="{{ profile_path }}{{ profile_query }}" class="grid gap-3 mt-6" data-profile-form>
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="setting" value="time_zone">
       {% if timezone_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.browser.timezone_invalid }}</p>{% endif %}
@@ -89,7 +96,7 @@
 </details>
 <details id="profile-shortcuts" name="profile-settings" class="profile-setting collapse collapse-arrow bg-base-100 border border-base-300" {% if shortcuts_error %}open{% endif %}><summary class="collapse-title"><strong>{{ labels.profiles.mobile_shortcuts.title }}</strong><span>{{ labels.profiles.mobile_shortcuts.description }}</span><span id="profile-shortcuts-summary" data-profile-summary>{% for slot in shortcut_slots %}{% for choice in shortcut_choices %}{% if choice.id == slot.selected %}<span>{{ choice.label }}</span> {% endif %}{% endfor %}{% endfor %}</span></summary>  <div class="collapse-content"><h2 class="text-2xl font-semibold" id="profile-shortcuts-title">{{ labels.profiles.mobile_shortcuts.title }}</h2>
     <p>{{ labels.profiles.mobile_shortcuts.description }}</p>
-    <form id="profile-shortcuts-form" data-profile-form-region method="post" action="{{ profile_path }}" class="grid gap-3 mt-6" data-profile-form>
+    <form id="profile-shortcuts-form" data-profile-form-region method="post" action="{{ profile_path }}{{ profile_query }}" class="grid gap-3 mt-6" data-profile-form>
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="shortcuts">
       {% if shortcuts_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.mobile_shortcuts.invalid }}</p>{% endif %}
       {% for slot in shortcut_slots %}<label for="profile-shortcut-{{ slot.number }}">{{ slot.label }}</label>
@@ -110,34 +117,47 @@
     </div></fieldset>
   </div>
 </details>
-      </div>
     </div>
   </section>
   <section id="security" class="profile-section min-w-0" aria-labelledby="profile-tab-security" data-profile-panel>
     {% include "profile/security.html" %}
   </section>
-  {% if not personal %}<section id="notifications" class="profile-section min-w-0" aria-labelledby="profile-tab-notifications" data-profile-panel>
-    <header class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 pb-4"><span class="shrink-0 pt-1" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#notifications"/></svg></span><div><h2 class="text-2xl font-semibold">{{ labels.profiles.sections.notifications.title }}</h2><p id="profile-notification-summary" class="profile-summary flex flex-wrap gap-2 mt-2 text-sm text-base-content/70" data-profile-summary>{% if notifications.enabled %}{% set reminder_state = labels.profiles.common.on %}{% else %}{% set reminder_state = labels.profiles.common.off %}{% endif %}<span>{{ labels.profiles.sections.notifications.reminders | replace(from="%{state}", to=reminder_state) }}</span><span>{{ labels.profiles.sections.notifications.categories | replace(from="%{count}", to=notifications.category_count) }}</span></p></div></header>
+  <section id="notifications" class="profile-section min-w-0" aria-labelledby="profile-tab-notifications" data-profile-panel>
+    <header class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 pb-4"><span class="shrink-0 pt-1" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#notifications"/></svg></span><div><h2 class="text-2xl font-semibold">{{ labels.profiles.sections.notifications.title }}</h2><p id="profile-notification-summary" class="profile-summary flex flex-wrap gap-2 mt-2 text-sm text-base-content/70" data-profile-summary>{% if profile_has_household %}{% if notifications.enabled %}{% set reminder_state = labels.profiles.common.on %}{% else %}{% set reminder_state = labels.profiles.common.off %}{% endif %}<span>{{ labels.profiles.sections.notifications.reminders | replace(from="%{state}", to=reminder_state) }}</span><span>{{ labels.profiles.sections.notifications.categories | replace(from="%{count}", to=notifications.category_count) }}</span>{% endif %}</p></div></header>
     <div class="profile-panel-content grid gap-4 p-4"><div class="profile-personal card card-body bg-base-100 border border-base-300 min-w-0 gap-3"><h3 class="card-title">{{ labels.profiles.notifications.title }}</h3><p class="shell-muted">{{ labels.profiles.notifications.description }}</p>
+        {% if profile_households | length > 0 %}<form method="get" action="/profile#notifications" class="grid gap-2 sm:flex sm:items-end">
+          <label class="grid gap-1">{{ labels.profiles.personal.household }}
+            <select class="select" name="household">{% if not profile_has_household %}<option selected disabled>{{ labels.profiles.personal.choose_household }}</option>{% endif %}{% for household in profile_households %}<option value="{{ household.slug }}" {% if household.slug == slug %}selected{% endif %}>{{ household.name }}</option>{% endfor %}</select>
+          </label>
+          <button class="btn btn-neutral" type="submit">{{ labels.profiles.personal.choose_household }}</button>
+        </form>{% endif %}
+    {% if profile_has_household %}
     {% include "profile/push.html" %}
     {% include "profile/notifications.html" %}
+    {% else %}<p>{{ labels.profiles.personal.household_required }}</p>{% endif %}
     </div></div>
   </section>
-  {% endif %}<section id="advanced" class="profile-section min-w-0" aria-labelledby="profile-tab-advanced" data-profile-panel>
-    <header class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 pb-4"><span class="shrink-0 pt-1" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#advanced"/></svg></span><div><h2 class="text-2xl font-semibold">{{ labels.profiles.sections.advanced.title }}</h2><p class="profile-summary flex flex-wrap gap-2 mt-2 text-sm text-base-content/70">{% if not personal %}<span>{{ labels.profiles.sections.advanced.exports }}</span>{% endif %}</p></div></header>
+  <section id="advanced" class="profile-section min-w-0" aria-labelledby="profile-tab-advanced" data-profile-panel>
+    <header class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 pb-4"><span class="shrink-0 pt-1" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#advanced"/></svg></span><div><h2 class="text-2xl font-semibold">{{ labels.profiles.sections.advanced.title }}</h2><p class="profile-summary flex flex-wrap gap-2 mt-2 text-sm text-base-content/70">{% if profile_has_household %}<span>{{ labels.profiles.sections.advanced.exports }}</span>{% endif %}</p></div></header>
     <div class="profile-panel-content grid gap-4 p-4">
-    {% if not personal %}<details name="profile-advanced" class="collapse collapse-arrow bg-base-100 border border-base-300">
+        {% if profile_households | length > 0 %}<form method="get" action="/profile#advanced" class="grid gap-2 sm:flex sm:items-end">
+          <label class="grid gap-1">{{ labels.profiles.personal.household }}
+            <select class="select" name="household">{% if not profile_has_household %}<option selected disabled>{{ labels.profiles.personal.choose_household }}</option>{% endif %}{% for household in profile_households %}<option value="{{ household.slug }}" {% if household.slug == slug %}selected{% endif %}>{{ household.name }}</option>{% endfor %}</select>
+          </label>
+          <button class="btn btn-neutral" type="submit">{{ labels.profiles.personal.choose_household }}</button>
+        </form>{% endif %}
+    {% if profile_has_household %}<details name="profile-advanced" class="collapse collapse-arrow bg-base-100 border border-base-300">
       <summary class="collapse-title"><strong>{{ labels.profiles.sections.advanced.data_backup }}</strong><span>{{ labels.profiles.sections.advanced.data_backup_description }}</span></summary>
       <div class="collapse-content grid gap-4">
         <p class="alert alert-warning">{{ labels.profiles.exports.warning }}</p>
-        <form method="post" action="{{ profile_path }}/export" class="flex flex-wrap gap-2">
+        <form method="post" action="/profile/households/{{ slug }}/export" class="flex flex-wrap gap-2">
           <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
           <button class="btn" type="submit" name="mode" value="health_data_json">{{ labels.profiles.exports.json }}</button>
           <button class="btn" type="submit" name="mode" value="backup_zip">{{ labels.profiles.exports.zip }}</button>
         </form>
       </div>
     </details>
-    {% endif %}<section class="profile-system-info card card-body bg-base-100 border border-base-300">
+    {% else %}<p>{{ labels.profiles.personal.household_required }}</p>{% endif %}<section class="profile-system-info card card-body bg-base-100 border border-base-300">
       <header><h3 class="card-title">{{ labels.profiles.version_info.title }}</h3><p class="shell-muted">{{ labels.profiles.version_info.description }}</p></header>
       <dl class="profile-system-facts">
         {% if system_info.development %}
@@ -150,10 +170,7 @@
         <div class="flex flex-wrap justify-between gap-3 py-2"><dt class="font-semibold">{{ labels.profiles.version_info.documentation }}</dt><dd><a class="link" href="https://damacus.github.io/med-tracker" target="_blank" rel="noopener">{{ labels.profiles.version_info.view_docs }}</a></dd></div>
       </dl>
     </section>
-    <section class="card card-body bg-base-100 border border-base-300 gap-4"><h3 class="card-title">{{ labels.profiles.browser.danger_zone }}</h3>
-      <p>{{ labels.profiles.browser.closure_description }}</p>
-      <a class="btn btn-neutral" href="#security">{{ labels.profiles.browser.close_account }}</a>
-    </section>
+    <section id="profile-account-closure" class="card card-body bg-base-100 border border-base-300 gap-4"><h3 class="card-title">{{ labels.profiles.browser.danger_zone }}</h3><p>{{ labels.profiles.browser.closure_description }}</p><form method="post" data-profile-flow-entry="operation" action="/account/security/operation?profile_flow=operation&amp;profile_tab=advanced{% if slug %}&amp;profile_household={{ slug }}{% endif %}"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="close_account"><button class="btn btn-error" type="submit">{{ labels.profiles.browser.close_account }}</button></form></section>
     </div>
   </section>
 </div>
@@ -163,6 +180,3 @@
 <script type="module" src="/static/js/profile-dialogs.js?v={{ asset_version }}"></script>
 <script src="/static/js/profile-push.js?v={{ asset_version }}" defer></script>
 {% endblock content %}
-{% block appearance %}
-
-{% endblock appearance %}

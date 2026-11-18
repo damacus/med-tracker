@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile · MedTracker prototype</title>
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="profile.css">
+  <script src="shared.js" defer></script>
+  <script src="profile.js" defer></script>
+</head>
+<body data-page="profile">
+<main id="main" class="workspace">
+  <header class="hero profile-hero">
+    <div class="avatar" aria-hidden="true">AM</div>
+    <div><div class="row"><p class="eyebrow">YOUR ACCOUNT</p><span id="active-household" class="badge" role="status" hidden></span></div><h1>Profile &amp; settings</h1><p class="lede">Manage your account, preferences and personal health information.</p></div>
+  </header>
+  <div class="profile-scenario"><span>Prototype scenario</span><label for="scenario">Households</label><select id="scenario"><option value="single">One household</option><option value="multiple">Multiple households</option><option value="none">No households</option></select><small>Sample data only</small></div>
+  <nav class="tabs profile-tabs" aria-label="Profile settings"><a href="#profile">Profile</a><a href="#look-and-feel">Look and feel</a><a href="#security">Security</a><a href="#notifications">Notifications</a><a href="#advanced">Advanced</a></nav>
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <section id="profile" class="panel" aria-labelledby="profile-title">
+    <div class="section-heading"><h2 id="profile-title">Profile</h2></div>
+    <div class="profile-layout">
+      <div class="stack">
+        <section class="card">
+          <h3>Account information</h3>
+          <form id="account-info" class="local-form stack">
+            <div class="display-name-row">
+              <label class="field">Full name<input id="full-name" name="full-name" value="Alex Morgan" autocomplete="name" required></label>
+              <label class="check"><input id="use-display-name" type="checkbox" aria-controls="display-name-field"> Use a display name</label>
+            </div>
+            <label id="display-name-field" class="field" hidden>Display name<input id="display-name" name="display-name" value="Alex" autocomplete="nickname" disabled></label>
+            <label class="field">Date of birth<input name="birth-date" type="date" value="1988-05-14" autocomplete="bday" required></label>
+            <label class="field">Sign-in email<input type="email" value="alex@example.com" readonly></label>
+            <p class="hint">To change your email, visit Security.</p>
+            <div class="detail-row"><span>Person type</span><strong>Adult</strong></div>
+            <div><button class="primary">Save account details</button></div>
+          </form>
+        </section>
+        <section class="card"><h3>Personal health</h3><p class="muted">Review your dose history and manage the plans that guide your care.</p><div class="link-list"><button data-dialog="history">Dose history <span>View history →</span></button><button data-dialog="plans">Care plans <span>Manage plans →</span></button><button data-dialog="guardian">Guardian declarations <span>View declarations →</span></button></div></section>
+      </div>
+      <div class="stack">
+        <section class="card"><h3>Profile photo</h3><p class="muted">Choose how you appear across MedTracker.</p><div class="avatar-row"><div class="avatar small" aria-hidden="true">AM</div><div><strong id="profile-display-preview">Alex Morgan</strong><p class="hint">PNG, JPG or WebP</p></div></div><label class="field">Choose an image<input type="file" accept="image/png,image/jpeg,image/webp"></label><label class="check"><input type="checkbox"> Use Gravatar</label><button class="save-button">Save photo settings</button></section>
+      </div>
+    </div>
+  </section>
+
+  <section id="look-and-feel" class="panel" aria-labelledby="look-and-feel-title" hidden>
+    <div class="section-heading"><h2 id="look-and-feel-title">Look and feel</h2><p class="muted">Choose how MedTracker looks and works for you.</p></div>
+    <div class="profile-layout">
+      <section class="card">
+        <h3>Appearance</h3>
+        <div class="household-content">
+          <label class="field household-picker">Household<select class="household-select"></select></label>
+          <p class="muted">Choose a colour theme for this household. It applies when you switch to that household.</p>
+        </div>
+        <p class="empty-household muted" hidden>Your colour theme applies to your personal profile.</p>
+        <form class="local-form stack">
+          <label class="field">Appearance mode<select id="appearance"><option value="system">Match this device</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+          <p class="hint">Light or dark mode applies to all households.</p>
+          <fieldset class="theme-picker">
+            <legend>Colour theme</legend>
+            <div id="palette-options" class="palette-options"></div>
+          </fieldset>
+          <div><button class="primary">Save appearance</button></div>
+        </form>
+      </section>
+      <div class="stack">
+        <section class="card">
+          <h3>Time zone</h3>
+          <form class="local-form stack">
+            <label class="field">Time zone<select><option>Europe/London</option><option>Europe/Paris</option><option>America/New_York</option></select></label>
+            <div><button>Save time zone</button></div>
+          </form>
+        </section>
+        <section class="card"><h3>Mobile shortcuts</h3><p class="muted">Choose quick actions for your mobile navigation.</p><form class="local-form stack"><label class="field">First shortcut<select><option>Record a dose</option><option>Medications</option><option>Plans</option></select></label><label class="field">Second shortcut<select><option>Medications</option><option>Record a dose</option><option>Plans</option></select></label><button>Save shortcuts</button></form></section>
+      </div>
+    </div>
+  </section>
+
+  <section id="security" class="panel" aria-labelledby="security-title" hidden>
+    <div class="section-heading"><div><p class="eyebrow">PROTECT YOUR ACCOUNT</p><h2 id="security-title">Security</h2><p class="muted">Manage how you sign in and who can help with your account.</p></div></div>
+    <div class="profile-layout"><div class="stack"><section class="card"><h3>Sign-in methods</h3><p class="muted">Add another way to securely access your account.</p><div class="setting-list"><div><span><strong>Password</strong><small>Last changed 3 months ago</small></span><button data-dialog="password">Change</button></div><div><span><strong>Passkeys</strong><small>No passkeys added</small></span><button data-dialog="passkey">Add passkey</button></div><div><span><strong>Authenticator app</strong><small>Two-step verification is off</small></span><button data-dialog="authenticator">Set up</button></div><div><span><strong>Recovery codes</strong><small>Keep codes somewhere safe in case you lose access.</small></span><button data-dialog="recovery">View codes</button></div></div></section><section class="card"><h3>Sign-in email</h3><p class="muted">Your current email is alex@example.com.</p><button data-dialog="email">Change email</button></section><section class="card"><h3>Active sessions</h3><p class="muted">Review devices signed in to your account.</p><div class="setting-list"><div><span><strong>This browser</strong><small>London · Active now</small></span><span class="badge">Current</span></div><div><span><strong>Mobile browser</strong><small>London · Yesterday</small></span><button id="end-session">End session</button></div></div></section></div><div class="stack"><section class="card"><h3>Support access</h3><p class="muted">Support can only access your account if you approve the request. You can end access at any time.</p><div class="notice"><strong>Request from Jamie Patel</strong><p>MedTracker support · Investigating reminder delivery</p><p id="support-state">Awaiting your approval</p></div><div class="actions"><button id="approve-support" class="primary">Approve access</button><button id="end-support" disabled>End access</button></div></section><section class="card"><h3>API keys</h3><p class="muted">Use keys to connect your own tools.</p><div class="setting-list"><div><span><strong>Home dashboard</strong><small>Created 1 September 2026 · Last used yesterday</small></span><button id="revoke-key">Revoke</button></div></div><button data-dialog="api-key">Create API key</button></section><section class="card"><h3>Connected accounts</h3><p class="muted">No external sign-in providers are connected.</p><button data-dialog="provider">Connect a provider</button></section></div></div>
+  </section>
+
+  <section id="notifications" class="panel" aria-labelledby="notifications-title" hidden>
+    <div class="section-heading"><div><p class="eyebrow">STAY INFORMED</p><h2 id="notifications-title">Notifications</h2><p class="muted">Choose what you hear about and when.</p></div></div>
+    <div class="profile-layout"><div class="stack"><section class="card"><div class="card-heading"><div><h3>Household reminders</h3><p class="muted">These settings apply to the selected household.</p></div><span class="badge">Household</span></div><div class="household-content"><label class="field household-picker">Household<select class="household-select"></select></label><form class="local-form"><div class="setting-list toggles"><label><span><strong>Enable reminders</strong><small>Receive reminders for this household.</small></span><input type="checkbox" checked></label><label><span><strong>Dose due</strong><small>When a scheduled dose is due.</small></span><input type="checkbox" checked></label><label><span><strong>Missed dose</strong><small>When a dose has not been recorded.</small></span><input type="checkbox" checked></label><label><span><strong>Low stock</strong><small>When medication is running low.</small></span><input type="checkbox" checked></label></div><h4>Reminder times</h4><div class="time-grid"><label class="field">Morning<input type="time" value="08:00"></label><label class="field">Afternoon<input type="time" value="13:00"></label><label class="field">Evening<input type="time" value="18:00"></label><label class="field">Night<input type="time" value="21:00"></label></div><h4>People you manage</h4><p class="muted">Reminders for children are included automatically.</p><p>Sam Morgan <span class="badge">Automatic</span></p><button class="primary">Save notification settings</button></form></div><p class="empty-household" hidden>Join or create a household to configure household reminders.</p></section></div><div class="stack"><section class="card"><h3>Push notifications</h3><p class="muted">Receive reminders on this device, even when MedTracker is closed.</p><p><span class="badge" id="push-state">Not enabled</span></p><div class="actions"><button id="push-toggle">Enable on this device</button><button id="push-test" disabled>Send test notification</button></div><p class="hint">Enable push to try a simulated notification.</p></section><section class="card"><h3>Personal notifications</h3><p class="muted">These account preferences apply even when you do not belong to a household.</p><form class="local-form"><label class="check"><input type="checkbox"> Hide medication details on the lock screen</label><button class="primary">Save personal preferences</button></form></section></div></div>
+  </section>
+
+  <section id="advanced" class="panel" aria-labelledby="advanced-title" hidden>
+    <div class="section-heading"><div><p class="eyebrow">YOUR DATA</p><h2 id="advanced-title">Advanced</h2><p class="muted">Export your data and manage your account.</p></div></div>
+    <div class="profile-layout"><div class="stack"><section class="card"><div class="card-heading"><div><h3>Export household data</h3><p class="muted">Choose a household and a format for your copy.</p></div><span class="badge">Household</span></div><div class="household-content"><label class="field household-picker">Household<select class="household-select"></select></label><p class="notice">Exports can contain sensitive health information. Store them somewhere safe.</p><div class="actions"><button data-export="JSON">Export health data · JSON</button><button data-export="ZIP">Download backup · ZIP</button></div><p class="hint">This prototype demonstrates the export flow; no file is created.</p></div><p class="empty-household" hidden>Join or create a household to export household data.</p></section><section class="card danger-card"><h3>Danger zone</h3><p class="muted">Closing your account removes your access to MedTracker. Review the details before continuing.</p><button class="danger" data-dialog="closure">Close account</button></section></div><section class="card version-card"><h3>About MedTracker</h3><p class="muted">Application information and useful resources.</p><div class="detail-row"><span>Version</span><strong>v1.2.0</strong></div><div class="detail-row"><span>Documentation</span><a href="https://damacus.github.io/med-tracker/">View documentation ↗</a></div><div class="detail-row"><span>Release notes</span><a href="https://github.com/damacus/med-tracker/releases">View releases ↗</a></div></section></div>
+  </section>
+  <dialog id="profile-dialog" aria-labelledby="dialog-title"><form method="dialog"><div class="dialog-head"><h2 id="dialog-title"></h2><button value="cancel" aria-label="Close dialog">✕</button></div><div id="dialog-content"></div><div class="actions dialog-actions"><button value="cancel">Cancel</button><button class="primary" value="confirm" id="dialog-confirm">Save changes</button></div></form></dialog>
+</main>
+</body>
+</html>

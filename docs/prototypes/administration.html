@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration · MedTracker prototype</title>
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="administration.css">
+  <script src="shared.js" defer></script>
+  <script src="administration.js" defer></script>
+</head>
+<body data-page="administration">
+  <main id="main" class="workspace admin-shell">
+    <div class="breadcrumb"><a href="index.html">Home</a> <span aria-hidden="true">/</span> Administration</div>
+    <div class="heading-row"><div><p class="eyebrow">WORKSPACE</p><h1>Administration</h1><p class="intro">Manage people, permissions and settings for your household and the service.</p></div><div class="role-picker"><label for="role">Preview as</label><select id="role"><option value="manager">Household manager</option><option value="system">System administrator · household manager</option><option value="system-no-household">System administrator · no household</option><option value="system-no-manager">System administrator · household member</option><option value="member">Household member</option></select><small>Changes the permissions shown in this mockup.</small></div></div>
+    <div class="prototype-notice"><strong>Prototype only</strong> · All names and data are fictional. Changes stay on this page and are not sent anywhere.</div>
+    <label class="registration-preview" hidden>Household
+      <select id="managed-household"></select>
+    </label>
+    <label class="registration-preview" hidden>Preview registration configuration
+      <select id="registration-preview">
+        <option value="saved">Editable in Administration</option>
+        <option value="closed" selected>Locked closed</option>
+        <option value="open">Locked open</option>
+      </select>
+    </label>
+    <nav class="admin-nav" aria-label="Administration sections" id="admin-nav"></nav>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <section id="content" aria-live="polite"></section>
+  </main>
+</body>
+</html>
