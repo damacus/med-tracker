@@ -578,6 +578,54 @@ async fn dashboard_reads_timing_history_only_when_effective_rules_need_it() {
 }
 
 #[tokio::test]
+async fn dashboard_respects_taper_limit_in_the_schedule_origin_zone() {
+    let app = Application::new().await;
+    let now = chrono::Utc::now();
+    let east = chrono_tz::Pacific::Kiritimati;
+    let west = "Etc/GMT+12".parse::<chrono_tz::Tz>().unwrap();
+    let (origin, viewer) = if now.with_timezone(&east).hour() == 23 {
+        (west, east)
+    } else {
+        (east, west)
+    };
+    let origin_date = now.with_timezone(&origin).date_naive();
+    assert_ne!(origin_date, now.with_timezone(&viewer).date_naive());
+
+    let mut taper = schedule(
+        &app,
+        5,
+        json!({"taper_steps":[{"start_date":origin_date,"end_date":origin_date,"max_daily_doses":1}]}),
+    );
+    taper.max_daily_doses = Set(None);
+    taper.origin_time_zone = Set(Some(origin.name().to_owned()));
+    let taper = taper.insert(&app.fixture.admin).await.unwrap();
+    take(
+        &app,
+        Some(app.fixture.assignment.id),
+        None,
+        2,
+        now.naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+
+    for zone in [origin, viewer] {
+        let data = snapshot_in_zone(&app, zone).await;
+        let row = data["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["source_type"] == "schedule" && row["source_id"] == taper.id)
+            .expect("the open taper dose appears in the viewer's timeline");
+        assert_eq!(row["outcome"], "open");
+        assert_eq!(row["status"], "max_reached", "viewer time zone {zone}");
+        assert_eq!(row["can_record"], false);
+    }
+    app.close().await;
+}
+
+#[tokio::test]
 async fn dashboard_respects_shared_dose_limits_and_person_access() {
     let app = Application::new().await;
     let foreign = app.fixture.foreign_household().await;
