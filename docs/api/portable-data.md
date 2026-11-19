@@ -1,5 +1,24 @@
 # Portable data format
 
+Submit an encrypted export with `POST /api/v1/households/{household_id}/portable_export`
+and the `X-MedTracker-Portable-Passphrase` header. The response is `202 Accepted`
+with a job ID and a `Location` header for polling. Poll that URL for the job status.
+When it reports `ready`, append `/download` to retrieve the encrypted envelope.
+Use the same account and household for each request. Jobs expire 24 hours after
+submission. To request the encrypted migration backup, use
+`POST /api/v1/households/{household_id}/data_exports/encrypted_migration_bundle`
+and follow the same status and download flow.
+
+Set `MEDTRACKER_PORTABLE_EXPORT_WRAPPING_KEY` to a securely generated 32-byte
+key encoded as 64 hex characters. Set the same secret on every API and worker
+replica and retain it across restarts. The worker clears the wrapped passphrase
+from the job record when it commits a successful export. Changing the key
+requires resubmitting jobs encrypted with the old key.
+`MEDTRACKER_PORTABLE_EXPORT_CONCURRENCY` defaults to 1, accepts 1–32, and must
+match on all workers sharing a database.
+
+
+
 MedTracker uses portable identifiers when data moves between clients or installations. Portable payloads never include Rails numeric IDs.
 
 Use the OpenAPI contract for endpoint parameters and response envelopes. This guide defines the records inside snapshots and exports.

@@ -104,6 +104,11 @@ provide personal history across households after departure.
 
 Select `version=3` or `portable_format=medtracker.portable.v3` on the household
 `portable_export` endpoint for bundles without person-to-location memberships.
+Submit with `medtracker portable export --passphrase-stdin`, check the returned
+identifier with `portable export-status --job-id`, and retrieve a ready bundle
+with `portable export-download --job-id`. The MCP tools have corresponding
+submit, status and download operations. Set `MEDTRACKER_EXPORT_PASSPHRASE` in
+the MCP process environment for submission.
 V3 retains inventory location labels, historical administration locations, pause
 periods and dose outcomes. Existing selectors continue to return their documented
 formats.

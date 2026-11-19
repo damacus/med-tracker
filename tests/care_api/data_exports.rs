@@ -196,7 +196,7 @@ async fn data_export_encrypted_migration_bundle_requires_a_passphrase() {
     let token = app.token().await;
     let missing = app
         .client
-        .get(export_url(&app, "encrypted_migration_bundle"))
+        .post(export_url(&app, "encrypted_migration_bundle"))
         .bearer_auth(&token)
         .send()
         .await
@@ -210,7 +210,7 @@ async fn data_export_encrypted_migration_bundle_requires_a_passphrase() {
     let missing_body: Value = missing.json().await.unwrap();
     let blank = app
         .client
-        .get(export_url(&app, "encrypted_migration_bundle"))
+        .post(export_url(&app, "encrypted_migration_bundle"))
         .bearer_auth(&token)
         .header("x-medtracker-portable-passphrase", "   ")
         .send()
@@ -219,12 +219,13 @@ async fn data_export_encrypted_migration_bundle_requires_a_passphrase() {
     let blank_status = blank.status().as_u16();
     let response = app
         .client
-        .get(export_url(&app, "encrypted_migration_bundle"))
+        .post(export_url(&app, "encrypted_migration_bundle"))
         .bearer_auth(&token)
         .header("x-medtracker-portable-passphrase", PASSPHRASE)
         .send()
         .await
         .unwrap();
+    let response = super::portable_export::complete_export(&app, &token, response).await;
     let status = response.status().as_u16();
     let cache_control = response
         .headers()

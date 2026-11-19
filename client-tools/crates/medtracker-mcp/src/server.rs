@@ -5,7 +5,9 @@ use medtracker_api_client::ApiClient;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::tools::{HouseholdParams, ResourceListParams, SyncChangesParams, tool_list};
+use crate::tools::{
+    ExportJobParams, HouseholdParams, ResourceListParams, SyncChangesParams, tool_list,
+};
 
 #[derive(Debug, Deserialize)]
 struct Request {
@@ -91,7 +93,23 @@ async fn call_tool(client: &ApiClient, params: Value) -> Result<Value> {
         }
         "medtracker_portable_export" => {
             let args: HouseholdParams = serde_json::from_value(arguments)?;
-            client.portable_export(&args.household_id).await?
+            let passphrase = std::env::var("MEDTRACKER_EXPORT_PASSPHRASE")
+                .context("MEDTRACKER_EXPORT_PASSPHRASE must be configured for export submission")?;
+            client
+                .portable_export(&args.household_id, &passphrase)
+                .await?
+        }
+        "medtracker_portable_export_status" => {
+            let args: ExportJobParams = serde_json::from_value(arguments)?;
+            client
+                .portable_export_status(&args.household_id, args.job_id)
+                .await?
+        }
+        "medtracker_portable_export_download" => {
+            let args: ExportJobParams = serde_json::from_value(arguments)?;
+            client
+                .portable_export_download(&args.household_id, args.job_id)
+                .await?
         }
         "medtracker_sync_snapshot" => {
             let args: HouseholdParams = serde_json::from_value(arguments)?;

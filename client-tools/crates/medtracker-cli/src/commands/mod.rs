@@ -114,10 +114,17 @@ async fn run_with_profile(
         Command::Portable { command } => run_portable(command, &client, output).await?,
         Command::Backup { command } => match command {
             BackupCommand::Export(args) => {
-                let value = client
-                    .backup_export(&args.household_id, &args.mode)
-                    .await
-                    .map_err(format_api_error)?;
+                let value = if args.mode == "encrypted_migration_bundle" {
+                    let passphrase = read_passphrase(args.passphrase_stdin)?.ok_or_else(|| {
+                        anyhow::anyhow!("Use --passphrase-stdin to supply the export passphrase")
+                    })?;
+                    client
+                        .submit_encrypted_backup(&args.household_id, &passphrase)
+                        .await
+                } else {
+                    client.backup_export(&args.household_id, &args.mode).await
+                }
+                .map_err(format_api_error)?;
                 print_value(&value, output)?;
             }
         },
@@ -168,8 +175,25 @@ async fn run_portable(
 ) -> Result<()> {
     match command {
         PortableCommand::Export(args) => {
+            let passphrase = read_passphrase(args.passphrase_stdin)?.ok_or_else(|| {
+                anyhow::anyhow!("Use --passphrase-stdin to supply the export passphrase")
+            })?;
             let value = client
-                .portable_export(&args.household_id)
+                .portable_export(&args.household.household_id, &passphrase)
+                .await
+                .map_err(format_api_error)?;
+            print_value(&value, format)?;
+        }
+        PortableCommand::ExportStatus(args) => {
+            let value = client
+                .portable_export_status(&args.household.household_id, args.job_id)
+                .await
+                .map_err(format_api_error)?;
+            print_value(&value, format)?;
+        }
+        PortableCommand::ExportDownload(args) => {
+            let value = client
+                .portable_export_download(&args.household.household_id, args.job_id)
                 .await
                 .map_err(format_api_error)?;
             print_value(&value, format)?;

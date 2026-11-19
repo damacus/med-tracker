@@ -21,6 +21,7 @@ import okhttp3.HttpUrl
 
 import io.medtracker.client.models.DataExportResponse
 import io.medtracker.client.models.ErrorEnvelope
+import io.medtracker.client.models.ExportPortableHouseholdBundle202Response
 import io.medtracker.client.models.PortableEnvelopeResponse
 import io.medtracker.client.models.PortableImportRequest
 import io.medtracker.client.models.PortableImportResultResponse
@@ -125,6 +126,82 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/households/{household_id}/portable_imports".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/portable_export/{job_id}/download
+     * Download the ready encrypted bundle.
+     * 
+     * @param householdId 
+     * @param jobId 
+     * @return PortableEnvelopeResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun downloadPortableExport(householdId: kotlin.Int, jobId: kotlin.Long) : PortableEnvelopeResponse {
+        val localVarResponse = downloadPortableExportWithHttpInfo(householdId = householdId, jobId = jobId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as PortableEnvelopeResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/portable_export/{job_id}/download
+     * Download the ready encrypted bundle.
+     * 
+     * @param householdId 
+     * @param jobId 
+     * @return ApiResponse<PortableEnvelopeResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun downloadPortableExportWithHttpInfo(householdId: kotlin.Int, jobId: kotlin.Long) : ApiResponse<PortableEnvelopeResponse?> {
+        val localVariableConfig = downloadPortableExportRequestConfig(householdId = householdId, jobId = jobId)
+
+        return request<Unit, PortableEnvelopeResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation downloadPortableExport
+     *
+     * @param householdId 
+     * @param jobId 
+     * @return RequestConfig
+     */
+    fun downloadPortableExportRequestConfig(householdId: kotlin.Int, jobId: kotlin.Long) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/portable_export/{job_id}/download".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"job_id"+"}", encodeURIComponent(jobId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -252,14 +329,14 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      }
 
     /**
-     * GET /households/{household_id}/portable_export
-     * Export an encrypted portable household bundle.
+     * POST /households/{household_id}/portable_export
+     * Queue an encrypted portable household bundle.
      * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
      * @param portableFormat Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
-     * @return PortableEnvelopeResponse
+     * @return ExportPortableHouseholdBundle202Response
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      * @throws UnsupportedOperationException If the API returns an informational or redirection response
@@ -268,11 +345,11 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1, portableFormat: PortableFormatExportPortableHouseholdBundle? = PortableFormatExportPortableHouseholdBundle.medtrackerPeriodPortablePeriodV1) : PortableEnvelopeResponse {
+    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1, portableFormat: PortableFormatExportPortableHouseholdBundle? = PortableFormatExportPortableHouseholdBundle.medtrackerPeriodPortablePeriodV1) : ExportPortableHouseholdBundle202Response {
         val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version, portableFormat = portableFormat)
 
         return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as PortableEnvelopeResponse
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ExportPortableHouseholdBundle202Response
             ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
             ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
             ResponseType.ClientError -> {
@@ -287,23 +364,23 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     }
 
     /**
-     * GET /households/{household_id}/portable_export
-     * Export an encrypted portable household bundle.
+     * POST /households/{household_id}/portable_export
+     * Queue an encrypted portable household bundle.
      * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
      * @param portableFormat Select v2 for persisted dose outcomes or v3 to also omit obsolete person-to-location memberships. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
-     * @return ApiResponse<PortableEnvelopeResponse?>
+     * @return ApiResponse<ExportPortableHouseholdBundle202Response?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : ApiResponse<PortableEnvelopeResponse?> {
+    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : ApiResponse<ExportPortableHouseholdBundle202Response?> {
         val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version, portableFormat = portableFormat)
 
-        return request<Unit, PortableEnvelopeResponse>(
+        return request<Unit, ExportPortableHouseholdBundle202Response>(
             localVariableConfig
         )
     }
@@ -333,7 +410,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(
-            method = RequestMethod.GET,
+            method = RequestMethod.POST,
             path = "/households/{household_id}/portable_export".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
@@ -346,7 +423,6 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * enum for parameter mode
      */
      enum class ModeGetDataExport(val value: kotlin.String) {
-         @Json(name = "encrypted_migration_bundle") encrypted_migration_bundle("encrypted_migration_bundle"),
          @Json(name = "backup_zip") backup_zip("backup_zip"),
          @Json(name = "health_data_json") health_data_json("health_data_json"),
          @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
@@ -367,7 +443,6 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param mode 
-     * @param xMedTrackerPortablePassphrase Required only for the encrypted migration bundle mode. (optional)
      * @return DataExportResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -377,8 +452,8 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getDataExport(householdId: kotlin.Int, mode: ModeGetDataExport, xMedTrackerPortablePassphrase: kotlin.String? = null) : DataExportResponse {
-        val localVarResponse = getDataExportWithHttpInfo(householdId = householdId, mode = mode, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase)
+    fun getDataExport(householdId: kotlin.Int, mode: ModeGetDataExport) : DataExportResponse {
+        val localVarResponse = getDataExportWithHttpInfo(householdId = householdId, mode = mode)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as DataExportResponse
@@ -401,15 +476,14 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
      * @param householdId 
      * @param mode 
-     * @param xMedTrackerPortablePassphrase Required only for the encrypted migration bundle mode. (optional)
      * @return ApiResponse<DataExportResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getDataExportWithHttpInfo(householdId: kotlin.Int, mode: ModeGetDataExport, xMedTrackerPortablePassphrase: kotlin.String?) : ApiResponse<DataExportResponse?> {
-        val localVariableConfig = getDataExportRequestConfig(householdId = householdId, mode = mode, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase)
+    fun getDataExportWithHttpInfo(householdId: kotlin.Int, mode: ModeGetDataExport) : ApiResponse<DataExportResponse?> {
+        val localVariableConfig = getDataExportRequestConfig(householdId = householdId, mode = mode)
 
         return request<Unit, DataExportResponse>(
             localVariableConfig
@@ -421,18 +495,189 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      *
      * @param householdId 
      * @param mode 
-     * @param xMedTrackerPortablePassphrase Required only for the encrypted migration bundle mode. (optional)
      * @return RequestConfig
      */
-    fun getDataExportRequestConfig(householdId: kotlin.Int, mode: ModeGetDataExport, xMedTrackerPortablePassphrase: kotlin.String?) : RequestConfig<Unit> {
+    fun getDataExportRequestConfig(householdId: kotlin.Int, mode: ModeGetDataExport) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        xMedTrackerPortablePassphrase?.apply { localVariableHeaders["X-MedTracker-Portable-Passphrase"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(
             method = RequestMethod.GET,
+            path = "/households/{household_id}/data_exports/{mode}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"mode"+"}", encodeURIComponent(mode.value.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/portable_export/{job_id}
+     * Read the current export job status.
+     * 
+     * @param householdId 
+     * @param jobId 
+     * @return ExportPortableHouseholdBundle202Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getPortableExportStatus(householdId: kotlin.Int, jobId: kotlin.Long) : ExportPortableHouseholdBundle202Response {
+        val localVarResponse = getPortableExportStatusWithHttpInfo(householdId = householdId, jobId = jobId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ExportPortableHouseholdBundle202Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/portable_export/{job_id}
+     * Read the current export job status.
+     * 
+     * @param householdId 
+     * @param jobId 
+     * @return ApiResponse<ExportPortableHouseholdBundle202Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getPortableExportStatusWithHttpInfo(householdId: kotlin.Int, jobId: kotlin.Long) : ApiResponse<ExportPortableHouseholdBundle202Response?> {
+        val localVariableConfig = getPortableExportStatusRequestConfig(householdId = householdId, jobId = jobId)
+
+        return request<Unit, ExportPortableHouseholdBundle202Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getPortableExportStatus
+     *
+     * @param householdId 
+     * @param jobId 
+     * @return RequestConfig
+     */
+    fun getPortableExportStatusRequestConfig(householdId: kotlin.Int, jobId: kotlin.Long) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/portable_export/{job_id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"job_id"+"}", encodeURIComponent(jobId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * enum for parameter mode
+     */
+     enum class ModeQueueEncryptedMigrationBundle(val value: kotlin.String) {
+         @Json(name = "encrypted_migration_bundle") encrypted_migration_bundle("encrypted_migration_bundle"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
+     * POST /households/{household_id}/data_exports/{mode}
+     * Queue an encrypted migration bundle.
+     * 
+     * @param householdId 
+     * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param mode 
+     * @return ExportPortableHouseholdBundle202Response
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun queueEncryptedMigrationBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, mode: ModeQueueEncryptedMigrationBundle) : ExportPortableHouseholdBundle202Response {
+        val localVarResponse = queueEncryptedMigrationBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, mode = mode)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as ExportPortableHouseholdBundle202Response
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/data_exports/{mode}
+     * Queue an encrypted migration bundle.
+     * 
+     * @param householdId 
+     * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param mode 
+     * @return ApiResponse<ExportPortableHouseholdBundle202Response?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun queueEncryptedMigrationBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, mode: ModeQueueEncryptedMigrationBundle) : ApiResponse<ExportPortableHouseholdBundle202Response?> {
+        val localVariableConfig = queueEncryptedMigrationBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, mode = mode)
+
+        return request<Unit, ExportPortableHouseholdBundle202Response>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation queueEncryptedMigrationBundle
+     *
+     * @param householdId 
+     * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param mode 
+     * @return RequestConfig
+     */
+    fun queueEncryptedMigrationBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, mode: ModeQueueEncryptedMigrationBundle) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        xMedTrackerPortablePassphrase.apply { localVariableHeaders["X-MedTracker-Portable-Passphrase"] = this.toString() }
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
             path = "/households/{household_id}/data_exports/{mode}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"mode"+"}", encodeURIComponent(mode.value.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,

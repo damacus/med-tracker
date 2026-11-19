@@ -463,7 +463,7 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * DELETE /households/{household_id}/admin/invitations/{id}
      * Revoke a household invitation.
-     * 
+     * An accepted invitation cannot be revoked. Repeating a revocation succeeds without changing its original revocation time.
      * @param householdId 
      * @param id 
      * @return void
@@ -495,7 +495,7 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * DELETE /households/{household_id}/admin/invitations/{id}
      * Revoke a household invitation.
-     * 
+     * An accepted invitation cannot be revoked. Repeating a revocation succeeds without changing its original revocation time.
      * @param householdId 
      * @param id 
      * @return ApiResponse<Unit?>

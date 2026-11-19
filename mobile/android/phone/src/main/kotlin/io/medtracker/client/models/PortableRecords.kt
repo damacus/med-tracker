@@ -22,7 +22,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
- * 
+ * Portable medication take records include `historical_entry` for explicit past-dose entries. Older records may omit it and are treated as false.
  *
  * @param people 
  * @param locations 

@@ -45,6 +45,17 @@ impl RequestAudit {
             query: "show?",
         }
     }
+    pub fn submit_export(migration_bundle: bool) -> Self {
+        Self {
+            method: "POST",
+            action: "submit",
+            ..if migration_bundle {
+                Self::data_export()
+            } else {
+                Self::portable_export()
+            }
+        }
+    }
     pub fn ai_medication_suggestions() -> Self {
         Self {
             method: "POST",

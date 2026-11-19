@@ -11,6 +11,12 @@ pub struct HouseholdParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Serialize)]
+pub struct ExportJobParams {
+    pub household_id: String,
+    pub job_id: i64,
+}
+
+#[derive(Debug, Deserialize, JsonSchema, Serialize)]
 pub struct ResourceListParams {
     pub household_id: String,
     pub kind: ResourceKind,
@@ -63,7 +69,15 @@ pub fn tool_list() -> Vec<ToolDefinition> {
         ),
         tool::<HouseholdParams>(
             "medtracker_portable_export",
-            "Export a portable household data bundle.",
+            "Submit an encrypted portable export using the server-configured passphrase.",
+        ),
+        tool::<ExportJobParams>(
+            "medtracker_portable_export_status",
+            "Check a portable export job.",
+        ),
+        tool::<ExportJobParams>(
+            "medtracker_portable_export_download",
+            "Download a ready encrypted portable export.",
         ),
         tool::<HouseholdParams>("medtracker_sync_snapshot", "Read the sync snapshot."),
         tool::<SyncChangesParams>(
@@ -107,7 +121,19 @@ mod tests {
             .iter()
             .find(|tool| tool.name == "medtracker_resource_list");
 
-        assert_eq!(tools.len(), 7);
+        assert_eq!(tools.len(), 9);
+        for name in [
+            "medtracker_portable_export_status",
+            "medtracker_portable_export_download",
+        ] {
+            let tool = tools.iter().find(|tool| tool.name == name).unwrap();
+            assert_eq!(
+                tool.input_schema
+                    .pointer("/properties/job_id/type")
+                    .and_then(Value::as_str),
+                Some("integer")
+            );
+        }
         assert_eq!(
             resource_tool
                 .and_then(|tool| tool.input_schema.pointer("/properties/household_id/type"))

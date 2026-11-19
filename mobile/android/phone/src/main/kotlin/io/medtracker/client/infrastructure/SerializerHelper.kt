@@ -106,6 +106,8 @@ object SerializerHelper {
                 .withUnknownFallback(io.medtracker.client.models.DoseOccurrence.Outcome.unknown_default_open_api))
             .add(io.medtracker.client.models.DoseOccurrence.Reason::class.java, EnumJsonAdapter.create(io.medtracker.client.models.DoseOccurrence.Reason::class.java)
                 .withUnknownFallback(io.medtracker.client.models.DoseOccurrence.Reason.unknown_default_open_api))
+            .add(io.medtracker.client.models.ExportPortableHouseholdBundle202ResponseData.Status::class.java, EnumJsonAdapter.create(io.medtracker.client.models.ExportPortableHouseholdBundle202ResponseData.Status::class.java)
+                .withUnknownFallback(io.medtracker.client.models.ExportPortableHouseholdBundle202ResponseData.Status.unknown_default_open_api))
             .add(io.medtracker.client.models.GuardianDeclaration.StatementVersion::class.java, EnumJsonAdapter.create(io.medtracker.client.models.GuardianDeclaration.StatementVersion::class.java)
                 .withUnknownFallback(io.medtracker.client.models.GuardianDeclaration.StatementVersion.unknown_default_open_api))
             .add(io.medtracker.client.models.GuardianDeclaration.Source::class.java, EnumJsonAdapter.create(io.medtracker.client.models.GuardianDeclaration.Source::class.java)

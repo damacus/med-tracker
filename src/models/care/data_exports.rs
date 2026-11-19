@@ -8,12 +8,14 @@ use crate::models::{
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
 use chrono::Utc;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 const MAX_BACKUP_BYTES: usize = 16 * 1024 * 1024;
 
-#[derive(Default, Deserialize)]
+pub mod jobs;
+
+#[derive(Default, Deserialize, Serialize)]
 pub struct ExportQuery {
     pub version: Option<String>,
     pub portable_format: Option<String>,
@@ -90,6 +92,13 @@ pub async fn export(
     Ok(data)
 }
 
+async fn encrypted_migration_bundle(
+    tenant: &TenantTransaction,
+    passphrase: &str,
+) -> Result<Value, OperationError> {
+    export(tenant, "encrypted_migration_bundle", Some(passphrase)).await
+}
+
 pub async fn portable_export(
     tenant: &TenantTransaction,
     query: &ExportQuery,
@@ -99,29 +108,7 @@ pub async fn portable_export(
     let Some(passphrase) = passphrase.filter(|value| !value.trim().is_empty()) else {
         return Err(validation("Portable passphrase header is required"));
     };
-    if query
-        .version
-        .as_deref()
-        .is_some_and(|value| !matches!(value, "1" | "2" | "3"))
-    {
-        return Err(validation("Unsupported portable data version"));
-    }
-    if query
-        .portable_format
-        .as_deref()
-        .is_some_and(|value| sync::PortableFormat::parse(value).is_none())
-    {
-        return Err(validation("Unsupported portable data format"));
-    }
-    let format = match query.version.as_deref() {
-        Some("2") => sync::PortableFormat::V2,
-        Some("3") => sync::PortableFormat::V3,
-        _ => query
-            .portable_format
-            .as_deref()
-            .and_then(sync::PortableFormat::parse)
-            .unwrap_or(sync::PortableFormat::V1),
-    };
+    let format = export_format(query)?;
     let payload = sync::bundle_payload(tenant, chrono_tz::UTC, format)
         .await?
         .body;
@@ -136,6 +123,32 @@ pub async fn portable_export(
     )
     .await?;
     Ok(envelope)
+}
+
+fn export_format(query: &ExportQuery) -> Result<sync::PortableFormat, OperationError> {
+    if query
+        .version
+        .as_deref()
+        .is_some_and(|value| !matches!(value, "1" | "2" | "3"))
+    {
+        return Err(validation("Unsupported portable data version"));
+    }
+    if query
+        .portable_format
+        .as_deref()
+        .is_some_and(|value| sync::PortableFormat::parse(value).is_none())
+    {
+        return Err(validation("Unsupported portable data format"));
+    }
+    Ok(match query.version.as_deref() {
+        Some("2") => sync::PortableFormat::V2,
+        Some("3") => sync::PortableFormat::V3,
+        _ => query
+            .portable_format
+            .as_deref()
+            .and_then(sync::PortableFormat::parse)
+            .unwrap_or(sync::PortableFormat::V1),
+    })
 }
 
 pub async fn mobile_snapshot(tenant: &TenantTransaction) -> Result<Value, OperationError> {

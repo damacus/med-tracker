@@ -407,6 +407,9 @@ impl Hooks for App {
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
         crate::telemetry::queue_metrics::start(ctx);
         queue
+            .register(crate::models::care::data_exports::jobs::ExportWorker::build(ctx))
+            .await?;
+        queue
             .register(crate::models::nhs_dmd::ImportWorker::build(ctx))
             .await?;
         queue

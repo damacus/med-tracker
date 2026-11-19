@@ -6,6 +6,159 @@ use sea_orm::{ActiveModelTrait, Set};
 
 const PASSPHRASE: &str = "synthetic portable secret";
 
+pub(super) async fn complete_export(
+    app: &Application,
+    token: &str,
+    submitted: reqwest::Response,
+) -> reqwest::Response {
+    use loco_rs::bgworker::BackgroundWorker;
+    use med_tracker::models::care::data_exports::jobs::{ExportJob, ExportWorker};
+    use sea_orm::{
+        ConnectionTrait, EntityTrait,
+        sea_query::{Expr, ExprTrait, Query},
+    };
+
+    assert_eq!(submitted.status().as_u16(), 202);
+    let path = submitted.headers()["location"].to_str().unwrap().to_owned();
+    let body: Value = submitted.json().await.unwrap();
+    let id = body["data"]["id"].as_str().unwrap().parse::<i64>().unwrap();
+    let status_url = format!("{}{path}", app.origin);
+    let status: Value = app
+        .client
+        .get(&status_url)
+        .bearer_auth(token)
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(status["data"]["status"], "requested");
+    let rows = app
+        .fixture
+        .admin
+        .query_all(
+            &Query::select()
+                .column("task_data")
+                .from("pg_loco_queue")
+                .and_where(Expr::col("task_data").eq(Expr::val(json!({
+                    "id": id,
+                    "household_id": app.fixture.household.id,
+                    "account_id": app.fixture.account.id
+                }))))
+                .to_owned(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    let args: Value = rows[0].try_get("", "task_data").unwrap();
+    let saved = med_tracker::models::_entities::household_exports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(saved.manifest["wrapped"].is_string());
+    assert!(!saved.manifest.to_string().contains(PASSPHRASE));
+    assert!(!args.to_string().contains(PASSPHRASE));
+    let job: ExportJob = serde_json::from_value(args).unwrap();
+    ExportWorker::build(&app.context)
+        .perform(job)
+        .await
+        .unwrap();
+    let saved = med_tracker::models::_entities::household_exports::Entity::find_by_id(id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(saved.manifest.get("wrapped").is_none());
+    let status: Value = app
+        .client
+        .get(&status_url)
+        .bearer_auth(token)
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(status["data"]["status"], "ready");
+    app.client
+        .get(format!("{status_url}/download"))
+        .bearer_auth(token)
+        .send()
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn encrypted_export_submission_returns_a_job_instead_of_a_bundle() {
+    use sea_orm::{
+        ConnectionTrait, TransactionTrait,
+        sea_query::{Alias, Expr, Func, Query},
+    };
+    let app = Application::new().await;
+    let token = app.token().await;
+    let response = app
+        .client
+        .post(export_url(&app, "?version=3"))
+        .bearer_auth(&token)
+        .header("x-medtracker-portable-passphrase", PASSPHRASE)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 202);
+    assert!(response.headers().contains_key("location"));
+    let Application {
+        fixture,
+        context,
+        server,
+        ..
+    } = app;
+    server.abort();
+    let _ = server.await;
+    context.queue_provider.as_ref().unwrap().shutdown().unwrap();
+    context.db.close().await.unwrap();
+    let app = Application::boot_fixture(
+        fixture,
+        Some("synthetic-dose-occurrence-signing-key"),
+        |_| (),
+        None,
+        None,
+    )
+    .await;
+    let slot = app.fixture.admin.begin().await.unwrap();
+    let lock = Query::select()
+        .expr(
+            Func::cust(Alias::new("pg_advisory_xact_lock"))
+                .args([Expr::val(0x4d54_4558_i32), Expr::val(0_i32)]),
+        )
+        .to_owned();
+    slot.execute(&lock).await.unwrap();
+    let response = {
+        let export = complete_export(&app, &token, response);
+        tokio::pin!(export);
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_secs(2), &mut export)
+                .await
+                .is_err(),
+            "the restarted worker waits while the only export slot is held"
+        );
+        slot.commit().await.unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(10), export)
+            .await
+            .unwrap()
+    };
+    assert_eq!(response.status().as_u16(), 200);
+    let body: Value = response.json().await.unwrap();
+    let bundle = portable_crypto::decrypt(&body["data"], PASSPHRASE).unwrap();
+    app.close().await;
+    assert_eq!(bundle["format"], "medtracker.portable.v3");
+}
+
 #[tokio::test]
 async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_without_person_links()
 {
@@ -60,12 +213,13 @@ async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_wit
     ] {
         let response = app
             .client
-            .get(export_url(&app, query))
+            .post(export_url(&app, query))
             .bearer_auth(&token)
             .header("x-medtracker-portable-passphrase", PASSPHRASE)
             .send()
             .await
             .unwrap();
+        let response = complete_export(&app, &token, response).await;
         assert_eq!(response.status().as_u16(), 200, "{query}");
         let body: Value = response.json().await.unwrap();
         payloads.push(portable_crypto::decrypt(&body["data"], PASSPHRASE).unwrap());
@@ -200,7 +354,7 @@ async fn portable_export_requires_a_passphrase_and_returns_an_encrypted_envelope
     let token = app.token().await;
     let missing = app
         .client
-        .get(export_url(&app, ""))
+        .post(export_url(&app, ""))
         .bearer_auth(&token)
         .send()
         .await
@@ -209,12 +363,13 @@ async fn portable_export_requires_a_passphrase_and_returns_an_encrypted_envelope
     let missing_body: Value = missing.json().await.unwrap();
     let response = app
         .client
-        .get(export_url(&app, ""))
+        .post(export_url(&app, ""))
         .bearer_auth(&token)
         .header("x-medtracker-portable-passphrase", PASSPHRASE)
         .send()
         .await
         .unwrap();
+    let response = complete_export(&app, &token, response).await;
     let status = response.status().as_u16();
     let body_text = response.text().await.unwrap();
     let body: Value = serde_json::from_str(&body_text).unwrap();
@@ -263,7 +418,7 @@ async fn portable_export_requires_a_passphrase_and_returns_an_encrypted_envelope
     assert!(!body_text.contains(PASSPHRASE));
     assert!(!body_text.contains("password_hash"));
     assert_eq!(audits, 1);
-    assert_eq!(requests, 1);
+    assert_eq!(requests, 3);
 }
 
 #[tokio::test]
@@ -274,12 +429,13 @@ async fn portable_export_selects_the_requested_portable_format() {
     for query in ["", "?version=2", "?portable_format=medtracker.portable.v2"] {
         let response = app
             .client
-            .get(export_url(&app, query))
+            .post(export_url(&app, query))
             .bearer_auth(&token)
             .header("x-medtracker-portable-passphrase", PASSPHRASE)
             .send()
             .await
             .unwrap();
+        let response = complete_export(&app, &token, response).await;
         assert_eq!(response.status().as_u16(), 200, "{query}");
         bodies.push(response.json::<Value>().await.unwrap());
     }
@@ -313,7 +469,7 @@ async fn portable_export_rejects_invalid_options_and_foreign_households() {
     ] {
         let response = app
             .client
-            .get(export_url(&app, query))
+            .post(export_url(&app, query))
             .bearer_auth(&token)
             .header("x-medtracker-portable-passphrase", PASSPHRASE)
             .send()
@@ -329,7 +485,7 @@ async fn portable_export_rejects_invalid_options_and_foreign_households() {
     }
     let anonymous = app
         .client
-        .get(export_url(&app, ""))
+        .post(export_url(&app, ""))
         .header("x-medtracker-portable-passphrase", PASSPHRASE)
         .send()
         .await
@@ -337,7 +493,7 @@ async fn portable_export_rejects_invalid_options_and_foreign_households() {
     let anonymous_status = anonymous.status().as_u16();
     let foreign = app
         .client
-        .get(format!(
+        .post(format!(
             "{}/api/v1/households/{foreign_id}/portable_export",
             app.origin
         ))

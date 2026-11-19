@@ -27,11 +27,16 @@ pub(super) async fn show(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
-    let passphrase = portable_passphrase(&headers);
-    let reply = care::data_exports::export(&tenant, &mode, passphrase.as_deref())
-        .await
-        .map(|data| (StatusCode::OK, json!({"data": data}), None))
-        .map_err(response::operation);
+    let reply = if mode == "encrypted_migration_bundle" {
+        Err(response::Failure::validation(
+            "Submit encrypted exports with POST",
+        ))
+    } else {
+        care::data_exports::export(&tenant, &mode, None)
+            .await
+            .map(|data| (StatusCode::OK, json!({"data": data}), None))
+            .map_err(response::operation)
+    };
     let mut response = finish(
         tenant,
         principal.provenance(),
@@ -58,6 +63,42 @@ pub(super) async fn portable_export(
     query: std::result::Result<Query<care::data_exports::ExportQuery>, QueryRejection>,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
+    submit(
+        ctx,
+        household_id,
+        headers,
+        query.map(|Query(query)| query).ok(),
+        false,
+        request,
+    )
+    .await
+}
+
+pub(super) async fn submit_mode(
+    State(ctx): State<AppContext>,
+    ApiPath((household_id, mode)): ApiPath<(i64, String)>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
+    submit(
+        ctx,
+        household_id,
+        headers,
+        (mode == "encrypted_migration_bundle").then(care::data_exports::ExportQuery::default),
+        true,
+        request,
+    )
+    .await
+}
+
+async fn submit(
+    ctx: AppContext,
+    household_id: i64,
+    headers: HeaderMap,
+    query: Option<care::data_exports::ExportQuery>,
+    migration_bundle: bool,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
     let request_id = request.map_or_else(
         || uuid::Uuid::new_v4().to_string(),
         |Extension(id)| id.get().to_owned(),
@@ -67,23 +108,101 @@ pub(super) async fn portable_export(
         Err(error) => return response::error(error, &request_id),
     };
     let passphrase = portable_passphrase(&headers);
-    let reply = match query {
-        Ok(Query(query)) => {
-            care::data_exports::portable_export(&tenant, &query, passphrase.as_deref())
+    let submitted = match (query, passphrase) {
+        (Some(query), Some(passphrase)) => {
+            care::data_exports::jobs::submit(&ctx, &tenant, query, &passphrase, migration_bundle)
                 .await
-                .map(|data| (StatusCode::OK, json!({"data": data}), None))
                 .map_err(response::operation)
         }
-        Err(_) => Err(response::Failure::validation("Export query is invalid")),
+        (None, _) => Err(response::Failure::validation(if migration_bundle {
+            "Export mode is unsupported"
+        } else {
+            "Export query is invalid"
+        })),
+        (_, None) => Err(response::Failure::validation(
+            "Portable passphrase header is required",
+        )),
     };
-    finish(
+    let path = submitted
+        .as_ref()
+        .ok()
+        .map(|id| format!("/api/v1/households/{household_id}/portable_export/{id}"));
+    let reply = submitted.map(|id| {
+        (
+            StatusCode::ACCEPTED,
+            json!({"data":{"id":id.to_string(),"status":"requested"}}),
+            None,
+        )
+    });
+    let mut response = finish(
+        tenant,
+        principal.provenance(),
+        audit::RequestAudit::submit_export(migration_bundle),
+        reply,
+        &request_id,
+    )
+    .await;
+    if response.status() == StatusCode::ACCEPTED
+        && let Some(path) = path.and_then(|path| HeaderValue::from_str(&path).ok())
+    {
+        response.headers_mut().insert(header::LOCATION, path);
+    }
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    response
+}
+
+pub(super) async fn status(
+    State(ctx): State<AppContext>,
+    ApiPath((household_id, job_id)): ApiPath<(i64, i64)>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
+    read_job(ctx, household_id, job_id, headers, request, false).await
+}
+
+pub(super) async fn download(
+    State(ctx): State<AppContext>,
+    ApiPath((household_id, job_id)): ApiPath<(i64, i64)>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
+    read_job(ctx, household_id, job_id, headers, request, true).await
+}
+
+async fn read_job(
+    ctx: AppContext,
+    household_id: i64,
+    job_id: i64,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+    download: bool,
+) -> Response {
+    let request_id = request.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
+        Ok(value) => value,
+        Err(error) => return response::error(error, &request_id),
+    };
+    let reply = care::data_exports::jobs::read(&tenant, job_id, download)
+        .await
+        .map(|data| (StatusCode::OK, json!({"data":data}), None))
+        .map_err(response::operation);
+    let mut response = finish(
         tenant,
         principal.provenance(),
         audit::RequestAudit::portable_export(),
         reply,
         &request_id,
     )
-    .await
+    .await;
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    response
 }
 
 pub(super) async fn mobile_snapshot(

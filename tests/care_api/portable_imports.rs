@@ -192,7 +192,7 @@ async fn export_bundle(app: &Application, token: &str) -> Value {
     let fixture_household_id = app.fixture.household.id;
     let response = app
         .client
-        .get(format!(
+        .post(format!(
             "{}/api/v1/households/{fixture_household_id}/portable_export?version=3",
             app.origin
         ))
@@ -201,6 +201,7 @@ async fn export_bundle(app: &Application, token: &str) -> Value {
         .send()
         .await
         .unwrap();
+    let response = super::portable_export::complete_export(app, token, response).await;
     assert_eq!(response.status().as_u16(), 200);
     response.json::<Value>().await.unwrap()["data"].clone()
 }
@@ -400,6 +401,7 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
     let fixture_imported_person_id = format!("imported-person-{}", app.fixture.client_uuid);
     let token = app.token().await;
     let bundle = portable_crypto::encrypt(&importable_payload(&app), PASSPHRASE).unwrap();
+    let exported = export_bundle(&app, &token).await;
     let versions_before = version_count(&app).await;
     let effects_before = import_effects(&app).await;
     let locations_before = table_count(&app, "locations").await;
@@ -419,7 +421,6 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
     let body: Value = response.json().await.unwrap();
     let versions_after = version_count(&app).await;
     let locations_after = table_count(&app, "locations").await;
-    let exported = export_bundle(&app, &token).await;
     let exported_people = portable_crypto::decrypt(&exported, PASSPHRASE).unwrap();
     assert_eq!(
         exported_people["records"]["people"]
@@ -512,6 +513,7 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
         .exec(&app.fixture.admin)
         .await
         .unwrap();
+    let self_roundtrip_effects_before = import_effects(&app).await;
     let roundtrip = app
         .client
         .post(import_url(&app, "portable_imports/dry_run"))
@@ -523,7 +525,7 @@ async fn portable_import_dry_run_reports_counts_without_writing() {
         .unwrap();
     let roundtrip_status = roundtrip.status().as_u16();
     let roundtrip_body: Value = roundtrip.json().await.unwrap();
-    assert_eq!(import_effects(&app).await, authorized_effects_before);
+    assert_eq!(import_effects(&app).await, self_roundtrip_effects_before);
     assert_eq!(audit_fields(&app, "portable_data.imported", &[]).await, 0);
     app.close().await;
     assert_eq!(status, 200);

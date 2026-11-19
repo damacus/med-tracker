@@ -6,6 +6,7 @@ mod operations;
 mod pauses;
 mod persistence;
 mod portable;
+pub(super) use portable::export_people;
 pub(crate) use portable::{
     PortableFormat, api_export_payload, bundle_payload, export_payload, mobile_payload,
 };

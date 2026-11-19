@@ -199,11 +199,19 @@ pub fn routes() -> Routes {
         )
         .add(
             "/{household_id}/data_exports/{mode}",
-            get(data_exports::show),
+            get(data_exports::show).post(data_exports::submit_mode),
         )
         .add(
             "/{household_id}/portable_export",
-            get(data_exports::portable_export),
+            post(data_exports::portable_export),
+        )
+        .add(
+            "/{household_id}/portable_export/{job_id}",
+            get(data_exports::status),
+        )
+        .add(
+            "/{household_id}/portable_export/{job_id}/download",
+            get(data_exports::download),
         )
         .add(
             "/{household_id}/ai_medication_suggestions",
