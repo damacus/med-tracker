@@ -34,6 +34,7 @@ use persistence::{actionable, find_row, link_take, reopen_decision, save_decisio
 use projection::{Occurrence, projected};
 pub(crate) use representation::record_etag;
 use representation::{row_value, snapshot};
+pub(super) use scheduling::configured_count;
 use scheduling::{effective_count, schedule_applies};
 pub(crate) use scheduling::{schedule_as_needed, schedule_config_on, weekday_matches};
 use sea_orm::{

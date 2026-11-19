@@ -1,6 +1,89 @@
 use super::contract::{assert_value, contract, resolve};
 use super::*;
+use med_tracker::models::access::{Actor, HouseholdScope, begin};
 use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
+
+fn forecast_scope(app: &Application) -> HouseholdScope {
+    HouseholdScope {
+        actor: Actor {
+            account_id: app.fixture.account.id,
+        },
+        household_id: app.fixture.household.id,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    }
+}
+
+async fn medication_forecast(app: &Application, token: &str) -> (Value, Value) {
+    let response = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{}/medications/{}",
+            app.origin, app.fixture.household.id, app.fixture.medication.id
+        ))
+        .bearer_auth(token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let data = response.json::<Value>().await.unwrap();
+    (
+        data["data"]["days_until_low_stock"].clone(),
+        data["data"]["days_until_out_of_stock"].clone(),
+    )
+}
+
+#[tokio::test]
+async fn medication_forecast_excludes_inactive_and_retired_assignments() {
+    use med_tracker::models::care::assignments;
+
+    let app = Application::new().await;
+    let token = app.token().await;
+    let scope = forecast_scope(&app);
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
+    let mut assignment = app.fixture.assignment.clone().into_active_model();
+    assignment.max_daily_doses = Set(Some(1));
+    let assignment = assignment.update(tenant.transaction()).await.unwrap();
+    tenant.commit().await.unwrap();
+    let current = medication_forecast(&app, &token).await;
+
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
+    let mut inactive = assignment.into_active_model();
+    inactive.active = Set(false);
+    inactive.update(tenant.transaction()).await.unwrap();
+    tenant.commit().await.unwrap();
+    let inactive = medication_forecast(&app, &token).await;
+
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
+    assignments::unassign(&tenant, &app.fixture.assignment.id.to_string(), None)
+        .await
+        .unwrap();
+    tenant.commit().await.unwrap();
+    let retired = medication_forecast(&app, &token).await;
+    app.close().await;
+    assert_eq!(current, (json!(0), json!(5)));
+    assert_eq!(inactive, (Value::Null, Value::Null));
+    assert_eq!(retired, (Value::Null, Value::Null));
+}
+
+#[tokio::test]
+async fn medication_forecast_respects_assignment_dose_cycle() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let scope = forecast_scope(&app);
+    let mut assignment = app.fixture.assignment.clone();
+    let mut projected_days = Vec::new();
+    for cycle in [0, 1, 2] {
+        let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
+        let mut next = assignment.into_active_model();
+        next.dose_cycle = Set(Some(cycle));
+        next.max_daily_doses = Set(Some(2));
+        assignment = next.update(tenant.transaction()).await.unwrap();
+        tenant.commit().await.unwrap();
+        projected_days.push(medication_forecast(&app, &token).await.1);
+    }
+    app.close().await;
+    assert_eq!(projected_days, [json!(3), json!(18), json!(77)]);
+}
 
 #[tokio::test]
 async fn medication_reads_preserve_collection_pagination_and_derived_etags() {

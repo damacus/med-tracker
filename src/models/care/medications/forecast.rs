@@ -1,3 +1,4 @@
+use crate::models::care::{dose_occurrences::configured_count, treatment_command::DoseCycle};
 use crate::models::entities::{medication, person_medication, schedule};
 use chrono::{DateTime, NaiveDate, Utc};
 use sea_orm::prelude::Decimal;
@@ -66,6 +67,8 @@ pub async fn for_medications(
             )
             .filter(person_medication::Column::MedicationId.is_in(ids.clone()))
             .filter(person_medication::Column::Id.gt(last_assignment_id))
+            .filter(person_medication::Column::Active.eq(true))
+            .filter(person_medication::Column::RetiredAt.is_null())
             .order_by_asc(person_medication::Column::Id)
             .limit(256)
             .all(db)
@@ -78,7 +81,8 @@ pub async fn for_medications(
                 row.max_daily_doses,
                 stock_quantity(row.dose_amount, row.dose_unit.as_deref()),
             ) {
-                *daily_rates.entry(row.medication_id).or_default() += Decimal::from(max) * quantity;
+                *daily_rates.entry(row.medication_id).or_default() +=
+                    daily_rate(max, quantity, row.dose_cycle);
             }
         }
         last_assignment_id = rows.last().map(|row| row.id).unwrap_or(last_assignment_id);
@@ -106,17 +110,23 @@ fn date_in_zone(now: DateTime<Utc>, configured_zone: Option<&str>) -> Result<Nai
 }
 
 fn schedule_rate(schedule: &schedule::Model, today: NaiveDate) -> Option<Decimal> {
-    let max = schedule.max_daily_doses?;
     let config = effective_config(schedule, today);
+    let max = configured_count(config)
+        .filter(|count| *count > 0)
+        .or(schedule.max_daily_doses)?;
     let amount = config_decimal(config, &["amount", "dose_amount"]).or(schedule.dose_amount);
     let unit = config_string(config, &["unit", "dose_unit"]).or(schedule.dose_unit.as_deref());
     let quantity = stock_quantity(amount, unit)?;
-    let cycle_days = match schedule.dose_cycle {
-        Some(1) => Decimal::from(7),
-        Some(2) => Decimal::from_str("30.436875").ok()?,
-        _ => Decimal::ONE,
+    Some(daily_rate(max, quantity, schedule.dose_cycle))
+}
+
+fn daily_rate(max: i32, quantity: Decimal, cycle: Option<i32>) -> Decimal {
+    let cycle_days = match cycle.and_then(DoseCycle::from_database) {
+        Some(DoseCycle::Weekly) => Decimal::from(7),
+        Some(DoseCycle::Monthly) => Decimal::new(30_436_875, 6),
+        Some(DoseCycle::Daily) | None => Decimal::ONE,
     };
-    Some(Decimal::from(max) / cycle_days * quantity)
+    Decimal::from(max) / cycle_days * quantity
 }
 
 fn effective_config(schedule: &schedule::Model, today: NaiveDate) -> &Value {
@@ -351,6 +361,34 @@ mod tests {
         );
         schedule.dose_amount = None;
         assert_eq!(schedule_rate(&schedule, day(2026, 6, 1)), None);
+    }
+
+    #[test]
+    fn taper_rate_uses_the_covering_steps_maximum() {
+        let mut schedule = schedule_model(json!({"taper_steps": [
+            {"start_date": "2026-06-01", "end_date": "2026-06-07", "max_daily_doses": 3},
+            {"start_date": "2026-06-08", "end_date": "2026-06-14"},
+        ]}));
+        schedule.schedule_type = 5;
+        schedule.dose_amount = Some(Decimal::from(2));
+        schedule.dose_unit = Some("tablet".to_string());
+        schedule.max_daily_doses = Some(1);
+
+        assert_eq!(
+            schedule_rate(&schedule, day(2026, 6, 3)),
+            Some(Decimal::from(6))
+        );
+        assert_eq!(
+            schedule_rate(&schedule, day(2026, 6, 10)),
+            Some(Decimal::from(2))
+        );
+
+        schedule.max_daily_doses = None;
+        assert_eq!(
+            schedule_rate(&schedule, day(2026, 6, 3)),
+            Some(Decimal::from(6))
+        );
+        assert_eq!(schedule_rate(&schedule, day(2026, 6, 10)), None);
     }
 
     #[test]
