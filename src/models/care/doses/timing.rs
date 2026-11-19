@@ -239,6 +239,30 @@ pub(crate) async fn dashboard_timing(
     if !requires_timing_history(&sources, now.with_timezone(&zone).date_naive()) {
         return Ok(std::collections::HashMap::new());
     }
+    let now_utc = now.naive_utc();
+    let mut earliest = now_utc;
+    let mut latest = now_utc;
+    for mut source in sources.iter().cloned() {
+        let source_zone = source.zone.unwrap_or(zone);
+        effective_source(&mut source, local_date_in_zone(now_utc, source_zone));
+        if source.max_daily_doses.is_some() {
+            let (start, end) = cycle_bounds(now_utc, source.dose_cycle, source_zone)?;
+            earliest = earliest.min(start);
+            latest = latest.max(end);
+        }
+        if let Some(hours) = source
+            .min_hours_between_doses
+            .filter(|hours| *hours > Decimal::ZERO)
+        {
+            let start = hours
+                .checked_mul(Decimal::from(3600))
+                .and_then(|seconds| i64::try_from(seconds.ceil()).ok())
+                .and_then(Duration::try_seconds)
+                .and_then(|duration| now_utc.checked_sub_signed(duration))
+                .unwrap_or(NaiveDateTime::MIN);
+            earliest = earliest.min(start);
+        }
+    }
     let schedule_ids: Vec<_> = sources
         .iter()
         .filter(|source| source.kind == "schedule")
@@ -249,15 +273,20 @@ pub(crate) async fn dashboard_timing(
         .filter(|source| source.kind == "person_medication")
         .map(|source| source.id)
         .collect();
-    let takes = medication_take::Entity::find()
+    let history = medication_take::Entity::find()
         .filter(medication_take::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(medication_take::Column::TakenAt.lte(latest))
         .filter(
             Condition::any()
                 .add(medication_take::Column::ScheduleId.is_in(schedule_ids))
                 .add(medication_take::Column::PersonMedicationId.is_in(assignment_ids)),
-        )
-        .all(tenant.transaction())
-        .await?;
+        );
+    let history = if earliest == NaiveDateTime::MIN {
+        history
+    } else {
+        history.filter(medication_take::Column::TakenAt.gte(earliest))
+    };
+    let takes = history.all(tenant.transaction()).await?;
     let mut groups = std::collections::HashMap::<_, Vec<Source>>::new();
     for source in sources {
         groups
