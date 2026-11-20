@@ -2,6 +2,64 @@ use crate::harness::{self, named};
 use playwright_rs::expect;
 use playwright_rs::protocol::{Animations, AriaRole, Page, ScreenshotOptions, Viewport};
 use sea_orm::ConnectionTrait;
+use sea_orm::{ActiveModelTrait, Set};
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn administration_tabs_system_controls_and_read_recovery() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        let now = chrono::Utc::now().naive_utc();
+        med_tracker::models::_entities::platform_admins::ActiveModel {
+            account_id: Set(71001), status: Set("active".into()), created_at: Set(now), updated_at: Set(now), ..Default::default()
+        }.insert(&journey.admin).await.unwrap();
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/admin", journey.origin), None).await.unwrap();
+        expect(page.locator("main[data-admin-ready]")).to_be_visible().await.unwrap();
+        page.evaluate::<(), bool>("() => { window.adminDocument = document; window.realFetch = fetch; window.failAdminRead = true; window.fetch = (...args) => window.failAdminRead ? Promise.reject(Error('offline')) : window.realFetch(...args); return true; }", None).await.unwrap();
+        page.locator(".admin-navigation a[href='/administration/settings']").click(None).await.unwrap();
+        expect(page.get_by_role(AriaRole::Button, named("Retry"))).to_be_visible().await.unwrap();
+        expect(page.locator(".admin-overview")).to_be_visible().await.unwrap();
+        page.evaluate::<(), bool>("() => { window.failAdminRead = false; return true; }", None).await.unwrap();
+        page.get_by_role(AriaRole::Button, named("Retry")).click(None).await.unwrap();
+        expect(page.locator("[data-lookup-priority]")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document && document.querySelector('[data-lookup-priority]').children.length === 4", None).await.unwrap());
+        page.locator(".admin-navigation a[href='/administration/nhs-dmd']").click(None).await.unwrap();
+        expect(page.locator(".admin-navigation a[aria-current=page]")).to_contain_text("NHS dm+d").await.unwrap();
+        page.locator(".admin-navigation a[href='/administration/settings']").click(None).await.unwrap();
+        expect(page.locator("[data-lookup-priority]")).to_be_visible().await.unwrap();
+        page.get_by_role(AriaRole::Button, named("Move Curated medicines up")).click(None).await.unwrap();
+        expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,local_nhs_dmd,curated_catalog,cached_open_products_facts").await.unwrap();
+        page.locator(".admin-navigation a[href='/administration/support']").click(None).await.unwrap();
+        expect(page.locator(".admin-navigation a[aria-current=page]")).to_contain_text("Support access").await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document", None).await.unwrap());
+    })).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn administration_tabs_retain_document_and_history() {
+    harness::journey(Viewport { width: 390, height: 844 }, |journey| Box::pin(async move {
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/admin", journey.origin), None).await.unwrap();
+        page.evaluate::<(), bool>("() => { window.adminDocument = document; window.adminSidebar = document.querySelector('.app-sidebar'); return true; }", None).await.unwrap();
+        page.locator(".admin-navigation a[href*='/admin/users']").click(None).await.unwrap();
+        expect(page.locator("#member-search")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document && window.adminSidebar === document.querySelector('.app-sidebar')", None).await.unwrap());
+        page.locator(".admin-navigation a[href*='/admin/audit_logs']").click(None).await.unwrap();
+        expect(page.locator("#audit-filter-form")).to_be_visible().await.unwrap();
+        page.evaluate::<(), bool>("() => { history.back(); return true; }", None).await.unwrap();
+        expect(page.locator("#member-search")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document", None).await.unwrap());
+        page.evaluate::<(), bool>("() => { history.forward(); return true; }", None).await.unwrap();
+        expect(page.locator("#audit-filter-form")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document", None).await.unwrap());
+        capture(page, "tabs-no-reload-mobile").await;
+        page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
+        capture(page, "tabs-no-reload-desktop").await;
+    })).await;
+}
 
 async fn capture(page: &Page, name: &str) {
     if page.locator("body.app-household").count().await.unwrap() > 0 {
