@@ -282,8 +282,35 @@ pub(crate) fn representation(row: &schedule::Model) -> (Value, String) {
     );
     (body, etag)
 }
-fn database_error(_: sea_orm::DbErr) -> OperationError {
-    OperationError::Unavailable
+fn database_error(error: sea_orm::DbErr) -> OperationError {
+    OperationError::from(error)
+}
+
+#[cfg(test)]
+mod database_diagnostic_tests {
+    #[test]
+    fn database_failure_keeps_safe_diagnostic() -> Result<(), String> {
+        let sentinel = "synthetic-private-database-detail";
+        let (error, events) = crate::models::errors::tests::capture_operation(|| {
+            super::database_error(sea_orm::DbErr::Query(sea_orm::RuntimeErr::Internal(
+                sentinel.to_owned(),
+            )))
+        })?;
+        assert_eq!(error, super::OperationError::Unavailable);
+        assert!(!error.to_string().contains(sentinel));
+        assert_eq!(events.len(), 1);
+        let fields = &events[0];
+        assert!(
+            fields
+                .iter()
+                .any(|(name, value)| name == "error.type" && value == "query")
+        );
+        assert!(fields.iter().any(|(name, value)| {
+            name == "medtracker.error_reference" && uuid::Uuid::parse_str(value).is_ok()
+        }));
+        assert!(!fields.iter().any(|(_, value)| value.contains(sentinel)));
+        Ok(())
+    }
 }
 fn parse_decimal(value: &Value) -> Option<Decimal> {
     Decimal::from_str(value.as_str()?).ok()
