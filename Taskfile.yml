@@ -67,7 +67,7 @@ tasks:
       - node scripts/check_loco_image_tooling.mjs
   image:release:check:
     desc: Check release versions, exact source selection and publication wiring
-    cmds: [node --test scripts/test_loco_image_release.mjs]
+    cmds: [node --test scripts/test_loco_image_release.mjs scripts/test_upgrade_release.mjs]
   image:build:
     desc: Build the root Loco release image for the local architecture
     cmds:
@@ -77,6 +77,15 @@ tasks:
     desc: Check release commands, runtime assets and non-root image ownership
     env:
       LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
+      LOCO_IMAGE_SUBNET: '{{.LOCO_IMAGE_SUBNET | default ""}}'
+    cmds: [node --test scripts/test_loco_image.mjs]
+  image:test:upgrade:
+    desc: Upgrade a published release using restricted migration and runtime identities
+    requires:
+      vars: [PREVIOUS_IMAGE]
+    env:
+      LOCO_IMAGE: '{{.LOCO_IMAGE | default "medtracker-loco:local"}}'
+      LOCO_PREVIOUS_IMAGE: '{{.PREVIOUS_IMAGE}}'
       LOCO_IMAGE_SUBNET: '{{.LOCO_IMAGE_SUBNET | default ""}}'
     cmds: [node --test scripts/test_loco_image.mjs]
   deps:

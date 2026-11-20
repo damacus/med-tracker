@@ -18,6 +18,7 @@ on:
       - package.json
       - package-lock.json
       - scripts/*loco_image*.mjs
+      - scripts/*upgrade_release*.mjs
       - mise.toml
       - .github/workflows/ci.yml
       - Taskfile.yml
@@ -145,6 +146,19 @@ jobs:
           esac
           echo "$checksum  $(command -v task)" | sha256sum --check --strict
       - run: task image:test
+      - name: Select published upgrade baseline
+        id: upgrade
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag_name }}
+        run: |
+          gh release list --exclude-drafts --exclude-pre-releases --limit 100 --json tagName,isDraft,isPrerelease > "$RUNNER_TEMP/upgrade-releases.json"
+          node scripts/upgrade_release.mjs "$RUNNER_TEMP/upgrade-releases.json"
+      - name: Verify upgrade from the previous release
+        env:
+          PREVIOUS_IMAGE: ${{ steps.upgrade.outputs.image }}
+        run: task image:test:upgrade PREVIOUS_IMAGE="$PREVIOUS_IMAGE"
       - name: Save the tested image
         env:
           ARCH: ${{ matrix.arch }}
