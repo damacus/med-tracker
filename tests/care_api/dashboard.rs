@@ -566,7 +566,11 @@ async fn dashboard_reads_timing_history_only_when_effective_rules_need_it() {
     .await
     .unwrap();
     let after = snapshot(&app).await;
-    assert_eq!(history_reads.load(Ordering::Relaxed), 1);
+    assert_eq!(
+        history_reads.load(Ordering::Relaxed),
+        0,
+        "dashboard timing must restrict the take history by date"
+    );
     assert!(after["rows"].as_array().unwrap().iter().any(|row| {
         row["source_type"] == "person_medication"
             && row["source_id"] == app.fixture.assignment.id
