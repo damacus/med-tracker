@@ -126,10 +126,11 @@ mod tests {
             "medtracker_portable_export_status",
             "medtracker_portable_export_download",
         ] {
-            let tool = tools.iter().find(|tool| tool.name == name).unwrap();
             assert_eq!(
-                tool.input_schema
-                    .pointer("/properties/job_id/type")
+                tools
+                    .iter()
+                    .find(|tool| tool.name == name)
+                    .and_then(|tool| tool.input_schema.pointer("/properties/job_id/type"))
                     .and_then(Value::as_str),
                 Some("integer")
             );
