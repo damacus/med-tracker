@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use sghtmltopdf::{Converter, with_render_stack};
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 #[derive(Clone, Copy)]
 pub enum Kind {
@@ -251,6 +252,24 @@ mod locale_tests {
     }
 
     #[test]
+    fn embedded_translations_match_fresh_parses_and_are_independently_owned() {
+        for (language, source) in [
+            ("en", include_str!("../../../assets/reports/locales/en.yml")),
+            ("cy", include_str!("../../../assets/reports/locales/cy.yml")),
+            ("ga", include_str!("../../../assets/reports/locales/ga.yml")),
+            ("pt", include_str!("../../../assets/reports/locales/pt.yml")),
+            ("es", include_str!("../../../assets/reports/locales/es.yml")),
+        ] {
+            let expected: Value = serde_yaml_ng::from_str(source).unwrap();
+            let mut labels = translations(language).unwrap();
+            assert_eq!(labels, expected[language]);
+            labels["reports"] = Value::Null;
+            assert_eq!(translations(language).unwrap(), expected[language]);
+        }
+        assert_eq!(translations("unsupported").unwrap(), Value::Null);
+    }
+
+    #[test]
     fn review_html_renders_a_legacy_unclassified_match_without_dropping_the_report() {
         use loco_rs::controller::views::{ViewRenderer, engines::TeraView};
         let view = TeraView::build().unwrap();
@@ -285,14 +304,38 @@ mod locale_tests {
 }
 
 pub(crate) fn translations(locale: &str) -> Result<Value, RenderError> {
-    let source = match locale {
-        "cy" => include_str!("../../../assets/reports/locales/cy.yml"),
-        "ga" => include_str!("../../../assets/reports/locales/ga.yml"),
-        "pt" => include_str!("../../../assets/reports/locales/pt.yml"),
-        "es" => include_str!("../../../assets/reports/locales/es.yml"),
-        _ => include_str!("../../../assets/reports/locales/en.yml"),
+    static ENGLISH: OnceLock<Option<Value>> = OnceLock::new();
+    static WELSH: OnceLock<Option<Value>> = OnceLock::new();
+    static IRISH: OnceLock<Option<Value>> = OnceLock::new();
+    static PORTUGUESE: OnceLock<Option<Value>> = OnceLock::new();
+    static SPANISH: OnceLock<Option<Value>> = OnceLock::new();
+
+    let (cache, source) = match locale {
+        "cy" => (
+            &WELSH,
+            include_str!("../../../assets/reports/locales/cy.yml"),
+        ),
+        "ga" => (
+            &IRISH,
+            include_str!("../../../assets/reports/locales/ga.yml"),
+        ),
+        "pt" => (
+            &PORTUGUESE,
+            include_str!("../../../assets/reports/locales/pt.yml"),
+        ),
+        "es" => (
+            &SPANISH,
+            include_str!("../../../assets/reports/locales/es.yml"),
+        ),
+        _ => (
+            &ENGLISH,
+            include_str!("../../../assets/reports/locales/en.yml"),
+        ),
     };
-    let all: Value = serde_yaml_ng::from_str(source).map_err(|_| RenderError::Locale)?;
+    let all = cache
+        .get_or_init(|| serde_yaml_ng::from_str(source).ok())
+        .as_ref()
+        .ok_or(RenderError::Locale)?;
     Ok(all.get(locale).cloned().unwrap_or(Value::Null))
 }
 
