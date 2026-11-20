@@ -205,8 +205,13 @@ fn timing_block(
     Ok(None)
 }
 
-fn requires_timing_history(sources: &[Source], date: NaiveDate) -> bool {
+fn requires_timing_history(
+    sources: &[Source],
+    now: NaiveDateTime,
+    viewer_zone: chrono_tz::Tz,
+) -> bool {
     sources.iter().cloned().any(|mut source| {
+        let date = local_date_in_zone(now, source.zone.unwrap_or(viewer_zone));
         effective_source(&mut source, date);
         source.max_daily_doses.is_some()
             || source
@@ -236,7 +241,7 @@ pub(crate) async fn dashboard_timing(
                 )
         })
         .collect();
-    if !requires_timing_history(&sources, now.with_timezone(&zone).date_naive()) {
+    if !requires_timing_history(&sources, now.naive_utc(), zone) {
         return Ok(std::collections::HashMap::new());
     }
     let schedule_ids: Vec<_> = sources
@@ -314,49 +319,59 @@ mod tests {
 
     #[test]
     fn timing_history_requires_effective_config_and_taper_limits() {
-        let date = NaiveDate::from_ymd_opt(2026, 6, 15).unwrap();
+        let now = NaiveDate::from_ymd_opt(2026, 6, 15)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let zone = chrono_tz::UTC;
         let mut source = test_source();
-        assert!(!requires_timing_history(&[], date));
-        assert!(!requires_timing_history(&[source.clone()], date));
+        assert!(!requires_timing_history(&[], now, zone));
+        assert!(!requires_timing_history(&[source.clone()], now, zone));
         source.schedule_config = Some(json!({"max_daily_doses": 0}));
-        assert!(requires_timing_history(&[source.clone()], date));
+        assert!(requires_timing_history(&[source.clone()], now, zone));
         assert_eq!(source.max_daily_doses, None);
         source.schedule_type = Some(5);
         source.schedule_config = Some(json!({"taper_steps": [
             {"start_date": "2026-06-15", "end_date": "2026-06-15", "max_daily_doses": 0},
             {"start_date": "2026-06-16", "end_date": "2026-06-16", "min_hours": 4}
         ]}));
-        assert!(requires_timing_history(&[source.clone()], date));
+        assert!(requires_timing_history(&[source.clone()], now, zone));
         assert!(requires_timing_history(
             &[source.clone()],
-            date + Duration::days(1)
+            now + Duration::days(1),
+            zone
         ));
         assert!(!requires_timing_history(
             &[source],
-            date + Duration::days(2)
+            now + Duration::days(2),
+            zone
         ));
     }
 
     #[test]
     fn timing_history_preserves_zero_limits_and_cooldown_overrides() {
-        let date = NaiveDate::from_ymd_opt(2026, 6, 15).unwrap();
+        let now = NaiveDate::from_ymd_opt(2026, 6, 15)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let zone = chrono_tz::UTC;
         let mut source = test_source();
         for limit in [0, -1, 1] {
             source.max_daily_doses = Some(limit);
-            assert!(requires_timing_history(&[source.clone()], date));
+            assert!(requires_timing_history(&[source.clone()], now, zone));
         }
         source.max_daily_doses = None;
         for hours in [Decimal::ZERO, -Decimal::ONE] {
             source.min_hours_between_doses = Some(hours);
-            assert!(!requires_timing_history(&[source.clone()], date));
+            assert!(!requires_timing_history(&[source.clone()], now, zone));
         }
         source.min_hours_between_doses = Some(Decimal::new(1, 2));
-        assert!(requires_timing_history(&[source.clone()], date));
+        assert!(requires_timing_history(&[source.clone()], now, zone));
         source.schedule_type = Some(0);
         source.schedule_config = Some(json!({"times": ["08:00"]}));
-        assert!(!requires_timing_history(&[source.clone()], date));
+        assert!(!requires_timing_history(&[source.clone()], now, zone));
         source.max_daily_doses = Some(0);
-        assert!(requires_timing_history(&[source], date));
+        assert!(requires_timing_history(&[source], now, zone));
     }
 
     fn test_take(time: NaiveDateTime) -> medication_take::Model {
