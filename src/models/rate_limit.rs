@@ -263,6 +263,13 @@ fn operation_rule(method: &Method, path: &str) -> Option<Rule> {
         return None;
     }
     match (method, parts[4], parts.get(5), parts.len()) {
+        (&Method::POST, "portable_export", None, 5)
+        | (&Method::POST, "data_exports", Some(&"encrypted_migration_bundle"), 6)
+        | (&Method::GET | &Method::HEAD, "portable_export", Some(_), 7)
+            if parts.len() != 7 || parts[6] == "download" =>
+        {
+            Some(Rule::DataExport)
+        }
         (&Method::GET | &Method::HEAD, "data_exports", Some(mode), 6) if !mode.is_empty() => {
             Some(Rule::DataExport)
         }

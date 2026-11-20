@@ -200,22 +200,8 @@ async fn scoped_payload(
     super::super::person_schedules::projection::refresh(tenant).await?;
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
-    let people = if exporting && !access::can_manage_household(tenant) {
-        let dependent_ids =
-            crate::models::care::guardian_declarations::manageable_subjects(tenant).await?;
-        let own = access::person_queries::account_person(tenant.scope().actor)
-            .select_only()
-            .column(person::Column::Id)
-            .into_query();
-        access::person_queries::household_participants(household_id)
-            .filter(
-                Condition::any()
-                    .add(person::Column::Id.in_subquery(own))
-                    .add(person::Column::Id.is_in(dependent_ids)),
-            )
-            .order_by_asc(person::Column::Id)
-            .all(db)
-            .await?
+    let people = if exporting {
+        export_people(tenant).await?
     } else {
         visible_people(tenant).await?
     };
@@ -678,4 +664,30 @@ fn add_etags(etags: &mut HashMap<String, String>, rows: Vec<Value>) {
             etags.insert(id.into(), representation_etag(&json!({"data":row})));
         }
     }
+}
+
+pub(in crate::models::care) async fn export_people(
+    tenant: &TenantTransaction,
+) -> Result<Vec<person::Model>, OperationError> {
+    let db = tenant.transaction();
+    let household_id = tenant.scope().household_id;
+    Ok(if !access::can_manage_household(tenant) {
+        let dependent_ids =
+            crate::models::care::guardian_declarations::manageable_subjects(tenant).await?;
+        let own = access::person_queries::account_person(tenant.scope().actor)
+            .select_only()
+            .column(person::Column::Id)
+            .into_query();
+        access::person_queries::household_participants(household_id)
+            .filter(
+                Condition::any()
+                    .add(person::Column::Id.in_subquery(own))
+                    .add(person::Column::Id.is_in(dependent_ids)),
+            )
+            .order_by_asc(person::Column::Id)
+            .all(db)
+            .await?
+    } else {
+        visible_people(tenant).await?
+    })
 }

@@ -1,9 +1,9 @@
 # Android OpenAPI generated-client provenance
 
 - Pinned OpenAPI source: docs/api/openapi.v1.yaml
-- Source revision: a5dde69259b4f4fa897cd6654d812708688b7a52
-- Pinned OpenAPI SHA-256: 3ecbb3ce5a321fbfa0e19d664eb39256e6246aba72b1d0ea45f01910b4c2569b
-- Derived generator-input SHA-256: d7b4204b9c2573fc098e5fee321e96444771623723adf50d5facb5a156697835
+- Source revision: 4681b514225086f94555472e31c6bf71ed0de101
+- Pinned OpenAPI SHA-256: b79b265ca2a75966464b55e2883f13d0527ea1ad74da58261327d1e1d1a23cd8
+- Derived generator-input SHA-256: 1cb3fcc6fc2f89bec0e6552884dd6f29f4adc154f1b49ed4ef3a8cac11c108b4
 - Generator input: -i /output/openapi-generator-input.yaml, derived from the exact canonical pin
 - Generator-input adapter: mobile/android/scripts/api-generator-input.fish
 - Single transformed schema: #/components/schemas/PortableImportUnprocessableResponse

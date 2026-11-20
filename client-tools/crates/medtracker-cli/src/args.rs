@@ -101,9 +101,27 @@ pub struct ResourceListArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum PortableCommand {
-    Export(HouseholdArgs),
+    Export(PortableExportArgs),
+    ExportStatus(PortableExportJobArgs),
+    ExportDownload(PortableExportJobArgs),
     Import(PortableImportArgs),
     DryRun(PortableImportArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct PortableExportArgs {
+    #[command(flatten)]
+    pub household: HouseholdArgs,
+    #[arg(long)]
+    pub passphrase_stdin: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct PortableExportJobArgs {
+    #[command(flatten)]
+    pub household: HouseholdArgs,
+    #[arg(long)]
+    pub job_id: i64,
 }
 
 #[derive(Debug, Args)]
@@ -127,6 +145,8 @@ pub struct BackupExportArgs {
     pub household_id: String,
     #[arg(long, default_value = "health_data_json")]
     pub mode: String,
+    #[arg(long)]
+    pub passphrase_stdin: bool,
 }
 
 #[derive(Debug, Subcommand)]

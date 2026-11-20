@@ -6,9 +6,39 @@ use crate::models::{InitialGuardianDeclaration, PortableImportMode, PortableImpo
 
 impl ApiClient {
     #[doc = "# Errors\nThe export request fails, is rejected, or cannot be decoded."]
-    pub async fn portable_export(&self, household_id: &str) -> Result<Value, ApiError> {
+    pub async fn portable_export(
+        &self,
+        household_id: &str,
+        passphrase: &str,
+    ) -> Result<Value, ApiError> {
+        self.post_data_with_header(
+            &format!("/api/v1/households/{household_id}/portable_export"),
+            &serde_json::json!({}),
+            ("x-medtracker-portable-passphrase", Some(passphrase)),
+        )
+        .await
+    }
+
+    #[doc = "# Errors\nThe status request fails or cannot be decoded."]
+    pub async fn portable_export_status(
+        &self,
+        household_id: &str,
+        job_id: i64,
+    ) -> Result<Value, ApiError> {
         self.get_data(&format!(
-            "/api/v1/households/{household_id}/portable_export"
+            "/api/v1/households/{household_id}/portable_export/{job_id}"
+        ))
+        .await
+    }
+
+    #[doc = "# Errors\nThe download request fails or cannot be decoded."]
+    pub async fn portable_export_download(
+        &self,
+        household_id: &str,
+        job_id: i64,
+    ) -> Result<Value, ApiError> {
+        self.get_data(&format!(
+            "/api/v1/households/{household_id}/portable_export/{job_id}/download"
         ))
         .await
     }

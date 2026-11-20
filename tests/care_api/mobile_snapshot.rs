@@ -11,12 +11,17 @@ const AUTHORITY_READS: [&str; 3] = [
 
 async fn authority_payload(app: &Application, token: &str, path: &str) -> Value {
     let fixture_household_id = app.fixture.household.id;
-    let response = app
-        .client
-        .get(format!(
-            "{}/api/v1/households/{fixture_household_id}/{path}",
-            app.origin
-        ))
+    let url = format!(
+        "{}/api/v1/households/{fixture_household_id}/{path}",
+        app.origin
+    );
+    let encrypted = path.starts_with("portable_export");
+    let request = if encrypted {
+        app.client.post(url)
+    } else {
+        app.client.get(url)
+    };
+    let response = request
         .bearer_auth(token)
         .header(
             "x-medtracker-portable-passphrase",
@@ -25,6 +30,11 @@ async fn authority_payload(app: &Application, token: &str, path: &str) -> Value 
         .send()
         .await
         .unwrap();
+    let response = if encrypted {
+        super::portable_export::complete_export(app, token, response).await
+    } else {
+        response
+    };
     assert_eq!(response.status().as_u16(), 200, "{path}");
     let body: Value = response.json().await.unwrap();
     if path.starts_with("portable_export") {

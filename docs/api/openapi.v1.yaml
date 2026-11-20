@@ -4666,12 +4666,12 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
   /households/{household_id}/portable_export:
-    get:
+    post:
       operationId: exportPortableHouseholdBundle
       tags:
         - Household
         - Portability
-      summary: Export an encrypted portable household bundle.
+      summary: Queue an encrypted portable household bundle.
       description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
       parameters:
         - $ref: "#/components/parameters/household_id"
@@ -4692,6 +4692,99 @@ paths:
             enum: [medtracker.portable.v1, medtracker.portable.v2, medtracker.portable.v3]
             default: medtracker.portable.v1
       responses:
+        "202":
+          description: Export queued.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum: [requested, ready, failed, expired]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /households/{household_id}/portable_export/{job_id}:
+    get:
+      operationId: getPortableExportStatus
+      tags: [Household, Portability]
+      summary: Read the current export job status.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Export job status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum: [requested, ready, failed, expired]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /households/{household_id}/portable_export/{job_id}/download:
+    get:
+      operationId: downloadPortableExport
+      tags: [Household, Portability]
+      summary: Download the ready encrypted bundle.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
         "200":
           description: Encrypted portable bundle.
           content:
@@ -4706,10 +4799,10 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/mobile_snapshot:
     get:
       operationId: getMobileSnapshot
@@ -4829,10 +4922,8 @@ paths:
           schema:
             type: string
             enum:
-              - encrypted_migration_bundle
               - backup_zip
               - health_data_json
-        - $ref: "#/components/parameters/optional_portable_passphrase"
       responses:
         "200":
           description: Export payload.
@@ -4859,6 +4950,56 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+    post:
+      operationId: queueEncryptedMigrationBundle
+      tags: [Household, Portability]
+      summary: Queue an encrypted migration bundle.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - $ref: "#/components/parameters/portable_passphrase"
+        - name: mode
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [encrypted_migration_bundle]
+      responses:
+        "202":
+          description: Export queued.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum: [requested, ready, failed, expired]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /households/{household_id}/sync/snapshot:
     get:
       operationId: getSyncSnapshot
