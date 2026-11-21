@@ -2,6 +2,78 @@ use crate::harness::{self, named};
 use playwright_rs::expect;
 use playwright_rs::protocol::{Animations, AriaRole, Page, ScreenshotOptions, Viewport};
 use sea_orm::ConnectionTrait;
+use sea_orm::{ActiveModelTrait, Set};
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn administration_tabs_system_controls_and_read_recovery() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| Box::pin(async move {
+        let now = chrono::Utc::now().naive_utc();
+        med_tracker::models::_entities::platform_admins::ActiveModel {
+            account_id: Set(71001), status: Set("active".into()), created_at: Set(now), updated_at: Set(now), ..Default::default()
+        }.insert(&journey.admin).await.unwrap();
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/admin", journey.origin), None).await.unwrap();
+        expect(page.locator("main[data-admin-ready]")).to_be_visible().await.unwrap();
+        page.evaluate::<(), bool>("() => { window.adminDocument = document; window.realFetch = fetch; window.failAdminRead = true; window.fetch = (...args) => window.failAdminRead ? Promise.reject(Error('offline')) : window.realFetch(...args); return true; }", None).await.unwrap();
+        page.locator(".admin-navigation a[href='/administration/settings']").click(None).await.unwrap();
+        expect(page.get_by_role(AriaRole::Button, named("Retry"))).to_be_visible().await.unwrap();
+        expect(page.locator(".admin-overview")).to_be_visible().await.unwrap();
+        page.evaluate::<(), bool>("() => { window.failAdminRead = false; return true; }", None).await.unwrap();
+        page.get_by_role(AriaRole::Button, named("Retry")).click(None).await.unwrap();
+        expect(page.locator("[data-lookup-priority]")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document && document.querySelector('[data-lookup-priority]').children.length === 4", None).await.unwrap());
+        page.locator(".admin-navigation a[href='/administration/nhs-dmd']").click(None).await.unwrap();
+        expect(page.locator(".admin-navigation a[aria-current=page]")).to_contain_text("NHS dm+d").await.unwrap();
+        page.locator(".admin-navigation a[href='/administration/settings']").click(None).await.unwrap();
+        expect(page.locator("[data-lookup-priority]")).to_be_visible().await.unwrap();
+        page.get_by_role(AriaRole::Button, named("Move Curated medicines up")).click(None).await.unwrap();
+        expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,local_nhs_dmd,curated_catalog,cached_open_products_facts").await.unwrap();
+        page.locator(".admin-navigation a[href='/administration/support']").click(None).await.unwrap();
+        expect(page.locator(".admin-navigation a[aria-current=page]")).to_contain_text("Support access").await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document", None).await.unwrap());
+        page.set_viewport_size(Viewport { width: 390, height: 844 }).await.unwrap();
+        page.locator(".admin-mobile-navigation summary").click(None).await.unwrap();
+        assert_eq!(page.locator(".admin-mobile-navigation a").count().await.unwrap(), 8);
+        capture(page, "mobile-system-menu-open").await;
+        page.locator(".admin-mobile-navigation a[href='/administration/nhs-dmd']").click(None).await.unwrap();
+        expect(page.locator(".admin-mobile-navigation summary")).to_contain_text("NHS dm+d").await.unwrap();
+        capture(page, "mobile-dmd-selected").await;
+    })).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn administration_tabs_retain_document_and_history() {
+    harness::journey(Viewport { width: 390, height: 844 }, |journey| Box::pin(async move {
+        harness::sign_in(journey).await;
+        let page = &journey.page;
+        page.goto(&format!("{}/households/persistence-fixture/admin", journey.origin), None).await.unwrap();
+        page.evaluate::<(), bool>("() => { window.adminDocument = document; window.adminSidebar = document.querySelector('.app-sidebar'); return true; }", None).await.unwrap();
+        page.locator(".admin-mobile-navigation summary").click(None).await.unwrap();
+        capture(page, "mobile-section-menu-open").await;
+        page.locator(".admin-mobile-navigation a[href*='/admin/users']").click(None).await.unwrap();
+        expect(page.locator("#member-search")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document && window.adminSidebar === document.querySelector('.app-sidebar')", None).await.unwrap());
+        expect(page.locator(".admin-mobile-navigation summary")).to_contain_text("Users").await.unwrap();
+        page.locator(".admin-mobile-navigation summary").click(None).await.unwrap();
+        page.keyboard().press("Escape", None).await.unwrap();
+        expect(page.locator(".admin-mobile-navigation summary")).to_be_focused().await.unwrap();
+        page.locator(".admin-mobile-navigation summary").click(None).await.unwrap();
+        page.locator(".admin-mobile-navigation a[href*='/admin/audit_logs']").click(None).await.unwrap();
+        expect(page.locator("#audit-filter-form")).to_be_visible().await.unwrap();
+        page.evaluate::<(), bool>("() => { history.back(); return true; }", None).await.unwrap();
+        expect(page.locator("#member-search")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document", None).await.unwrap());
+        page.evaluate::<(), bool>("() => { history.forward(); return true; }", None).await.unwrap();
+        expect(page.locator("#audit-filter-form")).to_be_visible().await.unwrap();
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document", None).await.unwrap());
+        capture(page, "tabs-no-reload-mobile").await;
+        page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
+        capture(page, "tabs-no-reload-desktop").await;
+    })).await;
+}
 
 async fn capture(page: &Page, name: &str) {
     if page.locator("body.app-household").count().await.unwrap() > 0 {
@@ -102,8 +174,8 @@ async fn administration_polish_overview_and_forms() {
         expect(page.get_by_role(AriaRole::Heading, named("Synthetic renamed household"))).to_be_visible().await.unwrap();
         page.goto(&format!("{}/households/persistence-fixture/admin/audit_logs?event_type=nonexistent",journey.origin),None).await.unwrap();
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
-        expect(page.locator("main li")).to_contain_text("No events match these filters.").await.unwrap();
-        page.evaluate::<(),bool>("() => { document.querySelector('main li').scrollIntoView({block:'center'}); return true; }",None).await.unwrap();
+        expect(page.locator("[aria-label='Audit events'] li")).to_contain_text("No events match these filters.").await.unwrap();
+        page.evaluate::<(),bool>("() => { document.querySelector('[aria-label=\"Audit events\"] li').scrollIntoView({block:'center'}); return true; }",None).await.unwrap();
         capture(page,"audit-empty-320").await;
     })).await;
 }
@@ -128,7 +200,7 @@ async fn administration_polish_platform_frames() {
                 page.locator("[data-source='curated_catalog'] .lookup-drag-handle").drag_to(&page.locator("[data-source='imported_catalog'] .lookup-drag-handle"), None).await.unwrap();
                 expect(page.locator("#medicine-lookup-source-priority")).to_have_value("curated_catalog,imported_catalog,local_nhs_dmd,cached_open_products_facts").await.unwrap();
             }
-            expect(page.locator(".admin-navigation")).to_be_visible().await.unwrap();
+            expect(page.locator(".admin-navigation:visible, .admin-mobile-navigation summary:visible")).to_be_visible().await.unwrap();
             for width in [1440,390,320] {
                 page.set_viewport_size(Viewport {width,height:if width==1440 {1000}else{844}}).await.unwrap();
                 capture(page,&format!("{label}-{width}")).await;
