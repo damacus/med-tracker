@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.6.11](https://github.com/damacus/med-tracker/compare/v0.6.10...v0.6.11) (2026-11-21)
+
+
+### Features
+
+* queue encrypted household exports ([#3158](https://github.com/damacus/med-tracker/issues/3158)) ([c5b06f5](https://github.com/damacus/med-tracker/commit/c5b06f5938df43c884ec5c84bb6fff19acf1de8c))
+* unify Profile and Administration ([#3156](https://github.com/damacus/med-tracker/issues/3156)) ([9d8c982](https://github.com/damacus/med-tracker/commit/9d8c982ae89cfd00a57e04e55446871a170a4aa6))
+
+
+### Bug Fixes
+
+* correct medication stock forecasts ([#3157](https://github.com/damacus/med-tracker/issues/3157)) ([2ae9454](https://github.com/damacus/med-tracker/commit/2ae94544c33a3836b88c25c9057a19965cce2399))
+* **deps:** update rust crate bytes to v1.12.2 ([#3163](https://github.com/damacus/med-tracker/issues/3163)) ([95e0c21](https://github.com/damacus/med-tracker/commit/95e0c217f60c858ab29a27d36dd087e68da7b3a8))
+* **deps:** update rust crate regex to v1.13.2 ([#3167](https://github.com/damacus/med-tracker/issues/3167)) ([df83bb8](https://github.com/damacus/med-tracker/commit/df83bb81b8912d190d76542c24b008778bbe6df5))
+* enable system admin dm+d access ([#3154](https://github.com/damacus/med-tracker/issues/3154)) ([29c3ff3](https://github.com/damacus/med-tracker/commit/29c3ff3e84b16b2c770195589acd059369577046))
+* preserve care database diagnostics ([#3160](https://github.com/damacus/med-tracker/issues/3160)) ([e1728e5](https://github.com/damacus/med-tracker/commit/e1728e5c051fba0980f42c05ce533847fa79ba05))
+* use the schedule zone for taper limits ([#3161](https://github.com/damacus/med-tracker/issues/3161)) ([0ebd1ee](https://github.com/damacus/med-tracker/commit/0ebd1ee41d7e0e9ad2144c99a391e3c746b7e2d0))
+
+
+### Performance Improvements
+
+* cache embedded translation maps ([#3162](https://github.com/damacus/med-tracker/issues/3162)) ([2edfaff](https://github.com/damacus/med-tracker/commit/2edfaff163735b51b45096414b3ed3d28eb33208))
+* limit dashboard dose history reads ([#3165](https://github.com/damacus/med-tracker/issues/3165)) ([efde79f](https://github.com/damacus/med-tracker/commit/efde79f96feb83eff27b23dcdfe091b1eeeced94))
+
 ## [0.6.10](https://github.com/damacus/med-tracker/compare/v0.6.9...v0.6.10) (2026-11-17)
 
 
