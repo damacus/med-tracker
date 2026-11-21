@@ -11,6 +11,51 @@ export function administrationUrl(value, base, household = base.pathname.match(/
     prefix && (url.pathname === prefix || url.pathname.startsWith(prefix + '/')) ? url : null;
 }
 
+export function mountAdministrationMenu(root) {
+  const navigation = root.querySelector('.admin-navigation');
+  if (!navigation) return;
+  const controller = new AbortController();
+  const details = document.createElement('details');
+  details.className = 'dropdown admin-mobile-navigation';
+  const summary = document.createElement('summary');
+  summary.className = 'btn btn-outline admin-menu-trigger';
+  const label = document.createElement('span');
+  const context = document.createElement('span');
+  context.className = 'admin-menu-context';
+  context.textContent = navigation.dataset.title || 'Administration';
+  const current = document.createElement('span');
+  current.className = 'admin-menu-current';
+  current.textContent = navigation.querySelector('[aria-current=page]')?.textContent.trim() || context.textContent;
+  label.append(context, current);
+  const chevron = document.createElement('span');
+  chevron.className = 'admin-menu-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  summary.append(label, chevron);
+  const menu = document.createElement('ul');
+  menu.className = 'menu dropdown-content admin-section-menu';
+  for (const link of navigation.querySelectorAll('a[href]')) {
+    const item = document.createElement('li');
+    const choice = link.cloneNode(true);
+    choice.className = link.hasAttribute('aria-current') ? 'menu-active' : '';
+    item.append(choice);
+    menu.append(item);
+  }
+  details.append(summary, menu);
+  navigation.before(details);
+  navigation.dataset.mobileMenu = 'true';
+  document.addEventListener('pointerdown', event => {
+    if (!details.contains(event.target)) details.open = false;
+  }, { signal: controller.signal });
+  details.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && details.open) {
+      event.preventDefault();
+      details.open = false;
+      summary.focus({ preventScroll: true });
+    }
+  }, { signal: controller.signal });
+  return () => { controller.abort(); details.remove(); delete navigation.dataset.mobileMenu; };
+}
+
 export function mountAdministration() {
   const main = document.querySelector('main');
   if (!main?.querySelector('.admin-navigation')) return;
@@ -28,10 +73,12 @@ export function mountAdministration() {
   let cleanup;
   let sortable;
   const mount = () => {
+    cleanup?.();
     const audit = mountAuditDetail(main, url => location.assign(url));
     const bulk = mountBulkMemberSelection(main);
     const lookup = mountLookupPriority(main);
-    cleanup = () => { audit?.(); bulk?.(); lookup?.(); };
+    const menu = mountAdministrationMenu(main);
+    cleanup = () => { audit?.(); bulk?.(); lookup?.(); menu?.(); };
     main.dataset.adminReady = 'true';
   };
   const prepare = async page => {
@@ -60,6 +107,7 @@ export function mountAdministration() {
       if (!allowed(response.url)) { location.assign(response.url); return; }
       if ([401, 403, 404].includes(response.status)) {
         cleanup?.();
+        cleanup = null;
         main.replaceChildren();
         location.assign(response.url);
         return;
@@ -73,8 +121,9 @@ export function mountAdministration() {
       if (version !== sequence || controller.signal.aborted) return;
       const oldTabs = main.querySelector('.admin-navigation');
       const newTabs = next.querySelector('.admin-navigation');
-      const focused = oldTabs?.contains(document.activeElement);
+      const focused = oldTabs?.contains(document.activeElement) || main.querySelector('.admin-mobile-navigation')?.contains(document.activeElement);
       cleanup?.();
+      cleanup = null;
       main.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
       if (oldTabs) {
         oldTabs.replaceChildren(...newTabs.childNodes);
@@ -89,7 +138,7 @@ export function mountAdministration() {
       else history.replaceState(history.state, '', response.url);
       currentUrl = response.url;
       mount();
-      if (focused) main.querySelector('.admin-navigation a[aria-current=page]')?.focus({ preventScroll: true });
+      if (focused) (matchMedia('(max-width: 767px)').matches ? main.querySelector('.admin-mobile-navigation summary') : main.querySelector('.admin-navigation a[aria-current=page]'))?.focus({ preventScroll: true });
       else main.focus({ preventScroll: true });
       window.scrollTo(0, 0);
       status.textContent = 'Loaded';
@@ -109,7 +158,7 @@ export function mountAdministration() {
     }
   }
   main.addEventListener('click', event => {
-    const link = event.target.closest('.admin-navigation a[href], nav[aria-label="User scope"] a[href]');
+    const link = event.target.closest('.admin-navigation a[href], .admin-mobile-navigation a[href], nav[aria-label="User scope"] a[href]');
     if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.hasAttribute('download') || link.target && link.target !== '_self') return;
     const url = allowed(link.href);
     if (!url) return;
@@ -120,7 +169,7 @@ export function mountAdministration() {
     if (!allowed(location.href)) { location.reload(); return; }
     void navigate(location.href, true);
   });
-  window.addEventListener('pagehide', () => { ++sequence; request?.abort(); cleanup?.(); });
+  window.addEventListener('pagehide', () => { ++sequence; request?.abort(); cleanup?.(); cleanup = null; });
   window.addEventListener('pageshow', event => { if (event.persisted) mount(); });
   void prepare(document).then(mount, mount);
 }

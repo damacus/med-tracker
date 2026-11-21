@@ -581,12 +581,14 @@ async fn shared_layout_system_administration_and_profile_work_without_a_househol
                 page.goto(&format!("{}/administration/nhs-dmd", journey.origin), None)
                     .await
                     .unwrap();
-                expect(page.locator(
-                    ".admin-navigation a[href='/administration/nhs-dmd'][aria-current=page]",
-                ))
+                expect(page.locator(".admin-mobile-navigation summary"))
                 .to_be_visible()
                 .await
                 .unwrap();
+                expect(page.locator(".admin-mobile-navigation summary"))
+                    .to_contain_text("NHS dm+d")
+                    .await
+                    .unwrap();
                 assert_eq!(page.locator(".app-sidebar").count().await.unwrap(), 0);
                 expect(page.get_by_role(AriaRole::Link, named("Profile")))
                     .to_be_visible()
