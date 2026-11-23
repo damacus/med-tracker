@@ -48,12 +48,11 @@ generating and storing separate credentials as before.
 ## Docker Compose
 
 Check out the release you want to install. Create a private `.env` file
-(`chmod 600 .env`) with a strong PostgreSQL bootstrap password, the image
-reference, the public hostname and your mail configuration:
+(`chmod 600 .env`) with a strong PostgreSQL bootstrap password, the public
+hostname and your mail configuration:
 
 ```dotenv
 POSTGRES_PASSWORD=<long-random-password>
-LOCO_IMAGE=ghcr.io/damacus/med-tracker-loco:0.6.0
 MEDTRACKER_PUBLIC_HOST=https://med-tracker.example.org
 MEDTRACKER_COOKIE_SECURE=true
 MEDTRACKER_SMTP_ENABLED=true
@@ -89,7 +88,9 @@ so mail and other environment settings remain configurable after installation.
 The web service listens on loopback port 5150. Connect your HTTPS reverse proxy
 to it. Set `MEDTRACKER_PORT` if that local port is occupied.
 
-For a routine upgrade, update `LOCO_IMAGE` to the desired release and run:
+For a routine upgrade, check out the desired release. If your `.env` pins
+`LOCO_IMAGE`, update the pin to the desired image digest or remove it to use
+the release's default image. Then run:
 
 ```fish
 docker compose -f compose.yaml -f compose.production.yaml pull
