@@ -6,7 +6,11 @@ plugins {
 
 android {
     namespace = "io.damacus.medtracker.wear"
-    compileSdk { version = release(37) }
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
+    }
     defaultConfig {
         applicationId = "io.damacus.medtracker"
         minSdk = 30
