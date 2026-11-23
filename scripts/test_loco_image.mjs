@@ -10,13 +10,14 @@ import test from "node:test";
 
 const execute = promisify(execFile);
 const image = process.env.LOCO_IMAGE || "medtracker-loco:local";
+const previousImage = process.env.LOCO_PREVIOUS_IMAGE;
 
 async function docker(...args) {
   const result = await execute("docker", args, { timeout: 180_000, maxBuffer: 16 * 1024 * 1024 });
   return args[0] === "logs" ? result.stdout + result.stderr : result.stdout;
 }
 
-test("production boot with restricted database identity", async (t) => {
+test(previousImage ? "previous release upgrades with restricted migration and runtime identities" : "production boot with restricted database identity", async (t) => {
   const prefix = `loco-image-${randomUUID()}`;
   const database = `${prefix}-db`;
   const server = `${prefix}-server`;
@@ -52,10 +53,27 @@ test("production boot with restricted database identity", async (t) => {
     "--env", `MEDTRACKER_SESSION_KEY=${"BwcH".repeat(21)}Bw==`,
     "--env", "AUTH_SESSION_SECRET=synthetic-image-test-secret-at-least-32-characters"];
   await docker("run", "--rm", ...common, "--env", `DATABASE_URL=postgres://postgres@${database}/medtracker_image`,
-    image, "db", "migrate", "--environment", "production");
+    previousImage || image, "db", "migrate", "--environment", "production");
+  if (previousImage) {
+    const ledger = () => docker("exec", database, "pg_dump", "-U", "postgres", "-d", "medtracker_image",
+      "--data-only", "--inserts", "--table=public.seaql_migrations");
+    const before = (await ledger()).split("\n").filter(line => line.startsWith("INSERT INTO"));
+    assert.ok(before.length > 0, "The previous release must have installed its migration ledger");
+    await docker("exec", database, "createuser", "-U", "postgres", "--login", "--inherit",
+      "--no-superuser", "--no-createdb", "--no-createrole", "--member-of=med_tracker_owner", "image_update");
+    const migrate = () => docker("run", "--rm", ...common, "--env", `DATABASE_URL=postgres://image_update@${database}/medtracker_image`,
+      image, "db", "migrate", "--environment", "production");
+    await migrate();
+    const after = await ledger();
+    for (const row of before) assert.ok(after.includes(row), "Upgrade must preserve existing migration ledger entries");
+    await migrate();
+    const repeated = (await ledger()).split("\n").filter(line => line.startsWith("INSERT INTO"));
+    assert.deepEqual(repeated, after.split("\n").filter(line => line.startsWith("INSERT INTO")), "Repeating an upgrade must not change the ledger");
+  }
   await docker("exec", database, "createuser", "-U", "postgres", "--login", "--inherit",
     "--no-superuser", "--no-createdb", "--no-createrole", "--member-of=med_tracker_app", "image_runtime");
   const runtime = [...common, "--env", `DATABASE_URL=postgres://image_runtime@${database}/medtracker_image`];
+  if (previousImage) await assert.rejects(docker("run", "--rm", ...runtime, image, "db", "migrate", "--environment", "production"), /permission denied/i);
   await docker("run", "--rm", ...runtime, image, "scheduler", "--list", "--environment", "production");
   const directory = await mkdtemp(join(tmpdir(), "loco-scheduler-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
