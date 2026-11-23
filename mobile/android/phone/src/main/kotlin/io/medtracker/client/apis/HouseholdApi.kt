@@ -42,8 +42,6 @@ import io.medtracker.client.models.HouseholdProfileResponse
 import io.medtracker.client.models.HouseholdUiCapabilitiesResponse
 import io.medtracker.client.models.LocationCollectionResponse
 import io.medtracker.client.models.LocationCreateRequest
-import io.medtracker.client.models.LocationMembershipRequest
-import io.medtracker.client.models.LocationMembershipResponse
 import io.medtracker.client.models.LocationResponse
 import io.medtracker.client.models.LocationUpdateRequest
 import io.medtracker.client.models.MeResponse
@@ -676,86 +674,6 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/households/{household_id}/locations".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-            body = localVariableBody
-        )
-    }
-
-    /**
-     * POST /households/{household_id}/locations/{location_id}/location_memberships
-     * Assign a managed person to a location or replay the existing assignment.
-     * Only an active household owner or administrator can assign a person to an in-scope location. The person must be an active household participant visible to the caller, with canonical self authority or current eligible declared guardian authority; a person outside view scope returns 404, while a visible person without manage access returns 403. Replaying the same assignment returns the existing resource. 
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return LocationMembershipResponse
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun createLocationMembership(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : LocationMembershipResponse {
-        val localVarResponse = createLocationMembershipWithHttpInfo(householdId = householdId, locationId = locationId, locationMembershipRequest = locationMembershipRequest)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as LocationMembershipResponse
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * POST /households/{household_id}/locations/{location_id}/location_memberships
-     * Assign a managed person to a location or replay the existing assignment.
-     * Only an active household owner or administrator can assign a person to an in-scope location. The person must be an active household participant visible to the caller, with canonical self authority or current eligible declared guardian authority; a person outside view scope returns 404, while a visible person without manage access returns 403. Replaying the same assignment returns the existing resource. 
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return ApiResponse<LocationMembershipResponse?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class)
-    fun createLocationMembershipWithHttpInfo(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : ApiResponse<LocationMembershipResponse?> {
-        val localVariableConfig = createLocationMembershipRequestConfig(householdId = householdId, locationId = locationId, locationMembershipRequest = locationMembershipRequest)
-
-        return request<LocationMembershipRequest, LocationMembershipResponse>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation createLocationMembership
-     *
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return RequestConfig
-     */
-    fun createLocationMembershipRequestConfig(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : RequestConfig<LocationMembershipRequest> {
-        val localVariableBody = locationMembershipRequest
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Content-Type"] = "application/json"
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.POST,
-            path = "/households/{household_id}/locations/{location_id}/location_memberships".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"location_id"+"}", encodeURIComponent(locationId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -1763,83 +1681,6 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.DELETE,
             path = "/households/{household_id}/locations/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-            body = localVariableBody
-        )
-    }
-
-    /**
-     * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
-     * Remove a managed person from the selected location.
-     * Only an active household owner or administrator can remove an assignment from an in-scope location. The assigned person must be an active household participant visible to the caller, with canonical self or current eligible declared guardian authority; out-of-scope person or assignment returns 404, and a visible person without manage access returns 403. 
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return void
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun deleteLocationMembership(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : Unit {
-        val localVarResponse = deleteLocationMembershipWithHttpInfo(householdId = householdId, id = id, locationId = locationId)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> Unit
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
-     * Remove a managed person from the selected location.
-     * Only an active household owner or administrator can remove an assignment from an in-scope location. The assigned person must be an active household participant visible to the caller, with canonical self or current eligible declared guardian authority; out-of-scope person or assignment returns 404, and a visible person without manage access returns 403. 
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return ApiResponse<Unit?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Throws(IllegalStateException::class, IOException::class)
-    fun deleteLocationMembershipWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : ApiResponse<Unit?> {
-        val localVariableConfig = deleteLocationMembershipRequestConfig(householdId = householdId, id = id, locationId = locationId)
-
-        return request<Unit, Unit>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation deleteLocationMembership
-     *
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return RequestConfig
-     */
-    fun deleteLocationMembershipRequestConfig(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : RequestConfig<Unit> {
-        val localVariableBody = null
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.DELETE,
-            path = "/households/{household_id}/locations/{location_id}/location_memberships/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())).replace("{"+"location_id"+"}", encodeURIComponent(locationId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
