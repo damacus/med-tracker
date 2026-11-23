@@ -7,6 +7,7 @@ import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.data.model.CreateMedicationPayload
 import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.HouseholdDto
+import io.damacus.medtracker.data.model.LocationDto
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.RecordStockRemovalPayload
@@ -103,6 +104,28 @@ class MedicationViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Stock updated for Paracetamol", state.successMessage)
         assert(calledBack)
+    }
+
+    @Test
+    fun medicationFormCategoryAllowlistAndLocationDefaults() {
+        assertEquals(39, MEDICATION_CATEGORIES.size)
+        assertEquals(MEDICATION_CATEGORIES.distinct().size, MEDICATION_CATEGORIES.size)
+        assert(MEDICATION_CATEGORIES.contains("Analgesic"))
+        assert(MEDICATION_CATEGORIES.contains("Anti-Inflammatory"))
+        assert(MEDICATION_CATEGORIES.contains("Osmotic Laxative"))
+        assert(MEDICATION_CATEGORIES.contains("Weight Management"))
+
+        assertEquals(null, defaultMedicationLocationId(emptyList()))
+        assertEquals(7, defaultMedicationLocationId(listOf(LocationDto(id = 7L, name = "Kitchen"))))
+        assertEquals(
+            null,
+            defaultMedicationLocationId(
+                listOf(
+                    LocationDto(id = 7L, name = "Kitchen"),
+                    LocationDto(id = 9L, name = "Bathroom")
+                )
+            )
+        )
     }
 
     private class FakeCredentialStore : CredentialStore {

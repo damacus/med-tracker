@@ -16,10 +16,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,21 +36,96 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.damacus.medtracker.data.model.CreateMedicationPayload
+import io.damacus.medtracker.data.model.LocationDto
 import io.damacus.medtracker.ui.theme.MedTrackerPrimary
 
+val MEDICATION_CATEGORIES: List<String> = listOf(
+    "Analgesic",
+    "Antibiotic",
+    "Anticoagulant",
+    "Anticonvulsant",
+    "Antidepressant",
+    "Antidiabetic",
+    "Antiemetic",
+    "Antifungal",
+    "Antihistamine",
+    "Antihypertensive",
+    "Anti-Inflammatory",
+    "Antiparasitic",
+    "Antipsychotic",
+    "Antiviral",
+    "Anxiolytic",
+    "Cardiovascular",
+    "Cholesterol",
+    "Contraceptive",
+    "Dermatological",
+    "Gastrointestinal",
+    "Hormonal",
+    "Immunosuppressant",
+    "Migraine",
+    "Mineral",
+    "Muscle Relaxant",
+    "Neurological",
+    "Oncology",
+    "Ophthalmic",
+    "Osmotic Laxative",
+    "Opioid",
+    "Osteoporosis",
+    "Respiratory",
+    "Sleep Aid",
+    "Smoking Cessation",
+    "Supplement",
+    "Thyroid",
+    "Urological",
+    "Vitamin",
+    "Weight Management"
+)
+
+val MEDICATION_DOSE_UNITS: List<String> = listOf(
+    "tablet",
+    "capsule",
+    "gummy",
+    "mg",
+    "ml",
+    "g",
+    "mcg",
+    "IU",
+    "spray",
+    "drop",
+    "sachet",
+    "pad"
+)
+
+fun defaultMedicationLocationId(locations: List<LocationDto>): Int? =
+    locations.singleOrNull()?.id?.toInt()
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MedicationFormScreen(
     onBackClick: () -> Unit,
     onSubmit: (CreateMedicationPayload, locationId: Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    locations: List<LocationDto> = emptyList()
 ) {
     var name by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var categoryExpanded by remember { mutableStateOf(false) }
     var doseAmountText by remember { mutableStateOf("") }
     var doseUnit by remember { mutableStateOf("tablet") }
+    var doseUnitExpanded by remember { mutableStateOf(false) }
     var supplyText by remember { mutableStateOf("") }
     var reorderText by remember { mutableStateOf("") }
-    var locationIdText by remember { mutableStateOf("1") }
+    var selectedLocationId by remember { mutableStateOf(defaultMedicationLocationId(locations)) }
+    var locationExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(locations) {
+        if (selectedLocationId == null || locations.none { it.id?.toInt() == selectedLocationId }) {
+            selectedLocationId = defaultMedicationLocationId(locations)
+        }
+    }
+
+    val selectedLocationName = locations.firstOrNull { it.id?.toInt() == selectedLocationId }?.name ?: ""
+    val canSubmit = name.isNotBlank() && selectedLocationId != null
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -62,13 +144,90 @@ fun MedicationFormScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
-                label = { Text("Category (e.g. Analgesic, Antibiotic)") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
+            ExposedDropdownMenuBox(
+                expanded = locationExpanded,
+                onExpandedChange = { if (locations.isNotEmpty()) locationExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedLocationName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Storage Location *") },
+                    placeholder = {
+                        Text(if (locations.isEmpty()) "No household locations available" else "Select a location")
+                    },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = locationExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(
+                    expanded = locationExpanded,
+                    onDismissRequest = { locationExpanded = false }
+                ) {
+                    locations.forEach { location ->
+                        val locId = location.id?.toInt() ?: return@forEach
+                        DropdownMenuItem(
+                            text = { Text(location.name) },
+                            onClick = {
+                                selectedLocationId = locId
+                                locationExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (locations.isEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Add a household location before creating a medication.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ExposedDropdownMenuBox(
+                expanded = categoryExpanded,
+                onExpandedChange = { categoryExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedCategory ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Category") },
+                    placeholder = { Text("Select a category (optional)") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(
+                    expanded = categoryExpanded,
+                    onDismissRequest = { categoryExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("None") },
+                        onClick = {
+                            selectedCategory = null
+                            categoryExpanded = false
+                        }
+                    )
+                    MEDICATION_CATEGORIES.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category) },
+                            onClick = {
+                                selectedCategory = category
+                                categoryExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -84,13 +243,37 @@ fun MedicationFormScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                OutlinedTextField(
-                    value = doseUnit,
-                    onValueChange = { doseUnit = it },
-                    label = { Text("Dose Unit (mg, ml, tablet)") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                )
+                ExposedDropdownMenuBox(
+                    expanded = doseUnitExpanded,
+                    onExpandedChange = { doseUnitExpanded = it },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = doseUnit,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Dose Unit") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = doseUnitExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = doseUnitExpanded,
+                        onDismissRequest = { doseUnitExpanded = false }
+                    ) {
+                        MEDICATION_DOSE_UNITS.forEach { unit ->
+                            DropdownMenuItem(
+                                text = { Text(unit) },
+                                onClick = {
+                                    doseUnit = unit
+                                    doseUnitExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -132,17 +315,17 @@ fun MedicationFormScreen(
                 }
 
                 Button(
-                    enabled = name.isNotBlank(),
+                    enabled = canSubmit,
                     onClick = {
+                        val locId = selectedLocationId ?: return@Button
                         val payload = CreateMedicationPayload(
                             name = name.trim(),
-                            category = category.ifBlank { null },
+                            category = selectedCategory,
                             doseAmount = doseAmountText.toDoubleOrNull(),
                             doseUnit = doseUnit.ifBlank { null },
                             currentSupply = supplyText.toDoubleOrNull(),
                             reorderThreshold = reorderText.toDoubleOrNull()
                         )
-                        val locId = locationIdText.toIntOrNull() ?: 1
                         onSubmit(payload, locId)
                     },
                     shape = RoundedCornerShape(12.dp),

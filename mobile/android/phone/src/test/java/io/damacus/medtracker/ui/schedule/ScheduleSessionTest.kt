@@ -210,6 +210,22 @@ class ScheduleSessionTest {
         }
     }
 
+    @Test fun `schedule display names resolve medication and person names`() {
+        val schedule = ScheduleDto(id = 1L, personId = 10L, medicationId = 20L, doseAmount = 2.0, doseUnit = "tablet")
+        val people = listOf(PersonDto(id = 10L, name = "Sam Care"))
+        val medications = listOf(MedicationDto(id = 20L, name = "Ibuprofen", displayName = "Ibuprofen 200mg"))
+
+        val (medName, personName) = resolveScheduleDisplayNames(schedule, people, medications)
+        assertEquals("Ibuprofen 200mg", medName)
+        assertEquals("Sam Care", personName)
+    }
+
+    @Test fun `schedule start date validation rejects malformed dates without throwing`() {
+        assertTrue(isValidScheduleStartDate("2026-10-27"))
+        assertTrue(!isValidScheduleStartDate("not-a-date"))
+        assertTrue(!isValidScheduleStartDate("2026-13-45"))
+    }
+
     private class ControlledApi : MedTrackerApi {
         var delayedOperation: String? = null
         var pending: Continuation<ApiResult<ScheduleDto>>? = null

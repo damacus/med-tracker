@@ -109,6 +109,7 @@ class ApiErrorContractTest {
         assertEquals(422, result.statusCode)
         assertEquals("validation_failed", result.code)
         assertEquals("Validation failed", result.message)
+        assertEquals(mapOf("dose_amount" to listOf("must be a string")), result.errors)
     }
 
     @Test fun traceIdIsAvailableForNestedAndFlatErrorsAndOptionalForOldServers() = runBlocking {
@@ -128,8 +129,11 @@ class ApiErrorContractTest {
             """{"error":{"code":"rate_limited","message":"Too many requests","trace_id":"$trace"}}"""
         ))
         val limited = recordDose() as ApiResult.Error
+        assertEquals(429, limited.statusCode)
         assertEquals(trace, limited.traceId)
-        assertEquals("http_429", limited.code)
+        assertEquals("rate_limited", limited.code)
+        assertEquals("Too many requests", limited.message)
+        assertNull(limited.requestId)
         enqueueError(403, "forbidden", "Denied")
         assertNull((recordDose() as ApiResult.Error).traceId)
     }

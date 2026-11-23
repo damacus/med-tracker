@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -91,6 +92,7 @@ import io.damacus.medtracker.ui.theme.MedTrackerPrimary
 import io.damacus.medtracker.ui.theme.MedTrackerTheme
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
+import io.damacus.medtracker.auth.LocalDevConnectionBuilder
 import io.damacus.medtracker.auth.MobileAuthDiscovery
 import io.damacus.medtracker.data.model.SessionPayload
 import net.openid.appauth.AuthState
@@ -189,7 +191,10 @@ class MainActivity : ComponentActivity() {
         pendingState = savedInstanceState?.getString("mobileAuthState")
         pendingRevision = savedInstanceState?.getString("mobileAuthRevision")
         enableEdgeToEdge()
-        authorizationService = AuthorizationService(this)
+        authorizationService = AuthorizationService(
+            this,
+            LocalDevConnectionBuilder.appAuthConfiguration(BuildConfig.DEBUG)
+        )
 
         setContent {
             MedTrackerTheme {
@@ -229,7 +234,7 @@ class MainActivity : ComponentActivity() {
         val revision = sessionManager.sessionState.value.revision
         lifecycleScope.launch {
             val discovered = try {
-                MobileAuthDiscovery().fetch(instanceUrl, BuildConfig.OIDC_REDIRECT_URI)
+                MobileAuthDiscovery(allowLocalHttp = BuildConfig.DEBUG).fetch(instanceUrl, BuildConfig.OIDC_REDIRECT_URI)
             } catch (error: kotlinx.coroutines.CancellationException) {
                 throw error
             } catch (_: Exception) {
@@ -248,7 +253,7 @@ class MainActivity : ComponentActivity() {
             Uri.parse(BuildConfig.OIDC_REDIRECT_URI)
         )
             .setScope("medtracker offline_access")
-            .setAdditionalParameters(mapOf("response_mode" to "query"))
+            .setResponseMode(AuthorizationRequest.ResponseMode.QUERY)
             .setCodeVerifier(
                 verifier,
                 CodeVerifierUtil.deriveCodeVerifierChallenge(verifier),
@@ -285,10 +290,10 @@ fun MedTrackerApp(
     val collectedDashboardUiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
     val collectedMedUiState by medicationViewModel.uiState.collectAsStateWithLifecycle()
     val collectedSchedUiState by scheduleViewModel.uiState.collectAsStateWithLifecycle()
-    val hhUiState by householdViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedHhUiState by householdViewModel.uiState.collectAsStateWithLifecycle()
     val collectedHealthUiState by healthEventsViewModel.uiState.collectAsStateWithLifecycle()
-    val lookupUiState by medicationLookupViewModel.uiState.collectAsStateWithLifecycle()
-    val adminUiState by administrationViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedLookupUiState by medicationLookupViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedAdminUiState by administrationViewModel.uiState.collectAsStateWithLifecycle()
 
     val isOnline by networkMonitor.isOnline.collectAsStateWithLifecycle(initialValue = true)
     val pendingMutations by offlineQueueRepository.pendingMutations.collectAsStateWithLifecycle()
@@ -296,7 +301,10 @@ fun MedTrackerApp(
     val dashboardUiState = collectedDashboardUiState.forSession(session)
     val medUiState = collectedMedUiState.forSession(session)
     val schedUiState = collectedSchedUiState.forSession(session)
+    val hhUiState = collectedHhUiState.forSession(session)
     val healthUiState = collectedHealthUiState.forSession(session)
+    val lookupUiState = collectedLookupUiState.forSession(session)
+    val adminUiState = collectedAdminUiState.forSession(session)
     val sessionRevision = session.revision
     var currentDestination by remember(sessionRevision) { mutableStateOf(AppDestination.Dashboard) }
 
@@ -309,6 +317,25 @@ fun MedTrackerApp(
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    val hasActiveOverlay = drawerState.isOpen ||
+        showStockRemovalDialog ||
+        showAddMedicationForm ||
+        selectedMedication != null ||
+        showAddScheduleForm ||
+        showInviteDialog ||
+        showHealthEventDialog
+    BackHandler(enabled = hasActiveOverlay) {
+        when {
+            drawerState.isOpen -> scope.launch { drawerState.close() }
+            showStockRemovalDialog -> showStockRemovalDialog = false
+            showAddMedicationForm -> showAddMedicationForm = false
+            selectedMedication != null -> selectedMedication = null
+            showAddScheduleForm -> showAddScheduleForm = false
+            showInviteDialog -> showInviteDialog = false
+            showHealthEventDialog -> showHealthEventDialog = false
+        }
+    }
 
     val bottomNavDestinations = listOf(
         AppDestination.Dashboard,
@@ -395,7 +422,24 @@ fun MedTrackerApp(
                                 IconButton(onClick = { mainViewModel.showHouseholds() }) {
                                     Icon(imageVector = Icons.Default.Home, contentDescription = "Switch household")
                                 }
-                                IconButton(onClick = { dashboardViewModel.refresh(sessionRevision) }) {
+                                IconButton(onClick = {
+                                    when (currentDestination) {
+                                        AppDestination.Dashboard -> dashboardViewModel.refresh(sessionRevision)
+                                        AppDestination.Medications -> medicationViewModel.loadMedications(session)
+                                        AppDestination.Schedules -> scheduleViewModel.loadSchedules(session)
+                                        AppDestination.Locations, AppDestination.Household -> {
+                                            householdViewModel.loadData(session)
+                                            dashboardViewModel.refresh(sessionRevision)
+                                        }
+                                        AppDestination.HealthEvents -> healthEventsViewModel.loadHealthEvents(session)
+                                        AppDestination.Admin -> administrationViewModel.loadAdminSettings(session)
+                                        AppDestination.Profile -> {
+                                            mainViewModel.loadCurrentUser(session)
+                                            dashboardViewModel.refresh(sessionRevision)
+                                        }
+                                        AppDestination.MedicationFinder, AppDestination.Reports -> dashboardViewModel.refresh(sessionRevision)
+                                    }
+                                }) {
                                     Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh")
                                 }
                                 IconButton(onClick = { currentDestination = AppDestination.Profile }) {
@@ -459,12 +503,24 @@ fun MedTrackerApp(
                                             currentDestination = AppDestination.Medications
                                             showAddMedicationForm = true
                                         },
+                                        onManageInventoryClick = {
+                                            currentDestination = AppDestination.Medications
+                                            showAddMedicationForm = false
+                                            selectedMedication = null
+                                        },
+                                        onRecordNotTaken = { schedule, reason, notes ->
+                                            dashboardViewModel.recordDoseNotTaken(schedule, reason, notes, sessionRevision)
+                                        },
+                                        onReopenDose = { schedule ->
+                                            dashboardViewModel.reopenDose(schedule, sessionRevision)
+                                        },
                                         onDismissMessage = { dashboardViewModel.clearMessages(sessionRevision) }
                                     )
                                 }
                                 AppDestination.Medications -> {
                                     if (showAddMedicationForm) {
                                         MedicationFormScreen(
+                                            locations = hhUiState.locations,
                                             onBackClick = { showAddMedicationForm = false },
                                             onSubmit = { payload, locId ->
                                                 medicationViewModel.createMedication(payload, locId) {
@@ -517,6 +573,8 @@ fun MedTrackerApp(
                                     } else {
                                         ScheduleListScreen(
                                             uiState = schedUiState,
+                                            people = dashboardUiState.dashboardData.people,
+                                            medications = dashboardUiState.dashboardData.medications,
                                             onTogglePause = { scheduleViewModel.togglePauseSchedule(it) },
                                             onAddClick = { showAddScheduleForm = true }
                                         )

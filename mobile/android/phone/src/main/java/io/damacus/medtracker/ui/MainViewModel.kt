@@ -39,7 +39,12 @@ class MainViewModel(
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     init {
-        if (sessionState.value.sessionPayload?.oauthState != null && sessionState.value.household == null) showHouseholds()
+        val current = sessionState.value
+        if (current.sessionPayload?.oauthState != null && current.household == null) {
+            showHouseholds()
+        } else if (current.isLoggedIn && current.household != null && current.user == null) {
+            loadCurrentUser(current)
+        }
     }
 
     fun completeMobileLogin(payload: SessionPayload, serverUrl: String) {
@@ -73,8 +78,27 @@ class MainViewModel(
         val household = selection.households.singleOrNull { it.id == householdId } ?: return
         val session = sessionState.value
         val payload = session.sessionPayload ?: return
-        sessionManager.saveSession(payload.copy(household = HouseholdDto(household.id, household.name)), session.serverUrl)
+        sessionManager.saveSession(
+            payload.copy(household = HouseholdDto(household.id, household.name), me = null),
+            session.serverUrl
+        )
         _uiState.value = MainUiState()
+        loadCurrentUser(sessionState.value)
+    }
+
+    fun loadCurrentUser(session: AppSession = sessionState.value) {
+        val token = session.accessToken?.takeIf { it.isNotBlank() } ?: return
+        val householdId = session.household?.id ?: return
+        val expectedRevision = session.revision
+        viewModelScope.launch {
+            val result = apiClient.getMe(session.serverUrl, token, householdId)
+            val latest = sessionState.value
+            if (latest.revision != expectedRevision) return@launch
+            if (result is ApiResult.Success) {
+                val latestPayload = latest.sessionPayload ?: return@launch
+                sessionManager.updatePayload(expectedRevision, latestPayload.copy(me = result.data))
+            }
+        }
     }
 
     fun reportAuthenticationError(message: String) {

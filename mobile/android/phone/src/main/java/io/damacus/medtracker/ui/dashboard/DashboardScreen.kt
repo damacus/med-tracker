@@ -27,11 +27,11 @@ import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Schedule
@@ -49,6 +49,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -73,15 +74,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.damacus.medtracker.data.AppSession
+import io.damacus.medtracker.data.api.DoseOccurrenceDto
 import io.damacus.medtracker.data.model.AiSuggestionDto
 import io.damacus.medtracker.data.model.DashboardScheduleItem
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.ScheduleDto
+import io.damacus.medtracker.ui.dose.DoseOutcomeDialog
 import io.damacus.medtracker.ui.theme.MedTrackerPrimary
-import io.damacus.medtracker.ui.theme.NoticeAmberBg
-import io.damacus.medtracker.ui.theme.NoticeAmberBorder
-import io.damacus.medtracker.ui.theme.NoticeAmberText
 import io.damacus.medtracker.ui.theme.StatEmeraldGreen
 import io.damacus.medtracker.ui.theme.StatRoyalBlue
 import io.damacus.medtracker.ui.theme.StatWineRed
@@ -99,9 +99,13 @@ fun DashboardScreen(
     onRecordDose: (ScheduleDto) -> Unit,
     onAddPersonClick: () -> Unit = {},
     onAddMedicationClick: () -> Unit = {},
+    onManageInventoryClick: () -> Unit = onAddMedicationClick,
+    onRecordNotTaken: (ScheduleDto, String, String) -> Unit = { _, _, _ -> },
+    onReopenDose: (ScheduleDto) -> Unit = {},
     onDismissMessage: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    var outcomeDialogItem by remember(session.revision) { mutableStateOf<DashboardScheduleItem?>(null) }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
@@ -117,6 +121,25 @@ fun DashboardScreen(
         }
     }
 
+    outcomeDialogItem?.let { item ->
+        DoseOutcomeDialog(
+            medicationName = item.medication?.displayName ?: item.medication?.name ?: "Medication",
+            onDismiss = { outcomeDialogItem = null },
+            onConfirmTaken = {
+                outcomeDialogItem = null
+                onRecordDose(item.schedule)
+            },
+            onConfirmNotTaken = { reason, notes ->
+                outcomeDialogItem = null
+                onRecordNotTaken(item.schedule, reason, notes)
+            },
+            onConfirmReopen = {
+                outcomeDialogItem = null
+                onReopenDose(item.schedule)
+            }
+        )
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         if (uiState.isLoading) {
             Box(
@@ -127,7 +150,7 @@ fun DashboardScreen(
             }
         } else {
             val dashboard = uiState.dashboardData
-            val scheduleItems = dashboard.displayScheduleItems
+            val scheduleItems = uiState.displayScheduleItems
             val user = session.user
             val activePerson = dashboard.selectedPerson
             val greetingName = activePerson?.name?.split(" ")?.firstOrNull()
@@ -139,12 +162,7 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. Demo Environment Notice Banner
-                item {
-                    DemoNoticeBanner()
-                }
-
-                // 2. Greeting & Active Person Card
+                // 1. Greeting & Active Person Card
                 item {
                     GreetingAndPersonHeader(
                         greetingName = greetingName,
@@ -156,11 +174,14 @@ fun DashboardScreen(
                     )
                 }
 
-                // 3. Overview Metric Stat Cards Row
+                // 2. Overview Metric Stat Cards Row
                 item {
                     val totalDue = scheduleItems.count { it.isDueNow }
-                    val tasksCount = scheduleItems.size
-                    val nextDueText = if (scheduleItems.isEmpty()) {
+                    val tasksCount = scheduleItems.count { item ->
+                        val outcome = item.schedule.id?.let { uiState.doseOccurrencesByScheduleId[it]?.outcome }
+                        outcome != "taken" && outcome != "not_taken" && item.isDueNow
+                    }
+                    val nextDueText = if (totalDue == 0) {
                         "None today"
                     } else {
                         scheduleItems.firstOrNull { it.isDueNow }?.schedule?.doseCycle ?: "Due now"
@@ -172,12 +193,14 @@ fun DashboardScreen(
                     )
                 }
 
-                // 4. Today's Schedule Section (Full Width)
+                // 3. Today's Schedule Section (Full Width)
                 item {
                     TodaysScheduleSection(
                         scheduleItems = scheduleItems,
+                        doseOccurrencesByScheduleId = uiState.doseOccurrencesByScheduleId,
                         takingScheduleId = uiState.takingScheduleId,
                         onRecordDose = onRecordDose,
+                        onOpenOutcomeDialog = { outcomeDialogItem = it },
                         pauseController = uiState.pauseController
                     )
                 }
@@ -194,11 +217,11 @@ fun DashboardScreen(
                     }
                 }
 
-                // 5. Inventory & Stock Alerts Section (Full Width)
+                // 4. Inventory & Stock Alerts Section (Full Width)
                 item {
                     StockInventorySection(
                         lowStockMeds = dashboard.lowStockMedications,
-                        onAddMedicationClick = onAddMedicationClick
+                        onManageInventoryClick = onManageInventoryClick
                     )
                 }
 
@@ -436,43 +459,6 @@ private data class NavigationItem(
     val icon: ImageVector,
     val isSelected: Boolean
 )
-@Composable
-private fun DemoNoticeBanner() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = NoticeAmberBg,
-        border = BorderStroke(1.dp, NoticeAmberBorder)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = null,
-                tint = NoticeAmberText,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = "Demo Environment",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = NoticeAmberText
-                )
-                Text(
-                    text = "Contains disposable synthetic data. Reset weekly.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NoticeAmberText
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun GreetingAndPersonHeader(
@@ -760,8 +746,10 @@ private fun MetricStatsCardsRow(
 @Composable
 private fun TodaysScheduleSection(
     scheduleItems: List<DashboardScheduleItem>,
+    doseOccurrencesByScheduleId: Map<Long, DoseOccurrenceDto>,
     takingScheduleId: Long?,
     onRecordDose: (ScheduleDto) -> Unit,
+    onOpenOutcomeDialog: (DashboardScheduleItem) -> Unit,
     pauseController: MedicationPauseController? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -829,10 +817,13 @@ private fun TodaysScheduleSection(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 scheduleItems.forEach { item ->
+                    val occurrence = item.schedule.id?.let { doseOccurrencesByScheduleId[it] }
                     ScheduleDoseCard(
                         item = item,
+                        occurrence = occurrence,
                         isTaking = takingScheduleId == item.schedule.id,
-                        onTakeClick = { onRecordDose(item.schedule) }
+                        onTakeClick = { onRecordDose(item.schedule) },
+                        onOutcomeClick = { onOpenOutcomeDialog(item) }
                     )
                     pauseController?.let { SchedulePauseActions(it, item.schedule.portableId) }
                 }
@@ -844,14 +835,24 @@ private fun TodaysScheduleSection(
 @Composable
 private fun ScheduleDoseCard(
     item: DashboardScheduleItem,
+    occurrence: DoseOccurrenceDto?,
     isTaking: Boolean,
-    onTakeClick: () -> Unit
+    onTakeClick: () -> Unit,
+    onOutcomeClick: () -> Unit
 ) {
     val schedule = item.schedule
     val med = item.medication
+    val statusLabel = when {
+        occurrence?.outcome == "taken" -> "Taken"
+        occurrence?.outcome == "not_taken" -> "Not Taken"
+        !item.isDueNow && item.lastTakenAt != null -> "Taken"
+        else -> null
+    }
 
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOutcomeClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -903,31 +904,57 @@ private fun ScheduleDoseCard(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
+                    if (statusLabel != null) {
+                        Text(
+                            text = statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = StatEmeraldGreen,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            Button(
-                onClick = onTakeClick,
-                enabled = !isTaking,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MedTrackerPrimary)
-            ) {
-                if (isTaking) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (item.isDueNow) {
+                    Button(
+                        onClick = onTakeClick,
+                        enabled = !isTaking,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MedTrackerPrimary)
+                    ) {
+                        if (isTaking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = "Take", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 } else {
+                    OutlinedButton(
+                        onClick = onOutcomeClick,
+                        enabled = !isTaking,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(text = statusLabel ?: "Update")
+                    }
+                }
+                IconButton(onClick = onOutcomeClick, enabled = !isTaking) {
                     Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Record dose outcome"
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Take", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -937,7 +964,7 @@ private fun ScheduleDoseCard(
 @Composable
 private fun StockInventorySection(
 	lowStockMeds: List<MedicationDto>,
-	onAddMedicationClick: () -> Unit
+	onManageInventoryClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -990,7 +1017,7 @@ private fun StockInventorySection(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedButton(
-                    onClick = onAddMedicationClick,
+                    onClick = onManageInventoryClick,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {

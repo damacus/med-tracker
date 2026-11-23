@@ -1,6 +1,7 @@
 package io.damacus.medtracker.auth
 
 import android.content.Context
+import io.damacus.medtracker.BuildConfig
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.MobileSessionTokenInterceptor
 import io.damacus.medtracker.data.api.RefreshedMobileTokens
@@ -16,7 +17,10 @@ object MobileSessionAuthentication {
         private set
 
     fun install(context: Context, sessions: SessionManager) {
-        val service = AuthorizationService(context.applicationContext)
+        val service = AuthorizationService(
+            context.applicationContext,
+            LocalDevConnectionBuilder.appAuthConfiguration(BuildConfig.DEBUG)
+        )
         interceptor = MobileSessionTokenInterceptor(sessions) { serialized ->
             val state = AuthState.jsonDeserialize(serialized)
             val completed = CountDownLatch(1)

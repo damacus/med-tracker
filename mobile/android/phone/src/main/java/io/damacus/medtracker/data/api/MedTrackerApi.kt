@@ -24,6 +24,7 @@ import io.damacus.medtracker.data.model.UserDto
 import io.medtracker.client.apis.AuthenticationApi
 import io.medtracker.client.apis.CapabilitiesApi
 import io.medtracker.client.apis.HealthEventsApi
+import io.medtracker.client.apis.HouseholdApi
 import io.medtracker.client.apis.HouseholdSettingsApi
 import io.medtracker.client.apis.InvitationsApi
 import io.medtracker.client.apis.LocationsApi
@@ -43,6 +44,11 @@ import io.medtracker.client.infrastructure.Serializer
 import io.medtracker.client.infrastructure.Success
 import io.medtracker.client.models.AiMedicationSuggestion
 import io.medtracker.client.models.Capabilities
+import io.medtracker.client.models.DoseNotTakenRequest
+import io.medtracker.client.models.DoseNotTakenRequestDoseOccurrence
+import io.medtracker.client.models.DoseOccurrence
+import io.medtracker.client.models.DoseReopenRequest
+import io.medtracker.client.models.DoseReopenRequestDoseOccurrence
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.HealthEvent
 import io.medtracker.client.models.HealthEventCreateRequest
@@ -52,6 +58,7 @@ import io.medtracker.client.models.HouseholdInvitation
 import io.medtracker.client.models.HouseholdInvitationAttributes
 import io.medtracker.client.models.HouseholdInvitationCreateRequest
 import io.medtracker.client.models.Location
+import io.medtracker.client.models.Me
 import io.medtracker.client.models.Medication
 import io.medtracker.client.models.MedicationCreateAttributes
 import io.medtracker.client.models.MedicationCreateRequest
@@ -62,6 +69,8 @@ import io.medtracker.client.models.MedicationTake
 import io.medtracker.client.models.MedicationTakeCreateRequest
 import io.medtracker.client.models.MedicationTakeCreateRequestMedicationTake
 import io.medtracker.client.models.Person
+import io.medtracker.client.models.RateLimitError
+import io.medtracker.client.models.RateLimitErrorEnvelope
 import io.medtracker.client.models.Schedule
 import io.medtracker.client.models.ScheduleCreateRequest
 import io.medtracker.client.models.ScheduleCreateRequestSchedule
@@ -74,16 +83,35 @@ import okhttp3.Call
 import java.io.IOException
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
 import java.util.UUID
+
+data class DoseOccurrenceDto(
+    val key: String,
+    val scheduleId: Long,
+    val outcome: String,
+    val due: Boolean,
+    val etag: String? = null,
+    val reason: String? = null,
+    val note: String? = null
+)
 
 sealed class ApiResult<out T> {
     data class Success<T>(val data: T) : ApiResult<T>()
-    data class Error(val code: String?, val message: String, val statusCode: Int? = null, val requestId: String? = null, val traceId: String? = null) : ApiResult<Nothing>()
+    data class Error(
+        val code: String?,
+        val message: String,
+        val statusCode: Int? = null,
+        val requestId: String? = null,
+        val traceId: String? = null,
+        val errors: Map<String, List<String>>? = null
+    ) : ApiResult<Nothing>()
     data class NetworkError(val cause: Throwable) : ApiResult<Nothing>()
 }
 
 interface MedTrackerApi {
     suspend fun getHouseholds(baseUrl: String, accessToken: String): ApiResult<List<HouseholdChoice>> = ApiResult.Error("not_implemented", "Not implemented")
+    suspend fun getMe(baseUrl: String, accessToken: String, householdId: Long): ApiResult<UserDto> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun getCapabilities(baseUrl: String): ApiResult<CapabilitiesDto> = ApiResult.Success(CapabilitiesDto("v1", "medtracker.api.capabilities.v1"))
     suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit>
     suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<PersonDto>>
@@ -91,6 +119,9 @@ interface MedTrackerApi {
     suspend fun getSchedules(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<ScheduleDto>>
     suspend fun getMedicationTakes(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<MedicationTakeDto>>
     suspend fun recordDose(baseUrl: String, accessToken: String, householdId: Long, request: RecordDosePayload): ApiResult<MedicationTakeDto>
+    suspend fun getScheduleDoseOccurrences(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long, startDate: String, endDate: String): ApiResult<List<DoseOccurrenceDto>> = ApiResult.Success(emptyList())
+    suspend fun recordScheduleDoseNotTaken(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long, occurrenceKey: String, reason: String, note: String? = null): ApiResult<DoseOccurrenceDto> = ApiResult.Error("not_implemented", "Not implemented")
+    suspend fun reopenScheduleDoseOccurrence(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long, occurrenceKey: String, etag: String): ApiResult<DoseOccurrenceDto> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>>
     suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HouseholdInvitationDto>>
     suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String): ApiResult<HouseholdInvitationDto>
@@ -133,6 +164,10 @@ class GeneratedMedTrackerApi(
         }
     }
 
+    override suspend fun getMe(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        HouseholdApi(apiBaseUrl(baseUrl), requestCalls).getCurrentProfile(householdId.toInt()).data.toDomain()
+    }
+
     override suspend fun getCapabilities(baseUrl: String) = generated {
         CapabilitiesApi(apiBaseUrl(baseUrl), unauthenticatedCalls).getCapabilities().data.toDomain()
     }
@@ -173,6 +208,81 @@ class GeneratedMedTrackerApi(
         )).data.toDomain()
     }
 
+    override suspend fun getScheduleDoseOccurrences(
+        baseUrl: String,
+        accessToken: String,
+        householdId: Long,
+        scheduleId: Long,
+        startDate: String,
+        endDate: String
+    ): ApiResult<List<DoseOccurrenceDto>> {
+        val parsedStart = try {
+            LocalDate.parse(startDate)
+        } catch (_: DateTimeParseException) {
+            return ApiResult.Error("invalid_date", "Invalid start date. Use YYYY-MM-DD.")
+        }
+        val parsedEnd = try {
+            LocalDate.parse(endDate)
+        } catch (_: DateTimeParseException) {
+            return ApiResult.Error("invalid_date", "Invalid end date. Use YYYY-MM-DD.")
+        }
+        return authenticated(accessToken) { requestCalls ->
+            HouseholdApi(apiBaseUrl(baseUrl), requestCalls)
+                .listScheduleDoseOccurrences(householdId.toInt(), scheduleId.toString(), parsedStart, parsedEnd)
+                .data
+                .map(DoseOccurrence::toDomain)
+        }
+    }
+
+    override suspend fun recordScheduleDoseNotTaken(
+        baseUrl: String,
+        accessToken: String,
+        householdId: Long,
+        scheduleId: Long,
+        occurrenceKey: String,
+        reason: String,
+        note: String?
+    ) = authenticated(accessToken) { requestCalls ->
+        val reasonEnum = DoseNotTakenRequestDoseOccurrence.Reason.entries.firstOrNull {
+            it.value.equals(reason.trim(), ignoreCase = true)
+        } ?: DoseNotTakenRequestDoseOccurrence.Reason.other
+        HouseholdApi(apiBaseUrl(baseUrl), requestCalls)
+            .recordScheduleDoseNotTaken(
+                householdId.toInt(),
+                scheduleId.toString(),
+                DoseNotTakenRequest(
+                    DoseNotTakenRequestDoseOccurrence(
+                        key = occurrenceKey,
+                        reason = reasonEnum,
+                        note = note?.trim()?.ifBlank { null }
+                    )
+                ),
+                idempotencyKey = UUID.randomUUID().toString()
+            )
+            .data
+            .toDomain()
+    }
+
+    override suspend fun reopenScheduleDoseOccurrence(
+        baseUrl: String,
+        accessToken: String,
+        householdId: Long,
+        scheduleId: Long,
+        occurrenceKey: String,
+        etag: String
+    ) = authenticated(accessToken) { requestCalls ->
+        HouseholdApi(apiBaseUrl(baseUrl), requestCalls)
+            .reopenScheduleDoseOccurrence(
+                householdId.toInt(),
+                scheduleId.toString(),
+                ifMatch = etag,
+                DoseReopenRequest(DoseReopenRequestDoseOccurrence(key = occurrenceKey)),
+                idempotencyKey = UUID.randomUUID().toString()
+            )
+            .data
+            .toDomain()
+    }
+
     override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
         LocationsApi(apiBaseUrl(baseUrl), requestCalls).listLocations(householdId.toInt()).data.map(Location::toDomain)
     }
@@ -192,6 +302,12 @@ class GeneratedMedTrackerApi(
     }
 
     override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload) = authenticated(accessToken) { requestCalls ->
+        val parsedDoseUnit = request.doseUnit?.trim()?.takeIf { it.isNotBlank() }?.let { raw ->
+            MedicationCreateAttributes.DoseUnit.entries.firstOrNull {
+                it != MedicationCreateAttributes.DoseUnit.unknown_default_open_api &&
+                    it.value.equals(raw, ignoreCase = true)
+            }
+        }
         MedicationsApi(apiBaseUrl(baseUrl), requestCalls).createMedication(
             householdId.toInt(),
             MedicationCreateRequest(MedicationCreateAttributes(
@@ -200,6 +316,7 @@ class GeneratedMedTrackerApi(
                 locationId = locationId,
                 category = request.category,
                 doseAmount = request.doseAmount?.toString(),
+                doseUnit = parsedDoseUnit,
                 currentSupply = request.currentSupply?.toString()
             ))
         ).data.toDomain()
@@ -227,22 +344,28 @@ class GeneratedMedTrackerApi(
         medicationsApi.getMedication(householdId.toInt(), request.medicationId.toString()).data.toDomain()
     }
 
-    override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload) = authenticated(accessToken) { requestCalls ->
-        val startDate = LocalDate.parse(request.startDate)
-        SchedulesApi(apiBaseUrl(baseUrl), requestCalls).createSchedule(
-            householdId.toInt(),
-            ScheduleCreateRequest(
-                ScheduleCreateRequestSchedule(
-                    personId = request.personId.toString(),
-                    medicationId = request.medicationId.toString(),
-                    doseAmount = request.doseAmount.toString(),
-                    doseUnit = request.doseUnit,
-                    startDate = startDate,
-                    endDate = startDate.plusYears(1),
-                    frequency = request.frequency
+    override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload): ApiResult<ScheduleDto> {
+        val startDate = try {
+            LocalDate.parse(request.startDate.trim())
+        } catch (_: DateTimeParseException) {
+            return ApiResult.Error("invalid_date", "Invalid start date. Use YYYY-MM-DD.")
+        }
+        return authenticated(accessToken) { requestCalls ->
+            SchedulesApi(apiBaseUrl(baseUrl), requestCalls).createSchedule(
+                householdId.toInt(),
+                ScheduleCreateRequest(
+                    ScheduleCreateRequestSchedule(
+                        personId = request.personId.toString(),
+                        medicationId = request.medicationId.toString(),
+                        doseAmount = request.doseAmount.toString(),
+                        doseUnit = request.doseUnit,
+                        startDate = startDate,
+                        endDate = startDate.plusYears(1),
+                        frequency = request.frequency
+                    )
                 )
-            )
-        ).data.toDomain()
+            ).data.toDomain()
+        }
     }
 
     override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long) = authenticated(accessToken) { requestCalls ->
@@ -303,35 +426,76 @@ class GeneratedMedTrackerApi(
     private fun ServerException.toResult() = errorResult(statusCode, (response as? ServerError<*>)?.body)
 
     private fun errorResult(statusCode: Int, body: Any?): ApiResult.Error {
+        val bodyString = body as? String
         val error = try {
-            (body as? String)?.let { Serializer.moshi.adapter(ErrorEnvelope::class.java).fromJson(it)?.error }
+            bodyString?.let { Serializer.moshi.adapter(ErrorEnvelope::class.java).fromJson(it)?.error }
         } catch (_: JsonDataException) {
             null
         } catch (_: IOException) {
             null
         }
-        return if (error != null && error.code.isNotBlank() && error.message.isNotBlank() && error.requestId.isNotBlank()) {
-            ApiResult.Error(error.code, error.message, statusCode, error.requestId, error.traceId)
-        } else {
-            val flat = try {
-                (body as? String)?.let { Serializer.moshi.adapter(Map::class.java).fromJson(it) }
+        if (error != null && error.code.isNotBlank() && error.message.isNotBlank() && error.requestId.isNotBlank()) {
+            return ApiResult.Error(
+                code = error.code,
+                message = error.message,
+                statusCode = statusCode,
+                requestId = error.requestId,
+                traceId = error.traceId,
+                errors = error.errors?.takeIf { it.isNotEmpty() }
+            )
+        }
+        if (statusCode == 429) {
+            val rateLimit = try {
+                bodyString?.let { Serializer.moshi.adapter(RateLimitErrorEnvelope::class.java).fromJson(it)?.error }
             } catch (_: JsonDataException) {
                 null
             } catch (_: IOException) {
                 null
             }
-            val isFlatError = flat?.get("error") is String ||
-                (flat?.get("code") is String && flat["message"] is String)
-            val nestedError = flat?.get("error") as? Map<*, *>
-            val traceId = if (isFlatError) flat?.get("trace_id") as? String
-                else nestedError?.get("trace_id") as? String
-            ApiResult.Error("http_$statusCode", "Request failed (HTTP $statusCode).", statusCode, traceId = traceId)
+            if (rateLimit != null && rateLimit.code != RateLimitError.Code.unknown_default_open_api && rateLimit.message.isNotBlank()) {
+                return ApiResult.Error(
+                    code = rateLimit.code.value,
+                    message = rateLimit.message,
+                    statusCode = statusCode,
+                    requestId = null,
+                    traceId = rateLimit.traceId
+                )
+            }
         }
+        val flat = try {
+            bodyString?.let { Serializer.moshi.adapter(Map::class.java).fromJson(it) }
+        } catch (_: JsonDataException) {
+            null
+        } catch (_: IOException) {
+            null
+        }
+        val isFlatError = flat?.get("error") is String ||
+            (flat?.get("code") is String && flat["message"] is String)
+        val nestedError = flat?.get("error") as? Map<*, *>
+        val traceId = if (isFlatError) flat?.get("trace_id") as? String
+            else nestedError?.get("trace_id") as? String
+        return ApiResult.Error("http_$statusCode", "Request failed (HTTP $statusCode).", statusCode, traceId = traceId)
     }
 
     internal fun apiBaseUrl(baseUrl: String): String = "${baseUrl.trimEnd('/')}/api/v1"
 
 }
+
+private fun Me.toDomain() = UserDto(
+    id = id.toLong(),
+    emailAddress = emailAddress,
+    name = person.name,
+    role = membershipRole?.value
+)
+private fun DoseOccurrence.toDomain() = DoseOccurrenceDto(
+    key = key,
+    scheduleId = sourceId.toLong(),
+    outcome = outcome.value,
+    due = due,
+    etag = etag,
+    reason = reason?.value,
+    note = note
+)
 
 private fun Person.toDomain() = PersonDto(id.toLong(), portableId.toString(), name, email, dateOfBirth?.toString(), personType.value, age, hasCapacity)
 private fun Medication.toDomain() = MedicationDto(id.toLong(), portableId.toString(), name, displayName, category, description, doseAmount?.toDoubleOrNull(), doseUnit, currentSupply?.toDoubleOrNull(), reorderThreshold?.toDoubleOrNull(), reorderStatus?.value, lowStock, outOfStock)

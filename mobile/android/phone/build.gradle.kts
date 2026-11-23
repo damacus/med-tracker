@@ -42,7 +42,7 @@ android {
     buildTypes {
         getByName("debug") {
             applicationIdSuffix = ".debug"
-            buildConfigField("String", "SERVER_URL", "\"https://invalid-debug.medtracker.example/\"")
+            buildConfigField("String", "SERVER_URL", "\"http://10.0.2.2:5150/\"")
             buildConfigField("String", "OIDC_AUTHORIZATION_ENDPOINT", "\"https://invalid-id.medtracker.example/authorize\"")
             buildConfigField("String", "OIDC_TOKEN_ENDPOINT", "\"https://invalid-id.medtracker.example/token\"")
             buildConfigField("String", "OIDC_CLIENT_ID", "\"invalid-medtracker-android-debug\"")

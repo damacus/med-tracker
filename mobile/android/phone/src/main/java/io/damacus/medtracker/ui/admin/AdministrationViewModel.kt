@@ -9,6 +9,9 @@ import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.data.model.HouseholdAdminSettingsDto
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +23,10 @@ data class AdministrationUiState(
     val isLoading: Boolean = false,
     val adminSettings: HouseholdAdminSettingsDto? = null,
     val errorMessage: String? = null
-)
+) {
+    fun forSession(session: AppSession): AdministrationUiState =
+        if (sessionRevision == session.revision) this else AdministrationUiState(sessionRevision = session.revision)
+}
 
 class AdministrationViewModel(
     private val sessionManager: SessionManager,
@@ -29,17 +35,23 @@ class AdministrationViewModel(
 
     private val _uiState = MutableStateFlow(AdministrationUiState())
     val uiState: StateFlow<AdministrationUiState> = _uiState.asStateFlow()
+    private var sessionWork: Job = SupervisorJob(viewModelScope.coroutineContext[Job])
     private val sessionObservation: AutoCloseable
 
     init {
         sessionObservation = sessionManager.observeSession { session ->
+            sessionWork.cancel()
+            sessionWork = SupervisorJob(viewModelScope.coroutineContext[Job])
             _uiState.value = AdministrationUiState(sessionRevision = session.revision)
-            loadAdminSettings(session)
+            if (session.isLoggedIn && session.household != null) {
+                loadAdminSettings(session)
+            }
         }
     }
 
     override fun onCleared() {
         sessionObservation.close()
+        sessionWork.cancel()
         super.onCleared()
     }
 
@@ -47,20 +59,30 @@ class AdministrationViewModel(
         val householdId = session.household?.id ?: return
         val token = session.accessToken ?: return
 
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-
-        viewModelScope.launch {
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
             when (val res = apiClient.getAdminSettings(session.serverUrl, token, householdId)) {
                 is ApiResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false, adminSettings = res.data) }
+                    updateForSession(session, work) { it.copy(isLoading = false, adminSettings = res.data) }
                 }
                 is ApiResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = res.message) }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = res.message) }
                 }
                 is ApiResult.NetworkError -> {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Network error loading admin settings") }
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error loading admin settings") }
                 }
             }
+        }
+    }
+
+    private fun isCurrentSession(session: AppSession, work: Job): Boolean =
+        work.isActive && sessionManager.sessionState.value.revision == session.revision
+
+    private fun updateForSession(session: AppSession, work: Job, update: (AdministrationUiState) -> AdministrationUiState) {
+        _uiState.update { current ->
+            if (isCurrentSession(session, work) && current.sessionRevision == session.revision) update(current) else current
         }
     }
 
