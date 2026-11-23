@@ -1,5 +1,7 @@
 use super::*;
+use med_tracker::models::entities::location_membership;
 use sea_orm::sea_query::{Expr as QueryExpr, ExprTrait as _, Func as QueryFunc, Query};
+use sea_orm::{ActiveModelTrait, Set};
 
 #[tokio::test]
 async fn sync_snapshot_is_portable_scoped_and_rechecks_withdrawn_visibility() {
@@ -8,6 +10,18 @@ async fn sync_snapshot_is_portable_scoped_and_rechecks_withdrawn_visibility() {
     let fixture_membership_id = app.fixture.membership.id;
     let fixture_grant_id = app.fixture.grant.id;
     let foreign_household = app.fixture.seed_foreign_household(0).await;
+    let now = chrono::Utc::now().naive_utc();
+    location_membership::ActiveModel {
+        household_id: Set(fixture_household_id),
+        location_id: Set(app.fixture.location.id),
+        person_id: Set(app.fixture.account.person_id),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
     med_tracker::models::_entities::household_memberships::Entity::update_many()
         .col_expr(
             med_tracker::models::_entities::household_memberships::Column::Role,
@@ -40,6 +54,13 @@ async fn sync_snapshot_is_portable_scoped_and_rechecks_withdrawn_visibility() {
     let visible = visible.json::<Value>().await.unwrap_or(Value::Null);
     assert_eq!(status, 200);
     assert_eq!(visible["data"]["format"], "medtracker.portable.v2");
+    assert!(
+        visible["data"]["records"]["people"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|person| person["location_portable_ids"] == json!([]))
+    );
     for collection in [
         "people",
         "locations",

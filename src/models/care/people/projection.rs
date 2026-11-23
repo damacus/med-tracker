@@ -104,25 +104,6 @@ pub(crate) async fn values_in(
         return Ok(vec![]);
     }
     let ids: Vec<i64> = records.iter().map(|row| row.id).collect();
-    let links = location_membership::Entity::find()
-        .in_tenant(household_id)
-        .filter(location_membership::Column::PersonId.is_in(ids.clone()))
-        .order_by_asc(location_membership::Column::Id)
-        .all(tenant.transaction())
-        .await?;
-    let location_ids: Vec<i64> = links.iter().map(|row| row.location_id).collect();
-    let locations: HashMap<i64, String> = if location_ids.is_empty() {
-        HashMap::new()
-    } else {
-        location::Entity::find()
-            .in_tenant(household_id)
-            .filter(location::Column::Id.is_in(location_ids))
-            .all(tenant.transaction())
-            .await?
-            .into_iter()
-            .map(|row| (row.id, row.portable_id))
-            .collect()
-    };
     let preferences: HashMap<i64, notification_preference::Model> =
         notification_preference::Entity::find()
             .in_tenant(household_id)
@@ -133,5 +114,29 @@ pub(crate) async fn values_in(
             .map(|row| (row.person_id, row))
             .collect();
     let today = Utc::now().with_timezone(&zone).date_naive();
-    Ok(records.iter().map(|record|{let location_ids:Vec<i64>=links.iter().filter(|row|row.person_id==record.id).map(|row|row.location_id).collect();let portable:Vec<&String>=location_ids.iter().filter_map(|id|locations.get(id)).collect();let preference=preferences.get(&record.id);json!({"id":record.id,"portable_id":record.portable_id,"updated_at":record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),"name":record.name,"email":record.email,"date_of_birth":record.date_of_birth.map(|value|value.to_string()),"person_type":match record.person_type{1=>"minor",2=>"dependent_adult",_=>"adult"},"has_capacity":record.has_capacity,"age":record.date_of_birth.map(|date|age(date,today)),"location_ids":location_ids,"location_portable_ids":portable,"notification_preference_id":preference.map(|row|row.id),"notification_preference_portable_id":preference.map(|row|&row.portable_id)})}).collect())
+    Ok(records
+        .iter()
+        .map(|record| {
+            let preference = preferences.get(&record.id);
+            json!({
+                "id": record.id,
+                "portable_id": record.portable_id,
+                "updated_at": record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                "name": record.name,
+                "email": record.email,
+                "date_of_birth": record.date_of_birth.map(|value| value.to_string()),
+                "person_type": match record.person_type {
+                    1 => "minor",
+                    2 => "dependent_adult",
+                    _ => "adult",
+                },
+                "has_capacity": record.has_capacity,
+                "age": record.date_of_birth.map(|date| age(date, today)),
+                "location_ids": [],
+                "location_portable_ids": [],
+                "notification_preference_id": preference.map(|row| row.id),
+                "notification_preference_portable_id": preference.map(|row| &row.portable_id),
+            })
+        })
+        .collect())
 }

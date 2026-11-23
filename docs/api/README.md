@@ -194,14 +194,9 @@ location's current `ETag` in `If-Match`. A missing version returns 428; a
 stale version returns 409. Deletion retains both actual administrations and
 saved dose decisions. Numeric and portable location identities are accepted.
 
-Create person-location assignments at
-`/households/{household_id}/locations/{location_id}/location_memberships`
-with `location_membership.person_id` as a numeric or portable person identity.
-Repeating the same assignment returns the existing membership. Delete using
-the returned membership ID below that collection. These actions require
-location-management permission and manage access to the selected person,
-including on cached replay. Membership changes remain online-only because
-they affect visibility.
+Locations label medication inventory. People responses return empty
+`location_ids` and `location_portable_ids` arrays for compatibility. The
+person-location membership write routes have been retired.
 
 ## Care management authority
 

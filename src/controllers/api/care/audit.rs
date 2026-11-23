@@ -355,19 +355,6 @@ impl RequestAudit {
     pub fn location_create() -> Self {
         Self::location("POST", "create")
     }
-    pub fn location_membership(method: &'static str, action: &'static str) -> Self {
-        Self {
-            method,
-            controller: "api/v1/location_memberships",
-            action,
-            policy: "LocationMembershipPolicy",
-            query: if action == "create" {
-                "create?"
-            } else {
-                "destroy?"
-            },
-        }
-    }
     pub fn location(method: &'static str, action: &'static str) -> Self {
         Self {
             method,

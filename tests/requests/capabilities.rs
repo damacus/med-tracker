@@ -186,6 +186,17 @@ async fn public_capabilities_discovery_matches_contract_and_hides_secrets() {
     assert_eq!(data["client_tools"]["cli"]["supported"], false);
     assert_eq!(data["client_tools"]["mcp_server"]["supported"], false);
     assert_eq!(data["fhir"]["resources"], json!([]));
+    assert_eq!(data["location_management"]["person_memberships"], json!([]));
+    assert_eq!(
+        data["location_management"]["memberships_online_only"],
+        false
+    );
+    assert!(
+        !data["sync"]["online_only_resources"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("location_membership"))
+    );
     assert_eq!(
         body["data"]["profile"],
         json!({

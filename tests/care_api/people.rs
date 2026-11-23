@@ -968,7 +968,8 @@ async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
     assert_eq!(status, 201);
     assert_eq!(body["data"]["has_capacity"], false);
     assert_eq!(read_status, 200);
-    assert_eq!(counts, vec![1, 1, 0, 1, 1, 1, 1, 1]);
+    assert_eq!(body["data"]["location_ids"], json!([]));
+    assert_eq!(counts, vec![1, 1, 0, 0, 1, 1, 1, 1]);
 }
 
 #[tokio::test]
@@ -1449,7 +1450,8 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(body["data"]["has_capacity"], true);
     assert_eq!(body["data"]["date_of_birth"], "1985-02-03");
     assert_eq!(body["data"]["email"], expected_email);
-    assert_eq!(body["data"]["location_ids"], json!([fixture_location_id]));
+    assert_eq!(body["data"]["location_ids"], json!([]));
+    assert_eq!(body["data"]["location_portable_ids"], json!([]));
     assert_eq!(
         body["data"]["notification_preference_id"],
         _notification_preferences_87997.id

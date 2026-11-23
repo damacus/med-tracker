@@ -313,8 +313,8 @@ impl CapabilitiesResponse {
                 location_management: LocationManagement {
                     actions: &["create", "update", "destroy"],
                     version_required: true,
-                    person_memberships: &["create", "destroy"],
-                    memberships_online_only: true,
+                    person_memberships: &[],
+                    memberships_online_only: false,
                 },
                 medication_reviews: MedicationReviews {
                     actions: &["index", "show", "update"],
@@ -375,7 +375,6 @@ impl CapabilitiesResponse {
                         "invitation",
                         "household_membership",
                         "person_access_grant",
-                        "location_membership",
                         "report",
                         "api_session",
                         "api_app_token",
