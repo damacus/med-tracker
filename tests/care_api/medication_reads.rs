@@ -13,6 +13,100 @@ fn forecast_scope(app: &Application) -> HouseholdScope {
     }
 }
 
+#[tokio::test]
+async fn inventory_filters_preserve_visible_category_menu() {
+    use sea_orm::prelude::Decimal;
+
+    let app = Application::new().await;
+    let mut membership = app.fixture.membership.clone().into_active_model();
+    membership.role = Set("member".into());
+    membership.update(&app.fixture.admin).await.unwrap();
+
+    let mut ids = Vec::new();
+    for (name, category, visible) in [
+        ("A tablets", "supplement", true),
+        ("A tablets", "supplement", true),
+        ("B tablets", "prescription", true),
+        ("C tablets", "", true),
+        ("Hidden tablets", "hidden", false),
+    ] {
+        let medication = app.fixture.medication(name, Decimal::TEN).await;
+        let mut update = medication.into_active_model();
+        update.category = Set(Some(category.into()));
+        if !visible {
+            update.created_by_membership_id = Set(None);
+        }
+        ids.push(update.update(&app.fixture.admin).await.unwrap());
+    }
+    let [first, second, other, empty, _hidden] = ids.try_into().unwrap();
+
+    let session = crate::platform::fixture_session(&app, app.fixture.account.id).await;
+    let category_options = scraper::Selector::parse("#inventory-category option").unwrap();
+    let card_links = scraper::Selector::parse("#medications article a:first-child").unwrap();
+    let inventory_url = url::Url::parse(&format!(
+        "{}/households/{}/medications",
+        app.origin, app.fixture.household.slug
+    ))
+    .unwrap();
+    let all_ids = vec![
+        first.id,
+        second.id,
+        other.id,
+        empty.id,
+        app.fixture.medication.id,
+    ];
+    for (location_id, category, expected_ids) in [
+        (None, None, all_ids.clone()),
+        (None, Some(""), all_ids),
+        (None, Some("supplement"), vec![first.id, second.id]),
+        (Some(other.location_id), None, vec![other.id]),
+    ] {
+        let mut url = inventory_url.clone();
+        if let Some(id) = location_id {
+            url.query_pairs_mut()
+                .append_pair("location_id", &id.to_string());
+        }
+        if let Some(value) = category {
+            url.query_pairs_mut().append_pair("category", value);
+        }
+        let response = app
+            .client
+            .get(url)
+            .header("cookie", &session)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        let html = response.text().await.unwrap();
+        let document = scraper::Html::parse_document(&html);
+        assert_eq!(
+            document
+                .select(&category_options)
+                .map(|option| option.value().attr("value").unwrap())
+                .collect::<Vec<_>>(),
+            ["", "prescription", "supplement"]
+        );
+        assert_eq!(
+            document
+                .select(&card_links)
+                .map(|link| {
+                    let href = link.value().attr("href").unwrap();
+                    href.split('?')
+                        .next()
+                        .unwrap()
+                        .rsplit('/')
+                        .next()
+                        .unwrap()
+                        .parse::<i64>()
+                        .unwrap()
+                })
+                .collect::<Vec<_>>(),
+            expected_ids
+        );
+    }
+    app.close().await;
+}
+
 async fn medication_forecast(app: &Application, token: &str) -> (Value, Value) {
     let response = app
         .client
