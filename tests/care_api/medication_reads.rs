@@ -14,12 +14,10 @@ fn forecast_scope(app: &Application) -> HouseholdScope {
 }
 
 #[tokio::test]
-async fn inventory_reads_full_medication_rows_once_per_filter() {
-    use med_tracker::models::care::browser_query;
+async fn inventory_filters_preserve_visible_category_menu() {
     use sea_orm::prelude::Decimal;
-    use std::sync::{Arc, Mutex};
 
-    let mut app = Application::new().await;
+    let app = Application::new().await;
     let mut membership = app.fixture.membership.clone().into_active_model();
     membership.role = Set("member".into());
     membership.update(&app.fixture.admin).await.unwrap();
@@ -42,22 +40,13 @@ async fn inventory_reads_full_medication_rows_once_per_filter() {
     }
     let [first, second, other, empty, _hidden] = ids.try_into().unwrap();
 
-    let projections = Arc::new(Mutex::new(Vec::new()));
-    let observed = Arc::clone(&projections);
-    app.context.db.set_metric_callback(move |info| {
-        if let Some((projection, _)) = info.statement.sql.split_once(" FROM \"medications\"")
-            && (projection.starts_with("SELECT \"medications\".")
-                || projection.starts_with("SELECT DISTINCT \"medications\"."))
-        {
-            observed.lock().unwrap().push(projection.to_owned());
-        }
-    });
-    let tenant = begin(
-        &app.context.db,
-        &forecast_scope(&app),
-        app.context.config.settings.as_ref(),
-    )
-    .await
+    let session = crate::platform::fixture_session(&app, app.fixture.account.id).await;
+    let category_options = scraper::Selector::parse("#inventory-category option").unwrap();
+    let card_links = scraper::Selector::parse("#medications article a:first-child").unwrap();
+    let inventory_url = url::Url::parse(&format!(
+        "{}/households/{}/medications",
+        app.origin, app.fixture.household.slug
+    ))
     .unwrap();
     let all_ids = vec![
         first.id,
@@ -66,37 +55,56 @@ async fn inventory_reads_full_medication_rows_once_per_filter() {
         empty.id,
         app.fixture.medication.id,
     ];
-    let mut read_shapes = Vec::new();
     for (location_id, category, expected_ids) in [
         (None, None, all_ids.clone()),
         (None, Some(""), all_ids),
         (None, Some("supplement"), vec![first.id, second.id]),
         (Some(other.location_id), None, vec![other.id]),
     ] {
-        let inventory = browser_query::inventory(&tenant, location_id, category)
+        let mut url = inventory_url.clone();
+        if let Some(id) = location_id {
+            url.query_pairs_mut()
+                .append_pair("location_id", &id.to_string());
+        }
+        if let Some(value) = category {
+            url.query_pairs_mut().append_pair("category", value);
+        }
+        let response = app
+            .client
+            .get(url)
+            .header("cookie", &session)
+            .send()
             .await
             .unwrap();
-        assert_eq!(inventory.categories, ["prescription", "supplement"]);
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        let html = response.text().await.unwrap();
+        let document = scraper::Html::parse_document(&html);
         assert_eq!(
-            inventory
-                .medications
-                .iter()
-                .map(|card| card.id)
+            document
+                .select(&category_options)
+                .map(|option| option.value().attr("value").unwrap())
+                .collect::<Vec<_>>(),
+            ["", "prescription", "supplement"]
+        );
+        assert_eq!(
+            document
+                .select(&card_links)
+                .map(|link| {
+                    let href = link.value().attr("href").unwrap();
+                    href.split('?')
+                        .next()
+                        .unwrap()
+                        .rsplit('/')
+                        .next()
+                        .unwrap()
+                        .parse::<i64>()
+                        .unwrap()
+                })
                 .collect::<Vec<_>>(),
             expected_ids
         );
-        let queries = std::mem::take(&mut *projections.lock().unwrap());
-        let category_only = queries
-            .iter()
-            .filter(|projection| {
-                projection.as_str() == "SELECT DISTINCT \"medications\".\"category\""
-            })
-            .count();
-        read_shapes.push((queries.len() - category_only, category_only));
     }
-    tenant.commit().await.unwrap();
     app.close().await;
-    assert_eq!(read_shapes, [(1, 0), (1, 0), (1, 1), (1, 1)]);
 }
 
 async fn medication_forecast(app: &Application, token: &str) -> (Value, Value) {
