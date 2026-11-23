@@ -13,6 +13,92 @@ fn forecast_scope(app: &Application) -> HouseholdScope {
     }
 }
 
+#[tokio::test]
+async fn inventory_reads_full_medication_rows_once_per_filter() {
+    use med_tracker::models::care::browser_query;
+    use sea_orm::prelude::Decimal;
+    use std::sync::{Arc, Mutex};
+
+    let mut app = Application::new().await;
+    let mut membership = app.fixture.membership.clone().into_active_model();
+    membership.role = Set("member".into());
+    membership.update(&app.fixture.admin).await.unwrap();
+
+    let mut ids = Vec::new();
+    for (name, category, visible) in [
+        ("A tablets", "supplement", true),
+        ("A tablets", "supplement", true),
+        ("B tablets", "prescription", true),
+        ("C tablets", "", true),
+        ("Hidden tablets", "hidden", false),
+    ] {
+        let medication = app.fixture.medication(name, Decimal::TEN).await;
+        let mut update = medication.into_active_model();
+        update.category = Set(Some(category.into()));
+        if !visible {
+            update.created_by_membership_id = Set(None);
+        }
+        ids.push(update.update(&app.fixture.admin).await.unwrap());
+    }
+    let [first, second, other, empty, _hidden] = ids.try_into().unwrap();
+
+    let projections = Arc::new(Mutex::new(Vec::new()));
+    let observed = Arc::clone(&projections);
+    app.context.db.set_metric_callback(move |info| {
+        if let Some((projection, _)) = info.statement.sql.split_once(" FROM \"medications\"")
+            && (projection.starts_with("SELECT \"medications\".")
+                || projection.starts_with("SELECT DISTINCT \"medications\"."))
+        {
+            observed.lock().unwrap().push(projection.to_owned());
+        }
+    });
+    let tenant = begin(
+        &app.context.db,
+        &forecast_scope(&app),
+        app.context.config.settings.as_ref(),
+    )
+    .await
+    .unwrap();
+    let all_ids = vec![
+        first.id,
+        second.id,
+        other.id,
+        empty.id,
+        app.fixture.medication.id,
+    ];
+    let mut read_shapes = Vec::new();
+    for (location_id, category, expected_ids) in [
+        (None, None, all_ids.clone()),
+        (None, Some(""), all_ids),
+        (None, Some("supplement"), vec![first.id, second.id]),
+        (Some(other.location_id), None, vec![other.id]),
+    ] {
+        let inventory = browser_query::inventory(&tenant, location_id, category)
+            .await
+            .unwrap();
+        assert_eq!(inventory.categories, ["prescription", "supplement"]);
+        assert_eq!(
+            inventory
+                .medications
+                .iter()
+                .map(|card| card.id)
+                .collect::<Vec<_>>(),
+            expected_ids
+        );
+        let queries = std::mem::take(&mut *projections.lock().unwrap());
+        let category_only = queries
+            .iter()
+            .filter(|projection| {
+                projection.as_str() == "SELECT DISTINCT \"medications\".\"category\""
+            })
+            .count();
+        read_shapes.push((queries.len() - category_only, category_only));
+    }
+    tenant.commit().await.unwrap();
+    app.close().await;
+    assert_eq!(read_shapes, [(1, 0), (1, 0), (1, 1), (1, 1)]);
+}
+
 async fn medication_forecast(app: &Application, token: &str) -> (Value, Value) {
     let response = app
         .client

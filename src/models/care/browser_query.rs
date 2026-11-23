@@ -140,32 +140,44 @@ pub async fn inventory(
         .iter()
         .map(|row| (row.id, row.name.as_str()))
         .collect();
-    let all_visible = access::medication_scope(tenant)
-        .all(tenant.transaction())
-        .await?;
-    let mut categories = all_visible
-        .iter()
-        .filter_map(|row| {
-            row.category
-                .as_deref()
-                .filter(|value| !value.is_empty())
-                .map(str::to_owned)
-        })
-        .collect::<Vec<_>>();
-    categories.sort();
-    categories.dedup();
+    let category = category.filter(|value| !value.is_empty());
     let mut query = access::medication_scope(tenant);
+    let filtered_categories = if location_id.is_some() || category.is_some() {
+        Some(
+            query
+                .clone()
+                .select_only()
+                .column(medication::Column::Category)
+                .filter(medication::Column::Category.ne(""))
+                .distinct()
+                .into_tuple::<String>()
+                .all(tenant.transaction())
+                .await?,
+        )
+    } else {
+        None
+    };
     if let Some(id) = location_id {
         query = query.filter(medication::Column::LocationId.eq(id));
     }
-    if let Some(category) = category.filter(|value| !value.is_empty()) {
+    if let Some(category) = category {
         query = query.filter(medication::Column::Category.eq(category));
     }
-    let medications = query
+    let records = query
         .order_by_asc(medication::Column::Name)
         .order_by_asc(medication::Column::Id)
         .all(tenant.transaction())
-        .await?
+        .await?;
+    let mut categories = filtered_categories.unwrap_or_else(|| {
+        records
+            .iter()
+            .filter_map(|row| row.category.as_ref().filter(|value| !value.is_empty()))
+            .cloned()
+            .collect()
+    });
+    categories.sort();
+    categories.dedup();
+    let medications = records
         .into_iter()
         .map(|row| {
             let out_of_stock = row
