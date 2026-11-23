@@ -14,7 +14,8 @@ const workflow = (name) => yaml(`.github/workflows/${name}.yml`);
 
 test("deployment defaults use the published release image", () => {
   const version = JSON.parse(readFileSync(".release-please-manifest.json", "utf8"))["."];
-  const repository = "ghcr.io/damacus/med-tracker";
+  const publish = workflow("loco-images").jobs.publish.steps.find((step) => step.id === "publish");
+  const repository = publish.env.IMAGE.replace("${{ github.repository }}", "damacus/med-tracker");
   const compose = readFileSync("compose.production.yaml", "utf8");
   const defaults = Array.from(compose.matchAll(/image: \$\{LOCO_IMAGE:-([^}]+)\}/g), ([, image]) => image);
   assert.deepEqual(defaults, Array(3).fill(`${repository}:${version}`));
