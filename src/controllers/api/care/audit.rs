@@ -435,6 +435,15 @@ impl RequestAudit {
             query: "adjust_inventory?",
         }
     }
+    pub fn stock_allocation() -> Self {
+        Self {
+            method: "POST",
+            controller: "api/v1/stock_allocations",
+            action: "create",
+            policy: "StockAllocationPolicy",
+            query: "create?",
+        }
+    }
 }
 
 pub(super) async fn record(

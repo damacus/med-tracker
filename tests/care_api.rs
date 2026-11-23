@@ -143,6 +143,8 @@ mod session_fixture;
 mod signup;
 #[path = "care_api/signup_timezone.rs"]
 mod signup_timezone;
+#[path = "care_api/stock_allocations.rs"]
+mod stock_allocations;
 #[path = "care_api/stock_orders.rs"]
 mod stock_orders;
 #[path = "care_api/support_expiry.rs"]

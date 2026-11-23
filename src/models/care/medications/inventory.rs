@@ -46,6 +46,7 @@ pub(super) async fn adjust(
     let medication = visible_medication(tenant, &input.medication_id)
         .await?
         .ok_or(OperationError::NotFound)?;
+    allocations::require_medication_physical_stock(db, &medication, quantity).await?;
     let before = audit::medication_snapshot(&medication);
     let mut active: medication::ActiveModel = medication.into();
     active.current_supply = Set(Some(quantity));

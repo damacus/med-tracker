@@ -1,4 +1,5 @@
 use super::*;
+use crate::models::care::medications::allocations::{self, StockSource};
 use loco_rs::model::TenantQueryExt;
 
 pub(super) async fn apply(
@@ -24,6 +25,12 @@ pub(super) async fn apply(
             return Err(invalid());
         }
         let remaining = previous - quantity;
+        allocations::require_communal_stock(
+            db,
+            StockSource::from_inventory(medication.household_id, medication.id, Some(id)),
+            remaining,
+        )
+        .await?;
         let unit = option.unit.clone();
         let portable = option.portable_id.clone();
         let mut active: dosage::ActiveModel = option.into();
@@ -87,6 +94,12 @@ pub(super) async fn apply(
             return Err(invalid());
         }
         let remaining = previous - quantity;
+        allocations::require_communal_stock(
+            db,
+            StockSource::from_inventory(medication.household_id, medication.id, None),
+            remaining,
+        )
+        .await?;
         let unit = medication.dose_unit.clone().unwrap_or_default();
         let mut active: medication::ActiveModel = medication.clone().into();
         active.current_supply = Set(Some(remaining));

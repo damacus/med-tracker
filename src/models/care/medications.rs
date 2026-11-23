@@ -1,3 +1,4 @@
+pub(crate) mod allocations;
 mod audit;
 pub(crate) use audit::medication_snapshot;
 pub(crate) use projection::{decimal_string, serialize_many};

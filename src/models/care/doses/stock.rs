@@ -2,6 +2,10 @@ use super::*;
 use loco_rs::model::TenantQueryExt;
 
 use crate::models::care::stock_identity::ExactProductIdentity;
+use crate::models::{
+    care::medications::allocations::{self, StockSource},
+    ids::PersonId,
+};
 
 pub(crate) fn same_stock_signature(left: &medication::Model, right: &medication::Model) -> bool {
     if left.household_id == right.household_id
@@ -70,6 +74,14 @@ pub(super) async fn decrement_stock(
                     "Cannot take medication: out of stock",
                 ));
             }
+            allocations::use_for_dose(
+                db,
+                StockSource::from_inventory(selected.household_id, selected.id, None),
+                PersonId::from_database(proposed.source.person_id),
+                supply,
+                needed,
+            )
+            .await?;
             let selected_id = selected.id;
             let selected_portable_id = selected.portable_id.clone();
             let mut update: medication::ActiveModel = selected.into();
@@ -147,6 +159,14 @@ pub(super) async fn decrement_stock(
             "Cannot take medication: out of stock",
         ));
     }
+    allocations::use_for_dose(
+        db,
+        StockSource::from_inventory(selected.household_id, selected.id, Some(selected_option.id)),
+        PersonId::from_database(proposed.source.person_id),
+        supply,
+        needed,
+    )
+    .await?;
     let option_id = selected_option.id;
     let option_portable_id = selected_option.portable_id.clone();
     let mut update: dosage::ActiveModel = selected_option.into();

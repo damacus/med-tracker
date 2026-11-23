@@ -30,6 +30,7 @@ mod response;
 mod review_prompts;
 mod schedule_lifecycle;
 mod sharing;
+mod stock_allocations;
 mod sync;
 mod treatments;
 mod ui_capabilities;
@@ -467,6 +468,10 @@ pub fn routes() -> Routes {
         .add(
             "/{household_id}/medications/{id}/stock_removals",
             get(removals::history).post(removals::create),
+        )
+        .add(
+            "/{household_id}/medications/{id}/stock_allocations",
+            post(stock_allocations::create),
         )
 }
 
