@@ -47,7 +47,7 @@ services:
       timeout: 2s
       retries: 30
   postgres:
-    image: ${MEDTRACKER_POSTGRES_IMAGE:-postgres:18-alpine}
+    image: ${MEDTRACKER_POSTGRES_IMAGE:-postgres:19-alpine}
     environment:
       POSTGRES_USER: medtracker
       POSTGRES_PASSWORD: medtracker_password
