@@ -69,7 +69,6 @@ export function mountAdministration() {
   main.before(status);
   let request;
   let sequence = 0;
-  let currentUrl = location.href;
   let cleanup;
   let sortable;
   const mount = () => {
@@ -129,6 +128,8 @@ export function mountAdministration() {
         oldTabs.replaceChildren(...newTabs.childNodes);
         newTabs.replaceWith(oldTabs);
       }
+      const notice = main.querySelector('[data-canary-notice]');
+      if (notice) next.querySelector('[data-canary-notice]')?.replaceWith(notice);
       next.querySelectorAll('script').forEach(script => script.remove());
       main.replaceChildren(...next.childNodes);
       main.className = next.className;
@@ -136,7 +137,6 @@ export function mountAdministration() {
       document.documentElement.lang = page.documentElement.lang;
       if (!pop) history.pushState({ ...history.state, administration: true }, '', response.url);
       else history.replaceState(history.state, '', response.url);
-      currentUrl = response.url;
       mount();
       if (focused) (matchMedia('(max-width: 767px)').matches ? main.querySelector('.admin-mobile-navigation summary') : main.querySelector('.admin-navigation a[aria-current=page]'))?.focus({ preventScroll: true });
       else main.focus({ preventScroll: true });
@@ -144,14 +144,13 @@ export function mountAdministration() {
       status.textContent = 'Loaded';
     } catch (error) {
       if (version !== sequence || controller.signal.aborted) return;
-      if (pop) history.replaceState(history.state, '', currentUrl);
       status.className = 'alert alert-error';
       status.textContent = 'Administration could not be loaded. ';
       const retry = document.createElement('button');
       retry.type = 'button';
       retry.className = 'btn btn-sm';
       retry.textContent = 'Retry';
-      retry.addEventListener('click', () => { void navigate(url); });
+      retry.addEventListener('click', () => { void navigate(url, pop); });
       status.append(retry);
     } finally {
       if (version === sequence) main.removeAttribute('aria-busy');
