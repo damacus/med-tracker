@@ -1,4 +1,5 @@
 [advisories]
+unmaintained = "all"
 ignore = [
   # Maintenance notice, no CVE. unsafe-libyaml is reached transitively via
   # better-auth -> serde_yaml, loco-gen -> rrgen -> serde_yaml and loco-rs ->
