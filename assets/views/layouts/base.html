@@ -13,6 +13,7 @@
     <script src="/static/js/interaction.js?v={{ asset_version }}" defer></script>
     <script src="/static/js/mobile-shortcuts.js?v={{ asset_version }}" defer></script>
     <script src="/static/js/app-navigation.js?v={{ asset_version }}" defer></script>
+    <script type="module" src="/static/js/administration.js?v={{ asset_version }}"></script>
     {% if canary_enabled | default(value=false) %}<script src="/static/js/canary.js?v={{ asset_version }}" defer></script>{% endif %}
   </head>
   <body{% if shell %} class="app-household" data-sidebar-collapsed="{{ shell.sidebar_collapsed }}" data-navigation-ready="true" data-navigation-household="{{ shell.slug }}"{% endif %}>
