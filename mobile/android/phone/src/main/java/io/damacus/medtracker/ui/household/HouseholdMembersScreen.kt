@@ -17,16 +17,24 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.damacus.medtracker.data.api.CreatePersonPayload
 import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.ui.theme.MedTrackerPrimary
@@ -37,35 +45,97 @@ fun HouseholdMembersScreen(
     invitations: List<HouseholdInvitationDto>,
     isLoading: Boolean,
     onInviteClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCreatePerson: (CreatePersonPayload) -> Unit = {},
+    errorMessage: String? = null,
+    successMessage: String? = null
 ) {
+    var showAddDependentDialog by remember { mutableStateOf(false) }
+
+    if (showAddDependentDialog) {
+        PersonFormDialog(
+            onDismiss = { showAddDependentDialog = false },
+            onSubmitPerson = { payload ->
+                showAddDependentDialog = false
+                onCreatePerson(payload)
+            }
+        )
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                items(people, key = { it.id ?: it.name }) { person ->
-                    PersonCard(person = person)
+            errorMessage?.let { error ->
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(12.dp)
+                    )
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
-                if (invitations.isNotEmpty()) {
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Pending Invitations",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+            successMessage?.let { success ->
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = success,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            OutlinedButton(
+                onClick = { showAddDependentDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Add Dependent")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (isLoading && people.isEmpty() && invitations.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MedTrackerPrimary)
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(people, key = { it.id ?: it.name }) { person ->
+                        PersonCard(person = person)
                     }
 
-                    items(invitations, key = { it.id ?: it.email }) { invitation ->
-                        InvitationCard(invitation = invitation)
+                    if (invitations.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Invitations",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
+                        items(invitations, key = { it.id ?: it.email }) { invitation ->
+                            InvitationCard(invitation = invitation)
+                        }
                     }
                 }
             }
@@ -123,6 +193,17 @@ fun PersonCard(person: PersonDto) {
 
 @Composable
 fun InvitationCard(invitation: HouseholdInvitationDto) {
+    val statusText = (invitation.status ?: "pending").replaceFirstChar { it.uppercase() }
+    val badgeBg = when (invitation.status) {
+        "accepted" -> MaterialTheme.colorScheme.primaryContainer
+        "revoked", "expired" -> MaterialTheme.colorScheme.errorContainer
+        else -> Color(0xFFFFF3CD)
+    }
+    val badgeFg = when (invitation.status) {
+        "accepted" -> MaterialTheme.colorScheme.onPrimaryContainer
+        "revoked", "expired" -> MaterialTheme.colorScheme.onErrorContainer
+        else -> Color(0xFF856404)
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -147,8 +228,8 @@ fun InvitationCard(invitation: HouseholdInvitationDto) {
                 )
             }
 
-            Badge(containerColor = Color(0xFFFFF3CD)) {
-                Text("Pending", color = Color(0xFF856404))
+            Badge(containerColor = badgeBg) {
+                Text(statusText, color = badgeFg)
             }
         }
     }

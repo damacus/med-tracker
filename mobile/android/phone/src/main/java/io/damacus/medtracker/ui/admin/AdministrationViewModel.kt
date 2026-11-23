@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.damacus.medtracker.data.AppSession
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
+import io.damacus.medtracker.data.api.AuditLogDto
 import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.data.model.HouseholdAdminSettingsDto
@@ -21,8 +22,11 @@ import kotlinx.coroutines.launch
 data class AdministrationUiState(
     val sessionRevision: String? = null,
     val isLoading: Boolean = false,
+    val isUpdating: Boolean = false,
     val adminSettings: HouseholdAdminSettingsDto? = null,
-    val errorMessage: String? = null
+    val auditLogs: List<AuditLogDto> = emptyList(),
+    val errorMessage: String? = null,
+    val statusMessage: String? = null
 ) {
     fun forSession(session: AppSession): AdministrationUiState =
         if (sessionRevision == session.revision) this else AdministrationUiState(sessionRevision = session.revision)
@@ -62,16 +66,72 @@ class AdministrationViewModel(
         val work = sessionWork
         CoroutineScope(viewModelScope.coroutineContext + work).launch {
             if (!isCurrentSession(session, work)) return@launch
-            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
-            when (val res = apiClient.getAdminSettings(session.serverUrl, token, householdId)) {
+            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null, statusMessage = null) }
+            val settingsResult = apiClient.getAdminSettings(session.serverUrl, token, householdId)
+            val logsResult = apiClient.getAuditLogs(session.serverUrl, token, householdId)
+            if (!isCurrentSession(session, work)) return@launch
+
+            val auditLogs = if (logsResult is ApiResult.Success) logsResult.data else emptyList()
+            when (settingsResult) {
                 is ApiResult.Success -> {
-                    updateForSession(session, work) { it.copy(isLoading = false, adminSettings = res.data) }
+                    updateForSession(session, work) {
+                        it.copy(
+                            isLoading = false,
+                            adminSettings = settingsResult.data,
+                            auditLogs = auditLogs,
+                            errorMessage = null
+                        )
+                    }
                 }
                 is ApiResult.Error -> {
-                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = res.message) }
+                    updateForSession(session, work) {
+                        it.copy(isLoading = false, auditLogs = auditLogs, errorMessage = settingsResult.message)
+                    }
                 }
                 is ApiResult.NetworkError -> {
-                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error loading admin settings") }
+                    updateForSession(session, work) {
+                        it.copy(isLoading = false, errorMessage = "Network error loading admin settings")
+                    }
+                }
+            }
+        }
+    }
+
+    fun setAiSuggestionsEnabled(enabled: Boolean) {
+        val session = sessionManager.sessionState.value
+        val householdId = session.household?.id ?: return
+        val token = session.accessToken ?: return
+        val work = sessionWork
+
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isUpdating = true, errorMessage = null, statusMessage = null) }
+            when (val res = apiClient.updateAdminSettings(
+                baseUrl = session.serverUrl,
+                accessToken = token,
+                householdId = householdId,
+                aiSuggestionsEnabled = enabled
+            )) {
+                is ApiResult.Success -> {
+                    updateForSession(session, work) {
+                        it.copy(
+                            isUpdating = false,
+                            adminSettings = res.data,
+                            statusMessage = if (res.data.aiSuggestionsEnabled) {
+                                "AI medication suggestions enabled"
+                            } else {
+                                "AI medication suggestions disabled"
+                            }
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    updateForSession(session, work) { it.copy(isUpdating = false, errorMessage = res.message) }
+                }
+                is ApiResult.NetworkError -> {
+                    updateForSession(session, work) {
+                        it.copy(isUpdating = false, errorMessage = "Network error updating admin settings")
+                    }
                 }
             }
         }

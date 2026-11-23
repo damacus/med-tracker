@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModelStore
 import io.damacus.medtracker.data.CredentialStore
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
+import io.damacus.medtracker.data.api.AuditLogDto
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.data.model.CreateMedicationPayload
 import io.damacus.medtracker.data.model.CreateSchedulePayload
@@ -91,10 +92,31 @@ class AdministrationViewModelTest {
         assertEquals("plan-2", model.uiState.value.adminSettings?.subscriptionPlan)
     }
 
+    @Test fun `loads real admin settings and audit logs and updates ai suggestions toggle`() = runTest(dispatcher) {
+        signIn(1)
+        val model = AdministrationViewModel(sessions, api).also { store.put("admin-real", it) }
+        runCurrent()
+
+        val initial = model.uiState.value
+        assertEquals("Household 1", initial.adminSettings?.name)
+        assertEquals("Europe/London", initial.adminSettings?.timezone)
+        assertEquals(false, initial.adminSettings?.aiSuggestionsEnabled)
+        assertEquals(1, initial.auditLogs.size)
+        assertEquals("household.updated", initial.auditLogs.first().eventType)
+
+        model.setAiSuggestionsEnabled(true)
+        runCurrent()
+
+        assertEquals(listOf(true), api.aiToggleCalls)
+        assertEquals(true, model.uiState.value.adminSettings?.aiSuggestionsEnabled)
+        assertNull(model.uiState.value.errorMessage)
+    }
+
     private class ControlledApi : MedTrackerApi {
         var delayHousehold: Long? = null
         var pending: Continuation<ApiResult<HouseholdAdminSettingsDto>>? = null
         var returned = false
+        val aiToggleCalls = mutableListOf<Boolean>()
 
         override suspend fun getAdminSettings(baseUrl: String, accessToken: String, householdId: Long): ApiResult<HouseholdAdminSettingsDto> {
             if (delayHousehold == householdId) {
@@ -102,7 +124,46 @@ class AdministrationViewModelTest {
                 returned = true
                 return res
             }
-            return ApiResult.Success(HouseholdAdminSettingsDto("plan-$householdId"))
+            return ApiResult.Success(
+                HouseholdAdminSettingsDto(
+                    subscriptionPlan = "plan-$householdId",
+                    name = "Household $householdId",
+                    timezone = "Europe/London",
+                    aiSuggestionsEnabled = false
+                )
+            )
+        }
+
+        override suspend fun updateAdminSettings(
+            baseUrl: String,
+            accessToken: String,
+            householdId: Long,
+            name: String?,
+            timezone: String?,
+            aiSuggestionsEnabled: Boolean?
+        ): ApiResult<HouseholdAdminSettingsDto> {
+            if (aiSuggestionsEnabled != null) aiToggleCalls.add(aiSuggestionsEnabled)
+            return ApiResult.Success(
+                HouseholdAdminSettingsDto(
+                    subscriptionPlan = "plan-$householdId",
+                    name = name ?: "Household $householdId",
+                    timezone = timezone ?: "Europe/London",
+                    aiSuggestionsEnabled = aiSuggestionsEnabled ?: false
+                )
+            )
+        }
+
+        override suspend fun getAuditLogs(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<AuditLogDto>> {
+            return ApiResult.Success(
+                listOf(
+                    AuditLogDto(
+                        id = householdId * 10,
+                        eventType = "household.updated",
+                        requestId = "req-$householdId",
+                        createdAt = "2026-11-23T12:00:00Z"
+                    )
+                )
+            )
         }
 
         override suspend fun logout(baseUrl: String, accessToken: String) = error("Not used")

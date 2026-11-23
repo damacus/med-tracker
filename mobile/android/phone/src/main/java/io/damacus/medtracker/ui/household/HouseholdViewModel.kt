@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import io.damacus.medtracker.data.AppSession
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
+import io.damacus.medtracker.data.api.CreatePersonPayload
 import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.LocationDto
+import io.damacus.medtracker.data.model.PersonDto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -69,19 +71,102 @@ class HouseholdViewModel(
         val work = sessionWork
         CoroutineScope(viewModelScope.coroutineContext + work).launch {
             if (!isCurrentSession(session, work)) return@launch
-            updateForSession(session, work) { it.copy(isLoading = true) }
+            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
             val locsResult = apiClient.getLocations(session.serverUrl, token, householdId)
             val invsResult = apiClient.getInvitations(session.serverUrl, token, householdId)
 
-            val newLocs = if (locsResult is ApiResult.Success) locsResult.data else emptyList()
-            val newInvs = if (invsResult is ApiResult.Success) invsResult.data else emptyList()
+            val errors = mutableListOf<String>()
+            val newLocs = when (locsResult) {
+                is ApiResult.Success -> locsResult.data
+                is ApiResult.Error -> {
+                    errors.add(locsResult.message)
+                    emptyList()
+                }
+                is ApiResult.NetworkError -> {
+                    errors.add("Network error loading locations")
+                    emptyList()
+                }
+            }
+            val newInvs = when (invsResult) {
+                is ApiResult.Success -> invsResult.data
+                is ApiResult.Error -> {
+                    if (invsResult.statusCode != 403) {
+                        errors.add(invsResult.message)
+                    }
+                    emptyList()
+                }
+                is ApiResult.NetworkError -> {
+                    errors.add("Network error loading invitations")
+                    emptyList()
+                }
+            }
 
             updateForSession(session, work) {
                 it.copy(
                     isLoading = false,
                     locations = newLocs,
-                    invitations = newInvs
+                    invitations = newInvs,
+                    errorMessage = errors.takeIf { list -> list.isNotEmpty() }?.joinToString("\n")
                 )
+            }
+        }
+    }
+
+    fun createLocation(name: String, description: String? = null, onComplete: () -> Unit = {}) {
+        val session = sessionManager.sessionState.value
+        val token = session.accessToken ?: return
+        val householdId = session.household?.id ?: return
+
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = apiClient.createLocation(session.serverUrl, token, householdId, name, description)) {
+                is ApiResult.Success -> {
+                    updateForSession(session, work) { current ->
+                        current.copy(
+                            isLoading = false,
+                            locations = current.locations + result.data,
+                            successMessage = "Added location ${result.data.name}"
+                        )
+                    }
+                    if (isCurrentSession(session, work)) onComplete()
+                }
+                is ApiResult.Error -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = result.message) }
+                }
+                is ApiResult.NetworkError -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error creating location") }
+                }
+            }
+        }
+    }
+
+    fun createPerson(request: CreatePersonPayload, onComplete: () -> Unit = {}) {
+        val session = sessionManager.sessionState.value
+        val token = session.accessToken ?: return
+        val householdId = session.household?.id ?: return
+
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = apiClient.createPerson(session.serverUrl, token, householdId, request)) {
+                is ApiResult.Success -> {
+                    updateForSession(session, work) { current ->
+                        current.copy(
+                            isLoading = false,
+                            successMessage = "Added ${result.data.name}"
+                        )
+                    }
+                    if (isCurrentSession(session, work)) onComplete()
+                }
+                is ApiResult.Error -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = result.message) }
+                }
+                is ApiResult.NetworkError -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error adding dependent") }
+                }
             }
         }
     }

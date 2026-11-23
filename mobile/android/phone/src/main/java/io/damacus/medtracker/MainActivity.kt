@@ -44,6 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +62,8 @@ import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.network.LiveNetworkMonitor
 import io.damacus.medtracker.data.network.NetworkMonitor
 import io.damacus.medtracker.data.offline.OfflineQueueRepository
+import io.damacus.medtracker.notifications.ReminderScheduler
+import io.damacus.medtracker.notifications.ReminderTimes
 import io.damacus.medtracker.ui.MainViewModel
 import io.damacus.medtracker.ui.admin.AdministrationScreen
 import io.damacus.medtracker.ui.admin.AdministrationViewModel
@@ -83,6 +86,7 @@ import io.damacus.medtracker.ui.medication.MedicationFormScreen
 import io.damacus.medtracker.ui.medication.MedicationListScreen
 import io.damacus.medtracker.ui.medication.MedicationViewModel
 import io.damacus.medtracker.ui.profile.ProfileScreen
+import io.damacus.medtracker.ui.profile.ProfileViewModel
 import io.damacus.medtracker.ui.reports.ReportsScreen
 import io.damacus.medtracker.ui.reports.ReportsViewModel
 import io.damacus.medtracker.ui.schedule.ScheduleFormScreen
@@ -123,7 +127,8 @@ class MainActivity : ComponentActivity() {
     private var pendingState: String? = null
     private var pendingRevision: String? = null
     private val sessionManager by lazy { (application as MedTrackerApplication).sessionManager }
-    private val offlineQueueRepository by lazy { OfflineQueueRepository() }
+    private val offlineQueueRepository by lazy { (application as MedTrackerApplication).offlineQueueRepository }
+    private val reminderScheduler by lazy { (application as MedTrackerApplication).reminderScheduler }
     private val networkMonitor by lazy { LiveNetworkMonitor(applicationContext) }
 
     private val mainViewModel by viewModels<MainViewModel> {
@@ -151,7 +156,10 @@ class MainActivity : ComponentActivity() {
         AdministrationViewModel.Factory(sessionManager)
     }
     private val reportsViewModel by viewModels<ReportsViewModel> {
-        ReportsViewModel.Factory(sessionManager)
+        ReportsViewModel.Factory(sessionManager, java.io.File(cacheDir, "exports"))
+    }
+    private val profileViewModel by viewModels<ProfileViewModel> {
+        ProfileViewModel.Factory(sessionManager)
     }
 
     private val authorizationResult = registerForActivityResult(
@@ -209,6 +217,8 @@ class MainActivity : ComponentActivity() {
                         medicationLookupViewModel = medicationLookupViewModel,
                         administrationViewModel = administrationViewModel,
                         reportsViewModel = reportsViewModel,
+                        profileViewModel = profileViewModel,
+                        reminderScheduler = reminderScheduler,
                         networkMonitor = networkMonitor,
                         offlineQueueRepository = offlineQueueRepository,
                         onOidcSignIn = ::startOidcSignIn
@@ -281,6 +291,8 @@ fun MedTrackerApp(
     medicationLookupViewModel: MedicationLookupViewModel,
     administrationViewModel: AdministrationViewModel,
     reportsViewModel: ReportsViewModel,
+    profileViewModel: ProfileViewModel,
+    reminderScheduler: ReminderScheduler,
     networkMonitor: NetworkMonitor,
     offlineQueueRepository: OfflineQueueRepository,
     onOidcSignIn: (String) -> Unit
@@ -294,6 +306,8 @@ fun MedTrackerApp(
     val collectedHealthUiState by healthEventsViewModel.uiState.collectAsStateWithLifecycle()
     val collectedLookupUiState by medicationLookupViewModel.uiState.collectAsStateWithLifecycle()
     val collectedAdminUiState by administrationViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedReportsUiState by reportsViewModel.uiState.collectAsStateWithLifecycle()
+    val profileUiState by profileViewModel.uiState.collectAsStateWithLifecycle()
 
     val isOnline by networkMonitor.isOnline.collectAsStateWithLifecycle(initialValue = true)
     val pendingMutations by offlineQueueRepository.pendingMutations.collectAsStateWithLifecycle()
@@ -305,7 +319,35 @@ fun MedTrackerApp(
     val healthUiState = collectedHealthUiState.forSession(session)
     val lookupUiState = collectedLookupUiState.forSession(session)
     val adminUiState = collectedAdminUiState.forSession(session)
+    val reportsUiState = collectedReportsUiState.forSession(session)
     val sessionRevision = session.revision
+
+    LaunchedEffect(
+        sessionRevision,
+        session.isLoggedIn,
+        session.household?.id,
+        schedUiState.schedules,
+        medUiState.medications,
+        dashboardUiState.dashboardData.people,
+        profileUiState.notificationPreferences
+    ) {
+        if (!session.isLoggedIn || session.household == null) {
+            reminderScheduler.cancelAll()
+        } else {
+            val prefs = profileUiState.notificationPreferences
+            val remindersEnabled = (prefs?.enabled ?: true) && (prefs?.doseDueEnabled ?: true)
+            val customTimes = prefs?.let {
+                ReminderTimes.fromStrings(it.morningTime, it.afternoonTime, it.eveningTime, it.nightTime)
+            } ?: ReminderTimes.DEFAULT
+            reminderScheduler.syncSchedules(
+                schedules = schedUiState.schedules,
+                medications = medUiState.medications,
+                people = dashboardUiState.dashboardData.people,
+                remindersEnabled = remindersEnabled,
+                customTimes = customTimes
+            )
+        }
+    }
     var currentDestination by remember(sessionRevision) { mutableStateOf(AppDestination.Dashboard) }
 
     var showAddMedicationForm by remember(sessionRevision) { mutableStateOf(false) }
@@ -435,6 +477,7 @@ fun MedTrackerApp(
                                         AppDestination.Admin -> administrationViewModel.loadAdminSettings(session)
                                         AppDestination.Profile -> {
                                             mainViewModel.loadCurrentUser(session)
+                                            profileViewModel.loadNotificationPreferences()
                                             dashboardViewModel.refresh(sessionRevision)
                                         }
                                         AppDestination.MedicationFinder, AppDestination.Reports -> dashboardViewModel.refresh(sessionRevision)
@@ -541,13 +584,30 @@ fun MedTrackerApp(
                                                             showStockRemovalDialog = false
                                                         }
                                                     }
+                                                },
+                                                onConfirmRemovalWithKey = { qty, reason, submissionId ->
+                                                    val medId = currentMed.id
+                                                    if (medId != null) {
+                                                        medicationViewModel.recordStockRemoval(medId, qty, reason, submissionId) {
+                                                            showStockRemovalDialog = false
+                                                        }
+                                                    }
                                                 }
                                             )
                                         }
                                         MedicationDetailScreen(
                                             medication = currentMed,
                                             onBackClick = { selectedMedication = null },
-                                            onAdjustStockClick = { showStockRemovalDialog = true }
+                                            onAdjustStockClick = { showStockRemovalDialog = true },
+                                            onAdjustInventory = { newQty, reason ->
+                                                currentMed.id?.let { medicationViewModel.adjustInventory(it, newQty, reason) }
+                                            },
+                                            onMarkOrdered = {
+                                                currentMed.id?.let { medicationViewModel.markMedicationOrdered(it) }
+                                            },
+                                            onMarkReceived = {
+                                                currentMed.id?.let { medicationViewModel.markMedicationReceived(it) }
+                                            }
                                         )
                                     } else {
                                         MedicationListScreen(
@@ -584,7 +644,11 @@ fun MedTrackerApp(
                                     LocationListScreen(
                                         locations = hhUiState.locations,
                                         isLoading = hhUiState.isLoading,
-                                        onAddClick = {}
+                                        onAddClick = {},
+                                        onCreateLocation = { name, description ->
+                                            householdViewModel.createLocation(name, description)
+                                        },
+                                        errorMessage = hhUiState.errorMessage
                                     )
                                 }
                                 AppDestination.Household -> {
@@ -602,14 +666,26 @@ fun MedTrackerApp(
                                         people = dashboardUiState.dashboardData.people,
                                         invitations = hhUiState.invitations,
                                         isLoading = hhUiState.isLoading,
-                                        onInviteClick = { showInviteDialog = true }
+                                        onInviteClick = { showInviteDialog = true },
+                                        onCreatePerson = { payload ->
+                                            householdViewModel.createPerson(payload) {
+                                                dashboardViewModel.refresh(sessionRevision)
+                                            }
+                                        },
+                                        errorMessage = hhUiState.errorMessage,
+                                        successMessage = hhUiState.successMessage
                                     )
                                 }
                                 AppDestination.MedicationFinder -> {
                                     MedicationLookupScreen(
                                         results = lookupUiState.results,
                                         isLoading = lookupUiState.isLoading,
-                                        onSearch = { query -> medicationLookupViewModel.search(query) }
+                                        onSearch = { query -> medicationLookupViewModel.search(query) },
+                                        onAddToMedications = {
+                                            currentDestination = AppDestination.Medications
+                                            showAddMedicationForm = true
+                                        },
+                                        errorMessage = lookupUiState.errorMessage
                                     )
                                 }
                                 AppDestination.HealthEvents -> {
@@ -621,29 +697,56 @@ fun MedTrackerApp(
                                                 healthEventsViewModel.createHealthEvent(personId, title, notes) {
                                                     showHealthEventDialog = false
                                                 }
+                                            },
+                                            onSubmitDetailed = { personId, title, notes, eventKind, startedOn ->
+                                                healthEventsViewModel.createHealthEvent(
+                                                    personId = personId,
+                                                    title = title,
+                                                    notes = notes,
+                                                    eventKind = eventKind,
+                                                    startedOn = startedOn
+                                                ) {
+                                                    showHealthEventDialog = false
+                                                }
                                             }
                                         )
                                     }
                                     HealthEventsScreen(
                                         events = healthUiState.events,
-                                        onAddEventClick = { showHealthEventDialog = true }
+                                        onAddEventClick = { showHealthEventDialog = true },
+                                        isLoading = healthUiState.isLoading,
+                                        errorMessage = healthUiState.errorMessage
                                     )
                                 }
                                 AppDestination.Reports -> {
                                     ReportsScreen(
+                                        uiState = reportsUiState,
                                         onExportZipClick = { reportsViewModel.exportBackupZip() }
                                     )
                                 }
                                 AppDestination.Admin -> {
                                     AdministrationScreen(
-                                        adminSettings = adminUiState.adminSettings
+                                        uiState = adminUiState,
+                                        onToggleAiSuggestions = { enabled ->
+                                            administrationViewModel.setAiSuggestionsEnabled(enabled)
+                                        }
                                     )
                                 }
                                 AppDestination.Profile -> {
                                     ProfileScreen(
                                         session = session,
                                         activePerson = dashboardUiState.dashboardData.selectedPerson,
-                                        onBackClick = { currentDestination = AppDestination.Dashboard },
+                                        notificationPreferences = profileUiState.notificationPreferences,
+                                        isLoadingPreferences = profileUiState.isLoading,
+                                        isSavingPreferences = profileUiState.isSaving,
+                                        preferencesError = profileUiState.errorMessage,
+                                        preferencesStatusMessage = profileUiState.statusMessage,
+                                        onUpdateNotificationPreferences = { updated ->
+                                            profileViewModel.updateNotificationPreferences(updated)
+                                        },
+                                        onRetryLoadPreferences = {
+                                            profileViewModel.loadNotificationPreferences()
+                                        },
                                         onLogoutClick = { mainViewModel.logout(sessionRevision) }
                                     )
                                 }

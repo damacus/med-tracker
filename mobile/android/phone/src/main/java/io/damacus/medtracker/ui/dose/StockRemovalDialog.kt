@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import java.util.UUID
 
 enum class StockRemovalReason(val label: String) {
     DAMAGED("Damaged"),
@@ -30,6 +31,7 @@ enum class StockRemovalReason(val label: String) {
     EXPIRED("Expired"),
     DISCARDED("Discarded"),
     LOST("Lost"),
+    TRANSFERRED_OUT("Transferred Out"),
     OTHER("Other")
 }
 
@@ -37,11 +39,13 @@ enum class StockRemovalReason(val label: String) {
 fun StockRemovalDialog(
     medicationName: String,
     onDismiss: () -> Unit,
-    onConfirmRemoval: (quantity: Double, reason: String) -> Unit
+    onConfirmRemoval: (quantity: Double, reason: String) -> Unit,
+    onConfirmRemovalWithKey: ((quantity: Double, reason: String, submissionId: String) -> Unit)? = null
 ) {
     var quantityText by remember { mutableStateOf("1") }
     var selectedReason by remember { mutableStateOf(StockRemovalReason.DAMAGED) }
     var isError by remember { mutableStateOf(false) }
+    val submissionId = remember { UUID.randomUUID().toString() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -92,7 +96,12 @@ fun StockRemovalDialog(
                 enabled = !isError && (quantityText.toDoubleOrNull() ?: 0.0) > 0,
                 onClick = {
                     val qty = quantityText.toDoubleOrNull() ?: 1.0
-                    onConfirmRemoval(qty, selectedReason.name.lowercase())
+                    val reasonValue = selectedReason.name.lowercase()
+                    if (onConfirmRemovalWithKey != null) {
+                        onConfirmRemovalWithKey(qty, reasonValue, submissionId)
+                    } else {
+                        onConfirmRemoval(qty, reasonValue)
+                    }
                 }
             ) {
                 Text("Confirm Removal")

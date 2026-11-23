@@ -23,17 +23,20 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +44,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.damacus.medtracker.data.AppSession
+import io.damacus.medtracker.data.api.NotificationPreferencesDto
 import io.damacus.medtracker.data.model.PersonDto
 
 @Composable
@@ -48,7 +52,13 @@ fun ProfileScreen(
     session: AppSession,
     modifier: Modifier = Modifier,
     activePerson: PersonDto? = null,
-    onBackClick: () -> Unit = {},
+    notificationPreferences: NotificationPreferencesDto? = null,
+    isLoadingPreferences: Boolean = false,
+    isSavingPreferences: Boolean = false,
+    preferencesError: String? = null,
+    preferencesStatusMessage: String? = null,
+    onUpdateNotificationPreferences: (NotificationPreferencesDto) -> Unit = {},
+    onRetryLoadPreferences: () -> Unit = {},
     onLogoutClick: () -> Unit
 ) {
     val user = session.user
@@ -167,6 +177,128 @@ fun ProfileScreen(
                 )
             }
 
+            // Notification Preferences
+            SectionCard(title = "Notification Preferences") {
+                when {
+                    isLoadingPreferences && notificationPreferences == null -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Text(
+                                text = "Loading notification preferences...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    notificationPreferences != null -> {
+                        val prefs = notificationPreferences
+                        PreferenceToggleRow(
+                            title = "Medication Reminders",
+                            subtitle = "Enable local and push reminders for due doses",
+                            checked = prefs.enabled,
+                            enabled = !isSavingPreferences,
+                            onCheckedChange = { checked ->
+                                onUpdateNotificationPreferences(prefs.copy(enabled = checked))
+                            }
+                        )
+                        PreferenceToggleRow(
+                            title = "Dose Due Alerts",
+                            subtitle = "Notify when scheduled doses are due",
+                            checked = prefs.doseDueEnabled,
+                            enabled = prefs.enabled && !isSavingPreferences,
+                            onCheckedChange = { checked ->
+                                onUpdateNotificationPreferences(prefs.copy(doseDueEnabled = checked))
+                            }
+                        )
+                        PreferenceToggleRow(
+                            title = "Missed Dose Alerts",
+                            subtitle = "Alert when a scheduled dose is overdue",
+                            checked = prefs.missedDoseEnabled,
+                            enabled = prefs.enabled && !isSavingPreferences,
+                            onCheckedChange = { checked ->
+                                onUpdateNotificationPreferences(prefs.copy(missedDoseEnabled = checked))
+                            }
+                        )
+                        PreferenceToggleRow(
+                            title = "Low Stock Alerts",
+                            subtitle = "Notify when medication supply runs low",
+                            checked = prefs.lowStockEnabled,
+                            enabled = prefs.enabled && !isSavingPreferences,
+                            onCheckedChange = { checked ->
+                                onUpdateNotificationPreferences(prefs.copy(lowStockEnabled = checked))
+                            }
+                        )
+                        PreferenceToggleRow(
+                            title = "Private Notification Text",
+                            subtitle = "Hide medication names on the lock screen",
+                            checked = prefs.privateTextEnabled,
+                            enabled = prefs.enabled && !isSavingPreferences,
+                            onCheckedChange = { checked ->
+                                onUpdateNotificationPreferences(prefs.copy(privateTextEnabled = checked))
+                            }
+                        )
+                    }
+                    else -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "Notification preferences not loaded.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            TextButton(onClick = onRetryLoadPreferences) {
+                                Text("Reload")
+                            }
+                        }
+                    }
+                }
+
+                if (preferencesError != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = preferencesError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = onRetryLoadPreferences) {
+                            Text("Retry")
+                        }
+                    }
+                } else if (preferencesStatusMessage != null) {
+                    Text(
+                        text = preferencesStatusMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
             // Server & Network Status
             SectionCard(title = "Server Connection") {
                 ProfileDetailRow(
@@ -183,11 +315,6 @@ fun ProfileScreen(
 
             // Account Security
             SectionCard(title = "Security & Access") {
-                ProfileDetailRow(
-                    icon = Icons.Default.Lock,
-                    label = "Account Protection",
-                    value = "Passkey / Password enabled"
-                )
                 ProfileDetailRow(
                     icon = Icons.Default.Security,
                     label = "Permission Level",
@@ -223,6 +350,40 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+private fun PreferenceToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = checked,
+            enabled = enabled,
+            onCheckedChange = onCheckedChange
+        )
     }
 }
 

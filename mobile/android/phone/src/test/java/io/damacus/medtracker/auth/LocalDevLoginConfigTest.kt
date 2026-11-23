@@ -33,8 +33,8 @@ class LocalDevLoginConfigTest {
         val releaseBlock = build.substringAfter("release {")
 
         assertTrue(
-            "Debug build type should default SERVER_URL to http://10.0.2.2:5150/",
-            debugBlock.contains("http://10.0.2.2:5150/")
+            "Debug build type should default SERVER_URL to http://localhost:5150/",
+            debugBlock.contains("http://localhost:5150/")
         )
         assertTrue(
             "Staging build type must remain HTTPS",

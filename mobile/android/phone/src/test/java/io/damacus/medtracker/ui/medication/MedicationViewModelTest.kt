@@ -128,6 +128,24 @@ class MedicationViewModelTest {
         )
     }
 
+    @Test
+    fun adjustInventoryAndOrderReceiveActionsUpdateMedicationState() = runTest(testDispatcher) {
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.adjustInventory(medicationId = 1L, newQuantity = 50.0, reason = "Restock")
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(50.0, viewModel.uiState.value.medications.first { it.id == 1L }.currentSupply)
+        assertEquals("Inventory updated for Paracetamol", viewModel.uiState.value.successMessage)
+
+        viewModel.markMedicationOrdered(medicationId = 1L)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("ordered", viewModel.uiState.value.medications.first { it.id == 1L }.reorderStatus)
+
+        viewModel.markMedicationReceived(medicationId = 1L)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("received", viewModel.uiState.value.medications.first { it.id == 1L }.reorderStatus)
+    }
+
     private class FakeCredentialStore : CredentialStore {
         private var stored: String? = null
         override fun read(): String? = stored
@@ -169,6 +187,18 @@ class MedicationViewModelTest {
             val existing = medsList.find { it.id == request.medicationId } ?: return ApiResult.Error("not_found", "Not found")
             val updated = existing.copy(currentSupply = (existing.currentSupply ?: 10.0) - request.quantity)
             return ApiResult.Success(updated)
+        }
+        override suspend fun adjustInventory(baseUrl: String, accessToken: String, householdId: Long, medicationId: Long, newQuantity: Double, reason: String?): ApiResult<MedicationDto> {
+            val existing = medsList.find { it.id == medicationId } ?: return ApiResult.Error("not_found", "Not found")
+            return ApiResult.Success(existing.copy(currentSupply = newQuantity))
+        }
+        override suspend fun markMedicationOrdered(baseUrl: String, accessToken: String, householdId: Long, medicationId: Long): ApiResult<MedicationDto> {
+            val existing = medsList.find { it.id == medicationId } ?: return ApiResult.Error("not_found", "Not found")
+            return ApiResult.Success(existing.copy(reorderStatus = "ordered"))
+        }
+        override suspend fun markMedicationReceived(baseUrl: String, accessToken: String, householdId: Long, medicationId: Long): ApiResult<MedicationDto> {
+            val existing = medsList.find { it.id == medicationId } ?: return ApiResult.Error("not_found", "Not found")
+            return ApiResult.Success(existing.copy(reorderStatus = "received"))
         }
         override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload) = error("Not used")
         override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long) = error("Not used")

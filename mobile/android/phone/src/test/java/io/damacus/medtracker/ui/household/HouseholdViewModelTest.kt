@@ -3,12 +3,14 @@ package io.damacus.medtracker.ui.household
 import io.damacus.medtracker.data.CredentialStore
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
+import io.damacus.medtracker.data.api.CreatePersonPayload
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.data.model.CreateMedicationPayload
 import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.HouseholdDto
 import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.LocationDto
+import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.RecordStockRemovalPayload
 import io.damacus.medtracker.data.model.SessionPayload
@@ -117,6 +119,26 @@ class HouseholdViewModelTest {
         assertEquals("New Household Drawer", viewModel.uiState.value.locations.single().name)
     }
 
+    @Test
+    fun invitations403IsHandledGracefullyForNonAdminsAndCreateLocationPersonWork() = runTest(testDispatcher) {
+        mockApi.invitationsForbidden = true
+        viewModel.loadData()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.errorMessage)
+        assertTrue(viewModel.uiState.value.invitations.isEmpty())
+        assertEquals(1, viewModel.uiState.value.locations.size)
+
+        viewModel.createLocation("Fridge", "Insulin shelf")
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.locations.size)
+        assertEquals("Added location Fridge", viewModel.uiState.value.successMessage)
+
+        viewModel.createPerson(CreatePersonPayload(name = "Jamie", dateOfBirth = "2019-06-01"))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("Added Jamie", viewModel.uiState.value.successMessage)
+    }
+
     private class FakeCredentialStore : CredentialStore {
         private var stored: String? = null
         override fun read(): String? = stored
@@ -128,6 +150,7 @@ class HouseholdViewModelTest {
         val locationsList = mutableListOf(LocationDto(id = 1L, name = "Cabinet"))
         val invitationsList = mutableListOf(HouseholdInvitationDto(id = 1L, email = "user@example.com", role = "member"))
         var delayLocations = false
+        var invitationsForbidden = false
         var pendingLocations: Continuation<ApiResult<List<LocationDto>>>? = null
 
         override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>> {
@@ -137,7 +160,16 @@ class HouseholdViewModelTest {
             return ApiResult.Success(locationsList.toList())
         }
 
+        override suspend fun createLocation(baseUrl: String, accessToken: String, householdId: Long, name: String, description: String?): ApiResult<LocationDto> {
+            return ApiResult.Success(LocationDto(id = 5L, name = name, description = description))
+        }
+
+        override suspend fun createPerson(baseUrl: String, accessToken: String, householdId: Long, request: CreatePersonPayload): ApiResult<PersonDto> {
+            return ApiResult.Success(PersonDto(id = 12L, name = request.name, personType = request.personType))
+        }
+
         override suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HouseholdInvitationDto>> {
+            if (invitationsForbidden) return ApiResult.Error("forbidden", "Admin required", statusCode = 403)
             return ApiResult.Success(invitationsList)
         }
 

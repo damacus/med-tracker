@@ -224,4 +224,114 @@ class MedTrackerApiContractTest {
         assertTrue(reopenRes is ApiResult.Success)
         assertEquals("open", (reopenRes as ApiResult.Success).data.outcome)
     }
+
+    @Test fun getPeopleFetchesMultiplePagesUntilTotalCountReached() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":[
+                {"id":1,"portable_id":"00000000-0000-0000-0000-000000000001","name":"Alice","email":null,"date_of_birth":null,"person_type":"adult","age":30,"has_capacity":true,"location_ids":[],"location_portable_ids":[],"notification_preference_id":null,"notification_preference_portable_id":null,"updated_at":"2026-03-30T10:00:00Z"},
+                {"id":2,"portable_id":"00000000-0000-0000-0000-000000000002","name":"Bob","email":null,"date_of_birth":null,"person_type":"adult","age":32,"has_capacity":true,"location_ids":[],"location_portable_ids":[],"notification_preference_id":null,"notification_preference_portable_id":null,"updated_at":"2026-03-30T10:00:00Z"}
+            ],"meta":{"page":1,"per_page":2,"total_count":3}}
+        """.trimIndent()))
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":[
+                {"id":3,"portable_id":"00000000-0000-0000-0000-000000000003","name":"Charlie","email":null,"date_of_birth":null,"person_type":"minor","age":8,"has_capacity":false,"location_ids":[],"location_portable_ids":[],"notification_preference_id":null,"notification_preference_portable_id":null,"updated_at":"2026-03-30T10:00:00Z"}
+            ],"meta":{"page":2,"per_page":2,"total_count":3}}
+        """.trimIndent()))
+
+        val result = api.getPeople(server.url("/").toString(), "access-token", 42L)
+        assertTrue(result is ApiResult.Success)
+        assertEquals(listOf("Alice", "Bob", "Charlie"), (result as ApiResult.Success).data.map { it.name })
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test fun invitationsMapRevokedExpiredAcceptedAndPendingStatuses() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":[
+                {"id":1,"email":"pending@example.com","membership_role":"member","pending":true,"accepted_at":null,"revoked_at":null,"expires_at":"2099-01-01T00:00:00Z"},
+                {"id":2,"email":"accepted@example.com","membership_role":"member","pending":false,"accepted_at":"2026-03-20T00:00:00Z","revoked_at":null,"expires_at":"2099-01-01T00:00:00Z"},
+                {"id":3,"email":"revoked@example.com","membership_role":"administrator","pending":false,"accepted_at":null,"revoked_at":"2026-03-21T00:00:00Z","expires_at":"2099-01-01T00:00:00Z"},
+                {"id":4,"email":"expired@example.com","membership_role":"member","pending":false,"accepted_at":null,"revoked_at":null,"expires_at":"2020-01-01T00:00:00Z"}
+            ]}
+        """.trimIndent()))
+
+        val result = api.getInvitations(server.url("/").toString(), "access-token", 42L)
+        assertTrue(result is ApiResult.Success)
+        val statuses = (result as ApiResult.Success).data.associate { it.email to it.status }
+        assertEquals("pending", statuses["pending@example.com"])
+        assertEquals("accepted", statuses["accepted@example.com"])
+        assertEquals("revoked", statuses["revoked@example.com"])
+        assertEquals("expired", statuses["expired@example.com"])
+    }
+
+    @Test fun adminSettingsAndAuditLogsMapRealFields() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"id":42,"name":"Smith Home","slug":"smith-home","timezone":"Europe/London","subscription_plan":"family_plus","ai_suggestions_enabled":true,"updated_at":"2026-03-30T10:00:00Z"}}
+        """.trimIndent()))
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":[{"id":9,"event_type":"settings.updated","actor_account_id":7,"actor_membership_id":3,"request_id":"req-9","metadata":{},"created_at":"2026-03-30T10:05:00Z"}]}
+        """.trimIndent()))
+
+        val baseUrl = server.url("/").toString()
+        val settingsRes = api.getAdminSettings(baseUrl, "access-token", 42L)
+        assertTrue(settingsRes is ApiResult.Success)
+        val settings = (settingsRes as ApiResult.Success).data
+        assertEquals("Smith Home", settings.name)
+        assertEquals("Europe/London", settings.timezone)
+        assertEquals("family_plus", settings.subscriptionPlan)
+        assertTrue(settings.aiSuggestionsEnabled)
+
+        val logsRes = api.getAuditLogs(baseUrl, "access-token", 42L)
+        assertTrue(logsRes is ApiResult.Success)
+        assertEquals("settings.updated", (logsRes as ApiResult.Success).data.single().eventType)
+    }
+
+    @Test fun recordStockRemovalPreservesSubmissionIdAndTransferredOutReason() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(201).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"id":"rem-2","medication_id":"15","dosage_id":null,"quantity":"3.00","reason":"transferred_out","note":"transferred_out","submission_id":"00000000-0000-0000-0000-000000000099","previous_quantity":"10.00","remaining_quantity":"7.00","unit":"pills","created_at":"2026-03-30T10:00:00Z","actor_membership_id":"1"}}
+        """.trimIndent()))
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"id":15,"portable_id":"00000000-0000-0000-0000-000000000015","name":"Paracetamol","display_name":"Paracetamol","category":"Analgesic","description":null,"dose_amount":"500","dose_unit":"mg","current_supply":"7.00","reorder_threshold":"5.00","reorder_status":null,"location_id":1,"location_portable_id":null,"updated_at":"2026-03-30T10:00:00Z","low_stock":false,"out_of_stock":false,"days_until_low_stock":null,"days_until_out_of_stock":null}}
+        """.trimIndent()))
+
+        val stableKey = "00000000-0000-0000-0000-000000000099"
+        val res = api.recordStockRemoval(
+            server.url("/").toString(),
+            "access-token",
+            42L,
+            io.damacus.medtracker.data.model.RecordStockRemovalPayload(
+                medicationId = 15L,
+                quantity = 3.0,
+                reason = "transferred_out",
+                removedAt = "2026-03-30T10:00:00Z",
+                submissionId = stableKey
+            )
+        )
+        assertTrue(res is ApiResult.Success)
+        val reqBody = server.takeRequest().body.readUtf8()
+        assertTrue("Expected transferred_out in body: $reqBody", reqBody.contains("\"reason\":\"transferred_out\""))
+        assertTrue("Expected stable submission_id in body: $reqBody", reqBody.contains("\"submission_id\":\"$stableKey\""))
+    }
+
+    @Test fun notificationPreferencesAndPortableBackupExportWork() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"id":1,"portable_id":"00000000-0000-0000-0000-000000000001","person_id":11,"person_portable_id":"00000000-0000-0000-0000-000000000011","enabled":true,"dose_due_enabled":true,"missed_dose_enabled":false,"low_stock_enabled":true,"private_text_enabled":true,"morning_time":"08:00","afternoon_time":"13:00","evening_time":"18:00","night_time":"21:00","updated_at":"2026-03-30T10:00:00Z"}}
+        """.trimIndent()))
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"filename":"backup.zip","content_type":"application/zip","base64":"UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA=="}}
+        """.trimIndent()))
+
+        val baseUrl = server.url("/").toString()
+        val prefsRes = api.getNotificationPreferences(baseUrl, "access-token", 42L)
+        assertTrue(prefsRes is ApiResult.Success)
+        val prefs = (prefsRes as ApiResult.Success).data
+        assertTrue(prefs.enabled)
+        assertTrue(prefs.privateTextEnabled)
+        assertEquals("08:00", prefs.morningTime)
+
+        val exportRes = api.exportPortableBackup(baseUrl, "access-token", 42L)
+        assertTrue(exportRes is ApiResult.Success)
+        val export = (exportRes as ApiResult.Success).data
+        assertEquals("backup.zip", export.filename)
+        assertTrue(export.bytes.isNotEmpty())
+    }
 }

@@ -128,7 +128,13 @@ class MedicationViewModel(
         }
     }
 
-    fun recordStockRemoval(medicationId: Long, quantity: Double, reason: String, onComplete: () -> Unit) {
+    fun recordStockRemoval(
+        medicationId: Long,
+        quantity: Double,
+        reason: String,
+        submissionId: String? = null,
+        onComplete: () -> Unit
+    ) {
         val session = sessionManager.sessionState.value
         val token = session.accessToken ?: return
         val householdId = session.household?.id ?: return
@@ -141,7 +147,8 @@ class MedicationViewModel(
                 medicationId = medicationId,
                 quantity = quantity,
                 reason = reason,
-                removedAt = OffsetDateTime.now().toString()
+                removedAt = OffsetDateTime.now().toString(),
+                submissionId = submissionId
             )
             when (val result = apiClient.recordStockRemoval(session.serverUrl, token, householdId, payload)) {
                 is ApiResult.Success -> {
@@ -159,6 +166,96 @@ class MedicationViewModel(
                 }
                 is ApiResult.NetworkError -> {
                     updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error updating stock") }
+                }
+            }
+        }
+    }
+
+    fun adjustInventory(medicationId: Long, newQuantity: Double, reason: String? = null, onComplete: () -> Unit = {}) {
+        val session = sessionManager.sessionState.value
+        val token = session.accessToken ?: return
+        val householdId = session.household?.id ?: return
+
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = apiClient.adjustInventory(session.serverUrl, token, householdId, medicationId, newQuantity, reason)) {
+                is ApiResult.Success -> {
+                    updateForSession(session, work) { current ->
+                        current.copy(
+                            isLoading = false,
+                            medications = current.medications.map { if (it.id == medicationId) result.data else it },
+                            successMessage = "Inventory updated for ${result.data.name}"
+                        )
+                    }
+                    if (isCurrentSession(session, work)) onComplete()
+                }
+                is ApiResult.Error -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = result.message) }
+                }
+                is ApiResult.NetworkError -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error adjusting inventory") }
+                }
+            }
+        }
+    }
+
+    fun markMedicationOrdered(medicationId: Long, onComplete: () -> Unit = {}) {
+        val session = sessionManager.sessionState.value
+        val token = session.accessToken ?: return
+        val householdId = session.household?.id ?: return
+
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = apiClient.markMedicationOrdered(session.serverUrl, token, householdId, medicationId)) {
+                is ApiResult.Success -> {
+                    updateForSession(session, work) { current ->
+                        current.copy(
+                            isLoading = false,
+                            medications = current.medications.map { if (it.id == medicationId) result.data else it },
+                            successMessage = "Marked ${result.data.name} as ordered"
+                        )
+                    }
+                    if (isCurrentSession(session, work)) onComplete()
+                }
+                is ApiResult.Error -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = result.message) }
+                }
+                is ApiResult.NetworkError -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error marking medication ordered") }
+                }
+            }
+        }
+    }
+
+    fun markMedicationReceived(medicationId: Long, onComplete: () -> Unit = {}) {
+        val session = sessionManager.sessionState.value
+        val token = session.accessToken ?: return
+        val householdId = session.household?.id ?: return
+
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = apiClient.markMedicationReceived(session.serverUrl, token, householdId, medicationId)) {
+                is ApiResult.Success -> {
+                    updateForSession(session, work) { current ->
+                        current.copy(
+                            isLoading = false,
+                            medications = current.medications.map { if (it.id == medicationId) result.data else it },
+                            successMessage = "Marked ${result.data.name} as received"
+                        )
+                    }
+                    if (isCurrentSession(session, work)) onComplete()
+                }
+                is ApiResult.Error -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = result.message) }
+                }
+                is ApiResult.NetworkError -> {
+                    updateForSession(session, work) { it.copy(isLoading = false, errorMessage = "Network error marking medication received") }
                 }
             }
         }

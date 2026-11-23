@@ -1,7 +1,9 @@
 package io.damacus.medtracker.data.offline
 
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
+@Serializable
 enum class MutationType {
     RECORD_DOSE,
     RECORD_NOT_TAKEN,
@@ -12,6 +14,7 @@ enum class MutationType {
     RESUME_SCHEDULE
 }
 
+@Serializable
 data class OfflineMutation(
     val id: String = UUID.randomUUID().toString(),
     val householdId: Long,

@@ -215,6 +215,6 @@ class HealthEventsSessionTest {
             returned = true
             return result
         }
-        override suspend fun createHealthEvent(baseUrl: String, accessToken: String, householdId: Long, personId: Long, title: String, notes: String): ApiResult<HealthEventDto> = mutation("create")
+        override suspend fun createHealthEvent(baseUrl: String, accessToken: String, householdId: Long, personId: Long, title: String, notes: String, eventKind: String, startedOn: String?): ApiResult<HealthEventDto> = mutation("create")
     }
 }
