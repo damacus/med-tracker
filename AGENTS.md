@@ -30,6 +30,11 @@ Do not change comments except for requested documentation/guardrails or lint fix
 Do not introduce broad lint suppressions, including tests and generated entities.
 Use `jq` for JSON inspection. Fixture passwords are `password`.
 
+New migrations must pass an upgrade from a published previous release tag using
+the restricted schema-update login. Administrator-backed fresh installs do not
+prove upgrades work. Run `task image:test:upgrade PREVIOUS_IMAGE=<image>`; the
+release-image workflow checks this on both architectures before publication.
+
 ## No Python
 
 Do not write or use Python for repository implementation, setup, build orchestration,

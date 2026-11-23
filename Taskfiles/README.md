@@ -36,6 +36,23 @@ with the migration identity, then validates a restricted runtime login without
 superuser, database/role creation or RLS bypass privileges. Fixed local role
 administration is a narrow exception because SeaORM cannot manage PostgreSQL roles.
 
+## Release upgrades
+
+`task image:test:upgrade PREVIOUS_IMAGE=<published-image> LOCO_IMAGE=<candidate-image>`
+initialises a disposable PostgreSQL database with the previous release, then runs
+the candidate migrations as a non-superuser member of `med_tracker_owner`.
+The check preserves the prior migration ledger, repeats the upgrade to check
+idempotency, refuses migration with runtime credentials, and boots the upgraded
+web app, worker and scheduler with restricted runtime access. The image workflow
+selects a published stable release and runs this on both architectures before
+publication. Drafts, prereleases and the release being published are excluded.
+Every new migration must pass this upgrade path as well as fresh installation.
+
+The 0.6.6 to 0.6.10 incident required an administrator to grant `CREATE` on schema
+`med_tracker` to `med_tracker_owner` before retrying the normal restricted upgrade.
+Runtime access was unchanged. The upgrade check deliberately does not repair
+permissions or migrate using an administrator: it must expose such prerequisites.
+
 ## Public URL
 
 `host:portless` checks the existing trusted HTTPS proxy before building.
