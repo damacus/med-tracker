@@ -157,7 +157,7 @@ jobs:
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:18-alpine
+        image: postgres:19-alpine
         env:
           POSTGRES_USER: medtracker
           POSTGRES_PASSWORD: medtracker_password
@@ -235,7 +235,7 @@ jobs:
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:18-alpine
+        image: postgres:19-alpine
         env:
           POSTGRES_USER: medtracker
           POSTGRES_PASSWORD: medtracker_password
