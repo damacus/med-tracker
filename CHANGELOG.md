@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.6.11](https://github.com/damacus/med-tracker/compare/v0.6.10...v0.6.11) (2026-11-23)
+
+
+### Features
+
+* queue encrypted household exports ([#3158](https://github.com/damacus/med-tracker/issues/3158)) ([c5b06f5](https://github.com/damacus/med-tracker/commit/c5b06f5938df43c884ec5c84bb6fff19acf1de8c))
+* unify Profile and Administration ([#3156](https://github.com/damacus/med-tracker/issues/3156)) ([9d8c982](https://github.com/damacus/med-tracker/commit/9d8c982ae89cfd00a57e04e55446871a170a4aa6))
+
+
+### Bug Fixes
+
+* **android:** compile against SDK 37.1 ([#3192](https://github.com/damacus/med-tracker/issues/3192)) ([70e668e](https://github.com/damacus/med-tracker/commit/70e668e0479327c503a5799c29d49a78fa020eaa))
+* correct medication stock forecasts ([#3157](https://github.com/damacus/med-tracker/issues/3157)) ([2ae9454](https://github.com/damacus/med-tracker/commit/2ae94544c33a3836b88c25c9057a19965cce2399))
+* **deps:** update dependency androidx.compose:compose-bom to v2026.11.01 ([#3185](https://github.com/damacus/med-tracker/issues/3185)) ([e115c6e](https://github.com/damacus/med-tracker/commit/e115c6e0065788d3ec46eb45bca734ead6095b7c))
+* **deps:** update lifecycle to v2.11.1 ([#3178](https://github.com/damacus/med-tracker/issues/3178)) ([525a193](https://github.com/damacus/med-tracker/commit/525a193ec700ca8c85ca7d11bb37e780aa6a0e14))
+* **deps:** update navigation3 to v1.2.2 ([#3179](https://github.com/damacus/med-tracker/issues/3179)) ([6be7865](https://github.com/damacus/med-tracker/commit/6be7865b10615a80caa9b4ee907ba1a93935320a))
+* **deps:** update rust crate bytes to v1.12.2 ([#3163](https://github.com/damacus/med-tracker/issues/3163)) ([95e0c21](https://github.com/damacus/med-tracker/commit/95e0c217f60c858ab29a27d36dd087e68da7b3a8))
+* **deps:** update rust crate clap to v4.6.9 ([#3180](https://github.com/damacus/med-tracker/issues/3180)) ([61fec37](https://github.com/damacus/med-tracker/commit/61fec37f7fccd664fd7b6a122e9668fae25eb53e))
+* **deps:** update rust crate regex to v1.13.2 ([#3167](https://github.com/damacus/med-tracker/issues/3167)) ([df83bb8](https://github.com/damacus/med-tracker/commit/df83bb81b8912d190d76542c24b008778bbe6df5))
+* **deps:** update rust crate url to v2.5.9 ([#3181](https://github.com/damacus/med-tracker/issues/3181)) ([8eca038](https://github.com/damacus/med-tracker/commit/8eca0382d770247b95225ee07437b76743f95b18))
+* **deps:** update rust crate zip to v9.7.3 ([#3164](https://github.com/damacus/med-tracker/issues/3164)) ([5c08f92](https://github.com/damacus/med-tracker/commit/5c08f92c00c3d9cd4f4a1d9e4c9267e7437f32da))
+* **deps:** update rust crate zip to v9.8.1 ([#3186](https://github.com/damacus/med-tracker/issues/3186)) ([2220616](https://github.com/damacus/med-tracker/commit/222061626a4a26602de4ac2c96781b4072c4c6a4))
+* **deps:** update wearcompose to v1.7.2 ([#3182](https://github.com/damacus/med-tracker/issues/3182)) ([d2bb568](https://github.com/damacus/med-tracker/commit/d2bb5688d9a05c78ad6d0251e292075963d5174d))
+* enable system admin dm+d access ([#3154](https://github.com/damacus/med-tracker/issues/3154)) ([29c3ff3](https://github.com/damacus/med-tracker/commit/29c3ff3e84b16b2c770195589acd059369577046))
+* improve administration navigation ([#3168](https://github.com/damacus/med-tracker/issues/3168)) ([260ba82](https://github.com/damacus/med-tracker/commit/260ba824854d090663688e60df9d2cbdb497d988))
+* preserve care database diagnostics ([#3160](https://github.com/damacus/med-tracker/issues/3160)) ([e1728e5](https://github.com/damacus/med-tracker/commit/e1728e5c051fba0980f42c05ce533847fa79ba05))
+* retain transitive advisory checks ([#3191](https://github.com/damacus/med-tracker/issues/3191)) ([63acae6](https://github.com/damacus/med-tracker/commit/63acae6bd0ed49d6bf48052adcad515832e2cd70))
+* use the published release image ([#3190](https://github.com/damacus/med-tracker/issues/3190)) ([de2a06d](https://github.com/damacus/med-tracker/commit/de2a06d78eaa819ce1d57e0f2969c089595d6764))
+* use the schedule zone for taper limits ([#3161](https://github.com/damacus/med-tracker/issues/3161)) ([0ebd1ee](https://github.com/damacus/med-tracker/commit/0ebd1ee41d7e0e9ad2144c99a391e3c746b7e2d0))
+
+
+### Performance Improvements
+
+* avoid duplicate inventory reads ([#3189](https://github.com/damacus/med-tracker/issues/3189)) ([7433e36](https://github.com/damacus/med-tracker/commit/7433e365b834f93dc34dd1c1328f88faf066c6f0))
+* cache embedded translation maps ([#3162](https://github.com/damacus/med-tracker/issues/3162)) ([2edfaff](https://github.com/damacus/med-tracker/commit/2edfaff163735b51b45096414b3ed3d28eb33208))
+* limit dashboard dose history reads ([#3165](https://github.com/damacus/med-tracker/issues/3165)) ([efde79f](https://github.com/damacus/med-tracker/commit/efde79f96feb83eff27b23dcdfe091b1eeeced94))
+
 ## [0.6.10](https://github.com/damacus/med-tracker/compare/v0.6.9...v0.6.10) (2026-11-17)
 
 
