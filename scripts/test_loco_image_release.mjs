@@ -9,7 +9,19 @@ import test from "node:test";
 import { releaseVersion } from "./loco_image_release.mjs";
 
 const revision = "a".repeat(40);
-const workflow = (name) => JSON.parse(execFileSync("ruby", ["-ryaml", "-rjson", "-e", "puts JSON.generate(YAML.load_file(ARGV.fetch(0)))", `.github/workflows/${name}.yml`], { encoding: "utf8" }));
+const yaml = (path) => JSON.parse(execFileSync("ruby", ["-ryaml", "-rjson", "-e", "puts JSON.generate(YAML.parse_file(ARGV.fetch(0)).to_ruby)", path], { encoding: "utf8" }));
+const workflow = (name) => yaml(`.github/workflows/${name}.yml`);
+
+test("deployment defaults use the published release image", () => {
+  const version = JSON.parse(readFileSync(".release-please-manifest.json", "utf8"))["."];
+  const repository = "ghcr.io/damacus/med-tracker";
+  const compose = readFileSync("compose.production.yaml", "utf8");
+  const defaults = Array.from(compose.matchAll(/image: \$\{LOCO_IMAGE:-([^}]+)\}/g), ([, image]) => image);
+  assert.deepEqual(defaults, Array(3).fill(`${repository}:${version}`));
+  const image = yaml("deploy/helm/values.yaml").controllers.web.containers.app.image;
+  assert.equal(image.repository, repository);
+  assert.equal(String(image.tag), version);
+});
 
 test("RC tags preserve the full prerelease version", () => {
   assert.equal(releaseVersion("v0.6.0-rc.1", revision, revision, "0.6.0-rc.1"), "0.6.0-rc.1");
