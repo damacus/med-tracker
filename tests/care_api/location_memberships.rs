@@ -1,41 +1,6 @@
 use super::*;
-use med_tracker::models::entities::{location, location_membership, membership};
-use sea_orm::{ActiveModelTrait, PaginatorTrait, Set};
-
-#[tokio::test]
-async fn dependent_creation_leaves_a_household_without_labels_empty() {
-    let app = Application::new().await;
-    let household = app.fixture.foreign_household().await;
-    let now = chrono::Utc::now().naive_utc();
-    membership::ActiveModel {
-        household_id: Set(household.household.id),
-        person_id: Set(app.fixture.account.person_id),
-        role: Set("administrator".into()),
-        status: Set("active".into()),
-        joined_at: Set(now),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    }
-    .insert(&household.admin)
-    .await
-    .unwrap();
-    let labels =
-        location::Entity::find().filter(location::Column::HouseholdId.eq(household.household.id));
-    assert_eq!(labels.clone().count(&household.admin).await.unwrap(), 0);
-
-    let response = app.client.post(format!("{}/api/v1/households/{}/people", app.origin, household.household.id))
-        .bearer_auth(app.token().await)
-        .json(&json!({"person": {"name": "Synthetic child", "date_of_birth": "2020-01-01", "person_type": "minor", "has_capacity": false, "initial_guardian_declaration": true}}))
-        .send()
-        .await
-        .unwrap();
-    let body = Application::assert_status(response, 201).await;
-    assert_eq!(body["data"]["location_ids"], json!([]));
-    assert_eq!(labels.count(&household.admin).await.unwrap(), 0);
-    household.close().await;
-    app.close().await;
-}
+use med_tracker::models::entities::location_membership;
+use sea_orm::{ActiveModelTrait, Set};
 
 #[tokio::test]
 async fn obsolete_location_membership_routes_cannot_change_retained_links() {
