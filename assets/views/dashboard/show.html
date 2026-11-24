@@ -38,7 +38,7 @@
     </div>
     <aside class="dashboard-sidebar">
       {% include "dashboard/stock.html" %}
-      {% if insights.insights | length > 0 %}<details class="dashboard-responsive-panel collapse collapse-arrow card card-sm card-border bg-base-100" data-dashboard-responsive-panel open><summary class="collapse-title min-h-11 text-base font-bold lg:hidden"><h2 class="inline">{{ labels.dashboard.insights.title }}</h2></summary><div class="collapse-content"><h2 id="dashboard-insights-title" class="hidden pt-4 text-xl font-bold lg:block">{{ labels.dashboard.insights.title }}</h2>{% include "dashboard/insights.html" %}</div></details>{% endif %}
+      {% if insights_unavailable | default(value=false) %}<p>{{ labels.smart_insights.capacity_unavailable }}</p>{% elif insights.insights | length > 0 %}<details class="dashboard-responsive-panel collapse collapse-arrow card card-sm card-border bg-base-100" data-dashboard-responsive-panel open><summary class="collapse-title min-h-11 text-base font-bold lg:hidden"><h2 class="inline">{{ labels.dashboard.insights.title }}</h2></summary><div class="collapse-content"><h2 id="dashboard-insights-title" class="hidden pt-4 text-xl font-bold lg:block">{{ labels.dashboard.insights.title }}</h2>{% include "dashboard/insights.html" %}</div></details>{% endif %}
     </aside>
   </div>
   {% include "dashboard/next-action.html" %}

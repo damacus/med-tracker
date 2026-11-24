@@ -95,16 +95,25 @@ async fn plans(
             .filter(|person| !person.adult || person.enabled)
             .map(|person| person.id),
     );
-    let occurrences = dose_occurrences::with_dashboard_timezone(
-        zone,
-        dose_occurrences::projected_for_report(
-            tenant,
-            &subjects,
-            earliest_scheduled.with_timezone(&zone).date_naive(),
-            local.date_naive(),
-        ),
-    )
-    .await?;
+    let occurrences = if preference.dose_due_enabled || preference.missed_dose_enabled {
+        match dose_occurrences::with_dashboard_timezone(
+            zone,
+            dose_occurrences::projected_for_report(
+                tenant,
+                &subjects,
+                earliest_scheduled.with_timezone(&zone).date_naive(),
+                local.date_naive(),
+            ),
+        )
+        .await
+        {
+            Ok(rows) => rows,
+            Err(error) if dose_occurrences::is_capacity_error(&error) => Vec::new(),
+            Err(error) => return Err(error),
+        }
+    } else {
+        Vec::new()
+    };
     let times = [
         preference.morning_time,
         preference.afternoon_time,

@@ -2036,6 +2036,7 @@ en:
           again later.
         failed: The report could not be generated. Please try again.
     invalid_date: Invalid date format provided.
+    projection_capacity_exceeded: This timeline is too large to display. Choose a shorter date range.
     end_before_start: End date must be on or after start date.
     date_range_too_large: Report date range cannot exceed 180 days.
     gp_date_range_too_large: GP health history date range cannot exceed 366 days.
@@ -2246,6 +2247,7 @@ en:
         expected_prescribed_combination: "Recorded outcome: expected as prescribed."
       outstanding_outcome: No practitioner review has been recorded yet.
   smart_insights:
+    capacity_unavailable: Weekly insights are unavailable because this timeline is too large.
     title: Smart Insights
     evidence_summary:
       one: "%{days} days reviewed with %{events} medication event"
