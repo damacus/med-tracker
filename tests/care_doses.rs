@@ -1237,6 +1237,97 @@ async fn dose_take_backdated_interval_rejects_close_later_neighbour_and_accepts_
 }
 
 #[tokio::test]
+async fn dose_take_checks_later_schedule_outside_proposed_date_for_cooldown_only() {
+    let fixture = Fixture::new().await;
+    fixture
+        .update_assignment(|row| {
+            row.min_hours_between_doses = Set(Some(4));
+            row.max_daily_doses = Set(Some(1));
+            row.dose_cycle = Set(Some(1));
+        })
+        .await;
+    let schedule = fixture
+        .schedule(
+            0,
+            serde_json::json!({"times":["01:00"]}),
+            "2026-10-06",
+            "2026-10-06",
+            2,
+        )
+        .await;
+    let mut scheduled = take_input(&fixture);
+    scheduled.client_uuid = None;
+    scheduled.source_type = "schedule".into();
+    scheduled.source_id = schedule.id.to_string();
+    scheduled.taken_at = "2026-10-06T01:00:00Z".into();
+    assert!(matches!(
+        take(&fixture, Command::Take(scheduled.validate().unwrap())).await,
+        Ok(Outcome::Created(_))
+    ));
+
+    let before = fixture.effect().await;
+    let mut close = take_input(&fixture);
+    close.client_uuid = None;
+    close.taken_at = "2026-10-05T23:00:00Z".into();
+    assert!(matches!(
+        take(&fixture, Command::Take(close.validate().unwrap())).await,
+        Err(OperationError::Validation { .. })
+    ));
+    assert_eq!(fixture.effect().await, before);
+
+    let mut boundary = take_input(&fixture);
+    boundary.client_uuid = None;
+    boundary.taken_at = "2026-10-05T21:00:00Z".into();
+    assert!(matches!(
+        take(&fixture, Command::Take(boundary.validate().unwrap())).await,
+        Ok(Outcome::Created(_))
+    ));
+    assert_eq!(fixture.effect().await, (2, "6.00".into(), 2, 2));
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_enforces_fractional_taper_cooldown_at_microsecond_boundary() {
+    let fixture = Fixture::new().await;
+    let schedule = fixture
+        .schedule(
+            5,
+            serde_json::json!({"taper_steps":[{
+                "start_date":"2026-10-05","end_date":"2026-10-05",
+                "amount":"2","min_hours":"1.000125"
+            }]}),
+            "2026-10-05",
+            "2026-10-05",
+            2,
+        )
+        .await;
+    let input = |taken_at: &str| {
+        let mut input = take_input(&fixture);
+        input.client_uuid = None;
+        input.source_type = "schedule".into();
+        input.source_id = schedule.id.to_string();
+        input.taken_at = taken_at.into();
+        Command::Take(input.validate().unwrap())
+    };
+    assert!(matches!(
+        take(&fixture, input("2026-10-05T11:00:00.450000Z")).await,
+        Ok(Outcome::Created(_))
+    ));
+    let before = fixture.effect().await;
+    assert!(matches!(
+        take(&fixture, input("2026-10-05T10:00:00.000001Z")).await,
+        Err(OperationError::Validation { .. })
+    ));
+    assert_eq!(fixture.effect().await, before);
+    assert!(matches!(
+        take(&fixture, input("2026-10-05T10:00:00Z")).await,
+        Ok(Outcome::Created(_))
+    ));
+    assert_eq!(fixture.effect().await, (2, "6.00".into(), 2, 2));
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn dose_take_review_skipped_midnight_keeps_local_daily_cycles_separate() {
     let fixture = Fixture::new().await;
     fixture

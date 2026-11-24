@@ -778,6 +778,39 @@ async fn snapshot(app: &Application) -> serde_json::Value {
     snapshot_in_zone(app, chrono_tz::UTC).await
 }
 
+#[tokio::test]
+async fn dashboard_future_assignment_take_blocks_cooldown_without_a_dose_cap() {
+    let app = Application::new().await;
+    let mut assignment = app.fixture.assignment.clone().into_active_model();
+    assignment.max_daily_doses = Set(None);
+    assignment.min_hours_between_doses = Set(Some(4));
+    let assignment = assignment.update(&app.fixture.admin).await.unwrap();
+    take(
+        &app,
+        Some(assignment.id),
+        None,
+        1,
+        (chrono::Utc::now() + chrono::Duration::minutes(30)).naive_utc(),
+    )
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let data = snapshot(&app).await;
+    let row = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| {
+            row["source_type"] == "person_medication"
+                && row["source_id"] == assignment.id
+                && row["outcome"] == "open"
+        })
+        .unwrap();
+    app.close().await;
+    assert_eq!(row["status"], "cooldown");
+    assert_eq!(row["can_record"], false);
+}
+
 async fn snapshot_in_zone(app: &Application, zone: chrono_tz::Tz) -> serde_json::Value {
     let tenant = access::begin(
         &app.context.db,
