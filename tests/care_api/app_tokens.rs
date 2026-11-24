@@ -1,6 +1,68 @@
 use super::*;
 
 #[tokio::test]
+async fn personal_keys_cannot_issue_app_tokens() {
+    use med_tracker::models::{entities::api_app_token, identity::better_auth::IdentityService};
+
+    let app = Application::new().await;
+    let household_id = app.fixture.household.id;
+    let service = app.context.shared_store.get::<IdentityService>().unwrap();
+    let issued = service
+        .api_keys()
+        .unwrap()
+        .create(
+            &app.fixture.account.id.to_string(),
+            better_auth::server_api::CreateKeyOptions {
+                config_id: Some("medtracker-personal".into()),
+                name: Some("Membership manager key".into()),
+                expires_in: Some(chrono::Duration::days(1).num_seconds() as f64),
+                metadata: Some(json!({"households":[household_id]})),
+                permissions: Some(std::collections::HashMap::from([(
+                    "medtracker".into(),
+                    vec!["members:write".into()],
+                )])),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    let memberships = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{household_id}/admin/memberships",
+            app.origin
+        ))
+        .bearer_auth(&issued.key)
+        .send()
+        .await
+        .unwrap();
+    let response = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/{household_id}/admin/app_tokens",
+            app.origin
+        ))
+        .bearer_auth(&issued.key)
+        .json(&json!({"api_app_token":{"name":"Escalated credential"}}))
+        .send()
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let body: Value = response.json().await.unwrap();
+    let tokens = api_app_token::Entity::find()
+        .filter(api_app_token::Column::AccountId.eq(app.fixture.account.id))
+        .filter(api_app_token::Column::Name.eq("Escalated credential"))
+        .all(&app.fixture.admin)
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(memberships.status().as_u16(), 200);
+    assert_eq!(status, 403);
+    assert_eq!(body["error"]["code"], "forbidden");
+    assert!(tokens.is_empty());
+}
+
+#[tokio::test]
 async fn app_tokens_issue_list_authenticate_and_revoke() {
     let app = Application::new().await;
     let token = app.token().await;

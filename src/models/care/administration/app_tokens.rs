@@ -1,5 +1,8 @@
 use super::*;
-use crate::models::{entities::api_app_token, identity::api_session};
+use crate::models::{
+    entities::api_app_token,
+    identity::{api_session, credentials::CredentialMethod},
+};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::Months;
 use sea_orm::QueryTrait;
@@ -153,6 +156,9 @@ pub async fn create(
     input: CreateInput,
     provenance: &CredentialProvenance,
 ) -> Result<IssuedToken, OperationError> {
+    if matches!(provenance.method, CredentialMethod::PersonalApiKey) {
+        return Err(OperationError::Forbidden);
+    }
     let command = validate(input, tenant.settings())?;
     issue(tenant, command, provenance).await
 }
