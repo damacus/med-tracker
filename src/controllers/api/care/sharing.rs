@@ -4,6 +4,7 @@ use crate::models::{
     care::person_schedules::{self, projection},
     ids::MedicationId,
 };
+use crate::views::DataResponse;
 
 pub(super) async fn index(
     State(ctx): State<AppContext>,
@@ -24,9 +25,9 @@ pub(super) async fn index(
                 .map(person_schedules::SharedPlan::try_from)
                 .collect::<std::result::Result<Vec<_>, _>>()
         })
-        .map(|plans| (StatusCode::OK, json!({"data":plans}), None))
+        .map(|data| (StatusCode::OK, DataResponse { data }, None))
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::treatment("GET", "shared_index"),
@@ -67,11 +68,12 @@ pub(super) async fn bind(
         let row = projection::bind(&tenant, command, principal.provenance())
             .await
             .map_err(response::operation)?;
-        let (body, etag) = crate::models::care::treatments::representation(&row);
+        let (body, etag) = crate::models::care::treatments::stock_binding_response(&row)
+            .map_err(response::operation)?;
         Ok((StatusCode::OK, body, Some(etag)))
     }
     .await;
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::treatment("POST", "bind_stock"),
@@ -140,10 +142,10 @@ pub(super) async fn medicine(
                     }
                 })?;
         let etag = plan.etag.clone();
-        Ok((StatusCode::OK, json!({"data":plan}), Some(etag)))
+        Ok((StatusCode::OK, DataResponse { data: plan }, Some(etag)))
     }
     .await;
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::treatment("PATCH", "change_medicine"),

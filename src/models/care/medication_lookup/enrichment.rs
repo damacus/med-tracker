@@ -1,20 +1,26 @@
 use super::*;
 use crate::models::{care::review_prompts::evidence, entities::review_evidence};
+use crate::views::medication_lookup::{ReviewPrompt, ReviewPromptFilter, TradeFamily};
+
+struct Families {
+    trade_family: TradeFamily,
+    trade_family_group: Option<TradeFamily>,
+}
 
 pub(super) struct Context {
-    families: HashMap<String, Value>,
+    families: HashMap<String, Families>,
     evidence: Option<Vec<review_evidence::Model>>,
 }
 
 impl Context {
     pub(super) async fn load(
         tenant: &TenantTransaction,
-        entries: &[(Value, String)],
+        entries: &[(Product, String)],
         visible: &[medication::Model],
     ) -> Result<Self, OperationError> {
         let barcodes: Vec<String> = entries
             .iter()
-            .filter_map(|(entry, _)| entry["barcode"].as_str())
+            .filter_map(|(entry, _)| entry.barcode.as_deref())
             .chain(visible.iter().filter_map(|row| row.barcode.as_deref()))
             .flat_map(barcode_candidates)
             .collect();
@@ -27,7 +33,19 @@ impl Context {
                 let name: String = row.try_get("", "name")?;
                 let group: Option<String> = row.try_get("", "group_code")?;
                 let group_name: Option<String> = row.try_get("", "group_name")?;
-                families.insert(row.try_get("","gtin")?, json!({"trade_family":{"code":code,"name":name},"trade_family_group":group.map(|code|json!({"code":code,"name":group_name}))}));
+                families.insert(
+                    row.try_get("", "gtin")?,
+                    Families {
+                        trade_family: TradeFamily {
+                            code,
+                            name: Some(name),
+                        },
+                        trade_family_group: group.map(|code| TradeFamily {
+                            code,
+                            name: group_name,
+                        }),
+                    },
+                );
             }
         }
         let probe = tenant.transaction().begin().await?;
@@ -53,7 +71,7 @@ impl Context {
         self.evidence.is_some()
     }
 
-    fn family(&self, barcode: &str) -> Option<&Value> {
+    fn family(&self, barcode: &str) -> Option<&Families> {
         barcode_candidates(barcode)
             .iter()
             .find_map(|barcode| self.families.get(barcode))
@@ -61,36 +79,40 @@ impl Context {
 
     pub(super) fn apply(
         &self,
-        entry: &mut Value,
+        entry: &mut Product,
         visible: &[medication::Model],
         locations: &HashMap<i64, String>,
         slug: &str,
     ) {
-        if let Some(family) = self.family(entry["barcode"].as_str().unwrap_or("")) {
-            entry["trade_family"] = family["trade_family"].clone();
-            entry["trade_family_group"] = family["trade_family_group"].clone();
-            entry["related_medications"] = json!(
-                visible
-                    .iter()
-                    .filter(|row| entry["existing_medication"]["id"].as_i64() != Some(row.id))
-                    .filter(|row| row
-                        .barcode
+        if let Some(family) = self.family(entry.barcode.as_deref().unwrap_or("")) {
+            entry.trade_family = Some(family.trade_family.clone());
+            entry.trade_family_group = family.trade_family_group.clone();
+            let existing_id = entry
+                .existing_medication
+                .as_ref()
+                .map(|existing| existing.medication.id);
+            entry.related_medications = visible
+                .iter()
+                .filter(|row| existing_id != Some(row.id))
+                .filter(|row| {
+                    row.barcode
                         .as_deref()
                         .and_then(|barcode| self.family(barcode))
-                        .is_some_and(|related| related["trade_family"]["code"]
-                            == family["trade_family"]["code"]))
-                    .map(|row| stock_value(row, locations, slug))
-                    .collect::<Vec<_>>()
-            );
+                        .is_some_and(|related| {
+                            related.trade_family.code == family.trade_family.code
+                        })
+                })
+                .map(|row| stock_value(row, locations, slug))
+                .collect();
         }
         let Some(records) = &self.evidence else {
             return;
         };
-        let name = entry["name"]
-            .as_str()
+        let name = entry
+            .name
+            .as_deref()
             .filter(|value| !value.is_empty())
-            .or_else(|| entry["display"].as_str())
-            .unwrap_or("");
+            .unwrap_or(&entry.display);
         let mut prompts = Vec::new();
         let mut hidden = 0;
         for row in visible {
@@ -114,11 +136,31 @@ impl Context {
                 } else {
                     matched.excerpt
                 };
-                prompts.push(json!({"evidence_record_id":evidence.id,"risk_level":matched.risk,"risk_level_label":label(&matched.risk),"match_confidence":matched.confidence,"match_confidence_label":label(&matched.confidence),"matched_term":matched.matched_term,"match_type":matched.match_type,"source_instruction":matched.instruction,"match_reason":matched.reason,"interacting_medication_name":interacting,"description":"Public medicine-label evidence suggests this combination may be worth reviewing with a pharmacist, nurse, GP, or prescriber.","source_name":evidence.source_name,"source_checked_on":evidence.retrieved_on.to_string(),"source_version":evidence.source_version,"source_effective_on":evidence.source_effective_on.map(|date|date.to_string()),"source_url":evidence.source_url,"evidence_text":excerpt}));
+                prompts.push(ReviewPrompt {
+                    evidence_record_id: evidence.id,
+                    risk_level_label: label(&matched.risk),
+                    risk_level: matched.risk,
+                    match_confidence_label: label(&matched.confidence),
+                    match_confidence: matched.confidence,
+                    matched_term: matched.matched_term,
+                    match_type: matched.match_type,
+                    source_instruction: matched.instruction,
+                    match_reason: matched.reason,
+                    interacting_medication_name: interacting.to_owned(),
+                    description: "Public medicine-label evidence suggests this combination may be worth reviewing with a pharmacist, nurse, GP, or prescriber.",
+                    source_name: evidence.source_name.clone(),
+                    source_checked_on: evidence.retrieved_on,
+                    source_version: evidence.source_version.clone(),
+                    source_effective_on: evidence.source_effective_on,
+                    source_url: evidence.source_url.clone(),
+                    evidence_text: excerpt,
+                });
             }
         }
-        entry["review_prompts"] = json!(prompts);
-        entry["review_prompt_filter"] = json!({"hidden_count":hidden});
+        entry.review_prompts = prompts;
+        entry.review_prompt_filter = ReviewPromptFilter {
+            hidden_count: hidden,
+        };
     }
 }
 

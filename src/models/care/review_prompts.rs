@@ -9,12 +9,15 @@ use crate::models::{
     entities::{medication, person, person_medication, review_evidence, review_prompt, schedule},
     errors::OperationError,
 };
+use crate::views::review_prompts::{
+    ReviewCollection, ReviewCounts, ReviewDetail, ReviewMeta, ReviewPrompt,
+};
 use chrono::{NaiveDate, Utc};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, DbBackend,
     EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, Set, Statement,
 };
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::{HashMap, HashSet};
 
 fn display_name(record: &medication::Model) -> String {
@@ -27,36 +30,86 @@ fn display_name(record: &medication::Model) -> String {
         .to_owned()
 }
 
-pub fn value(record: &review_prompt::Model) -> Value {
-    json!({
-        "id": record.id.to_string(),
-        "person_id": record.person_id.to_string(),
-        "primary_medication_id": record.primary_medication_id.to_string(),
-        "interacting_medication_id": record.interacting_medication_id.to_string(),
-        "evidence_record_id": record.evidence_record_id.to_string(),
-        "primary_medication_name": record.primary_medication_name,
-        "interacting_medication_name": record.interacting_medication_name,
-        "evidence_source_name": record.evidence_source_name,
-        "evidence_source_url": record.evidence_source_url,
-        "evidence_source_version": record.evidence_source_version,
-        "matched_term": record.matched_term,
-        "match_type": record.match_type,
-        "source_instruction": record.source_instruction,
-        "match_reason": record.match_reason,
-        "evidence_text": record.evidence_text,
-        "etag": crate::models::care::sync::review_prompts::tag(record),
-        "evidence_source_checked_on": record.evidence_source_checked_on.to_string(),
-        "evidence_source_effective_on": record.evidence_source_effective_on.to_string(),
-        "risk_level": record.risk_level,
-        "match_confidence": record.match_confidence,
-        "status": record.status,
-        "practitioner_name": record.practitioner_name,
-        "practitioner_role": record.practitioner_role,
-        "review_note": record.review_note,
-        "reviewed_on": record.reviewed_on.map(|date| date.to_string()),
-        "reviewed_by_membership_id": record.reviewed_by_membership_id.map(|id| id.to_string()),
-        "updated_at": record.updated_at.and_utc().to_rfc3339(),
-    })
+pub(crate) fn value(record: &review_prompt::Model) -> ReviewPrompt {
+    ReviewPrompt {
+        id: record.id.to_string(),
+        person_id: record.person_id.to_string(),
+        primary_medication_id: record.primary_medication_id.to_string(),
+        interacting_medication_id: record.interacting_medication_id.to_string(),
+        evidence_record_id: record.evidence_record_id.to_string(),
+        primary_medication_name: record.primary_medication_name.clone(),
+        interacting_medication_name: record.interacting_medication_name.clone(),
+        evidence_source_name: record.evidence_source_name.clone(),
+        evidence_source_url: record.evidence_source_url.clone(),
+        evidence_source_version: record.evidence_source_version.clone(),
+        matched_term: record.matched_term.clone(),
+        match_type: record.match_type.clone(),
+        source_instruction: record.source_instruction.clone(),
+        match_reason: record.match_reason.clone(),
+        evidence_text: record.evidence_text.clone(),
+        etag: sync::review_prompts::tag(record),
+        evidence_source_checked_on: record.evidence_source_checked_on,
+        evidence_source_effective_on: record.evidence_source_effective_on,
+        risk_level: record.risk_level.clone(),
+        match_confidence: record.match_confidence.clone(),
+        status: record.status.clone(),
+        practitioner_name: record.practitioner_name.clone(),
+        practitioner_role: record.practitioner_role.clone(),
+        review_note: record.review_note.clone(),
+        reviewed_on: record.reviewed_on,
+        reviewed_by_membership_id: record.reviewed_by_membership_id.map(|id| id.to_string()),
+        updated_at: record.updated_at.and_utc().to_rfc3339(),
+    }
+}
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+
+    #[test]
+    fn review_prompt_projection_keeps_string_ids_dates_and_nulls() -> Result<(), serde_json::Error>
+    {
+        let date = NaiveDate::from_ymd_opt(2026, 11, 16).unwrap();
+        let timestamp = date.and_hms_opt(0, 0, 0).unwrap();
+        let row = review_prompt::Model {
+            household_id: 6,
+            created_at: timestamp,
+            id: 1,
+            person_id: 2,
+            primary_medication_id: 3,
+            interacting_medication_id: 4,
+            evidence_record_id: 5,
+            primary_medication_name: "primary_medication_name".into(),
+            interacting_medication_name: "interacting_medication_name".into(),
+            evidence_source_name: "evidence_source_name".into(),
+            evidence_source_url: "evidence_source_url".into(),
+            evidence_source_version: "evidence_source_version".into(),
+            matched_term: "matched_term".into(),
+            match_type: "match_type".into(),
+            source_instruction: "source_instruction".into(),
+            match_reason: "match_reason".into(),
+            evidence_text: "evidence_text".into(),
+            evidence_source_checked_on: date,
+            evidence_source_effective_on: date,
+            risk_level: "risk_level".into(),
+            match_confidence: "match_confidence".into(),
+            status: "status".into(),
+            practitioner_name: None,
+            practitioner_role: None,
+            review_note: None,
+            reviewed_on: None,
+            reviewed_by_membership_id: Some(42),
+            updated_at: timestamp,
+        };
+        let response = value(&row);
+        assert_eq!(response.id, "1");
+        assert_eq!(response.reviewed_by_membership_id.as_deref(), Some("42"));
+        let body = serde_json::to_value(response)?;
+        assert_eq!(body["evidence_source_checked_on"], "2026-11-16");
+        assert_eq!(body["etag"], sync::review_prompts::tag(&row));
+        assert!(body["reviewed_on"].is_null());
+        Ok(())
+    }
 }
 
 #[derive(serde::Deserialize, Default)]
@@ -122,10 +175,10 @@ fn today_in_app_zone(settings: Option<&serde_json::Value>) -> NaiveDate {
         .date_naive()
 }
 
-pub async fn index(
+pub(crate) async fn index(
     tenant: &TenantTransaction,
     query: Option<ListQuery>,
-) -> Result<Value, OperationError> {
+) -> Result<ReviewCollection, OperationError> {
     access::recheck(tenant).await?;
     let context = sync::review_prompts::AuthContext { tenant };
     if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
@@ -160,11 +213,20 @@ pub async fn index(
     if !filters.show_hidden {
         query = query.filter(review_prompt::Column::Status.ne("hidden_low_signal"));
     }
-    let review_counts = json!({
-        "needs_review": query.clone().filter(review_prompt::Column::Status.eq("needs_review")).count(tenant.transaction()).await? + if filters.show_hidden { hidden_count } else { 0 },
-        "reviewed": query.clone().filter(review_prompt::Column::Status.is_not_in(["needs_review", "hidden_low_signal"])).count(tenant.transaction()).await?,
-        "all": query.clone().count(tenant.transaction()).await?,
-    });
+    let review_counts = ReviewCounts {
+        needs_review: query
+            .clone()
+            .filter(review_prompt::Column::Status.eq("needs_review"))
+            .count(tenant.transaction())
+            .await?
+            + if filters.show_hidden { hidden_count } else { 0 },
+        reviewed: query
+            .clone()
+            .filter(review_prompt::Column::Status.is_not_in(["needs_review", "hidden_low_signal"]))
+            .count(tenant.transaction())
+            .await?,
+        all: query.clone().count(tenant.transaction()).await?,
+    };
     query = match filters.review_status.as_str() {
         "needs_review" if filters.show_hidden => {
             query.filter(review_prompt::Column::Status.is_in(["needs_review", "hidden_low_signal"]))
@@ -193,17 +255,25 @@ pub async fn index(
         .limit(filters.size)
         .all(tenant.transaction())
         .await?;
-    Ok(
-        json!({"data": rows.iter().map(value).collect::<Vec<_>>(), "meta": {
-            "page": filters.page, "per_page": filters.size, "total_count": total,
-            "hidden_count": hidden_count, "review_counts": review_counts,
-            "active_status": filters.review_status, "active_priority": filters.priority,
-            "show_hidden": filters.show_hidden
-        }}),
-    )
+    Ok(ReviewCollection {
+        data: rows.iter().map(value).collect(),
+        meta: ReviewMeta {
+            page: filters.page,
+            per_page: filters.size,
+            total_count: total,
+            hidden_count,
+            review_counts,
+            active_status: filters.review_status,
+            active_priority: filters.priority,
+            show_hidden: filters.show_hidden,
+        },
+    })
 }
 
-pub async fn show(tenant: &TenantTransaction, id: &str) -> Result<(Value, String), OperationError> {
+pub(crate) async fn show(
+    tenant: &TenantTransaction,
+    id: &str,
+) -> Result<(ReviewDetail, String), OperationError> {
     access::recheck(tenant).await?;
     let context = sync::review_prompts::AuthContext { tenant };
     if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
@@ -229,7 +299,10 @@ pub async fn show(tenant: &TenantTransaction, id: &str) -> Result<(Value, String
         .ok_or(OperationError::NotFound)?;
     let history = edit::history(tenant, &record).await?;
     Ok((
-        json!({"data": value(&record),"history":history}),
+        ReviewDetail {
+            data: value(&record),
+            history,
+        },
         sync::review_prompts::tag(&record),
     ))
 }

@@ -49,11 +49,12 @@ use uuid::Uuid;
 pub(crate) use writing::browser_list;
 pub(crate) use writing::browser_take_target;
 pub(crate) use writing::key_for_row;
-pub use writing::{RangeQuery, authorize, change, list};
+pub(crate) use writing::list;
+pub use writing::{RangeQuery, authorize, change};
 
 pub struct OccurrenceWritten {
     pub row: dose_occurrence::Model,
-    pub body: Value,
+    pub(crate) body: crate::views::DataResponse<crate::views::dose_occurrences::DoseOccurrence>,
     pub etag: String,
 }
 

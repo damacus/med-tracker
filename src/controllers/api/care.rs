@@ -45,6 +45,7 @@ use crate::models::{
         resource::{self, AuthenticationError, ValidatedPrincipal},
     },
 };
+use crate::views::medication_takes::MedicationTakeResponse;
 use axum::{
     Extension, Json as AxumJson,
     extract::rejection::JsonRejection,
@@ -579,7 +580,9 @@ async fn take(
             .map(|rows| {
                 (
                     status,
-                    json!({"data": rows.into_iter().next().expect("Single take projection")}),
+                    MedicationTakeResponse {
+                        data: rows.into_iter().next().expect("Single take projection"),
+                    },
                     Some(projection::take_etag(&record)),
                 )
             })
@@ -695,7 +698,7 @@ async fn adjust_stock(
     if settle_savepoint(savepoint, result.is_ok()).await.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::stock(),
@@ -716,13 +719,23 @@ async fn settle_savepoint(
     }
 }
 
-type Reply = std::result::Result<(StatusCode, Value, Option<String>), response::Failure>;
+type Reply<T = Value> = std::result::Result<(StatusCode, T, Option<String>), response::Failure>;
 
 async fn finish(
     tenant: TenantTransaction,
     provenance: &CredentialProvenance,
     request: audit::RequestAudit,
     reply: Reply,
+    request_id: &str,
+) -> Response {
+    finish_typed(tenant, provenance, request, reply, request_id).await
+}
+
+async fn finish_typed<T: serde::Serialize>(
+    tenant: TenantTransaction,
+    provenance: &CredentialProvenance,
+    request: audit::RequestAudit,
+    reply: Reply<T>,
     request_id: &str,
 ) -> Response {
     let status = match &reply {

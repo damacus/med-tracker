@@ -56,7 +56,7 @@ image. Keep production schedules as native tasks.
 
 The **Loco Linux images** workflow builds and checks amd64 and arm64 on native
 runners. Every push to **main** publishes a multi-platform
-`ghcr.io/damacus/med-tracker-loco:sha-<full commit>` image and can update `beta`
+`ghcr.io/damacus/med-tracker:sha-<full commit>` image and can update `beta`
 after the native image checks, scheduler acceptance and image-transfer checks pass.
 Dispatching **from main** with **publish** enabled also publishes; other
 dispatches only check the images. Publication verifies checksums, image IDs and architectures of the
@@ -70,7 +70,7 @@ It checks out the exact release tag and verifies that the tag's commit matches
 the workflow commit and its version matches the root Cargo package. It builds
 and checks fresh images from that source, then publishes the tested images with
 both their SHA tag and the full release version, for example
-`ghcr.io/damacus/med-tracker-loco:0.6.0-rc.1`. No `latest`, minor or major alias is
+`ghcr.io/damacus/med-tracker:0.6.10`. No `latest`, minor or major alias is
 published. The workflow summary records the verified multi-platform digest for
 the deployment controller to use. A version tag alone does not prove the image
 has finished building; wait for the publication job to succeed.

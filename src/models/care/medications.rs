@@ -16,6 +16,7 @@ use crate::models::{
     errors::OperationError,
     identity::credentials::CredentialProvenance,
 };
+use crate::views::medications::MedicationResponse;
 use chrono::Utc;
 use sea_orm::prelude::Decimal;
 use sea_orm::{
@@ -23,7 +24,6 @@ use sea_orm::{
     PrimaryKeyTrait, QueryFilter, QuerySelect, Set, Statement,
 };
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use std::str::FromStr;
 
 type ApiError = OperationError;
@@ -76,7 +76,7 @@ pub struct ScalarPrecondition {
 #[derive(Debug)]
 pub struct StockSnapshot {
     pub medication: medication::Model,
-    pub representation: Value,
+    pub representation: MedicationResponse,
     pub etag: String,
 }
 
@@ -121,14 +121,8 @@ async fn snapshot(
     let row = projection::serialize_many(db, vec![medication.clone()], settings)
         .await?
         .remove(0);
-    let mut representation = json!({"data": row});
-    representation.sort_all_objects();
-    let etag = format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(
-            serde_json::to_vec(&representation).expect("JSON value must serialize")
-        ))
-    );
+    let representation = MedicationResponse { data: row };
+    let etag = crate::views::canonical_etag(&representation)?;
     Ok(StockSnapshot {
         medication,
         representation,

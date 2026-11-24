@@ -1,4 +1,8 @@
 use super::*;
+use crate::views::{
+    PaginationMeta,
+    treatments::{Schedule, ScheduleResponse, TreatmentCollection},
+};
 use chrono::Datelike;
 use sea_orm::{IntoActiveModel, PaginatorTrait, QueryOrder};
 use serde::Deserialize;
@@ -10,7 +14,10 @@ pub struct Pagination {
     pub updated_since: Option<String>,
 }
 
-pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {
+pub async fn list(
+    tenant: &TenantTransaction,
+    page: Pagination,
+) -> Result<TreatmentCollection<Schedule>, OperationError> {
     access::recheck(tenant).await?;
     let person_id = tenant.membership().person_id;
     let actor =
@@ -51,7 +58,14 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
         .all(tenant.transaction())
         .await?;
     let data = super::projection::serialize_schedules(tenant.transaction(), tenant, rows).await?;
-    Ok(json!({"data":data,"meta":{"page":page_number,"per_page":per_page,"total_count":count}}))
+    Ok(TreatmentCollection {
+        data,
+        meta: PaginationMeta {
+            page: page_number,
+            per_page,
+            total_count: count,
+        },
+    })
 }
 async fn find(
     tenant: &TenantTransaction,
@@ -75,7 +89,10 @@ async fn find(
     }
     Ok(row)
 }
-pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<(Value, String), OperationError> {
+pub async fn read(
+    tenant: &TenantTransaction,
+    id: &str,
+) -> Result<(ScheduleResponse, String), OperationError> {
     let initial = find(tenant, id, false).await?;
     let row = super::super::person_schedules::projection::refresh_one(tenant, initial.id).await?;
     project(tenant, row).await
@@ -83,19 +100,13 @@ pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<(Value, String
 pub(super) async fn project(
     tenant: &TenantTransaction,
     row: schedule::Model,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(ScheduleResponse, String), OperationError> {
     let data =
         super::projection::serialize_schedules(tenant.transaction(), tenant, vec![row]).await?;
-    let body = json!({"data":data.into_iter().next().ok_or(OperationError::NotFound)?});
-    let mut sorted = body.clone();
-    sorted.sort_all_objects();
-    use sha2::{Digest, Sha256};
-    let etag = format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(
-            serde_json::to_vec(&sorted).expect("JSON must serialize")
-        ))
-    );
+    let body = ScheduleResponse {
+        data: data.into_iter().next().ok_or(OperationError::NotFound)?,
+    };
+    let etag = crate::views::canonical_etag(&body)?;
     Ok((body, etag))
 }
 pub async fn authorize_update(tenant: &TenantTransaction, id: &str) -> Result<(), OperationError> {
@@ -114,11 +125,11 @@ pub async fn update(
     body: &Value,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(ScheduleResponse, String), OperationError> {
     authorize_update(tenant, id).await?;
     let row = find(tenant, id, true).await?;
     let before = project(tenant, row.clone()).await?;
-    let snapshot = representation(&row).0["data"].clone();
+    let snapshot = schedule_snapshot(&row)?;
     if etag.is_some_and(|value| !value.is_empty() && value != before.1) {
         return Err(OperationError::Conflict {
             code: "conflict".into(),
@@ -148,11 +159,11 @@ pub(crate) async fn update_input(
     input: ValidatedScheduleInput,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(ScheduleResponse, String), OperationError> {
     authorize_update(tenant, id).await?;
     let row = find(tenant, id, true).await?;
     let before = project(tenant, row.clone()).await?;
-    let snapshot = representation(&row).0["data"].clone();
+    let snapshot = schedule_snapshot(&row)?;
     if etag.is_some_and(|value| !value.is_empty() && value != before.1) {
         return Err(OperationError::Conflict {
             code: "conflict".into(),
@@ -175,11 +186,11 @@ pub(crate) async fn update_input(
 async fn update_fields(
     tenant: &TenantTransaction,
     row: schedule::Model,
-    before: (Value, String),
+    before: (ScheduleResponse, String),
     snapshot: Value,
     fields: ScheduleFields,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(ScheduleResponse, String), OperationError> {
     if fields == fields_from_record(&row) {
         return Ok(before);
     }

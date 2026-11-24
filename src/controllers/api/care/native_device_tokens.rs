@@ -1,4 +1,4 @@
-use super::administration::complete;
+use super::administration::complete_typed;
 use super::*;
 use crate::models::care::native_device_tokens;
 
@@ -38,7 +38,7 @@ pub(super) async fn create(
                 }
                 other => response::operation(other),
             })?;
-        Ok((StatusCode::CREATED, json!({}), None, false))
+        Ok((StatusCode::CREATED, (), None, false))
     }
     .await;
     let restored = if result.is_ok() {
@@ -50,7 +50,7 @@ pub(super) async fn create(
         return response::error(response::unavailable(), &request_id);
     }
     empty_success(
-        complete(
+        complete_typed(
             tenant,
             &principal,
             audit::RequestAudit::native_device_token("POST", "create"),
@@ -80,7 +80,7 @@ pub(super) async fn destroy(
         native_device_tokens::revoke(&tenant, &id)
             .await
             .map_err(response::operation)?;
-        Ok((StatusCode::NO_CONTENT, json!({}), None, false))
+        Ok((StatusCode::NO_CONTENT, (), None, false))
     }
     .await;
     let restored = if result.is_ok() {
@@ -92,7 +92,7 @@ pub(super) async fn destroy(
         return response::error(response::unavailable(), &request_id);
     }
     empty_success(
-        complete(
+        complete_typed(
             tenant,
             &principal,
             audit::RequestAudit::native_device_token("DELETE", "destroy"),

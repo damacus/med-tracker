@@ -3,6 +3,32 @@ use serde::Serialize;
 use crate::models::identity::oauth::PublicMobileClient;
 
 #[derive(Serialize)]
+pub(crate) struct UiCapabilities {
+    pub people: PeopleUiCapabilities,
+    pub locations: LocationUiCapabilities,
+    pub medications: MedicationUiCapabilities,
+}
+
+#[derive(Serialize)]
+pub(crate) struct PeopleUiCapabilities {
+    pub create: bool,
+    pub manage_ids: Vec<i64>,
+}
+
+#[derive(Serialize)]
+pub(crate) struct LocationUiCapabilities {
+    pub create: bool,
+    pub update: bool,
+}
+
+#[derive(Serialize)]
+pub(crate) struct MedicationUiCapabilities {
+    pub create: bool,
+    pub update: bool,
+    pub manage_stock: bool,
+}
+
+#[derive(Serialize)]
 pub struct CapabilitiesResponse {
     data: Capabilities,
 }

@@ -1,4 +1,5 @@
-use super::administration::{complete, key, request_id, store};
+use super::administration::{complete_typed, key, request_id};
+use super::response::MutationBody;
 use super::*;
 use crate::models::care::{locations::SavedResponse, treatments};
 
@@ -27,30 +28,37 @@ pub(super) async fn create(
         let path = format!("/api/v1/households/{household_id}/schedules");
         let key = key(&headers);
         if let Some(key) = key
-            && let Some(reply) = locations::keyed_replay(&tenant, key, "POST", &path, &body).await?
+            && let Some((status, body, etag, replay)) =
+                locations::keyed_replay(&tenant, key, "POST", &path, &body).await?
         {
-            return Ok(reply);
+            return Ok((status, MutationBody::Replay(body), etag, replay));
         }
         let (reply, etag) = treatments::create(&tenant, &body, Some(principal.provenance()))
             .await
             .map_err(response::operation)?;
         if let Some(key) = key {
-            return store(
+            crate::models::care::locations::store(
                 &tenant,
-                &principal,
+                principal.provenance(),
                 SavedResponse {
                     key,
                     method: "POST",
                     path: &path,
                     request: &body,
                     status: 201,
-                    body: reply,
+                    body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                     etag: Some(&etag),
                 },
             )
-            .await;
+            .await
+            .map_err(response::operation)?;
         }
-        Ok((StatusCode::CREATED, reply, Some(etag), false))
+        Ok((
+            StatusCode::CREATED,
+            MutationBody::Resource(reply),
+            Some(etag),
+            false,
+        ))
     }
     .await;
     let restored = if result.is_ok() {
@@ -61,7 +69,7 @@ pub(super) async fn create(
     if restored.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::treatment("POST", "create"),

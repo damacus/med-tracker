@@ -658,6 +658,15 @@ mod tests {
         schedule.min_hours_between_doses = Some(6);
         schedule.clinical_revision = Some(3);
         let source = Source::Schedule(schedule);
+        let rows = projected_loaded(&source, day, day, &[], &[], &[], None);
+        let secret: Arc<[u8]> = Arc::from(&b"medtracker-test-secret-32-bytes-long!"[..]);
+        let row = super::representation::row_value(&secret, &source, &rows[0], None);
+        assert_eq!(row.source_type, "schedule");
+        assert_eq!(row.outcome, "open");
+        let body = serde_json::to_value(row).unwrap();
+        assert_eq!(body["window_starts_on"], "2026-11-16");
+        assert!(body["medication_take_id"].is_null());
+        assert!(body.get("prescribed_amount").is_none());
         let reports = projected_loaded(&source, day, day, &[], &[], &[], None);
         let execution = projected_loaded_in_mode(
             &source,

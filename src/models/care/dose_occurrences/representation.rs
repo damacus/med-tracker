@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::dose_occurrences::DoseOccurrence;
 
 fn timestamp(value: NaiveDateTime) -> String {
     value
@@ -19,7 +20,7 @@ pub(super) fn row_value(
     source: &Source,
     row: &Occurrence,
     settings: Option<&serde_json::Value>,
-) -> Value {
+) -> DoseOccurrence {
     let source_settings = source.calendar_settings(settings);
     let settings = source_settings.as_ref();
     let (outcome, reason, note, resolved_at, medication_take_id, etag) = match &row.record {
@@ -49,24 +50,24 @@ pub(super) fn row_value(
         .unwrap_or_else(|| local_midnight(row.window_start, settings));
     let now = Utc::now().naive_utc();
     let due = due_time <= now && (source.kind() == Kind::Schedule || source.created_at() <= now);
-    json!({
-        "key": key(secret, source, row.window_start, row.position),
-        "source_type": source.kind().name(),
-        "source_id": source.id(),
-        "source_portable_id": source.portable_id(),
-        "window_starts_on": row.window_start.to_string(),
-        "window_ends_on": row.window_end.to_string(),
-        "position": row.position,
-        "scheduled_at": row.scheduled_at.map(timestamp),
-        "outcome": outcome,
-        "expected": row.expected,
-        "due": due,
-        "reason": reason,
-        "note": note,
-        "resolved_at": resolved_at,
-        "medication_take_id": medication_take_id,
-        "etag": etag,
-    })
+    DoseOccurrence {
+        key: key(secret, source, row.window_start, row.position),
+        source_type: source.kind().name(),
+        source_id: source.id(),
+        source_portable_id: source.portable_id().to_owned(),
+        window_starts_on: row.window_start,
+        window_ends_on: row.window_end,
+        position: row.position,
+        scheduled_at: row.scheduled_at.map(timestamp),
+        outcome: outcome.to_owned(),
+        expected: row.expected,
+        due,
+        reason: reason.map(str::to_owned),
+        note: note.map(str::to_owned),
+        resolved_at,
+        medication_take_id,
+        etag,
+    }
 }
 
 pub(super) fn snapshot(record: &dose_occurrence::Model) -> Value {

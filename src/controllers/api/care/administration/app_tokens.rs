@@ -1,5 +1,19 @@
 use super::*;
 use crate::models::care::locations::KeyedResponse;
+
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+enum TokenOutput {
+    Issued(DataResponse<administration::app_tokens::IssuedToken>),
+    Revoked,
+    AlreadyIssued { error: IssuanceConflict },
+}
+
+#[derive(serde::Serialize)]
+struct IssuanceConflict {
+    code: &'static str,
+    message: &'static str,
+}
 use administration::app_tokens::{CreateInput, TextInput};
 
 enum Mutation {
@@ -20,9 +34,9 @@ pub(in crate::controllers::api::care) async fn index(
     };
     let result = administration::app_tokens::index(&tenant)
         .await
-        .map(|rows| (StatusCode::OK, json!({"data": rows}), None))
+        .map(|data| (StatusCode::OK, DataResponse { data }, None))
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::administration("GET", "app_tokens", "index"),
@@ -112,7 +126,7 @@ async fn mutate(
         body,
     )
     .await;
-    let mut response = complete(
+    let mut response = complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::administration(
@@ -140,7 +154,7 @@ async fn process(
     id: Option<&str>,
     headers: &HeaderMap,
     body: Option<std::result::Result<AxumJson<Value>, JsonRejection>>,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> AdminMutation<TokenOutput> {
     administration::authorize(tenant)
         .await
         .map_err(response::operation)?;
@@ -171,12 +185,21 @@ async fn process(
                 if id.is_none() && saved.response_status == 201 {
                     return Ok((
                         StatusCode::CONFLICT,
-                        json!({"error":{"code":"token_already_issued","message":"Token was already issued; create with a new idempotency key if its one-time secret was lost"}}),
+                        MutationBody::Resource(TokenOutput::AlreadyIssued {
+                            error: IssuanceConflict {
+                                code: "token_already_issued",
+                                message: "Token was already issued; create with a new idempotency key if its one-time secret was lost",
+                            },
+                        }),
                         None,
                         false,
                     ));
                 }
-                return super::super::locations::replay_response(tenant, saved);
+                return super::super::locations::replay_response(tenant, saved).map(
+                    |(status, body, etag, replay)| {
+                        (status, MutationBody::Replay(body), etag, replay)
+                    },
+                );
             }
         }
     }
@@ -193,14 +216,17 @@ async fn process(
         Mutation::Revoke(id) => (
             administration::app_tokens::revoke(tenant, id, principal.provenance())
                 .await
-                .map(|()| Value::Null),
+                .map(|()| TokenOutput::Revoked),
             None,
         ),
         Mutation::Create(input) => {
             match administration::app_tokens::create(tenant, input, principal.provenance()).await {
                 Ok(issued) => {
                     let receipt = json!({"receipt":{"token_id":issued.summary.id}});
-                    (Ok(json!({"data": issued})), Some(receipt))
+                    (
+                        Ok(TokenOutput::Issued(DataResponse { data: issued })),
+                        Some(receipt),
+                    )
                 }
                 Err(error) => (Err(error), None),
             }
@@ -218,7 +244,10 @@ async fn process(
     )
     .await?;
     if let Some(key) = key {
-        let stored = receipt.unwrap_or_else(|| reply.clone());
+        let stored = match receipt {
+            Some(receipt) => receipt,
+            None => serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
+        };
         locations::store(
             tenant,
             principal.provenance(),

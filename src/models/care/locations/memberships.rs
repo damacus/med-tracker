@@ -4,6 +4,7 @@ use crate::models::{
     care::{administration, doses},
     entities::{location_membership, person},
 };
+use crate::views::locations::{LocationMembership, LocationMembershipResponse};
 
 fn invalid_membership() -> OperationError {
     OperationError::Validation {
@@ -43,8 +44,17 @@ pub fn representation(
     record: &location_membership::Model,
     location: &location::Model,
     person: &person::Model,
-) -> Value {
-    json!({"data":{"id":record.id.to_string(),"location_id":location.id.to_string(),"location_portable_id":location.portable_id,"person_id":person.id.to_string(),"person_portable_id":person.portable_id,"created_at":record.created_at.and_utc().to_rfc3339()}})
+) -> LocationMembershipResponse {
+    LocationMembershipResponse {
+        data: LocationMembership {
+            id: record.id.to_string(),
+            location_id: location.id.to_string(),
+            location_portable_id: location.portable_id.clone(),
+            person_id: person.id.to_string(),
+            person_portable_id: person.portable_id.clone(),
+            created_at: record.created_at.and_utc().to_rfc3339(),
+        },
+    }
 }
 
 async fn person_for(

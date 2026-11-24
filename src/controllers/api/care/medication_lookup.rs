@@ -1,6 +1,14 @@
 use super::*;
 use crate::models::care::medication_lookup::{self, Search};
+use crate::views::medication_lookup::{Lookup, LookupUnavailable};
 use axum::extract::Query;
+
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+enum Reply {
+    Found(Lookup),
+    Unavailable(LookupUnavailable),
+}
 
 pub(super) async fn show(
     State(ctx): State<AppContext>,
@@ -15,15 +23,18 @@ pub(super) async fn show(
         Err(error) => return response::error(error, &request_id),
     };
     let result = match medication_lookup::search(&tenant, &search).await {
-        Ok(found) => Ok((StatusCode::OK, found.body, None)),
+        Ok(found) => Ok((StatusCode::OK, Reply::Found(found.body), None)),
         Err(OperationError::Unavailable) => Ok((
             StatusCode::SERVICE_UNAVAILABLE,
-            json!({"results":[],"error":"Medication search is temporarily unavailable."}),
+            Reply::Unavailable(LookupUnavailable {
+                results: [],
+                error: "Medication search is temporarily unavailable.",
+            }),
             None,
         )),
         Err(error) => Err(response::operation(error)),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::medication_lookup(),

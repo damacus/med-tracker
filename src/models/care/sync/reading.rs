@@ -1,11 +1,15 @@
 use super::*;
+use crate::views::sync::{Change, Changes, Tombstone};
 use loco_rs::model::TenantQueryExt;
 use sea_orm::DatabaseTransaction;
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
 }
 
-pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, OperationError> {
+pub(crate) async fn changes(
+    tenant: &TenantTransaction,
+    cursor: &str,
+) -> Result<DataResponse<Changes>, OperationError> {
     lock(tenant).await?;
     super::super::person_schedules::projection::refresh(tenant).await?;
     let since = chrono::DateTime::parse_from_rfc3339(cursor)
@@ -200,89 +204,164 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
             )
         })
     };
-    let changes: Vec<Value> = events.iter().filter_map(|event| {
-        if event.record_type == "MedicationDosageOption" {
-            let parent=dosage_parents.get(&event.record_id).copied()
-                .or_else(|| event.metadata["medication_id"].as_i64());
-            if !dosage_visible(parent) { return None; }
-        }
-        if event.record_type == "MedicationDoseOccurrence" && !manager {
-            let outcome = outcomes.get(&event.record_id)?;
-            if !outcome.schedule_id.is_some_and(|id| visible_schedule_ids.contains(&id))
-                && !outcome.person_medication_id.is_some_and(|id| visible_assignment_ids.contains(&id)) {
+    let changes = events
+        .iter()
+        .filter_map(|event| {
+            if event.record_type == "MedicationDosageOption" {
+                let parent = dosage_parents
+                    .get(&event.record_id)
+                    .copied()
+                    .or_else(|| event.metadata["medication_id"].as_i64());
+                if !dosage_visible(parent) {
+                    return None;
+                }
+            }
+            if event.record_type == "MedicationDoseOccurrence" && !manager {
+                let outcome = outcomes.get(&event.record_id)?;
+                if !outcome
+                    .schedule_id
+                    .is_some_and(|id| visible_schedule_ids.contains(&id))
+                    && !outcome
+                        .person_medication_id
+                        .is_some_and(|id| visible_assignment_ids.contains(&id))
+                {
+                    return None;
+                }
+            }
+            if event.record_type == "MedicationPausePeriod"
+                && !manager
+                && !visible_periods.contains(&event.record_id)
+            {
                 return None;
             }
-        }
-        if event.record_type == "MedicationPausePeriod" && !manager && !visible_periods.contains(&event.record_id) {
-            return None;
-        }
-        if !matches!(event.record_type.as_str(), "MedicationPausePeriod" | "MedicationDoseOccurrence" | "MedicationDosageOption")
-            && !visible(&event.record_type, Some(event.record_id), event.record_portable_id.as_deref(),
-            &event.metadata, &visible_people, &visible_medications, manager, tenant.membership().id) {
-            return None;
-        }
-        let portable_id = event.record_portable_id.as_deref()?;
-        let mut value = json!({
-            "id": event.id, "record_type": event.record_type, "record_id": event.record_id,
-            "record_portable_id": portable_id, "action": event.action,
-            "occurred_at": event.occurred_at.and_utc().to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true),
-            "metadata": event.metadata,
-        });
-        if event.record_type == "MedicationDoseOccurrence" {
-            let outcome = outcomes.get(&event.record_id)?;
-            let (source_type, source_id) = if let Some(id) = outcome.schedule_id {
-                ("schedule", outcome_schedules.get(&id).map(String::as_str))
-            } else { ("person_medication", outcome.person_medication_id
-                .and_then(|id| outcome_assignments.get(&id).map(String::as_str))) };
-            value["record"] = super::portable::occurrence_value(outcome, source_type, source_id,
-                outcome.medication_take_id.and_then(|id| outcome_takes.get(&id).map(String::as_str)));
-            value["record"]["etag"] = json!(super::portable::occurrence_etag(outcome));
-        }
-        Some(value)
-    }).collect();
-    let tombstones: Vec<Value> = tombstones.iter().filter_map(|row| {
-        if row.record_type == "MedicationPausePeriod" {
-            return None;
-        }
-        if row.record_type == "HealthEvent"
-            && row.metadata["reassigned_to_person_portable_id"].is_string()
-            && visible_reassigned_events.contains(&row.record_portable_id)
-        {
-            return None;
-        }
-        if row.record_type == "MedicationDosageOption" && !dosage_visible(row.metadata["medication_id"].as_i64()) {
-            return None;
-        }
-        if row.record_type != "MedicationDosageOption" && !visible(&row.record_type, None, Some(&row.record_portable_id), &row.metadata,
-            &visible_people, &visible_medications, manager, tenant.membership().id) {
-            return None;
-        }
-        let mut metadata = row.metadata.clone();
-        if let Some(metadata) = metadata.as_object_mut() {
-            metadata.remove("sync_person_portable_ids");
-            metadata.remove("sync_creator_membership_id");
-            metadata.remove("reassigned_to_person_portable_id");
-            metadata.remove("medication_id");
-        }
-        Some(json!({
-            "id": row.id, "record_type": row.record_type, "record_portable_id": row.record_portable_id,
-            "action": row.action, "deleted_at": row.deleted_at.and_utc().to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true),
-            "metadata": metadata,
-        }))
-    }).collect();
-    Ok(json!({"data":{"cursor":response_cursor,"changes":changes,"tombstones":tombstones}}))
+            if !matches!(
+                event.record_type.as_str(),
+                "MedicationPausePeriod" | "MedicationDoseOccurrence" | "MedicationDosageOption"
+            ) && !visible(
+                &event.record_type,
+                Some(event.record_id),
+                event.record_portable_id.as_deref(),
+                &event.metadata,
+                &visible_people,
+                &visible_medications,
+                manager,
+                tenant.membership().id,
+            ) {
+                return None;
+            }
+            let portable_id = event.record_portable_id.as_deref()?;
+            let record = if event.record_type == "MedicationDoseOccurrence" {
+                let outcome = outcomes.get(&event.record_id)?;
+                let (source_type, source_id) = if let Some(id) = outcome.schedule_id {
+                    ("schedule", outcome_schedules.get(&id).map(String::as_str))
+                } else {
+                    (
+                        "person_medication",
+                        outcome
+                            .person_medication_id
+                            .and_then(|id| outcome_assignments.get(&id).map(String::as_str)),
+                    )
+                };
+                let mut record = super::portable::occurrence_value(
+                    outcome,
+                    source_type,
+                    source_id,
+                    outcome
+                        .medication_take_id
+                        .and_then(|id| outcome_takes.get(&id).map(String::as_str)),
+                );
+                record["etag"] = json!(super::portable::occurrence_etag(outcome));
+                Some(record)
+            } else {
+                None
+            };
+            Some(Change {
+                id: event.id,
+                record_type: event.record_type.clone(),
+                record_id: event.record_id,
+                record_portable_id: portable_id.to_owned(),
+                action: event.action.clone(),
+                occurred_at: event
+                    .occurred_at
+                    .and_utc()
+                    .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true),
+                metadata: event.metadata.clone(),
+                record,
+            })
+        })
+        .collect();
+    let tombstones = tombstones
+        .iter()
+        .filter_map(|row| {
+            if row.record_type == "MedicationPausePeriod" {
+                return None;
+            }
+            if row.record_type == "HealthEvent"
+                && row.metadata["reassigned_to_person_portable_id"].is_string()
+                && visible_reassigned_events.contains(&row.record_portable_id)
+            {
+                return None;
+            }
+            if row.record_type == "MedicationDosageOption"
+                && !dosage_visible(row.metadata["medication_id"].as_i64())
+            {
+                return None;
+            }
+            if row.record_type != "MedicationDosageOption"
+                && !visible(
+                    &row.record_type,
+                    None,
+                    Some(&row.record_portable_id),
+                    &row.metadata,
+                    &visible_people,
+                    &visible_medications,
+                    manager,
+                    tenant.membership().id,
+                )
+            {
+                return None;
+            }
+            let mut metadata = row.metadata.clone();
+            if let Some(metadata) = metadata.as_object_mut() {
+                metadata.remove("sync_person_portable_ids");
+                metadata.remove("sync_creator_membership_id");
+                metadata.remove("reassigned_to_person_portable_id");
+                metadata.remove("medication_id");
+            }
+            Some(Tombstone {
+                id: row.id,
+                record_type: row.record_type.clone(),
+                record_portable_id: row.record_portable_id.clone(),
+                action: row.action.clone(),
+                deleted_at: row
+                    .deleted_at
+                    .and_utc()
+                    .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true),
+                metadata,
+            })
+        })
+        .collect();
+    Ok(DataResponse {
+        data: Changes {
+            cursor: response_cursor,
+            changes,
+            tombstones,
+        },
+    })
 }
 
-pub async fn snapshot(
+pub(crate) async fn snapshot(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
-) -> Result<AppliedBatch, OperationError> {
+) -> Result<AppliedBatch<DataResponse<Value>>, OperationError> {
     lock(tenant).await?;
     super::super::person_schedules::projection::refresh(tenant).await?;
     let mut payload = super::portable::payload(tenant, zone).await?;
     payload.body["cursor"] = json!(Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Micros, true));
-    payload.body = json!({"data":payload.body});
-    Ok(payload)
+    Ok(AppliedBatch {
+        body: DataResponse { data: payload.body },
+        takes: payload.takes,
+    })
 }
 
 #[allow(clippy::too_many_arguments)]

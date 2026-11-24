@@ -1,4 +1,5 @@
 use crate::models::identity::{self, ExchangeError, oauth};
+use crate::views::oauth::{Discovery, ProtocolError};
 use axum::{
     body::{Body, to_bytes},
     extract::Request,
@@ -23,7 +24,25 @@ async fn discovery(State(ctx): State<AppContext>) -> Response {
         Ok(origin) => origin.origin().ascii_serialization(),
         Err(_) => return failure(ExchangeError::Unavailable),
     };
-    axum::Json(serde_json::json!({"issuer":issuer,"authorization_endpoint":format!("{issuer}/authorize"),"token_endpoint":format!("{issuer}/token"),"revocation_endpoint":format!("{issuer}/revoke"),"response_types_supported":["code"],"response_modes_supported":["query","form_post"],"grant_types_supported":["authorization_code","refresh_token"],"code_challenge_methods_supported":["S256"],"token_endpoint_auth_methods_supported":["none","client_secret_basic","client_secret_post"]})).into_response()
+    axum::Json(discovery_document(&issuer)).into_response()
+}
+
+fn discovery_document(issuer: &str) -> Discovery<'_> {
+    Discovery {
+        issuer,
+        authorization_endpoint: format!("{issuer}/authorize"),
+        token_endpoint: format!("{issuer}/token"),
+        revocation_endpoint: format!("{issuer}/revoke"),
+        response_types_supported: &["code"],
+        response_modes_supported: &["query", "form_post"],
+        grant_types_supported: &["authorization_code", "refresh_token"],
+        code_challenge_methods_supported: &["S256"],
+        token_endpoint_auth_methods_supported: &[
+            "none",
+            "client_secret_basic",
+            "client_secret_post",
+        ],
+    }
 }
 
 async fn capabilities(State(ctx): State<AppContext>) -> Response {
@@ -97,39 +116,40 @@ async fn revocation_request(request: Request) -> std::result::Result<Request, Ex
 }
 
 pub(super) fn failure(error: ExchangeError) -> Response {
-    let (status, mut body, authenticate) = match error {
-        ExchangeError::InvalidRequest => (
-            StatusCode::BAD_REQUEST,
-            serde_json::json!({"error":"invalid_request"}),
-            None,
-        ),
+    let local = |status, error| {
+        (
+            status,
+            axum::Json(ProtocolError {
+                error,
+                trace_id: crate::telemetry::ids::current_trace_id(),
+            }),
+        )
+            .into_response()
+    };
+    let (mut response, authenticate) = match error {
+        ExchangeError::InvalidRequest => (local(StatusCode::BAD_REQUEST, "invalid_request"), None),
         ExchangeError::InvalidClient => (
-            StatusCode::UNAUTHORIZED,
-            serde_json::json!({"error":"invalid_client"}),
+            local(StatusCode::UNAUTHORIZED, "invalid_client"),
             Some("Basic realm=\"OAuth\"".to_owned()),
         ),
-        ExchangeError::InvalidGrant => (
-            StatusCode::BAD_REQUEST,
-            serde_json::json!({"error":"invalid_grant"}),
-            None,
-        ),
+        ExchangeError::InvalidGrant => (local(StatusCode::BAD_REQUEST, "invalid_grant"), None),
         ExchangeError::Unavailable => (
-            StatusCode::SERVICE_UNAVAILABLE,
-            serde_json::json!({"error":"temporarily_unavailable"}),
+            local(StatusCode::SERVICE_UNAVAILABLE, "temporarily_unavailable"),
             None,
         ),
-        ExchangeError::Protocol { body, authenticate } => (
-            if authenticate.is_some() {
+        ExchangeError::Protocol {
+            mut body,
+            authenticate,
+        } => {
+            let status = if authenticate.is_some() {
                 StatusCode::UNAUTHORIZED
             } else {
                 StatusCode::BAD_REQUEST
-            },
-            body,
-            authenticate,
-        ),
+            };
+            crate::telemetry::ids::enrich_error(&mut body);
+            ((status, axum::Json(body)).into_response(), authenticate)
+        }
     };
-    crate::telemetry::ids::enrich_error(&mut body);
-    let mut response = (status, axum::Json(body)).into_response();
     if let Some(value) = authenticate.and_then(|value| header::HeaderValue::from_str(&value).ok()) {
         response
             .headers_mut()

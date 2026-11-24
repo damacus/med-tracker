@@ -1,4 +1,5 @@
-use super::administration::{complete, key, request_id, store};
+use super::administration::{complete_typed, key, request_id};
+use super::response::MutationBody;
 use super::*;
 use crate::models::care::{locations::SavedResponse, medications, orders};
 
@@ -56,10 +57,10 @@ async fn change(
         let path = format!("/api/v1/households/{household_id}/medications/{id}/{action}");
         let key = key(&headers);
         if let Some(key) = key
-            && let Some(reply) =
+            && let Some((status, body, etag, replay)) =
                 locations::keyed_replay(&tenant, key, "PATCH", &path, &body).await?
         {
-            return Ok(reply);
+            return Ok((status, MutationBody::Replay(body), etag, replay));
         }
         let result = if ordered {
             orders::mark_as_ordered(
@@ -83,24 +84,26 @@ async fn change(
             .await
             .map_err(response::operation)?;
         if let Some(key) = key {
-            return store(
+            crate::models::care::locations::store(
                 &tenant,
-                &principal,
+                principal.provenance(),
                 SavedResponse {
                     key,
                     method: "PATCH",
                     path: &path,
                     request: &body,
                     status: 200,
-                    body: snapshot.representation,
+                    body: serde_json::to_value(&snapshot.representation)
+                        .map_err(|_| response::unavailable())?,
                     etag: Some(&snapshot.etag),
                 },
             )
-            .await;
+            .await
+            .map_err(response::operation)?;
         }
         Ok((
             StatusCode::OK,
-            snapshot.representation,
+            MutationBody::Resource(snapshot.representation),
             Some(snapshot.etag),
             false,
         ))
@@ -114,7 +117,7 @@ async fn change(
     if restored.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::medication("PATCH", action),

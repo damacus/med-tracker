@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::care;
+use crate::views::{DataResponse, portable::ExportStatus};
 use axum::extract::{Query, rejection::QueryRejection};
 use axum::http::{HeaderValue, header};
 
@@ -34,10 +35,10 @@ pub(super) async fn show(
     } else {
         care::data_exports::export(&tenant, &mode, None)
             .await
-            .map(|data| (StatusCode::OK, json!({"data": data}), None))
+            .map(|data| (StatusCode::OK, DataResponse { data }, None))
             .map_err(response::operation)
     };
-    let mut response = finish(
+    let mut response = finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::data_export(),
@@ -130,11 +131,16 @@ async fn submit(
     let reply = submitted.map(|id| {
         (
             StatusCode::ACCEPTED,
-            json!({"data":{"id":id.to_string(),"status":"requested"}}),
+            DataResponse {
+                data: ExportStatus {
+                    id: id.to_string(),
+                    status: "requested".into(),
+                },
+            },
             None,
         )
     });
-    let mut response = finish(
+    let mut response = finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::submit_export(migration_bundle),
@@ -189,9 +195,9 @@ async fn read_job(
     };
     let reply = care::data_exports::jobs::read(&tenant, job_id, download)
         .await
-        .map(|data| (StatusCode::OK, json!({"data":data}), None))
+        .map(|data| (StatusCode::OK, DataResponse { data }, None))
         .map_err(response::operation);
-    let mut response = finish(
+    let mut response = finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::portable_export(),
@@ -221,9 +227,9 @@ pub(super) async fn mobile_snapshot(
     };
     let reply = care::data_exports::mobile_snapshot(&tenant)
         .await
-        .map(|data| (StatusCode::OK, json!({"data": data}), None))
+        .map(|data| (StatusCode::OK, DataResponse { data }, None))
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::mobile_snapshot(),

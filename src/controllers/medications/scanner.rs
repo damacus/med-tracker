@@ -27,7 +27,7 @@ pub(super) async fn finder(
     let mut data = rendering::appearance_context();
     data["title"] = json!("Medication Finder");
     data["slug"] = json!(slug);
-    data["can_create"] = found.body["permissions"]["can_create"].clone();
+    data["can_create"] = json!(found.body.permissions.can_create);
     data["can_adjust"] = json!(can_adjust);
     match format::render().view(&view, "medications/finder.html", data) {
         Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
@@ -46,7 +46,7 @@ pub(super) async fn lookup(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let mut found = match medication_lookup::search(&tenant, &input).await {
+    let found = match medication_lookup::search(&tenant, &input).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
@@ -54,7 +54,11 @@ pub(super) async fn lookup(
         Ok(products) => products,
         Err(error) => return operation_error(error),
     };
-    if let Some(results) = found.body["results"].as_array_mut() {
+    let mut body = match serde_json::to_value(found.body) {
+        Ok(body) => body,
+        Err(_) => return unavailable(),
+    };
+    if let Some(results) = body["results"].as_array_mut() {
         for product in results {
             if let Some(entry) = curated.iter().find(|entry| {
                 entry["gtin"] == product["barcode"] && !entry["gtin"].is_null()
@@ -64,13 +68,9 @@ pub(super) async fn lookup(
             }
         }
     }
-    found.body["matches"] = json!(found.matches);
+    body["matches"] = json!(found.matches);
     if tenant.commit().await.is_err() {
         return unavailable();
     }
-    (
-        [(header::CACHE_CONTROL, "no-store")],
-        axum::Json(found.body),
-    )
-        .into_response()
+    ([(header::CACHE_CONTROL, "no-store")], axum::Json(body)).into_response()
 }

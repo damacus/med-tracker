@@ -1,5 +1,6 @@
 use super::member_browser::MembershipId;
 use super::*;
+use crate::views::administration::MembershipSummary;
 use loco_rs::model::TenantQueryExt;
 
 #[derive(Clone, Copy)]
@@ -190,19 +191,19 @@ impl Mutation {
 fn state(row: &membership::Model) -> Value {
     json!({"role":row.role,"status":row.status,"person_id":row.person_id})
 }
-pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
+pub async fn list(tenant: &TenantTransaction) -> Result<Vec<MembershipSummary>, OperationError> {
     authorize(tenant).await?;
     let rows = membership::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .order_by_asc(membership::Column::Id)
         .all(tenant.transaction())
         .await?;
-    Ok(json!({"data":values(tenant,&rows).await?}))
+    values(tenant, &rows).await
 }
 async fn values(
     tenant: &TenantTransaction,
     rows: &[membership::Model],
-) -> Result<Vec<Value>, OperationError> {
+) -> Result<Vec<MembershipSummary>, OperationError> {
     let accounts: HashMap<i64, account::Model> = account::Entity::find()
         .filter(
             account::Column::PersonId.is_in(
@@ -225,18 +226,34 @@ async fn values(
             .into_iter()
             .map(|row| (row.id, row))
             .collect();
-    Ok(rows.iter().map(|row|json!({"id":row.id,"account_id":accounts.get(&row.person_id).map(|account|account.id),"email":accounts.get(&row.person_id).map(|account|&account.email),"person_id":row.person_id,"person_name":people.get(&row.person_id).map(|person|&person.name),"role":row.role,"status":row.status,"permissions_version":row.permissions_version,"joined_at":row.joined_at.and_utc().to_rfc3339()})).collect())
+    Ok(rows
+        .iter()
+        .map(|row| {
+            let account = accounts.get(&row.person_id);
+            MembershipSummary {
+                id: row.id,
+                account_id: account.map(|account| account.id),
+                email: account.map(|account| account.email.clone()),
+                person_id: row.person_id,
+                person_name: people.get(&row.person_id).map(|person| person.name.clone()),
+                role: row.role.clone(),
+                status: row.status.clone(),
+                permissions_version: row.permissions_version,
+                joined_at: row.joined_at.and_utc().to_rfc3339(),
+            }
+        })
+        .collect())
 }
 pub async fn change(
     tenant: &TenantTransaction,
     id: i64,
     input: MembershipInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<MembershipSummary, OperationError> {
     authorize(tenant).await?;
     let mutation = Mutation::from_api(input)?;
     let next = change_record(tenant, id, mutation, provenance).await?;
-    Ok(json!({"data":values(tenant,&[next]).await?.remove(0)}))
+    Ok(values(tenant, &[next]).await?.remove(0))
 }
 pub async fn change_browser_role(
     tenant: &TenantTransaction,

@@ -1,5 +1,7 @@
 use super::*;
 use crate::controllers::shell::ShellView as TeraView;
+use crate::models::care::people::PersonKind;
+use crate::views::{PaginationMeta, people::Person};
 
 const FIELDS: &[(&str, &str, &str, bool)] = &[
     ("name", "Name", "text", true),
@@ -20,39 +22,39 @@ fn context(slug: &str) -> Value {
     data
 }
 
-pub(super) fn index(slug: &str, collection: Value, can_create: bool) -> Value {
+pub(super) fn index(
+    slug: &str,
+    records: Vec<Value>,
+    meta: PaginationMeta,
+    can_create: bool,
+) -> Value {
     let mut data = context(slug);
     data["title"] = json!("People");
-    let mut records = collection["data"].clone();
-    if let Some(records) = records.as_array_mut() {
-        for record in records {
-            record["age_present"] = json!(!record["age"].is_null());
-        }
-    }
-    let page = collection["meta"]["page"].as_i64().unwrap_or(1);
-    let size = collection["meta"]["per_page"].as_i64().unwrap_or(20);
-    let total = collection["meta"]["total_count"].as_i64().unwrap_or(0);
-    data["people"] = records;
+    let page = meta.page;
+    let size = meta.per_page;
+    data["people"] = Value::Array(records);
     data["per_page"] = json!(size);
     data["previous_page"] = json!((page > 1).then_some(page - 1));
-    data["next_page"] = json!((page.saturating_mul(size) < total).then_some(page + 1));
+    data["next_page"] = json!(
+        ((page as u64).saturating_mul(size as u64) < meta.total_count)
+            .then_some(page.saturating_add(1))
+    );
     data["can_create"] = json!(can_create);
     data
 }
 
 pub(super) fn detail(
     slug: &str,
-    person: Value,
+    person: &Person,
     medications: &[Value],
     can_manage: bool,
     can_manage_household: bool,
 ) -> Value {
     let mut data = context(slug);
-    data["title"] = person["name"].clone();
+    data["title"] = json!(person.name);
     data["avatar_initials"] = json!(
-        person["name"]
-            .as_str()
-            .unwrap_or_default()
+        person
+            .name
             .split_whitespace()
             .filter_map(|word| word.chars().next())
             .take(2)
@@ -60,20 +62,20 @@ pub(super) fn detail(
             .collect::<Vec<_>>()
             .join("")
     );
-    data["type_label"] = json!(type_label(
-        person["person_type"].as_str().unwrap_or("adult")
-    ));
-    data["person"] = person;
-    data["age_present"] = json!(!data["person"]["age"].is_null());
+    data["type_label"] = json!(type_label(person.person_type));
+    data["person"] = json!(person);
+    data["age_present"] = json!(person.age.is_some());
     data["date_of_birth_display"] = json!(
-        data["person"]["date_of_birth"]
-            .as_str()
+        person
+            .date_of_birth
+            .as_deref()
             .filter(|value| !value.is_empty())
             .unwrap_or("Not recorded")
     );
     data["email_display"] = json!(
-        data["person"]["email"]
-            .as_str()
+        person
+            .email
+            .as_deref()
             .filter(|value| !value.is_empty())
             .unwrap_or("Not recorded")
     );
@@ -83,38 +85,42 @@ pub(super) fn detail(
     data
 }
 
-pub(super) fn draft(person: Option<&Value>) -> HashMap<String, String> {
-    let mut draft = FIELDS
-        .iter()
-        .map(|(field, _, _, _)| {
-            (
-                (*field).into(),
-                person
-                    .and_then(|person| person[*field].as_str())
-                    .unwrap_or_default()
-                    .into(),
-            )
-        })
-        .collect::<HashMap<_, _>>();
-    draft.insert(
-        "person_type".into(),
-        person
-            .and_then(|person| person["person_type"].as_str())
-            .unwrap_or("minor")
-            .into(),
-    );
-    draft.insert(
-        "has_capacity".into(),
-        person
-            .is_some_and(|person| person["has_capacity"].as_bool().unwrap_or(false))
-            .to_string(),
-    );
-    draft
+pub(super) fn draft(person: Option<&Person>) -> HashMap<String, String> {
+    HashMap::from([
+        (
+            "name".into(),
+            person.map_or("", |person| &person.name).into(),
+        ),
+        (
+            "email".into(),
+            person
+                .and_then(|person| person.email.as_deref())
+                .unwrap_or_default()
+                .into(),
+        ),
+        (
+            "date_of_birth".into(),
+            person
+                .and_then(|person| person.date_of_birth.as_deref())
+                .unwrap_or_default()
+                .into(),
+        ),
+        (
+            "person_type".into(),
+            person
+                .map_or("minor", |person| person.person_type.as_str())
+                .into(),
+        ),
+        (
+            "has_capacity".into(),
+            person.is_some_and(|person| person.has_capacity).to_string(),
+        ),
+    ])
 }
 
 pub(super) fn form(
     slug: &str,
-    person: Option<&Value>,
+    person: Option<&Person>,
     draft: &HashMap<String, String>,
     error: Option<&OperationError>,
     language: &str,
@@ -124,7 +130,7 @@ pub(super) fn form(
     data["lang"] = json!(language);
     data["labels"] = labels.clone();
     data["capacity_hint"] = labels["people"]["form"]["capacity_hint"].clone();
-    data["cancel_url"] = json!(person.and_then(|record| record["id"].as_i64()).map_or_else(
+    data["cancel_url"] = json!(person.map(|record| record.id).map_or_else(
         || format!("/households/{slug}/people"),
         |id| format!("/households/{slug}/people/{id}")
     ));
@@ -137,7 +143,7 @@ pub(super) fn form(
     }]
     .clone();
     data["editing"] = json!(person.is_some());
-    data["action"] = json!(person.and_then(|person| person["id"].as_i64()).map_or_else(
+    data["action"] = json!(person.map(|person| person.id).map_or_else(
         || format!("/households/{slug}/people"),
         |id| format!("/households/{slug}/people/{id}")
     ));
@@ -168,11 +174,11 @@ pub(super) fn form(
     data
 }
 
-fn type_label(value: &str) -> &str {
+fn type_label(value: PersonKind) -> &'static str {
     match value {
-        "minor" => "Minor",
-        "dependent_adult" => "Dependent adult",
-        _ => "Adult",
+        PersonKind::Minor => "Minor",
+        PersonKind::DependentAdult => "Dependent adult",
+        PersonKind::Adult => "Adult",
     }
 }
 

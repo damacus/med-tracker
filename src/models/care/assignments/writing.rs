@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::treatments::AssignmentResponse;
 use loco_rs::model::TenantQueryExt;
 
 async fn lock_household(tenant: &TenantTransaction) -> Result<(), OperationError> {
@@ -82,7 +83,7 @@ pub async fn create(
     tenant: &TenantTransaction,
     body: &Value,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     authorize_create(tenant, body).await?;
     let attrs = Attributes::parse(body, true)
         .map_err(|_| invalid())?
@@ -93,7 +94,7 @@ pub(crate) async fn create_input(
     tenant: &TenantTransaction,
     attrs: ValidatedAssignmentInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     lock_household(tenant).await?;
     let id = attrs.0.person_id.as_ref().ok_or_else(invalid)?;
     let row = person(tenant, id.as_str()).await?;
@@ -104,7 +105,7 @@ async fn create_attributes(
     tenant: &TenantTransaction,
     attrs: Attributes,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     let person = person(
         tenant,
         attrs.person_id.as_ref().ok_or_else(invalid)?.as_str(),
@@ -194,7 +195,7 @@ pub async fn update(
     body: &Value,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     authorize_update(tenant, id).await?;
     let row = reading::find(tenant, id, true).await?;
     let before = reading::project(tenant, row.clone()).await?;
@@ -224,7 +225,7 @@ pub(crate) async fn update_input(
     attrs: ValidatedAssignmentInput,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     authorize_update(tenant, id).await?;
     let row = reading::find(tenant, id, true).await?;
     let before = reading::project(tenant, row.clone()).await?;
@@ -248,11 +249,11 @@ pub(crate) async fn update_input(
 async fn update_attributes(
     tenant: &TenantTransaction,
     row: person_medication::Model,
-    before: (Value, String),
+    before: (AssignmentResponse, String),
     clinical_before: Value,
     attrs: Attributes,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     if let Some(id) = attrs.person_id.as_ref()
         && person(tenant, id.as_str()).await?.id != row.person_id
     {
@@ -373,7 +374,7 @@ async fn finish(
     action: &str,
     person_portable: &str,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     let result = reading::project(tenant, row.clone()).await?;
     administration::persistence::record_version_as(
         tenant,

@@ -33,8 +33,7 @@ pub async fn retire(
         return Err(OperationError::NotFound);
     }
     access::require_person_access(tenant, row.person_id, PersonAccess::Manage).await?;
-    let mut before = representation(&row).0["data"].clone();
-    before["retired_at"] = json!(row.retired_at);
+    let before = schedule_snapshot(&row)?;
     let now = Utc::now().naive_utc();
     let mut active = row.into_active_model();
     active.active = Set(false);
@@ -49,8 +48,7 @@ pub async fn retire(
         provenance,
     )
     .await?;
-    let mut after = representation(&row).0["data"].clone();
-    after["retired_at"] = json!(row.retired_at);
+    let after = schedule_snapshot(&row)?;
     administration::persistence::record_version_as(
         tenant,
         "Schedule",

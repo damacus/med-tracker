@@ -1,7 +1,11 @@
 use super::*;
 use crate::models::entities::account;
+use crate::views::people::{Me, MeAccount, MeAccountStatus, MeResponse};
 
-pub(crate) async fn me_read(tenant: &TenantTransaction, zone: Tz) -> Result<Value, OperationError> {
+pub(crate) async fn me_read(
+    tenant: &TenantTransaction,
+    zone: Tz,
+) -> Result<MeResponse, OperationError> {
     access::recheck(tenant).await?;
     let account = account::Entity::find_by_id(tenant.scope().actor.account_id)
         .one(tenant.transaction())
@@ -11,28 +15,27 @@ pub(crate) async fn me_read(tenant: &TenantTransaction, zone: Tz) -> Result<Valu
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Unauthenticated)?;
-    let own = own_person(tenant, &record, zone).await?;
+    let person = values(tenant, std::slice::from_ref(&record), zone)
+        .await?
+        .remove(0);
     let status = match account.status {
-        1 => "unverified",
-        2 => "verified",
-        3 => "closed",
+        1 => MeAccountStatus::Unverified,
+        2 => MeAccountStatus::Verified,
+        3 => MeAccountStatus::Closed,
         _ => return Err(OperationError::Unavailable),
     };
-    Ok(json!({"data": {
-        "id": account.id,
-        "email_address": account.email,
-        "membership_role": tenant.membership().role,
-        "active": account.active,
-        "person": own,
-        "account": {"id": account.id, "email": account.email, "status": status},
-    }}))
-}
-
-async fn own_person(
-    tenant: &TenantTransaction,
-    record: &person::Model,
-    zone: Tz,
-) -> Result<Value, OperationError> {
-    let records = std::slice::from_ref(record);
-    Ok(values(tenant, records, zone).await?.remove(0))
+    Ok(MeResponse {
+        data: Me {
+            id: account.id,
+            email_address: account.email.clone(),
+            membership_role: tenant.membership().role.clone(),
+            active: account.active,
+            person,
+            account: MeAccount {
+                id: account.id,
+                email: account.email,
+                status,
+            },
+        },
+    })
 }

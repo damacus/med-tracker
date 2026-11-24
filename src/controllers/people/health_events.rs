@@ -28,22 +28,17 @@ pub(super) async fn index(
     };
     let result = async {
         let (person, _) = people::read(&tenant, &id, principal.time_zone()).await?;
-        let person_id = person["data"]["id"]
-            .as_i64()
-            .ok_or(OperationError::Unavailable)?;
+        let person_id = person.data.id;
         let events = browser::collection(&tenant, person_id).await?;
         let language = report_pdf::locale(filters.locale.as_deref().unwrap_or("en"));
         let labels = report_pdf::translations(language).map_err(|_| OperationError::Unavailable)?;
         let title = labels["health_events"]["index"]["title"]
             .as_str()
             .ok_or(OperationError::Unavailable)?
-            .replace(
-                "%{person}",
-                person["data"]["name"].as_str().unwrap_or_default(),
-            );
+            .replace("%{person}", &person.data.name);
         let mut data = super::super::medications::rendering::appearance_context();
         data["slug"] = json!(slug);
-        data["person"] = person["data"].clone();
+        data["person"] = json!(person.data);
         data["title"] = json!(title);
         data["lang"] = json!(language);
         data["health_labels"] = labels["health_events"].clone();
@@ -93,7 +88,7 @@ impl FormPage<'_> {
             };
         let result=async {
             let (person,_) = people::read(&tenant,self.person_id,principal.time_zone()).await?;
-            let person_id=person["data"]["id"].as_i64().ok_or(OperationError::Unavailable)?;
+            let person_id=person.data.id;
             access::require_person_access(&tenant,person_id,if id.is_some(){PersonAccess::Manage}else{PersonAccess::Record}).await?;
             let language=report_pdf::locale(submitted.and_then(|draft|draft.get("locale").map(String::as_str)).or(filters.locale.as_deref()).unwrap_or("en"));
             let all_labels=report_pdf::translations(language).map_err(|_|OperationError::Unavailable)?;
@@ -150,7 +145,7 @@ impl FormPage<'_> {
             });
             let mut data=super::super::medications::rendering::appearance_context();
             data["slug"]=json!(self.slug);
-            data["person"]=person["data"].clone();
+            data["person"]=json!(person.data);
             data["title"]=json!(title);
             data["lang"]=json!(language);
             data["health_labels"]=labels.clone();
@@ -197,9 +192,7 @@ impl FormPage<'_> {
             };
         let result = async {
             let (person, _) = people::read(&tenant, self.person_id, principal.time_zone()).await?;
-            let person_id = person["data"]["id"]
-                .as_i64()
-                .ok_or(OperationError::Unavailable)?;
+            let person_id = person.data.id;
             browser::save(&tenant, person_id, id, &draft, principal.provenance()).await?;
             Ok::<_, OperationError>(person_id)
         }
@@ -344,9 +337,7 @@ pub(super) async fn delete(
     };
     let result = async {
         let (person, _) = people::read(&tenant, &person_id, principal.time_zone()).await?;
-        let person_id = person["data"]["id"]
-            .as_i64()
-            .ok_or(OperationError::Unavailable)?;
+        let person_id = person.data.id;
         browser::delete(
             &tenant,
             person_id,

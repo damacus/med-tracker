@@ -57,16 +57,15 @@ pub(super) async fn apply(
     tenant: &TenantTransaction,
     operation: &Operation,
     _provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<SyncResult, OperationError> {
     let context = AuthContext { tenant };
-    Ok(apply_sync_operation(
+    apply_sync_operation(
         tenant.transaction(),
         &context,
         operation,
         &tenant.scope().request_id,
     )
-    .await?
-    .value())
+    .await
 }
 pub(super) async fn authorize_replay(
     tenant: &TenantTransaction,
@@ -405,7 +404,7 @@ async fn apply_sync_operation(
         edit::consume(context.tenant, &record, &lease).await?;
         return Ok(SyncResult {
             record_type: "MedicationReviewPrompt",
-            record_id: Some(record.id),
+            record_id: Some(record.id.to_string()),
             record_portable_id: None,
             etag: Some(tag(&record)),
             replayed: None,
@@ -435,7 +434,7 @@ async fn apply_sync_operation(
     edit::consume(context.tenant, &record, &lease).await?;
     Ok(SyncResult {
         record_type: "MedicationReviewPrompt",
-        record_id: Some(updated.id),
+        record_id: Some(updated.id.to_string()),
         record_portable_id: None,
         etag: Some(tag(&updated)),
         replayed: None,

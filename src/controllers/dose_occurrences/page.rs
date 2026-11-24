@@ -51,9 +51,7 @@ impl<'a> Page<'a> {
     ) -> Result<Value, OperationError> {
         let (person, _) = people::read(tenant, &self.path.1, principal.time_zone()).await?;
         let source = kind.read(tenant, &self.path.3).await?;
-        if person["data"]["id"].to_string().trim_matches('"')
-            != source["person_id"].to_string().trim_matches('"')
-        {
+        if person.data.id.to_string() != source["person_id"].to_string().trim_matches('"') {
             return Err(OperationError::NotFound);
         }
         let medications = browser_query::index(tenant).await?;
@@ -75,7 +73,7 @@ impl<'a> Page<'a> {
             .map(|medicine| json!({"id":medicine.id.to_string(),"name":medicine.name,"quantity":medicine.quantity,"unit":medicine.unit,"location":locations.iter().find(|location| location.id == medicine.location_id).map(|location| location.name.as_str()).unwrap_or_default()}))
             .collect::<Vec<_>>();
         Ok(
-            json!({"person":person["data"],"source":source,"medications":medicines,"medication_name":medication_name,"locale":self.locale,"labels":labels}),
+            json!({"person":person.data,"source":source,"medications":medicines,"medication_name":medication_name,"locale":self.locale,"labels":labels}),
         )
     }
     async fn list(
@@ -91,6 +89,7 @@ impl<'a> Page<'a> {
             dose_occurrences::browser_list(tenant, kind.model(), &self.path.3, query, &secret),
         )
         .await
+        .and_then(|body| serde_json::to_value(body).map_err(|_| OperationError::Unavailable))
     }
     fn render(
         &self,

@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::{PaginationMeta, locations::LocationCollectionResponse};
 use chrono::DateTime;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{PaginatorTrait, QueryOrder};
@@ -13,7 +14,7 @@ pub struct Pagination {
 pub async fn collection(
     tenant: &TenantTransaction,
     page: Pagination,
-) -> Result<Value, OperationError> {
+) -> Result<LocationCollectionResponse, OperationError> {
     access::recheck(tenant).await?;
     let number = page.page.unwrap_or(1);
     let size = page.per_page.unwrap_or(20);
@@ -45,9 +46,12 @@ pub async fn collection(
         .all(tenant.transaction())
         .await
         .map_err(|_| OperationError::Unavailable)?;
-    let data: Vec<Value> = rows
-        .iter()
-        .map(|record| representation(record).0["data"].clone())
-        .collect();
-    Ok(json!({"data":data,"meta":{"page":number,"per_page":size,"total_count":total}}))
+    Ok(LocationCollectionResponse {
+        data: rows.iter().map(project).collect(),
+        meta: PaginationMeta {
+            page: number,
+            per_page: size,
+            total_count: total,
+        },
+    })
 }

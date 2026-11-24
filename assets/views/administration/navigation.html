@@ -4,7 +4,7 @@
 {% set admin_slug = slug | default(value="") %}
 {% if shell and admin_slug == "" %}{% set admin_slug = shell.slug %}{% endif %}
 {% set lang_link = language_suffix | default(value="") %}
-<nav aria-label="Administration sections" class="admin-navigation section-switcher">
+<nav aria-label="Administration sections" class="admin-navigation section-switcher" data-title="{% if labels and labels.layouts and labels.layouts.sidebar %}{{ labels.layouts.sidebar.administration }}{% else %}Administration{% endif %}">
   <a class="section-switcher-item" href="{% if household_tools %}/households/{{ admin_slug }}/admin{{ lang_link }}{% else %}/administration{% endif %}" {% if admin_section == 'overview' %}aria-current="page"{% endif %}>{% if labels and labels.administration and labels.administration.nav %}{{ labels.administration.nav.overview }}{% else %}Overview{% endif %}</a>
   <a class="section-switcher-item" href="{% if members_navigation_url %}{{ members_navigation_url }}{% elif household_tools %}/households/{{ admin_slug }}/admin/users{{ lang_link }}{% else %}/administration/users{% endif %}" {% if admin_section == 'users' %}aria-current="page"{% endif %}>Users</a>
   {% if household_tools %}

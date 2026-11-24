@@ -3,6 +3,7 @@ use crate::models::{
     care::medications::allocations::{self, AllocateStock, AllocationInput},
     ids::{HouseholdId, MedicationId},
 };
+use crate::views::DataResponse;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -47,11 +48,11 @@ pub(super) async fn create(
     if settle_savepoint(savepoint, result.is_ok()).await.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    let mut result = finish(
+    let mut result = finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::stock_allocation(),
-        result.map(|(receipt, _)| (StatusCode::CREATED, json!({"data": receipt}), None)),
+        result.map(|(receipt, _)| (StatusCode::CREATED, DataResponse { data: receipt }, None)),
         &request_id,
     )
     .await;

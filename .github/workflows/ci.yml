@@ -152,12 +152,16 @@ jobs:
       - run: task host:test:unit
 
   loco_integration:
-    name: API, security and database integration tests
+    name: API, security and database integration tests (PostgreSQL ${{ matrix.postgres }})
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: [18, 19]
     services:
       postgres:
-        image: postgres:18-alpine
+        image: postgres:${{ matrix.postgres }}-alpine
         env:
           POSTGRES_USER: medtracker
           POSTGRES_PASSWORD: medtracker_password
@@ -230,12 +234,16 @@ jobs:
       - run: task host:test:integration
 
   loco_browser:
-    name: Browser journeys
+    name: Browser journeys (PostgreSQL ${{ matrix.postgres }})
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: [18, 19]
     services:
       postgres:
-        image: postgres:18-alpine
+        image: postgres:${{ matrix.postgres }}-alpine
         env:
           POSTGRES_USER: medtracker
           POSTGRES_PASSWORD: medtracker_password

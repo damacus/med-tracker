@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::care::{self, portable_crypto::PortableCryptoError};
+use crate::views::DataResponse;
 
 const PASSPHRASE_HEADER: &str = "x-medtracker-portable-passphrase";
 
@@ -346,11 +347,17 @@ async fn handle(
         } else {
             StatusCode::UNPROCESSABLE_ENTITY
         };
-        return finish(
+        return finish_typed(
             tenant,
             principal.provenance(),
             audit(),
-            Ok((status, json!({"data": result.body(false)}), None)),
+            Ok((
+                status,
+                DataResponse {
+                    data: result.body(false),
+                },
+                None,
+            )),
             &request_id,
         )
         .await;
@@ -412,13 +419,15 @@ async fn handle(
         )
         .await;
     }
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit(),
         Ok((
             StatusCode::CREATED,
-            json!({"data": result.body(true)}),
+            DataResponse {
+                data: result.body(true),
+            },
             None,
         )),
         &request_id,

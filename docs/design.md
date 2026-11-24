@@ -2,10 +2,16 @@
 
 ## Accepted Rust direction
 
-Root Loco 1.3 with Tera/DaisyUI and PostgreSQL 18 is primary. The Rails application is
+Root Loco 1.3 with Tera/DaisyUI and PostgreSQL is primary. The Rails application is
 archived in git history. The accepted architecture below supersedes older parity and access
 assumptions; implementation acceptance remains pending. Historical Rails design
 sections below describe the reference, not requirements to reproduce its internals.
+
+PostgreSQL 18 is the minimum. CI runs integration and browser tests on 18 and 19.
+Local Compose defaults to 18. Set `MEDTRACKER_POSTGRES_IMAGE=postgres:19-alpine`
+when starting a disposable PostgreSQL 19 environment. Existing clusters require a
+[PostgreSQL major-version upgrade](https://www.postgresql.org/docs/19/upgrading.html)
+before switching the server image.
 
 For the current Rust role checks, administration pages, platform-only NHS dm+d
 importer and synthetic seed limitations, see [Manage People and Household

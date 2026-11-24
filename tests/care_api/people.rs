@@ -1459,6 +1459,45 @@ async fn person_get_matches_documented_contract() {
         unique_identifier_0.clone()
     );
 
+    let etag = etag.expect("person ETag");
+    let conditional = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{fixture_household_id}/people/{fixture_person_id}",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .header("if-none-match", &etag)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(conditional.status().as_u16(), 304);
+    assert_eq!(conditional.headers()["etag"].to_str().unwrap(), etag);
+    assert!(conditional.bytes().await.unwrap().is_empty());
+
+    let snapshot: Value = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{fixture_household_id}/sync/snapshot",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let synced_person = snapshot["data"]["records"]["people"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|person| person["portable_id"] == body["data"]["portable_id"])
+        .expect("person in snapshot");
+    assert_eq!(synced_person["etag"], etag);
+
     let missing = app
         .client
         .get(format!(

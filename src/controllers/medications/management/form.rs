@@ -296,8 +296,11 @@ pub(super) fn move_view(input: MoveView<'_>) -> std::result::Result<Value, Opera
         .map_err(|_| OperationError::Unavailable)?;
     let record = &snapshot.medication;
     let id = record.id;
-    let name = snapshot.representation["data"]["display_name"]
-        .as_str()
+    let name = snapshot
+        .representation
+        .data
+        .display_name
+        .as_deref()
         .or(record.name.as_deref())
         .unwrap_or("Medication");
     let current_location_name = input
