@@ -11,6 +11,7 @@ mod tests {
 
     #[test]
     fn typed_people_response_preserves_the_canonical_etag() -> Result<(), OperationError> {
+        use sha2::{Digest, Sha256};
         let person = PersonResponse {
             data: Person {
                 id: 12,
@@ -41,7 +42,7 @@ mod tests {
             legacy
         );
         assert_eq!(
-            representation_etag(&person)?,
+            crate::views::canonical_etag(&person)?,
             format!(
                 "\"{}\"",
                 hex::encode(Sha256::digest(legacy.to_string().as_bytes()))
@@ -136,17 +137,8 @@ pub async fn representation(
             .await?
             .remove(0),
     };
-    let etag = representation_etag(&body)?;
+    let etag = crate::views::canonical_etag(&body)?;
     Ok((body, etag))
-}
-
-pub(crate) fn representation_etag(response: &PersonResponse) -> Result<String, OperationError> {
-    let mut body = serde_json::to_value(response).map_err(|_| OperationError::Unavailable)?;
-    body.sort_all_objects();
-    Ok(format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(body.to_string().as_bytes()))
-    ))
 }
 
 pub(crate) async fn values(

@@ -1,4 +1,3 @@
-use super::PaginationMeta;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -18,11 +17,7 @@ pub struct StockRemoval {
     pub actor_membership_id: Option<String>,
 }
 
-#[derive(Serialize)]
-pub struct StockRemovalCollection {
-    pub data: Vec<StockRemoval>,
-    pub meta: super::PaginationMeta,
-}
+pub type StockRemovalCollection = super::PaginatedResponse<StockRemoval>;
 
 #[derive(Debug, Serialize)]
 pub struct Medication {
@@ -56,13 +51,6 @@ pub enum ReorderStatus {
     Received,
 }
 
-#[derive(Debug, Serialize)]
-pub struct MedicationResponse {
-    pub data: Medication,
-}
+pub type MedicationResponse = super::DataResponse<Medication>;
 
-#[derive(Serialize)]
-pub struct MedicationCollectionResponse {
-    pub data: Vec<Medication>,
-    pub meta: PaginationMeta,
-}
+pub type MedicationCollectionResponse = super::PaginatedResponse<Medication>;

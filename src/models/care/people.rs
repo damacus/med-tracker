@@ -11,8 +11,8 @@ pub(crate) use creation::create_imported;
 pub use creation::{CreateDependent, create};
 pub(crate) use creation::{DependentInput, DependentKind};
 pub(crate) use me::me_read;
+pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};
-pub(crate) use projection::{representation_etag, values};
 pub use update_input::PersonKind;
 pub(crate) use update_input::{PersonUpdateInput, UpdateField};
 pub(crate) use writing::update;
@@ -34,7 +34,6 @@ use sea_orm::{
     QuerySelect, Set,
 };
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 fn invalid(field: &str, message: &str) -> OperationError {

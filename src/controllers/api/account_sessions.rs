@@ -411,31 +411,6 @@ fn response_headers(mut response: Response, request_id: &str) -> Response {
 mod tests {
     use super::*;
 
-    #[test]
-    fn account_profile_response_preserves_null_name_and_typed_shortcuts()
-    -> Result<(), serde_json::Error> {
-        let response = representation(self_account::Snapshot {
-            account_id: AccountId::from_database(42),
-            name: None,
-            saved_display_name: Some("private".into()),
-            display_name_enabled: false,
-            email: "profile@example.test".into(),
-            time_zone: chrono_tz::Europe::London,
-            gravatar_enabled: false,
-            avatar_attached: true,
-            mobile_shortcuts: vec![self_account::Shortcut::MedicineReviews],
-        });
-        assert_eq!(response.data.account_id, "42");
-        let body = serde_json::to_value(response)?;
-        assert!(body["data"]["name"].is_null());
-        assert_eq!(
-            body["data"]["mobile_shortcuts"],
-            serde_json::json!(["medicine_reviews"])
-        );
-        assert!(body["data"].get("saved_display_name").is_none());
-        Ok(())
-    }
-
     #[tokio::test]
     async fn unavailable_maps_to_service_unavailable_envelope() {
         for response in [

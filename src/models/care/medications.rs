@@ -23,7 +23,6 @@ use sea_orm::{
     PrimaryKeyTrait, QueryFilter, QuerySelect, Set, Statement,
 };
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use std::str::FromStr;
 
 type ApiError = OperationError;
@@ -118,21 +117,12 @@ async fn snapshot(
         .await?
         .remove(0);
     let representation = MedicationResponse { data: row };
-    let etag = representation_etag(&representation)?;
+    let etag = crate::views::canonical_etag(&representation)?;
     Ok(StockSnapshot {
         medication,
         representation,
         etag,
     })
-}
-
-pub(crate) fn representation_etag(response: &MedicationResponse) -> Result<String, OperationError> {
-    let mut canonical = serde_json::to_value(response).map_err(|_| OperationError::Unavailable)?;
-    canonical.sort_all_objects();
-    Ok(format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(canonical.to_string().as_bytes()))
-    ))
 }
 
 async fn visible_medication(

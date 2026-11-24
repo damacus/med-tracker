@@ -1,4 +1,3 @@
-use super::PaginationMeta;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -33,13 +32,6 @@ pub enum HealthEventSeverity {
     Severe,
 }
 
-#[derive(Serialize)]
-pub struct HealthEventResponse {
-    pub data: HealthEvent,
-}
+pub type HealthEventResponse = super::DataResponse<HealthEvent>;
 
-#[derive(Serialize)]
-pub struct HealthEventCollectionResponse {
-    pub data: Vec<HealthEvent>,
-    pub meta: PaginationMeta,
-}
+pub type HealthEventCollectionResponse = super::PaginatedResponse<HealthEvent>;

@@ -1,4 +1,3 @@
-use super::PaginationMeta;
 use crate::models::care::treatment_command::{AdministrationKind, DoseCycle, ScheduleType};
 use serde::Serialize;
 
@@ -74,16 +73,9 @@ pub enum PauseSourceKind {
     PersonMedication,
 }
 
-#[derive(PartialEq, Serialize)]
-pub struct TreatmentResponse<T> {
-    pub data: T,
-}
+pub type TreatmentResponse<T> = super::DataResponse<T>;
 
-#[derive(Serialize)]
-pub struct TreatmentCollection<T> {
-    pub data: Vec<T>,
-    pub meta: PaginationMeta,
-}
+pub type TreatmentCollection<T> = super::PaginatedResponse<T>;
 
 pub type ScheduleResponse = TreatmentResponse<Schedule>;
 pub type AssignmentResponse = TreatmentResponse<Assignment>;

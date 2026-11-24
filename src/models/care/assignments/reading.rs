@@ -101,6 +101,6 @@ pub(super) async fn project(
     let body = AssignmentResponse {
         data: rows.into_iter().next().ok_or(OperationError::NotFound)?,
     };
-    let etag = super::super::treatments::projection::response_etag(&body)?;
+    let etag = crate::views::canonical_etag(&body)?;
     Ok((body, etag))
 }

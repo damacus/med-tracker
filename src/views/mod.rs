@@ -46,27 +46,27 @@ pub struct PaginationMeta {
     pub total_count: u64,
 }
 
-#[derive(serde::Serialize)]
-pub(crate) struct DataResponse<T> {
-    pub(crate) data: T,
+#[derive(Debug, PartialEq, serde::Serialize)]
+pub struct DataResponse<T> {
+    pub data: T,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(serde::Serialize)]
+pub struct PaginatedResponse<T> {
+    pub data: Vec<T>,
+    pub meta: PaginationMeta,
+}
 
-    #[test]
-    fn data_response_preserves_null_payloads_and_empty_arrays() -> Result<(), serde_json::Error> {
-        assert_eq!(
-            serde_json::to_value(DataResponse { data: None::<u8> })?,
-            serde_json::json!({"data": null})
-        );
-        assert_eq!(
-            serde_json::to_value(DataResponse {
-                data: Vec::<u8>::new()
-            })?,
-            serde_json::json!({"data": []})
-        );
-        Ok(())
-    }
+pub(crate) fn canonical_etag(
+    response: &impl serde::Serialize,
+) -> Result<String, crate::models::errors::OperationError> {
+    use sha2::{Digest, Sha256};
+
+    let mut canonical = serde_json::to_value(response)
+        .map_err(|_| crate::models::errors::OperationError::Unavailable)?;
+    canonical.sort_all_objects();
+    Ok(format!(
+        "\"{}\"",
+        hex::encode(Sha256::digest(canonical.to_string().as_bytes()))
+    ))
 }

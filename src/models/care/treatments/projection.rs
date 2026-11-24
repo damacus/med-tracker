@@ -218,16 +218,6 @@ fn schedule_type(value: i32) -> ScheduleType {
     ScheduleType::from_database(value).unwrap_or(ScheduleType::Daily)
 }
 
-pub(crate) fn response_etag(response: &impl serde::Serialize) -> Result<String, OperationError> {
-    use sha2::{Digest, Sha256};
-    let mut canonical = serde_json::to_value(response).map_err(|_| OperationError::Unavailable)?;
-    canonical.sort_all_objects();
-    Ok(format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(canonical.to_string().as_bytes()))
-    ))
-}
-
 pub(crate) async fn serialize_schedules(
     db: &DatabaseTransaction,
     context: &AuthContext,

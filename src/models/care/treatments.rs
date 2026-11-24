@@ -317,7 +317,7 @@ pub(crate) fn stock_binding_response(
     let body = crate::views::DataResponse {
         data: stock_binding_data(row),
     };
-    let etag = projection::response_etag(&body)?;
+    let etag = crate::views::canonical_etag(&body)?;
     Ok((body, etag))
 }
 

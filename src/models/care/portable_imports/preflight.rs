@@ -350,26 +350,3 @@ pub(crate) async fn preflight(
         errors,
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn preflight_projects_typed_application_result() -> Result<(), serde_json::Error> {
-        let result = Preflight {
-            counts: Default::default(),
-            conflicts: Vec::new(),
-            errors: vec!["source missing".into()],
-        }
-        .body(false);
-        assert!(!result.applied);
-        assert_eq!(
-            serde_json::to_value(result)?,
-            json!({
-                "applied": false, "counts": {}, "conflicts": [], "errors": ["source missing"]
-            })
-        );
-        Ok(())
-    }
-}

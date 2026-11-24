@@ -23,13 +23,6 @@ pub struct DosageOption {
     pub updated_at: String,
 }
 
-#[derive(Serialize)]
-pub struct DosageOptionResponse {
-    pub data: DosageOption,
-}
+pub type DosageOptionResponse = super::DataResponse<DosageOption>;
 
-#[derive(Serialize)]
-pub struct DosageOptionCollectionResponse {
-    pub data: Vec<DosageOption>,
-    pub meta: PaginationMeta,
-}
+pub type DosageOptionCollectionResponse = super::PaginatedResponse<DosageOption>;

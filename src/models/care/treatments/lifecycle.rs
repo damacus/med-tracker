@@ -106,7 +106,7 @@ pub(super) async fn project(
     let body = ScheduleResponse {
         data: data.into_iter().next().ok_or(OperationError::NotFound)?,
     };
-    let etag = super::projection::response_etag(&body)?;
+    let etag = crate::views::canonical_etag(&body)?;
     Ok((body, etag))
 }
 pub async fn authorize_update(tenant: &TenantTransaction, id: &str) -> Result<(), OperationError> {

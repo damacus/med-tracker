@@ -168,24 +168,3 @@ fn no_cache(mut response: Response) -> Response {
         .insert(header::PRAGMA, header::HeaderValue::from_static("no-cache"));
     response
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn discovery_projection_preserves_endpoints_and_supported_values()
-    -> Result<(), serde_json::Error> {
-        let discovery = super::discovery_document("https://example.test");
-        assert_eq!(discovery.issuer, "https://example.test");
-        let body = serde_json::to_value(discovery)?;
-        assert_eq!(body["token_endpoint"], "https://example.test/token");
-        assert_eq!(
-            body["code_challenge_methods_supported"],
-            serde_json::json!(["S256"])
-        );
-        assert_eq!(
-            body["token_endpoint_auth_methods_supported"],
-            serde_json::json!(["none", "client_secret_basic", "client_secret_post"])
-        );
-        Ok(())
-    }
-}

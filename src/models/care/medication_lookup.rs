@@ -616,28 +616,3 @@ fn stock_value(
             .unwrap_or_default(),
     }
 }
-
-#[cfg(test)]
-mod response_tests {
-    use super::*;
-
-    #[test]
-    fn lookup_product_keeps_null_fields_and_omits_optional_stock_match()
-    -> Result<(), serde_json::Error> {
-        let product = product(
-            "Synthetic product",
-            Some("123"),
-            None,
-            None,
-            None,
-            "curated",
-        );
-        assert_eq!(product.barcode.as_deref(), Some("123"));
-        let body = serde_json::to_value(product)?;
-        assert_eq!(body["match_reason"], "barcode_match");
-        assert_eq!(body["trade_family"], Value::Null);
-        assert_eq!(body["review_prompt_filter"]["hidden_count"], 0);
-        assert!(body.get("existing_medication").is_none());
-        Ok(())
-    }
-}

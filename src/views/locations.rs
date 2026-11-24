@@ -1,4 +1,3 @@
-use super::PaginationMeta;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -10,16 +9,9 @@ pub struct Location {
     pub updated_at: String,
 }
 
-#[derive(Serialize)]
-pub struct LocationResponse {
-    pub data: Location,
-}
+pub type LocationResponse = super::DataResponse<Location>;
 
-#[derive(Serialize)]
-pub struct LocationCollectionResponse {
-    pub data: Vec<Location>,
-    pub meta: PaginationMeta,
-}
+pub type LocationCollectionResponse = super::PaginatedResponse<Location>;
 
 #[derive(Serialize)]
 pub struct LocationMembership {
@@ -31,7 +23,4 @@ pub struct LocationMembership {
     pub created_at: String,
 }
 
-#[derive(Serialize)]
-pub struct LocationMembershipResponse {
-    pub data: LocationMembership,
-}
+pub type LocationMembershipResponse = super::DataResponse<LocationMembership>;

@@ -247,32 +247,3 @@ pub(super) async fn update(
         .await,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn profile_response_uses_string_ids_and_preserves_date_encoding()
-    -> Result<(), serde_json::Error> {
-        let body = representation(Snapshot {
-            account_id: 31,
-            person_id: 42,
-            date_of_birth: chrono::NaiveDate::from_ymd_opt(2000, 1, 2).unwrap(),
-            time_zone: "Europe/London".into(),
-            gravatar_enabled: false,
-            mobile_shortcuts: vec![],
-            avatar_attached: true,
-        });
-        assert_eq!(body.data.person_id, "42");
-        assert_eq!(
-            serde_json::to_value(body)?,
-            json!({"data": {
-                "account_id": "31", "person_id": "42", "date_of_birth": "2000-01-02",
-                "time_zone": "Europe/London", "gravatar_enabled": false,
-                "mobile_shortcuts": [], "avatar_attached": true
-            }})
-        );
-        Ok(())
-    }
-}

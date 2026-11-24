@@ -590,28 +590,28 @@ async fn scoped_payload(
     }
     for person in people::values(tenant, &people, zone).await? {
         let response = crate::views::people::PersonResponse { data: person };
-        let etag = people::representation_etag(&response)?;
+        let etag = crate::views::canonical_etag(&response)?;
         etags.insert(response.data.portable_id, etag);
     }
     for schedule in
         treatments::projection::serialize_schedules(db, tenant, schedules.clone()).await?
     {
         let response = crate::views::treatments::ScheduleResponse { data: schedule };
-        let etag = treatments::projection::response_etag(&response)?;
+        let etag = crate::views::canonical_etag(&response)?;
         etags.insert(response.data.source.portable_id, etag);
     }
     for assignment in
         treatments::projection::serialize_assignments(db, tenant, assignments.clone()).await?
     {
         let response = crate::views::treatments::AssignmentResponse { data: assignment };
-        let etag = treatments::projection::response_etag(&response)?;
+        let etag = crate::views::canonical_etag(&response)?;
         etags.insert(response.data.source.portable_id, etag);
     }
     for medication in
         medications::serialize_many(db, medications.clone(), tenant.settings()).await?
     {
         let response = crate::views::medications::MedicationResponse { data: medication };
-        let etag = medications::representation_etag(&response)?;
+        let etag = crate::views::canonical_etag(&response)?;
         etags.insert(response.data.portable_id, etag);
     }
     for row in &dosages {

@@ -1,4 +1,3 @@
-use super::PaginationMeta;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -24,13 +23,6 @@ pub struct MedicationTake {
     pub medication_portable_id: Option<String>,
 }
 
-#[derive(Serialize)]
-pub struct MedicationTakeResponse {
-    pub data: MedicationTake,
-}
+pub type MedicationTakeResponse = super::DataResponse<MedicationTake>;
 
-#[derive(Serialize)]
-pub struct MedicationTakeCollectionResponse {
-    pub data: Vec<MedicationTake>,
-    pub meta: PaginationMeta,
-}
+pub type MedicationTakeCollectionResponse = super::PaginatedResponse<MedicationTake>;

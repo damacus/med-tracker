@@ -1,4 +1,3 @@
-use super::PaginationMeta;
 use crate::models::care::people::PersonKind;
 use serde::Serialize;
 
@@ -19,21 +18,11 @@ pub struct Person {
     pub notification_preference_portable_id: Option<String>,
 }
 
-#[derive(Serialize)]
-pub struct PersonResponse {
-    pub data: Person,
-}
+pub type PersonResponse = super::DataResponse<Person>;
 
-#[derive(Serialize)]
-pub struct PersonCollectionResponse {
-    pub data: Vec<Person>,
-    pub meta: PaginationMeta,
-}
+pub type PersonCollectionResponse = super::PaginatedResponse<Person>;
 
-#[derive(Serialize)]
-pub(crate) struct MeResponse {
-    pub(crate) data: Me,
-}
+pub(crate) type MeResponse = super::DataResponse<Me>;
 
 #[derive(Serialize)]
 pub(crate) struct Me {

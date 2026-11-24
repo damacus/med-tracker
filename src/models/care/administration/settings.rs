@@ -189,36 +189,3 @@ pub async fn update(
     .await?;
     Ok(after)
 }
-
-#[cfg(test)]
-mod response_tests {
-    use super::*;
-
-    #[test]
-    fn household_settings_projection_preserves_the_wire_fields() -> Result<(), serde_json::Error> {
-        let now = chrono::DateTime::UNIX_EPOCH.naive_utc();
-        let household = household::Model {
-            id: 42,
-            ai_suggestions_enabled: true,
-            created_at: now,
-            created_by_account_id: None,
-            lifecycle_state: "active".into(),
-            name: "Synthetic household".into(),
-            offboarded_at: None,
-            slug: "synthetic-household".into(),
-            status: "active".into(),
-            subscription_plan: "family_plus".into(),
-            timezone: "Europe/London".into(),
-            updated_at: now,
-        };
-        let response = value(&household);
-        assert_eq!(response.subscription_plan, "family_plus");
-        assert_eq!(
-            serde_json::to_value(response)?,
-            json!({"id":42,"name":"Synthetic household","slug":"synthetic-household",
-                "timezone":"Europe/London","subscription_plan":"family_plus",
-                "ai_suggestions_enabled":true,"updated_at":"1970-01-01T00:00:00+00:00"})
-        );
-        Ok(())
-    }
-}

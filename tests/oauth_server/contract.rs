@@ -365,6 +365,10 @@ async fn authorisation_code_discovery_matches_native_client_contract() {
             .unwrap()
             .contains(&json!("S256"))
     );
+    assert_eq!(
+        body["token_endpoint_auth_methods_supported"],
+        json!(["none", "client_secret_basic", "client_secret_post"])
+    );
     for grant in ["authorization_code", "refresh_token"] {
         assert!(
             body["grant_types_supported"]

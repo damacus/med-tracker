@@ -4,7 +4,6 @@ use crate::views::{
     treatments::{PauseSourceKind, PauseSummary, TreatmentCollection, TreatmentResponse},
 };
 use loco_rs::model::TenantQueryExt;
-use sha2::{Digest, Sha256};
 #[derive(Default, Deserialize)]
 pub struct Pagination {
     pub page: Option<i64>,
@@ -116,12 +115,7 @@ pub(crate) async fn period_values(
 }
 fn representation(data: PauseSummary) -> Result<VersionedPause, OperationError> {
     let body = TreatmentResponse { data };
-    let mut canonical = serde_json::to_value(&body).map_err(|_| OperationError::Unavailable)?;
-    canonical.sort_all_objects();
-    let etag = format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(canonical.to_string().as_bytes()))
-    );
+    let etag = crate::views::canonical_etag(&body)?;
     Ok((body, etag))
 }
 pub async fn list(
