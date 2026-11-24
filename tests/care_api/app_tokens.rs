@@ -49,6 +49,33 @@ async fn personal_keys_cannot_issue_app_tokens() {
         .unwrap();
     let status = response.status().as_u16();
     let body: Value = response.json().await.unwrap();
+    let url = format!(
+        "{}/api/v1/households/{household_id}/admin/app_tokens",
+        app.origin
+    );
+    let request = json!({"api_app_token":{"name":"Keyed device"}});
+    let key = uuid::Uuid::new_v4().to_string();
+    let oauth_token = app.token().await;
+    let created = app
+        .client
+        .post(&url)
+        .bearer_auth(&oauth_token)
+        .header("idempotency-key", &key)
+        .json(&request)
+        .send()
+        .await
+        .unwrap();
+    let retry = app
+        .client
+        .post(&url)
+        .bearer_auth(&issued.key)
+        .header("idempotency-key", &key)
+        .json(&request)
+        .send()
+        .await
+        .unwrap();
+    let retry_status = retry.status().as_u16();
+    let retry_body: Value = retry.json().await.unwrap();
     let tokens = api_app_token::Entity::find()
         .filter(api_app_token::Column::AccountId.eq(app.fixture.account.id))
         .filter(api_app_token::Column::Name.eq("Escalated credential"))
@@ -60,6 +87,9 @@ async fn personal_keys_cannot_issue_app_tokens() {
     assert_eq!(status, 403);
     assert_eq!(body["error"]["code"], "forbidden");
     assert!(tokens.is_empty());
+    assert_eq!(created.status().as_u16(), 201);
+    assert_eq!(retry_status, 403);
+    assert_eq!(retry_body["error"]["code"], "forbidden");
 }
 
 #[tokio::test]

@@ -5505,7 +5505,15 @@ paths:
         - Household administration
         - App tokens
       summary: Create an API app token.
-      description: The secret is returned once. Reusing a successful request's Idempotency-Key returns a conflict without exposing the secret again; a caller needing a replacement must use a new key.
+      description: >-
+        Requires household management permission and a household API session,
+        household app token, or mobile OAuth access token. A personal API key
+        with members:write can manage membership. App-token creation and retries
+        with personal API keys return 403.
+
+        The secret is returned once. An authorised retry with the same
+        Idempotency-Key returns 409 without exposing the secret again. Use a new
+        Idempotency-Key if you need to create a replacement token.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/idempotency_key"
