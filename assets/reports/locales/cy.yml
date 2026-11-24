@@ -2837,6 +2837,7 @@ cy:
           gynnig arall arni yn nes ymlaen.
         failed: Ni ellid cynhyrchu'r adroddiad. Rhowch gynnig arall arni.
     invalid_date: Darparwyd fformat dyddiad annilys.
+    projection_capacity_exceeded: Mae’r llinell amser yn rhy fawr i’w dangos. Dewiswch gyfnod byrrach.
     end_before_start: Rhaid i'r dyddiad gorffen fod ar neu ar ôl y dyddiad dechrau.
     date_range_too_large: Ni chaiff ystod dyddiadau'r adroddiad fod yn fwy na 180 diwrnod.
     gp_date_range_too_large: Ni chaiff ystod dyddiadau hanes iechyd y meddyg teulu fod yn fwy na 366 diwrnod.
@@ -3047,6 +3048,7 @@ cy:
             Rydym yn argymell archebu ail-lenwi y prynhawn yma.
       actionable_insight: Mewnwelediad gweithredadwy
   smart_insights:
+    capacity_unavailable: Nid yw gwybodaeth wythnosol ar gael gan fod y llinell amser yn rhy fawr.
     title: Mewnwelediadau Clyfar
     evidence_summary:
       one: "%{days} diwrnod wedi'u hadolygu gyda %{events} digwyddiad meddyginiaeth"

@@ -6,10 +6,9 @@ pub(super) const MAX_PROJECTION_ROWS: usize = 10_000;
 pub(super) const PROJECTION_FETCH_LIMIT: u64 = MAX_PROJECTION_ROWS as u64 + 1;
 
 pub(super) fn capacity_error() -> OperationError {
-    invalid(
-        "date_range",
-        "This timeline is too large to display. Choose a shorter date range or review the schedule.",
-    )
+    OperationError::Validation {
+        details: json!({"code":"projection_capacity_exceeded","errors":{"date_range":["This timeline is too large to display. Choose a shorter date range or review the schedule."]}}),
+    }
 }
 
 pub(super) fn check_capacity(count: usize) -> Result<(), OperationError> {
@@ -50,8 +49,9 @@ impl<'a> ProjectionContext<'a> {
     ) -> Result<(), OperationError> {
         check_capacity(takes.len())?;
         check_capacity(pauses.len())?;
-        let days =
-            usize::try_from((range.1 - range.0).num_days() + 1).map_err(|_| capacity_error())?;
+        let (first, last) = expected_range(source, range);
+        let days = usize::try_from(((last - first).num_days() + 1).max(0))
+            .map_err(|_| capacity_error())?;
         if days > self.remaining_days {
             return Err(capacity_error());
         }
@@ -68,8 +68,8 @@ impl<'a> ProjectionContext<'a> {
             )?;
         }
         let mut work = self.remaining_work;
-        let mut day = range.0;
-        while day <= range.1 {
+        let mut day = first;
+        while day <= last {
             match source {
                 Source::Schedule(schedule)
                     if schedule_applies(schedule, day)
@@ -161,6 +161,17 @@ impl<'a> ProjectionContext<'a> {
         self.remaining_days -= days;
         self.remaining_work = work;
         Ok(())
+    }
+}
+
+fn expected_range(source: &Source, range: (NaiveDate, NaiveDate)) -> (NaiveDate, NaiveDate) {
+    if let Source::Schedule(schedule) = source {
+        match (schedule.start_date, schedule.end_date) {
+            (Some(start), Some(end)) => (range.0.max(start), range.1.min(end)),
+            _ => (NaiveDate::MAX, NaiveDate::MIN),
+        }
+    } else {
+        range
     }
 }
 
@@ -384,8 +395,8 @@ pub(super) fn projected_loaded_in_mode(
     let settings = source_settings.as_ref();
     context.prepare(source, range, persisted, pauses, takes, settings)?;
     let mut rows: BTreeMap<(NaiveDate, i32), Occurrence> = BTreeMap::new();
-    let mut day = scan_start;
-    while day <= scan_end {
+    let (mut day, last) = expected_range(source, range);
+    while day <= last {
         match source {
             Source::Schedule(schedule) => {
                 if schedule_applies(schedule, day)
@@ -752,6 +763,20 @@ mod tests {
         assert_eq!(context.remaining_rows, 0);
         assert!(
             projected_loaded_in_mode(&source, (day, day), &[], &[], &[], &mut context).is_err()
+        );
+    }
+
+    #[test]
+    fn expired_schedule_preserves_day_budget() {
+        let day = ymd(2026, 11, 24);
+        let source = Source::Schedule(make_schedule(0, json!({}), day, day));
+        let tomorrow = day.succ_opt().unwrap();
+        let mut context = ProjectionContext::new(None, false);
+        context.remaining_days = 0;
+        assert!(
+            projected_loaded_in_mode(&source, (tomorrow, tomorrow), &[], &[], &[], &mut context)
+                .unwrap()
+                .is_empty()
         );
     }
 

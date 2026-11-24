@@ -456,6 +456,10 @@ fn invalid(field: &str, message: &str) -> OperationError {
         details: json!({"errors":{field:[message]}}),
     }
 }
+pub(crate) fn is_capacity_error(error: &OperationError) -> bool {
+    matches!(error, OperationError::Validation { details } if details["code"] == "projection_capacity_exceeded")
+}
+
 fn invalid_occurrence() -> OperationError {
     OperationError::Validation {
         details: json!({"code":"invalid_occurrence","message":"Occurrence is unavailable"}),

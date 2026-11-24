@@ -2024,6 +2024,7 @@ pt:
           Tente novamente mais tarde.
         failed: Não foi possível gerar o relatório. Tente novamente.
     invalid_date: Foi fornecido um formato de data inválido.
+    projection_capacity_exceeded: Esta cronologia é demasiado extensa. Escolha um período mais curto.
     end_before_start: A data de fim deve ser igual ou posterior à data de início.
     date_range_too_large: O intervalo de datas do relatorio nao pode exceder 180 dias.
     gp_date_range_too_large: O intervalo do historial de saúde para o médico de família não pode exceder 366 dias.
@@ -2234,6 +2235,7 @@ pt:
             dias. Recomendamos encomendar um reabastecimento esta tarde.
       actionable_insight: Informação acionável
   smart_insights:
+    capacity_unavailable: O resumo semanal está indisponível porque a cronologia é demasiado extensa.
     title: Informações inteligentes
     evidence_summary:
       one: "%{days} dias revistos com %{events} evento de medicação"
