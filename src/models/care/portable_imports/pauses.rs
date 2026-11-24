@@ -118,9 +118,7 @@ pub(super) async fn reconcile_pauses(
             )
             .await?;
             let person = plan
-                .rows(kind)
-                .iter()
-                .find(|source| source["portable_id"] == portable_id)
+                .row(kind, &portable_id)
                 .and_then(|source| source["person_portable_id"].as_str())
                 .or_else(|| index.owner(kind, &portable_id));
             record_change(

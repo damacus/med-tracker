@@ -202,10 +202,7 @@ impl ExistingIndex {
         self.ids
             .get(kind)
             .is_some_and(|ids| ids.contains_key(portable_id))
-            || plan
-                .rows(kind)
-                .iter()
-                .any(|row| row["portable_id"] == portable_id)
+            || plan.row(kind, portable_id).is_some()
     }
 
     pub(super) fn get(&self, kind: &str, portable_id: &str) -> Option<i64> {
@@ -232,9 +229,7 @@ impl ExistingIndex {
         kind: &str,
         portable_id: &str,
     ) -> Option<&'a str> {
-        plan.rows(kind)
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
+        plan.row(kind, portable_id)
             .and_then(|row| row["medication_portable_id"].as_str())
             .or_else(|| {
                 self.source_medications
@@ -248,9 +243,7 @@ impl ExistingIndex {
         plan: &'a ImportPlan,
         portable_id: &str,
     ) -> Option<&'a str> {
-        plan.rows("dosage_options")
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
+        plan.row("dosage_options", portable_id)
             .and_then(|row| row["medication_portable_id"].as_str())
             .or_else(|| self.dosage_medications.get(portable_id).map(String::as_str))
     }
@@ -260,11 +253,7 @@ impl ExistingIndex {
         plan: &'a ImportPlan,
         portable_id: &str,
     ) -> Option<(Decimal, &'a str)> {
-        if let Some(row) = plan
-            .rows("dosage_options")
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
-        {
+        if let Some(row) = plan.row("dosage_options", portable_id) {
             return Some((decimal(&row["amount"])?, row["unit"].as_str()?));
         }
         let (amount, unit) = self.dosage_values.get(portable_id)?;
@@ -276,9 +265,7 @@ impl ExistingIndex {
         plan: &'a ImportPlan,
         portable_id: &str,
     ) -> Option<&'a str> {
-        plan.rows("medications")
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
+        plan.row("medications", portable_id)
             .and_then(|row| row["location_portable_id"].as_str())
             .or_else(|| {
                 self.medication_locations
@@ -292,11 +279,7 @@ impl ExistingIndex {
         plan: &'a ImportPlan,
         portable_id: &str,
     ) -> Option<(&'a str, &'a str)> {
-        if let Some(row) = plan
-            .rows("medication_takes")
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
-        {
+        if let Some(row) = plan.row("medication_takes", portable_id) {
             return Some((
                 row["source_type"].as_str()?,
                 row["source_portable_id"].as_str()?,
@@ -322,5 +305,82 @@ pub(super) fn table(kind: &str) -> &'static str {
         "dose_occurrences" => "medication_dose_occurrences",
         "health_events" => "health_events",
         _ => unreachable!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn empty_index() -> ExistingIndex {
+        ExistingIndex {
+            ids: HashMap::new(),
+            names: HashMap::new(),
+            owners: HashMap::new(),
+            source_medications: HashMap::new(),
+            dosage_medications: HashMap::new(),
+            dosage_values: HashMap::new(),
+            medication_locations: HashMap::new(),
+            take_sources: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn incoming_references_resolve_through_the_parsed_index() {
+        let plan = ImportPlan::parse(json!({
+            "format": "medtracker.portable.v1",
+            "records": {
+                "people": [{"portable_id": "person", "name": "Person"}],
+                "locations": [
+                    {"portable_id": "location-first", "name": "First"},
+                    {"portable_id": "location-last", "name": "Last"}
+                ],
+                "medications": [{
+                    "portable_id": "medication-last",
+                    "location_portable_id": "location-last"
+                }],
+                "dosage_options": [{
+                    "portable_id": "dosage-last",
+                    "medication_portable_id": "medication-last",
+                    "amount": "1",
+                    "unit": "tablet",
+                    "frequency": "as_needed",
+                    "default_max_daily_doses": 1,
+                    "default_min_hours_between_doses": "4",
+                    "default_dose_cycle": "day"
+                }],
+                "schedules": [{
+                    "portable_id": "schedule-last",
+                    "person_portable_id": "person",
+                    "medication_portable_id": "medication-last"
+                }],
+                "medication_takes": [{
+                    "portable_id": "take-last",
+                    "source_type": "schedule",
+                    "source_portable_id": "schedule-last"
+                }]
+            }
+        }))
+        .unwrap();
+        let index = empty_index();
+
+        assert!(index.has(&plan, "locations", "location-last"));
+        assert!(!index.has(&plan, "locations", "missing"));
+        assert_eq!(
+            index.source_medication(&plan, "schedules", "schedule-last"),
+            Some("medication-last")
+        );
+        assert_eq!(
+            index.dosage_medication(&plan, "dosage-last"),
+            Some("medication-last")
+        );
+        assert_eq!(
+            index.medication_location(&plan, "medication-last"),
+            Some("location-last")
+        );
+        assert_eq!(
+            index.take_source(&plan, "take-last"),
+            Some(("schedule", "schedule-last"))
+        );
     }
 }

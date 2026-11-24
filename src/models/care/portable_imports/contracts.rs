@@ -20,6 +20,7 @@ pub(super) const V2_TYPES: &[&str] = &[
 
 pub(crate) struct ImportPlan {
     records: Map<String, Value>,
+    record_indexes: HashMap<String, HashMap<String, usize>>,
     pub(crate) counts: Map<String, Value>,
     pub(super) errors: Vec<String>,
     pub(super) format: PortableFormat,
@@ -49,6 +50,7 @@ impl ImportPlan {
         let records = payload["records"]
             .as_object()
             .ok_or("Portable data records are required")?;
+        let mut record_indexes = HashMap::new();
         let mut counts = Map::new();
         let mut errors = Vec::new();
         for (kind, rows) in records {
@@ -60,7 +62,7 @@ impl ImportPlan {
             let rows = rows
                 .as_array()
                 .ok_or_else(|| format!("{kind} must be an array"))?;
-            let mut seen = HashSet::new();
+            let mut type_index = HashMap::with_capacity(rows.len());
             for (index, row) in rows.iter().enumerate() {
                 let object = row
                     .as_object()
@@ -88,7 +90,7 @@ impl ImportPlan {
                     .as_str()
                     .filter(|value| !value.trim().is_empty())
                     .ok_or_else(|| format!("{kind}[{index}].portable_id is required"))?;
-                if !seen.insert(portable_id) {
+                if type_index.insert(portable_id.to_owned(), index).is_some() {
                     return Err(format!("{kind}[{index}].portable_id is duplicated"));
                 }
                 let allowed = allowed_fields(kind);
@@ -116,10 +118,12 @@ impl ImportPlan {
                     }
                 }
             }
+            record_indexes.insert(kind.clone(), type_index);
             counts.insert(kind.clone(), json!(rows.len()));
         }
         Ok(Self {
             records: records.clone(),
+            record_indexes,
             counts,
             errors,
             format,
@@ -132,6 +136,13 @@ impl ImportPlan {
             .and_then(Value::as_array)
             .map(Vec::as_slice)
             .unwrap_or(&[])
+    }
+
+    pub(super) fn row(&self, kind: &str, portable_id: &str) -> Option<&Value> {
+        self.record_indexes
+            .get(kind)
+            .and_then(|rows| rows.get(portable_id))
+            .and_then(|index| self.rows(kind).get(*index))
     }
 }
 
@@ -331,5 +342,55 @@ fn required_fields(kind: &str) -> &'static [&'static str] {
         ],
         "health_events" => &["person_portable_id", "event_kind", "title", "started_on"],
         _ => &[],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parsed_records_are_indexed_by_portable_id() {
+        let plan = ImportPlan::parse(json!({
+            "format": "medtracker.portable.v1",
+            "records": {
+                "locations": [
+                    {"portable_id": "location-first", "name": "First"},
+                    {"portable_id": "location-last", "name": "Last"}
+                ]
+            }
+        }))
+        .unwrap();
+
+        assert_eq!(
+            plan.row("locations", "location-first")
+                .and_then(|row| row["name"].as_str()),
+            Some("First")
+        );
+        assert_eq!(
+            plan.row("locations", "location-last")
+                .and_then(|row| row["name"].as_str()),
+            Some("Last")
+        );
+        assert!(plan.row("locations", "missing").is_none());
+        assert_eq!(plan.rows("locations").len(), 2);
+    }
+
+    #[test]
+    fn parsed_record_index_preserves_duplicate_rejection() {
+        let result = ImportPlan::parse(json!({
+            "format": "medtracker.portable.v1",
+            "records": {
+                "locations": [
+                    {"portable_id": "duplicate", "name": "First"},
+                    {"portable_id": "duplicate", "name": "Second"}
+                ]
+            }
+        }));
+
+        assert_eq!(
+            result.err().as_deref(),
+            Some("locations[1].portable_id is duplicated")
+        );
     }
 }

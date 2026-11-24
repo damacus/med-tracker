@@ -74,9 +74,7 @@ pub(crate) async fn authorized(
                 referenced_people.insert(person.to_owned());
             }
             if let Some(person) = plan
-                .rows(source_kind)
-                .iter()
-                .find(|source| source["portable_id"] == source_id)
+                .row(source_kind, source_id)
                 .and_then(|source| source["person_portable_id"].as_str())
             {
                 referenced_people.insert(person.to_owned());
