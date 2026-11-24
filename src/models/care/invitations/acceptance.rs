@@ -18,7 +18,7 @@ pub async fn accept(
     consent: Option<SharingConsent>,
     request_id: &str,
     settings: Option<&serde_json::Value>,
-) -> Result<Value, OperationError> {
+) -> Result<AcceptedInvitation, OperationError> {
     accept_validated(
         db,
         Principal::Api(principal),
@@ -38,7 +38,7 @@ pub async fn accept_browser(
     consent: Option<SharingConsent>,
     request_id: &str,
     settings: Option<&serde_json::Value>,
-) -> Result<Value, OperationError> {
+) -> Result<AcceptedInvitation, OperationError> {
     accept_validated(
         db,
         Principal::Browser(principal),
@@ -59,7 +59,7 @@ pub(crate) async fn accept_dependent(
     subject: crate::models::ids::PersonId,
     request_id: &str,
     settings: Option<&serde_json::Value>,
-) -> Result<Value, OperationError> {
+) -> Result<AcceptedInvitation, OperationError> {
     accept_validated(
         db,
         Principal::Api(principal),
@@ -80,7 +80,7 @@ pub(crate) async fn accept_dependent_browser(
     subject: crate::models::ids::PersonId,
     request_id: &str,
     settings: Option<&serde_json::Value>,
-) -> Result<Value, OperationError> {
+) -> Result<AcceptedInvitation, OperationError> {
     accept_validated(
         db,
         Principal::Browser(principal),
@@ -152,7 +152,7 @@ async fn accept_validated(
     dependent: Option<crate::models::ids::PersonId>,
     request_id: &str,
     settings: Option<&serde_json::Value>,
-) -> Result<Value, OperationError> {
+) -> Result<AcceptedInvitation, OperationError> {
     if token.trim().is_empty() {
         return Err(unavailable());
     }
@@ -358,9 +358,12 @@ async fn accept_validated(
     )
     .await?;
     transaction.commit().await?;
-    Ok(
-        json!({"data":{"household_id":member.household_id.to_string(),"membership_id":member.id.to_string(),"person_id":member.person_id.to_string(),"role":member.role}}),
-    )
+    Ok(AcceptedInvitation {
+        household_id: member.household_id,
+        membership_id: member.id,
+        person_id: member.person_id,
+        role: member.role,
+    })
 }
 
 async fn revalidate_current(

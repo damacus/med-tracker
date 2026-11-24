@@ -3,6 +3,7 @@ use crate::models::care::{
     person_schedules::{self, ClinicalRevision, PersonScheduleId, PersonalAction, shared_commands},
     treatments,
 };
+use crate::views::DataResponse;
 
 pub(super) async fn update(
     State(ctx): State<AppContext>,
@@ -69,7 +70,7 @@ pub(super) async fn update(
                     (header::CACHE_CONTROL, "no-store"),
                     (header::ETAG, plan.etag.as_str()),
                 ],
-                Json(json!({"data":plan})),
+                Json(DataResponse { data: &plan }),
             )
                 .into_response(),
             Err(error) => operation(error.into(), &request_id),

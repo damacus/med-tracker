@@ -1,7 +1,9 @@
-use super::administration::{complete, key, request_id, store};
+use super::administration::{complete_typed, key, request_id, store};
 use super::*;
 use crate::models::care::{dose_occurrences, locations::SavedResponse};
+use crate::views::{DataResponse, dose_occurrences::DoseOccurrence};
 use std::sync::Arc;
+type Mutation = response::MutationBody<DataResponse<DoseOccurrence>>;
 type Range = std::result::Result<
     axum::extract::Query<dose_occurrences::RangeQuery>,
     axum::extract::rejection::QueryRejection,
@@ -45,7 +47,7 @@ async fn list(
         })
     }
     .await;
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::dose_occurrence("GET", "index", kind),
@@ -91,7 +93,7 @@ async fn mutation(
     if restored.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::dose_occurrence(method, action, kind),
@@ -108,7 +110,7 @@ async fn process(
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
     operation: (&str, &str),
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> std::result::Result<(StatusCode, Mutation, Option<String>, bool), response::Failure> {
     let (kind, action) = operation;
     dose_occurrences::authorize(tenant, kind, &path.1, action)
         .await
@@ -130,7 +132,8 @@ async fn process(
         && let Some(reply) =
             locations::keyed_replay(tenant, key, method, &request_path, &body).await?
     {
-        return Ok(reply);
+        let (status, body, etag, replay) = reply;
+        return Ok((status, Mutation::Replay(body), etag, replay));
     }
     let etag = headers
         .get(axum::http::header::IF_MATCH)
@@ -174,7 +177,11 @@ async fn process(
                 .commit()
                 .await
                 .map_err(|_| response::unavailable())?;
-            (StatusCode::OK, written.body, Some(written.etag))
+            (
+                StatusCode::OK,
+                Mutation::Resource(written.body),
+                Some(written.etag),
+            )
         }
         Err(OperationError::Validation { details }) => {
             savepoint
@@ -194,10 +201,12 @@ async fn process(
                 .get("message")
                 .and_then(Value::as_str)
                 .unwrap_or("Validation failed");
-            let mut reply = json!({"error":{"code":code,"message":message,"request_id":tenant.scope().request_id}});
-            if let Some(errors) = details.get("errors") {
-                reply["error"]["errors"] = errors.clone();
-            }
+            let reply = Mutation::Error(response::ErrorEnvelope::new(
+                code,
+                message,
+                &tenant.scope().request_id,
+                details.get("errors").cloned(),
+            ));
             (status, reply, None)
         }
         Err(OperationError::Conflict { code, .. }) if code == "precondition_required" => {
@@ -207,7 +216,10 @@ async fn process(
                 .map_err(|_| response::unavailable())?;
             (
                 StatusCode::PRECONDITION_REQUIRED,
-                json!({"error":{"code":code,"message":"A current version is required","request_id":tenant.scope().request_id}}),
+                Mutation::Error(
+                    response::Failure::precondition_required("A current version is required")
+                        .into_body(&tenant.scope().request_id),
+                ),
                 None,
             )
         }
@@ -220,7 +232,7 @@ async fn process(
         }
     };
     if let Some(key) = key {
-        return store(
+        store(
             tenant,
             principal,
             SavedResponse {
@@ -229,11 +241,11 @@ async fn process(
                 path: &request_path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: etag.as_deref(),
             },
         )
-        .await;
+        .await?;
     }
     Ok((status, reply, etag, false))
 }

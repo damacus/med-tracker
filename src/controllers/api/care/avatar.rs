@@ -261,13 +261,13 @@ pub(super) async fn upload(
         let snapshot = profile::read(&tenant, principal.account_id())
             .await
             .map_err(response::operation)?;
-        Ok::<_, response::Failure>((retired, super::profile::representation(&snapshot)))
+        Ok::<_, response::Failure>((retired, super::profile::representation(snapshot)))
     }
     .await;
     match saved {
         Ok((retired, body)) => {
             let reply = no_store(
-                finish(
+                finish_typed(
                     tenant,
                     principal.provenance(),
                     audit::RequestAudit::avatar("PUT", "update"),
@@ -324,11 +324,11 @@ pub(super) async fn remove(
         }
     };
     let mut reply = no_store(
-        finish(
+        finish_typed(
             tenant,
             principal.provenance(),
             audit::RequestAudit::avatar("DELETE", "destroy"),
-            Ok((StatusCode::NO_CONTENT, json!({}), None)),
+            Ok((StatusCode::NO_CONTENT, (), None)),
             &request_id,
         )
         .await,

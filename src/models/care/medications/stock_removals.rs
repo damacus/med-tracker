@@ -1,4 +1,8 @@
 use super::*;
+use crate::views::{
+    PaginationMeta,
+    medications::{StockRemoval, StockRemovalCollection},
+};
 use loco_rs::model::TenantQueryExt;
 
 #[derive(Clone, Debug)]
@@ -43,7 +47,7 @@ pub async fn create(
     tenant: &TenantTransaction,
     input: RemoveStock,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<StockRemoval, OperationError> {
     let context = StockContext { tenant, provenance };
     lock_household(tenant.transaction(), tenant.scope().household_id).await?;
     let found = authorize(tenant, &input.medication_id).await?;
@@ -95,7 +99,7 @@ pub async fn history(
     medication_id: &str,
     page: i64,
     per_page: i64,
-) -> Result<Value, OperationError> {
+) -> Result<StockRemovalCollection, OperationError> {
     let found = authorize(tenant, medication_id).await?;
     if page < 1 || !(1..=100).contains(&per_page) {
         return Err(validation("Invalid pagination parameters"));
@@ -113,9 +117,14 @@ pub async fn history(
         .all(tenant.transaction())
         .await
         .map_err(database_error)?;
-    Ok(
-        json!({"data": rows.iter().map(row).collect::<Vec<_>>(), "meta": {"page": page, "per_page": per_page, "total_count": total}}),
-    )
+    Ok(StockRemovalCollection {
+        data: rows.iter().map(row).collect(),
+        meta: PaginationMeta {
+            page,
+            per_page,
+            total_count: total,
+        },
+    })
 }
 
 pub async fn authorize(
@@ -212,11 +221,30 @@ fn format_quantity(value: Decimal) -> String {
     value.normalize().to_string()
 }
 
-fn row(event: &version::Model) -> Value {
+fn row(event: &version::Model) -> StockRemoval {
     let values: Value = event
         .object
         .as_deref()
         .and_then(|value| serde_json::from_str(value).ok())
         .unwrap_or(Value::Null);
-    json!({"id": event.id.to_string(), "medication_id": event.item_id.to_string(), "dosage_id": values.get("dosage_id").and_then(Value::as_str).filter(|value| !value.is_empty()), "quantity": values.get("quantity"), "reason": values.get("reason"), "note": values.get("note"), "submission_id": values.get("submission_id"), "previous_quantity": values.get("previous_quantity"), "remaining_quantity": values.get("remaining_quantity"), "unit": values.get("unit"), "created_at": event.created_at.map(|v|v.format("%Y-%m-%dT%H:%M:%SZ").to_string()), "actor_membership_id": event.actor_membership_id.map(|id|id.to_string())})
+    StockRemoval {
+        id: event.id.to_string(),
+        medication_id: event.item_id.to_string(),
+        dosage_id: values
+            .get("dosage_id")
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned),
+        quantity: values.get("quantity").cloned(),
+        reason: values.get("reason").cloned(),
+        note: values.get("note").cloned(),
+        submission_id: values.get("submission_id").cloned(),
+        previous_quantity: values.get("previous_quantity").cloned(),
+        remaining_quantity: values.get("remaining_quantity").cloned(),
+        unit: values.get("unit").cloned(),
+        created_at: event
+            .created_at
+            .map(|value| value.format("%Y-%m-%dT%H:%M:%SZ").to_string()),
+        actor_membership_id: event.actor_membership_id.map(|id| id.to_string()),
+    }
 }

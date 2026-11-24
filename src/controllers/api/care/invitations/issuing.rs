@@ -13,9 +13,9 @@ pub(in crate::controllers::api::care) async fn index(
     };
     let result = invitations::list_api(&tenant)
         .await
-        .map(|body| (StatusCode::OK, body, None))
+        .map(|data| (StatusCode::OK, DataResponse { data }, None))
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::invitations("GET", "index"),
@@ -47,7 +47,7 @@ pub(in crate::controllers::api::care) async fn create(
         dependent.is_some(),
     )
     .await;
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::invitations("POST", "create"),
@@ -64,7 +64,7 @@ async fn process(
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
     dependent: bool,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> MutationReply<DataResponse<InvitationSummary>> {
     crate::models::care::administration::authorize(tenant)
         .await
         .map_err(response::operation)?;
@@ -79,10 +79,10 @@ async fn process(
         }
     );
     if let Some(key) = key(headers)
-        && let Some(saved) =
+        && let Some((status, body, etag, replay)) =
             super::super::locations::keyed_replay(tenant, key, "POST", &path, &body).await?
     {
-        return Ok(saved);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let attributes = if dependent {
         body.as_object()
@@ -109,24 +109,26 @@ async fn process(
         .begin()
         .await
         .map_err(|_| response::unavailable())?;
-    let result = invitations::create(tenant, attributes, None, Some(principal.provenance())).await;
+    let result = invitations::create(tenant, attributes, None, Some(principal.provenance()))
+        .await
+        .map(|data| DataResponse { data });
     let (status, reply) = reply(savepoint, tenant, result, StatusCode::CREATED).await?;
     if let Some(key) = key(headers) {
-        store(
+        crate::models::care::locations::store(
             tenant,
-            principal,
+            principal.provenance(),
             SavedResponse {
                 key,
                 method: "POST",
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: None,
             },
         )
         .await
-    } else {
-        Ok((status, reply, None, false))
+        .map_err(response::operation)?;
     }
+    Ok((status, reply, None, false))
 }

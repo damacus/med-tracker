@@ -19,12 +19,12 @@ pub(super) async fn show(
     };
     let reply = notification_preferences::read(&tenant, principal.account_id())
         .await
-        .map(|(row, owner)| {
-            let (body, etag) = notification_preferences::representation(&row, &owner);
-            (StatusCode::OK, body, Some(etag))
+        .and_then(|(row, owner)| {
+            let (body, etag) = notification_preferences::representation(&row, &owner)?;
+            Ok((StatusCode::OK, body, Some(etag)))
         })
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::notification_preference("GET", "show"),
@@ -128,7 +128,8 @@ pub(super) async fn update(
             notification_preferences::update(&tenant, principal.account_id(), changes)
                 .await
                 .map_err(response::operation)?;
-        let (body, etag) = notification_preferences::representation(&row, &owner);
+        let (body, etag) =
+            notification_preferences::representation(&row, &owner).map_err(response::operation)?;
         if let (Some(key), Ok(raw)) = (key, &raw) {
             crate::models::care::locations::store(
                 &tenant,
@@ -139,7 +140,7 @@ pub(super) async fn update(
                     path: &path,
                     request: raw,
                     status: 200,
-                    body: body.clone(),
+                    body: serde_json::to_value(&body).map_err(|_| response::unavailable())?,
                     etag: Some(&etag),
                 },
             )
@@ -157,7 +158,7 @@ pub(super) async fn update(
     if savepoint_result.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::notification_preference(method, "update"),

@@ -32,7 +32,7 @@ pub(super) async fn index(
         }
         Err(error) => Err(error),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::medication("GET", "index"),
@@ -67,15 +67,15 @@ pub(super) async fn show(
                     StatusCode::OK
                 },
                 if unchanged {
-                    Value::Null
+                    None
                 } else {
-                    snapshot.representation
+                    Some(snapshot.representation)
                 },
                 Some(snapshot.etag),
             )
         })
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::medication("GET", "show"),

@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::administration::PersonGrant;
 use loco_rs::model::TenantQueryExt;
 
 pub(super) fn state(row: &grant::Model) -> Value {
@@ -7,7 +8,7 @@ pub(super) fn state(row: &grant::Model) -> Value {
 async fn values(
     tenant: &TenantTransaction,
     rows: &[grant::Model],
-) -> Result<Vec<Value>, OperationError> {
+) -> Result<Vec<PersonGrant>, OperationError> {
     let people: HashMap<i64, person::Model> =
         crate::models::access::person_queries::household_participants(tenant.scope().household_id)
             .filter(
@@ -18,16 +19,28 @@ async fn values(
             .into_iter()
             .map(|row| (row.id, row))
             .collect();
-    Ok(rows.iter().map(|row|json!({"id":row.id,"household_membership_id":row.household_membership_id,"person_id":row.person_id,"person_name":people.get(&row.person_id).map(|person| &person.name),"access_level":row.access_level,"relationship_type":row.relationship_type,"expires_at":row.expires_at.map(|time|time.and_utc().to_rfc3339()),"revoked_at":row.revoked_at.map(|time|time.and_utc().to_rfc3339())})).collect())
+    Ok(rows
+        .iter()
+        .map(|row| PersonGrant {
+            id: row.id,
+            household_membership_id: row.household_membership_id,
+            person_id: row.person_id,
+            person_name: people.get(&row.person_id).map(|person| person.name.clone()),
+            access_level: row.access_level.clone(),
+            relationship_type: row.relationship_type.clone(),
+            expires_at: row.expires_at.map(|time| time.and_utc().to_rfc3339()),
+            revoked_at: row.revoked_at.map(|time| time.and_utc().to_rfc3339()),
+        })
+        .collect())
 }
-pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
+pub async fn list(tenant: &TenantTransaction) -> Result<Vec<PersonGrant>, OperationError> {
     authorize(tenant).await?;
     let rows = grant::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .order_by_asc(grant::Column::Id)
         .all(tenant.transaction())
         .await?;
-    Ok(json!({"data":values(tenant,&rows).await?}))
+    values(tenant, &rows).await
 }
 pub enum GrantCreation {
     Rejected,

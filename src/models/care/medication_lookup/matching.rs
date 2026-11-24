@@ -1,7 +1,7 @@
 use crate::models::entities::medication;
+use crate::views::medication_lookup::Product;
 use regex::Regex;
 use sea_orm::prelude::Decimal;
-use serde_json::Value;
 use std::{str::FromStr, sync::LazyLock};
 
 static STRENGTH: LazyLock<Regex> = LazyLock::new(|| {
@@ -117,16 +117,21 @@ pub(super) fn normalize_strength(value: &str) -> Option<String> {
         .map(|parts| parts.join("/"))
 }
 
-pub(super) fn strength_matches(entry: &Value, requested: &str) -> bool {
-    ["display", "name", "description", "package_size"]
-        .iter()
-        .filter_map(|field| entry[*field].as_str())
-        .any(|field| {
-            FILTER_STRENGTH
-                .find_iter(field)
-                .filter_map(|found| normalize_strength(found.as_str()))
-                .any(|strength| strength == requested)
-        })
+pub(super) fn strength_matches(entry: &Product, requested: &str) -> bool {
+    [
+        Some(entry.display.as_str()),
+        entry.name.as_deref(),
+        entry.description.as_deref(),
+        entry.package_size.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .any(|field| {
+        FILTER_STRENGTH
+            .find_iter(field)
+            .filter_map(|found| normalize_strength(found.as_str()))
+            .any(|strength| strength == requested)
+    })
 }
 
 fn form(name: &str, unit: Option<&str>) -> Option<&'static str> {

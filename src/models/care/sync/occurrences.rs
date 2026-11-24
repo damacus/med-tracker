@@ -19,7 +19,7 @@ pub(super) async fn apply(
     operation: &Operation,
     secret: Option<&std::sync::Arc<[u8]>>,
     provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<SyncResult, OperationError> {
     let secret = secret.ok_or(OperationError::Unavailable)?;
     if operation.action == "create" {
         let changes_before = api_change_event::Entity::find()

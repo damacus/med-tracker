@@ -465,8 +465,14 @@ fn location_etag_retains_published_sorted_json_encoding() {
         updated_at: timestamp,
     };
     let expected = r#"{"data":{"description":"Upstairs","id":1,"name":"Synthetic cabinet","portable_id":"fixed","updated_at":"2026-10-06T00:00:00+00:00"}}"#;
+    let (response, etag) = locations::representation(&record);
+    assert_eq!(response.data.id, record.id);
+    assert_eq!(response.data.description, record.description);
+    let mut body = serde_json::to_value(response).unwrap();
+    body.sort_all_objects();
+    assert_eq!(body.to_string(), expected);
     assert_eq!(
-        locations::representation(&record).1,
+        etag,
         format!("\"{}\"", hex::encode(Sha256::digest(expected.as_bytes())))
     );
 }

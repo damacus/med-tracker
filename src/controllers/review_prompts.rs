@@ -127,7 +127,9 @@ async fn index(
     };
     let query = query.ok().map(|Query(value)| value).unwrap_or_default();
     let updated = query.updated.as_deref() == Some("1");
-    let result = review_prompts::index(&tenant, Some(query)).await;
+    let result = review_prompts::index(&tenant, Some(query))
+        .await
+        .and_then(|body| serde_json::to_value(body).map_err(|_| OperationError::Unavailable));
     let mut data = match result {
         Ok(value) => value,
         Err(error) => return operation_error(error),
@@ -207,7 +209,10 @@ async fn history(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let (mut data, _) = match review_prompts::show(&tenant, &id).await {
+    let mut data = match review_prompts::show(&tenant, &id)
+        .await
+        .and_then(|(body, _)| serde_json::to_value(body).map_err(|_| OperationError::Unavailable))
+    {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
@@ -279,7 +284,7 @@ async fn edit_page(
                 "reviews/edit.html",
                 &slug,
                 language(&headers),
-                json!({"review":review["data"],"lease":{"token":"","expires_at":""},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":false,"reacquire":true}),
+                json!({"review":review.data,"lease":{"token":"","expires_at":""},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":false,"reacquire":true}),
                 crate::controllers::medications::forms::status(&error),
             );
             if !browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref())
@@ -310,7 +315,7 @@ async fn edit_page(
         "reviews/edit.html",
         &slug,
         language(&headers),
-        json!({"review":review["data"],"lease":lease["data"],"draft":draft,"changed":changed,"error":Value::Null}),
+        json!({"review":review.data,"lease":lease,"draft":draft,"changed":changed,"error":Value::Null}),
         StatusCode::OK,
     );
     if !browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref())
@@ -442,7 +447,7 @@ async fn save(
                 "reviews/edit.html",
                 &slug,
                 language(&headers),
-                json!({"review":review["data"],"lease":{"token":draft.get("lease_token"),"etag":draft.get("etag"),"expires_at":expires_at},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_changed"),"reacquire":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_lease_required" || code=="review_lease_expired")}),
+                json!({"review":review.data,"lease":{"token":draft.get("lease_token"),"etag":draft.get("etag"),"expires_at":expires_at},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_changed"),"reacquire":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_lease_required" || code=="review_lease_expired")}),
                 crate::controllers::medications::forms::status(&error),
             );
             if read.commit().await.is_err() {

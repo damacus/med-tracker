@@ -19,7 +19,7 @@ pub(super) async fn show(
         .await
         .map(|body| (StatusCode::OK, body, None))
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::me(),

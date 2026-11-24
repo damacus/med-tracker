@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::treatments::{AssignmentResponse, Treatment};
 use loco_rs::model::TenantQueryExt;
 
 pub struct EmptyChangeInput(bool);
@@ -81,7 +82,7 @@ async fn change(
     provenance: Option<&CredentialProvenance>,
     kind: Kind,
     pause: bool,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(Treatment, String), OperationError> {
     lock(tenant).await?;
     let source = source_path(tenant, kind, id).await?;
     access::require_person_access(tenant, source.person_id(), PersonAccess::Manage).await?;
@@ -111,10 +112,14 @@ async fn change(
     };
     match source {
         Source::Schedule(row) => {
-            crate::models::care::treatments::lifecycle::read(tenant, &row.id.to_string()).await
+            crate::models::care::treatments::lifecycle::read(tenant, &row.id.to_string())
+                .await
+                .map(|(response, etag)| (Treatment::Schedule(Box::new(response)), etag))
         }
         Source::Assignment(row) => {
-            crate::models::care::assignments::read(tenant, &row.id.to_string()).await
+            crate::models::care::assignments::read(tenant, &row.id.to_string())
+                .await
+                .map(|(response, etag)| (Treatment::Assignment(Box::new(response)), etag))
         }
     }
 }
@@ -123,7 +128,7 @@ pub async fn pause_schedule(
     id: &str,
     input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(Treatment, String), OperationError> {
     change(tenant, id, input, provenance, Kind::Schedule, true).await
 }
 pub async fn resume_schedule(
@@ -131,7 +136,7 @@ pub async fn resume_schedule(
     id: &str,
     input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(Treatment, String), OperationError> {
     change(tenant, id, input, provenance, Kind::Schedule, false).await
 }
 pub async fn pause_assignment(
@@ -139,7 +144,7 @@ pub async fn pause_assignment(
     id: &str,
     input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(Treatment, String), OperationError> {
     change(tenant, id, input, provenance, Kind::Assignment, true).await
 }
 pub async fn resume_assignment(
@@ -147,7 +152,7 @@ pub async fn resume_assignment(
     id: &str,
     input: &EmptyChangeInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(Treatment, String), OperationError> {
     change(tenant, id, input, provenance, Kind::Assignment, false).await
 }
 pub async fn reorder_assignment(
@@ -155,7 +160,7 @@ pub async fn reorder_assignment(
     id: &str,
     input: &DirectionInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     lock(tenant).await?;
     let Source::Assignment(source) = source_path(tenant, Kind::Assignment, id).await? else {
         return Err(OperationError::NotFound);

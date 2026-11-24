@@ -4,16 +4,16 @@ use crate::models::{
     entities::medication,
     errors::OperationError,
 };
+use crate::views::{PaginationMeta, medications::MedicationCollectionResponse};
 use chrono::NaiveDateTime;
 use sea_orm::{ColumnTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
-use serde_json::{Value, json};
 
 pub async fn list(
     tenant: &TenantTransaction,
     page: i64,
     per_page: i64,
     updated_since: Option<NaiveDateTime>,
-) -> Result<Value, OperationError> {
+) -> Result<MedicationCollectionResponse, OperationError> {
     access::recheck(tenant).await?;
     if page < 1 || !(1..=100).contains(&per_page) {
         return Err(validation("Invalid pagination"));
@@ -36,5 +36,12 @@ pub async fn list(
         .await
         .map_err(database_error)?;
     let data = projection::serialize_many(tenant.transaction(), records, tenant.settings()).await?;
-    Ok(json!({"data":data,"meta":{"page":page,"per_page":per_page,"total_count":count}}))
+    Ok(MedicationCollectionResponse {
+        data,
+        meta: PaginationMeta {
+            page,
+            per_page,
+            total_count: count,
+        },
+    })
 }
