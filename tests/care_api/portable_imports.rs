@@ -1219,6 +1219,10 @@ async fn portable_import_rejects_unsupported_and_inconsistent_payloads() {
         json!({"format": "medtracker.portable.v1", "records": {"people": [{"portable_id": "p-1", "bogus": 1}]}}),
         json!({"format": "medtracker.portable.v1", "records": {"people": [{"portable_id": "p-1", "id": 5, "name": "Dependent", "date_of_birth": "1990-01-01", "person_type": "dependent_adult", "has_capacity": false}]}}),
         json!({"format": "medtracker.portable.v1", "records": {"people": [{"portable_id": "p-adult", "name": "Capable adult must join", "date_of_birth": "1990-01-01", "person_type": "adult", "has_capacity": true}]}}),
+        json!({"format": "medtracker.portable.v1", "records": {"locations": [
+            {"portable_id": "duplicate", "name": "First"},
+            {"portable_id": "duplicate", "name": "Second"}
+        ]}}),
     ].into_iter().enumerate() {
         let bundle = portable_crypto::encrypt(&payload, PASSPHRASE).unwrap();
         let request = match index {
@@ -1246,7 +1250,7 @@ async fn portable_import_rejects_unsupported_and_inconsistent_payloads() {
     }
     assert_eq!(import_effects(&app).await, effects_before);
     app.close().await;
-    assert_eq!(statuses, vec![422, 422, 422, 422, 422, 422, 200, 422]);
+    assert_eq!(statuses, vec![422, 422, 422, 422, 422, 422, 200, 422, 422]);
     assert_eq!(
         messages[..6],
         [
@@ -1262,6 +1266,7 @@ async fn portable_import_rejects_unsupported_and_inconsistent_payloads() {
         &messages[6],
         "includes Rails numeric IDs: id"
     ));
+    assert_eq!(messages[8], "locations[1].portable_id is duplicated");
 }
 
 pub(super) async fn audit_fields(app: &Application, event: &str, fields: &[(&str, &str)]) -> i64 {
