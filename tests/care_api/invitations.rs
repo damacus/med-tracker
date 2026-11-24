@@ -661,7 +661,7 @@ async fn invitation_reactivation_applies_invited_role_instead_of_revoked_owner_r
         .unwrap();
     let audit = security_audit_events::Entity::find()
         .filter(security_audit_events::Column::HouseholdId.eq(acceptance.target_household.id))
-        .filter(security_audit_events::Column::EventType.eq("household_access.membership_updated"))
+        .filter(security_audit_events::Column::EventType.eq("household_membership.role_updated"))
         .one(&app.fixture.admin)
         .await
         .unwrap()
@@ -675,6 +675,8 @@ async fn invitation_reactivation_applies_invited_role_instead_of_revoked_owner_r
     assert_eq!(restored.revoked_at, None);
     assert_eq!(restored.permissions_version, 10);
     assert!(restored.joined_at > previous_joined_at);
+    assert_eq!(audit.metadata["previous_role"], "owner");
+    assert_eq!(audit.metadata["new_role"], "member");
     assert_eq!(audit.metadata["previous_state"]["role"], "owner");
     assert_eq!(audit.metadata["new_state"]["role"], "member");
 }

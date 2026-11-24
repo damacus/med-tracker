@@ -72,7 +72,13 @@ pub(super) async fn apply_to_person(
             "permissions_version":member.permissions_version
         })
     });
-    let event = if existing.is_some() {
+    let role_change = existing
+        .as_ref()
+        .filter(|member| member.status == "revoked" && member.role != invitation.membership_role)
+        .map(|member| member.role.clone());
+    let event = if role_change.is_some() {
+        "household_membership.role_updated"
+    } else if existing.is_some() {
         "household_access.membership_updated"
     } else {
         "household_access.membership_created"
@@ -130,21 +136,26 @@ pub(super) async fn apply_to_person(
         "authentication_method":actor.provenance.as_ref().map(|value| value.method.label()),
         "session_reference":actor.provenance.as_ref().map(|value| format!("{}:{}",value.method.reference_prefix(),value.reference))
     });
+    let mut metadata = json!({
+        "target_account_id":actor.account_id,
+        "target_membership_id":member.id,
+        "actor_person_id":actor.person_id,
+        "invited_by_membership_id":inviter.id,
+        "previous_state":previous_state,
+        "new_state":{"role":member.role,"status":member.status,"person_id":member.person_id,"permissions_version":member.permissions_version},
+        "outcome":"success"
+    });
+    if let Some(previous_role) = role_change {
+        metadata["previous_role"] = json!(previous_role);
+        metadata["new_role"] = json!(member.role);
+    }
     security_audit_event::ActiveModel {
         household_id: Set(household_id),
         actor_account_id: Set(Some(actor.account_id)),
         actor_membership_id: Set(None),
         event_type: Set(event.to_owned()),
         request_id: Set(Some(request_id.to_owned())),
-        metadata: Set(json!({
-            "target_account_id":actor.account_id,
-            "target_membership_id":member.id,
-            "actor_person_id":actor.person_id,
-            "invited_by_membership_id":inviter.id,
-            "previous_state":previous_state,
-            "new_state":{"role":member.role,"status":member.status,"person_id":member.person_id,"permissions_version":member.permissions_version},
-            "outcome":"success"
-        })),
+        metadata: Set(metadata),
         audit_context: Set(audit_context.clone()),
         created_at: Set(now),
         updated_at: Set(now),

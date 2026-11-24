@@ -4360,6 +4360,8 @@ async fn person_owned_schedule_fresh_consent_keeps_member_and_ends_old_replay_ep
         .unwrap()
         .unwrap();
     let mut member_role = member.clone().into_active_model();
+    assert_eq!(member.status, "active");
+    assert_eq!(care.invitation.invitation.membership_role, "member");
     member_role.role = Set("administrator".into());
     member_role.update(&app.fixture.admin).await.unwrap();
     let key = uuid::Uuid::new_v4().to_string();
