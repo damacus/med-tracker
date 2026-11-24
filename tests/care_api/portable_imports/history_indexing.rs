@@ -53,6 +53,130 @@ fn take_bundle(
             "dose_unit":"tablet"}]}})
 }
 
+#[tokio::test]
+async fn portable_import_validates_and_restores_references_within_a_bundle() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let id = |kind: &str| format!("{kind}-{}", app.fixture.client_uuid);
+    let first_location = id("first-location");
+    let stock_location = id("stock-location");
+    let medication = id("medication");
+    let dosage = id("dosage");
+    let schedule = id("schedule");
+    let take = id("take");
+    let occurrence = id("occurrence");
+    let person = portable_id(&app, "people", app.fixture.adult.id).await;
+    let payload = json!({
+        "format": "medtracker.portable.v2",
+        "scope": "household",
+        "records": {
+            "locations": [
+                {"portable_id": first_location, "name": "First cupboard"},
+                {"portable_id": stock_location, "name": "Stock cupboard"}
+            ],
+            "medications": [{
+                "portable_id": medication, "name": "Synthetic reference tablets",
+                "location_portable_id": stock_location
+            }],
+            "dosage_options": [{
+                "portable_id": dosage, "medication_portable_id": medication,
+                "amount": "1", "unit": "tablet", "frequency": "daily",
+                "default_max_daily_doses": 2, "default_min_hours_between_doses": "4",
+                "default_dose_cycle": "daily"
+            }],
+            "schedules": [{
+                "portable_id": schedule, "person_portable_id": person,
+                "medication_portable_id": medication, "source_dosage_option_portable_id": dosage,
+                "dose_amount": "1", "dose_unit": "tablet", "schedule_type": "daily",
+                "schedule_config": {"times":["08:00"]}, "start_date": "2026-10-01", "active": true
+            }],
+            "medication_takes": [{
+                "portable_id": take, "source_type": "schedule", "source_portable_id": schedule,
+                "taken_at": "2026-10-10T08:00:00Z", "dose_amount": "1", "dose_unit": "tablet",
+                "taken_from_medication_portable_id": medication,
+                "taken_from_location_portable_id": stock_location
+            }],
+            "dose_occurrences": [{
+                "portable_id": occurrence, "source_type": "schedule", "source_portable_id": schedule,
+                "window_starts_on": "2026-10-10", "window_ends_on": "2026-10-10", "position": 1,
+                "outcome": "taken", "resolved_at": "2026-10-10T08:00:00Z",
+                "medication_take_portable_id": take
+            }]
+        }
+    });
+    let mut invalid = payload.clone();
+    invalid["records"]["medications"][0]["location_portable_id"] = json!(id("missing-location"));
+    invalid["records"]["dose_occurrences"][0]["source_type"] = json!("person_medication");
+    invalid["records"]["dose_occurrences"][0]["source_portable_id"] =
+        json!(app.fixture.assignment.portable_id);
+    let rejected =
+        Application::assert_status(import(&app, &token, &invalid, true).await, 200).await;
+    let errors = rejected["data"]["errors"].as_array().unwrap();
+    for message in [
+        "medications[0].location_portable_id references unknown locations portable ID",
+        "dose_occurrences[0].medication_take_portable_id does not match source",
+    ] {
+        assert!(
+            errors.iter().any(|error| error.as_str() == Some(message)),
+            "{rejected}"
+        );
+    }
+    let preview = Application::assert_status(import(&app, &token, &payload, true).await, 200).await;
+    assert_eq!(preview["data"]["errors"], json!([]), "{preview}");
+    assert_eq!(preview["data"]["counts"]["locations"], 2);
+    let persisted_locations = location::Entity::find()
+        .filter(location::Column::HouseholdId.eq(app.fixture.household.id))
+        .filter(
+            location::Column::PortableId.is_in([first_location.as_str(), stock_location.as_str()]),
+        )
+        .count(&app.fixture.admin)
+        .await
+        .unwrap();
+    assert_eq!(persisted_locations, 0);
+
+    let restored =
+        Application::assert_status(import(&app, &token, &payload, false).await, 201).await;
+    assert_eq!(restored["data"]["errors"], json!([]), "{restored}");
+    let response = app
+        .client
+        .get(import_url(&app, "sync/snapshot"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let snapshot = Application::assert_status(response, 200).await;
+    for (kind, portable_id, field, expected) in [
+        (
+            "medications",
+            &medication,
+            "location_portable_id",
+            &stock_location,
+        ),
+        (
+            "schedules",
+            &schedule,
+            "source_dosage_option_portable_id",
+            &dosage,
+        ),
+        ("medication_takes", &take, "source_portable_id", &schedule),
+        (
+            "dose_occurrences",
+            &occurrence,
+            "medication_take_portable_id",
+            &take,
+        ),
+    ] {
+        let record = snapshot["data"]["records"][kind]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["portable_id"] == portable_id.as_str())
+            .unwrap_or_else(|| panic!("missing restored {kind} record"));
+        assert_eq!(record[field], expected.as_str(), "{kind}.{field}");
+    }
+    app.close().await;
+}
+
 async fn take_row(
     app: &Application,
     take_portable_id: &str,
