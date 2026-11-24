@@ -17,6 +17,10 @@ Households own medication inventory and stock. Locations are optional physical
 storage labels within a household, with no memberships or permissions. Inventory
 must work without creating any location.
 
+Dependent creation leaves storage labels to household inventory management.
+Retire person-to-location membership writes. Keep compatibility fields empty
+in people reads and v1/v2 portable outputs. Retain historical audit events.
+
 Deleting a storage location never deletes medication, stock, schedules,
 assignments or administration history. Reject deletion while any medication is
 stored there or an administration retains that taken-from location, including

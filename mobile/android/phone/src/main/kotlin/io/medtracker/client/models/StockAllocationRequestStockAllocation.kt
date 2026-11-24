@@ -25,7 +25,7 @@ import com.squareup.moshi.JsonClass
  * @param personId 
  * @param submissionId 
  * @param quantity Positive decimal quantity with at most two significant fractional places.
- * @param stockUnit Exact unit recorded on the selected stock.
+ * @param stockUnit Inventory unit of the selected stock. Use units when inventory counts items whose clinical amounts are expressed in mg, g, mcg or IU.
  * @param dosageId 
  */
 
@@ -42,7 +42,7 @@ data class StockAllocationRequestStockAllocation (
     @Json(name = "quantity")
     val quantity: kotlin.String,
 
-    /* Exact unit recorded on the selected stock. */
+    /* Inventory unit of the selected stock. Use units when inventory counts items whose clinical amounts are expressed in mg, g, mcg or IU. */
     @Json(name = "stock_unit")
     val stockUnit: kotlin.String,
 

@@ -1,11 +1,9 @@
 use super::response::MutationBody;
 use super::*;
 mod lifecycle;
-mod memberships;
 use crate::models::care::locations::{self, KeyedResponse, SavedResponse};
-use crate::views::locations::{LocationMembershipResponse, LocationResponse};
+use crate::views::locations::LocationResponse;
 pub(super) use lifecycle::{destroy, index, show, update};
-pub(super) use memberships::{create_membership, destroy_membership};
 
 type LocationMutation<T> =
     std::result::Result<(StatusCode, MutationBody<T>, Option<String>, bool), response::Failure>;

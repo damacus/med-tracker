@@ -31,8 +31,8 @@ import com.squareup.moshi.JsonClass
  * @param personType 
  * @param hasCapacity 
  * @param age 
- * @param locationIds 
- * @param locationPortableIds 
+ * @param locationIds Always empty. Storage labels apply to inventory.
+ * @param locationPortableIds Always empty. Storage labels apply to inventory.
  * @param notificationPreferenceId 
  * @param notificationPreferencePortableId 
  */
@@ -67,10 +67,14 @@ data class Person (
     @Json(name = "age")
     val age: kotlin.Int?,
 
+    /* Always empty. Storage labels apply to inventory. */
     @Json(name = "location_ids")
+    @Deprecated(message = "This property is deprecated.")
     val locationIds: kotlin.collections.List<kotlin.Int>,
 
+    /* Always empty. Storage labels apply to inventory. */
     @Json(name = "location_portable_ids")
+    @Deprecated(message = "This property is deprecated.")
     val locationPortableIds: kotlin.collections.List<java.util.UUID>,
 
     @Json(name = "notification_preference_id")

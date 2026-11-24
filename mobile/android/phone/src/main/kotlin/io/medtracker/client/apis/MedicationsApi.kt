@@ -794,6 +794,83 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
     }
 
     /**
+     * DELETE /households/{household_id}/medications/{id}/stock_allocations/{submission_id}
+     * Release the unused quantity of a stock reservation.
+     * The person or their current authorised guardian can release the unused quantity. The physical stock total stays the same and repeating the release has no further effect. 
+     * @param householdId 
+     * @param id 
+     * @param submissionId 
+     * @return void
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun releaseStockAllocation(householdId: kotlin.Int, id: kotlin.Int, submissionId: java.util.UUID) : Unit {
+        val localVarResponse = releaseStockAllocationWithHttpInfo(householdId = householdId, id = id, submissionId = submissionId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> Unit
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /households/{household_id}/medications/{id}/stock_allocations/{submission_id}
+     * Release the unused quantity of a stock reservation.
+     * The person or their current authorised guardian can release the unused quantity. The physical stock total stays the same and repeating the release has no further effect. 
+     * @param householdId 
+     * @param id 
+     * @param submissionId 
+     * @return ApiResponse<Unit?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Throws(IllegalStateException::class, IOException::class)
+    fun releaseStockAllocationWithHttpInfo(householdId: kotlin.Int, id: kotlin.Int, submissionId: java.util.UUID) : ApiResponse<Unit?> {
+        val localVariableConfig = releaseStockAllocationRequestConfig(householdId = householdId, id = id, submissionId = submissionId)
+
+        return request<Unit, Unit>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation releaseStockAllocation
+     *
+     * @param householdId 
+     * @param id 
+     * @param submissionId 
+     * @return RequestConfig
+     */
+    fun releaseStockAllocationRequestConfig(householdId: kotlin.Int, id: kotlin.Int, submissionId: java.util.UUID) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/households/{household_id}/medications/{id}/stock_allocations/{submission_id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())).replace("{"+"submission_id"+"}", encodeURIComponent(submissionId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * PUT /households/{household_id}/medications/{id}
      * Replace a medication.
      * 

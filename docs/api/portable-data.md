@@ -104,9 +104,9 @@ Nullable relationship fields contain a portable ID or `null`. Collection relatio
 ### People
 
 People add `name`, `email`, `date_of_birth`, `person_type`, `has_capacity`, and
-`notification_preference_portable_id`. V1/v2 payloads can include
-`location_portable_ids`, but non-empty arrays are rejected on import. V3 people
-must not include that obsolete field.
+`notification_preference_portable_id`. V1/v2 exports and snapshots return an
+empty `location_portable_ids` array for compatibility. Imports reject non-empty
+arrays. V3 omits the obsolete field.
 
 ### Locations
 

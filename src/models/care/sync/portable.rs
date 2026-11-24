@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::entities::{location, location_membership, membership, notification_preference};
+use crate::models::entities::{location, membership, notification_preference};
 use chrono::NaiveDateTime;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{Condition, QueryTrait};
@@ -334,19 +334,9 @@ async fn scoped_payload(
         .all(db)
         .await
         .map_err(database_error)?;
-    let memberships = if format.includes_person_locations() {
-        location_membership::Entity::find()
-            .in_tenant(household_id)
-            .filter(location_membership::Column::PersonId.is_in(person_ids.clone()))
-            .all(db)
-            .await?
-    } else {
-        Vec::new()
-    };
-    let mut location_ids: HashSet<i64> = memberships
+    let mut location_ids: HashSet<i64> = medications
         .iter()
         .map(|row| row.location_id)
-        .chain(medications.iter().map(|row| row.location_id))
         .chain(takes.iter().filter_map(|row| row.taken_from_location_id))
         .collect();
     location_ids.retain(|id| *id > 0);
@@ -364,7 +354,7 @@ async fn scoped_payload(
         .map_err(database_error)?;
     let preferences = notification_preference::Entity::find()
         .in_tenant(household_id)
-        .filter(notification_preference::Column::PersonId.is_in(person_ids.clone()))
+        .filter(notification_preference::Column::PersonId.is_in(person_ids))
         .order_by_asc(notification_preference::Column::Id)
         .all(db)
         .await
@@ -471,15 +461,6 @@ async fn scoped_payload(
         .iter()
         .map(|row| (row.person_id, row.portable_id.as_str()))
         .collect();
-    let mut person_locations: HashMap<i64, Vec<&str>> = HashMap::new();
-    for row in &memberships {
-        if let Some(portable_id) = location_ids_by_id.get(&row.location_id) {
-            person_locations
-                .entry(row.person_id)
-                .or_default()
-                .push(portable_id);
-        }
-    }
     let canonical_health = health_events::values(db, &health).await?;
     let health_medications: HashMap<i64, &[String]> = canonical_health
         .iter()
@@ -493,7 +474,7 @@ async fn scoped_payload(
         "notification_preference_portable_id": preference_ids.get(&row.id),
         });
         if format.includes_person_locations() {
-            fields["location_portable_ids"] = json!(person_locations.get(&row.id).cloned().unwrap_or_default());
+            fields["location_portable_ids"] = json!([]);
         }
         merge(identity(&row.portable_id, row.updated_at), fields)
     }).collect();

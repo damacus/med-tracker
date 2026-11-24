@@ -331,7 +331,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * POST /households/{household_id}/portable_export
      * Queue an encrypted portable household bundle.
-     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. The request is rejected if the included stock has active reservations that the portable format cannot preserve.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)
@@ -366,7 +366,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * POST /households/{household_id}/portable_export
      * Queue an encrypted portable household bundle.
-     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
+     * Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. The request is rejected if the included stock has active reservations that the portable format cannot preserve.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; &#x60;2&#x60; includes pause history; &#x60;3&#x60; retains clinical history and inventory locations without person-to-location memberships. (optional, default to Version._1)

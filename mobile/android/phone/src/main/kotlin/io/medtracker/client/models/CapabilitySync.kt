@@ -85,7 +85,7 @@ data class CapabilitySync (
     /**
      * 
      *
-     * Values: account,profile,avatar,invitation,household_membership,person_access_grant,location_membership,report,api_session,api_app_token,unknown_default_open_api
+     * Values: account,profile,avatar,invitation,household_membership,person_access_grant,report,api_session,api_app_token,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class OnlineOnlyResources(val value: kotlin.String) {
@@ -95,7 +95,6 @@ data class CapabilitySync (
         @Json(name = "invitation") invitation("invitation"),
         @Json(name = "household_membership") household_membership("household_membership"),
         @Json(name = "person_access_grant") person_access_grant("person_access_grant"),
-        @Json(name = "location_membership") location_membership("location_membership"),
         @Json(name = "report") report("report"),
         @Json(name = "api_session") api_session("api_session"),
         @Json(name = "api_app_token") api_app_token("api_app_token"),
