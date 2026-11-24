@@ -1198,7 +1198,7 @@ async fn dose_take_uuid_foreign_historical_collision_is_hidden_without_new_effec
 }
 
 #[tokio::test]
-async fn dose_take_conformance_backdated_interval_preserves_preceding_neighbour_policy() {
+async fn dose_take_backdated_interval_rejects_close_later_neighbour_and_accepts_boundary() {
     let fixture = Fixture::new().await;
     fixture
         .update_assignment(|row| {
@@ -1215,9 +1215,19 @@ async fn dose_take_conformance_backdated_interval_preserves_preceding_neighbour_
             Ok(Outcome::Created(_))
         ));
     }
+    let before = fixture.effect().await;
     let mut input = take_input(&fixture);
     input.client_uuid = None;
     input.taken_at = "2026-10-05T16:00:00Z".into();
+    assert!(matches!(
+        take(&fixture, Command::Take(input.validate().unwrap())).await,
+        Err(OperationError::Validation { .. })
+    ));
+    assert_eq!(fixture.effect().await, before);
+
+    let mut input = take_input(&fixture);
+    input.client_uuid = None;
+    input.taken_at = "2026-10-05T14:00:00Z".into();
     assert!(matches!(
         take(&fixture, Command::Take(input.validate().unwrap())).await,
         Ok(Outcome::Created(_))

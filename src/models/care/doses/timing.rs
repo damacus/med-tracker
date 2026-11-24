@@ -189,16 +189,13 @@ fn timing_block(
         if let Some(hours) = source.min_hours_between_doses
             && hours > Decimal::ZERO
         {
-            let recent = takes
-                .iter()
-                .filter_map(|take| take.taken_at)
-                .filter(|time| *time <= taken_at)
-                .max();
-            if let Some(recent) = recent {
-                let elapsed = Decimal::from((taken_at - recent).num_seconds());
-                if elapsed < hours * Decimal::from(3600) {
-                    return Ok(Some("cooldown"));
-                }
+            let minimum_seconds = hours * Decimal::from(3600);
+            let inside_cooldown = takes.iter().filter_map(|take| take.taken_at).any(|time| {
+                let elapsed = Decimal::from((taken_at - time).num_seconds().unsigned_abs());
+                elapsed < minimum_seconds
+            });
+            if inside_cooldown {
+                return Ok(Some("cooldown"));
             }
         }
     }
@@ -505,6 +502,32 @@ mod tests {
                 "At 04:00 Day 2 in {zone:?}, 6h cooldown expired and Day 2 count is 0, so dose is allowed"
             );
         }
+    }
+
+    #[test]
+    fn cooldown_checks_neighbours_in_both_directions_and_accepts_boundaries() {
+        let zone = chrono_tz::UTC;
+        let mut source = test_source();
+        source.min_hours_between_doses = Some(Decimal::from(4));
+        let taken_at = NaiveDate::from_ymd_opt(2026, 10, 5)
+            .unwrap()
+            .and_hms_opt(16, 0, 0)
+            .unwrap();
+
+        let later = vec![test_take(taken_at + Duration::hours(2))];
+        assert_eq!(
+            timing_block(&[source.clone()], &later, taken_at, zone).unwrap(),
+            Some("cooldown")
+        );
+
+        let boundaries = vec![
+            test_take(taken_at - Duration::hours(4)),
+            test_take(taken_at + Duration::hours(4)),
+        ];
+        assert_eq!(
+            timing_block(&[source], &boundaries, taken_at, zone).unwrap(),
+            None
+        );
     }
 
     #[test]
@@ -1034,17 +1057,16 @@ mod tests {
                 .filter(|&t| t >= cycle_start_utc && t < cycle_end_utc)
                 .count();
 
-            let latest_prior_take = takes
+            let nearest_take = takes
                 .iter()
                 .filter_map(|t| t.taken_at)
-                .filter(|&t| t <= taken_at)
-                .max();
+                .map(|time| (taken_at - time).num_seconds().unsigned_abs())
+                .min();
 
             let expected = if takes_in_cycle >= max_doses as usize {
                 Some("max_reached")
-            } else if let Some(prior) = latest_prior_take {
-                let diff_secs = (taken_at - prior).num_seconds();
-                if (0..min_hours * 3600).contains(&diff_secs) {
+            } else if let Some(elapsed) = nearest_take {
+                if elapsed < (min_hours * 3600) as u64 {
                     Some("cooldown")
                 } else {
                     None
