@@ -1,6 +1,5 @@
 use super::*;
 use crate::models::care::guardian_declarations::{self, InitialGuardianAttestation};
-use loco_rs::model::TenantQueryExt;
 use sea_orm::ConnectionTrait;
 
 #[derive(serde::Deserialize)]
@@ -122,49 +121,6 @@ pub async fn create(
         provenance,
     )
     .await?;
-    let now = Utc::now().naive_utc();
-    let home = location::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(location::Column::Name.eq("Home"))
-        .one(tenant.transaction())
-        .await?;
-    let home = match home {
-        Some(home) => home,
-        None => {
-            let home = location::ActiveModel {
-                household_id: Set(tenant.scope().household_id),
-                portable_id: Set(uuid::Uuid::new_v4().to_string()),
-                name: Set("Home".to_owned()),
-                description: Set(Some("Primary home location".to_owned())),
-                created_at: Set(now),
-                updated_at: Set(now),
-                ..Default::default()
-            }
-            .insert(tenant.transaction())
-            .await?;
-            persistence::record_version(tenant,"Location",home.id,"create",None,json!({"id":home.id,"household_id":home.household_id,"portable_id":home.portable_id,"name":home.name,"description":home.description,"created_at":home.created_at,"updated_at":home.updated_at}),provenance).await?;
-            persistence::change(
-                tenant,
-                "Location",
-                home.id,
-                &home.portable_id,
-                "create",
-                provenance,
-            )
-            .await?;
-            home
-        }
-    };
-    let link = location_membership::ActiveModel {
-        household_id: Set(tenant.scope().household_id),
-        location_id: Set(home.id),
-        person_id: Set(saved.id),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    }
-    .insert(tenant.transaction())
-    .await?;
     persistence::record_version(
         tenant,
         "Person",
@@ -175,7 +131,6 @@ pub async fn create(
         provenance,
     )
     .await?;
-    persistence::record_version(tenant,"LocationMembership",link.id,"create",None,json!({"id":link.id,"household_id":link.household_id,"location_id":link.location_id,"person_id":link.person_id,"created_at":link.created_at,"updated_at":link.updated_at}),provenance).await?;
     persistence::change(
         tenant,
         "Person",

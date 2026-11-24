@@ -751,11 +751,32 @@ async fn people_saved_create_and_update_replay_stored_digests() {
 
 #[tokio::test]
 async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
+    use med_tracker::models::entities::{location, location_membership, membership};
+    use sea_orm::{ActiveModelTrait, PaginatorTrait, Set};
+
     let app = Application::new().await;
+    let household = app.fixture.foreign_household().await;
     let fixture_account_id = app.fixture.account.id;
-    let fixture_household_id = app.fixture.household.id;
+    let fixture_household_id = household.household.id;
     let fixture_person_id = app.fixture.account.person_id;
-    let fixture_membership_id = app.fixture.membership.id;
+    let now = chrono::Utc::now().naive_utc();
+    let fixture_membership_id = membership::ActiveModel {
+        household_id: Set(fixture_household_id),
+        person_id: Set(fixture_person_id),
+        role: Set("administrator".into()),
+        status: Set("active".into()),
+        joined_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&household.admin)
+    .await
+    .unwrap()
+    .id;
+    let labels =
+        location::Entity::find().filter(location::Column::HouseholdId.eq(fixture_household_id));
+    assert_eq!(labels.clone().count(&household.admin).await.unwrap(), 0);
     let token = app.token().await;
     let endpoint = format!(
         "{}/api/v1/households/{fixture_household_id}/people",
@@ -839,29 +860,6 @@ async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
                             .to_owned(),
                     ),
                     "grants",
-                )
-                .expr_as(
-                    QueryExpr::expr(
-                        Query::select()
-                            .expr(QueryExpr::expr(QueryFunc::count(
-                                sea_orm::sea_query::Expr::col(sea_orm::sea_query::Asterisk),
-                            )))
-                            .from_as("location_memberships", "lm")
-                            .join_as(
-                                sea_orm::sea_query::JoinType::InnerJoin,
-                                "locations",
-                                "l",
-                                QueryExpr::col(("l", "id"))
-                                    .eq(QueryExpr::col(("lm", "location_id"))),
-                            )
-                            .and_where(
-                                QueryExpr::col(("lm", "person_id"))
-                                    .eq(QueryExpr::val(id))
-                                    .and(QueryExpr::col(("l", "name")).eq(QueryExpr::val("Home"))),
-                            )
-                            .to_owned(),
-                    ),
-                    "homes",
                 )
                 .expr_as(
                     QueryExpr::expr(
@@ -955,7 +953,6 @@ async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
         "people",
         "carers",
         "grants",
-        "homes",
         "audits",
         "changes",
         "declarations",
@@ -964,11 +961,23 @@ async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
     .iter()
     .map(|name| row.try_get("", name).unwrap())
     .collect();
-    app.close().await;
     assert_eq!(status, 201);
     assert_eq!(body["data"]["has_capacity"], false);
     assert_eq!(read_status, 200);
-    assert_eq!(counts, vec![1, 1, 0, 1, 1, 1, 1, 1]);
+    assert_eq!(body["data"]["location_ids"], json!([]));
+    assert_eq!(counts, vec![1, 1, 0, 1, 1, 1, 1]);
+    assert_eq!(labels.count(&household.admin).await.unwrap(), 0);
+    assert_eq!(
+        location_membership::Entity::find()
+            .filter(location_membership::Column::HouseholdId.eq(fixture_household_id))
+            .filter(location_membership::Column::PersonId.eq(id))
+            .count(&household.admin)
+            .await
+            .unwrap(),
+        0
+    );
+    household.close().await;
+    app.close().await;
 }
 
 #[tokio::test]
@@ -1449,7 +1458,8 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(body["data"]["has_capacity"], true);
     assert_eq!(body["data"]["date_of_birth"], "1985-02-03");
     assert_eq!(body["data"]["email"], expected_email);
-    assert_eq!(body["data"]["location_ids"], json!([fixture_location_id]));
+    assert_eq!(body["data"]["location_ids"], json!([]));
+    assert_eq!(body["data"]["location_portable_ids"], json!([]));
     assert_eq!(
         body["data"]["notification_preference_id"],
         _notification_preferences_87997.id

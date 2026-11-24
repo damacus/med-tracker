@@ -2,13 +2,8 @@ mod collection;
 mod idempotency;
 pub use collection::{Pagination, collection};
 mod lifecycle;
-mod memberships;
 pub use idempotency::{KeyedResponse, SavedResponse, lookup, store};
 pub use lifecycle::{can_manage, list, read, retire, update};
-pub use memberships::{
-    LocationMembershipInput, create_membership, destroy_membership,
-    representation as membership_representation,
-};
 
 use crate::models::{
     access::{self, TenantTransaction},

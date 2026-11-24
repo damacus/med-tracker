@@ -24,8 +24,8 @@ import com.squareup.moshi.JsonClass
  *
  * @param actions 
  * @param versionRequired 
- * @param personMemberships 
- * @param membershipsOnlineOnly 
+ * @param personMemberships Always empty. Person-to-location membership has been retired.
+ * @param membershipsOnlineOnly Always false. Person-to-location membership has been retired.
  */
 
 
@@ -37,10 +37,14 @@ data class CapabilityLocationManagement (
     @Json(name = "version_required")
     val versionRequired: kotlin.Boolean,
 
+    /* Always empty. Person-to-location membership has been retired. */
     @Json(name = "person_memberships")
+    @Deprecated(message = "This property is deprecated.")
     val personMemberships: kotlin.collections.List<CapabilityLocationManagement.PersonMemberships>,
 
+    /* Always false. Person-to-location membership has been retired. */
     @Json(name = "memberships_online_only")
+    @Deprecated(message = "This property is deprecated.")
     val membershipsOnlineOnly: kotlin.Boolean
 
 ) {
@@ -58,7 +62,7 @@ data class CapabilityLocationManagement (
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**
-     * 
+     * Always empty. Person-to-location membership has been retired.
      *
      * Values: create,destroy,unknown_default_open_api
      */

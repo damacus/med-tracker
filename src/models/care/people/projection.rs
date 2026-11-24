@@ -159,25 +159,6 @@ pub(crate) async fn values_in(
         return Ok(vec![]);
     }
     let ids: Vec<i64> = records.iter().map(|row| row.id).collect();
-    let links = location_membership::Entity::find()
-        .in_tenant(household_id)
-        .filter(location_membership::Column::PersonId.is_in(ids.clone()))
-        .order_by_asc(location_membership::Column::Id)
-        .all(tenant.transaction())
-        .await?;
-    let location_ids: Vec<i64> = links.iter().map(|row| row.location_id).collect();
-    let locations: HashMap<i64, String> = if location_ids.is_empty() {
-        HashMap::new()
-    } else {
-        location::Entity::find()
-            .in_tenant(household_id)
-            .filter(location::Column::Id.is_in(location_ids))
-            .all(tenant.transaction())
-            .await?
-            .into_iter()
-            .map(|row| (row.id, row.portable_id))
-            .collect()
-    };
     let preferences: HashMap<i64, notification_preference::Model> =
         notification_preference::Entity::find()
             .in_tenant(household_id)
@@ -191,15 +172,6 @@ pub(crate) async fn values_in(
     Ok(records
         .iter()
         .map(|record| {
-            let location_ids: Vec<i64> = links
-                .iter()
-                .filter(|row| row.person_id == record.id)
-                .map(|row| row.location_id)
-                .collect();
-            let location_portable_ids = location_ids
-                .iter()
-                .filter_map(|id| locations.get(id).cloned())
-                .collect();
             let preference = preferences.get(&record.id);
             Person {
                 id: record.id,
@@ -211,8 +183,8 @@ pub(crate) async fn values_in(
                 person_type: PersonKind::from_code(record.person_type),
                 has_capacity: record.has_capacity,
                 age: record.date_of_birth.map(|date| age(date, today)),
-                location_ids,
-                location_portable_ids,
+                location_ids: Vec::new(),
+                location_portable_ids: Vec::new(),
                 notification_preference_id: preference.map(|row| row.id),
                 notification_preference_portable_id: preference.map(|row| row.portable_id.clone()),
             }
