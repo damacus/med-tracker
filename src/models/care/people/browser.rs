@@ -3,27 +3,24 @@ use crate::models::{
     entities::{account, active_storage_attachment, medication, person_medication, schedule},
     profile,
 };
+use crate::views::people::Person;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{QuerySelect, QueryTrait};
 use std::collections::HashSet;
 
-pub async fn enrich(
+pub(crate) async fn index_records(
     tenant: &TenantTransaction,
-    collection: &mut Value,
+    people: &[Person],
     labels: &Value,
-) -> Result<(), OperationError> {
+    warnings: &HashMap<i64, Value>,
+) -> Result<Vec<Value>, OperationError> {
     access::recheck(tenant).await?;
-    let ids: Vec<i64> = collection["data"]
-        .as_array()
-        .ok_or(OperationError::Unavailable)?
-        .iter()
-        .filter_map(|row| row["id"].as_i64())
-        .collect();
+    let ids: Vec<i64> = people.iter().map(|person| person.id).collect();
     if ids.is_empty() {
-        return Ok(());
+        return Ok(Vec::new());
     }
     let db = tenant.transaction();
-    let people = access::person_queries::household_people(tenant.scope())
+    let visible_people = access::person_queries::household_people(tenant.scope())
         .filter(person::Column::Id.is_in(ids.clone()))
         .all(db)
         .await?;
@@ -57,11 +54,14 @@ pub async fn enrich(
         .map(|row| row.record_id)
         .collect();
     uploaded.extend(profile::avatar::account_avatar_people(tenant, &ids).await?);
-    let gravatars = profile::gravatar::for_visible_people(tenant, &people, &uploaded).await?;
+    let gravatars =
+        profile::gravatar::for_visible_people(tenant, &visible_people, &uploaded).await?;
     let counts = active_source_counts(tenant, &ids).await?;
-    if let Some(rows) = collection["data"].as_array_mut() {
-        for row in rows {
-            let id = row["id"].as_i64().ok_or(OperationError::Unavailable)?;
+    Ok(people
+        .iter()
+        .map(|person| {
+            let id = person.id;
+            let mut row = json!(person);
             let count = counts.get(&id).copied().unwrap_or_default();
             row["active_medication_count"] = json!(count);
             row["active_medication_label"] = if count == 0 {
@@ -79,19 +79,21 @@ pub async fn enrich(
             row["avatar_attached"] = json!(uploaded.contains(&id));
             row["gravatar_url"] = json!(gravatars.get(&id));
             row["avatar_initials"] = json!(
-                row["name"]
-                    .as_str()
-                    .unwrap_or_default()
+                person
+                    .name
                     .split_whitespace()
                     .filter_map(|word| word.chars().next())
                     .take(2)
                     .flat_map(char::to_uppercase)
                     .collect::<String>()
             );
-            row["date_of_birth_display"] = json!(birth_date(row["date_of_birth"].as_str(), labels));
-        }
-    }
-    Ok(())
+            row["date_of_birth_display"] =
+                json!(birth_date(person.date_of_birth.as_deref(), labels));
+            row["care_warning"] = warnings.get(&id).cloned().unwrap_or(Value::Null);
+            row["age_present"] = json!(person.age.is_some());
+            row
+        })
+        .collect())
 }
 
 #[derive(sea_orm::FromQueryResult)]

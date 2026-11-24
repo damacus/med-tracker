@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::DataResponse;
 
 pub(in crate::controllers::api::care) async fn index(
     State(ctx): State<AppContext>,
@@ -13,9 +14,9 @@ pub(in crate::controllers::api::care) async fn index(
     };
     let result = administration::audit_logs::index(&tenant)
         .await
-        .map(|rows| (StatusCode::OK, json!({"data": rows}), None))
+        .map(|data| (StatusCode::OK, DataResponse { data }, None))
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::administration("GET", "audit_logs", "index"),

@@ -476,13 +476,8 @@ async fn assert_person_access_controls(
     let visible = people::list(transaction, people::Pagination::default(), chrono_tz::UTC)
         .await
         .unwrap();
-    assert_eq!(visible["meta"]["total_count"], 2);
-    let ids: Vec<_> = visible["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|person| person["id"].as_i64().unwrap())
-        .collect();
+    assert_eq!(visible.meta.total_count, 2);
+    let ids: Vec<_> = visible.data.iter().map(|person| person.id).collect();
     let mut ids = ids;
     ids.sort_unstable();
     let mut expected = vec![fixture.account.person_id, fixture.accountless.id];

@@ -1,6 +1,8 @@
-use super::administration::{complete, key, request_id, store};
+use super::administration::{complete_typed, key, request_id};
+use super::response::MutationBody;
 use super::*;
 use crate::models::care::{assignments, locations::SavedResponse};
+use crate::views::treatments::AssignmentResponse;
 use headers::HeaderMapExt;
 
 pub(super) async fn index(
@@ -25,7 +27,7 @@ pub(super) async fn index(
             .map_err(response::operation),
         Err(_) => Err(response::Failure::validation("Invalid pagination")),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::assignment("GET", "index"),
@@ -58,12 +60,12 @@ pub(super) async fn show(
                 } else {
                     StatusCode::OK
                 },
-                if unchanged { Value::Null } else { body },
+                if unchanged { None } else { Some(body) },
                 Some(etag),
             )
         })
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::assignment("GET", "show"),
@@ -141,7 +143,7 @@ async fn change(
     if restored.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::assignment(method, action),
@@ -158,7 +160,15 @@ async fn process(
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
     method: &str,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> std::result::Result<
+    (
+        StatusCode,
+        MutationBody<AssignmentResponse>,
+        Option<String>,
+        bool,
+    ),
+    response::Failure,
+> {
     let AxumJson(body) =
         body.map_err(|_| response::Failure::bad_request("Invalid JSON request body"))?;
     if assignments::validate_body(&body, id.is_none()) == Err(StatusCode::BAD_REQUEST) {
@@ -177,9 +187,10 @@ async fn process(
     };
     let key = key(headers);
     if let Some(key) = key
-        && let Some(reply) = locations::keyed_replay(tenant, key, method, &path, &body).await?
+        && let Some((status, body, etag, replay)) =
+            locations::keyed_replay(tenant, key, method, &path, &body).await?
     {
-        return Ok(reply);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let savepoint = tenant
         .transaction()
@@ -212,7 +223,7 @@ async fn process(
                 } else {
                     StatusCode::CREATED
                 },
-                body,
+                MutationBody::Resource(body),
                 Some(etag),
             )
         }
@@ -223,7 +234,10 @@ async fn process(
                 .map_err(|_| response::unavailable())?;
             (
                 StatusCode::UNPROCESSABLE_ENTITY,
-                json!({"error":{"code":"validation_failed","message":"Validation failed","errors":details["errors"],"request_id":tenant.scope().request_id}}),
+                MutationBody::Error(
+                    response::Failure::fields(details["errors"].clone())
+                        .into_body(&tenant.scope().request_id),
+                ),
                 None,
             )
         }
@@ -236,20 +250,21 @@ async fn process(
         }
     };
     if let Some(key) = key {
-        return store(
+        crate::models::care::locations::store(
             tenant,
-            principal,
+            principal.provenance(),
             SavedResponse {
                 key,
                 method,
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: etag.as_deref(),
             },
         )
-        .await;
+        .await
+        .map_err(response::operation)?;
     }
     Ok((status, reply, etag, false))
 }

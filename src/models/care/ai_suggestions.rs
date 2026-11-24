@@ -1,7 +1,11 @@
+use crate::models::care::treatment_command::DoseCycle;
 use crate::models::{
     access::{self, HouseholdScope, PersonAccess, TenantTransaction},
     entities::{household, version},
     errors::OperationError,
+};
+use crate::views::ai_suggestions::{
+    DoseSuggestion, Evidence, MedicationFields, Source, Suggestion,
 };
 use chrono::Utc;
 use regex::Regex;
@@ -10,7 +14,7 @@ use sea_orm::{
     ActiveModelTrait, DatabaseConnection, EntityTrait, QuerySelect, Set, prelude::Decimal,
 };
 use serde::Deserialize;
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use url::Url;
@@ -235,8 +239,11 @@ async fn bounded_json(mut response: reqwest::Response) -> Option<Value> {
     serde_json::from_slice(&bytes).ok()
 }
 
-fn empty_draft(error: &str) -> Value {
-    json!({"medication": {}, "doses": [], "sources": [], "errors": [error]})
+fn empty_draft(error: &str) -> Suggestion {
+    Suggestion {
+        errors: vec![error.to_owned()],
+        ..Suggestion::default()
+    }
 }
 
 pub fn parse_identity(body: &[u8]) -> Option<Value> {
@@ -475,7 +482,7 @@ fn positive_integer(value: &Value) -> Option<u64> {
     raw.parse::<u64>().ok().filter(|value| *value > 0)
 }
 
-fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Value {
+fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Suggestion {
     let Ok(raw) = serde_json::from_str::<Value>(content) else {
         return empty_draft("invalid_model_response");
     };
@@ -494,7 +501,10 @@ fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Value {
         .filter_map(|source| {
             let url = source.get("url")?.as_str()?;
             let fetched = fetched_by_url.get(url)?;
-            Some(json!({"url": url, "title": fetched.title}))
+            Some(Source {
+                url: url.to_owned(),
+                title: fetched.title.clone(),
+            })
         })
         .collect::<Vec<_>>();
     if sources.is_empty() {
@@ -504,25 +514,25 @@ fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Value {
         .get("medication")
         .and_then(Value::as_object)
         .map(|medication| {
-            medication
-                .iter()
-                .filter(|(key, value)| {
-                    let Some(value) = value.as_str() else {
-                        return false;
-                    };
-                    if key.as_str() == "name" {
-                        return true;
-                    }
-                    matches!(key.as_str(), "category" | "description" | "warnings")
-                        && fetched.iter().any(|source| {
+            let field = |name| medication.get(name).and_then(Value::as_str);
+            let supported = |name| {
+                field(name)
+                    .filter(|value| {
+                        fetched.iter().any(|source| {
                             source
                                 .text
                                 .to_ascii_lowercase()
                                 .contains(&value.to_ascii_lowercase())
                         })
-                })
-                .map(|(key, value)| (key.clone(), value.clone()))
-                .collect::<Map<String, Value>>()
+                    })
+                    .map(str::to_owned)
+            };
+            MedicationFields {
+                name: field("name").map(str::to_owned),
+                category: supported("category"),
+                description: supported("description"),
+                warnings: supported("warnings"),
+            }
         })
         .unwrap_or_default();
     let doses = raw
@@ -544,10 +554,7 @@ fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Value {
             }
             let max_doses = positive_integer(dose.get("default_max_daily_doses")?)?;
             let min_hours = decimal_string(dose.get("default_min_hours_between_doses")?, false)?;
-            let cycle = dose.get("default_dose_cycle")?.as_str()?;
-            if !["daily", "weekly", "monthly"].contains(&cycle) {
-                return None;
-            }
+            let cycle = DoseCycle::parse(dose.get("default_dose_cycle")?.as_str()?)?;
             let evidence = dose.get("evidence")?.as_object()?;
             let url = evidence.get("url")?.as_str()?;
             let source = fetched_by_url.get(url)?;
@@ -573,10 +580,9 @@ fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Value {
             ))
             .ok()?;
             let period = match cycle {
-                "daily" => Regex::new(r"(?i)\b(daily|days?|24\s*hours?)\b").ok()?,
-                "weekly" => Regex::new(r"(?i)\b(weekly|weeks?|7\s*days?)\b").ok()?,
-                "monthly" => Regex::new(r"(?i)\b(monthly|months?|30\s*days?)\b").ok()?,
-                _ => return None,
+                DoseCycle::Daily => Regex::new(r"(?i)\b(daily|days?|24\s*hours?)\b").ok()?,
+                DoseCycle::Weekly => Regex::new(r"(?i)\b(weekly|weeks?|7\s*days?)\b").ok()?,
+                DoseCycle::Monthly => Regex::new(r"(?i)\b(monthly|months?|30\s*days?)\b").ok()?,
             };
             if !amount_unit.is_match(text)
                 || !maximum.is_match(text)
@@ -585,15 +591,22 @@ fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Value {
             {
                 return None;
             }
-            let mut result = json!({
-                "amount": amount, "unit": unit, "default_max_daily_doses": max_doses,
-                "default_min_hours_between_doses": min_hours, "default_dose_cycle": cycle,
-                "evidence": {"url": url, "title": source.title, "text": text}
-            });
-            if let Some(description) = dose.get("description").and_then(Value::as_str) {
-                result["description"] = json!(description);
-            }
-            Some(result)
+            Some(DoseSuggestion {
+                amount,
+                unit: unit.to_owned(),
+                default_max_daily_doses: max_doses,
+                default_min_hours_between_doses: min_hours,
+                default_dose_cycle: cycle,
+                evidence: Evidence {
+                    url: url.to_owned(),
+                    title: source.title.clone(),
+                    text: text.to_owned(),
+                },
+                description: dose
+                    .get("description")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned),
+            })
         })
         .collect::<Vec<_>>();
     let errors = raw
@@ -605,7 +618,12 @@ fn validated_draft(content: &str, fetched: &[FetchedSource]) -> Value {
         .filter(|error| !error.is_empty())
         .map(str::to_owned)
         .collect::<Vec<_>>();
-    json!({"medication": medication, "doses": doses, "sources": sources, "errors": errors})
+    Suggestion {
+        medication,
+        doses,
+        sources,
+        errors,
+    }
 }
 
 struct Outbound<'a> {
@@ -637,7 +655,7 @@ pub(crate) async fn generate(
     scope: &HouseholdScope,
     settings: Option<&Value>,
     identity: &Value,
-) -> Result<Value, OperationError> {
+) -> Result<Suggestion, OperationError> {
     let outbound = Outbound {
         db,
         scope,
@@ -693,23 +711,14 @@ pub(crate) async fn generate(
 pub(crate) async fn record_suggestion(
     tenant: &TenantTransaction,
     identity: &Value,
-    draft: &Value,
+    draft: &Suggestion,
 ) -> Result<(), OperationError> {
     let identity_hash = hex::encode(Sha256::digest(
         identity.to_string().trim().to_ascii_lowercase().as_bytes(),
     ));
-    let source_count = draft
-        .get("sources")
-        .and_then(Value::as_array)
-        .map_or(0, Vec::len);
-    let dose_count = draft
-        .get("doses")
-        .and_then(Value::as_array)
-        .map_or(0, Vec::len);
-    let error_count = draft
-        .get("errors")
-        .and_then(Value::as_array)
-        .map_or(0, Vec::len);
+    let source_count = draft.sources.len();
+    let dose_count = draft.doses.len();
+    let error_count = draft.errors.len();
     let object = json!({
         "identity_hash": identity_hash,
         "source_count": source_count,
@@ -763,6 +772,20 @@ pub(crate) async fn authorize(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unavailable_suggestion_keeps_empty_fields_and_machine_code() -> Result<(), serde_json::Error>
+    {
+        let draft = empty_draft("synthetic_unavailable");
+        assert!(draft.doses.is_empty());
+        assert_eq!(
+            serde_json::to_value(draft)?,
+            json!({
+                "medication": {}, "doses": [], "sources": [], "errors": ["synthetic_unavailable"]
+            })
+        );
+        Ok(())
+    }
 
     fn configured(settings: Value) -> Result<ProviderConfig, &'static str> {
         configured_provider(Some(&json!({"ai_medication_help": settings})))

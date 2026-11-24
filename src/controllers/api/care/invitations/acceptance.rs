@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::identity::api_session;
+use crate::views::invitations::InvitationAcceptance;
 
 pub(in crate::controllers::api::care) async fn accept(
     State(ctx): State<AppContext>,
@@ -94,12 +95,29 @@ pub(in crate::controllers::api::care) async fn accept(
         .await
     };
     let response = match result {
-        Ok(body) => (StatusCode::OK, AxumJson(body)).into_response(),
-        Err(OperationError::Validation { .. }) => {
-            let mut body = json!({"error":{"code":"invitation_unavailable","message":"Invitation is unavailable","request_id":request_id}});
-            crate::telemetry::ids::enrich_error(&mut body);
-            (StatusCode::UNPROCESSABLE_ENTITY, AxumJson(body)).into_response()
-        }
+        Ok(accepted) => (
+            StatusCode::OK,
+            AxumJson(DataResponse {
+                data: InvitationAcceptance {
+                    household_id: accepted.household_id.to_string(),
+                    membership_id: accepted.membership_id.to_string(),
+                    person_id: accepted.person_id.to_string(),
+                    role: accepted.role,
+                },
+            }),
+        )
+            .into_response(),
+        Err(OperationError::Validation { .. }) => response::success(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            response::ErrorEnvelope::new(
+                "invitation_unavailable",
+                "Invitation is unavailable",
+                &request_id,
+                None,
+            ),
+            &request_id,
+            None,
+        ),
         Err(error) => response::error(response::operation(error), &request_id),
     };
     let mut response = no_store(response);

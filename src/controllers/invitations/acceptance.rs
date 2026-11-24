@@ -250,9 +250,7 @@ pub(super) async fn accept(
             );
         }
     };
-    let Some(home) = homes.iter().find(|home| {
-        Some(home.id.to_string().as_str()) == accepted["data"]["household_id"].as_str()
-    }) else {
+    let Some(home) = homes.iter().find(|home| home.id == accepted.household_id) else {
         return selection_recovery(
             &view,
             &token,

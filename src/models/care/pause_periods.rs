@@ -221,7 +221,8 @@ impl PauseCreate {
 
 pub struct PauseWritten {
     pub row: pause_period::Model,
-    pub body: Value,
+    pub(crate) body:
+        crate::views::treatments::TreatmentResponse<crate::views::treatments::PauseSummary>,
     pub etag: String,
 }
 

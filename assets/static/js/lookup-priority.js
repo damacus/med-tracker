@@ -1,8 +1,9 @@
-(() => {
-  const list = document.querySelector('[data-lookup-priority]');
+export function mountLookupPriority(root) {
+  const list = root.querySelector('[data-lookup-priority]');
   if (!list) return;
-  const input = document.querySelector('#medicine-lookup-source-priority');
-  const status = document.querySelector('[data-lookup-status]');
+  const controller = new AbortController();
+  const input = root.querySelector('#medicine-lookup-source-priority');
+  const status = root.querySelector('[data-lookup-status]');
   const rows = () => Array.from(list.children);
   const update = (moved) => {
     const items = rows();
@@ -33,7 +34,7 @@
     move(row, button.dataset.move === 'up' ? -1 : 1);
     if (button.disabled) row.querySelector('.lookup-drag-handle').focus();
     else button.focus();
-  });
+  }, { signal: controller.signal });
   list.querySelectorAll('.lookup-drag-handle').forEach(handle => {
     handle.disabled = false;
     handle.addEventListener('keydown', event => {
@@ -41,15 +42,16 @@
       event.preventDefault();
       move(handle.closest('[data-source]'), event.key === 'ArrowUp' ? -1 : 1);
       handle.focus();
-    });
+    }, { signal: controller.signal });
   });
   update();
-  if (window.Sortable) new window.Sortable(list, {
+  const sortable = window.Sortable ? new window.Sortable(list, {
     handle: '.lookup-drag-handle',
     draggable: '[data-source]',
     animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180,
     ghostClass: 'lookup-sort-ghost',
     chosenClass: 'lookup-sort-chosen',
     onEnd: event => update(event.item),
-  });
-})();
+  }) : null;
+  return () => { controller.abort(); sortable?.destroy(); };
+}

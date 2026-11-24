@@ -11,6 +11,7 @@ use crate::models::{
     errors::OperationError,
     identity::credentials::CredentialProvenance,
 };
+use crate::views::locations::{Location, LocationResponse};
 use chrono::Utc;
 use loco_rs::model::TenantActiveModelExt;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
@@ -163,12 +164,25 @@ pub async fn create(
     Ok(record)
 }
 
-pub fn representation(record: &location::Model) -> (Value, String) {
-    let mut body = json!({"data":{"id":record.id,"portable_id":record.portable_id,"name":record.name,"description":record.description,"updated_at":record.updated_at.and_utc().to_rfc3339()}});
-    body.sort_all_objects();
+fn project(record: &location::Model) -> Location {
+    Location {
+        id: record.id,
+        portable_id: record.portable_id.clone(),
+        name: record.name.clone(),
+        description: record.description.clone(),
+        updated_at: record.updated_at.and_utc().to_rfc3339(),
+    }
+}
+
+pub fn representation(record: &location::Model) -> (LocationResponse, String) {
+    let body = LocationResponse {
+        data: project(record),
+    };
+    let mut canonical = json!(&body);
+    canonical.sort_all_objects();
     let etag = format!(
         "\"{}\"",
-        hex::encode(Sha256::digest(body.to_string().as_bytes()))
+        hex::encode(Sha256::digest(canonical.to_string().as_bytes()))
     );
     (body, etag)
 }

@@ -4,6 +4,7 @@ use crate::models::{
     care::{report_pdf, reports as report_data},
     entities::person,
 };
+use crate::views::DataResponse;
 use axum::{
     extract::{Query, rejection::QueryRejection},
     http::{HeaderValue, header},
@@ -252,11 +253,11 @@ async fn execute(
     };
     if !pdf {
         return no_store(
-            finish(
+            finish_typed(
                 tenant,
                 principal.provenance(),
                 audit_request,
-                Ok((StatusCode::OK, json!({"data":data}), None)),
+                Ok((StatusCode::OK, DataResponse { data }, None)),
                 &request_id,
             )
             .await,

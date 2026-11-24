@@ -1,7 +1,12 @@
+use super::response::MutationBody;
 use super::*;
 mod lifecycle;
 use crate::models::care::locations::{self, KeyedResponse, SavedResponse};
+use crate::views::locations::LocationResponse;
 pub(super) use lifecycle::{destroy, index, show, update};
+
+type LocationMutation<T> =
+    std::result::Result<(StatusCode, MutationBody<T>, Option<String>, bool), response::Failure>;
 
 pub(super) async fn keyed_replay(
     tenant: &TenantTransaction,
@@ -66,7 +71,7 @@ pub(super) async fn create(
     .await;
     let replay = result.as_ref().is_ok_and(|(_, _, _, replay)| *replay);
     let reply = result.map(|(status, body, etag, _)| (status, body, etag));
-    let mut response = finish(
+    let mut response = finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::location_create(),
@@ -89,7 +94,7 @@ async fn process(
     household_id: i64,
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> LocationMutation<LocationResponse> {
     locations::authorize(tenant)
         .await
         .map_err(response::operation)?;
@@ -101,9 +106,10 @@ async fn process(
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.trim().is_empty());
     if let Some(key) = key
-        && let Some(reply) = keyed_replay(tenant, key, "POST", &path, &body).await?
+        && let Some((status, body, etag, replay)) =
+            keyed_replay(tenant, key, "POST", &path, &body).await?
     {
-        return Ok(reply);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let attributes = body
         .as_object()
@@ -125,7 +131,11 @@ async fn process(
                 .await
                 .map_err(|_| response::unavailable())?;
             let (body, etag) = locations::representation(&record);
-            (StatusCode::CREATED, body, Some(etag))
+            (
+                StatusCode::CREATED,
+                MutationBody::Resource(body),
+                Some(etag),
+            )
         }
         Err(OperationError::Validation { details }) => {
             savepoint
@@ -134,7 +144,10 @@ async fn process(
                 .map_err(|_| response::unavailable())?;
             (
                 StatusCode::UNPROCESSABLE_ENTITY,
-                json!({"error":{"code":"validation_failed","message":"Validation failed","request_id":tenant.scope().request_id,"errors":details["errors"]}}),
+                MutationBody::Error(
+                    response::Failure::fields(details["errors"].clone())
+                        .into_body(&tenant.scope().request_id),
+                ),
                 None,
             )
         }
@@ -156,7 +169,7 @@ async fn process(
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: representation.clone(),
+                body: serde_json::to_value(&representation).map_err(|_| response::unavailable())?,
                 etag: etag.as_deref(),
             },
         )

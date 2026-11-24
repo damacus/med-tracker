@@ -1,5 +1,8 @@
 use super::*;
 use crate::models::entities::version;
+use crate::views::health_events::{
+    HealthEvent, HealthEventKind, HealthEventResponse, HealthEventSeverity,
+};
 use axum::http::StatusCode;
 use chrono::NaiveDate;
 use loco_rs::model::TenantQueryExt;
@@ -49,7 +52,7 @@ pub(crate) fn browser_etag(
         "id":link.id,"medication_id":link.medication_id,"medication_name":link.medication_name,
         "updated_at":link.updated_at
     })).collect::<Vec<_>>();
-    representation_etag(&json!({"event":snapshot(record),"links":links}))
+    representation_etag(json!({"event":snapshot(record),"links":links}))
 }
 
 fn database_error(_: sea_orm::DbErr) -> OperationError {
@@ -58,8 +61,7 @@ fn database_error(_: sea_orm::DbErr) -> OperationError {
 fn valid_identifier(value: &str) -> bool {
     doses::valid_identifier(value)
 }
-fn representation_etag(value: &Value) -> String {
-    let mut value = value.clone();
+fn representation_etag(mut value: Value) -> String {
     value.sort_all_objects();
     format!(
         "\"{}\"",
@@ -70,7 +72,7 @@ pub(crate) async fn apply(
     tenant: &TenantTransaction,
     operation: &Operation,
     provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<SyncResult, OperationError> {
     let context = AuthContext {
         tenant,
         provenance,
@@ -84,7 +86,7 @@ pub(crate) async fn apply(
         &tenant.scope().request_id,
     )
     .await?;
-    Ok(row.result.value())
+    Ok(row.result)
 }
 
 pub(crate) async fn apply_typed(
@@ -455,18 +457,18 @@ impl HealthInput {
     }
 }
 
-fn event_kind(value: i32) -> &'static str {
+fn event_kind(value: i32) -> HealthEventKind {
     match value {
-        1 => "suspected_side_effect",
-        _ => "illness",
+        1 => HealthEventKind::SuspectedSideEffect,
+        _ => HealthEventKind::Illness,
     }
 }
 
-fn severity(value: Option<i32>) -> Option<&'static str> {
+fn severity(value: Option<i32>) -> Option<HealthEventSeverity> {
     value.map(|value| match value {
-        2 => "severe",
-        1 => "moderate",
-        _ => "mild",
+        2 => HealthEventSeverity::Severe,
+        1 => HealthEventSeverity::Moderate,
+        _ => HealthEventSeverity::Mild,
     })
 }
 
@@ -516,7 +518,7 @@ async fn audit_snapshot(
 pub(crate) async fn values(
     db: &DatabaseTransaction,
     records: &[health_event::Model],
-) -> Result<Vec<Value>, OperationError> {
+) -> Result<Vec<HealthEvent>, OperationError> {
     if records.is_empty() {
         return Ok(Vec::new());
     }
@@ -571,21 +573,23 @@ pub(crate) async fn values(
                 .into_iter()
                 .map(|(_, portable_id)| portable_id)
                 .collect::<Vec<_>>();
-            json!({
-                "id": record.id,
-                "portable_id": record.portable_id,
-                "person_id": record.person_id,
-                "person_portable_id": people.get(&record.person_id),
-                "event_kind": event_kind(record.event_kind),
-                "severity": severity(record.severity),
-                "title": record.title,
-                "notes": record.notes,
-                "started_on": record.started_on.format("%Y-%m-%d").to_string(),
-                "ended_on": record.ended_on.map(|date| date.format("%Y-%m-%d").to_string()),
-                "updated_at": record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-                "medication_ids": medication_ids,
-                "medication_portable_ids": medication_portable_ids
-            })
+            HealthEvent {
+                id: record.id,
+                portable_id: record.portable_id.clone(),
+                person_id: record.person_id,
+                person_portable_id: people.get(&record.person_id).cloned(),
+                event_kind: event_kind(record.event_kind),
+                severity: severity(record.severity),
+                title: record.title.clone(),
+                notes: record.notes.clone(),
+                started_on: record.started_on.format("%Y-%m-%d").to_string(),
+                ended_on: record
+                    .ended_on
+                    .map(|date| date.format("%Y-%m-%d").to_string()),
+                updated_at: record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                medication_ids,
+                medication_portable_ids,
+            }
         })
         .collect())
 }
@@ -593,15 +597,20 @@ pub(crate) async fn values(
 pub(crate) async fn representation(
     db: &DatabaseTransaction,
     record: &health_event::Model,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(HealthEventResponse, String), OperationError> {
     let value = values(db, std::slice::from_ref(record))
         .await?
         .into_iter()
         .next()
         .ok_or(OperationError::Unavailable)?;
-    let body = json!({"data": value});
-    let etag = representation_etag(&body);
+    let body = HealthEventResponse { data: value };
+    let etag = response_etag(&body)?;
     Ok((body, etag))
+}
+
+pub(super) fn response_etag(response: &HealthEventResponse) -> Result<String, OperationError> {
+    let value = serde_json::to_value(response).map_err(|_| OperationError::Unavailable)?;
+    Ok(representation_etag(value))
 }
 
 async fn visible_person(
@@ -844,7 +853,7 @@ async fn apply_sync_operation(
             record: record.clone(),
             result: SyncResult {
                 record_type: "HealthEvent",
-                record_id: Some(record.id),
+                record_id: Some(record.id.to_string()),
                 record_portable_id: Some(record.portable_id),
                 etag: Some(etag),
                 replayed: Some(false),
@@ -1008,7 +1017,7 @@ async fn apply_sync_operation(
                 record: updated.clone(),
                 result: SyncResult {
                     record_type: "HealthEvent",
-                    record_id: Some(updated.id),
+                    record_id: Some(updated.id.to_string()),
                     record_portable_id: Some(updated.portable_id),
                     etag: Some(etag),
                     replayed: Some(unchanged),
@@ -1060,7 +1069,7 @@ async fn apply_sync_operation(
                 record: record.clone(),
                 result: SyncResult {
                     record_type: "HealthEvent",
-                    record_id: Some(record.id),
+                    record_id: Some(record.id.to_string()),
                     record_portable_id: Some(record.portable_id),
                     etag: None,
                     replayed: None,
@@ -1220,4 +1229,22 @@ async fn authorize_sync_replay(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+
+    #[test]
+    fn health_event_categories_keep_the_documented_wire_values() -> Result<(), serde_json::Error> {
+        let illness: HealthEventKind = event_kind(0);
+        let side_effect: HealthEventKind = event_kind(1);
+        let moderate: Option<HealthEventSeverity> = severity(Some(1));
+        let unspecified: Option<HealthEventSeverity> = severity(None);
+        assert_eq!(serde_json::to_value(illness)?, "illness");
+        assert_eq!(serde_json::to_value(side_effect)?, "suspected_side_effect");
+        assert_eq!(serde_json::to_value(moderate)?, "moderate");
+        assert_eq!(serde_json::to_value(unspecified)?, Value::Null);
+        Ok(())
+    }
 }

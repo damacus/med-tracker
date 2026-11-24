@@ -4,18 +4,20 @@ use sea_orm::{
     ConnectionTrait, DatabaseConnection, DbBackend, QuerySelect, Statement, TransactionTrait,
 };
 
-pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
+pub async fn list(tenant: &TenantTransaction) -> Result<Vec<InvitationSummary>, OperationError> {
     collection(tenant, None).await
 }
 
-pub async fn list_api(tenant: &TenantTransaction) -> Result<Value, OperationError> {
+pub async fn list_api(
+    tenant: &TenantTransaction,
+) -> Result<Vec<InvitationSummary>, OperationError> {
     collection(tenant, Some(100)).await
 }
 
 async fn collection(
     tenant: &TenantTransaction,
     limit: Option<u64>,
-) -> Result<Value, OperationError> {
+) -> Result<Vec<InvitationSummary>, OperationError> {
     administration::authorize(tenant).await?;
     let rows = household_invitation::Entity::find()
         .in_tenant(tenant.scope().household_id)
@@ -25,7 +27,7 @@ async fn collection(
         .all(tenant.transaction())
         .await?;
     let now = Utc::now().naive_utc();
-    Ok(json!({"data":rows.iter().map(|row|summary(row,now)).collect::<Vec<_>>()}))
+    Ok(rows.iter().map(|row| summary(row, now)).collect())
 }
 
 pub async fn preview(db: &DatabaseConnection, token: &str) -> Result<Value, OperationError> {

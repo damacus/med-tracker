@@ -4,6 +4,7 @@ use crate::models::{
     entities::review_prompt,
     errors::OperationError,
 };
+use crate::views::review_prompts::{EditLease, RenewedLease, ReviewHistory};
 use chrono::Utc;
 use sea_orm::{ConnectionTrait, DbBackend, Statement};
 use serde_json::{Value, json};
@@ -35,7 +36,10 @@ async fn authorised(
     Ok(record)
 }
 
-pub async fn acquire(tenant: &TenantTransaction, id: &str) -> Result<Value, OperationError> {
+pub(crate) async fn acquire(
+    tenant: &TenantTransaction,
+    id: &str,
+) -> Result<EditLease, OperationError> {
     sync::lock(tenant).await?;
     let record = authorised(tenant, id).await?;
     super::reconcile_person(tenant, record.person_id).await?;
@@ -54,16 +58,18 @@ pub async fn acquire(tenant: &TenantTransaction, id: &str) -> Result<Value, Oper
     };
     let token: String = row.try_get("", "token")?;
     let expires_at: chrono::NaiveDateTime = row.try_get("", "expires_at")?;
-    Ok(
-        json!({"data":{"token":token,"etag":sync::review_prompts::tag(&record),"expires_at":expires_at.and_utc().to_rfc3339()}}),
-    )
+    Ok(EditLease {
+        token,
+        etag: sync::review_prompts::tag(&record),
+        expires_at: expires_at.and_utc().to_rfc3339(),
+    })
 }
 
-pub async fn renew(
+pub(crate) async fn renew(
     tenant: &TenantTransaction,
     id: &str,
     token: &str,
-) -> Result<Value, OperationError> {
+) -> Result<RenewedLease, OperationError> {
     sync::lock(tenant).await?;
     let record = authorised(tenant, id).await?;
     let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(
@@ -78,7 +84,9 @@ pub async fn renew(
         ));
     };
     let expires_at: chrono::NaiveDateTime = row.try_get("", "expires_at")?;
-    Ok(json!({"data":{"expires_at":expires_at.and_utc().to_rfc3339()}}))
+    Ok(RenewedLease {
+        expires_at: expires_at.and_utc().to_rfc3339(),
+    })
 }
 
 pub async fn require(
@@ -160,28 +168,36 @@ pub async fn archive(
     record: &review_prompt::Model,
     event_type: &str,
 ) -> Result<(), OperationError> {
-    let snapshot = super::value(record);
+    let snapshot =
+        serde_json::to_string(&super::value(record)).map_err(|_| OperationError::Unavailable)?;
     tenant.transaction().execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "INSERT INTO medication_review_histories (household_id,prompt_id,event_type,snapshot,created_at) VALUES ($1,$2,$3,$4::jsonb,$5)",
-        [tenant.scope().household_id.into(), record.id.into(), event_type.into(), snapshot.to_string().into(), Utc::now().naive_utc().into()],
+        [tenant.scope().household_id.into(), record.id.into(), event_type.into(), snapshot.into(), Utc::now().naive_utc().into()],
     )).await?;
     Ok(())
 }
 
-pub async fn history(
+pub(crate) async fn history(
     tenant: &TenantTransaction,
     record: &review_prompt::Model,
-) -> Result<Vec<Value>, OperationError> {
+) -> Result<Vec<ReviewHistory>, OperationError> {
     let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "SELECT event_type,snapshot,created_at FROM medication_review_histories WHERE household_id=$1 AND prompt_id=$2 ORDER BY id DESC",
         [tenant.scope().household_id.into(), record.id.into()],
     )).await?;
-    rows.into_iter().map(|row| {
-        let event_type: String = row.try_get("", "event_type")?;
-        let snapshot: Value = row.try_get("", "snapshot")?;
-        let created_at: chrono::NaiveDateTime = row.try_get("", "created_at")?;
-        Ok(json!({"event_type":event_type,"snapshot":snapshot,"created_at":created_at.and_utc().to_rfc3339()}))
-    }).collect::<Result<Vec<_>, sea_orm::DbErr>>().map_err(Into::into)
+    rows.into_iter()
+        .map(|row| {
+            let event_type: String = row.try_get("", "event_type")?;
+            let snapshot: Value = row.try_get("", "snapshot")?;
+            let created_at: chrono::NaiveDateTime = row.try_get("", "created_at")?;
+            Ok(ReviewHistory {
+                event_type,
+                snapshot,
+                created_at: created_at.and_utc().to_rfc3339(),
+            })
+        })
+        .collect::<Result<Vec<_>, sea_orm::DbErr>>()
+        .map_err(Into::into)
 }

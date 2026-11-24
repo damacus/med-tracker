@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::DataResponse;
 use axum::extract::{Query, rejection::QueryRejection};
 use medications::stock_removals::{self, RemoveStock};
 use serde::Deserialize;
@@ -38,7 +39,7 @@ pub(super) async fn create(
     let result = match input {
         Ok(input) => stock_removals::create(&tenant, input, Some(principal.provenance()))
             .await
-            .map(|record| (StatusCode::CREATED, json!({"data":record}), None))
+            .map(|record| (StatusCode::CREATED, DataResponse { data: record }, None))
             .map_err(response::operation),
         Err(error) => Err(error),
     };
@@ -50,7 +51,7 @@ pub(super) async fn create(
     if completed.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::removal(false),
@@ -92,7 +93,7 @@ pub(super) async fn history(
         },
         Err(error) => Err(response::operation(error)),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::removal(true),

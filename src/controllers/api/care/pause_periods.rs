@@ -1,7 +1,9 @@
 pub(super) mod legacy;
-use super::administration::{complete, key, request_id, store};
+use super::administration::{complete_typed, key, request_id, store};
 use super::*;
 use crate::models::care::{locations::SavedResponse, pause_periods};
+use crate::views::treatments::{PauseSummary, TreatmentResponse};
+type Mutation = response::MutationBody<TreatmentResponse<PauseSummary>>;
 
 pub(super) async fn index(
     State(ctx): State<AppContext>,
@@ -25,7 +27,7 @@ pub(super) async fn index(
             .map_err(response::operation),
         Err(_) => Err(response::Failure::validation("Invalid pagination")),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::pause_period("GET", "index"),
@@ -98,7 +100,7 @@ async fn change(
     if restored.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::pause_period(method, action),
@@ -115,7 +117,7 @@ async fn process(
     headers: &HeaderMap,
     body: std::result::Result<Value, response::Failure>,
     method: &str,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> std::result::Result<(StatusCode, Mutation, Option<String>, bool), response::Failure> {
     let body = body?;
     if id.is_none()
         && body
@@ -144,7 +146,8 @@ async fn process(
     if let Some(key) = key
         && let Some(reply) = locations::keyed_replay(tenant, key, method, &path, &body).await?
     {
-        return Ok(reply);
+        let (status, body, etag, replay) = reply;
+        return Ok((status, Mutation::Replay(body), etag, replay));
     }
     let savepoint = tenant
         .transaction()
@@ -187,7 +190,7 @@ async fn process(
                 } else {
                     StatusCode::CREATED
                 },
-                written.body,
+                Mutation::Resource(written.body),
                 Some(written.etag),
             )
         }
@@ -198,7 +201,10 @@ async fn process(
                 .map_err(|_| response::unavailable())?;
             (
                 StatusCode::UNPROCESSABLE_ENTITY,
-                json!({"error":{"code":"validation_failed","message":"Validation failed","errors":details["errors"],"request_id":tenant.scope().request_id}}),
+                Mutation::Error(
+                    response::Failure::fields(details["errors"].clone())
+                        .into_body(&tenant.scope().request_id),
+                ),
                 None,
             )
         }
@@ -211,7 +217,7 @@ async fn process(
         }
     };
     if let Some(key) = key {
-        return store(
+        store(
             tenant,
             principal,
             SavedResponse {
@@ -220,11 +226,11 @@ async fn process(
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: etag.as_deref(),
             },
         )
-        .await;
+        .await?;
     }
     Ok((status, reply, etag, false))
 }

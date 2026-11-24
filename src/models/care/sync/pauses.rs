@@ -11,7 +11,7 @@ pub(super) async fn apply(
     tenant: &TenantTransaction,
     operation: &Operation,
     provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<SyncResult, OperationError> {
     let (written, replayed) = if operation.action == "create" {
         if operation
             .attributes
@@ -112,7 +112,7 @@ pub(super) async fn source_change(
     tenant: &TenantTransaction,
     operation: &Operation,
     provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<SyncResult, OperationError> {
     let id = operation.id.as_deref().ok_or(OperationError::NotFound)?;
     let schedule = operation.resource_type == "schedule";
     let kind = if schedule {
@@ -207,10 +207,10 @@ pub(super) async fn source_change(
         }
         _ => return Err(invalid("Attributes are invalid")),
     }
-    let (_, etag) = if schedule {
-        treatments::lifecycle::read(tenant, id).await?
+    let etag = if schedule {
+        treatments::lifecycle::read(tenant, id).await?.1
     } else {
-        assignments::read(tenant, id).await?
+        assignments::read(tenant, id).await?.1
     };
     Ok(result(kind, record_id, Some(&portable), Some(etag), None))
 }

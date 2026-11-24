@@ -56,10 +56,7 @@ async fn show_image(
     };
     let person_id =
         match crate::models::care::people::read(&tenant, &person, principal.time_zone()).await {
-            Ok((person, _)) => match person["data"]["id"].as_i64() {
-                Some(id) => id,
-                None => return private(unavailable()),
-            },
+            Ok((person, _)) => person.data.id,
             Err(error) => return private(operation_error(error)),
         };
     let attachment = match avatar::person_attachment(&tenant, person_id).await {

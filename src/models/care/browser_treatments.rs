@@ -32,14 +32,22 @@ pub async fn person_cards(
         .order_by_asc(person_medication::Column::Id)
         .all(tenant.transaction())
         .await?;
-    let mut cards =
-        projection::serialize_schedules(tenant.transaction(), tenant, schedules).await?;
+    let mut cards: Vec<_> =
+        projection::serialize_schedules(tenant.transaction(), tenant, schedules)
+            .await?
+            .into_iter()
+            .map(|card| json!(card))
+            .collect();
     for card in &mut cards {
         card["source_kind"] = json!("schedules");
         card["source_label"] = json!("scheduled treatment");
     }
-    let mut ongoing =
-        projection::serialize_assignments(tenant.transaction(), tenant, assignments).await?;
+    let mut ongoing: Vec<_> =
+        projection::serialize_assignments(tenant.transaction(), tenant, assignments)
+            .await?
+            .into_iter()
+            .map(|card| json!(card))
+            .collect();
     for card in &mut ongoing {
         card["source_kind"] = json!("assignments");
         card["source_label"] = json!("ongoing medication");
@@ -306,11 +314,7 @@ pub async fn index(
         });
     }
     let (person_data, _) = people::read(tenant, id, zone).await?;
-    let person_id = person_data["data"]["id"]
-        .as_str()
-        .and_then(|value| value.parse::<i64>().ok())
-        .or_else(|| person_data["data"]["id"].as_i64())
-        .ok_or(OperationError::Unavailable)?;
+    let person_id = person_data.data.id;
     let schedule_query =
         access::schedule_scope(tenant).filter(schedule::Column::PersonId.eq(person_id));
     let assignment_query = person_medication::Entity::find()
@@ -339,7 +343,7 @@ pub async fn index(
     let can_manage = access::can_access_person(tenant, person_id, PersonAccess::Manage).await?;
     let medications = super::browser_query::index(tenant).await?;
     Ok(
-        json!({"person":person_data["data"],"schedules":schedules,"assignments":assignments,"medications":medications,"can_manage":can_manage,"page":page,"has_next":schedule_count.max(assignment_count)>(page as u64).saturating_mul(20)}),
+        json!({"person":person_data.data,"schedules":schedules,"assignments":assignments,"medications":medications,"can_manage":can_manage,"page":page,"has_next":schedule_count.max(assignment_count)>(page as u64).saturating_mul(20)}),
     )
 }
 

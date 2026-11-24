@@ -1,6 +1,7 @@
 use super::*;
 use crate::models::entities::health_event_medication;
 use loco_rs::model::TenantQueryExt;
+use serde_json::Value;
 use std::collections::HashMap;
 
 pub async fn collection(

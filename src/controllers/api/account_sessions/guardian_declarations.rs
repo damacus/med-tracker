@@ -1,5 +1,9 @@
 use super::*;
 use crate::models::care::guardian_declarations;
+use crate::views::{
+    DataResponse,
+    guardian_declarations::{DeclarationCursor, DeclarationPage},
+};
 use axum::extract::{Query, rejection::QueryRejection};
 
 #[derive(Default, Deserialize)]
@@ -55,7 +59,12 @@ pub(super) async fn index(
         query.before_id,
     )
     .await
-    .map(|page| json!({"data":page.records,"meta":{"next_before_id":page.next_before_id}}));
+    .map(|page| DeclarationPage {
+        data: page.records,
+        meta: DeclarationCursor {
+            next_before_id: page.next_before_id,
+        },
+    });
     finish(transaction, result, &request_id).await
 }
 
@@ -110,7 +119,7 @@ pub(super) async fn withdraw(
         principal.provenance(),
     )
     .await
-    .map(|record| json!({"data":record}));
+    .map(|data| DataResponse { data });
     finish(transaction, result, &request_id).await
 }
 
@@ -125,12 +134,12 @@ fn invalid(request_id: &str) -> Response {
 
 async fn finish(
     transaction: sea_orm::DatabaseTransaction,
-    result: std::result::Result<Value, OperationError>,
+    result: std::result::Result<impl serde::Serialize, OperationError>,
     request_id: &str,
 ) -> Response {
     match result {
         Ok(value) => match transaction.commit().await {
-            Ok(()) => reply(StatusCode::OK, Some(value), request_id),
+            Ok(()) => response_headers((StatusCode::OK, Json(value)).into_response(), request_id),
             Err(error) => operation(error.into(), request_id),
         },
         Err(error) => {

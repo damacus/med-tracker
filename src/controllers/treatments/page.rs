@@ -269,7 +269,9 @@ impl<'a> Page<'a> {
             ) {
                 Ok(input) => match (input, id) {
                     (forms::FormInput::Schedule(input), None) => {
-                        treatments::create_input(&tenant, input, Some(principal.provenance())).await
+                        treatments::create_input(&tenant, input, Some(principal.provenance()))
+                            .await
+                            .map(|_| ())
                     }
                     (forms::FormInput::Schedule(input), Some(id)) => {
                         treatments::lifecycle::update_input(
@@ -280,21 +282,22 @@ impl<'a> Page<'a> {
                             Some(principal.provenance()),
                         )
                         .await
+                        .map(|_| ())
                     }
                     (forms::FormInput::Assignment(input), None) => {
                         assignments::create_input(&tenant, input, Some(principal.provenance()))
                             .await
+                            .map(|_| ())
                     }
-                    (forms::FormInput::Assignment(input), Some(id)) => {
-                        assignments::update_input(
-                            &tenant,
-                            id,
-                            input,
-                            browser_forms::optional(&draft, "etag").as_deref(),
-                            Some(principal.provenance()),
-                        )
-                        .await
-                    }
+                    (forms::FormInput::Assignment(input), Some(id)) => assignments::update_input(
+                        &tenant,
+                        id,
+                        input,
+                        browser_forms::optional(&draft, "etag").as_deref(),
+                        Some(principal.provenance()),
+                    )
+                    .await
+                    .map(|_| ()),
                 },
                 Err(error) => Err(error),
             }
@@ -413,18 +416,17 @@ async fn read_record(
     let Some(id) = id else {
         return Ok(None);
     };
-    let mut result = kind.read(tenant, id).await?;
-    if result.0["data"]["person_id"].to_string().trim_matches('"')
+    let (treatment, etag) = kind.read(tenant, id).await?;
+    if treatment.source().person_id.to_string()
         != options["person_id"].to_string().trim_matches('"')
     {
         return Err(OperationError::NotFound);
     }
-    let record_id = result.0["data"]["id"]
-        .as_i64()
-        .ok_or(OperationError::Unavailable)?;
-    result.0["data"]["source_dosage_option_id"] = json!(
+    let record_id = treatment.source().id;
+    let mut context = json!(treatment);
+    context["data"]["source_dosage_option_id"] = json!(
         browser_treatments::source_option(tenant, matches!(kind, Kind::Schedule), record_id)
             .await?
     );
-    Ok(Some(result))
+    Ok(Some((context, etag)))
 }

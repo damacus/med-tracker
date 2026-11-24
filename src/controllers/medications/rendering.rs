@@ -19,8 +19,11 @@ fn context(
     draft: &HashMap<String, String>,
     error: Option<String>,
 ) -> Value {
-    let name = snapshot.representation["data"]["display_name"]
-        .as_str()
+    let name = snapshot
+        .representation
+        .data
+        .display_name
+        .as_deref()
         .unwrap_or("Medication");
     let quantity = snapshot
         .medication
@@ -482,11 +485,12 @@ fn detail_with_state(
             .replace("%{quantity}", &threshold)
             .replace("%{unit}", &threshold_unit)
     );
+    let stock = &detail.stock.representation.data;
     let status_key = if medication.current_supply.is_none() {
         "stock_untracked"
-    } else if detail.stock.representation["data"]["out_of_stock"] == true {
+    } else if stock.out_of_stock {
         "stock_out"
-    } else if detail.stock.representation["data"]["low_stock"] == true {
+    } else if stock.low_stock {
         "stock_low"
     } else {
         "stock_in"
@@ -497,27 +501,29 @@ fn detail_with_state(
         data["quantity"] = labels["medications"]["show"]["browser"]["stock_untracked"].clone();
         data["unit"] = json!("");
     }
-    data["low_stock"] = detail.stock.representation["data"]["low_stock"].clone();
-    data["out_of_stock"] = detail.stock.representation["data"]["out_of_stock"].clone();
-    data["days_until_low_stock"] =
-        detail.stock.representation["data"]["days_until_low_stock"].clone();
-    data["days_until_out_of_stock"] =
-        detail.stock.representation["data"]["days_until_out_of_stock"].clone();
-    for (field, source, key) in [
-        ("low_forecast_label", "days_until_low_stock", "low_in_days"),
+    data["low_stock"] = json!(stock.low_stock);
+    data["out_of_stock"] = json!(stock.out_of_stock);
+    data["days_until_low_stock"] = json!(stock.days_until_low_stock);
+    data["days_until_out_of_stock"] = json!(stock.days_until_out_of_stock);
+    for (field, days, key) in [
+        (
+            "low_forecast_label",
+            stock.days_until_low_stock,
+            "low_in_days",
+        ),
         (
             "empty_forecast_label",
-            "days_until_out_of_stock",
+            stock.days_until_out_of_stock,
             "empty_in_days",
         ),
     ] {
-        if let Some(days) = data[source].as_i64()
+        if let Some(days) = days
             && let Some(template) = labels["medications"]["show"]["forecast"][key].as_str()
         {
             data[field] = json!(template.replace("%{days}", &days.to_string()));
         }
     }
-    data["reorder_status"] = detail.stock.representation["data"]["reorder_status"].clone();
+    data["reorder_status"] = json!(stock.reorder_status);
     data["order_supplier"] = json!(medication.order_supplier);
     data["order_quantity"] = json!(
         medication

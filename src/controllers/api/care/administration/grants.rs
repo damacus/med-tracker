@@ -13,9 +13,9 @@ pub(in crate::controllers::api::care) async fn index(
     };
     let result = administration::grants::list(&tenant)
         .await
-        .map(|body| (StatusCode::OK, body, None))
+        .map(|data| (StatusCode::OK, DataResponse { data }, None))
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::administration("GET", "person_access_grants", "index"),
@@ -63,7 +63,7 @@ async fn mutate(
         body,
     )
     .await;
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::administration(
@@ -83,7 +83,7 @@ async fn process(
     id: Option<&str>,
     headers: &HeaderMap,
     body: Option<std::result::Result<AxumJson<Value>, JsonRejection>>,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> AdminMutation<()> {
     administration::authorize(tenant)
         .await
         .map_err(response::operation)?;
@@ -103,10 +103,10 @@ async fn process(
     };
     let key = key(headers);
     if let Some(key) = key
-        && let Some(reply) =
+        && let Some((status, body, etag, replay)) =
             super::super::locations::keyed_replay(tenant, key, method, &path, &body).await?
     {
-        return Ok(reply);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     if id.is_none() {
         attributes(&body, "person_access_grant")?;
@@ -117,9 +117,7 @@ async fn process(
         .await
         .map_err(|_| response::unavailable())?;
     let result = if let Some(id) = numeric_id {
-        administration::grants::revoke(tenant, id, Some(principal.provenance()))
-            .await
-            .map(|()| Value::Null)
+        administration::grants::revoke(tenant, id, Some(principal.provenance())).await
     } else {
         match administration::grants::create(tenant, Some(principal.provenance())).await {
             Ok(administration::grants::GrantCreation::Rejected) => {
@@ -144,21 +142,21 @@ async fn process(
     )
     .await?;
     if let Some(key) = key {
-        store(
+        locations::store(
             tenant,
-            principal,
+            principal.provenance(),
             SavedResponse {
                 key,
                 method,
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: None,
             },
         )
         .await
-    } else {
-        Ok((status, reply, None, false))
+        .map_err(response::operation)?;
     }
+    Ok((status, reply, None, false))
 }

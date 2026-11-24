@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::administration::MembershipSummary;
 
 pub(in crate::controllers::api::care) async fn index(
     State(ctx): State<AppContext>,
@@ -13,9 +14,9 @@ pub(in crate::controllers::api::care) async fn index(
     };
     let result = administration::memberships::list(&tenant)
         .await
-        .map(|body| (StatusCode::OK, body, None))
+        .map(|data| (StatusCode::OK, DataResponse { data }, None))
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::administration("GET", "memberships", "index"),
@@ -79,7 +80,7 @@ async fn mutate(
         method,
     )
     .await;
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::administration(
@@ -104,7 +105,7 @@ async fn process(
     headers: &HeaderMap,
     body: Option<std::result::Result<AxumJson<Value>, JsonRejection>>,
     method: &str,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> AdminMutation<DataResponse<MembershipSummary>> {
     administration::authorize(tenant)
         .await
         .map_err(response::operation)?;
@@ -119,10 +120,10 @@ async fn process(
     let path = format!("/api/v1/households/{household_id}/admin/memberships/{id}");
     let key = key(headers);
     if let Some(key) = key
-        && let Some(reply) =
+        && let Some((status, body, etag, replay)) =
             super::super::locations::keyed_replay(tenant, key, method, &path, &body).await?
     {
-        return Ok(reply);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let attributes = if method == "DELETE" {
         administration::memberships::MembershipInput::Revoke
@@ -143,7 +144,8 @@ async fn process(
         attributes,
         Some(principal.provenance()),
     )
-    .await;
+    .await
+    .map(|data| DataResponse { data });
     let (status, mut reply) = reply(
         savepoint,
         tenant,
@@ -156,24 +158,24 @@ async fn process(
     )
     .await?;
     if status == StatusCode::NO_CONTENT {
-        reply = Value::Null;
+        reply = MutationBody::Empty;
     }
     if let Some(key) = key {
-        store(
+        locations::store(
             tenant,
-            principal,
+            principal.provenance(),
             SavedResponse {
                 key,
                 method,
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: None,
             },
         )
         .await
-    } else {
-        Ok((status, reply, None, false))
+        .map_err(response::operation)?;
     }
+    Ok((status, reply, None, false))
 }

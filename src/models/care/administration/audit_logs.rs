@@ -1,10 +1,11 @@
 use super::*;
+use crate::views::audit_logs::AuditEntry;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{NaiveDate, NaiveDateTime};
 use sea_orm::{Condition, FromQueryResult};
 use serde::{Deserialize, Serialize};
 
-pub async fn index(tenant: &TenantTransaction) -> Result<Vec<Value>, OperationError> {
+pub async fn index(tenant: &TenantTransaction) -> Result<Vec<AuditEntry>, OperationError> {
     access::recheck(tenant).await?;
     if !access::can_manage_household(tenant) {
         return Err(OperationError::Forbidden);
@@ -18,17 +19,15 @@ pub async fn index(tenant: &TenantTransaction) -> Result<Vec<Value>, OperationEr
         .await
         .map_err(|_| OperationError::Unavailable)?;
     Ok(events
-        .iter()
-        .map(|event| {
-            json!({
-                "id": event.id,
-                "event_type": event.event_type,
-                "actor_account_id": event.actor_account_id,
-                "actor_membership_id": event.actor_membership_id,
-                "request_id": event.request_id,
-                "metadata": event.metadata,
-                "created_at": event.created_at.format("%Y-%m-%dT%H:%M:%SZ").to_string()
-            })
+        .into_iter()
+        .map(|event| AuditEntry {
+            id: event.id,
+            event_type: event.event_type,
+            actor_account_id: event.actor_account_id,
+            actor_membership_id: event.actor_membership_id,
+            request_id: event.request_id,
+            metadata: event.metadata,
+            created_at: event.created_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
         })
         .collect())
 }

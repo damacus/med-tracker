@@ -1,5 +1,8 @@
 use super::*;
 
+#[derive(serde::Serialize)]
+struct EmptyObject {}
+
 pub(in crate::controllers::api::care) async fn destroy(
     State(ctx): State<AppContext>,
     ApiPath((household_id, id)): ApiPath<(i64, String)>,
@@ -12,7 +15,7 @@ pub(in crate::controllers::api::care) async fn destroy(
         Err(error) => return no_store(response::error(error, &request_id)),
     };
     let result = destroy_record(&tenant, &principal, household_id, &id, &headers).await;
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::invitations("DELETE", "destroy"),
@@ -27,7 +30,7 @@ async fn destroy_record(
     household_id: i64,
     id: &str,
     headers: &HeaderMap,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> MutationReply<EmptyObject> {
     crate::models::care::administration::authorize(tenant)
         .await
         .map_err(response::operation)?;
@@ -35,10 +38,10 @@ async fn destroy_record(
     let path = format!("/api/v1/households/{household_id}/admin/invitations/{id}");
     let body = json!({});
     if let Some(key) = key(headers)
-        && let Some(saved) =
+        && let Some((status, body, etag, replay)) =
             super::super::locations::keyed_replay(tenant, key, "DELETE", &path, &body).await?
     {
-        return Ok(saved);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let savepoint = tenant
         .transaction()
@@ -47,26 +50,26 @@ async fn destroy_record(
         .map_err(|_| response::unavailable())?;
     let result = invitations::revoke(tenant, numeric, Some(principal.provenance()))
         .await
-        .map(|()| json!({}));
+        .map(|()| EmptyObject {});
     let (status, reply) = reply(savepoint, tenant, result, StatusCode::NO_CONTENT).await?;
     if let Some(key) = key(headers) {
-        store(
+        crate::models::care::locations::store(
             tenant,
-            principal,
+            principal.provenance(),
             SavedResponse {
                 key,
                 method: "DELETE",
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: None,
             },
         )
         .await
-    } else {
-        Ok((status, reply, None, false))
+        .map_err(response::operation)?;
     }
+    Ok((status, reply, None, false))
 }
 
 pub(in crate::controllers::api::care) async fn resend(
@@ -83,7 +86,7 @@ pub(in crate::controllers::api::care) async fn resend(
     };
     let result = resend_record(&ctx, &tenant, &principal, &id, &headers, &body).await;
     no_store(
-        complete(
+        complete_typed(
             tenant,
             &principal,
             audit::RequestAudit::invitations("POST", "resend"),
@@ -100,7 +103,7 @@ async fn resend_record(
     id: &str,
     headers: &HeaderMap,
     body: &[u8],
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> MutationReply<DataResponse<ResentInvitation>> {
     crate::models::care::administration::authorize(tenant)
         .await
         .map_err(response::operation)?;
@@ -124,10 +127,10 @@ async fn resend_record(
         tenant.scope().household_id
     );
     if let Some(key) = key(headers)
-        && let Some(saved) =
+        && let Some((status, body, etag, replay)) =
             super::super::locations::keyed_replay(tenant, key, "POST", &path, &body).await?
     {
-        return Ok(saved);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let target = crate::models::settings::public_origin(ctx)
         .and_then(|url| url.join("/invitations/accept").map_err(Into::into))
@@ -139,7 +142,7 @@ async fn resend_record(
         .map_err(|_| response::unavailable())?;
     let result =
         match invitations::resend(tenant, numeric, &target, Some(principal.provenance())).await {
-            Ok(body) => Ok(body),
+            Ok(data) => Ok(DataResponse { data }),
             Err(invitations::ResendError::Operation(error)) => Err(error),
             Err(invitations::ResendError::DeliveryUnavailable) => {
                 savepoint
@@ -151,21 +154,21 @@ async fn resend_record(
         };
     let (status, reply) = reply(savepoint, tenant, result, StatusCode::OK).await?;
     if let Some(key) = key(headers) {
-        store(
+        crate::models::care::locations::store(
             tenant,
-            principal,
+            principal.provenance(),
             SavedResponse {
                 key,
                 method: "POST",
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: None,
             },
         )
         .await
-    } else {
-        Ok((status, reply, None, false))
+        .map_err(response::operation)?;
     }
+    Ok((status, reply, None, false))
 }

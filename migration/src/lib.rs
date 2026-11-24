@@ -142,7 +142,9 @@ impl MigratorTrait for Migrator {
             ));
         };
         if db.get_database_backend() != sea_orm::DbBackend::Postgres {
-            return Err(DbErr::Migration("MedTracker requires PostgreSQL 18".into()));
+            return Err(DbErr::Migration(
+                "MedTracker requires PostgreSQL 18 or newer".into(),
+            ));
         }
         let transaction = db.begin().await?;
         let result = async {
@@ -152,8 +154,8 @@ impl MigratorTrait for Migrator {
                  SET LOCAL lock_timeout = '5s';
                  SET LOCAL statement_timeout = '60s';
                  DO $$ BEGIN
-                   IF current_setting('server_version_num')::int NOT BETWEEN 180000 AND 189999
-                   THEN RAISE EXCEPTION 'MedTracker requires PostgreSQL 18'; END IF;
+                   IF current_setting('server_version_num')::int < 180000
+                   THEN RAISE EXCEPTION 'MedTracker requires PostgreSQL 18 or newer'; END IF;
                  END $$;
                  ",
                 )

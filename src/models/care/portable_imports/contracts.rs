@@ -20,7 +20,7 @@ pub(super) const V2_TYPES: &[&str] = &[
 
 pub(crate) struct ImportPlan {
     records: Map<String, Value>,
-    pub(crate) counts: Value,
+    pub(crate) counts: Map<String, Value>,
     pub(super) errors: Vec<String>,
     pub(super) format: PortableFormat,
 }
@@ -120,7 +120,7 @@ impl ImportPlan {
         }
         Ok(Self {
             records: records.clone(),
-            counts: Value::Object(counts),
+            counts,
             errors,
             format,
         })

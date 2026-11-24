@@ -207,8 +207,11 @@ async fn index(
             Ok(value) => value,
             Err(error) => return operation_error(error),
         } {
-        let medication_name = snapshot.representation["data"]["display_name"]
-            .as_str()
+        let medication_name = snapshot
+            .representation
+            .data
+            .display_name
+            .as_deref()
             .unwrap_or("Medication");
         let mut banner = rendering::moved_banner(
             &labels,

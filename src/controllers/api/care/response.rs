@@ -1,6 +1,47 @@
 use super::*;
 use axum::http::{HeaderValue, header};
 
+#[derive(serde::Serialize)]
+pub(super) struct ErrorEnvelope {
+    error: ErrorBody,
+}
+
+impl ErrorEnvelope {
+    pub(super) fn new(
+        code: impl Into<String>,
+        message: impl Into<String>,
+        request_id: &str,
+        errors: Option<Value>,
+    ) -> Self {
+        Self {
+            error: ErrorBody {
+                code: code.into(),
+                message: message.into(),
+                request_id: request_id.into(),
+                errors: errors.map(Box::new),
+            },
+        }
+    }
+}
+
+#[derive(serde::Serialize)]
+struct ErrorBody {
+    code: String,
+    message: String,
+    request_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    errors: Option<Box<Value>>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+pub(super) enum MutationBody<T> {
+    Resource(T),
+    Error(ErrorEnvelope),
+    Replay(Value),
+    Empty,
+}
+
 pub(super) struct Failure {
     pub status: StatusCode,
     code: String,
@@ -10,6 +51,17 @@ pub(super) struct Failure {
 }
 
 impl Failure {
+    pub(super) fn into_body(self, request_id: &str) -> ErrorEnvelope {
+        ErrorEnvelope {
+            error: ErrorBody {
+                code: self.code,
+                message: self.message,
+                request_id: request_id.into(),
+                errors: self.details,
+            },
+        }
+    }
+
     pub fn avatar_unavailable() -> Self {
         Self {
             status: StatusCode::SERVICE_UNAVAILABLE,
@@ -38,10 +90,13 @@ impl Failure {
         }
     }
     pub fn fields(errors: Value) -> Self {
+        Self::validation_fields("Validation failed", errors)
+    }
+    pub fn validation_fields(message: &str, errors: Value) -> Self {
         Self {
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "validation_failed".into(),
-            message: "Validation failed".into(),
+            message: message.into(),
             details: Some(Box::new(errors)),
             authenticate: None,
         }
@@ -50,6 +105,15 @@ impl Failure {
         Self {
             status: StatusCode::BAD_REQUEST,
             code: "bad_request".into(),
+            message: message.into(),
+            details: None,
+            authenticate: None,
+        }
+    }
+    pub fn precondition_required(message: &str) -> Self {
+        Self {
+            status: StatusCode::PRECONDITION_REQUIRED,
+            code: "precondition_required".into(),
             message: message.into(),
             details: None,
             authenticate: None,
@@ -154,21 +218,18 @@ pub(super) fn operation(error: OperationError) -> Failure {
     }
 }
 
-pub(super) fn error(error: Failure, request_id: &str) -> Response {
-    let mut body =
-        json!({"error": {"code": error.code, "message": error.message, "request_id": request_id}});
-    if let Some(details) = error.details {
-        body["error"]["errors"] = *details;
-    }
-    let mut response = success(error.status, body, request_id, None);
-    if let Some(challenge) = error
+pub(super) fn error(mut error: Failure, request_id: &str) -> Response {
+    let status = error.status;
+    let challenge = error
         .authenticate
-        .and_then(|value| HeaderValue::from_str(&value).ok())
-    {
+        .take()
+        .and_then(|value| HeaderValue::from_str(&value).ok());
+    let mut response = success(status, error.into_body(request_id), request_id, None);
+    if let Some(challenge) = challenge {
         response
             .headers_mut()
             .insert(header::WWW_AUTHENTICATE, challenge);
-    } else if error.status == StatusCode::UNAUTHORIZED {
+    } else if status == StatusCode::UNAUTHORIZED {
         response
             .headers_mut()
             .insert(header::WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));
@@ -178,14 +239,18 @@ pub(super) fn error(error: Failure, request_id: &str) -> Response {
 
 pub(super) fn success(
     status: StatusCode,
-    mut body: Value,
+    body: impl serde::Serialize,
     request_id: &str,
     etag: Option<String>,
 ) -> Response {
-    if status.is_client_error() || status.is_server_error() {
+    let mut response = if (status.is_client_error() || status.is_server_error())
+        && let Ok(mut body) = serde_json::to_value(&body)
+    {
         crate::telemetry::ids::enrich_error(&mut body);
-    }
-    let mut response = (status, AxumJson(body)).into_response();
+        (status, AxumJson(body)).into_response()
+    } else {
+        (status, AxumJson(body)).into_response()
+    };
     response
         .headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
