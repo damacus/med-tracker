@@ -88,6 +88,7 @@ pub(super) async fn apply_to_person(
         restored.revoked_at = Set(None);
         restored.permissions_version = Set(next_version);
         if rejoining {
+            restored.role = Set(invitation.membership_role.clone());
             restored.joined_at = Set(now);
         }
         restored.updated_at = Set(now);
