@@ -22,6 +22,9 @@ pub(super) struct SourceRef {
     pub(super) person_id: i64,
     pub(super) medication_id: i64,
     pub(super) person_schedule_id: Option<String>,
+    pub(super) dosage_id: Option<i64>,
+    pub(super) dose_amount: Option<Decimal>,
+    pub(super) dose_unit: Option<String>,
     portable_id: String,
 }
 
@@ -245,6 +248,9 @@ pub(crate) async fn serialize_schedules(
             person_schedule_id: record.person_schedule_id.clone(),
             person_id: record.person_id,
             medication_id: record.medication_id,
+            dosage_id: record.source_dosage_option_id,
+            dose_amount: record.dose_amount,
+            dose_unit: record.dose_unit.clone(),
             portable_id: record.portable_id.clone(),
         })
         .collect();
@@ -336,6 +342,9 @@ pub(crate) async fn serialize_assignments(
             person_schedule_id: None,
             person_id: record.person_id,
             medication_id: record.medication_id,
+            dosage_id: record.source_dosage_option_id,
+            dose_amount: record.dose_amount,
+            dose_unit: record.dose_unit.clone(),
             portable_id: record.portable_id.clone(),
         })
         .collect();
@@ -415,6 +424,11 @@ pub(crate) async fn dashboard_stock(
                     person_schedule_id: card["person_schedule_id"].as_str().map(str::to_owned),
                     person_id: card["person_id"].as_i64()?,
                     medication_id: card["medication_id"].as_i64()?,
+                    dosage_id: card["source_dosage_option_id"].as_i64(),
+                    dose_amount: card["dose_amount"]
+                        .as_str()
+                        .and_then(|amount| amount.parse().ok()),
+                    dose_unit: card["dose_unit"].as_str().map(str::to_owned),
                     portable_id: String::new(),
                 })
             })

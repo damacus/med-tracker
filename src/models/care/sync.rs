@@ -8,7 +8,8 @@ mod persistence;
 mod portable;
 pub(super) use portable::export_people;
 pub(crate) use portable::{
-    PortableFormat, api_export_payload, bundle_payload, export_payload, mobile_payload,
+    PortableFormat, api_export_payload, bundle_payload, ensure_bundle_stock_exportable,
+    export_payload, mobile_payload,
 };
 mod reading;
 mod replay;

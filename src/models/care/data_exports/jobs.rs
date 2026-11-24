@@ -71,6 +71,7 @@ pub async fn submit(
 ) -> Result<i64, OperationError> {
     access::recheck(tenant).await?;
     export_format(&query)?;
+    sync::ensure_bundle_stock_exportable(tenant).await?;
     limit(ctx)?;
     let cipher = cipher(ctx)?;
     let now = Utc::now().naive_utc();

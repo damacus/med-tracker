@@ -130,6 +130,13 @@ exact medicine, formulation, strength and stock unit. Never infer a match from
 names, dose text or descriptive similarities, and never convert between units.
 Matching stock does not authorise changing the shared treatment plan.
 
+The person or their authorised guardian may reserve an exact quantity of tracked
+communal stock for that person. Keep the reservation separate from the physical
+total. A dose from the selected stock can use the subject's own reservation.
+The person or their authorised guardian can release its unused quantity. Record
+the release in the audit trail and keep the physical count unchanged. Portable
+exports reject stock with active reservations until the bundle can preserve them.
+
 The moving person or authorised guardian may explicitly transfer stock allocated
 to that person. Communal stock stays put. Transfer the exact selected quantity
 and stock unit atomically and idempotently between valid source and destination

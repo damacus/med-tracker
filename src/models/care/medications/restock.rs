@@ -43,10 +43,7 @@ pub(super) async fn execute_selected(
     }
     let quantity = Decimal::from_str(&input.quantity)
         .map_err(|_| field_validation("quantity", "Quantity must be greater than 0"))?;
-    if quantity <= Decimal::ZERO
-        || quantity.normalize().scale() > 2
-        || quantity >= Decimal::from(100_000_000)
-    {
+    if quantity.is_zero() || !valid_stock_decimal(quantity) {
         return Err(field_validation(
             "quantity",
             "Quantity must be greater than 0",

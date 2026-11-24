@@ -155,14 +155,14 @@ pub(super) async fn payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, false, false, PortableFormat::V2, true).await
+    scoped_payload(tenant, zone, false, false, PortableFormat::V2, true, false).await
 }
 
 pub(crate) async fn export_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, true, true, PortableFormat::V2, true).await
+    scoped_payload(tenant, zone, true, true, PortableFormat::V2, true, true).await
 }
 
 pub(crate) async fn api_export_payload(
@@ -171,14 +171,23 @@ pub(crate) async fn api_export_payload(
     format: PortableFormat,
     include_health_events: bool,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, true, false, format, include_health_events).await
+    scoped_payload(
+        tenant,
+        zone,
+        true,
+        false,
+        format,
+        include_health_events,
+        true,
+    )
+    .await
 }
 
 pub(crate) async fn mobile_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    api_export_payload(tenant, zone, PortableFormat::V1, true).await
+    scoped_payload(tenant, zone, true, false, PortableFormat::V1, true, false).await
 }
 
 pub(crate) async fn bundle_payload(
@@ -189,6 +198,41 @@ pub(crate) async fn bundle_payload(
     api_export_payload(tenant, zone, format, false).await
 }
 
+pub(crate) async fn ensure_bundle_stock_exportable(
+    tenant: &TenantTransaction,
+) -> Result<(), OperationError> {
+    super::lock(tenant).await?;
+    super::super::person_schedules::projection::refresh(tenant).await?;
+    let household_id = tenant.scope().household_id;
+    let db = tenant.transaction();
+    let people: Vec<i64> = export_people(tenant)
+        .await?
+        .into_iter()
+        .map(|person| person.id)
+        .collect();
+    let scheduled: Vec<i64> = schedule::Entity::find()
+        .in_tenant(household_id)
+        .filter(schedule::Column::PersonId.is_in(people.iter().copied()))
+        .select_only()
+        .column(schedule::Column::MedicationId)
+        .into_tuple()
+        .all(db)
+        .await?;
+    let assigned: Vec<i64> = person_medication::Entity::find()
+        .in_tenant(household_id)
+        .filter(person_medication::Column::PersonId.is_in(people))
+        .select_only()
+        .column(person_medication::Column::MedicationId)
+        .into_tuple()
+        .all(db)
+        .await?;
+    super::super::medications::allocations::ensure_exportable(
+        tenant,
+        &scheduled.into_iter().chain(assigned).collect(),
+    )
+    .await
+}
+
 async fn scoped_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
@@ -196,6 +240,7 @@ async fn scoped_payload(
     household_wide: bool,
     format: PortableFormat,
     include_health_events: bool,
+    require_exportable_stock: bool,
 ) -> Result<AppliedBatch, OperationError> {
     super::super::person_schedules::projection::refresh(tenant).await?;
     let db = tenant.transaction();
@@ -270,6 +315,9 @@ async fn scoped_payload(
     } else {
         super::reading::visible_medication_ids(db, tenant).await?
     };
+    if require_exportable_stock {
+        super::super::medications::allocations::ensure_exportable(tenant, &medication_ids).await?;
+    }
     let medications = medication::Entity::find()
         .in_tenant(household_id)
         .filter(medication::Column::Id.is_in(medication_ids.iter().copied().collect::<Vec<_>>()))

@@ -122,14 +122,17 @@ async fn insert_version(
     }
     let mut audit_context =
         crate::models::audit_context::for_request(context.tenant, request_id, context.provenance);
-    audit_context["policy_class"] = json!("MedicationPolicy");
-    audit_context["policy_query"] = json!(match event {
-        "api_create" => "create?",
-        "api_update" => "update?",
-        "api_destroy" | "destroy" => "destroy?",
-        _ if event.starts_with("restock (") => "refill?",
-        _ => "adjust_inventory?",
-    });
+    let (policy_class, policy_query) = match (item_type, event) {
+        ("StockAllocation", "create") => ("StockAllocationPolicy", "create?"),
+        ("StockAllocation", "release") => ("StockAllocationPolicy", "release?"),
+        (_, "api_create") => ("MedicationPolicy", "create?"),
+        (_, "api_update") => ("MedicationPolicy", "update?"),
+        (_, "api_destroy" | "destroy") => ("MedicationPolicy", "destroy?"),
+        (_, event) if event.starts_with("restock (") => ("MedicationPolicy", "refill?"),
+        _ => ("MedicationPolicy", "adjust_inventory?"),
+    };
+    audit_context["policy_class"] = json!(policy_class);
+    audit_context["policy_query"] = json!(policy_query);
     if let Some(adjustment) = inventory_adjustment {
         audit_context["inventory_adjustment"] = adjustment;
     }

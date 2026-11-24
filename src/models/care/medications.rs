@@ -1,3 +1,4 @@
+pub(crate) mod allocations;
 mod audit;
 pub(crate) use audit::medication_snapshot;
 pub(crate) use projection::{decimal_string, serialize_many};
@@ -26,6 +27,10 @@ use serde_json::{Value, json};
 use std::str::FromStr;
 
 type ApiError = OperationError;
+
+fn valid_stock_decimal(value: Decimal) -> bool {
+    value >= Decimal::ZERO && value.normalize().scale() <= 2 && value < Decimal::from(100_000_000)
+}
 
 #[derive(Clone, Debug)]
 pub struct AdjustStock {
@@ -169,12 +174,21 @@ pub(crate) async fn lock_medication(
 }
 
 fn database_error(error: sea_orm::DbErr) -> OperationError {
-    error.into()
+    allocations::reservation_write_error(&error).unwrap_or_else(|| error.into())
 }
 
 fn validation(message: &str) -> OperationError {
     OperationError::Validation {
         details: json!({"error": message}),
+    }
+}
+
+pub(super) fn stock_unit(clinical_unit: &str) -> &str {
+    match clinical_unit {
+        "tablet" | "capsule" | "gummy" | "sachet" | "spray" | "drop" | "pad" | "ml" => {
+            clinical_unit
+        }
+        _ => "units",
     }
 }
 

@@ -422,6 +422,19 @@ impl RequestAudit {
             query: "adjust_inventory?",
         }
     }
+    pub fn stock_allocation(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/stock_allocations",
+            action,
+            policy: "StockAllocationPolicy",
+            query: if action == "release" {
+                "release?"
+            } else {
+                "create?"
+            },
+        }
+    }
 }
 
 pub(super) async fn record(
