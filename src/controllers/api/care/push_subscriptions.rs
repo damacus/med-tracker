@@ -1,4 +1,4 @@
-use super::administration::complete;
+use super::administration::complete_typed;
 use super::*;
 use crate::models::care::push_subscriptions;
 use axum::extract::RawQuery;
@@ -34,7 +34,7 @@ pub(super) async fn create(
         push_subscriptions::register(&tenant, &body, user_agent)
             .await
             .map_err(response::operation)?;
-        Ok((StatusCode::CREATED, json!({}), None, false))
+        Ok((StatusCode::CREATED, (), None, false))
     }
     .await;
     let restored = if result.is_ok() {
@@ -46,7 +46,7 @@ pub(super) async fn create(
         return response::error(response::unavailable(), &request_id);
     }
     empty_success(
-        complete(
+        complete_typed(
             tenant,
             &principal,
             audit::RequestAudit::push("POST", "create"),
@@ -91,7 +91,7 @@ pub(super) async fn destroy(
         push_subscriptions::revoke(&tenant, &endpoint)
             .await
             .map_err(response::operation)?;
-        Ok((StatusCode::NO_CONTENT, json!({}), None, false))
+        Ok((StatusCode::NO_CONTENT, (), None, false))
     }
     .await;
     let restored = if result.is_ok() {
@@ -103,7 +103,7 @@ pub(super) async fn destroy(
         return response::error(response::unavailable(), &request_id);
     }
     empty_success(
-        complete(
+        complete_typed(
             tenant,
             &principal,
             audit::RequestAudit::push("DELETE", "destroy"),

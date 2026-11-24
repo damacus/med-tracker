@@ -4,6 +4,10 @@ use crate::models::{
     entities::{barcode_catalog_entry, household, location, medication, nhs_dmd_barcode},
     errors::OperationError,
 };
+use crate::views::medication_lookup::{
+    BarcodeResolution, Details, ExistingMedication, Lookup, Permissions, Product, ReviewGuidance,
+    StockMatch,
+};
 use loco_rs::model::TenantQueryExt;
 use sea_orm::sea_query::{Expr, ExprTrait, Func};
 use sea_orm::{
@@ -31,9 +35,9 @@ pub struct Search {
     pub strength: Option<String>,
 }
 
-pub struct Found {
-    pub body: Value,
-    pub matches: Vec<Value>,
+pub(crate) struct Found {
+    pub body: Lookup,
+    pub matches: Vec<StockMatch>,
 }
 
 pub fn normalize_gtin(value: &str) -> String {
@@ -69,13 +73,33 @@ fn product(
     system: Option<&str>,
     concept: Option<&str>,
     source: &str,
-) -> Value {
-    json!({"barcode":barcode,"code":code,"name":null,"description":null,"display":display,"system":system,"concept_class":concept,"category":null,
-        "trade_family":null,"trade_family_group":null,"package_size":null,"package_quantity":null,"package_unit":null,"directions":null,"warnings":null,"pil_url":null,"spc_url":null,
-        "concept_class_label":match concept {Some("VMP")=>Some("Virtual Medicinal Product"),Some("AMP")=>Some("Actual Medicinal Product"),Some("VMPP")=>Some("Virtual Medicinal Product Pack"),Some("AMPP")=>Some("Actual Medicinal Product Pack"),value=>value},
-        "source_label":if system==Some("https://dmd.nhs.uk") {"NHS dm+d"} else {system.unwrap_or(source)},
-        "match_reason":if barcode.is_some(){Some("barcode_match")}else{None},"match_reason_label":if barcode.is_some(){Some("Barcode match")}else{None},
-        "related_medications":[],"review_prompts":[],"review_prompt_filter":{"hidden_count":0}})
+) -> Product {
+    Product {
+        barcode: barcode.map(str::to_owned),
+        code: code.map(str::to_owned),
+        display: display.to_owned(),
+        system: system.map(str::to_owned),
+        concept_class: concept.map(str::to_owned),
+        concept_class_label: match concept {
+            Some("VMP") => Some("Virtual Medicinal Product"),
+            Some("AMP") => Some("Actual Medicinal Product"),
+            Some("VMPP") => Some("Virtual Medicinal Product Pack"),
+            Some("AMPP") => Some("Actual Medicinal Product Pack"),
+            value => value,
+        }
+        .map(str::to_owned),
+        source_label: Some(
+            if system == Some("https://dmd.nhs.uk") {
+                "NHS dm+d"
+            } else {
+                system.unwrap_or(source)
+            }
+            .to_owned(),
+        ),
+        match_reason: barcode.map(|_| "barcode_match".to_owned()),
+        match_reason_label: barcode.map(|_| "Barcode match".to_owned()),
+        ..Product::default()
+    }
 }
 
 async fn priorities(tenant: &TenantTransaction) -> Result<Vec<String>, OperationError> {
@@ -110,7 +134,7 @@ async fn priorities(tenant: &TenantTransaction) -> Result<Vec<String>, Operation
 async fn catalogue(
     tenant: &TenantTransaction,
     query: &str,
-) -> Result<Vec<(Value, String)>, OperationError> {
+) -> Result<Vec<(Product, String)>, OperationError> {
     let candidates = barcode_candidates(query);
     let numeric = !candidates.is_empty();
     let sources = priorities(tenant).await?;
@@ -221,11 +245,9 @@ async fn catalogue(
                                 entry["concept_class"].as_str(),
                                 "curated",
                             );
-                            for key in ["category", "description", "warnings"] {
-                                if let Some(field) = entry.get(key) {
-                                    value[key] = field.clone();
-                                }
-                            }
+                            value.category = entry["category"].as_str().map(str::to_owned);
+                            value.description = entry["description"].as_str().map(str::to_owned);
+                            value.warnings = entry["warnings"].as_str().map(str::to_owned);
                             results.push((value, "curated".into()));
                         }
                     }
@@ -241,18 +263,14 @@ async fn catalogue(
     let mut seen = HashSet::new();
     results.retain(|(entry, _)| {
         seen.insert((
-            entry["system"].to_string(),
-            entry["code"].to_string(),
-            entry["barcode"].to_string(),
-            entry["display"].to_string(),
+            entry.system.clone(),
+            entry.code.clone(),
+            entry.barcode.clone(),
+            entry.display.clone(),
         ))
     });
     results.truncate(50);
     Ok(results)
-}
-
-fn text(value: &Value, field: &str) -> String {
-    value[field].as_str().unwrap_or("").to_owned()
 }
 
 pub struct StockMatchCandidate {
@@ -264,13 +282,13 @@ pub struct StockMatchCandidate {
 }
 
 impl StockMatchCandidate {
-    fn from_product(value: &Value) -> Self {
+    fn from_product(value: &Product) -> Self {
         Self {
-            barcode: text(value, "barcode"),
-            code: text(value, "code"),
-            name: text(value, "name"),
-            display: text(value, "display"),
-            package_unit: value["package_unit"].as_str().map(str::to_owned),
+            barcode: value.barcode.clone().unwrap_or_default(),
+            code: value.code.clone().unwrap_or_default(),
+            name: value.name.clone().unwrap_or_default(),
+            display: value.display.clone(),
+            package_unit: value.package_unit.clone(),
         }
     }
 }
@@ -325,7 +343,10 @@ fn matches_from(
         .collect()
 }
 
-pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found, OperationError> {
+pub(crate) async fn search(
+    tenant: &TenantTransaction,
+    search: &Search,
+) -> Result<Found, OperationError> {
     access::recheck(tenant).await?;
     let can_create = medications::crud::can_create(tenant).await?;
     let can_refill = access::can_manage_household(tenant)
@@ -334,9 +355,17 @@ pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found
         return Err(OperationError::Forbidden);
     }
     let query = search.q.trim();
+    let permissions = Permissions {
+        can_create,
+        can_update: false,
+    };
     if query.is_empty() {
         return Ok(Found {
-            body: json!({"results":[],"permissions":{"can_create":can_create,"can_update":false}}),
+            body: Lookup {
+                results: Vec::new(),
+                permissions,
+                details: None,
+            },
             matches: Vec::new(),
         });
     }
@@ -385,25 +414,23 @@ pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found
             continue;
         }
         if barcode.is_none() {
-            entry["match_reason"] = Value::Null;
-            entry["match_reason_label"] = Value::Null;
+            entry.match_reason = None;
+            entry.match_reason_label = None;
         }
         let records = matches_from(&visible, &StockMatchCandidate::from_product(&entry));
-        let choices: Vec<Value> = records
+        let choices: Vec<StockMatch> = records
             .iter()
             .map(|row| stock_value(row, &locations, &slug))
             .collect();
         if let [choice] = choices.as_slice() {
-            let mut existing = choice.clone();
-            existing["refill_path"] = json!(format!(
-                "{}?refill=true",
-                existing["path"].as_str().unwrap_or("")
-            ));
-            entry["existing_medication"] = existing;
+            entry.existing_medication = Some(ExistingMedication {
+                medication: choice.clone(),
+                refill_path: format!("{}?refill=true", choice.path),
+            });
         }
         enrich.apply(&mut entry, &visible, &locations, &slug);
         for choice in choices {
-            if seen.insert(choice["id"].as_i64()) {
+            if seen.insert(choice.id) {
                 matches.push(choice);
             }
         }
@@ -426,24 +453,39 @@ pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found
     let resolved_query = if barcode.is_some() {
         results
             .first()
-            .and_then(|entry| entry["display"].as_str())
+            .map(|entry| entry.display.as_str())
             .unwrap_or(query)
     } else {
         query
     };
-    let mut body = json!({"results":results,"permissions":{"can_create":can_create,"can_update":false},"query":resolved_query,"barcode":barcode,"barcode_resolution":null,"form":form,"strength":strength,"review_guidance":{"status":"available"}});
-    body["review_guidance"]["status"] = json!(if enrich.available() {
-        "available"
-    } else {
-        "unavailable"
-    });
-    if barcode.is_some() && source.is_some() {
-        body["barcode_resolution"] = json!({"status":"resolved","source":source});
-    }
+    let details = Details {
+        query: resolved_query.to_owned(),
+        barcode_resolution: source
+            .filter(|_| barcode.is_some())
+            .map(|source| BarcodeResolution {
+                status: "resolved",
+                source,
+            }),
+        barcode,
+        form,
+        strength,
+        review_guidance: ReviewGuidance {
+            status: if enrich.available() {
+                "available"
+            } else {
+                "unavailable"
+            },
+        },
+    };
+    let body = Lookup {
+        results,
+        permissions,
+        details: Some(details),
+    };
     Ok(Found { body, matches })
 }
 
-fn form_matches(entry: &Value, requested: &str) -> bool {
+fn form_matches(entry: &Product, requested: &str) -> bool {
     let terms: &[&[&str]] = &[
         &["tablet", "tablets", "caplet", "caplets"],
         &["capsule", "capsules"],
@@ -486,9 +528,13 @@ fn form_matches(entry: &Value, requested: &str) -> bool {
         return true;
     };
     let searchable = normalize(
-        &["package_unit", "display", "name", "description"]
-            .map(|key| text(entry, key))
-            .join(" "),
+        &[
+            entry.package_unit.as_deref().unwrap_or(""),
+            &entry.display,
+            entry.name.as_deref().unwrap_or(""),
+            entry.description.as_deref().unwrap_or(""),
+        ]
+        .join(" "),
     );
     terms.iter().any(|term| searchable.contains(term))
 }
@@ -544,6 +590,54 @@ fn normalized_form(value: Option<&str>) -> Option<String> {
         .map(|(name, _)| (*name).to_owned())
 }
 
-fn stock_value(row: &medication::Model, locations: &HashMap<i64, String>, slug: &str) -> Value {
-    json!({"id":row.id,"name":row.friendly_name.as_deref().filter(|value|!value.is_empty()).or(row.name.as_deref()).unwrap_or("Medication"),"location":locations.get(&row.location_id).map(String::as_str).unwrap_or("Location"),"path":format!("/households/{slug}/medications/{}",row.id),"current_supply":row.current_supply.map(|quantity|quantity.normalize().to_string()).unwrap_or_default()})
+fn stock_value(
+    row: &medication::Model,
+    locations: &HashMap<i64, String>,
+    slug: &str,
+) -> StockMatch {
+    StockMatch {
+        id: row.id,
+        name: row
+            .friendly_name
+            .as_deref()
+            .filter(|value| !value.is_empty())
+            .or(row.name.as_deref())
+            .unwrap_or("Medication")
+            .to_owned(),
+        location: locations
+            .get(&row.location_id)
+            .map(String::as_str)
+            .unwrap_or("Location")
+            .to_owned(),
+        path: format!("/households/{slug}/medications/{}", row.id),
+        current_supply: row
+            .current_supply
+            .map(|quantity| quantity.normalize().to_string())
+            .unwrap_or_default(),
+    }
+}
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+
+    #[test]
+    fn lookup_product_keeps_null_fields_and_omits_optional_stock_match()
+    -> Result<(), serde_json::Error> {
+        let product = product(
+            "Synthetic product",
+            Some("123"),
+            None,
+            None,
+            None,
+            "curated",
+        );
+        assert_eq!(product.barcode.as_deref(), Some("123"));
+        let body = serde_json::to_value(product)?;
+        assert_eq!(body["match_reason"], "barcode_match");
+        assert_eq!(body["trade_family"], Value::Null);
+        assert_eq!(body["review_prompt_filter"]["hidden_count"], 0);
+        assert!(body.get("existing_medication").is_none());
+        Ok(())
+    }
 }

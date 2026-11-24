@@ -42,11 +42,13 @@ impl Kind {
         }
     }
     async fn read(self, tenant: &TenantTransaction, id: &str) -> Result<Value, OperationError> {
-        let (body, _) = match self {
-            Self::Schedule => treatments::lifecycle::read(tenant, id).await?,
-            Self::Assignment => assignments::read(tenant, id).await?,
-        };
-        Ok(body["data"].clone())
+        match self {
+            Self::Schedule => {
+                serde_json::to_value(treatments::lifecycle::read(tenant, id).await?.0.data)
+            }
+            Self::Assignment => serde_json::to_value(assignments::read(tenant, id).await?.0.data),
+        }
+        .map_err(|_| OperationError::Unavailable)
     }
 }
 

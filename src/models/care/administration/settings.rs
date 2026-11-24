@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::administration::HouseholdSettings;
 
 #[derive(Default)]
 enum TextField {
@@ -105,22 +106,30 @@ impl HouseholdSettingsInput {
     }
 }
 
-fn value(row: &household::Model) -> Value {
-    json!({"id":row.id,"name":row.name,"slug":row.slug,"timezone":row.timezone,"subscription_plan":row.subscription_plan,"ai_suggestions_enabled":row.ai_suggestions_enabled,"updated_at":row.updated_at.and_utc().to_rfc3339()})
+fn value(row: &household::Model) -> HouseholdSettings {
+    HouseholdSettings {
+        id: row.id,
+        name: row.name.clone(),
+        slug: row.slug.clone(),
+        timezone: row.timezone.clone(),
+        subscription_plan: row.subscription_plan.clone(),
+        ai_suggestions_enabled: row.ai_suggestions_enabled,
+        updated_at: row.updated_at.and_utc().to_rfc3339(),
+    }
 }
-pub async fn read(tenant: &TenantTransaction) -> Result<Value, OperationError> {
+pub async fn read(tenant: &TenantTransaction) -> Result<HouseholdSettings, OperationError> {
     authorize(tenant).await?;
     let row = household::Entity::find_by_id(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    Ok(json!({"data":value(&row)}))
+    Ok(value(&row))
 }
 pub async fn update(
     tenant: &TenantTransaction,
     input: HouseholdSettingsInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<HouseholdSettings, OperationError> {
     authorize(tenant).await?;
     input.check_shape()?;
     let row = household::Entity::find_by_id(tenant.scope().household_id)
@@ -144,7 +153,7 @@ pub async fn update(
             .ai_suggestions_enabled
             .is_none_or(|enabled| enabled == row.ai_suggestions_enabled)
     {
-        return Ok(json!({"data":before}));
+        return Ok(before);
     }
     let mut active: household::ActiveModel = row.into();
     if let Some(name) = values.name {
@@ -166,8 +175,8 @@ pub async fn update(
         tenant,
         "Household",
         row.id,
-        Some(before),
-        after.clone(),
+        Some(json!(before)),
+        json!(&after),
         provenance,
     )
     .await?;
@@ -178,5 +187,38 @@ pub async fn update(
         provenance,
     )
     .await?;
-    Ok(json!({"data":after}))
+    Ok(after)
+}
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+
+    #[test]
+    fn household_settings_projection_preserves_the_wire_fields() -> Result<(), serde_json::Error> {
+        let now = chrono::DateTime::UNIX_EPOCH.naive_utc();
+        let household = household::Model {
+            id: 42,
+            ai_suggestions_enabled: true,
+            created_at: now,
+            created_by_account_id: None,
+            lifecycle_state: "active".into(),
+            name: "Synthetic household".into(),
+            offboarded_at: None,
+            slug: "synthetic-household".into(),
+            status: "active".into(),
+            subscription_plan: "family_plus".into(),
+            timezone: "Europe/London".into(),
+            updated_at: now,
+        };
+        let response = value(&household);
+        assert_eq!(response.subscription_plan, "family_plus");
+        assert_eq!(
+            serde_json::to_value(response)?,
+            json!({"id":42,"name":"Synthetic household","slug":"synthetic-household",
+                "timezone":"Europe/London","subscription_plan":"family_plus",
+                "ai_suggestions_enabled":true,"updated_at":"1970-01-01T00:00:00+00:00"})
+        );
+        Ok(())
+    }
 }

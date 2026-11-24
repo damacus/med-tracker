@@ -2,6 +2,7 @@ use super::*;
 use crate::models::access::PersonAccess;
 use crate::models::care::locations::SavedResponse;
 use crate::models::profile::{self, Changes, Snapshot};
+use crate::views::{DataResponse, profile::Profile};
 use axum::http::{HeaderValue, header};
 
 pub(super) fn no_store(mut response: Response) -> Response {
@@ -11,16 +12,18 @@ pub(super) fn no_store(mut response: Response) -> Response {
     response
 }
 
-pub(super) fn representation(snapshot: &Snapshot) -> Value {
-    json!({"data": {
-        "person_id": snapshot.person_id.to_string(),
-        "account_id": snapshot.account_id.to_string(),
-        "date_of_birth": snapshot.date_of_birth,
-        "time_zone": snapshot.time_zone,
-        "gravatar_enabled": snapshot.gravatar_enabled,
-        "mobile_shortcuts": snapshot.mobile_shortcuts,
-        "avatar_attached": snapshot.avatar_attached,
-    }})
+pub(super) fn representation(snapshot: Snapshot) -> DataResponse<Profile> {
+    DataResponse {
+        data: Profile {
+            person_id: snapshot.person_id.to_string(),
+            account_id: snapshot.account_id.to_string(),
+            date_of_birth: snapshot.date_of_birth,
+            time_zone: snapshot.time_zone,
+            gravatar_enabled: snapshot.gravatar_enabled,
+            mobile_shortcuts: snapshot.mobile_shortcuts,
+            avatar_attached: snapshot.avatar_attached,
+        },
+    }
 }
 
 fn parse(body: Value) -> std::result::Result<Changes, response::Failure> {
@@ -101,10 +104,10 @@ pub(super) async fn show(
     };
     let reply = profile::read(&tenant, principal.account_id())
         .await
-        .map(|snapshot| (StatusCode::OK, representation(&snapshot), None))
+        .map(|snapshot| (StatusCode::OK, representation(snapshot), None))
         .map_err(response::operation);
     no_store(
-        finish(
+        finish_typed(
             tenant,
             principal.provenance(),
             audit::RequestAudit::profile("GET", "show"),
@@ -204,7 +207,7 @@ pub(super) async fn update(
         )
         .await
         .map_err(response::operation)?;
-        let value = representation(&snapshot);
+        let value = representation(snapshot);
         if let Some(key) = key {
             crate::models::care::locations::store(
                 &tenant,
@@ -215,7 +218,7 @@ pub(super) async fn update(
                     path: &path,
                     request: &raw,
                     status: 200,
-                    body: value.clone(),
+                    body: serde_json::to_value(&value).map_err(|_| response::unavailable())?,
                     etag: None,
                 },
             )
@@ -234,7 +237,7 @@ pub(super) async fn update(
         return response::error(response::unavailable(), &request_id);
     }
     no_store(
-        finish(
+        finish_typed(
             tenant,
             principal.provenance(),
             audit::RequestAudit::profile(method, "update"),
@@ -243,4 +246,33 @@ pub(super) async fn update(
         )
         .await,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn profile_response_uses_string_ids_and_preserves_date_encoding()
+    -> Result<(), serde_json::Error> {
+        let body = representation(Snapshot {
+            account_id: 31,
+            person_id: 42,
+            date_of_birth: chrono::NaiveDate::from_ymd_opt(2000, 1, 2).unwrap(),
+            time_zone: "Europe/London".into(),
+            gravatar_enabled: false,
+            mobile_shortcuts: vec![],
+            avatar_attached: true,
+        });
+        assert_eq!(body.data.person_id, "42");
+        assert_eq!(
+            serde_json::to_value(body)?,
+            json!({"data": {
+                "account_id": "31", "person_id": "42", "date_of_birth": "2000-01-02",
+                "time_zone": "Europe/London", "gravatar_enabled": false,
+                "mobile_shortcuts": [], "avatar_attached": true
+            }})
+        );
+        Ok(())
+    }
 }

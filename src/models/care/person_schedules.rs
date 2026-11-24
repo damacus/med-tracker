@@ -393,7 +393,7 @@ pub(crate) async fn end_participation(
         if row.person_schedule_id.is_none() {
             legacy::freeze(tenant, &row, now).await?;
         }
-        let before = super::treatments::representation(&row).0["data"].clone();
+        let before = super::treatments::schedule_snapshot(&row)?;
         let retired = row.retired_at;
         let mut ended = row.into_active_model();
         if retiring {

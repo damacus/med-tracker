@@ -861,7 +861,7 @@ async fn invitations_mail_committed_job_has_durable_attempt_and_provider_receipt
     worker.abort();
     let _ = worker.await;
     app.close().await;
-    assert!(created["data"]["id"].as_i64().is_some());
+    assert!(created.id > 0);
     assert_eq!(count, 1);
     assert_eq!(grants, 0);
 }
@@ -1316,7 +1316,7 @@ async fn invitation_mail_worker_rechecks_authority_tokens_and_replay_without_res
         )
         .await
         .unwrap();
-        let id = created["data"]["id"].as_i64().unwrap();
+        let id = created.id;
         tenant.commit().await.unwrap();
         if matches!(scenario, "inviter_revoked" | "inviter_locked") {
             let secondary = app.fixture.foreign_household().await;
@@ -1526,7 +1526,7 @@ async fn invitation_mail_attempts_enforce_runtime_tenancy_and_immutable_provenan
     )
     .await
     .unwrap();
-    let id = created["data"]["id"].as_i64().unwrap();
+    let id = created.id;
     tenant.commit().await.unwrap();
     let foreign = app.fixture.foreign_household().await;
     for mutation in 0..3 {

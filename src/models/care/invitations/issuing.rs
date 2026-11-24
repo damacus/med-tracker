@@ -8,7 +8,7 @@ pub async fn create(
     input: InvitationInput,
     acceptance_url: Option<&url::Url>,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<InvitationSummary, OperationError> {
     crate::models::care::sync::lock(tenant).await?;
     administration::authorize(tenant).await?;
     create_authorized(tenant, input, acceptance_url, provenance).await
@@ -19,7 +19,7 @@ async fn create_authorized(
     input: InvitationInput,
     acceptance_url: Option<&url::Url>,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<InvitationSummary, OperationError> {
     let (email, role, dependent_sharing) = input.validated()?;
     if household_invitation::Entity::find()
         .in_tenant(tenant.scope().household_id)
@@ -56,7 +56,7 @@ async fn create_authorized(
         delivery::enqueue(tenant, &row, Email { to: email, subject: "MedTracker household invitation".into(), text: format!("You have been invited to a MedTracker household. Accept your invitation: {target}"), ..Default::default() }).await?;
     }
     record(tenant, &row, None, "created", provenance).await?;
-    Ok(json!({"data":summary(&row,now)}))
+    Ok(summary(&row, now))
 }
 
 pub(super) fn state(row: &household_invitation::Model) -> Value {
@@ -101,7 +101,7 @@ pub(crate) async fn create_for_parent(
     email: &str,
     acceptance_url: &url::Url,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<InvitationSummary, OperationError> {
     use sea_orm::QuerySelect;
     crate::models::care::sync::lock(tenant).await?;
     crate::models::care::person_carers::selected(tenant, person_id).await?;
@@ -183,7 +183,7 @@ pub(crate) async fn create_for_parent(
                 OperationError::Unavailable => error,
                 _ => invalid("invitation", "has unavailable inviter authority"),
             })?;
-        return Ok(json!({"data":summary(&row,now)}));
+        return Ok(summary(&row, now));
     }
     create_authorized(
         tenant,

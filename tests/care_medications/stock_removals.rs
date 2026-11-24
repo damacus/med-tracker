@@ -1,4 +1,5 @@
 use super::*;
+use med_tracker::views::medications::StockRemoval;
 use medications::stock_removals::{self, RemoveStock};
 
 fn input(fixture: &Fixture) -> RemoveStock {
@@ -12,10 +13,7 @@ fn input(fixture: &Fixture) -> RemoveStock {
     }
 }
 
-async fn remove(
-    fixture: &Fixture,
-    input: RemoveStock,
-) -> Result<serde_json::Value, OperationError> {
+async fn remove(fixture: &Fixture, input: RemoveStock) -> Result<StockRemoval, OperationError> {
     let tenant = access::begin(&fixture.runtime, &fixture.scope, None).await?;
     match stock_removals::create(&tenant, input, None).await {
         Ok(result) => {
@@ -91,9 +89,9 @@ async fn stock_removal_history_is_bounded_and_newest_first() {
     tenant.rollback().await.unwrap();
     fixture.close().await;
     let history = history.unwrap();
-    assert_eq!(history["data"].as_array().unwrap().len(), 1);
-    assert_eq!(history["data"][0], newest);
-    assert_eq!(history["meta"]["total_count"], 2);
+    assert_eq!(history.data.len(), 1);
+    assert_eq!(history.data[0], newest);
+    assert_eq!(history.meta.total_count, 2);
 }
 
 #[tokio::test]
@@ -114,7 +112,13 @@ async fn stock_removal_tracked_option_updates_parent_and_history() {
     let effect = fixture.effect().await;
     fixture.close().await;
     let result = result.unwrap();
-    assert_eq!(result["remaining_quantity"], "4");
+    assert_eq!(
+        result
+            .remaining_quantity
+            .as_ref()
+            .and_then(serde_json::Value::as_str),
+        Some("4")
+    );
     assert_eq!(supply, "4.00");
     assert!(touched);
     assert_eq!(effect, ("8.00".into(), 1, 1));

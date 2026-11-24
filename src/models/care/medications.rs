@@ -15,6 +15,7 @@ use crate::models::{
     errors::OperationError,
     identity::credentials::CredentialProvenance,
 };
+use crate::views::medications::MedicationResponse;
 use chrono::Utc;
 use sea_orm::prelude::Decimal;
 use sea_orm::{
@@ -71,7 +72,7 @@ pub struct ScalarPrecondition {
 #[derive(Debug)]
 pub struct StockSnapshot {
     pub medication: medication::Model,
-    pub representation: Value,
+    pub representation: MedicationResponse,
     pub etag: String,
 }
 
@@ -116,19 +117,22 @@ async fn snapshot(
     let row = projection::serialize_many(db, vec![medication.clone()], settings)
         .await?
         .remove(0);
-    let mut representation = json!({"data": row});
-    representation.sort_all_objects();
-    let etag = format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(
-            serde_json::to_vec(&representation).expect("JSON value must serialize")
-        ))
-    );
+    let representation = MedicationResponse { data: row };
+    let etag = representation_etag(&representation)?;
     Ok(StockSnapshot {
         medication,
         representation,
         etag,
     })
+}
+
+pub(crate) fn representation_etag(response: &MedicationResponse) -> Result<String, OperationError> {
+    let mut canonical = serde_json::to_value(response).map_err(|_| OperationError::Unavailable)?;
+    canonical.sort_all_objects();
+    Ok(format!(
+        "\"{}\"",
+        hex::encode(Sha256::digest(canonical.to_string().as_bytes()))
+    ))
 }
 
 async fn visible_medication(

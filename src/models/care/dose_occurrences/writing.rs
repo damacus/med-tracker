@@ -1,4 +1,8 @@
 use super::*;
+use crate::views::{
+    DataResponse,
+    dose_occurrences::{BrowserDoseOccurrence, DoseOccurrence},
+};
 use loco_rs::model::TenantQueryExt;
 #[derive(Default, Deserialize)]
 pub struct RangeQuery {
@@ -139,13 +143,13 @@ pub(crate) async fn browser_take_target(
     .ok_or_else(invalid_occurrence)?;
     Ok(false)
 }
-pub async fn list(
+pub(crate) async fn list(
     tenant: &TenantTransaction,
     kind: &str,
     id: &str,
     query: RangeQuery,
     secret: &Arc<[u8]>,
-) -> Result<Value, OperationError> {
+) -> Result<DataResponse<Vec<DoseOccurrence>>, OperationError> {
     list_with_projection(
         tenant,
         kind,
@@ -181,7 +185,7 @@ pub(crate) async fn browser_list(
     id: &str,
     query: RangeQuery,
     secret: &Arc<[u8]>,
-) -> Result<Value, OperationError> {
+) -> Result<DataResponse<Vec<BrowserDoseOccurrence>>, OperationError> {
     list_with_projection(
         tenant,
         kind,
@@ -190,7 +194,6 @@ pub(crate) async fn browser_list(
         secret,
         true,
         |secret, source, row| {
-            let mut value = row_value(secret, source, row, tenant.settings());
             let (amount, unit) = match source {
                 Source::Schedule(schedule) => {
                     let preview =
@@ -204,23 +207,25 @@ pub(crate) async fn browser_list(
                     assignment.dose_unit.clone(),
                 ),
             };
-            value["prescribed_amount"] = json!(amount);
-            value["prescribed_unit"] = json!(unit);
-            value
+            BrowserDoseOccurrence {
+                occurrence: row_value(secret, source, row, tenant.settings()),
+                prescribed_amount: amount,
+                prescribed_unit: unit,
+            }
         },
     )
     .await
 }
 
-async fn list_with_projection(
+async fn list_with_projection<T>(
     tenant: &TenantTransaction,
     kind: &str,
     id: &str,
     query: RangeQuery,
     secret: &Arc<[u8]>,
     execution: bool,
-    project: impl Fn(&Arc<[u8]>, &Source, &Occurrence) -> Value,
-) -> Result<Value, OperationError> {
+    project: impl Fn(&Arc<[u8]>, &Source, &Occurrence) -> T,
+) -> Result<DataResponse<Vec<T>>, OperationError> {
     access::recheck(tenant).await?;
     let source = source(tenant, kind, id, false).await?;
     let (start, end) = query
@@ -242,11 +247,11 @@ async fn list_with_projection(
     } else {
         projected(tenant.transaction(), &source, start, end, tenant.settings()).await?
     };
-    let data: Vec<Value> = rows
+    let data = rows
         .iter()
         .map(|row| project(secret, &source, row))
         .collect();
-    Ok(json!({"data":data}))
+    Ok(DataResponse { data })
 }
 pub async fn change(
     tenant: &TenantTransaction,
@@ -275,7 +280,9 @@ pub async fn change(
                 && record.reason == reason
                 && record.note == note
             {
-                let body = json!({"data":row_value(secret,&source,&row,settings)});
+                let body = DataResponse {
+                    data: row_value(secret, &source, &row, settings),
+                };
                 return Ok(OccurrenceWritten {
                     row: record.clone(),
                     body,
@@ -456,7 +463,9 @@ pub async fn change(
         .as_ref()
         .map(record_etag)
         .ok_or(OperationError::Unavailable)?;
-    let body = json!({"data":row_value(secret,&source,&row,settings)});
+    let body = DataResponse {
+        data: row_value(secret, &source, &row, settings),
+    };
     let record = row.record.ok_or(OperationError::Unavailable)?;
     Ok(OccurrenceWritten {
         body,

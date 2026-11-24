@@ -12,7 +12,7 @@ pub(super) async fn apply(
     tenant: &TenantTransaction,
     operation: &Operation,
     provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<SyncResult, OperationError> {
     let mut medication_input =
         medications::crud::MedicationInput::from_fields(operation.attributes.clone());
     if let Some(Value::String(id)) = operation.attributes.get("location_id") {

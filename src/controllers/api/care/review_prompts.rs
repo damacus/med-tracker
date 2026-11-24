@@ -4,6 +4,10 @@ use crate::models::care::{
     review_prompts::{self, edit},
     sync::{lock, review_prompts as prompts},
 };
+use crate::views::{
+    DataResponse,
+    review_prompts::{LeaseResponse, ReleasedLease, ReviewPrompt},
+};
 use axum::extract::rejection::QueryRejection;
 use axum::http::{HeaderValue, header};
 
@@ -59,19 +63,33 @@ async fn lease_action(
         .and_then(|value| value.to_str().ok())
         .unwrap_or("");
     let reply = match action {
-        "acquire" => edit::acquire(&tenant, &id)
-            .await
-            .map(|body| (StatusCode::CREATED, body, None)),
-        "renew" => edit::renew(&tenant, &id, token)
-            .await
-            .map(|body| (StatusCode::OK, body, None)),
-        _ => edit::release(&tenant, &id, token)
-            .await
-            .map(|()| (StatusCode::OK, json!({"data":{"released":true}}), None)),
+        "acquire" => edit::acquire(&tenant, &id).await.map(|data| {
+            (
+                StatusCode::CREATED,
+                LeaseResponse::Acquired(DataResponse { data }),
+                None,
+            )
+        }),
+        "renew" => edit::renew(&tenant, &id, token).await.map(|data| {
+            (
+                StatusCode::OK,
+                LeaseResponse::Renewed(DataResponse { data }),
+                None,
+            )
+        }),
+        _ => edit::release(&tenant, &id, token).await.map(|()| {
+            (
+                StatusCode::OK,
+                LeaseResponse::Released(DataResponse {
+                    data: ReleasedLease { released: true },
+                }),
+                None,
+            )
+        }),
     }
     .map_err(response::operation);
     no_store(
-        finish(
+        finish_typed(
             tenant,
             principal.provenance(),
             audit::RequestAudit::review_prompt(
@@ -107,7 +125,7 @@ pub(super) async fn index(
         .map(|body| (StatusCode::OK, body, None))
         .map_err(response::operation);
     no_store(
-        finish(
+        finish_typed(
             tenant,
             principal.provenance(),
             audit::RequestAudit::review_prompt("GET", "index"),
@@ -134,7 +152,7 @@ pub(super) async fn show(
         .map(|(body, etag)| (StatusCode::OK, body, Some(etag)))
         .map_err(response::operation);
     no_store(
-        finish(
+        finish_typed(
             tenant,
             principal.provenance(),
             audit::RequestAudit::review_prompt("GET", "show"),
@@ -174,7 +192,7 @@ pub(super) async fn update(
     )
     .await;
     no_store(
-        administration::complete(
+        administration::complete_typed(
             tenant,
             &principal,
             audit::RequestAudit::review_prompt(method, "update"),
@@ -185,7 +203,17 @@ pub(super) async fn update(
     )
 }
 
-type Stored = std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure>;
+type Mutation = response::MutationBody<Box<DataResponse<ReviewPrompt>>>;
+type Stored = std::result::Result<(StatusCode, Mutation, Option<String>, bool), response::Failure>;
+
+fn review_error(tenant: &TenantTransaction, code: &str, message: &str) -> Mutation {
+    Mutation::Error(response::ErrorEnvelope::new(
+        code,
+        message,
+        &tenant.scope().request_id,
+        None,
+    ))
+}
 
 #[allow(clippy::too_many_arguments)]
 async fn keyed(
@@ -196,7 +224,7 @@ async fn keyed(
     path: &str,
     request: &Value,
     status: StatusCode,
-    body: Value,
+    body: Mutation,
     etag: Option<String>,
 ) -> Stored {
     if let Some(key) = key {
@@ -209,14 +237,13 @@ async fn keyed(
                 path,
                 request,
                 status: status.as_u16(),
-                body,
+                body: serde_json::to_value(&body).map_err(|_| response::unavailable())?,
                 etag: etag.as_deref(),
             },
         )
-        .await
-    } else {
-        Ok((status, body, etag, false))
+        .await?;
     }
+    Ok((status, body, etag, false))
 }
 
 async fn mutation(
@@ -284,12 +311,13 @@ async fn mutation(
     if let Some(key) = key
         && let Some(reply) = locations::keyed_replay(tenant, key, method, &path, &body).await?
     {
-        return Ok(reply);
+        let (status, body, etag, replayed) = reply;
+        return Ok((status, Mutation::Replay(body), etag, replayed));
     }
     if rejected {
         return Ok((
             StatusCode::BAD_REQUEST,
-            json!({"error":{"code":"bad_request","message":"JSON is invalid","request_id":tenant.scope().request_id}}),
+            review_error(tenant, "bad_request", "JSON is invalid"),
             None,
             false,
         ));
@@ -318,7 +346,7 @@ async fn mutation(
                 &path,
                 &body,
                 status,
-                json!({"error":{"code":error_code,"message":message,"request_id":tenant.scope().request_id}}),
+                review_error(tenant, error_code, message),
                 None,
             )
             .await;
@@ -337,7 +365,11 @@ async fn mutation(
             &path,
             &body,
             StatusCode::PRECONDITION_REQUIRED,
-            json!({"error":{"code":"precondition_required","message":"A current review version is required","request_id":tenant.scope().request_id}}),
+            review_error(
+                tenant,
+                "precondition_required",
+                "A current review version is required",
+            ),
             None,
         )
         .await;
@@ -345,7 +377,7 @@ async fn mutation(
     if expected != prompts::tag(&record) {
         return Ok((
             StatusCode::CONFLICT,
-            json!({"error":{"code":"conflict","message":"A current review version is required","request_id":tenant.scope().request_id}}),
+            review_error(tenant, "conflict", "A current review version is required"),
             None,
             false,
         ));
@@ -366,7 +398,7 @@ async fn mutation(
             &path,
             &body,
             StatusCode::UNPROCESSABLE_ENTITY,
-            json!({"error":{"code":"validation_failed","message":"Review could not be saved","request_id":tenant.scope().request_id}}),
+            review_error(tenant, "validation_failed", "Review could not be saved"),
             None,
         )
         .await;
@@ -414,7 +446,9 @@ async fn mutation(
         &path,
         &body,
         StatusCode::OK,
-        json!({"data": review_prompts::value(&updated)}),
+        Mutation::Resource(Box::new(DataResponse {
+            data: review_prompts::value(&updated),
+        })),
         Some(etag),
     )
     .await

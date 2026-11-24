@@ -1,4 +1,5 @@
-use super::administration::{complete, key, request_id, store};
+use super::administration::{complete_typed, key, request_id};
+use super::response::MutationBody;
 use super::*;
 use crate::models::care::{locations::SavedResponse, treatments::lifecycle};
 use headers::HeaderMapExt;
@@ -25,7 +26,7 @@ pub(super) async fn index(
             .map_err(response::operation),
         Err(_) => Err(response::Failure::validation("Invalid pagination")),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::treatment("GET", "index"),
@@ -58,12 +59,12 @@ pub(super) async fn show(
                 } else {
                     StatusCode::OK
                 },
-                if unchanged { Value::Null } else { body },
+                if unchanged { None } else { Some(body) },
                 Some(etag),
             )
         })
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::treatment("GET", "show"),
@@ -103,9 +104,10 @@ pub(super) async fn update(
         let path = format!("/api/v1/households/{household_id}/schedules/{id}");
         let key = key(&headers);
         if let Some(key) = key
-            && let Some(reply) = locations::keyed_replay(&tenant, key, method, &path, &body).await?
+            && let Some((status, body, etag, replay)) =
+                locations::keyed_replay(&tenant, key, method, &path, &body).await?
         {
-            return Ok(reply);
+            return Ok((status, MutationBody::Replay(body), etag, replay));
         }
         let etag = headers
             .get(axum::http::header::IF_MATCH)
@@ -115,22 +117,28 @@ pub(super) async fn update(
                 .await
                 .map_err(response::operation)?;
         if let Some(key) = key {
-            return store(
+            crate::models::care::locations::store(
                 &tenant,
-                &principal,
+                principal.provenance(),
                 SavedResponse {
                     key,
                     method,
                     path: &path,
                     request: &body,
                     status: 200,
-                    body: reply,
+                    body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                     etag: Some(&etag),
                 },
             )
-            .await;
+            .await
+            .map_err(response::operation)?;
         }
-        Ok((StatusCode::OK, reply, Some(etag), false))
+        Ok((
+            StatusCode::OK,
+            MutationBody::Resource(reply),
+            Some(etag),
+            false,
+        ))
     }
     .await;
     let restored = if result.is_ok() {
@@ -141,7 +149,7 @@ pub(super) async fn update(
     if restored.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::treatment(method, "update"),

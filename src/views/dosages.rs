@@ -1,6 +1,8 @@
 use crate::models::care::dosages::DoseCycle;
 use serde::Serialize;
 
+pub use super::PaginationMeta;
+
 #[derive(Serialize)]
 pub struct DosageOption {
     pub id: i64,
@@ -30,11 +32,4 @@ pub struct DosageOptionResponse {
 pub struct DosageOptionCollectionResponse {
     pub data: Vec<DosageOption>,
     pub meta: PaginationMeta,
-}
-
-#[derive(Serialize)]
-pub struct PaginationMeta {
-    pub page: i64,
-    pub per_page: i64,
-    pub total_count: u64,
 }

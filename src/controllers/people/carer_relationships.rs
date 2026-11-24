@@ -38,9 +38,7 @@ impl Page<'_> {
             };
         let result = async {
             let (person, _) = people::read(&tenant, self.id, principal.time_zone()).await?;
-            let id = person["data"]["id"]
-                .as_i64()
-                .ok_or(OperationError::Unavailable)?;
+            let id = person.data.id;
             let page = person_carers::page(&tenant, id).await?;
             let mut data = super::super::medications::rendering::appearance_context();
             data.as_object_mut()
@@ -134,9 +132,7 @@ impl Page<'_> {
             };
         let result = async {
             let (person, _) = people::read(&tenant, self.id, principal.time_zone()).await?;
-            let id = person["data"]["id"]
-                .as_i64()
-                .ok_or(OperationError::Unavailable)?;
+            let id = person.data.id;
             let notice = match change {
                 Change::Assign => {
                     let target = crate::models::settings::public_origin(self.ctx)

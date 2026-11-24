@@ -11,9 +11,10 @@ pub(crate) use creation::create_imported;
 pub use creation::{CreateDependent, create};
 pub(crate) use creation::{DependentInput, DependentKind};
 pub(crate) use me::me_read;
-pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};
-pub(crate) use update_input::{PersonKind, PersonUpdateInput, UpdateField};
+pub(crate) use projection::{representation_etag, values};
+pub use update_input::PersonKind;
+pub(crate) use update_input::{PersonUpdateInput, UpdateField};
 pub(crate) use writing::update;
 pub(crate) use writing::{SelfClinicalChanges, update_self};
 

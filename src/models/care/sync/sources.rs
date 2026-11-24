@@ -1,11 +1,12 @@
 use super::*;
+use crate::views::treatments::Treatment;
 use loco_rs::model::TenantQueryExt;
 
 pub(super) async fn apply(
     tenant: &TenantTransaction,
     operation: &Operation,
     provenance: &CredentialProvenance,
-) -> Result<Value, OperationError> {
+) -> Result<SyncResult, OperationError> {
     let schedule = operation.resource_type == "schedule";
     let kind = if schedule {
         "Schedule"
@@ -14,11 +15,22 @@ pub(super) async fn apply(
     };
     if operation.action == "create" {
         let (body, etag) = if schedule {
-            treatments::create(tenant, &envelope(operation), Some(provenance)).await?
+            let (response, etag) =
+                treatments::create(tenant, &envelope(operation), Some(provenance)).await?;
+            (Treatment::Schedule(Box::new(response)), etag)
         } else {
-            assignments::create(tenant, &envelope(operation), Some(provenance)).await?
+            let (response, etag) =
+                assignments::create(tenant, &envelope(operation), Some(provenance)).await?;
+            (Treatment::Assignment(Box::new(response)), etag)
         };
-        return super::operations::wire(kind, body, etag, (!schedule).then_some(false));
+        let source = body.source();
+        return Ok(result(
+            kind,
+            source.id,
+            Some(&source.portable_id),
+            Some(etag),
+            (!schedule).then_some(false),
+        ));
     }
     let id = operation.id.as_deref().ok_or(OperationError::NotFound)?;
     if schedule {
@@ -27,33 +39,44 @@ pub(super) async fn apply(
         assignments::authorize_update(tenant, id).await?;
     }
     let before = if schedule {
-        treatments::lifecycle::read(tenant, id).await?
+        let (response, etag) = treatments::lifecycle::read(tenant, id).await?;
+        (Treatment::Schedule(Box::new(response)), etag)
     } else {
-        assignments::read(tenant, id).await?
+        let (response, etag) = assignments::read(tenant, id).await?;
+        (Treatment::Assignment(Box::new(response)), etag)
     };
     required_etag(operation, &before.1)?;
     if operation.action == "update" {
         let (body, etag) = if schedule {
-            treatments::lifecycle::update(
+            let (response, etag) = treatments::lifecycle::update(
                 tenant,
                 id,
                 &envelope(operation),
                 operation.if_match.as_deref(),
                 Some(provenance),
             )
-            .await?
+            .await?;
+            (Treatment::Schedule(Box::new(response)), etag)
         } else {
-            assignments::update(
+            let (response, etag) = assignments::update(
                 tenant,
                 id,
                 &envelope(operation),
                 operation.if_match.as_deref(),
                 Some(provenance),
             )
-            .await?
+            .await?;
+            (Treatment::Assignment(Box::new(response)), etag)
         };
         let unchanged = before.0 == body;
-        return super::operations::wire(kind, body, etag, (!schedule).then_some(unchanged));
+        let source = body.source();
+        return Ok(result(
+            kind,
+            source.id,
+            Some(&source.portable_id),
+            Some(etag),
+            (!schedule).then_some(unchanged),
+        ));
     }
     if matches!(operation.action.as_str(), "pause" | "resume" | "reorder") {
         return super::pauses::source_change(tenant, operation, provenance).await;
@@ -63,9 +86,7 @@ pub(super) async fn apply(
             details: json!({"status":if schedule {400}else{422},"code":if schedule {"bad_request"}else{"unprocessable_content"},"message":if schedule {"Invalid request body"}else{"Person medication is invalid"}}),
         });
     }
-    let record_id = before.0["data"]["id"]
-        .as_i64()
-        .ok_or(OperationError::Unavailable)?;
+    let record_id = before.0.source().id;
     let now = Utc::now().naive_utc();
     let (person_id, portable_id, clinical) = if schedule {
         treatments::lifecycle::authorize_update(tenant, id).await?;
@@ -75,7 +96,7 @@ pub(super) async fn apply(
             .one(tenant.transaction())
             .await?
             .ok_or(OperationError::NotFound)?;
-        let clinical = treatments::representation(&row).0["data"].clone();
+        let clinical = treatments::schedule_snapshot(&row)?;
         let person_id = row.person_id;
         let portable_id = row.portable_id.clone();
         let mut active = row.into_active_model();

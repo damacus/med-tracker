@@ -1,3 +1,4 @@
+use super::super::administration::complete_typed;
 use super::*;
 
 pub async fn pause_schedule(
@@ -77,7 +78,7 @@ pub async fn reorder_assignment(
     if restored.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::assignment("PATCH", "reorder"),
@@ -173,5 +174,5 @@ async fn change(
     } else {
         audit::RequestAudit::assignment("PATCH", action)
     };
-    complete(tenant, &principal, audit, result, &request_id).await
+    complete_typed(tenant, &principal, audit, result, &request_id).await
 }

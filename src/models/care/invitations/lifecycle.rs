@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::identity::credentials::CredentialProvenance;
+use crate::views::invitations::{DeliveryStatus, ResentInvitation};
 use loco_rs::mailer::Email;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::QuerySelect;
@@ -76,7 +77,7 @@ pub async fn resend(
     id: i64,
     acceptance_url: &url::Url,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, ResendError> {
+) -> Result<ResentInvitation, ResendError> {
     let row = current(tenant, id).await?;
     if row.accepted_at.is_some() || row.revoked_at.is_some() {
         return Err(invalid("base", "Invitation cannot be resent").into());
@@ -106,7 +107,9 @@ pub async fn resend(
     .await
     .map_err(|_| ResendError::DeliveryUnavailable)?;
     super::issuing::record(tenant, &row, Some(before), "resent", provenance).await?;
-    Ok(
-        json!({"data":{"invitation_id":row.id.to_string(),"expires_at":row.expires_at.and_utc().to_rfc3339(),"delivery_status":"queued"}}),
-    )
+    Ok(ResentInvitation {
+        invitation_id: row.id.to_string(),
+        expires_at: row.expires_at.and_utc().to_rfc3339(),
+        delivery_status: DeliveryStatus::Queued,
+    })
 }

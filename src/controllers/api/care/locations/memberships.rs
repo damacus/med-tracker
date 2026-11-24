@@ -34,7 +34,7 @@ pub(crate) async fn create_membership(
     )
     .await;
     let replay = result.as_ref().is_ok_and(|(_, _, _, replay)| *replay);
-    let mut response = finish(
+    let mut response = finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::location_membership("POST", "create"),
@@ -58,14 +58,17 @@ async fn creation(
     location_id: &str,
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> LocationMutation<LocationMembershipResponse> {
     locations::authorize(tenant)
         .await
         .map_err(response::operation)?;
     if !doses::valid_identifier(location_id) {
         return Ok((
             StatusCode::BAD_REQUEST,
-            json!({"error":{"code":"bad_request","message":"Invalid location ID","request_id":tenant.scope().request_id}}),
+            MutationBody::Error(
+                response::Failure::bad_request("Invalid location ID")
+                    .into_body(&tenant.scope().request_id),
+            ),
             None,
             false,
         ));
@@ -82,9 +85,10 @@ async fn creation(
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.trim().is_empty());
     if let Some(key) = key
-        && let Some(reply) = keyed_replay(tenant, key, "POST", &path, &body).await?
+        && let Some((status, body, etag, replay)) =
+            keyed_replay(tenant, key, "POST", &path, &body).await?
     {
-        return Ok(reply);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let savepoint = tenant
         .transaction()
@@ -106,7 +110,9 @@ async fn creation(
                 .map_err(|_| response::unavailable())?;
             (
                 StatusCode::CREATED,
-                locations::membership_representation(&record, &location, &person),
+                MutationBody::Resource(locations::membership_representation(
+                    &record, &location, &person,
+                )),
             )
         }
         Err(OperationError::Validation { details }) => {
@@ -116,7 +122,10 @@ async fn creation(
                 .map_err(|_| response::unavailable())?;
             (
                 StatusCode::UNPROCESSABLE_ENTITY,
-                json!({"error":{"code":"validation_failed","message":"Validation failed","request_id":tenant.scope().request_id,"errors":details["errors"]}}),
+                MutationBody::Error(
+                    response::Failure::fields(details["errors"].clone())
+                        .into_body(&tenant.scope().request_id),
+                ),
             )
         }
         Err(error) => {
@@ -137,7 +146,7 @@ async fn creation(
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: representation.clone(),
+                body: serde_json::to_value(&representation).map_err(|_| response::unavailable())?,
                 etag: None,
             },
         )
@@ -171,7 +180,7 @@ pub(crate) async fn destroy_membership(
     )
     .await;
     let replay = result.as_ref().is_ok_and(|(_, _, _, replay)| *replay);
-    let mut response = finish(
+    let mut response = finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::location_membership("DELETE", "destroy"),
@@ -195,14 +204,17 @@ async fn removal(
     location_id: &str,
     id: &str,
     headers: &HeaderMap,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> LocationMutation<()> {
     locations::authorize(tenant)
         .await
         .map_err(response::operation)?;
     if !doses::valid_identifier(location_id) || !numeric(id) {
         return Ok((
             StatusCode::BAD_REQUEST,
-            json!({"error":{"code":"bad_request","message":"Invalid resource ID","request_id":tenant.scope().request_id}}),
+            MutationBody::Error(
+                response::Failure::bad_request("Invalid resource ID")
+                    .into_body(&tenant.scope().request_id),
+            ),
             None,
             false,
         ));
@@ -219,9 +231,10 @@ async fn removal(
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.trim().is_empty());
     if let Some(key) = key
-        && let Some(reply) = keyed_replay(tenant, key, "DELETE", &path, &request).await?
+        && let Some((status, body, etag, replay)) =
+            keyed_replay(tenant, key, "DELETE", &path, &request).await?
     {
-        return Ok(reply);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let savepoint = tenant
         .transaction()
@@ -244,7 +257,6 @@ async fn removal(
             return Err(response::operation(error));
         }
     }
-    let representation = Value::Null;
     if let Some(key) = key {
         locations::store(
             tenant,
@@ -255,12 +267,12 @@ async fn removal(
                 path: &path,
                 request: &request,
                 status: StatusCode::NO_CONTENT.as_u16(),
-                body: representation.clone(),
+                body: Value::Null,
                 etag: None,
             },
         )
         .await
         .map_err(response::operation)?;
     }
-    Ok((StatusCode::NO_CONTENT, representation, None, false))
+    Ok((StatusCode::NO_CONTENT, MutationBody::Empty, None, false))
 }

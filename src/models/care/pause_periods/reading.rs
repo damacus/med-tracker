@@ -1,4 +1,8 @@
 use super::*;
+use crate::views::{
+    PaginationMeta,
+    treatments::{PauseSourceKind, PauseSummary, TreatmentCollection, TreatmentResponse},
+};
 use loco_rs::model::TenantQueryExt;
 use sha2::{Digest, Sha256};
 #[derive(Default, Deserialize)]
@@ -43,23 +47,50 @@ async fn names(
         })
         .collect())
 }
-fn value(row: &pause_period::Model, source: &Source, names: &HashMap<i64, String>) -> Value {
-    json!({"id":row.portable_id,"portable_id":row.portable_id,"source_type":source.kind().name(),"source_id":source.portable_id(),"reason":row.reason,"note":row.note,"legacy_context":row.legacy_context,"started_at":row.started_at.map(timestamp),"ended_at":row.ended_at.map(timestamp),"recorded_by_membership_id":row.recorded_by_membership_id.map(|id|id.to_string()),"resumed_by_membership_id":row.resumed_by_membership_id.map(|id|id.to_string()),"recorded_by_name":row.recorded_by_membership_id.and_then(|id|names.get(&id)),"resumed_by_name":row.resumed_by_membership_id.and_then(|id|names.get(&id)),"created_at":timestamp(row.created_at),"updated_at":timestamp(row.updated_at)})
+fn value(row: &pause_period::Model, source: &Source, names: &HashMap<i64, String>) -> PauseSummary {
+    PauseSummary {
+        id: row.portable_id.clone(),
+        portable_id: row.portable_id.clone(),
+        source_type: match source {
+            Source::Schedule(_) => PauseSourceKind::Schedule,
+            Source::Assignment(_) => PauseSourceKind::PersonMedication,
+        },
+        source_id: source.portable_id().to_owned(),
+        reason: row.reason.clone(),
+        note: row.note.clone(),
+        legacy_context: row.legacy_context,
+        started_at: row.started_at.map(timestamp),
+        ended_at: row.ended_at.map(timestamp),
+        recorded_by_membership_id: row.recorded_by_membership_id.map(|id| id.to_string()),
+        resumed_by_membership_id: row.resumed_by_membership_id.map(|id| id.to_string()),
+        recorded_by_name: row
+            .recorded_by_membership_id
+            .and_then(|id| names.get(&id))
+            .cloned(),
+        resumed_by_name: row
+            .resumed_by_membership_id
+            .and_then(|id| names.get(&id))
+            .cloned(),
+        created_at: timestamp(row.created_at),
+        updated_at: timestamp(row.updated_at),
+    }
 }
+type VersionedPause = (TreatmentResponse<PauseSummary>, String);
+
 pub(super) async fn project(
     tenant: &TenantTransaction,
     row: &pause_period::Model,
     source: &Source,
-) -> Result<(Value, String), OperationError> {
+) -> Result<VersionedPause, OperationError> {
     let names = names(tenant.transaction(), std::slice::from_ref(row)).await?;
-    Ok(representation(value(row, source, &names)))
+    representation(value(row, source, &names))
 }
 pub(crate) async fn period_values(
     db: &DatabaseTransaction,
     periods: &[pause_period::Model],
     schedules: &HashMap<i64, schedule::Model>,
     assignments: &HashMap<i64, person_medication::Model>,
-) -> Result<Vec<(Value, String)>, OperationError> {
+) -> Result<Vec<VersionedPause>, OperationError> {
     let names = names(db, periods).await?;
     periods
         .iter()
@@ -79,20 +110,24 @@ pub(crate) async fn period_values(
                         .ok_or(OperationError::NotFound)?,
                 )
             };
-            Ok(representation(value(row, &source, &names)))
+            representation(value(row, &source, &names))
         })
         .collect()
 }
-fn representation(value: Value) -> (Value, String) {
-    let mut body = json!({"data":value});
-    body.sort_all_objects();
+fn representation(data: PauseSummary) -> Result<VersionedPause, OperationError> {
+    let body = TreatmentResponse { data };
+    let mut canonical = serde_json::to_value(&body).map_err(|_| OperationError::Unavailable)?;
+    canonical.sort_all_objects();
     let etag = format!(
         "\"{}\"",
-        hex::encode(Sha256::digest(body.to_string().as_bytes()))
+        hex::encode(Sha256::digest(canonical.to_string().as_bytes()))
     );
-    (body, etag)
+    Ok((body, etag))
 }
-pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {
+pub async fn list(
+    tenant: &TenantTransaction,
+    page: Pagination,
+) -> Result<TreatmentCollection<PauseSummary>, OperationError> {
     access::recheck(tenant).await?;
     let number = page.page.unwrap_or(1);
     let size = page.per_page.unwrap_or(20);
@@ -168,7 +203,7 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
         .all(tenant.transaction())
         .await?;
     let names = names(tenant.transaction(), &rows).await?;
-    let data: Vec<Value> = rows
+    let data = rows
         .iter()
         .filter_map(|row| {
             let key = if let Some(id) = row.schedule_id {
@@ -179,5 +214,47 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
             sources.get(&key).map(|source| value(row, source, &names))
         })
         .collect();
-    Ok(json!({"data":data,"meta":{"page":number,"per_page":size,"total_count":total}}))
+    Ok(TreatmentCollection {
+        data,
+        meta: PaginationMeta {
+            page: number,
+            per_page: size,
+            total_count: total,
+        },
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pause_response_preserves_canonical_etag() -> Result<(), OperationError> {
+        let (response, etag) = representation(PauseSummary {
+            id: "pause-id".into(),
+            portable_id: "pause-id".into(),
+            source_type: PauseSourceKind::Schedule,
+            source_id: "source-id".into(),
+            reason: "other".into(),
+            note: None,
+            legacy_context: false,
+            started_at: None,
+            ended_at: None,
+            recorded_by_membership_id: Some("42".into()),
+            resumed_by_membership_id: None,
+            recorded_by_name: Some("Recorder".into()),
+            resumed_by_name: None,
+            created_at: "2026-11-16T00:00:00.000Z".into(),
+            updated_at: "2026-11-16T00:00:00.000Z".into(),
+        })?;
+        assert_eq!(
+            response.data.recorded_by_membership_id.as_deref(),
+            Some("42")
+        );
+        assert_eq!(
+            etag,
+            "\"1638c503a54e1e10cbeeb41b7d3024b9d97798b6df4184c9ff57fd2608523f77\""
+        );
+        Ok(())
+    }
 }

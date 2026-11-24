@@ -24,15 +24,31 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for UpdateField<T> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Copy, Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum PersonKind {
+pub enum PersonKind {
     Adult,
     Minor,
     DependentAdult,
 }
 
 impl PersonKind {
+    pub(super) fn from_code(code: i32) -> Self {
+        match code {
+            1 => Self::Minor,
+            2 => Self::DependentAdult,
+            _ => Self::Adult,
+        }
+    }
+
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Adult => "adult",
+            Self::Minor => "minor",
+            Self::DependentAdult => "dependent_adult",
+        }
+    }
+
     pub(crate) fn code(self) -> i32 {
         match self {
             Self::Adult => 0,

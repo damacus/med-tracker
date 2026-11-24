@@ -7,7 +7,7 @@ pub(super) async fn apply(
     quantity: Decimal,
     facts: RemovalFacts,
     dosage_id: Option<String>,
-) -> Result<Value, OperationError> {
+) -> Result<StockRemoval, OperationError> {
     let db = context.tenant.transaction();
     let (previous, remaining, unit) = if let Some(id) = dosage_id {
         let id = id.parse::<i64>().map_err(|_| invalid())?;

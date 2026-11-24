@@ -1,14 +1,20 @@
 use super::*;
+use crate::views::portable::{ImportConflict, ImportResult};
 
 pub(crate) struct Preflight {
-    counts: Value,
-    pub(crate) conflicts: Vec<Value>,
+    counts: Map<String, Value>,
+    pub(crate) conflicts: Vec<ImportConflict>,
     pub(crate) errors: Vec<String>,
 }
 
 impl Preflight {
-    pub(crate) fn body(&self, applied: bool) -> Value {
-        json!({"applied": applied, "counts": self.counts, "conflicts": self.conflicts, "errors": self.errors})
+    pub(crate) fn body(self, applied: bool) -> ImportResult {
+        ImportResult {
+            applied,
+            counts: self.counts,
+            conflicts: self.conflicts,
+            errors: self.errors,
+        }
     }
 }
 
@@ -67,8 +73,12 @@ pub(crate) async fn preflight(
             if let Some(other) = current
                 && other != portable_id
             {
-                conflicts.push(json!({"record_type": kind, "portable_id": portable_id,
-                    "field": field, "existing_portable_id": other}));
+                conflicts.push(ImportConflict {
+                    record_type: kind,
+                    portable_id: portable_id.to_owned(),
+                    field,
+                    existing_portable_id: other.to_owned(),
+                });
             }
             names.insert(lower, portable_id);
         }
@@ -339,4 +349,27 @@ pub(crate) async fn preflight(
         conflicts,
         errors,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preflight_projects_typed_application_result() -> Result<(), serde_json::Error> {
+        let result = Preflight {
+            counts: Default::default(),
+            conflicts: Vec::new(),
+            errors: vec!["source missing".into()],
+        }
+        .body(false);
+        assert!(!result.applied);
+        assert_eq!(
+            serde_json::to_value(result)?,
+            json!({
+                "applied": false, "counts": {}, "conflicts": [], "errors": ["source missing"]
+            })
+        );
+        Ok(())
+    }
 }

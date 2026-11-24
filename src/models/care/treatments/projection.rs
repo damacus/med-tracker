@@ -2,7 +2,11 @@ use super::source_stock::source_stock;
 use super::*;
 use crate::models::{
     authorization,
+    care::treatment_command::{AdministrationKind, DoseCycle, ScheduleType},
     entities::{membership, pause_period, person_medication},
+};
+use crate::views::treatments::{
+    Assignment, PauseSourceKind, PauseSummary, Schedule, TreatmentSource,
 };
 use chrono::NaiveDate;
 use loco_rs::model::TenantQueryExt;
@@ -27,19 +31,14 @@ struct SourceContext {
     manageable_people: HashSet<i64>,
     recordable_people: HashSet<i64>,
     eligible_stock: HashMap<i64, Vec<i64>>,
-    pauses: HashMap<i64, Value>,
-}
-
-enum SourceKind {
-    Schedule,
-    Assignment,
+    pauses: HashMap<i64, PauseSummary>,
 }
 
 async fn source_context(
     db: &DatabaseTransaction,
     context: &AuthContext,
     sources: &[SourceRef],
-    kind: SourceKind,
+    kind: PauseSourceKind,
 ) -> Result<SourceContext, ApiError> {
     if sources.is_empty() {
         return Ok(SourceContext {
@@ -102,8 +101,8 @@ async fn source_context(
         .collect();
     let source_ids: Vec<i64> = sources.iter().map(|source| source.id).collect();
     let source_column = match kind {
-        SourceKind::Schedule => pause_period::Column::ScheduleId,
-        SourceKind::Assignment => pause_period::Column::PersonMedicationId,
+        PauseSourceKind::Schedule => pause_period::Column::ScheduleId,
+        PauseSourceKind::PersonMedication => pause_period::Column::PersonMedicationId,
     };
     let pauses = pause_period::Entity::find()
         .in_tenant(context.scope().household_id)
@@ -165,33 +164,39 @@ async fn source_context(
         .into_iter()
         .filter_map(|pause| {
             let source_id = match kind {
-                SourceKind::Schedule => pause.schedule_id?,
-                SourceKind::Assignment => pause.person_medication_id?,
+                PauseSourceKind::Schedule => pause.schedule_id?,
+                PauseSourceKind::PersonMedication => pause.person_medication_id?,
             };
             let source_portable_id = source_portable_ids.get(&source_id)?;
-            let source_type = match kind {
-                SourceKind::Schedule => "schedule",
-                SourceKind::Assignment => "person_medication",
-            };
             Some((
                 source_id,
-                json!({
-                    "id": pause.portable_id,
-                    "portable_id": pause.portable_id,
-                    "source_type": source_type,
-                    "source_id": source_portable_id,
-                    "reason": pause.reason,
-                    "note": pause.note,
-                    "legacy_context": pause.legacy_context,
-                    "recorded_by_membership_id": pause.recorded_by_membership_id.map(|id| id.to_string()),
-                    "resumed_by_membership_id": pause.resumed_by_membership_id.map(|id| id.to_string()),
-                    "recorded_by_name": pause.recorded_by_membership_id.and_then(|id| actor_names.get(&id)),
-                    "resumed_by_name": pause.resumed_by_membership_id.and_then(|id| actor_names.get(&id)),
-                    "started_at": pause.started_at.map(timestamp),
-                    "ended_at": pause.ended_at.map(timestamp),
-                    "created_at": timestamp(pause.created_at),
-                    "updated_at": timestamp(pause.updated_at)
-                }),
+                PauseSummary {
+                    id: pause.portable_id.clone(),
+                    portable_id: pause.portable_id,
+                    source_type: kind,
+                    source_id: (*source_portable_id).to_owned(),
+                    reason: pause.reason,
+                    note: pause.note,
+                    legacy_context: pause.legacy_context,
+                    recorded_by_membership_id: pause
+                        .recorded_by_membership_id
+                        .map(|id| id.to_string()),
+                    resumed_by_membership_id: pause
+                        .resumed_by_membership_id
+                        .map(|id| id.to_string()),
+                    recorded_by_name: pause
+                        .recorded_by_membership_id
+                        .and_then(|id| actor_names.get(&id))
+                        .cloned(),
+                    resumed_by_name: pause
+                        .resumed_by_membership_id
+                        .and_then(|id| actor_names.get(&id))
+                        .cloned(),
+                    started_at: pause.started_at.map(timestamp),
+                    ended_at: pause.ended_at.map(timestamp),
+                    created_at: timestamp(pause.created_at),
+                    updated_at: timestamp(pause.updated_at),
+                },
             ))
         })
         .collect();
@@ -205,32 +210,29 @@ async fn source_context(
     })
 }
 
-fn dose_cycle(value: Option<i32>) -> Option<&'static str> {
-    match value {
-        Some(0) => Some("daily"),
-        Some(1) => Some("weekly"),
-        Some(2) => Some("monthly"),
-        _ => None,
-    }
+fn dose_cycle(value: Option<i32>) -> Option<DoseCycle> {
+    value.and_then(DoseCycle::from_database)
 }
 
-fn schedule_type(value: i32) -> &'static str {
-    match value {
-        1 => "multiple_daily",
-        2 => "weekly",
-        3 => "specific_dates",
-        4 => "prn",
-        5 => "tapering",
-        6 => "every_other_day",
-        _ => "daily",
-    }
+fn schedule_type(value: i32) -> ScheduleType {
+    ScheduleType::from_database(value).unwrap_or(ScheduleType::Daily)
+}
+
+pub(crate) fn response_etag(response: &impl serde::Serialize) -> Result<String, OperationError> {
+    use sha2::{Digest, Sha256};
+    let mut canonical = serde_json::to_value(response).map_err(|_| OperationError::Unavailable)?;
+    canonical.sort_all_objects();
+    Ok(format!(
+        "\"{}\"",
+        hex::encode(Sha256::digest(canonical.to_string().as_bytes()))
+    ))
 }
 
 pub(crate) async fn serialize_schedules(
     db: &DatabaseTransaction,
     context: &AuthContext,
     records: Vec<schedule::Model>,
-) -> Result<Vec<Value>, ApiError> {
+) -> Result<Vec<Schedule>, ApiError> {
     let reference_date = Utc::now()
         .with_timezone(&crate::models::care::doses::app_zone(context.settings()))
         .date_naive();
@@ -256,7 +258,7 @@ pub(crate) async fn serialize_schedules(
             portable_id: record.portable_id.clone(),
         })
         .collect();
-    let associations = source_context(db, context, &sources, SourceKind::Schedule).await?;
+    let associations = source_context(db, context, &sources, PauseSourceKind::Schedule).await?;
     Ok(records
         .into_iter()
         .map(|record| {
@@ -277,7 +279,7 @@ fn schedule_row(
     associations: &SourceContext,
     reference_date: NaiveDate,
     pause_start: Option<chrono::NaiveDateTime>,
-) -> Value {
+) -> Schedule {
     let reference_date = record
         .origin_time_zone
         .as_deref()
@@ -290,43 +292,53 @@ fn schedule_row(
             .start_date
             .is_some_and(|start| start <= reference_date)
         && record.end_date.is_some_and(|end| end >= reference_date);
-    json!({
-        "id": record.id,
-        "portable_id": record.portable_id,
-        "person_schedule_id": record.person_schedule_id,
-        "clinical_revision": record.clinical_revision,
-        "origin_time_zone": record.origin_time_zone,
-        "person_id": record.person_id,
-        "person_portable_id": associations.people.get(&record.person_id),
-        "medication_id": record.medication_id,
-        "medication_portable_id": associations.medications.get(&record.medication_id),
-        "dose_amount": record.dose_amount.map(|value| decimal_string(value.to_string())),
-        "dose_unit": record.dose_unit,
-        "frequency": record.frequency,
-        "dose_cycle": dose_cycle(record.dose_cycle),
-        "start_date": record.start_date.map(|date| date.to_string()),
-        "end_date": record.end_date.map(|date| date.to_string()),
-        "active": active,
-        "paused": !record.active,
-        "pause_started_at": pause_start.map(timestamp),
-        "can_manage": associations.manageable_people.contains(&record.person_id),
-        "can_record": associations.recordable_people.contains(&record.person_id),
-        "eligible_stock_medication_ids": associations.eligible_stock.get(&record.id).cloned().unwrap_or_default(),
-        "notes": record.notes,
-        "updated_at": timestamp(record.updated_at),
-        "schedule_type": schedule_type(record.schedule_type),
-        "schedule_config": record.schedule_config,
-        "max_daily_doses": record.max_daily_doses,
-        "min_hours_between_doses": record.min_hours_between_doses.map(|value| decimal_string(value.to_string())),
-        "current_pause_period": associations.pauses.get(&record.id)
-    })
+    Schedule {
+        source: TreatmentSource {
+            id: record.id,
+            portable_id: record.portable_id,
+            person_id: record.person_id,
+            person_portable_id: associations.people.get(&record.person_id).cloned(),
+            medication_id: record.medication_id,
+            medication_portable_id: associations.medications.get(&record.medication_id).cloned(),
+            dose_amount: record
+                .dose_amount
+                .map(|value| decimal_string(value.to_string())),
+            dose_unit: record.dose_unit,
+            dose_cycle: dose_cycle(record.dose_cycle),
+            active,
+            paused: !record.active,
+            can_manage: associations.manageable_people.contains(&record.person_id),
+            can_record: associations.recordable_people.contains(&record.person_id),
+            eligible_stock_medication_ids: associations
+                .eligible_stock
+                .get(&record.id)
+                .cloned()
+                .unwrap_or_default(),
+            notes: record.notes,
+            updated_at: timestamp(record.updated_at),
+            max_daily_doses: record.max_daily_doses,
+            min_hours_between_doses: record
+                .min_hours_between_doses
+                .map(|value| decimal_string(value.to_string())),
+            current_pause_period: associations.pauses.get(&record.id).cloned(),
+        },
+        person_schedule_id: record.person_schedule_id,
+        clinical_revision: record.clinical_revision,
+        origin_time_zone: record.origin_time_zone,
+        frequency: record.frequency,
+        start_date: record.start_date.map(|date| date.to_string()),
+        end_date: record.end_date.map(|date| date.to_string()),
+        pause_started_at: pause_start.map(timestamp),
+        schedule_type: schedule_type(record.schedule_type),
+        schedule_config: record.schedule_config,
+    }
 }
 
 pub(crate) async fn serialize_assignments(
     db: &DatabaseTransaction,
     context: &AuthContext,
     records: Vec<person_medication::Model>,
-) -> Result<Vec<Value>, ApiError> {
+) -> Result<Vec<Assignment>, ApiError> {
     let sources: Vec<SourceRef> = records
         .iter()
         .map(|record| SourceRef {
@@ -337,37 +349,52 @@ pub(crate) async fn serialize_assignments(
             portable_id: record.portable_id.clone(),
         })
         .collect();
-    let associations = source_context(db, context, &sources, SourceKind::Assignment).await?;
+    let associations =
+        source_context(db, context, &sources, PauseSourceKind::PersonMedication).await?;
     Ok(records
         .into_iter()
         .map(|record| assignment_row(record, &associations))
         .collect())
 }
 
-fn assignment_row(record: person_medication::Model, associations: &SourceContext) -> Value {
-    json!({
-        "id": record.id,
-        "portable_id": record.portable_id,
-        "person_id": record.person_id,
-        "person_portable_id": associations.people.get(&record.person_id),
-        "medication_id": record.medication_id,
-        "medication_portable_id": associations.medications.get(&record.medication_id),
-        "dose_amount": record.dose_amount.map(|value| decimal_string(value.to_string())),
-        "dose_unit": record.dose_unit,
-        "active": record.active,
-        "paused": !record.active,
-        "can_manage": associations.manageable_people.contains(&record.person_id),
-        "can_record": associations.recordable_people.contains(&record.person_id),
-        "eligible_stock_medication_ids": associations.eligible_stock.get(&record.id).cloned().unwrap_or_default(),
-        "dose_cycle": dose_cycle(record.dose_cycle),
-        "administration_kind": if record.administration_kind == 0 { "routine" } else { "as_needed" },
-        "notes": record.notes,
-        "position": record.position,
-        "updated_at": timestamp(record.updated_at),
-        "max_daily_doses": record.max_daily_doses,
-        "min_hours_between_doses": record.min_hours_between_doses.map(|value| decimal_string(value.to_string())),
-        "current_pause_period": associations.pauses.get(&record.id)
-    })
+fn assignment_row(record: person_medication::Model, associations: &SourceContext) -> Assignment {
+    Assignment {
+        source: TreatmentSource {
+            id: record.id,
+            portable_id: record.portable_id,
+            person_id: record.person_id,
+            person_portable_id: associations.people.get(&record.person_id).cloned(),
+            medication_id: record.medication_id,
+            medication_portable_id: associations.medications.get(&record.medication_id).cloned(),
+            dose_amount: record
+                .dose_amount
+                .map(|value| decimal_string(value.to_string())),
+            dose_unit: record.dose_unit,
+            active: record.active,
+            paused: !record.active,
+            can_manage: associations.manageable_people.contains(&record.person_id),
+            can_record: associations.recordable_people.contains(&record.person_id),
+            eligible_stock_medication_ids: associations
+                .eligible_stock
+                .get(&record.id)
+                .cloned()
+                .unwrap_or_default(),
+            dose_cycle: dose_cycle(record.dose_cycle),
+            notes: record.notes,
+            updated_at: timestamp(record.updated_at),
+            max_daily_doses: record.max_daily_doses,
+            min_hours_between_doses: record
+                .min_hours_between_doses
+                .map(|value| decimal_string(value.to_string())),
+            current_pause_period: associations.pauses.get(&record.id).cloned(),
+        },
+        administration_kind: if record.administration_kind == 0 {
+            AdministrationKind::Routine
+        } else {
+            AdministrationKind::AsNeeded
+        },
+        position: record.position,
+    }
 }
 
 pub(crate) async fn dashboard_stock(
@@ -419,4 +446,23 @@ pub(crate) async fn dashboard_stock(
         }
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod projection_tests {
+    use super::*;
+
+    #[test]
+    fn treatment_projection_keeps_the_documented_type_and_cycle_values()
+    -> Result<(), serde_json::Error> {
+        let as_needed: ScheduleType = schedule_type(4);
+        let invalid_type: ScheduleType = schedule_type(-1);
+        let weekly: Option<DoseCycle> = dose_cycle(Some(1));
+        let invalid_cycle: Option<DoseCycle> = dose_cycle(Some(-1));
+        assert_eq!(serde_json::to_value(as_needed)?, "prn");
+        assert_eq!(serde_json::to_value(invalid_type)?, "daily");
+        assert_eq!(serde_json::to_value(weekly)?, "weekly");
+        assert_eq!(serde_json::to_value(invalid_cycle)?, Value::Null);
+        Ok(())
+    }
 }

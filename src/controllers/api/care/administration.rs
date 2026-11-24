@@ -1,8 +1,10 @@
+use super::response::MutationBody;
 use super::*;
 use crate::models::care::{
     administration,
     locations::{self, SavedResponse},
 };
+use crate::views::DataResponse;
 mod app_tokens;
 mod audit_logs;
 mod grants;
@@ -19,6 +21,9 @@ pub(super) use memberships::{
     destroy as memberships_destroy, index as memberships_index, update as memberships_update,
 };
 pub(super) use settings::{show as settings_show, update as settings_update};
+
+type AdminMutation<T> =
+    std::result::Result<(StatusCode, MutationBody<T>, Option<String>, bool), response::Failure>;
 
 pub(super) fn request_id(request: Option<Extension<LocoRequestId>>) -> String {
     request.map_or_else(
@@ -75,15 +80,15 @@ pub(super) fn numeric_id(value: &str) -> std::result::Result<i64, response::Fail
         })
         .ok_or_else(|| response::operation(OperationError::NotFound))
 }
-pub(super) async fn complete(
+pub(super) async fn complete_typed<T: serde::Serialize>(
     tenant: TenantTransaction,
     principal: &ValidatedPrincipal,
     audit: audit::RequestAudit,
-    result: std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure>,
+    result: std::result::Result<(StatusCode, T, Option<String>, bool), response::Failure>,
     request_id: &str,
 ) -> Response {
     let replay = result.as_ref().is_ok_and(|(_, _, _, replay)| *replay);
-    let mut response = finish(
+    let mut response = finish_typed(
         tenant,
         principal.provenance(),
         audit,
@@ -103,28 +108,24 @@ pub(super) async fn store(
     tenant: &TenantTransaction,
     principal: &ValidatedPrincipal,
     saved: SavedResponse<'_>,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
-    let status = StatusCode::from_u16(saved.status).map_err(|_| response::unavailable())?;
-    let body = saved.body.clone();
-    let etag = saved.etag.map(str::to_owned);
+) -> std::result::Result<(), response::Failure> {
     locations::store(tenant, principal.provenance(), saved)
         .await
-        .map_err(response::operation)?;
-    Ok((status, body, etag, false))
+        .map_err(response::operation)
 }
-async fn reply(
+async fn reply<T>(
     savepoint: DatabaseTransaction,
     tenant: &TenantTransaction,
-    result: Result<Value, OperationError>,
+    result: Result<T, OperationError>,
     success: StatusCode,
-) -> std::result::Result<(StatusCode, Value), response::Failure> {
+) -> std::result::Result<(StatusCode, MutationBody<T>), response::Failure> {
     match result {
         Ok(body) => {
             savepoint
                 .commit()
                 .await
                 .map_err(|_| response::unavailable())?;
-            Ok((success, body))
+            Ok((success, MutationBody::Resource(body)))
         }
         Err(OperationError::Validation { details }) => {
             savepoint
@@ -133,7 +134,10 @@ async fn reply(
                 .map_err(|_| response::unavailable())?;
             Ok((
                 StatusCode::UNPROCESSABLE_ENTITY,
-                json!({"error":{"code":"validation_failed","message":"Validation failed","request_id":tenant.scope().request_id,"errors":details["errors"]}}),
+                MutationBody::Error(
+                    response::Failure::fields(details["errors"].clone())
+                        .into_body(&tenant.scope().request_id),
+                ),
             ))
         }
         Err(error) => {

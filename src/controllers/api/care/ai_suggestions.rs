@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::care;
+use crate::views::DataResponse;
 use axum::body::Bytes;
 
 pub(super) async fn create(
@@ -59,13 +60,13 @@ pub(super) async fn create(
     let reply = match draft {
         Ok(draft) => {
             match care::ai_suggestions::record_suggestion(&tenant, &identity, &draft).await {
-                Ok(()) => Ok((StatusCode::OK, json!({"data": draft}), None)),
+                Ok(()) => Ok((StatusCode::OK, DataResponse { data: draft }, None)),
                 Err(error) => Err(response::operation(error)),
             }
         }
         Err(error) => Err(response::operation(error)),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::ai_medication_suggestions(),

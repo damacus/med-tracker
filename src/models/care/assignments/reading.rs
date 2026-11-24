@@ -1,4 +1,8 @@
 use super::*;
+use crate::views::{
+    PaginationMeta,
+    treatments::{Assignment, AssignmentResponse, TreatmentCollection},
+};
 use loco_rs::model::TenantQueryExt;
 use serde::Deserialize;
 
@@ -17,7 +21,10 @@ fn scope(tenant: &TenantTransaction) -> sea_orm::Select<person_medication::Entit
                 .in_subquery(access::participating_people(tenant.membership())),
         )
 }
-pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {
+pub async fn list(
+    tenant: &TenantTransaction,
+    page: Pagination,
+) -> Result<TreatmentCollection<Assignment>, OperationError> {
     access::recheck(tenant).await?;
     let number = page.page.unwrap_or(1);
     let per_page = page.per_page.unwrap_or(20);
@@ -44,7 +51,14 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
         rows,
     )
     .await?;
-    Ok(json!({"data":data,"meta":{"page":number,"per_page":per_page,"total_count":count}}))
+    Ok(TreatmentCollection {
+        data,
+        meta: PaginationMeta {
+            page: number,
+            per_page,
+            total_count: count,
+        },
+    })
 }
 pub(super) async fn find(
     tenant: &TenantTransaction,
@@ -68,28 +82,25 @@ pub(super) async fn find(
     }
     Ok(row)
 }
-pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<(Value, String), OperationError> {
+pub async fn read(
+    tenant: &TenantTransaction,
+    id: &str,
+) -> Result<(AssignmentResponse, String), OperationError> {
     project(tenant, find(tenant, id, false).await?).await
 }
 pub(super) async fn project(
     tenant: &TenantTransaction,
     row: person_medication::Model,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(AssignmentResponse, String), OperationError> {
     let rows = super::super::treatments::projection::serialize_assignments(
         tenant.transaction(),
         tenant,
         vec![row],
     )
     .await?;
-    let body = json!({"data":rows.into_iter().next().ok_or(OperationError::NotFound)?});
-    let mut sorted = body.clone();
-    sorted.sort_all_objects();
-    use sha2::{Digest, Sha256};
-    let etag = format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(
-            serde_json::to_vec(&sorted).expect("JSON must serialize")
-        ))
-    );
+    let body = AssignmentResponse {
+        data: rows.into_iter().next().ok_or(OperationError::NotFound)?,
+    };
+    let etag = super::super::treatments::projection::response_etag(&body)?;
     Ok((body, etag))
 }

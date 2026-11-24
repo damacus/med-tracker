@@ -3,10 +3,6 @@ use super::*;
 use crate::models::care::dosages;
 use headers::HeaderMapExt;
 
-fn response_body(body: impl serde::Serialize) -> std::result::Result<Value, response::Failure> {
-    serde_json::to_value(body).map_err(|_| response::unavailable())
-}
-
 pub(super) async fn index(
     State(ctx): State<AppContext>,
     ApiPath(household_id): ApiPath<i64>,
@@ -25,11 +21,11 @@ pub(super) async fn index(
     let result = match pagination {
         Ok(axum::extract::Query(page)) => dosages::list(&tenant, page)
             .await
-            .map_err(response::operation)
-            .and_then(|body| Ok((StatusCode::OK, response_body(body)?, None))),
+            .map(|body| (StatusCode::OK, body, None))
+            .map_err(response::operation),
         Err(_) => Err(response::Failure::validation("Invalid pagination")),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::dosage("GET", "index"),
@@ -53,26 +49,26 @@ pub(super) async fn show(
     let result = dosages::read(&tenant, &id)
         .await
         .map_err(response::operation)
-        .and_then(|(body, etag)| {
+        .map(|(body, etag)| {
             let unchanged = headers
                 .typed_get::<headers::IfNoneMatch>()
                 .zip(etag.parse::<headers::ETag>().ok())
                 .is_some_and(|(condition, etag)| !condition.precondition_passes(&etag));
-            Ok((
+            (
                 if unchanged {
                     StatusCode::NOT_MODIFIED
                 } else {
                     StatusCode::OK
                 },
                 if unchanged {
-                    Value::Null
+                    response::MutationBody::Empty
                 } else {
-                    response_body(body)?
+                    response::MutationBody::Resource(body)
                 },
                 Some(etag),
-            ))
+            )
         });
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::dosage("GET", "show"),
@@ -120,7 +116,7 @@ pub(super) async fn create(
             let (body, etag) = dosages::represent(&tenant, &row)
                 .await
                 .map_err(response::operation)?;
-            Ok((StatusCode::CREATED, response_body(body)?, Some(etag)))
+            Ok((StatusCode::CREATED, body, Some(etag)))
         }
         .await;
         if result.is_ok() {
@@ -137,7 +133,7 @@ pub(super) async fn create(
         result
     }
     .await;
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::dosage("POST", "create"),
@@ -214,7 +210,7 @@ async fn update(
             let (body, etag) = dosages::represent(&tenant, &row)
                 .await
                 .map_err(response::operation)?;
-            Ok((StatusCode::OK, response_body(body)?, Some(etag)))
+            Ok((StatusCode::OK, body, Some(etag)))
         }
         .await;
         if result.is_ok() {
@@ -231,7 +227,7 @@ async fn update(
         result
     }
     .await;
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::dosage(method, "update"),

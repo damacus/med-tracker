@@ -12,26 +12,6 @@ fn text<'a>(operation: &'a Operation, field: &str) -> Result<&'a str, OperationE
 fn id(operation: &Operation) -> Result<&str, OperationError> {
     operation.id.as_deref().ok_or(OperationError::NotFound)
 }
-pub(super) fn wire(
-    kind: &str,
-    body: Value,
-    etag: String,
-    replayed: Option<bool>,
-) -> Result<Value, OperationError> {
-    let data = &body["data"];
-    let id = data["id"]
-        .as_i64()
-        .or_else(|| data["id"].as_str()?.parse().ok())
-        .ok_or(OperationError::Unavailable)?;
-    Ok(result(
-        kind,
-        id,
-        data["portable_id"].as_str(),
-        Some(etag),
-        replayed,
-    ))
-}
-
 pub async fn apply(
     tenant: &TenantTransaction,
     operation: &Operation,
@@ -39,7 +19,7 @@ pub async fn apply(
     secret: Option<&std::sync::Arc<[u8]>>,
     provenance: &CredentialProvenance,
     takes: &mut Vec<medication_take::Model>,
-) -> Result<Value, OperationError> {
+) -> Result<SyncResult, OperationError> {
     let attribution = Some(provenance);
     match operation.resource_type.as_str() {
         "medication_take" => {

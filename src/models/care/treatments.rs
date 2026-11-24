@@ -169,7 +169,7 @@ pub async fn create(
     tenant: &TenantTransaction,
     body: &Value,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(crate::views::treatments::ScheduleResponse, String), OperationError> {
     authorize_person(tenant, body).await?;
     let attributes = input::attributes(body).map_err(failure)?;
     let input = input::parse_input(attributes)
@@ -186,7 +186,7 @@ pub(crate) async fn create_input(
     tenant: &TenantTransaction,
     input: ValidatedScheduleInput,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(crate::views::treatments::ScheduleResponse, String), OperationError> {
     let id = input
         .as_ref()
         .person_id
@@ -204,7 +204,7 @@ async fn create_fields(
     tenant: &TenantTransaction,
     fields: ScheduleFields,
     provenance: Option<&CredentialProvenance>,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(crate::views::treatments::ScheduleResponse, String), OperationError> {
     let now = Utc::now().naive_utc();
     let mut active = schedule::ActiveModel {
         household_id: Set(tenant.scope().household_id),
@@ -242,7 +242,7 @@ pub(super) async fn persist(
     action: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
-    let snapshot = representation(row).0["data"].clone();
+    let snapshot = schedule_snapshot(row)?;
     administration::persistence::record_version_as(
         tenant, "Schedule", row.id, action, before, snapshot, provenance,
     )
@@ -269,18 +269,60 @@ pub(super) async fn persist(
     .await?;
     Ok(())
 }
-pub(crate) fn representation(row: &schedule::Model) -> (Value, String) {
-    let body = json!({"data":{"id":row.id,"portable_id":row.portable_id,"person_id":row.person_id,"person_schedule_id":row.person_schedule_id,"clinical_revision":row.clinical_revision,"origin_time_zone":row.origin_time_zone,"execution_ended_at":row.execution_ended_at,"retired_at":row.retired_at,"medication_id":row.medication_id,"source_dosage_option_id":row.source_dosage_option_id,"active":row.active,"dose_amount":row.dose_amount.map(|value|medications::decimal_string(value.to_string())),"dose_unit":row.dose_unit,"frequency":row.frequency,"start_date":row.start_date,"end_date":row.end_date,"notes":row.notes,"max_daily_doses":row.max_daily_doses,"min_hours_between_doses":row.min_hours_between_doses.map(|value|format!("{value}.0")),"dose_cycle":row.dose_cycle.map(|value|match value{1=>"weekly",2=>"monthly",_=>"daily"}),"schedule_type":match row.schedule_type{1=>"multiple_daily",2=>"weekly",3=>"specific_dates",4=>"prn",5=>"tapering",6=>"every_other_day",_=>"daily"},"schedule_config":row.schedule_config,"updated_at":row.updated_at}});
-    use sha2::{Digest, Sha256};
-    let mut sorted = body.clone();
-    sorted.sort_all_objects();
-    let etag = format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(
-            serde_json::to_vec(&sorted).expect("JSON must serialize")
-        ))
-    );
-    (body, etag)
+fn stock_binding_data(row: &schedule::Model) -> crate::views::treatments::StockBindingSchedule {
+    use super::treatment_command::{DoseCycle, ScheduleType};
+    crate::views::treatments::StockBindingSchedule {
+        id: row.id,
+        portable_id: row.portable_id.clone(),
+        person_id: row.person_id,
+        person_schedule_id: row.person_schedule_id.clone(),
+        clinical_revision: row.clinical_revision,
+        origin_time_zone: row.origin_time_zone.clone(),
+        execution_ended_at: row.execution_ended_at,
+        retired_at: row.retired_at,
+        medication_id: row.medication_id,
+        source_dosage_option_id: row.source_dosage_option_id,
+        active: row.active,
+        dose_amount: row
+            .dose_amount
+            .map(|value| medications::decimal_string(value.to_string())),
+        dose_unit: row.dose_unit.clone(),
+        frequency: row.frequency.clone(),
+        start_date: row.start_date,
+        end_date: row.end_date,
+        notes: row.notes.clone(),
+        max_daily_doses: row.max_daily_doses,
+        min_hours_between_doses: row
+            .min_hours_between_doses
+            .map(|value| format!("{value}.0")),
+        dose_cycle: row
+            .dose_cycle
+            .map(|value| DoseCycle::from_database(value).unwrap_or(DoseCycle::Daily)),
+        schedule_type: ScheduleType::from_database(row.schedule_type)
+            .unwrap_or(ScheduleType::Daily),
+        schedule_config: row.schedule_config.clone(),
+        updated_at: row.updated_at,
+    }
+}
+
+pub(crate) fn stock_binding_response(
+    row: &schedule::Model,
+) -> Result<
+    (
+        crate::views::DataResponse<crate::views::treatments::StockBindingSchedule>,
+        String,
+    ),
+    OperationError,
+> {
+    let body = crate::views::DataResponse {
+        data: stock_binding_data(row),
+    };
+    let etag = projection::response_etag(&body)?;
+    Ok((body, etag))
+}
+
+pub(crate) fn schedule_snapshot(row: &schedule::Model) -> Result<Value, OperationError> {
+    serde_json::to_value(stock_binding_data(row)).map_err(|_| OperationError::Unavailable)
 }
 fn database_error(error: sea_orm::DbErr) -> OperationError {
     OperationError::from(error)
@@ -288,6 +330,30 @@ fn database_error(error: sea_orm::DbErr) -> OperationError {
 
 #[cfg(test)]
 mod database_diagnostic_tests {
+    #[test]
+    fn shared_stock_binding_preserves_schedule_wire_and_etag()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let row: super::schedule::Model = serde_json::from_value(serde_json::json!({
+            "id": 12, "active": true, "created_at": "2026-11-16T00:00:00",
+            "household_id": 2, "medication_id": 3, "person_id": 4,
+            "canonical_origin": false, "portable_id": "schedule-id",
+            "dose_cycle": 99, "min_hours_between_doses": 8, "schedule_config": {},
+            "schedule_type": 99, "updated_at": "2026-11-16T01:00:00"
+        }))?;
+        let (body, etag) = super::stock_binding_response(&row)?;
+        assert_eq!(body.data.id, 12);
+        let encoded = serde_json::to_value(&body)?;
+        assert_eq!(encoded["data"]["dose_cycle"], "daily");
+        assert_eq!(encoded["data"]["schedule_type"], "daily");
+        assert_eq!(encoded["data"]["min_hours_between_doses"], "8.0");
+        assert_eq!(encoded["data"]["updated_at"], "2026-11-16T01:00:00");
+        assert_eq!(
+            etag,
+            "\"7978ec3286af195cf89d3e76b67fd12dbfa4228a6c6c3f5ce9e91024fb54b3c9\""
+        );
+        Ok(())
+    }
+
     #[test]
     fn database_failure_keeps_safe_diagnostic() -> Result<(), String> {
         let sentinel = "synthetic-private-database-detail";

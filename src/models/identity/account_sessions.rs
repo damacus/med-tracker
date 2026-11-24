@@ -14,8 +14,15 @@ use crate::models::{
     errors::OperationError,
     identity::credentials::CredentialMethod,
 };
+use crate::views::{
+    DataResponse,
+    account_sessions::{Household, HouseholdList, Session},
+};
 
-pub async fn households(db: &DatabaseConnection, account_id: i64) -> Result<Value, OperationError> {
+pub(crate) async fn households(
+    db: &DatabaseConnection,
+    account_id: i64,
+) -> Result<HouseholdList, OperationError> {
     let transaction = begin(db, Some(account_id)).await?;
     let rows = transaction.query_all_raw(statement(
         "SELECT h.id,h.slug,h.name,m.role,m.id AS membership_id FROM household_memberships m JOIN households h ON h.id=m.household_id JOIN accounts a ON a.person_id=m.person_id WHERE a.id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY m.id",
@@ -23,26 +30,26 @@ pub async fn households(db: &DatabaseConnection, account_id: i64) -> Result<Valu
     )).await.map_err(unavailable)?;
     let data = rows
         .into_iter()
-        .map(|row| -> Result<Value, OperationError> {
-            Ok(json!({
-                "id": row.try_get::<i64>("", "id").map_err(unavailable)?,
-                "slug": row.try_get::<String>("", "slug").map_err(unavailable)?,
-                "name": row.try_get::<String>("", "name").map_err(unavailable)?,
-                "role": row.try_get::<String>("", "role").map_err(unavailable)?,
-                "membership_id": row.try_get::<i64>("", "membership_id").map_err(unavailable)?,
-            }))
+        .map(|row| -> Result<Household, OperationError> {
+            Ok(Household {
+                id: row.try_get("", "id").map_err(unavailable)?,
+                slug: row.try_get("", "slug").map_err(unavailable)?,
+                name: row.try_get("", "name").map_err(unavailable)?,
+                role: row.try_get("", "role").map_err(unavailable)?,
+                membership_id: row.try_get("", "membership_id").map_err(unavailable)?,
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
     transaction.commit().await.map_err(unavailable)?;
-    Ok(json!({"account_id":account_id,"data":data}))
+    Ok(HouseholdList { account_id, data })
 }
 
-pub async fn sessions(
+pub(crate) async fn sessions(
     db: &DatabaseConnection,
     account_id: i64,
     method: CredentialMethod,
     settings: Option<&Value>,
-) -> Result<Value, OperationError> {
+) -> Result<DataResponse<Vec<Session>>, OperationError> {
     let transaction = begin(db, Some(account_id)).await?;
     let data = match method {
         CredentialMethod::OauthGrant => mobile_sessions(&transaction, account_id, settings).await?,
@@ -54,35 +61,41 @@ pub async fn sessions(
         }
     };
     transaction.commit().await.map_err(unavailable)?;
-    Ok(json!({"data":data}))
+    Ok(DataResponse { data })
 }
 
 async fn api_sessions(
     transaction: &DatabaseTransaction,
     account_id: i64,
-) -> Result<Vec<Value>, OperationError> {
+) -> Result<Vec<Session>, OperationError> {
     let rows = transaction.query_all_raw(statement(
         "SELECT s.id,s.device_name,m.household_id,s.last_used_at,s.access_expires_at,s.refresh_expires_at,s.created_at FROM api_sessions s LEFT JOIN household_memberships m ON m.id=s.household_membership_id AND m.person_id=(SELECT a.person_id FROM accounts a WHERE a.id=s.account_id) WHERE s.account_id=$1 AND s.revoked_at IS NULL ORDER BY s.created_at DESC,s.id DESC",
         [account_id.into()],
     )).await.map_err(unavailable)?;
-    rows.into_iter().map(|row| -> Result<Value, OperationError> {
-        Ok(json!({
-            "id":row.try_get::<i64>("","id").map_err(unavailable)?,
-            "device_name":row.try_get::<Option<String>>("","device_name").map_err(unavailable)?,
-            "household_id":row.try_get::<Option<i64>>("","household_id").map_err(unavailable)?,
-            "last_used_at":stamp(row.try_get("","last_used_at").map_err(unavailable)?),
-            "access_token_expires_at":stamp(row.try_get("","access_expires_at").map_err(unavailable)?),
-            "refresh_token_expires_at":stamp(row.try_get("","refresh_expires_at").map_err(unavailable)?),
-            "created_at":stamp(row.try_get("","created_at").map_err(unavailable)?),
-        }))
-    }).collect()
+    rows.into_iter()
+        .map(|row| -> Result<Session, OperationError> {
+            Ok(Session {
+                id: row.try_get("", "id").map_err(unavailable)?,
+                device_name: row.try_get("", "device_name").map_err(unavailable)?,
+                household_id: row.try_get("", "household_id").map_err(unavailable)?,
+                last_used_at: stamp(row.try_get("", "last_used_at").map_err(unavailable)?),
+                access_token_expires_at: stamp(
+                    row.try_get("", "access_expires_at").map_err(unavailable)?,
+                ),
+                refresh_token_expires_at: stamp(
+                    row.try_get("", "refresh_expires_at").map_err(unavailable)?,
+                ),
+                created_at: stamp(row.try_get("", "created_at").map_err(unavailable)?),
+            })
+        })
+        .collect()
 }
 
 async fn mobile_sessions(
     transaction: &DatabaseTransaction,
     account_id: i64,
     settings: Option<&Value>,
-) -> Result<Vec<Value>, OperationError> {
+) -> Result<Vec<Session>, OperationError> {
     let lifetime = AuthenticationLifetime::from_settings(settings).map_err(unavailable)?;
     let now = Utc::now().naive_utc();
     let rows = oauth_grant::Entity::find()
@@ -101,14 +114,14 @@ async fn mobile_sessions(
             let last_used = row.last_used_at?;
             let refresh =
                 mobile_refresh_deadline(row.last_used_at, row.authenticated_at, &lifetime)?;
-            (refresh > now).then(|| {
-                json!({
-                    "id":row.id,"device_name":row.device_name,"household_id":Value::Null,
-                    "last_used_at":stamp(last_used),
-                    "access_token_expires_at":stamp(row.expires_in),
-                    "refresh_token_expires_at":stamp(refresh),
-                    "created_at":stamp(row.created_at),
-                })
+            (refresh > now).then(|| Session {
+                id: row.id,
+                device_name: row.device_name,
+                household_id: None,
+                last_used_at: stamp(last_used),
+                access_token_expires_at: stamp(row.expires_in),
+                refresh_token_expires_at: stamp(refresh),
+                created_at: stamp(row.created_at),
             })
         })
         .collect();

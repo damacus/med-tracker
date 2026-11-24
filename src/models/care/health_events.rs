@@ -8,8 +8,12 @@ use crate::models::{
     errors::OperationError,
     identity::credentials::CredentialProvenance,
 };
+use crate::views::{
+    PaginationMeta,
+    health_events::{HealthEventCollectionResponse, HealthEventResponse},
+};
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
-use serde_json::{Value, json};
+use serde_json::json;
 pub(crate) use sync::health_events::HealthInput;
 
 fn scope(tenant: &TenantTransaction) -> sea_orm::Select<health_event::Entity> {
@@ -43,12 +47,18 @@ pub async fn selected(
     Ok(row)
 }
 
-pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<(Value, String), OperationError> {
+pub async fn read(
+    tenant: &TenantTransaction,
+    id: &str,
+) -> Result<(HealthEventResponse, String), OperationError> {
     let row = selected(tenant, id).await?;
     sync::health_events::representation(tenant.transaction(), &row).await
 }
 
-pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {
+pub async fn list(
+    tenant: &TenantTransaction,
+    page: Pagination,
+) -> Result<HealthEventCollectionResponse, OperationError> {
     access::recheck(tenant).await?;
     let number = page.page.unwrap_or(1);
     let size = page.per_page.unwrap_or(20);
@@ -73,9 +83,14 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
         .offset(((number - 1) as u64).saturating_mul(size as u64))
         .all(tenant.transaction())
         .await?;
-    Ok(
-        json!({"data":sync::health_events::values(tenant.transaction(),&rows).await?,"meta":{"page":number,"per_page":size,"total_count":total}}),
-    )
+    Ok(HealthEventCollectionResponse {
+        data: sync::health_events::values(tenant.transaction(), &rows).await?,
+        meta: PaginationMeta {
+            page: number,
+            per_page: size,
+            total_count: total,
+        },
+    })
 }
 
 pub(crate) async fn mutate(
@@ -83,7 +98,7 @@ pub(crate) async fn mutate(
     id: Option<&str>,
     input: Result<HealthInput, OperationError>,
     provenance: &CredentialProvenance,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(HealthEventResponse, String), OperationError> {
     sync::lock(tenant).await?;
     if let Some(id) = id {
         let row = selected(tenant, id).await?;

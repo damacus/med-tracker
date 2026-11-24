@@ -8,6 +8,17 @@ mobile snapshots, sync, export, and import.
 The [API versioning policy](versioning.md) defines compatible changes,
 deprecation, stable generated names, and generated-client ownership.
 
+## Rust response construction
+
+Use serialisable response structs for fixed API fields through the HTTP
+boundary. Preserve the OpenAPI field types, nullability, envelopes and headers.
+
+ETags retain their existing JSON encoding. Idempotency storage retains the
+original wire body for replay after current access checks. Versioned portable
+documents, stored audit and review snapshots, and user-defined schedule
+configuration retain their JSON formats. The OAuth library supplies its token
+and protocol error bodies.
+
 ## Mobile authentication
 
 Phones start at a user-selected instance URL and load

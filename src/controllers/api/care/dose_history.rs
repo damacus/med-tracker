@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::care::dose_history;
+use crate::views::{PaginationMeta, medication_takes::MedicationTakeCollectionResponse};
 use axum::extract::{Query, rejection::QueryRejection};
 use chrono::{DateTime, NaiveDateTime};
 use serde::Deserialize;
@@ -33,12 +34,19 @@ pub(super) async fn index(
             .map_err(response::operation)?;
         Ok((
             StatusCode::OK,
-            json!({"data":data,"meta":{"page":page,"per_page":per_page,"total_count":history.total_count}}),
+            MedicationTakeCollectionResponse {
+                data,
+                meta: PaginationMeta {
+                    page,
+                    per_page,
+                    total_count: history.total_count,
+                },
+            },
             None,
         ))
     }
     .await;
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::take_history(),

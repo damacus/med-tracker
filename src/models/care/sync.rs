@@ -29,9 +29,13 @@ use crate::models::{
     errors::OperationError,
     identity::credentials::CredentialProvenance,
 };
+use crate::views::{
+    DataResponse,
+    sync::{AppliedBatch as BatchResponseData, BatchOperation, SyncResult},
+};
 use chrono::Utc;
 pub(crate) use input::Operation;
-pub use reading::{changes, snapshot};
+pub(crate) use reading::{changes, snapshot};
 pub use replay::authorize_replay;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
@@ -59,31 +63,38 @@ pub async fn lock_batch(tenant: &TenantTransaction, body: &Value) -> Result<(), 
     lock(tenant).await
 }
 
-pub struct AppliedBatch {
-    pub body: Value,
+pub struct AppliedBatch<T = Value> {
+    pub body: T,
     pub takes: Vec<medication_take::Model>,
 }
 
-pub async fn apply(
+pub(crate) async fn apply(
     tenant: &TenantTransaction,
     body: &Value,
     zone: chrono_tz::Tz,
     secret: Option<&std::sync::Arc<[u8]>>,
     provenance: &CredentialProvenance,
-) -> Result<AppliedBatch, OperationError> {
+) -> Result<AppliedBatch<DataResponse<BatchResponseData>>, OperationError> {
     let operations = input::parse(body)?;
     let mut results = Vec::with_capacity(operations.len());
     let mut takes = Vec::new();
     for (index, operation) in operations.iter().enumerate() {
-        let mut result = operations::apply(tenant, operation, zone, secret, provenance, &mut takes)
+        let result = operations::apply(tenant, operation, zone, secret, provenance, &mut takes)
             .await
             .map_err(|error| validation_error(operation, error))?;
-        result["index"] = json!(index);
-        result["action"] = json!(operation.action);
-        results.push(result);
+        results.push(BatchOperation {
+            result,
+            index,
+            action: operation.action.clone(),
+        });
     }
     Ok(AppliedBatch {
-        body: json!({"data":{"applied":true,"results":results}}),
+        body: DataResponse {
+            data: BatchResponseData {
+                applied: true,
+                results,
+            },
+        },
         takes,
     })
 }
@@ -119,48 +130,18 @@ fn validation_error(operation: &Operation, error: OperationError) -> OperationEr
 }
 
 fn result(
-    record_type: &str,
-    id: i64,
-    portable_id: Option<&str>,
-    etag: Option<String>,
-    replayed: Option<bool>,
-) -> Value {
-    let mut value = json!({"record_type":record_type,"record_id":id.to_string()});
-    if let Some(id) = portable_id {
-        value["record_portable_id"] = json!(id);
-    }
-    if let Some(etag) = etag {
-        value["etag"] = json!(etag);
-    }
-    if let Some(replayed) = replayed {
-        value["replayed"] = json!(replayed);
-    }
-    value
-}
-
-struct SyncResult {
     record_type: &'static str,
-    record_id: Option<i64>,
-    record_portable_id: Option<String>,
+    record_id: i64,
+    record_portable_id: Option<&str>,
     etag: Option<String>,
     replayed: Option<bool>,
-}
-impl SyncResult {
-    fn value(self) -> Value {
-        let mut value = json!({"record_type":self.record_type});
-        if let Some(id) = self.record_id {
-            value["record_id"] = json!(id.to_string());
-        }
-        if let Some(id) = self.record_portable_id {
-            value["record_portable_id"] = json!(id);
-        }
-        if let Some(etag) = self.etag {
-            value["etag"] = json!(etag);
-        }
-        if let Some(replayed) = self.replayed {
-            value["replayed"] = json!(replayed);
-        }
-        value
+) -> SyncResult {
+    SyncResult {
+        record_type,
+        record_id: Some(record_id.to_string()),
+        record_portable_id: record_portable_id.map(str::to_owned),
+        etag,
+        replayed,
     }
 }
 
@@ -193,4 +174,23 @@ fn envelope(operation: &Operation) -> Value {
         operation.resource_type.as_str()
     };
     json!({key: operation.attributes})
+}
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+
+    #[test]
+    fn operation_result_preserves_string_ids_and_omission() -> Result<(), serde_json::Error> {
+        let response = result("MedicationTake", 42, Some("take-id"), None, Some(false));
+        assert_eq!(response.record_id.as_deref(), Some("42"));
+        assert_eq!(
+            serde_json::to_value(response)?,
+            json!({
+                "record_type": "MedicationTake", "record_id": "42",
+                "record_portable_id": "take-id", "replayed": false
+            })
+        );
+        Ok(())
+    }
 }
