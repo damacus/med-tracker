@@ -37,16 +37,11 @@ impl TryFrom<AllocationInput> for AllocateStock {
     type Error = OperationError;
 
     fn try_from(input: AllocationInput) -> Result<Self, Self::Error> {
-        let quantity = Decimal::from_str_exact(&input.quantity)
-            .map_err(|_| validation("Quantity must be a positive decimal with up to two places"))?
-            .normalize();
-        if quantity <= Decimal::ZERO
-            || quantity >= Decimal::from(100_000_000)
-            || quantity.scale() > 2
-        {
-            return Err(validation(
-                "Quantity must be a positive decimal with up to two places",
-            ));
+        let invalid_quantity =
+            || validation("Quantity must be a positive decimal with up to two places");
+        let quantity = Decimal::from_str_exact(&input.quantity).map_err(|_| invalid_quantity())?;
+        if quantity.is_zero() || !valid_stock_decimal(quantity) {
+            return Err(invalid_quantity());
         }
         if input.person_id.get() <= 0
             || input.dosage_id.is_some_and(|id| id.0 <= 0)
@@ -60,7 +55,7 @@ impl TryFrom<AllocationInput> for AllocateStock {
         Ok(Self {
             submission_id: input.submission_id,
             person_id: input.person_id,
-            quantity,
+            quantity: quantity.normalize(),
             stock_unit: input.stock_unit,
             dosage_id: input.dosage_id,
         })

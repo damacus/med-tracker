@@ -44,12 +44,7 @@ pub(super) async fn create(
     }
     .await;
     let replayed = result.as_ref().is_ok_and(|(_, replayed)| *replayed);
-    let completed = if result.is_ok() {
-        savepoint.commit().await
-    } else {
-        savepoint.rollback().await
-    };
-    if completed.is_err() {
+    if settle_savepoint(savepoint, result.is_ok()).await.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
     let mut result = finish(

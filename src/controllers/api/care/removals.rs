@@ -42,12 +42,7 @@ pub(super) async fn create(
             .map_err(response::operation),
         Err(error) => Err(error),
     };
-    let completed = if result.is_ok() {
-        savepoint.commit().await
-    } else {
-        savepoint.rollback().await
-    };
-    if completed.is_err() {
+    if settle_savepoint(savepoint, result.is_ok()).await.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
     finish(

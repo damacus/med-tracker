@@ -28,6 +28,10 @@ use std::str::FromStr;
 
 type ApiError = OperationError;
 
+fn valid_stock_decimal(value: Decimal) -> bool {
+    value >= Decimal::ZERO && value.normalize().scale() <= 2 && value < Decimal::from(100_000_000)
+}
+
 #[derive(Clone, Debug)]
 pub struct AdjustStock {
     pub medication_id: String,

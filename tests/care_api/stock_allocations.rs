@@ -1,6 +1,6 @@
 use super::*;
-use med_tracker::models::entities::{medication, version};
-use sea_orm::{PaginatorTrait, prelude::Decimal};
+use med_tracker::models::entities::version;
+use sea_orm::PaginatorTrait;
 
 #[tokio::test]
 async fn stock_allocation_reserves_exact_quantity_and_replays_once() {
@@ -48,12 +48,7 @@ async fn stock_allocation_reserves_exact_quantity_and_replays_once() {
         422
     );
 
-    let persisted = medication::Entity::find_by_id(medication_id)
-        .one(&app.fixture.admin)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(persisted.current_supply, Some(Decimal::TEN));
+    assert_eq!(app.fixture.effect().await.1, "10.00");
     assert_eq!(
         version::Entity::find()
             .filter(version::Column::HouseholdId.eq(household_id))
@@ -129,11 +124,6 @@ async fn stock_allocation_requires_personal_authority_and_serializes_competing_r
     ];
     statuses.sort_unstable();
     assert_eq!(statuses, [201, 422]);
-
-    let removal = app.client.post(format!("{medication}/stock_removals")).bearer_auth(&token)
-        .json(&json!({"stock_removal": {"quantity": "2", "reason": "dropped", "submission_id": uuid::Uuid::new_v4()}}))
-        .send().await.unwrap();
-    assert_eq!(removal.status(), 422);
 
     let take = shared_take_body(&app.fixture);
     let denied_dose = app

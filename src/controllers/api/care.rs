@@ -692,12 +692,7 @@ async fn adjust_stock(
             .map_err(response::operation),
         Err(error) => Err(error),
     };
-    let savepoint_result = if result.is_ok() {
-        savepoint.commit().await
-    } else {
-        savepoint.rollback().await
-    };
-    if savepoint_result.is_err() {
+    if settle_savepoint(savepoint, result.is_ok()).await.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
     finish(
@@ -708,6 +703,17 @@ async fn adjust_stock(
         &request_id,
     )
     .await
+}
+
+async fn settle_savepoint(
+    savepoint: DatabaseTransaction,
+    succeeded: bool,
+) -> Result<(), sea_orm::DbErr> {
+    if succeeded {
+        savepoint.commit().await
+    } else {
+        savepoint.rollback().await
+    }
 }
 
 type Reply = std::result::Result<(StatusCode, Value, Option<String>), response::Failure>;
