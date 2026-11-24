@@ -852,6 +852,21 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].record.as_ref().unwrap().outcome, "not_taken");
         assert_eq!(context.remaining_rows, 0);
+        let yesterday = day.pred_opt().unwrap();
+        let expired = Source::Schedule(make_schedule(0, json!({}), yesterday, yesterday));
+        let mut expired_context = ProjectionContext::new(None, false);
+        expired_context.remaining_days = 0;
+        let saved = projected_loaded_in_mode(
+            &expired,
+            (day, day),
+            std::slice::from_ref(&record),
+            &[],
+            &[],
+            &mut expired_context,
+        )
+        .unwrap();
+        assert_eq!(saved.len(), 1);
+        assert_eq!(saved[0].record.as_ref().unwrap().id, record.id);
         record.position = 2;
         let mut context = ProjectionContext::new(None, true);
         context.remaining_rows = 1;
