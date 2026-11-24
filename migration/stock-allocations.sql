@@ -19,7 +19,8 @@ BEGIN
       AND allocation.remaining_quantity > 0;
     IF TG_OP = 'DELETE' THEN
         IF reserved > 0 THEN
-            RAISE EXCEPTION 'Stock remains allocated to a person' USING ERRCODE = '23514';
+            RAISE EXCEPTION 'Stock remains allocated to a person'
+                USING ERRCODE = '23514', CONSTRAINT = 'preserve_active_stock_allocations';
         END IF;
         RETURN OLD;
     END IF;
@@ -28,7 +29,8 @@ BEGIN
         OR ROW(NEW.dmd_system, NEW.dmd_concept_class, NEW.dmd_code, NEW.dose_unit)
            IS DISTINCT FROM ROW(OLD.dmd_system, OLD.dmd_concept_class, OLD.dmd_code, OLD.dose_unit)
     ) THEN
-        RAISE EXCEPTION 'Stock remains allocated to a person' USING ERRCODE = '23514';
+        RAISE EXCEPTION 'Stock remains allocated to a person'
+            USING ERRCODE = '23514', CONSTRAINT = 'preserve_active_stock_allocations';
     END IF;
     RETURN NEW;
 END
@@ -52,7 +54,8 @@ BEGIN
           AND allocation.remaining_quantity > 0;
         IF TG_OP = 'DELETE' THEN
             IF reserved > 0 THEN
-                RAISE EXCEPTION 'Stock remains allocated to a person' USING ERRCODE = '23514';
+                RAISE EXCEPTION 'Stock remains allocated to a person'
+                    USING ERRCODE = '23514', CONSTRAINT = 'preserve_active_stock_allocations';
             END IF;
             RETURN OLD;
         END IF;
@@ -61,7 +64,8 @@ BEGIN
             OR ROW(NEW.medication_id, NEW.household_id, NEW.amount, NEW.unit)
                IS DISTINCT FROM ROW(OLD.medication_id, OLD.household_id, OLD.amount, OLD.unit)
         ) THEN
-            RAISE EXCEPTION 'Stock remains allocated to a person' USING ERRCODE = '23514';
+            RAISE EXCEPTION 'Stock remains allocated to a person'
+                USING ERRCODE = '23514', CONSTRAINT = 'preserve_active_stock_allocations';
         END IF;
     END IF;
     IF NEW.current_supply IS NOT NULL AND EXISTS (
@@ -71,7 +75,8 @@ BEGIN
           AND allocation.dosage_id IS NULL
           AND allocation.remaining_quantity > 0
     ) THEN
-        RAISE EXCEPTION 'Medication stock remains allocated to a person' USING ERRCODE = '23514';
+        RAISE EXCEPTION 'Medication stock remains allocated to a person'
+            USING ERRCODE = '23514', CONSTRAINT = 'preserve_active_stock_allocations';
     END IF;
     RETURN NEW;
 END

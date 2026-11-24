@@ -3,9 +3,9 @@ mod entity;
 use super::*;
 use crate::models::{
     access::PersonAccess,
-    care::{guardian_declarations, treatments},
+    care::guardian_declarations,
     identity::resource::{AuthenticationError, ValidatedPrincipal},
-    ids::{MedicationId, PersonId},
+    ids::{HouseholdId, MedicationId, PersonId},
 };
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{IntoActiveModel, QueryOrder};
@@ -49,7 +49,7 @@ impl TryFrom<AllocationInput> for AllocateStock {
         {
             return Err(validation("Stock allocation identifiers must be valid"));
         }
-        if !treatments::supported_unit(&input.stock_unit) {
+        if stock_unit(&input.stock_unit) != input.stock_unit {
             return Err(validation("Stock unit is invalid"));
         }
         Ok(Self {
@@ -93,19 +93,7 @@ pub(crate) async fn reserve(
 ) -> Result<(AllocationReceipt, bool), OperationError> {
     let db = tenant.transaction();
     let scope = tenant.scope();
-    lock_household(db, scope.household_id).await?;
-    guardian_declarations::lock_creator_account(tenant).await?;
-    principal
-        .revalidate_household(tenant)
-        .await
-        .map_err(|error| match error {
-            AuthenticationError::Unauthenticated => OperationError::Unauthenticated,
-            AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. } => {
-                OperationError::Forbidden
-            }
-            AuthenticationError::NotFound => OperationError::NotFound,
-            AuthenticationError::Unavailable => OperationError::Unavailable,
-        })?;
+    lock_actor(tenant, principal).await?;
     access::require_person_access(tenant, input.person_id.get(), PersonAccess::Manage).await?;
 
     if let Some(saved) = entity::Entity::find()
@@ -136,11 +124,7 @@ pub(crate) async fn reserve(
         .await?
         .ok_or(OperationError::NotFound)?;
     let supply = exact_source_supply(tenant, &medication, &input).await?;
-    let source = StockSource {
-        household_id: scope.household_id,
-        medication_id,
-        dosage_id: input.dosage_id,
-    };
+    let source = StockSource::for_inventory(&medication, input.dosage_id.map(|id| id.0));
     require_communal_stock(db, source, supply - input.quantity).await?;
 
     let record = entity::ActiveModel {
@@ -177,6 +161,75 @@ pub(crate) async fn reserve(
     Ok((result, false))
 }
 
+async fn lock_actor(
+    tenant: &TenantTransaction,
+    principal: &ValidatedPrincipal,
+) -> Result<(), OperationError> {
+    lock_household(tenant.transaction(), tenant.scope().household_id).await?;
+    guardian_declarations::lock_creator_account(tenant).await?;
+    principal
+        .revalidate_household(tenant)
+        .await
+        .map_err(|error| match error {
+            AuthenticationError::Unauthenticated => OperationError::Unauthenticated,
+            AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. } => {
+                OperationError::Forbidden
+            }
+            AuthenticationError::NotFound => OperationError::NotFound,
+            AuthenticationError::Unavailable => OperationError::Unavailable,
+        })
+}
+
+pub(crate) async fn release(
+    tenant: &TenantTransaction,
+    principal: &ValidatedPrincipal,
+    medication_id: MedicationId,
+    submission_id: Uuid,
+) -> Result<(), OperationError> {
+    lock_actor(tenant, principal).await?;
+    let db = tenant.transaction();
+    let scope = tenant.scope();
+    let record = entity::Entity::find()
+        .filter(entity::Column::HouseholdId.eq(scope.household_id))
+        .filter(entity::Column::MedicationId.eq(medication_id.get()))
+        .filter(entity::Column::SubmissionId.eq(submission_id))
+        .one(db)
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    access::require_person_access(tenant, record.person_id, PersonAccess::Manage).await?;
+    lock_medication(db, medication_id.get()).await?;
+    let record = entity::Entity::find_by_id(record.id)
+        .filter(entity::Column::HouseholdId.eq(scope.household_id))
+        .lock_exclusive()
+        .one(db)
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    if record.remaining_quantity.is_zero() {
+        return Ok(());
+    }
+    let id = record.id;
+    let previous = record.remaining_quantity.normalize().to_string();
+    let mut active = record.into_active_model();
+    active.remaining_quantity = Set(Decimal::ZERO);
+    active.update(db).await?;
+    let context = StockContext {
+        tenant,
+        provenance: Some(principal.provenance()),
+    };
+    audit::record_version(
+        db,
+        &context,
+        &scope.request_id,
+        "StockAllocation",
+        id,
+        "release",
+        Some(json!({"remaining_quantity": previous})),
+        Some(json!({"remaining_quantity": "0"})),
+    )
+    .await?;
+    Ok(())
+}
+
 async fn exact_source_supply(
     tenant: &TenantTransaction,
     medication: &medication::Model,
@@ -195,12 +248,12 @@ async fn exact_source_supply(
             .one(db)
             .await?
             .ok_or_else(invalid_source)?;
-        if dosage.unit != input.stock_unit {
+        if stock_unit(&dosage.unit) != input.stock_unit {
             return Err(invalid_source());
         }
         return dosage.current_supply.ok_or_else(invalid_source);
     }
-    if medication.dose_unit.as_deref() != Some(input.stock_unit.as_str())
+    if medication.dose_unit.as_deref().map(stock_unit) != Some(input.stock_unit.as_str())
         || options.one(db).await?.is_some()
     {
         return Err(invalid_source());
@@ -210,20 +263,16 @@ async fn exact_source_supply(
 
 #[derive(Clone, Copy)]
 pub(crate) struct StockSource {
-    household_id: i64,
+    household_id: HouseholdId,
     medication_id: MedicationId,
     dosage_id: Option<DosageId>,
 }
 
 impl StockSource {
-    pub(crate) fn from_inventory(
-        household_id: i64,
-        medication_id: i64,
-        dosage_id: Option<i64>,
-    ) -> Self {
+    pub(crate) fn for_inventory(medication: &medication::Model, dosage_id: Option<i64>) -> Self {
         Self {
-            household_id,
-            medication_id: MedicationId::from_database(medication_id),
+            household_id: HouseholdId::from_database(medication.household_id),
+            medication_id: MedicationId::from_database(medication.id),
             dosage_id: dosage_id.map(DosageId),
         }
     }
@@ -238,7 +287,7 @@ impl StockSource {
 
     fn active_for_medication(self) -> sea_orm::Select<entity::Entity> {
         entity::Entity::find()
-            .filter(entity::Column::HouseholdId.eq(self.household_id))
+            .filter(entity::Column::HouseholdId.eq(self.household_id.get()))
             .filter(entity::Column::MedicationId.eq(self.medication_id.get()))
             .filter(entity::Column::RemainingQuantity.gt(Decimal::ZERO))
     }
@@ -252,13 +301,72 @@ pub(crate) async fn require_communal_stock(
     require_physical_stock(db, source.active(), remaining_physical).await
 }
 
+pub(crate) fn reservation_write_error(error: &sea_orm::DbErr) -> Option<OperationError> {
+    let (sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(error))
+    | sea_orm::DbErr::Query(sea_orm::RuntimeErr::SqlxError(error))) = error
+    else {
+        return None;
+    };
+    let database = error.as_database_error()?;
+    (database.code().as_deref() == Some("23514")
+        && database.constraint() == Some("preserve_active_stock_allocations"))
+    .then(|| validation("Stock remains allocated to a person"))
+}
+
+pub(crate) async fn ensure_exportable(
+    tenant: &TenantTransaction,
+    medication_ids: &std::collections::HashSet<i64>,
+) -> Result<(), OperationError> {
+    let active = entity::Entity::find()
+        .filter(entity::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(entity::Column::MedicationId.is_in(medication_ids.iter().copied()))
+        .filter(entity::Column::RemainingQuantity.gt(Decimal::ZERO))
+        .one(tenant.transaction())
+        .await?;
+    if active.is_some() {
+        return Err(validation(
+            "Export cannot preserve active stock reservations. Resolve the reservations before exporting.",
+        ));
+    }
+    Ok(())
+}
+
 pub(super) async fn require_medication_physical_stock(
     db: &DatabaseTransaction,
     medication: &medication::Model,
     remaining_physical: Decimal,
 ) -> Result<(), OperationError> {
-    let source = StockSource::from_inventory(medication.household_id, medication.id, None);
+    let source = StockSource::for_inventory(medication, None);
     require_physical_stock(db, source.active_for_medication(), remaining_physical).await
+}
+
+#[derive(sea_orm::FromQueryResult)]
+pub(in crate::models::care) struct ActiveReservation {
+    pub medication_id: i64,
+    pub dosage_id: Option<i64>,
+    pub person_id: i64,
+    pub remaining_quantity: Decimal,
+}
+
+pub(in crate::models::care) async fn active_for_inventory(
+    db: &DatabaseTransaction,
+    household_id: HouseholdId,
+    medication_ids: &[i64],
+) -> Result<Vec<ActiveReservation>, OperationError> {
+    Ok(entity::Entity::find()
+        .select_only()
+        .columns([
+            entity::Column::MedicationId,
+            entity::Column::DosageId,
+            entity::Column::PersonId,
+            entity::Column::RemainingQuantity,
+        ])
+        .filter(entity::Column::HouseholdId.eq(household_id.get()))
+        .filter(entity::Column::MedicationId.is_in(medication_ids.iter().copied()))
+        .filter(entity::Column::RemainingQuantity.gt(Decimal::ZERO))
+        .into_model()
+        .all(db)
+        .await?)
 }
 
 async fn require_physical_stock(

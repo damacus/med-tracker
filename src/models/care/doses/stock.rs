@@ -76,7 +76,7 @@ pub(super) async fn decrement_stock(
             }
             allocations::use_for_dose(
                 db,
-                StockSource::from_inventory(selected.household_id, selected.id, None),
+                StockSource::for_inventory(&selected, None),
                 PersonId::from_database(proposed.source.person_id),
                 supply,
                 needed,
@@ -161,7 +161,7 @@ pub(super) async fn decrement_stock(
     }
     allocations::use_for_dose(
         db,
-        StockSource::from_inventory(selected.household_id, selected.id, Some(selected_option.id)),
+        StockSource::for_inventory(&selected, Some(selected_option.id)),
         PersonId::from_database(proposed.source.person_id),
         supply,
         needed,

@@ -27,7 +27,7 @@ pub(super) async fn apply(
         let remaining = previous - quantity;
         allocations::require_communal_stock(
             db,
-            StockSource::from_inventory(medication.household_id, medication.id, Some(id)),
+            StockSource::for_inventory(&medication, Some(id)),
             remaining,
         )
         .await?;
@@ -96,7 +96,7 @@ pub(super) async fn apply(
         let remaining = previous - quantity;
         allocations::require_communal_stock(
             db,
-            StockSource::from_inventory(medication.household_id, medication.id, None),
+            StockSource::for_inventory(&medication, None),
             remaining,
         )
         .await?;
@@ -123,15 +123,7 @@ pub(super) async fn apply(
         .await?;
         (previous, remaining, unit)
     };
-    let unit = if [
-        "tablet", "capsule", "gummy", "sachet", "spray", "drop", "pad", "ml",
-    ]
-    .contains(&unit.as_str())
-    {
-        unit
-    } else {
-        "units".into()
-    };
+    let unit = crate::models::care::medications::stock_unit(&unit);
     let mut payload = facts.audit_payload();
     payload["previous_quantity"] = json!(format_quantity(previous));
     payload["remaining_quantity"] = json!(format_quantity(remaining));

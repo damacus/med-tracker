@@ -51,7 +51,7 @@ pub(super) async fn create(
     let mut result = finish_typed(
         tenant,
         principal.provenance(),
-        audit::RequestAudit::stock_allocation(),
+        audit::RequestAudit::stock_allocation("POST", "create"),
         result.map(|(receipt, _)| (StatusCode::CREATED, DataResponse { data: receipt }, None)),
         &request_id,
     )
@@ -63,4 +63,46 @@ pub(super) async fn create(
         );
     }
     result
+}
+
+pub(super) async fn release(
+    State(ctx): State<AppContext>,
+    ApiPath((household_id, medication_id, submission_id)): ApiPath<(
+        HouseholdId,
+        MedicationId,
+        uuid::Uuid,
+    )>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
+    let request_id = administration::request_id(request);
+    let (principal, tenant) = match begin(&ctx, &headers, household_id.get(), &request_id).await {
+        Ok(context) => context,
+        Err(error) => return response::error(error, &request_id),
+    };
+    let savepoint = match tenant.transaction().begin().await {
+        Ok(savepoint) => savepoint,
+        Err(_) => return response::error(response::unavailable(), &request_id),
+    };
+    let result = allocations::release(&tenant, &principal, medication_id, submission_id)
+        .await
+        .map(|()| {
+            (
+                StatusCode::NO_CONTENT,
+                response::MutationBody::<()>::Empty,
+                None,
+            )
+        })
+        .map_err(response::operation);
+    if settle_savepoint(savepoint, result.is_ok()).await.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    finish_typed(
+        tenant,
+        principal.provenance(),
+        audit::RequestAudit::stock_allocation("DELETE", "release"),
+        result,
+        &request_id,
+    )
+    .await
 }

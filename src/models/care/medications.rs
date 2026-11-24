@@ -174,12 +174,21 @@ pub(crate) async fn lock_medication(
 }
 
 fn database_error(error: sea_orm::DbErr) -> OperationError {
-    error.into()
+    allocations::reservation_write_error(&error).unwrap_or_else(|| error.into())
 }
 
 fn validation(message: &str) -> OperationError {
     OperationError::Validation {
         details: json!({"error": message}),
+    }
+}
+
+pub(super) fn stock_unit(clinical_unit: &str) -> &str {
+    match clinical_unit {
+        "tablet" | "capsule" | "gummy" | "sachet" | "spray" | "drop" | "pad" | "ml" => {
+            clinical_unit
+        }
+        _ => "units",
     }
 }
 

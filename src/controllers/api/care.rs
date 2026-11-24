@@ -474,6 +474,10 @@ pub fn routes() -> Routes {
             "/{household_id}/medications/{id}/stock_allocations",
             post(stock_allocations::create),
         )
+        .add(
+            "/{household_id}/medications/{id}/stock_allocations/{submission_id}",
+            delete(stock_allocations::release),
+        )
 }
 
 async fn begin(
