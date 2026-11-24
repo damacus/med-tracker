@@ -3927,7 +3927,7 @@ async fn person_owned_schedule_origin_consent_skips_ended_facts_without_reopenin
         .unwrap()
         .unwrap();
     assert_eq!(member.status, "active");
-    assert_eq!(member.role, origin.member.role);
+    assert_eq!(member.role, origin.invitation.invitation.membership_role);
     let fresh = Application::assert_status(app.client.post(format!("{}/api/v1/households/{}/schedules",app.origin,origin.invitation.target_household.id))
         .bearer_auth(&origin.self_token).json(&json!({"schedule":{"person_id":app.fixture.adult.id.to_string(),"medication_id":origin.stock.id.to_string(),
             "dose_amount":"2","dose_unit":"tablet","start_date":"2026-01-01","end_date":"2027-01-01","schedule_type":"prn","schedule_config":{}}}))
@@ -4360,6 +4360,8 @@ async fn person_owned_schedule_fresh_consent_keeps_member_and_ends_old_replay_ep
         .unwrap()
         .unwrap();
     let mut member_role = member.clone().into_active_model();
+    assert_eq!(member.status, "active");
+    assert_eq!(care.invitation.invitation.membership_role, "member");
     member_role.role = Set("administrator".into());
     member_role.update(&app.fixture.admin).await.unwrap();
     let key = uuid::Uuid::new_v4().to_string();
