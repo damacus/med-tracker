@@ -3,6 +3,7 @@ use loco_rs::model::TenantQueryExt;
 use std::collections::BTreeSet;
 
 pub(super) const MAX_PROJECTION_ROWS: usize = 10_000;
+pub(super) const PROJECTION_FETCH_LIMIT: u64 = MAX_PROJECTION_ROWS as u64 + 1;
 
 pub(super) fn capacity_error() -> OperationError {
     invalid(
@@ -47,9 +48,6 @@ impl<'a> ProjectionContext<'a> {
         takes: &[medication_take::Model],
         settings: Option<&Value>,
     ) -> Result<(), OperationError> {
-        if !self.execution {
-            return Ok(());
-        }
         check_capacity(takes.len())?;
         check_capacity(pauses.len())?;
         let days =
@@ -117,7 +115,7 @@ impl<'a> ProjectionContext<'a> {
                             }
                         }
                         if !valid {
-                            let count = schedule_count(schedule, config, true)?;
+                            let count = schedule_count(schedule, config, self.execution)?;
                             work = work
                                 .checked_sub(usize::try_from(count).map_err(|_| capacity_error())?)
                                 .ok_or_else(capacity_error)?;
@@ -275,17 +273,23 @@ async fn projected_in_mode(
             query.filter(dose_occurrence::Column::PersonMedicationId.eq(row.id))
         }
     };
-    let persisted = query.all(db).await.map_err(database_error)?;
+    let persisted = query
+        .limit(PROJECTION_FETCH_LIMIT)
+        .all(db)
+        .await
+        .map_err(database_error)?;
     let pauses = match source {
         Source::Schedule(row) => {
             pause_period::Entity::find()
                 .filter(pause_period::Column::ScheduleId.eq(row.id))
+                .limit(PROJECTION_FETCH_LIMIT)
                 .all(db)
                 .await
         }
         Source::Assignment(row) => {
             pause_period::Entity::find()
                 .filter(pause_period::Column::PersonMedicationId.eq(row.id))
+                .limit(PROJECTION_FETCH_LIMIT)
                 .all(db)
                 .await
         }
@@ -317,7 +321,11 @@ async fn projected_in_mode(
             takes.filter(medication_take::Column::PersonMedicationId.eq(row.id))
         }
     };
-    let takes = takes.all(db).await.map_err(database_error)?;
+    let takes = takes
+        .limit(PROJECTION_FETCH_LIMIT)
+        .all(db)
+        .await
+        .map_err(database_error)?;
     projected_loaded_in_mode(
         source,
         (scan_start, scan_end),
@@ -513,27 +521,25 @@ fn schedule_count(
     } else {
         schedule.max_daily_doses.unwrap_or(1)
     };
-    if execution {
-        let limit = i64::try_from(MAX_PROJECTION_ROWS).map_err(|_| capacity_error())?;
-        for config in [&schedule.schedule_config, config] {
-            for name in ["max_daily_doses", "max_doses", "max"] {
-                if let Some(value) = config.get(name) {
-                    let count = value
-                        .as_i64()
-                        .or_else(|| value.as_str().and_then(|value| value.parse::<i64>().ok()));
-                    if count.is_some_and(|count| count > limit)
-                        || value.is_number() && count.is_none()
-                        || value.as_str().is_some_and(|value| {
-                            !value.is_empty()
-                                && value
-                                    .trim_start_matches('+')
-                                    .bytes()
-                                    .all(|byte| byte.is_ascii_digit())
-                                && count.is_none()
-                        })
-                    {
-                        return Err(capacity_error());
-                    }
+    let limit = i64::try_from(MAX_PROJECTION_ROWS).map_err(|_| capacity_error())?;
+    for config in [&schedule.schedule_config, config] {
+        for name in ["max_daily_doses", "max_doses", "max"] {
+            if let Some(value) = config.get(name) {
+                let count = value
+                    .as_i64()
+                    .or_else(|| value.as_str().and_then(|value| value.parse::<i64>().ok()));
+                if count.is_some_and(|count| count > limit)
+                    || value.is_number() && count.is_none()
+                    || value.as_str().is_some_and(|value| {
+                        !value.is_empty()
+                            && value
+                                .trim_start_matches('+')
+                                .bytes()
+                                .all(|byte| byte.is_ascii_digit())
+                            && count.is_none()
+                    })
+                {
+                    return Err(capacity_error());
                 }
             }
         }
@@ -728,6 +734,25 @@ mod tests {
                 .is_err()
             );
         }
+    }
+
+    #[test]
+    fn report_budget_accepts_high_frequency_sources_and_rejects_an_incomplete_result() {
+        let day = ymd(2026, 11, 24);
+        let source = Source::Assignment(make_assignment(
+            day.and_hms_opt(0, 0, 0).unwrap(),
+            Some(0),
+            Some(60),
+        ));
+        let mut context = ProjectionContext::new(None, false);
+        context.remaining_rows = 60;
+        let rows =
+            projected_loaded_in_mode(&source, (day, day), &[], &[], &[], &mut context).unwrap();
+        assert_eq!(rows.len(), 60);
+        assert_eq!(context.remaining_rows, 0);
+        assert!(
+            projected_loaded_in_mode(&source, (day, day), &[], &[], &[], &mut context).is_err()
+        );
     }
 
     #[test]

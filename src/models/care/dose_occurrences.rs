@@ -211,6 +211,7 @@ async fn projected_for_range(
                 .add(schedule::Column::StartDate.is_null())
                 .add(schedule::Column::StartDate.lte(query_end)),
         )
+        .limit(projection::PROJECTION_FETCH_LIMIT)
         .all(db)
         .await?;
     let assignments = person_medication::Entity::find()
@@ -220,6 +221,7 @@ async fn projected_for_range(
             person_medication::Column::CreatedAt
                 .lte(local_midnight(end + Duration::days(1), tenant.settings())),
         )
+        .limit(projection::PROJECTION_FETCH_LIMIT)
         .all(db)
         .await?;
     let sources: Vec<Source> = schedules
@@ -230,9 +232,7 @@ async fn projected_for_range(
     if sources.is_empty() {
         return Ok(Vec::new());
     }
-    if dashboard {
-        projection::check_capacity(sources.len())?;
-    }
+    projection::check_capacity(sources.len())?;
     let mut projection_context = projection::ProjectionContext::new(tenant.settings(), dashboard);
     let scan_start = sources
         .iter()
@@ -291,6 +291,7 @@ async fn projected_for_range(
                         .add(dose_occurrence::Column::WindowStartsOn.gte(scan_start)),
                 ),
         )
+        .limit(projection::PROJECTION_FETCH_LIMIT)
         .all(db)
         .await?;
     let pauses = report_pause_scope(
@@ -300,6 +301,7 @@ async fn projected_for_range(
         scan_start_time,
         scan_end_time,
     )
+    .limit(projection::PROJECTION_FETCH_LIMIT)
     .all(db)
     .await?;
     let takes: Vec<medication_take::Model> = medication_take::Entity::find()
@@ -313,13 +315,12 @@ async fn projected_for_range(
         .filter(medication_take::Column::TakenAt.lt(scan_end_time))
         .order_by_asc(medication_take::Column::TakenAt)
         .order_by_asc(medication_take::Column::Id)
+        .limit(projection::PROJECTION_FETCH_LIMIT)
         .all(db)
         .await?;
-    if dashboard {
-        projection::check_capacity(persisted.len())?;
-        projection::check_capacity(pauses.len())?;
-        projection::check_capacity(takes.len())?;
-    }
+    projection::check_capacity(persisted.len())?;
+    projection::check_capacity(pauses.len())?;
+    projection::check_capacity(takes.len())?;
     let take_ids: Vec<_> = takes.iter().map(|row| row.id).collect();
     let linked_ids: std::collections::HashSet<(Option<i64>, Option<i64>, i64)> =
         if take_ids.is_empty() {
