@@ -4,3 +4,5 @@ timezone: Europe/London
 markdown: kramdown
 kramdown:
   input: GFM
+development:
+  fast_refresh: false

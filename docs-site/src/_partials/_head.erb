@@ -4,3 +4,4 @@
 <title><%= title == metadata.title ? metadata.title : "#{title} | #{metadata.title}" %></title>
 <link rel="stylesheet" href="<%= relative_url '/_bridgetown/site.css' %>">
 <script type="module" src="<%= relative_url '/_bridgetown/site.js' %>"></script>
+<%= live_reload_dev_js %>
