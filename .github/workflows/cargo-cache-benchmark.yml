@@ -1,0 +1,58 @@
+name: Cargo cache benchmark
+
+on:
+  push:
+    branches: [codex/cargo-cache-benchmark]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cargo-cache-benchmark
+  cancel-in-progress: true
+
+jobs:
+  arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: 3ab5d6b35ca30b1375d1dd82768e2178a74f4cf3
+      - name: Install verified Buildx release
+        run: |
+          curl --fail --silent --show-error --location --proto =https --tlsv1.2 \
+            https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-arm64 \
+            --output "$RUNNER_TEMP/docker-buildx"
+          echo "3b83b3731916ba433feccaaa689fe5bcdc81c641d92c8e6c2ea865dfa141c97a $RUNNER_TEMP/docker-buildx" | sha256sum --check --strict
+          mkdir -p "${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
+          install -m 0755 "$RUNNER_TEMP/docker-buildx" "${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins/docker-buildx"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+        with:
+          cache-binary: false
+          buildkitd-flags: --debug=false
+          driver-opts: image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
+      - name: Measure cold Cargo cache
+        shell: bash
+        run: |
+          revision=$(git rev-parse HEAD)
+          docker buildx build --platform linux/arm64 --target build --output type=cacheonly \
+            --progress plain --build-arg CARGO_BUILD_JOBS=2 --build-arg "MEDTRACKER_COMMIT=$revision" . \
+            2>&1 | tee "$RUNNER_TEMP/cargo-cold.log"
+      - name: Measure warm Cargo cache with changed commit metadata
+        shell: bash
+        run: |
+          docker buildx build --platform linux/arm64 --target build --output type=cacheonly \
+            --progress plain --build-arg CARGO_BUILD_JOBS=2 \
+            --build-arg MEDTRACKER_COMMIT=0000000000000000000000000000000000000000 . \
+            2>&1 | tee "$RUNNER_TEMP/cargo-warm.log"
+      - name: Report both executed Cargo builds
+        shell: bash
+        run: |
+          for cache in cold warm; do
+            cargo_log="$RUNNER_TEMP/cargo-$cache.log"
+            release=$(grep -E 'Finished .release. profile' "$cargo_log")
+            compiled=$(grep -c ' Compiling ' "$cargo_log")
+            printf '%s (%s crate compilations)\n\n%s\n\n' "$cache" "$compiled" "$release" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
