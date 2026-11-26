@@ -1,0 +1,8 @@
+url: https://damacus.github.io
+base_path: /med-tracker
+timezone: Europe/London
+markdown: kramdown
+kramdown:
+  input: GFM
+development:
+  fast_refresh: false

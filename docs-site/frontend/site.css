@@ -1,0 +1,41 @@
+aside[slot="sidebar-start"] nav {
+  display: grid;
+  gap: 0.7rem;
+}
+
+aside[slot="sidebar-start"] nav ul {
+  list-style: none;
+  padding-inline-start: 1rem;
+}
+
+aside[slot="sidebar-start"] nav li + li {
+  margin-block-start: 0.35rem;
+}
+
+nav [aria-current="page"] {
+  font-weight: 700;
+}
+
+.callout {
+  border-inline-start: 0.25rem solid var(--wa-color-brand-fill-loud);
+  background: var(--wa-color-surface-raised);
+  padding: 0.8rem 1rem;
+  margin-block: 1.5rem;
+}
+
+.heading-link {
+  margin-inline-start: 0.4em;
+  font-size: 0.7em;
+}
+
+pre.mermaid {
+  overflow-x: auto;
+}
+
+footer[slot="footer"] {
+  padding: 1rem;
+}
+
+@view-transition {
+  navigation: none;
+}

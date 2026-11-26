@@ -1,0 +1,8 @@
+<header slot="header">
+  <%= dsd do %>
+    <%= render Willamette::HeaderNavbar.new %>
+  <% end %>
+  <a slot="logo" href="<%= relative_url '/' %>"><%= metadata.title %></a>
+  <span slot="search"><a href="<%= relative_url '/search/' %>">Search</a></span>
+  <button slot="nav" type="button" id="colour-mode" aria-label="Colour theme">System theme</button>
+</header>

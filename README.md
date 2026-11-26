@@ -114,9 +114,14 @@ Key pages:
 
 ### Build docs locally
 
+Use Ruby and Node from `mise.toml` with Bundler and npm installed.
+
 ```fish
 task docs:serve
 ```
+
+Open `http://127.0.0.1:4000/med-tracker/` for the preview. Run
+`task docs:build` to generate the GitHub Pages artifact in `site/`.
 
 ## Contributing
 

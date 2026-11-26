@@ -1,0 +1,16 @@
+{
+  "name": "medtracker-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild frontend/site.js --bundle --splitting --format=esm --minify --log-limit=0 --log-level=warning --outdir=output/_bridgetown --loader:.woff2=file",
+    "check": "ruby scripts/check.rb"
+  },
+  "dependencies": {
+    "@awesome.me/webawesome": "3.15.0",
+    "esbuild": "0.28.2",
+    "mermaid": "12.3.0",
+    "pagefind": "1.6.0",
+    "willamette": "0.10.5"
+  }
+}
