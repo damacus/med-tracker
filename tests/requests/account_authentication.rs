@@ -765,17 +765,32 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .next()
         .unwrap()
         .to_owned();
-    let listing = request
+    let bookmark = request
         .get("/account/security/keys")
         .add_header("cookie", owner_cookie.clone())
         .await;
-    assert_eq!(listing.status_code(), 200, "{}", listing.text());
-    assert!(listing.text().contains("later-active-personal"));
+    assert_eq!(bookmark.status_code(), 303);
+    assert_eq!(bookmark.header("location"), "/profile#security");
+    assert_eq!(bookmark.header("cache-control"), "no-store");
+    let key_form = request
+        .get("/profile?panel=keys")
+        .add_header("cookie", owner_cookie.clone())
+        .await;
+    assert_eq!(key_form.status_code(), 200, "{}", key_form.text());
+    assert!(key_form.text().contains("Create an API key"));
+    assert!(!key_form.text().contains("later-active-personal"));
     let profile = request
         .get("/profile")
         .add_header("cookie", owner_cookie.clone())
         .await;
     assert_eq!(profile.status_code(), 200, "{}", profile.text());
+    assert!(profile.text().contains("later-active-personal"));
+    for excluded in ["earlier-000", "earlier-004", "earlier-005"] {
+        assert!(
+            !profile.text().contains(excluded),
+            "unexpected key {excluded}"
+        );
+    }
     assert!(!profile.text().contains("href=\"/account/security\""));
     assert!(profile.text().contains("panel=passkey"));
     assert!(!profile.text().contains("regenerate_recovery"));
@@ -825,17 +840,17 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .next()
         .unwrap()
         .to_owned();
-    let foreign_listing = request
-        .get("/account/security/keys")
+    let foreign_profile = request
+        .get("/profile")
         .add_header("cookie", foreign_cookie.clone())
         .await;
     assert_eq!(
-        foreign_listing.status_code(),
+        foreign_profile.status_code(),
         200,
         "{}",
-        foreign_listing.text()
+        foreign_profile.text()
     );
-    assert!(!foreign_listing.text().contains("later-active-personal"));
+    assert!(!foreign_profile.text().contains("later-active-personal"));
     let denied = request
         .post("/api/auth/security/api-key/revoke")
         .add_header("origin", boot.app_context.config.server.full_url())
@@ -850,12 +865,12 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .json(&json!({"key_id":later_key.id.to_string()}))
         .await;
     assert_eq!(revoked.status_code(), 200, "{}", revoked.text());
-    let listing = request
-        .get("/account/security/keys")
+    let profile = request
+        .get("/profile")
         .add_header("cookie", owner_cookie)
         .await;
-    assert_eq!(listing.status_code(), 200, "{}", listing.text());
-    assert!(!listing.text().contains("later-active-personal"));
+    assert_eq!(profile.status_code(), 200, "{}", profile.text());
+    assert!(!profile.text().contains("later-active-personal"));
     drop(request);
     close_request(fixture, boot).await;
 }

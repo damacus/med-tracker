@@ -46,6 +46,7 @@ export function mountProfileDialogs(document) {
   const profile = new URL(host.dataset.profileUrl, location.origin);
   const labels = host.dataset;
   const requests = new FlowRequests();
+  const keyRefresh = new FlowRequests();
   let ready = false;
   let root;
   let placeholder;
@@ -81,15 +82,18 @@ export function mountProfileDialogs(document) {
     placeholder = null;
     status.replaceChildren();
     setBusy(false);
-    const target = opener?.isConnected ? opener : host.querySelector('[data-profile-tab][aria-selected="true"], h1');
+    const target = opener?.isConnected ? opener : host.querySelector(kind === 'keys' ? 'a[data-profile-flow-entry="keys"]' : '[data-profile-tab][aria-selected="true"], h1');
     opener = null;
     return target;
   };
   const close = () => {
     if (busy || !dialog.open) return;
+    const keyReturn = root?.querySelector('[data-profile-key-issued]')
+      ? root.querySelector('[data-profile-flow-done]')?.href : null;
     const target = teardown();
     dialog.close();
     restoreFocus(target);
+    if (keyReturn) void refreshKeys(keyReturn, target);
   };
   const fail = (mutation, fallback) => {
     status.textContent = mutation ? (labels.flowUncertain || 'The request may have completed. Check the current setting before trying again. A lost one-time key cannot be displayed again.') : (labels.flowFailed || 'The setting could not be loaded. Try again or open it inline.');
@@ -164,6 +168,36 @@ export function mountProfileDialogs(document) {
     }
     return url;
   };
+  const readFlow = async (url, signal, options) => {
+    const response = await fetch(url, { ...options, signal, credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/vnd.medtracker.profile-flow+html', 'Accept-Language': document.documentElement.lang, ...options?.headers } });
+    if (signal.aborted) return null;
+    const final = new URL(response.url);
+    if (final.origin !== profile.origin) throw Error('Unexpected profile response');
+    if (final.pathname === '/login') { clearSecrets(root); location.assign(final.href); return null; }
+    if (!localFlowUrl(final.href, profile) || !response.headers.get('content-type')?.includes('text/html')) throw Error('Unexpected profile response');
+    const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+    return signal.aborted ? null : flowRoot(parsed.querySelector('[data-profile-flow-root]'), profile);
+  };
+  const refreshKeys = async (returnTo, target) => {
+    const back = localFlowUrl(returnTo, profile);
+    if (!back || back.pathname !== profile.pathname) return;
+    const card = host.querySelector('#profile-personal-api-keys');
+    if (!card) { location.assign(back.href); return; }
+    const request = keyRefresh.begin();
+    const url = destination(back.href);
+    url.searchParams.set('profile_done', 'keys');
+    try {
+      const next = await readFlow(url, request.signal);
+      if (!next || !keyRefresh.current(request) || !card.isConnected) return;
+      const updated = next.querySelector('template[data-profile-security-refresh]')?.content.firstElementChild?.querySelector('#profile-personal-api-keys');
+      if (!updated || next.dataset.flowOutcome !== 'complete' || next.dataset.flowKind !== 'keys') throw Error('Missing key list');
+      const focus = !dialog.open && (document.activeElement === target || card.contains(document.activeElement));
+      card.replaceWith(updated);
+      if (focus) restoreFocus(updated.querySelector('a[data-profile-flow-entry="keys"]'));
+    } catch {
+      if (keyRefresh.current(request) && card.isConnected && !dialog.open) location.assign(url.href === location.href ? back.href : url.href);
+    }
+  };
   const send = async (url, options = {}) => {
     const mutation = (options.method || 'GET').toUpperCase() !== 'GET';
     const request = requests.begin();
@@ -172,17 +206,8 @@ export function mountProfileDialogs(document) {
     let sent = false;
     try {
       sent = true;
-      const response = await fetch(url, { ...options, signal: request.signal, credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/vnd.medtracker.profile-flow+html', 'Accept-Language': document.documentElement.lang, ...options.headers } });
-      if (!requests.current(request)) return;
-      const final = new URL(response.url);
-      if (final.origin !== profile.origin) throw Error('Unexpected profile response');
-      if (final.pathname === '/login') { clearSecrets(root); location.assign(final.href); return; }
-      if (!localFlowUrl(final.href, profile) || !response.headers.get('content-type')?.includes('text/html')) throw Error('Unexpected profile response');
-      const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
-      const next = parsed.querySelector('[data-profile-flow-root]');
-      if (!requests.current(request)) return;
-      flowRoot(next, profile);
-      mount(next);
+      const next = await readFlow(url, request.signal, options);
+      if (next && requests.current(request)) mount(next);
     } catch (error) {
       if (requests.current(request) && error.name !== 'AbortError') fail(mutation && sent, mutation && sent ? null : url);
     } finally {
@@ -218,7 +243,10 @@ export function mountProfileDialogs(document) {
       if (busy) { event.preventDefault(); return; }
       const url = localFlowUrl(anchor.href, profile);
       if (!url) return;
-      if (anchor.hasAttribute('data-profile-flow-done') || inside && url.pathname === profile.pathname && !url.searchParams.has('panel')) { event.preventDefault(); close(); return; }
+      if (anchor.hasAttribute('data-profile-flow-done') || inside && url.pathname === profile.pathname && !url.searchParams.has('panel')) {
+        if (kind === 'keys' && root?.dataset.flowSecret !== 'true' && !host.querySelector('#profile-security-content')) return;
+        event.preventDefault(); close(); return;
+      }
       kind = anchor.dataset.profileFlowEntry || kind;
       try {
         const target = destination(url.href);
@@ -261,7 +289,7 @@ export function mountProfileDialogs(document) {
       void send(destinationUrl);
     });
     document.addEventListener('security-flow-result', event => { if (root?.contains(event.target) || event.target === root) { setBusy(false); status.textContent = ''; } });
-    window.addEventListener('pagehide', () => { requests.cancel(); clearSecrets(root); setBusy(false); });
+    window.addEventListener('pagehide', () => { requests.cancel(); keyRefresh.cancel(); clearSecrets(root); setBusy(false); });
     ready = true;
     host.dataset.profileDialogsReady = 'true';
     const inline = host.querySelector('[data-profile-flow-root]');

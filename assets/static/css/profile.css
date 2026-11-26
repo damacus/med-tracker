@@ -21,6 +21,13 @@
 .profile-session-dates dt { margin-bottom: .25rem; color: var(--on-surface-variant); font-size: .75rem; }
 .profile-session-dates dd { font-size: .875rem; }
 .profile-session form { justify-self: start; }
+@media (width < 40rem) {
+  .profile-key-table, .profile-key-table tbody { display: block; }
+  .profile-key-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .5rem 1rem; padding-block: .75rem; }
+  .profile-key-table tbody :is(th, td) { padding: 0; }
+  .profile-key-table tbody th, .profile-key-action { align-self: center; }
+  .profile-key-action { grid-column: 2; grid-row: 1; }
+}
 .profile-system-info { gap: .75rem; padding: 1rem; }
 .profile-system-info header p { margin-top: .25rem; font-size: .8125rem; }
 .profile-system-facts { display: grid; gap: .25rem; }
