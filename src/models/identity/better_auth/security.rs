@@ -69,7 +69,7 @@ pub(crate) struct SecuritySessionId(i64);
 pub(crate) struct SecurityPasskeyId(i64);
 
 #[derive(Serialize)]
-pub(crate) struct SecurityKeyId(String);
+pub(crate) struct SecurityKeyId(i64);
 
 pub(crate) struct SecuritySession {
     pub(crate) id: SecuritySessionId,
@@ -86,12 +86,11 @@ pub(crate) struct SecurityPasskey {
     created: DateTime<Utc>,
 }
 
-#[derive(Serialize)]
 pub(crate) struct SecurityKey {
-    id: SecurityKeyId,
-    name: Option<String>,
-    expires: Option<DateTime<Utc>>,
-    last_used: Option<DateTime<Utc>>,
+    pub(crate) id: SecurityKeyId,
+    pub(crate) name: Option<String>,
+    pub(crate) expires: DateTime<Utc>,
+    pub(crate) last_used: Option<DateTime<Utc>>,
 }
 
 pub(crate) struct SecurityOverview {

@@ -220,7 +220,6 @@ impl Presentation {
                 },
                 self.return_tab()
             ),
-            "/account/security/keys" => format!("{}?panel=keys{scope}#security", self.profile()),
             "/profile?panel=support#security" => {
                 format!("{}?panel=support{scope}#security", self.profile())
             }
@@ -329,7 +328,13 @@ impl Frame {
             "profile/flows/support.html" => "support",
             "profile/history.html" => "history",
             "profile/schedules.html" => "schedules",
-            "profile/show.html" if self.presentation.complete => "complete",
+            "profile/show.html"
+                if self.presentation.complete
+                    && (self.presentation.fragment
+                        || !matches!(self.presentation.kind, FlowKind::Keys)) =>
+            {
+                "complete"
+            }
             "profile/flow-error.html" => "error",
             _ => return engine.render(key, data).map_err(Box::new),
         };

@@ -18,7 +18,7 @@ pub(crate) async fn show(
     csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    let Ok(listing) = personal_keys::listing(
+    let Ok(households) = personal_keys::eligible_households(
         &service,
         &super::passkeys::request(&headers),
         crate::controllers::medications::request_id(request_id),
@@ -33,8 +33,7 @@ pub(crate) async fn show(
     let mut data = crate::controllers::medications::rendering::appearance_context();
     data["title"] = json!("Personal API keys");
     data["authenticity_token"] = json!(token);
-    data["keys"] = listing["keys"].clone();
-    data["households"] = listing["households"].clone();
+    data["households"] = json!(households);
     match super::security_locale::view(&view, "identity_onboarding/keys.html", data) {
         Ok(response) => (csrf, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => super::rendering::unavailable(),
@@ -131,7 +130,7 @@ pub(super) async fn revoke(
     )
     .await
     {
-        Ok(response) if response.status == 200 => view.profile_redirect("/account/security/keys"),
+        Ok(response) if response.status == 200 => view.profile_redirect("/account/security"),
         _ => view.profile_rejection(StatusCode::UNAUTHORIZED),
     }
 }
