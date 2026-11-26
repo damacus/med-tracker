@@ -54,42 +54,50 @@ Native `run` values support quoted arguments but do not expand shell syntax.
 `shell: true` explicitly requests a platform shell and cannot run in this scratch
 image. Keep production schedules as native tasks.
 
-The **Loco Linux images** workflow builds and checks amd64 and arm64 on native
-runners. Every push to **main** publishes a multi-platform
-`ghcr.io/damacus/med-tracker:sha-<full commit>` image and can update `beta`
-after the native image checks, scheduler acceptance and image-transfer checks pass.
-Dispatching **from main** with **publish** enabled also publishes; other
-dispatches only check the images. Publication verifies checksums, image IDs and architectures of the
-saved tested images, pushes those images, and joins their registry digests into
-the multi-platform manifest. The publication job has no source checkout, build
-or application execution. Pull requests and dispatches from other branches have
-no package write permission and cannot publish. Transferred image archives
-expire after one day.
-The release-please workflow also calls this workflow after creating a release.
-It checks out the exact release tag and verifies that the tag's commit matches
-the workflow commit and its version matches the root Cargo package. It builds
-and checks fresh images from that source, then publishes the tested images with
-both their SHA tag and the full release version, for example
-`ghcr.io/damacus/med-tracker:0.6.10`. No `latest`, minor or major alias is
-published. The workflow summary records the verified multi-platform digest for
-the deployment controller to use. A version tag alone does not prove the image
-has finished building; wait for the publication job to succeed.
+The **Loco Linux images** workflow builds amd64 and arm64 once each on native
+runners. Both architectures run production boot and upgrade acceptance. The
+native scheduler test starts when the checked amd64 image is available. Image
+transfer verification waits for both architectures and the scheduler test.
+Publication uses the saved, tested images to assemble the multi-platform
+manifest after verifying their checksums, image IDs and architectures.
+Transferred image archives expire after one day.
 
-PR #3028 removed the Rails application and its separate image publisher.
-Publishing an image does not deploy it. Builds run independently for each main
-push, so a queued push is not displaced by the next commit. Publication uses a separate concurrency group
-per full source SHA, with cancellation disabled. Main and release-please builds
-of the same commit cannot overwrite the SHA tags while the other publisher is
-recovering their digests. Different commits can publish independently. A separate Actions
-concurrency group serializes mutable `beta` promotion; only its latest pending
-promotion needs to run. Each promotion checks the current main tip through the
-GitHub API and skips older revisions. A failed or malformed ref lookup fails
-without changing `beta`. Rerunning an older commit can publish its SHA image but
-cannot move `beta` backwards. Promotion copies the published immutable manifest
-and verifies the resulting digest. The run summary records the source commit,
-immutable digest and whether beta was promoted or skipped. Pin that digest in GitOps. A build
-after merging a pipeline change uses that subsequent main commit, rather than
-the main commit observed before the change.
+Pull requests run the image checks when matching files change. On main, Release
+Please calls the workflow once for each new release. The workflow verifies that
+the release tag identifies the workflow commit and that its version matches the
+root Cargo package. It publishes the same multi-platform digest under
+`ghcr.io/damacus/med-tracker:sha-<full commit>` and the full release version, for
+example `ghcr.io/damacus/med-tracker:0.6.10`. The workflow summary records the
+immutable digest to pin in GitOps. Publishing the image and deploying it are
+separate operations.
+
+If a previous run published a verified digest for the same commit, publication
+reuses that digest. Release and manual publication for the same commit run one
+at a time.
+
+## Manual image publication
+
+Run the workflow on main with **beta** enabled to build, check and publish its
+current commit and point the `beta` tag at that run's verified digest.
+
+```fish
+gh workflow run loco-images.yml --repo damacus/med-tracker --ref main -f beta=true
+```
+
+A new beta request cancels any superseded beta build. A request with both
+**publish** and **beta** enabled is a beta request and follows the same
+cancellation rules. The promotion job checks main again before changing the
+tag, so a run built from an older commit leaves beta pointing at its previous
+digest. The workflow summary records whether the tag was updated or skipped.
+
+For a hotfix, run the workflow on main with **publish** enabled to publish its
+SHA tag.
+
+```fish
+gh workflow run loco-images.yml --repo damacus/med-tracker --ref main -f publish=true
+```
+
+Dispatches with default inputs or from other branches run the checks only.
 
 ## Creating the 0.6 release candidate
 
