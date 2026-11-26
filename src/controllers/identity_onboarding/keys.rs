@@ -18,6 +18,9 @@ pub(crate) async fn show(
     csrf: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
+    if view.profile_presentation().is_none() {
+        return super::security::settings(Extension(service), headers).await;
+    }
     let Ok(households) = personal_keys::eligible_households(
         &service,
         &super::passkeys::request(&headers),

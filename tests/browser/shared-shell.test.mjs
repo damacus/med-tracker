@@ -28,13 +28,6 @@ test('profile session dates retain semantic timestamps and System Information is
   assert.doesNotMatch(profile, /<summary[^>]*>(?:(?!<\/summary>)[\s\S])*version_info\.title/);
 });
 
-test('each personal API key has its own table row and inline revoke action', () => {
-  const profile = read('assets/views/profile/security.html');
-  const keys = profile.split('id="profile-personal-api-keys"')[1].split('</section>')[0];
-  assert.match(keys, /<table [^>]*class="table\b/);
-  assert.match(keys, /<tr[^>]*>\s*<th[^>]*scope="row"[^>]*>[\s\S]*?key\.name[\s\S]*?\/account\/security\/keys\/revoke[\s\S]*?<\/tr>/);
-});
-
 test('shared profile exposes protected security controls without another index or profile-form interception', () => {
   const security = read('assets/views/profile/security.html');
   for (const action of ['unlink_provider', 'remove_password', 'remove_passkey']) {

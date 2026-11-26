@@ -765,8 +765,15 @@ async fn account_authentication_security_inventory_includes_later_credentials() 
         .next()
         .unwrap()
         .to_owned();
-    let key_form = request
+    let bookmark = request
         .get("/account/security/keys")
+        .add_header("cookie", owner_cookie.clone())
+        .await;
+    assert_eq!(bookmark.status_code(), 303);
+    assert_eq!(bookmark.header("location"), "/profile#security");
+    assert_eq!(bookmark.header("cache-control"), "no-store");
+    let key_form = request
+        .get("/profile?panel=keys")
         .add_header("cookie", owner_cookie.clone())
         .await;
     assert_eq!(key_form.status_code(), 200, "{}", key_form.text());

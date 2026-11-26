@@ -239,15 +239,25 @@ async fn native_auth_reset_key_mfa_backup_and_email_forms_complete() {
                         .starts_with("medtracker_")
                 );
                 page.keyboard().press("Escape", None).await.unwrap();
-                let key = page.locator("#profile-personal-api-keys tbody tr").filter(playwright_rs::FilterOptions::default().has_text("Browser scoped key"));
+                let key = page.get_by_role(AriaRole::Table, named("Personal API keys"))
+                    .get_by_role(AriaRole::Row, None)
+                    .filter(playwright_rs::FilterOptions::default().has_text("Browser scoped key"));
                 expect(key.clone()).to_be_visible().await.unwrap();
                 expect(add_key.clone()).to_be_focused().await.unwrap();
                 expect(page.get_by_label("API key", true)).to_have_count(0).await.unwrap();
+                let name = key.get_by_role(AriaRole::Rowheader, named("Browser scoped key"));
+                let revoke = key.get_by_role(AriaRole::Button, named("Revoke API key"));
+                for (width, height) in [(1440, 1000), (390, 844)] {
+                    page.set_viewport_size(Viewport { width, height }).await.unwrap();
+                    let name = name.bounding_box().await.unwrap().unwrap();
+                    let revoke = revoke.bounding_box().await.unwrap().unwrap();
+                    assert!(
+                        name.x < revoke.x && name.y < revoke.y + revoke.height && revoke.y < name.y + name.height,
+                        "Revoke must sit next to the key name at {width}px"
+                    );
+                }
                 capture_sizes_at(page, "personal-key-list", Some("#profile-personal-api-keys")).await;
-                key.get_by_role(AriaRole::Button, named("Revoke API key"))
-                    .click(None)
-                    .await
-                    .unwrap();
+                revoke.click(None).await.unwrap();
                 expect(key).to_have_count(0).await.unwrap();
                 page.get_by_role(AriaRole::Link, named("Done"))
                     .click(None)
