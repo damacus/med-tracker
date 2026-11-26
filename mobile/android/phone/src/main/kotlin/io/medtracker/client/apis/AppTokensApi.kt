@@ -53,7 +53,7 @@ open class AppTokensApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/admin/app_tokens
      * Create an API app token.
-     * The secret is returned once. Reusing a successful request&#39;s Idempotency-Key returns a conflict without exposing the secret again; a caller needing a replacement must use a new key.
+     * Requires household management permission and a household API session, household app token, or mobile OAuth access token. A personal API key with members:write can manage membership. App-token creation and retries with personal API keys return 403. The secret is returned once. An authorised retry with the same Idempotency-Key returns 409 without exposing the secret again. Use a new Idempotency-Key if you need to create a replacement token.
      * @param householdId 
      * @param apiAppTokenCreateRequest 
      * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
@@ -87,7 +87,7 @@ open class AppTokensApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/admin/app_tokens
      * Create an API app token.
-     * The secret is returned once. Reusing a successful request&#39;s Idempotency-Key returns a conflict without exposing the secret again; a caller needing a replacement must use a new key.
+     * Requires household management permission and a household API session, household app token, or mobile OAuth access token. A personal API key with members:write can manage membership. App-token creation and retries with personal API keys return 403. The secret is returned once. An authorised retry with the same Idempotency-Key returns 409 without exposing the secret again. Use a new Idempotency-Key if you need to create a replacement token.
      * @param householdId 
      * @param apiAppTokenCreateRequest 
      * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
