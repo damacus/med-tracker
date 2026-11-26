@@ -220,9 +220,7 @@ impl MedicationInput {
                 {
                     return Err((field, "must be greater than 0"));
                 }
-                Field::Value(number)
-                    if field != "dose_amount" && !validation::valid_stock_decimal(*number) =>
-                {
+                Field::Value(number) if field != "dose_amount" && !valid_stock_decimal(*number) => {
                     return Err((field, "is outside stock precision"));
                 }
                 _ => {}
@@ -399,7 +397,7 @@ impl MedicationCreate {
         if self
             .0
             .reorder_threshold
-            .is_some_and(|value| !validation::valid_stock_decimal(value))
+            .is_some_and(|value| !valid_stock_decimal(value))
         {
             return Err(("reorder_threshold", "is outside stock precision"));
         }
@@ -407,7 +405,7 @@ impl MedicationCreate {
             .0
             .current_supply
             .flatten()
-            .is_some_and(|value| !validation::valid_stock_decimal(value))
+            .is_some_and(|value| !valid_stock_decimal(value))
         {
             return Err(("current_supply", "is outside stock precision"));
         }

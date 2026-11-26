@@ -57,6 +57,7 @@ pub(super) fn view(
     }
     data["flow"] = flow.clone();
     data["flow_json"] = json!(flow.to_string());
+    data["done_label"] = labels["profiles"]["dialogs"]["done"].clone();
     data["lang"] = json!(language);
     format::render().view(view, path, data).map_err(Box::new)
 }

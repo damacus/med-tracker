@@ -490,9 +490,7 @@ pub(super) fn record_person<'a>(
             "person_medications"
         };
         return plan
-            .rows(source_kind)
-            .iter()
-            .find(|source| source["portable_id"] == source_id)
+            .row(source_kind, source_id)
             .and_then(|source| source["person_portable_id"].as_str())
             .or_else(|| index.owner(source_kind, source_id));
     }

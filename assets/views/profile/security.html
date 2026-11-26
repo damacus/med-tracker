@@ -20,12 +20,51 @@
       {% for passkey in security.passkeys %}<div class="my-4 py-3 border-b border-base-300" data-passkey-id="{{ passkey.id }}"><strong>{% if passkey.name %}{{ passkey.name }}{% else %}{{ labels.rodauth.views.two_factor_manage.methods.passkeys_title }}{% endif %}</strong><p>{{ labels.profiles.security.added | replace(from="%{date}", to=passkey.created) }}</p><form method="post" data-profile-flow-entry="operation" action="/account/security/operation?profile_flow=operation{% if slug %}&amp;profile_household={{ slug }}{% endif %}" class="mt-3"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="remove_passkey"><input type="hidden" name="target" value="{{ passkey.id }}"><button class="btn" type="submit">{{ labels.profiles.security.remove_passkey }}</button></form></div>{% else %}<p>{{ labels.profiles.security.no_passkeys }}</p>{% endfor %}
       <a class="btn" href="{{ profile_path }}?panel=passkey{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#security" data-profile-flow-entry="passkey">{{ labels.profiles.security.add_passkey }}</a></div>
     </section>
-    <section class="profile-personal card card-body bg-base-100 border border-base-300 min-w-0 gap-3"><h3 class="card-title">{{ labels.profiles.security.api_keys }}</h3><p class="shell-muted">{{ labels.profiles.api_tokens.description }}</p><a class="btn" href="{{ profile_path }}?panel=keys{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#security" data-profile-flow-entry="keys">{{ labels.profiles.security.manage_api_keys }}</a></section>
+    <section id="profile-personal-api-keys" class="profile-personal card card-body bg-base-100 border border-base-300 min-w-0 gap-4" aria-labelledby="profile-personal-api-keys-title">
+      <h3 id="profile-personal-api-keys-title" class="card-title">{{ labels.profiles.security.api_keys }}</h3>
+      <p class="shell-muted">{{ labels.profiles.api_tokens.description }}</p>
+      {% set key_labels = labels.profiles.security_flow %}
+      {% if security.keys | length > 0 %}
+      <table class="table profile-key-table" role="table" aria-labelledby="profile-personal-api-keys-title">
+        <thead class="max-sm:sr-only" role="rowgroup">
+          <tr role="row">
+            <th scope="col" role="columnheader">{{ key_labels.name }}</th>
+            <th scope="col" role="columnheader">{{ labels.profiles.security.session_expires }}</th>
+            <th scope="col" role="columnheader">{{ key_labels.key_last_used }}</th>
+            <th scope="col" role="columnheader"><span class="sr-only">{{ key_labels.revoke_key }}</span></th>
+          </tr>
+        </thead>
+        <tbody role="rowgroup">
+        {% for key in security.keys %}
+          <tr role="row">
+            <th scope="row" role="rowheader" id="profile-key-{{ key.id }}">{{ key.name | default(value=key_labels.api_key, boolean=true) }}</th>
+            <td role="cell">
+              <span class="block sm:hidden shell-muted" aria-hidden="true">{{ labels.profiles.security.session_expires }}</span>
+              <time datetime="{{ key.expires.datetime }}" title="{{ key.expires.exact }}">{{ key.expires.label }}</time>
+            </td>
+            <td role="cell">
+              <span class="block sm:hidden shell-muted" aria-hidden="true">{{ key_labels.key_last_used }}</span>
+              {% if key.last_used %}<time datetime="{{ key.last_used.datetime }}" title="{{ key.last_used.exact }}">{{ key.last_used.label }}</time>{% else %}{{ key_labels.never }}{% endif %}
+            </td>
+            <td role="cell" class="profile-key-action text-right">
+              <form method="post" action="/account/security/keys/revoke?profile_flow=keys{% if slug %}&amp;profile_household={{ slug }}{% endif %}" data-profile-flow-entry="keys">
+                <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+                <input type="hidden" name="key_id" value="{{ key.id }}">
+                <button class="btn btn-outline" type="submit" aria-describedby="profile-key-{{ key.id }}">{{ key_labels.revoke_key }}</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p class="shell-muted">{{ key_labels.no_keys }}</p>{% endif %}
+      <a class="btn self-start" href="{{ profile_path }}?panel=keys{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#security" data-profile-flow-entry="keys">{{ labels.profiles.security.add_api_key }}</a>
+    </section>
     <section class="profile-personal card card-body bg-base-100 border border-base-300 min-w-0 gap-3"><h3 class="card-title">{{ labels.profiles.security.sessions }}</h3>
       {% if security.session_zone %}<p class="profile-session-zone">{{ labels.profiles.security.session_timezone | replace(from="%{zone}", to=security.session_zone) }}</p>{% endif %}
       <div class="profile-sessions">{% for session in security.sessions %}<article class="profile-session{% if session.current %} profile-session-current{% endif %}"><h4 class="profile-session-title">{% if session.current %}{{ labels.profiles.security.current_session }}{% else %}{{ labels.profiles.security.other_session | default(value='Another session') }}{% endif %}</h4>{% if security.session_zone %}<dl class="profile-session-dates"><div><dt>{{ labels.profiles.security.session_created }}</dt><dd><time datetime="{{ session.created.datetime }}" title="{{ session.created.exact }}">{{ session.created.label }}</time></dd></div><div><dt>{{ labels.profiles.security.session_expires }}</dt><dd><time datetime="{{ session.expires.datetime }}" title="{{ session.expires.exact }}">{{ session.expires.label }}</time></dd></div></dl>{% else %}<p>{{ labels.profiles.security.session_dates | replace(from="%{created}", to=session.created) | replace(from="%{expires}", to=session.expires) }}</p>{% endif %}{% if not session.current %}<form method="post" data-profile-flow-entry="operation" action="/account/security/session/revoke?profile_flow=operation{% if slug %}&amp;profile_household={{ slug }}{% endif %}"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="session_id" value="{{ session.id }}"><button class="btn btn-outline" type="submit">{{ labels.profiles.security.revoke_session }}</button></form>{% endif %}</article>{% endfor %}</div>
       <form method="post" action="/logout"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn justify-self-start" type="submit">{{ labels.profiles.security.sign_out }}</button></form>
     </section>
-    {% if account_access.support_access %}<nav class="card card-body bg-base-100 border border-base-300 gap-3" aria-label="{{ labels.layouts.profile_menu.my_account }}">{% if account_access.support_access %}<a class="link" href="{{ profile_path }}?panel=support{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#security" data-profile-flow-entry="support">{{ labels.profiles.security.support_access }}</a>{% endif %}</nav>{% endif %}
+    {% if account_access.support_access %}<nav class="card card-body bg-base-100 border border-base-300 gap-3" aria-label="{{ labels.layouts.profile_menu.my_account }}"><a class="link self-start" href="{{ profile_path }}?panel=support{% if profile_context_query %}&amp;{{ profile_context_query }}{% endif %}#security" data-profile-flow-entry="support">{{ labels.profiles.security.support_access }}</a></nav>{% endif %}
   </div>
 </div>

@@ -1,4 +1,5 @@
 use super::*;
+use crate::models::care::medications::allocations::{self, StockSource};
 use loco_rs::model::TenantQueryExt;
 
 pub(super) async fn apply(
@@ -24,6 +25,12 @@ pub(super) async fn apply(
             return Err(invalid());
         }
         let remaining = previous - quantity;
+        allocations::require_communal_stock(
+            db,
+            StockSource::for_inventory(&medication, Some(id)),
+            remaining,
+        )
+        .await?;
         let unit = option.unit.clone();
         let portable = option.portable_id.clone();
         let mut active: dosage::ActiveModel = option.into();
@@ -87,6 +94,12 @@ pub(super) async fn apply(
             return Err(invalid());
         }
         let remaining = previous - quantity;
+        allocations::require_communal_stock(
+            db,
+            StockSource::for_inventory(&medication, None),
+            remaining,
+        )
+        .await?;
         let unit = medication.dose_unit.clone().unwrap_or_default();
         let mut active: medication::ActiveModel = medication.clone().into();
         active.current_supply = Set(Some(remaining));
@@ -110,15 +123,7 @@ pub(super) async fn apply(
         .await?;
         (previous, remaining, unit)
     };
-    let unit = if [
-        "tablet", "capsule", "gummy", "sachet", "spray", "drop", "pad", "ml",
-    ]
-    .contains(&unit.as_str())
-    {
-        unit
-    } else {
-        "units".into()
-    };
+    let unit = crate::models::care::medications::stock_unit(&unit);
     let mut payload = facts.audit_payload();
     payload["previous_quantity"] = json!(format_quantity(previous));
     payload["remaining_quantity"] = json!(format_quantity(remaining));

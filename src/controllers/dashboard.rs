@@ -347,7 +347,7 @@ async fn show(
         };
         let now = chrono::Utc::now();
         let today = now.with_timezone(&principal.time_zone()).date_naive();
-        let history = match reports::ordinary_history(
+        match reports::ordinary_history(
             &tenant,
             &people,
             today - chrono::Duration::days(6),
@@ -357,12 +357,16 @@ async fn show(
         )
         .await
         {
-            Ok(history) => history,
+            Ok(history) => {
+                data["insights"] = json!(history.smart_insights);
+                data["insights_start_date"] = json!(history.start_date.to_string());
+                data["insights_end_date"] = json!(history.end_date.to_string());
+            }
+            Err(error) if dose_occurrences::is_capacity_error(&error) => {
+                data["insights_unavailable"] = json!(true);
+            }
             Err(error) => return operation_error(error),
-        };
-        data["insights"] = json!(history.smart_insights);
-        data["insights_start_date"] = json!(history.start_date.to_string());
-        data["insights_end_date"] = json!(history.end_date.to_string());
+        }
     }
     data["dashboard"] = snapshot;
     data["grouping"] = json!(grouping);

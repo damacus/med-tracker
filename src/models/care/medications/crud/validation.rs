@@ -60,10 +60,6 @@ pub(super) async fn valid_location(
         .is_some_and(|location| location.household_id == household_id))
 }
 
-pub(crate) fn valid_stock_decimal(value: Decimal) -> bool {
-    value >= Decimal::ZERO && value.normalize().scale() <= 2 && value < Decimal::from(100_000_000)
-}
-
 pub(super) async fn barcode_conflict(
     db: &DatabaseTransaction,
     barcode: Option<&str>,

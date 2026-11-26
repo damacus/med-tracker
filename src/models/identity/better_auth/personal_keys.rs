@@ -15,7 +15,9 @@ use better_auth_core::{
     AuthContext, AuthError, AuthPlugin, AuthRequest, AuthResponse, AuthResult, AuthRoute,
     HttpMethod, UpdateApiKey, wire::UserView,
 };
-use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
@@ -147,20 +149,57 @@ pub(super) async fn create(
     )
 }
 
-pub async fn listing(
+#[derive(sea_orm::FromQueryResult, Serialize)]
+pub(crate) struct KeyHousehold {
+    id: i64,
+    name: String,
+}
+
+pub(crate) async fn eligible_households(
     service: &IdentityService,
     request: &AuthRequest,
     request_id: String,
-) -> AuthResult<Value> {
+) -> AuthResult<Vec<KeyHousehold>> {
+    use crate::models::entities::{account, household, membership};
+
     super::request::trusted(service, request, request_id, async {
-        let (user, session) = service.context().require_authoritative_session(request).await?;
+        let (_, session) = service
+            .context()
+            .require_authoritative_session(request)
+            .await?;
         let transaction = service.policy.transaction().await?;
-        service.policy.require_security_session(&transaction, &session).await?;
-        let keys = inventory(&transaction, clinical_id(&user.id.display_string()?)?).await?.into_iter().map(|key| json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request,"permissions":key.permissions})).collect::<Vec<_>>();
-        let households = transaction.query_all_raw(statement("SELECT h.id,h.name,h.slug FROM households h JOIN household_memberships m ON m.household_id=h.id JOIN accounts a ON a.person_id=m.person_id WHERE a.id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY h.name,h.id", [clinical_id(&user.id.display_string()?)?.into()])).await.map_err(database_error)?.into_iter().map(|row| -> AuthResult<Value> { Ok(json!({"id":row.try_get::<i64>("","id").map_err(database_error)?.to_string(),"name":row.try_get::<String>("","name").map_err(database_error)?,"slug":row.try_get::<String>("","slug").map_err(database_error)?})) }).collect::<AuthResult<Vec<_>>>()?;
+        service
+            .policy
+            .require_security_session(&transaction, &session)
+            .await?;
+        let person = account::Entity::find()
+            .select_only()
+            .column(account::Column::PersonId)
+            .filter(account::Column::Id.eq(clinical_id(&session.user_id.display_string()?)?))
+            .into_query();
+        let memberships = membership::Entity::find()
+            .select_only()
+            .column(membership::Column::HouseholdId)
+            .filter(membership::Column::PersonId.in_subquery(person))
+            .filter(membership::Column::Status.eq("active"))
+            .filter(membership::Column::RevokedAt.is_null())
+            .into_query();
+        let households = household::Entity::find()
+            .select_only()
+            .columns([household::Column::Id, household::Column::Name])
+            .filter(household::Column::Id.in_subquery(memberships))
+            .filter(household::Column::Status.eq("active"))
+            .filter(household::Column::LifecycleState.eq("active"))
+            .order_by_asc(household::Column::Name)
+            .order_by_asc(household::Column::Id)
+            .into_model::<KeyHousehold>()
+            .all(&transaction)
+            .await
+            .map_err(database_error)?;
         transaction.commit().await.map_err(database_error)?;
-        Ok(json!({"keys":keys,"households":households}))
-    }).await
+        Ok(households)
+    })
+    .await
 }
 
 pub(super) struct PersonalKeys(pub Arc<IdentityPolicy>);
@@ -401,12 +440,12 @@ pub(crate) fn permission(method: &axum::http::Method, route: &str) -> Option<&'s
     Some("care:write")
 }
 
+#[derive(sea_orm::FromQueryResult)]
 pub(super) struct KeySummary {
-    pub id: String,
+    pub id: i64,
     pub name: Option<String>,
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
     pub last_request: Option<chrono::DateTime<chrono::Utc>>,
-    pub permissions: Option<String>,
 }
 
 pub(super) async fn inventory(
@@ -414,23 +453,22 @@ pub(super) async fn inventory(
     account_id: i64,
 ) -> AuthResult<Vec<KeySummary>> {
     use super::schema::api_key::{Column, Entity};
-    let rows = Entity::find()
+    Entity::find()
+        .select_only()
+        .columns([
+            Column::Id,
+            Column::Name,
+            Column::ExpiresAt,
+            Column::LastRequest,
+        ])
         .filter(Column::ReferenceId.eq(account_id))
         .filter(Column::ConfigId.eq(CONFIG))
         .filter(Column::Enabled.eq(true))
+        .filter(Column::ExpiresAt.gt(chrono::Utc::now()))
         .order_by_asc(Column::CreatedAt)
         .order_by_asc(Column::Id)
+        .into_model::<KeySummary>()
         .all(db)
         .await
-        .map_err(database_error)?;
-    Ok(rows
-        .into_iter()
-        .map(|key| KeySummary {
-            id: key.id.to_string(),
-            name: key.name,
-            expires_at: key.expires_at,
-            last_request: key.last_request,
-            permissions: key.permissions,
-        })
-        .collect())
+        .map_err(database_error)
 }

@@ -1,6 +1,6 @@
 use crate::models::{
     identity::better_auth::security::{
-        SecurityKey, SecurityOverview, SecurityPasskey, SecuritySessionId,
+        SecurityKeyId, SecurityOverview, SecurityPasskey, SecuritySessionId,
     },
     ids::AccountId,
 };
@@ -43,6 +43,14 @@ struct Session<'a> {
 }
 
 #[derive(Serialize)]
+struct Key<'a> {
+    id: &'a SecurityKeyId,
+    name: Option<&'a str>,
+    expires: SessionTime,
+    last_used: Option<SessionTime>,
+}
+
+#[derive(Serialize)]
 pub(crate) struct Security<'a> {
     account_id: AccountId,
     totp: bool,
@@ -51,7 +59,7 @@ pub(crate) struct Security<'a> {
     provider_available: bool,
     can_unlink_provider: bool,
     passkey_count: String,
-    keys: &'a [SecurityKey],
+    keys: Vec<Key<'a>>,
     passkeys: &'a [SecurityPasskey],
     sessions: Vec<Session<'a>>,
     session_zone: &'static str,
@@ -71,7 +79,18 @@ pub(crate) fn context<'a>(
         provider_available: overview.provider_available,
         can_unlink_provider: overview.can_unlink_provider,
         passkey_count: overview.passkey_count.to_string(),
-        keys: &overview.keys,
+        keys: overview
+            .keys
+            .iter()
+            .map(|key| Key {
+                id: &key.id,
+                name: key.name.as_deref(),
+                expires: session_time(key.expires, zone, labels, now),
+                last_used: key
+                    .last_used
+                    .map(|value| session_time(value, zone, labels, now)),
+            })
+            .collect(),
         passkeys: &overview.passkeys,
         session_zone: zone.name(),
         sessions: overview

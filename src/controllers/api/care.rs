@@ -30,6 +30,7 @@ mod response;
 mod review_prompts;
 mod schedule_lifecycle;
 mod sharing;
+mod stock_allocations;
 mod sync;
 mod treatments;
 mod ui_capabilities;
@@ -461,6 +462,14 @@ pub fn routes() -> Routes {
             "/{household_id}/medications/{id}/stock_removals",
             get(removals::history).post(removals::create),
         )
+        .add(
+            "/{household_id}/medications/{id}/stock_allocations",
+            post(stock_allocations::create),
+        )
+        .add(
+            "/{household_id}/medications/{id}/stock_allocations/{submission_id}",
+            delete(stock_allocations::release),
+        )
 }
 
 async fn begin(
@@ -682,12 +691,7 @@ async fn adjust_stock(
             .map_err(response::operation),
         Err(error) => Err(error),
     };
-    let savepoint_result = if result.is_ok() {
-        savepoint.commit().await
-    } else {
-        savepoint.rollback().await
-    };
-    if savepoint_result.is_err() {
+    if settle_savepoint(savepoint, result.is_ok()).await.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
     finish_typed(
@@ -698,6 +702,17 @@ async fn adjust_stock(
         &request_id,
     )
     .await
+}
+
+async fn settle_savepoint(
+    savepoint: DatabaseTransaction,
+    succeeded: bool,
+) -> Result<(), sea_orm::DbErr> {
+    if succeeded {
+        savepoint.commit().await
+    } else {
+        savepoint.rollback().await
+    }
 }
 
 type Reply<T = Value> = std::result::Result<(StatusCode, T, Option<String>), response::Failure>;

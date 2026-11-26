@@ -31,7 +31,14 @@ pub async fn destroy(
     let now = Utc::now().naive_utc();
     let savepoint = tenant.transaction().begin().await?;
     let result=async {
-        dosage::Entity::delete_by_id(row.id).filter(dosage::Column::HouseholdId.eq(household_id)).exec(&savepoint).await?;
+        dosage::Entity::delete_by_id(row.id)
+            .filter(dosage::Column::HouseholdId.eq(household_id))
+            .exec(&savepoint)
+            .await
+            .map_err(|error| {
+                super::super::medications::allocations::reservation_write_error(&error)
+                    .unwrap_or_else(|| error.into())
+            })?;
         if row.current_supply.is_some() {
             let before=super::super::medications::medication_snapshot(&parent);
             let parent=inventory::synchronize_inventory(&savepoint,parent,now,false).await?.ok_or_else(invalid)?;

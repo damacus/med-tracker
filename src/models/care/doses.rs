@@ -597,13 +597,10 @@ async fn allowed_person(
 }
 
 pub(super) fn quantity(amount: Decimal, unit: &str) -> Decimal {
-    if matches!(
-        unit,
-        "tablet" | "capsule" | "gummy" | "sachet" | "spray" | "drop" | "pad" | "ml"
-    ) {
-        amount
-    } else {
+    if super::medications::stock_unit(unit) == "units" {
         Decimal::ONE
+    } else {
+        amount
     }
 }
 
